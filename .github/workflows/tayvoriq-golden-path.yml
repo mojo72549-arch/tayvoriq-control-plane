@@ -1,0 +1,61 @@
+name: TAYVORIQ Golden Path
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-golden-path
+  cancel-in-progress: false
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Checkout private implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: implementation/requirements.txt
+
+      - name: Install validation dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install -r implementation/requirements.txt pytest
+
+      - name: Compile, preflight and full tests
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          mkdir -p out/control-plane
+          python -m compileall -q tools
+          python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+          pytest -q
+
+      - name: Upload quality-gate diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-quality-gate-${{ github.run_id }}
+          path: implementation/out/control-plane/**
+          if-no-files-found: warn
+          retention-days: 30
