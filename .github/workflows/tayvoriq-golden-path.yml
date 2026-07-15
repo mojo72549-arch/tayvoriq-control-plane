@@ -2,6 +2,33 @@ name: TAYVORIQ Golden Path
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Zuerst quality_gate_only, danach full"
+        required: true
+        default: "quality_gate_only"
+        type: choice
+        options:
+          - quality_gate_only
+          - full
+      trend_scope:
+        description: "Trendbereich"
+        required: true
+        default: "auto_scope"
+        type: choice
+        options:
+          - auto_scope
+          - technology_ai
+          - business_economy
+          - world_society
+          - sports
+          - creator_media
+          - mobility_energy
+          - science_future
+      topic:
+        description: "Optionales manuelles Thema"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -10,13 +37,46 @@ concurrency:
   group: tayvoriq-golden-path
   cancel-in-progress: false
 
+env:
+  PYTHONUTF8: "1"
+  TAYVORIQ_CLOUD_MODE: "true"
+  TAYVORIQ_RENDER_SIZE: "1080x1920"
+  TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+  ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+  ELEVENLABS_GERMAN_VOICE_ID: ${{ secrets.ELEVENLABS_GERMAN_VOICE_ID }}
+  ELEVENLABS_MODEL_ID: "eleven_multilingual_v2"
+  YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
 jobs:
-  quality-gate:
+  golden-path:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+
+      - name: Validate required control-plane secrets
+        shell: bash
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required secret: $name" >&2
+              missing=1
+            fi
+          done
+          exit "$missing"
 
       - name: Checkout private implementation
         uses: actions/checkout@v4
@@ -27,6 +87,15 @@ jobs:
           path: implementation
           fetch-depth: 1
 
+      - name: Checkout Pages repository
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -34,28 +103,157 @@ jobs:
           cache: pip
           cache-dependency-path: implementation/requirements.txt
 
-      - name: Install validation dependencies
+      - name: Install validation and media dependencies
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg rsync
           python -m pip install --upgrade pip
           pip install -r implementation/requirements.txt pytest
 
-      - name: Compile, preflight and full tests
+      - name: Send Telegram quality-gate status
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          python tools/tayvoriq_send_telegram.py \
+            --state "TEST/RERUN" \
+            --conclusion "success" \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url ""
+
+      - name: Compile, preflight and complete tests
         working-directory: implementation
         run: |
           set -euo pipefail
           mkdir -p out/control-plane
           python -m compileall -q tools
-          python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+          python tools/tayvoriq_preflight_check.py \
+            --report-out out/control-plane/preflight.json
           pytest -q tests
 
-      - name: Upload quality-gate diagnostics
+      - name: Mark quality gate green
+        run: |
+          echo "Quality Gate green for $(git -C implementation rev-parse HEAD)"
+
+      - name: Stop after quality gate when requested
+        if: inputs.mode == 'quality_gate_only'
+        run: |
+          echo "Quality Gate passed. Start this workflow once with mode=full."
+
+      - name: Run exactly one complete production controller
+        id: controller
+        if: inputs.mode == 'full'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set +e
+          mkdir -p out/tayvoriq-self-heal
+          topic="${{ inputs.topic }}"
+          trend_mode="auto_trend"
+          if [ -n "$topic" ]; then
+            trend_mode="manual_topic"
+          fi
+          python tools/tayvoriq_autonomous_entrypoint.py \
+            --trend-mode "$trend_mode" \
+            --trend-scope "${{ inputs.trend_scope }}" \
+            --topic "$topic" \
+            --language "Deutsch" \
+            --platform "youtube_tiktok" \
+            --target-duration "35" \
+            --llm-provider "auto" \
+            --outdir "out/tayvoriq-youtube-tiktok" \
+            --site-root "site/tayvoriq" \
+            --run-id "$GITHUB_RUN_ID" \
+            --state-out "out/tayvoriq-review-state.json" \
+            --report-out "out/tayvoriq-self-heal/report.json" \
+            --request-out "out/tayvoriq-self-heal/request.json" \
+            --self-heal-depth "0" \
+            --target-branch "feature/multi-platform-distribution-package" \
+            2>&1 | tee out/tayvoriq-self-heal/controller-console.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Resolve production result
+        id: result
+        if: inputs.mode == 'full'
+        working-directory: implementation
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("out/tayvoriq-self-heal/report.json")
+          report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+          state = str(report.get("state") or "TECHNICAL_FAILURE")
+          success = state == "SUCCESS"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"state={state}\n")
+              handle.write(f"success={'true' if success else 'false'}\n")
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Publish review page
+        if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
+        run: |
+          set -euo pipefail
+          test -d implementation/site/tayvoriq
+          rm -rf pages-worktree/tayvoriq
+          mkdir -p pages-worktree/tayvoriq
+          rsync -a implementation/site/tayvoriq/ pages-worktree/tayvoriq/
+          touch pages-worktree/.nojekyll
+          cd pages-worktree
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tayvoriq .nojekyll
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish TAYVORIQ review ${GITHUB_RUN_ID}"
+            git push origin main
+          fi
+
+      - name: Send final Telegram review with approval actions
+        if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
+        working-directory: implementation
+        run: |
+          python tools/tayvoriq_send_telegram.py \
+            --state "SUCCESS" \
+            --conclusion "success" \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Collect compact diagnostics
+        if: always()
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          python tools/tayvoriq_collect_compact_diagnostics.py \
+            --root out \
+            --destination out/tayvoriq-compact-diagnostics \
+            --max-file-bytes 10485760
+
+      - name: Upload compact diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tayvoriq-quality-gate-${{ github.run_id }}
-          path: implementation/out/control-plane/**
+          name: tayvoriq-compact-diagnostics-${{ github.run_id }}
+          path: implementation/out/tayvoriq-compact-diagnostics/**
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Upload complete review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-review-${{ github.run_id }}
+          path: |
+            implementation/out/**
+            implementation/site/tayvoriq/**
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Enforce full Definition of Done
+        if: inputs.mode == 'full'
+        run: |
+          test "${{ steps.result.outputs.state }}" = "SUCCESS"
