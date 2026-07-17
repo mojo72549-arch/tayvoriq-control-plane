@@ -1,0 +1,17 @@
+name: Stop stale TAYVORIQ run
+
+on:
+  push:
+    paths:
+      - .github/workflows/stop-stale-tayvoriq.yml
+  workflow_dispatch:
+
+concurrency:
+  group: tayvoriq-golden-path
+  cancel-in-progress: true
+
+jobs:
+  stop-stale:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Stale TAYVORIQ run cancelled by concurrency replacement."
