@@ -17,6 +17,7 @@ concurrency:
 
 env:
   PYTHONUTF8: "1"
+  PYTHONPATH: ${{ github.workspace }}/implementation
 
 jobs:
   smoke:
@@ -62,9 +63,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out/control-plane
-          python -m compileall -q tools
+          python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
-          pytest -q tests
+          python -m pytest -q tests
 
       - name: Upload diagnostics
         if: always()
