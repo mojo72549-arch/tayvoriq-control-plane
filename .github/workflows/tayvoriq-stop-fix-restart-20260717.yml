@@ -1,0 +1,39 @@
+name: TAYVORIQ Stop Fix Restart 20260717
+
+on:
+  push:
+    paths:
+      - .github/workflows/tayvoriq-stop-fix-restart-20260717.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  stop-fix-restart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel stuck production run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            repos/${GITHUB_REPOSITORY}/actions/runs/29580286306/cancel || true
+          echo "Cancellation requested for stuck run 29580286306"
+
+      - name: Wait for cancellation
+        run: sleep 15
+
+      - name: Start repaired full production
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-golden-path.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f mode=full \
+            -f trend_scope=auto_scope \
+            -f topic=""
+          echo "Repaired full production dispatched"
