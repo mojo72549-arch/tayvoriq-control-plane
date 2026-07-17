@@ -237,3 +237,5 @@ jobs:
 
       - name: Enforce Definition of Done
         run: test "${{ steps.result.outputs.state }}" = "SUCCESS"
+
+# Trigger marker: 2026-07-17-bounded-retry-run-2
