@@ -40,3 +40,5 @@ jobs:
             -f topic="Warum KI-Assistenten unseren digitalen Alltag grundlegend verändern"
           sleep 8
           gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-golden-path.yml --limit 3
+
+# Trigger marker: 2026-07-17 fallback production with non-ElevenLabs TTS
