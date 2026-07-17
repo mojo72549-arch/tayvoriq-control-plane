@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - .github/workflows/tayvoriq-stop-fix-restart-20260717.yml
+  workflow_dispatch:
 
 permissions:
   actions: write
@@ -12,20 +13,21 @@ permissions:
 jobs:
   stop-fix-restart:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Cancel stuck production run
+      - name: Cancel active Golden Path runs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api --method POST \
-            repos/${GITHUB_REPOSITORY}/actions/runs/29580286306/cancel || true
-          echo "Cancellation requested for stuck run 29580286306"
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-golden-path.yml --status in_progress --json databaseId --jq '.[].databaseId' | while read -r run_id; do
+            [ -z "$run_id" ] || gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY" || true
+          done
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-golden-path.yml --status queued --json databaseId --jq '.[].databaseId' | while read -r run_id; do
+            [ -z "$run_id" ] || gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY" || true
+          done
 
-      - name: Wait for cancellation
-        run: sleep 15
-
-      - name: Start repaired full production
+      - name: Start reliable full production
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -34,6 +36,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --ref main \
             -f mode=full \
-            -f trend_scope=auto_scope \
-            -f topic=""
-          echo "Repaired full production dispatched"
+            -f trend_scope=technology_ai \
+            -f topic="Warum KI-Assistenten unseren digitalen Alltag grundlegend verändern"
+          sleep 8
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-golden-path.yml --limit 3
