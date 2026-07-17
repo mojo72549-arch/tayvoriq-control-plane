@@ -73,7 +73,7 @@ jobs:
           missing=0
           for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY; do
             if [ -z "${!name:-}" ]; then
-              echo "Missing required secret: $name" >&2
+              echo "::error title=Missing required secret::$name is not configured"
               missing=1
             fi
           done
@@ -133,46 +133,90 @@ jobs:
             --report-out out/control-plane/preflight.json
 
       - name: Mark quality gate green
-        run: |
-          echo "Quality Gate green for $(git -C implementation rev-parse HEAD)"
+        run: echo "Quality Gate green for $(git -C implementation rev-parse HEAD)"
 
       - name: Stop after quality gate when requested
         if: inputs.mode == 'quality_gate_only'
-        run: |
-          echo "Quality Gate passed. Start this workflow once with mode=full."
+        run: echo "Quality Gate passed. Start this workflow once with mode=full."
 
-      - name: Run exactly one complete production controller
+      - name: Run production controller with bounded candidate retries
         id: controller
         if: inputs.mode == 'full'
         working-directory: implementation
         shell: bash
         run: |
-          set +e
+          set -uo pipefail
           mkdir -p out/tayvoriq-self-heal
+          final_state="TECHNICAL_FAILURE"
+          final_exit=1
           topic="${{ inputs.topic }}"
           trend_mode="auto_trend"
           if [ -n "$topic" ]; then
             trend_mode="manual_topic"
           fi
-          python tools/tayvoriq_autonomous_entrypoint.py \
-            --trend-mode "$trend_mode" \
-            --trend-scope "${{ inputs.trend_scope }}" \
-            --topic "$topic" \
-            --language "Deutsch" \
-            --platform "youtube_tiktok" \
-            --target-duration "35" \
-            --llm-provider "auto" \
-            --outdir "out/tayvoriq-youtube-tiktok" \
-            --site-root "site/tayvoriq" \
-            --run-id "$GITHUB_RUN_ID" \
-            --state-out "out/tayvoriq-review-state.json" \
-            --report-out "out/tayvoriq-self-heal/report.json" \
-            --request-out "out/tayvoriq-self-heal/request.json" \
-            --self-heal-depth "0" \
-            --target-branch "feature/multi-platform-distribution-package" \
-            2>&1 | tee out/tayvoriq-self-heal/controller-console.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-          exit 0
+
+          for attempt in 1 2 3; do
+            echo "=== Production attempt ${attempt}/3 ==="
+            attempt_dir="out/tayvoriq-self-heal/attempt-${attempt}"
+            mkdir -p "$attempt_dir"
+
+            set +e
+            python tools/tayvoriq_autonomous_entrypoint.py \
+              --trend-mode "$trend_mode" \
+              --trend-scope "${{ inputs.trend_scope }}" \
+              --topic "$topic" \
+              --language "Deutsch" \
+              --platform "youtube_tiktok" \
+              --target-duration "35" \
+              --llm-provider "auto" \
+              --outdir "out/tayvoriq-youtube-tiktok" \
+              --site-root "site/tayvoriq" \
+              --run-id "${GITHUB_RUN_ID}-${attempt}" \
+              --state-out "out/tayvoriq-review-state.json" \
+              --report-out "$attempt_dir/report.json" \
+              --request-out "$attempt_dir/request.json" \
+              --self-heal-depth "0" \
+              --target-branch "feature/multi-platform-distribution-package" \
+              2>&1 | tee "$attempt_dir/controller-console.log"
+            controller_exit=${PIPESTATUS[0]}
+            set -e
+
+            state=$(python - "$attempt_dir/report.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+          print(str(report.get("state") or "TECHNICAL_FAILURE"))
+          PY
+            )
+
+            echo "attempt=${attempt} state=${state} exit=${controller_exit}"
+            cp "$attempt_dir/report.json" out/tayvoriq-self-heal/report.json 2>/dev/null || true
+            cp "$attempt_dir/request.json" out/tayvoriq-self-heal/request.json 2>/dev/null || true
+            cp "$attempt_dir/controller-console.log" out/tayvoriq-self-heal/controller-console.log
+            final_state="$state"
+            final_exit="$controller_exit"
+
+            if [ "$state" = "SUCCESS" ]; then
+              echo "$attempt" > out/tayvoriq-self-heal/successful-attempt.txt
+              break
+            fi
+
+            if [ "$state" != "PUBLISHABLE_OUTPUT_RETRY_REQUIRED" ] && [ "$state" != "SKIPPED_NO_PUBLISHABLE_TREND" ]; then
+              echo "Non-retryable state: $state"
+              break
+            fi
+
+            python tools/tayvoriq_send_telegram.py \
+              --state "RETRY_${attempt}_OF_3" \
+              --conclusion "neutral" \
+              --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              --review-id "${GITHUB_RUN_ID}" \
+              --review-url "" || true
+          done
+
+          echo "exit_code=${final_exit}" >> "$GITHUB_OUTPUT"
+          echo "state=${final_state}" >> "$GITHUB_OUTPUT"
 
       - name: Resolve production result
         id: result
@@ -213,6 +257,7 @@ jobs:
           fi
 
       - name: Send final Telegram review with approval actions
+        id: telegram_final
         if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
         working-directory: implementation
         run: |
@@ -222,6 +267,75 @@ jobs:
             --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --review-id "${GITHUB_RUN_ID}" \
             --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Send final blocked status
+        if: inputs.mode == 'full' && steps.result.outputs.success != 'true'
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          python tools/tayvoriq_send_telegram.py \
+            --state "${{ steps.result.outputs.state }}" \
+            --conclusion "failure" \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url ""
+
+      - name: Validate evidence-based Definition of Done
+        if: inputs.mode == 'full'
+        working-directory: implementation
+        env:
+          RESULT_STATE: ${{ steps.result.outputs.state }}
+          TELEGRAM_OUTCOME: ${{ steps.telegram_final.outcome }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          failures = []
+          state = os.environ.get("RESULT_STATE", "TECHNICAL_FAILURE")
+          report_path = Path("out/tayvoriq-self-heal/report.json")
+
+          if state != "SUCCESS":
+              failures.append(f"production_state={state}")
+          if not report_path.is_file():
+              failures.append("missing_final_report")
+          else:
+              report = json.loads(report_path.read_text(encoding="utf-8"))
+              if str(report.get("state")) != "SUCCESS":
+                  failures.append(f"report_state={report.get('state')}")
+
+          videos = [p for p in Path("out").rglob("*.mp4") if p.is_file() and p.stat().st_size > 100_000]
+          if not videos:
+              failures.append("missing_nonempty_mp4")
+          else:
+              video = max(videos, key=lambda p: p.stat().st_size)
+              probe = subprocess.run(
+                  ["ffprobe", "-v", "error", "-select_streams", "v:0",
+                   "-show_entries", "stream=width,height,duration", "-of", "json", str(video)],
+                  capture_output=True, text=True, check=False,
+              )
+              if probe.returncode != 0:
+                  failures.append("ffprobe_failed")
+              else:
+                  data = json.loads(probe.stdout or "{}")
+                  streams = data.get("streams") or []
+                  stream = streams[0] if streams else {}
+                  if int(stream.get("width") or 0) != 1080 or int(stream.get("height") or 0) != 1920:
+                      failures.append(f"invalid_resolution={stream.get('width')}x{stream.get('height')}")
+
+          if not Path("site/tayvoriq").is_dir():
+              failures.append("missing_review_site")
+          if os.environ.get("TELEGRAM_OUTCOME") != "success":
+              failures.append(f"telegram_outcome={os.environ.get('TELEGRAM_OUTCOME')}")
+
+          if failures:
+              print("::error title=TAYVORIQ Definition of Done failed::" + ", ".join(failures))
+              raise SystemExit(1)
+
+          print("Definition of Done passed: state, report, MP4, 1080x1920, review site and Telegram are present.")
+          PY
 
       - name: Collect compact diagnostics
         if: always()
@@ -252,8 +366,3 @@ jobs:
             implementation/site/tayvoriq/**
           if-no-files-found: warn
           retention-days: 30
-
-      - name: Enforce full Definition of Done
-        if: inputs.mode == 'full'
-        run: |
-          test "${{ steps.result.outputs.state }}" = "SUCCESS"
