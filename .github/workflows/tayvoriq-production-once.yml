@@ -93,32 +93,78 @@ jobs:
             --review-id "${GITHUB_RUN_ID}" \
             --review-url ""
 
-      - name: Run complete production controller
+      - name: Run production controller with bounded candidate retries
         id: controller
         working-directory: implementation
         shell: bash
         run: |
-          set +e
+          set -uo pipefail
           mkdir -p out/tayvoriq-self-heal
-          python tools/tayvoriq_autonomous_entrypoint.py \
-            --trend-mode "auto_trend" \
-            --trend-scope "auto_scope" \
-            --topic "" \
-            --language "Deutsch" \
-            --platform "youtube_tiktok" \
-            --target-duration "35" \
-            --llm-provider "auto" \
-            --outdir "out/tayvoriq-youtube-tiktok" \
-            --site-root "site/tayvoriq" \
-            --run-id "$GITHUB_RUN_ID" \
-            --state-out "out/tayvoriq-review-state.json" \
-            --report-out "out/tayvoriq-self-heal/report.json" \
-            --request-out "out/tayvoriq-self-heal/request.json" \
-            --self-heal-depth "0" \
-            --target-branch "feature/multi-platform-distribution-package" \
-            2>&1 | tee out/tayvoriq-self-heal/controller-console.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-          exit 0
+          final_state="TECHNICAL_FAILURE"
+          final_exit=1
+
+          for attempt in 1 2 3; do
+            echo "=== Production candidate attempt ${attempt}/3 ==="
+            attempt_dir="out/tayvoriq-self-heal/attempt-${attempt}"
+            mkdir -p "$attempt_dir"
+
+            set +e
+            python tools/tayvoriq_autonomous_entrypoint.py \
+              --trend-mode "auto_trend" \
+              --trend-scope "auto_scope" \
+              --topic "" \
+              --language "Deutsch" \
+              --platform "youtube_tiktok" \
+              --target-duration "35" \
+              --llm-provider "auto" \
+              --outdir "out/tayvoriq-youtube-tiktok" \
+              --site-root "site/tayvoriq" \
+              --run-id "${GITHUB_RUN_ID}-${attempt}" \
+              --state-out "out/tayvoriq-review-state.json" \
+              --report-out "$attempt_dir/report.json" \
+              --request-out "$attempt_dir/request.json" \
+              --self-heal-depth "0" \
+              --target-branch "feature/multi-platform-distribution-package" \
+              2>&1 | tee "$attempt_dir/controller-console.log"
+            controller_exit=${PIPESTATUS[0]}
+            set -e
+
+            state=$(python - "$attempt_dir/report.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+          print(str(report.get("state") or "TECHNICAL_FAILURE"))
+          PY
+            )
+
+            echo "attempt=${attempt} state=${state} exit=${controller_exit}"
+            cp "$attempt_dir/report.json" out/tayvoriq-self-heal/report.json 2>/dev/null || true
+            cp "$attempt_dir/request.json" out/tayvoriq-self-heal/request.json 2>/dev/null || true
+            cp "$attempt_dir/controller-console.log" out/tayvoriq-self-heal/controller-console.log
+
+            final_state="$state"
+            final_exit="$controller_exit"
+
+            if [ "$state" = "SUCCESS" ]; then
+              break
+            fi
+
+            if [ "$state" != "PUBLISHABLE_OUTPUT_RETRY_REQUIRED" ] && [ "$state" != "SKIPPED_NO_PUBLISHABLE_TREND" ]; then
+              echo "Non-retryable production state: $state"
+              break
+            fi
+
+            python tools/tayvoriq_send_telegram.py \
+              --state "RETRY_${attempt}_OF_3" \
+              --conclusion "neutral" \
+              --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              --review-id "${GITHUB_RUN_ID}" \
+              --review-url "" || true
+          done
+
+          echo "exit_code=${final_exit}" >> "$GITHUB_OUTPUT"
+          echo "state=${final_state}" >> "$GITHUB_OUTPUT"
 
       - name: Resolve production result
         id: result
@@ -129,7 +175,7 @@ jobs:
           from pathlib import Path
           path = Path('out/tayvoriq-self-heal/report.json')
           report = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
-          state = str(report.get('state') or 'TECHNICAL_FAILURE')
+          state = str(report.get('state') or os.environ.get('CONTROLLER_STATE') or 'TECHNICAL_FAILURE')
           success = state == 'SUCCESS'
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
               handle.write(f"state={state}\n")
@@ -165,6 +211,18 @@ jobs:
             --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --review-id "${GITHUB_RUN_ID}" \
             --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Send final blocked status
+        if: steps.result.outputs.success != 'true'
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          python tools/tayvoriq_send_telegram.py \
+            --state "${{ steps.result.outputs.state }}" \
+            --conclusion "failure" \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url ""
 
       - name: Upload diagnostics
         if: always()
