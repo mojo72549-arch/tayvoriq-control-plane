@@ -1,0 +1,27 @@
+name: TAYVORIQ Supervised Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-supervised-once.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  trigger:
+    if: github.event.head_commit.message == 'Run supervised TAYVORIQ production once'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger manual Golden Path in full mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run tayvoriq-golden-path.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f mode=full \
+            -f trend_scope=auto_scope \
+            -f topic=""
