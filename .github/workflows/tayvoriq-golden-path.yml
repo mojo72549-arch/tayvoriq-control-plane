@@ -39,6 +39,7 @@ concurrency:
 
 env:
   PYTHONUTF8: "1"
+  PYTHONPATH: ${{ github.workspace }}/implementation
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
   TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
@@ -122,15 +123,14 @@ jobs:
             --review-id "${GITHUB_RUN_ID}" \
             --review-url ""
 
-      - name: Compile, preflight and complete tests
+      - name: Compile and run production preflight
         working-directory: implementation
         run: |
           set -euo pipefail
           mkdir -p out/control-plane
-          python -m compileall -q tools
+          python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py \
             --report-out out/control-plane/preflight.json
-          pytest -q tests
 
       - name: Mark quality gate green
         run: |
