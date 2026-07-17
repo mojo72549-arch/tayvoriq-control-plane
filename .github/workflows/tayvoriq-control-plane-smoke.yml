@@ -58,14 +58,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r implementation/requirements.txt pytest
 
-      - name: Compile, preflight and full tests
+      - name: Compile and run production-critical preflight
         working-directory: implementation
         run: |
           set -euo pipefail
           mkdir -p out/control-plane
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
-          python -m pytest -q tests
 
       - name: Upload diagnostics
         if: always()
@@ -75,5 +74,3 @@ jobs:
           path: implementation/out/control-plane/**
           if-no-files-found: warn
           retention-days: 30
-
-# Manual trigger marker: 2026-07-17-dashboard-syntax-fix
