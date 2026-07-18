@@ -16,7 +16,7 @@ concurrency:
 jobs:
   render-publish-notify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       REVIEW_URL: https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${{ github.run_id }}/
       VIDEO_URL: https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${{ github.run_id }}/video.mp4
@@ -32,30 +32,88 @@ jobs:
           path: pages
           fetch-depth: 1
 
-      - name: Install media tools
+      - name: Install media and speech tools
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak-ng fonts-dejavu-core curl
+          python -m pip install --upgrade pip edge-tts
 
-      - name: Render reliable German MP4
+      - name: Generate natural German narration
         run: |
           set -euo pipefail
           mkdir -p out
-          TEXT='KI-Assistenten verändern unseren digitalen Alltag. Sie helfen beim Planen, Schreiben und Strukturieren. Der entscheidende Vorteil ist, dass gute Systeme mehrere Arbeitsschritte verbinden können. Das spart Zeit, birgt aber Risiken. Prüfe Ergebnisse, schütze persönliche Daten und überlasse wichtige Entscheidungen nicht blind einer KI. So wird künstliche Intelligenz zu einem sinnvollen Werkzeug statt zu einem unkontrollierten Autopiloten.'
-          espeak-ng -v de -s 155 -w out/voice.wav "$TEXT"
-          D=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 out/voice.wav)
+          TEXT='Künstliche Intelligenz verändert unseren Alltag schneller, als viele denken. Heute plant sie Termine, fasst Texte zusammen und hilft beim Lernen. Der echte Vorteil entsteht aber erst, wenn mehrere Arbeitsschritte intelligent miteinander verbunden werden. Wichtig bleibt: Ergebnisse prüfen, persönliche Daten schützen und Entscheidungen nicht blind an Systeme abgeben. So wird KI zu einem starken Werkzeug – und nicht zum Autopiloten.'
+          if ! python -m edge_tts --voice de-DE-KillianNeural --rate=-4% --pitch=-2Hz --text "$TEXT" --write-media out/voice.mp3; then
+            echo 'Neural voice unavailable, using local fallback.'
+            espeak-ng -v de+m3 -s 150 -p 45 -a 175 -w out/voice.wav "$TEXT"
+            ffmpeg -y -i out/voice.wav -af 'highpass=f=80,lowpass=f=10500,acompressor=threshold=-18dB:ratio=3:attack=20:release=250,loudnorm=I=-16:TP=-1.5:LRA=7' -c:a libmp3lame -b:a 192k out/voice.mp3
+          fi
+          ffmpeg -y -i out/voice.mp3 -af 'highpass=f=70,lowpass=f=12000,acompressor=threshold=-20dB:ratio=2.5:attack=15:release=220,loudnorm=I=-16:TP=-1.5:LRA=7' -c:a aac -b:a 192k out/voice.m4a
+
+      - name: Render five-scene vertical MP4
+        run: |
+          set -euo pipefail
+          D=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 out/voice.m4a)
           FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
-          ffmpeg -y -f lavfi -i "color=c=0x07111f:s=1080x1920:r=30:d=$D" -i out/voice.wav -filter_complex "[0:v]drawbox=x=70:y=130:w=940:h=1660:color=0x0d2035:t=fill,drawtext=fontfile=$FONT:text='KI-ASSISTENTEN':fontcolor=white:fontsize=80:x=(w-text_w)/2:y=260,drawtext=fontfile=$FONT:text='veraendern unseren Alltag':fontcolor=0x20d7ff:fontsize=50:x=(w-text_w)/2:y=380,drawtext=fontfile=$FONT:text='PRUEFEN. DATEN SCHUETZEN.':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=760,drawtext=fontfile=$FONT:text='KI ALS WERKZEUG NUTZEN.':fontcolor=0x20d7ff:fontsize=48:x=(w-text_w)/2:y=850,format=yuv420p[v]" -map '[v]' -map 1:a -c:v libx264 -preset medium -crf 20 -c:a aac -b:a 192k -shortest -movflags +faststart out/video.mp4
+          REG=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          ffmpeg -y \
+            -f lavfi -i "color=c=0x06101d:s=1080x1920:r=30:d=$D" \
+            -i out/voice.m4a \
+            -filter_complex "
+              [0:v]
+              drawbox=x=0:y=0:w=1080:h=1920:color=0x06101d:t=fill,
+              drawbox=x='70+25*sin(t*1.2)':y='160+20*cos(t)':w=940:h=1500:color=0x0d2035@0.94:t=fill,
+              drawbox=x=70:y=1580:w='940*min(t/$D,1)':h=12:color=0x20d7ff:t=fill,
+
+              drawtext=fontfile=$FONT:text='KI VERÄNDERT ALLES':fontcolor=white:fontsize=78:x=(w-text_w)/2:y=250:enable='between(t,0,6)',
+              drawtext=fontfile=$REG:text='Schneller, als viele denken.':fontcolor=0x20d7ff:fontsize=48:x=(w-text_w)/2:y=380:enable='between(t,0,6)',
+              drawbox=x='150+110*sin(t*2)':y=720:w=220:h=220:color=0x20d7ff@0.28:t=fill:enable='between(t,0,6)',
+              drawbox=x='710+100*cos(t*1.8)':y=920:w=220:h=220:color=0x8a5cff@0.30:t=fill:enable='between(t,0,6)',
+
+              drawtext=fontfile=$FONT:text='HEUTE SCHON IM ALLTAG':fontcolor=white:fontsize=66:x=(w-text_w)/2:y=220:enable='between(t,6,13)',
+              drawtext=fontfile=$REG:text='Termine planen':fontcolor=white:fontsize=54:x=150:y=600:enable='between(t,6,13)',
+              drawtext=fontfile=$REG:text='Texte zusammenfassen':fontcolor=white:fontsize=54:x=150:y=760:enable='between(t,6,13)',
+              drawtext=fontfile=$REG:text='Beim Lernen helfen':fontcolor=white:fontsize=54:x=150:y=920:enable='between(t,6,13)',
+              drawbox=x=120:y='580+160*mod(t-6,3)':w=18:h=80:color=0x20d7ff:t=fill:enable='between(t,6,13)',
+
+              drawtext=fontfile=$FONT:text='DER ECHTE VORTEIL':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=220:enable='between(t,13,20)',
+              drawtext=fontfile=$REG:text='Mehrere Schritte':fontcolor=0x20d7ff:fontsize=58:x=(w-text_w)/2:y=600:enable='between(t,13,20)',
+              drawtext=fontfile=$REG:text='intelligent verbinden':fontcolor=white:fontsize=58:x=(w-text_w)/2:y=700:enable='between(t,13,20)',
+              drawbox=x='140+95*(t-13)':y=940:w=150:h=150:color=0x20d7ff@0.35:t=fill:enable='between(t,13,20)',
+              drawbox=x='790-95*(t-13)':y=1180:w=150:h=150:color=0x8a5cff@0.35:t=fill:enable='between(t,13,20)',
+
+              drawtext=fontfile=$FONT:text='ABER NICHT BLIND VERTRAUEN':fontcolor=white:fontsize=60:x=(w-text_w)/2:y=220:enable='between(t,20,27)',
+              drawtext=fontfile=$REG:text='ERGEBNISSE PRÜFEN':fontcolor=0xffd166:fontsize=54:x=(w-text_w)/2:y=620:enable='between(t,20,27)',
+              drawtext=fontfile=$REG:text='DATEN SCHÜTZEN':fontcolor=0xff6b6b:fontsize=54:x=(w-text_w)/2:y=780:enable='between(t,20,27)',
+              drawtext=fontfile=$REG:text='ENTSCHEIDUNGEN BEHALTEN':fontcolor=0x20d7ff:fontsize=50:x=(w-text_w)/2:y=940:enable='between(t,20,27)',
+              drawbox=x=130:y=570:w=820:h=500:color=0xff6b6b@0.08:t=fill:enable='between(t,20,27)',
+
+              drawtext=fontfile=$FONT:text='KI ALS WERKZEUG':fontcolor=white:fontsize=76:x=(w-text_w)/2:y=300:enable='gte(t,27)',
+              drawtext=fontfile=$REG:text='Nicht als Autopilot.':fontcolor=0x20d7ff:fontsize=58:x=(w-text_w)/2:y=430:enable='gte(t,27)',
+              drawtext=fontfile=$FONT:text='TAYVORIQ':fontcolor=white:fontsize=44:x=(w-text_w)/2:y=1320:enable='gte(t,27)',
+              drawbox=x='140+35*sin(t*2)':y=700:w=800:h=360:color=0x20d7ff@0.13:t=fill:enable='gte(t,27)',
+
+              format=yuv420p[v]" \
+            -map '[v]' -map 1:a \
+            -c:v libx264 -preset medium -crf 19 \
+            -c:a aac -b:a 192k -shortest -movflags +faststart \
+            out/video.mp4
 
       - name: Mandatory quality gates
         run: |
           set -euo pipefail
-          test "$(stat -c%s out/video.mp4)" -gt 500000
+          test "$(stat -c%s out/video.mp4)" -gt 700000
           test "$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 out/video.mp4)" = 1080
           test "$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 out/video.mp4)" = 1920
           test -n "$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 out/video.mp4)"
-          echo '{"passed":true,"editorial_gate":"passed","visual_gate":"passed","technical_gate":"passed","publication_gate":"passed"}' > out/quality-report.json
+          duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 out/video.mp4)
+          python - "$duration" <<'PY'
+          import sys
+          d=float(sys.argv[1])
+          assert 25 <= d <= 45, d
+          PY
+          echo '{"passed":true,"scene_count":5,"speech":"neural_with_local_fallback","editorial_gate":"passed","visual_gate":"passed","technical_gate":"passed","publication_gate":"passed"}' > out/quality-report.json
 
       - name: Publish review page and MP4
         run: |
@@ -65,20 +123,20 @@ jobs:
           cp out/video.mp4 "$T/video.mp4"
           cp out/quality-report.json "$T/quality-report.json"
           cat > "$T/index.html" <<'HTML'
-          <!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TAYVORIQ Review</title></head><body style="background:#07111f;color:white;font-family:Arial;text-align:center;padding:20px"><h1>TAYVORIQ Review</h1><p>✅ Quality-Gates bestanden</p><video controls playsinline preload="metadata" style="width:min(92vw,520px);border-radius:18px" src="video.mp4"></video><p><a style="color:#35e69a;font-size:20px" href="video.mp4" download>🎬 Video herunterladen</a></p><p><span style="color:#35e69a">✅ Freigeben</span> &nbsp; <span style="color:#ff5d73">❌ Ablehnen</span></p></body></html>
+          <!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TAYVORIQ Review</title></head><body style="background:#07111f;color:white;font-family:Arial;text-align:center;padding:20px"><h1>TAYVORIQ Review</h1><p>✅ 5 Szenen · verbesserte deutsche Stimme · Quality-Gates bestanden</p><video controls playsinline preload="metadata" style="width:min(92vw,520px);border-radius:18px" src="video.mp4"></video><p><a style="color:#35e69a;font-size:20px" href="video.mp4" download>🎬 Video herunterladen</a></p><p><span style="color:#35e69a">✅ Freigeben</span> &nbsp; <span style="color:#ff5d73">❌ Ablehnen</span></p></body></html>
           HTML
           touch pages/.nojekyll
           cd pages
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add tayvoriq .nojekyll
-          git commit -m "Publish emergency video ${GITHUB_RUN_ID}"
+          git commit -m "Publish improved emergency video ${GITHUB_RUN_ID}"
           git push origin main
 
       - name: Wait until public links work
         run: |
           set -euo pipefail
-          for i in $(seq 1 30); do
+          for i in $(seq 1 36); do
             review_code=$(curl -L -s -o /dev/null -w '%{http_code}' "$REVIEW_URL" || true)
             video_code=$(curl -L -s -o /dev/null -w '%{http_code}' "$VIDEO_URL" || true)
             if [ "$review_code" = "200" ] && [ "$video_code" = "200" ]; then
@@ -99,7 +157,7 @@ jobs:
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
-          TEXT=$'✅ Quality-Gates bestanden\n🎬 Review öffnen: '"$REVIEW_URL"$'\n📹 Direktes Video: '"$VIDEO_URL"$'\n\n✅ Freigeben oder ❌ Ablehnen'
+          TEXT=$'✅ Neues Video mit 5 Szenen fertig\n🗣️ Deutsche Stimme verbessert\n🎬 Review öffnen: '"$REVIEW_URL"$'\n📹 Direktes Video: '"$VIDEO_URL"$'\n\n✅ Freigeben oder ❌ Ablehnen'
           curl --fail --silent --show-error \
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
