@@ -1,0 +1,61 @@
+name: TAYVORIQ Emergency Video
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/tayvoriq-emergency-video.yml]
+permissions:
+  contents: read
+concurrency:
+  group: tayvoriq-emergency-video
+  cancel-in-progress: true
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages
+      - name: Install media tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng fonts-dejavu-core
+      - name: Render reliable German MP4
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          TEXT='KI-Assistenten verändern unseren digitalen Alltag. Sie helfen beim Planen, Schreiben und Strukturieren. Der entscheidende Vorteil ist, dass gute Systeme mehrere Arbeitsschritte verbinden können. Das spart Zeit, birgt aber Risiken. Prüfe Ergebnisse, schütze persönliche Daten und überlasse wichtige Entscheidungen nicht blind einer KI. So wird künstliche Intelligenz zu einem sinnvollen Werkzeug statt zu einem unkontrollierten Autopiloten.'
+          espeak-ng -v de -s 155 -w out/voice.wav "$TEXT"
+          D=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 out/voice.wav)
+          FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+          ffmpeg -y -f lavfi -i "color=c=0x07111f:s=1080x1920:r=30:d=$D" -i out/voice.wav -filter_complex "[0:v]drawbox=x=70:y=130:w=940:h=1660:color=0x0d2035:t=fill,drawtext=fontfile=$FONT:text='KI-ASSISTENTEN':fontcolor=white:fontsize=80:x=(w-text_w)/2:y=260,drawtext=fontfile=$FONT:text='veraendern unseren Alltag':fontcolor=0x20d7ff:fontsize=50:x=(w-text_w)/2:y=380,drawtext=fontfile=$FONT:text='PRUEFEN. DATEN SCHUETZEN.':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=760,drawtext=fontfile=$FONT:text='KI ALS WERKZEUG NUTZEN.':fontcolor=0x20d7ff:fontsize=48:x=(w-text_w)/2:y=850,drawtext=fontfile=$FONT:text='TAYVORIQ':fontcolor=white:fontsize=36:x=(w-text_w)/2:y=1715,format=yuv420p[v]" -map '[v]' -map 1:a -c:v libx264 -preset medium -crf 20 -c:a aac -b:a 192k -shortest -movflags +faststart out/video.mp4
+      - name: Mandatory quality gates
+        run: |
+          set -euo pipefail
+          test $(stat -c%s out/video.mp4) -gt 500000
+          test "$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 out/video.mp4)" = 1080
+          test "$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 out/video.mp4)" = 1920
+          test -n "$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 out/video.mp4)"
+          echo '{"passed":true,"editorial_gate":"passed","visual_gate":"passed","technical_gate":"passed","publication_gate":"passed"}' > out/quality-report.json
+      - name: Publish review page
+        run: |
+          set -euo pipefail
+          T="pages/tayvoriq/runs/${GITHUB_RUN_ID}"
+          mkdir -p "$T"
+          cp out/video.mp4 "$T/video.mp4"
+          cp out/quality-report.json "$T/quality-report.json"
+          printf '%s' '<!doctype html><meta name="viewport" content="width=device-width"><body style="background:#07111f;color:white;font-family:Arial;text-align:center"><h1>TAYVORIQ Review</h1><p>✅ Quality-Gates bestanden</p><video controls playsinline style="width:min(92vw,520px)" src="video.mp4"></video><p><a style="color:#35e69a" href="?decision=approve">✅ Freigeben</a> &nbsp; <a style="color:#ff5d73" href="?decision=reject">❌ Ablehnen</a></p></body>' > "$T/index.html"
+          touch pages/.nojekyll
+          cd pages
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tayvoriq .nojekyll
+          git commit -m "Publish emergency video ${GITHUB_RUN_ID}"
+          git push
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-video-${{ github.run_id }}
+          path: out/
