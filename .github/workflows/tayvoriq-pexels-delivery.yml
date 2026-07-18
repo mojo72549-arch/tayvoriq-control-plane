@@ -1,0 +1,155 @@
+name: TAYVORIQ Pexels Delivery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/tayvoriq-pexels-delivery.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-pexels-delivery
+  cancel-in-progress: true
+
+jobs:
+  render-publish-notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      REVIEW_URL: https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${{ github.run_id }}/
+      VIDEO_URL: https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${{ github.run_id }}/video.mp4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages
+          fetch-depth: 1
+
+      - name: Install tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core curl
+          python -m pip install --upgrade pip edge-tts requests
+
+      - name: Generate clean German narration
+        run: |
+          set -euo pipefail
+          mkdir -p out scenes
+          TEXT='Künstliche Intelligenz verändert unseren Alltag schneller, als viele denken. Sie plant Termine, fasst Texte zusammen und unterstützt uns beim Lernen. Wirklich stark wird sie, wenn mehrere Arbeitsschritte intelligent zusammenspielen. Trotzdem gilt: Ergebnisse prüfen, persönliche Daten schützen und wichtige Entscheidungen selbst treffen. So bleibt KI ein hilfreiches Werkzeug und wird nicht zum unkontrollierten Autopiloten.'
+          python -m edge_tts --voice de-DE-KillianNeural --rate=-5% --pitch=-2Hz --text "$TEXT" --write-media out/voice.mp3
+          ffmpeg -y -i out/voice.mp3 -af 'highpass=f=75,lowpass=f=11800,acompressor=threshold=-19dB:ratio=2.2:attack=12:release=180,loudnorm=I=-16:TP=-1.5:LRA=6' -c:a aac -b:a 192k out/voice.m4a
+
+      - name: Download five real Pexels scenes
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$PEXELS_API_KEY"
+          python - <<'PY'
+          import json, os, pathlib, requests
+          queries = [
+              'artificial intelligence technology portrait',
+              'person using smartphone calendar portrait',
+              'student learning laptop portrait',
+              'cyber security data privacy portrait',
+              'human working with artificial intelligence portrait',
+          ]
+          out = pathlib.Path('scenes'); out.mkdir(exist_ok=True)
+          manifest=[]
+          headers={'Authorization': os.environ['PEXELS_API_KEY']}
+          for i,q in enumerate(queries,1):
+              r=requests.get('https://api.pexels.com/videos/search',headers=headers,params={'query':q,'per_page':20,'orientation':'portrait','size':'medium'},timeout=30)
+              r.raise_for_status(); videos=r.json().get('videos',[])
+              if not videos: raise RuntimeError(f'No Pexels result for {q}')
+              selected=None
+              for v in videos:
+                  files=sorted(v.get('video_files',[]),key=lambda f:(f.get('width') or 0)*(f.get('height') or 0),reverse=True)
+                  for f in files:
+                      w,h=f.get('width') or 0,f.get('height') or 0
+                      if h>w and h>=1280 and f.get('link'):
+                          selected=(v,f); break
+                  if selected: break
+              if not selected: raise RuntimeError(f'No portrait file for {q}')
+              v,f=selected; target=out/f'scene{i}.mp4'
+              with requests.get(f['link'],stream=True,timeout=90) as media:
+                  media.raise_for_status()
+                  with target.open('wb') as fh:
+                      for chunk in media.iter_content(1024*1024):
+                          if chunk: fh.write(chunk)
+              if target.stat().st_size<300000: raise RuntimeError(f'Scene too small: {target}')
+              manifest.append({'scene':i,'query':q,'pexels_video_id':v.get('id'),'source_url':v.get('url'),'width':f.get('width'),'height':f.get('height')})
+          pathlib.Path('out/pexels-sources.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
+          PY
+
+      - name: Render five-scene vertical MP4
+        run: |
+          set -euo pipefail
+          FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+          REG=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          for i in 1 2 3 4 5; do
+            ffmpeg -y -stream_loop -1 -i "scenes/scene${i}.mp4" -t 7 -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,format=yuv420p" -an -c:v libx264 -preset medium -crf 20 "out/s${i}.mp4"
+          done
+          printf "file 's1.mp4'\nfile 's2.mp4'\nfile 's3.mp4'\nfile 's4.mp4'\nfile 's5.mp4'\n" > out/scenes.txt
+          (cd out && ffmpeg -y -f concat -safe 0 -i scenes.txt -c copy visual.mp4)
+          ffmpeg -y -i out/visual.mp4 -i out/voice.m4a -filter_complex "[0:v]drawbox=x=0:y=0:w=1080:h=1920:color=black@0.16:t=fill,drawbox=x=60:y=1320:w=960:h=430:color=0x06101d@0.78:t=fill,drawtext=fontfile=$FONT:text='KI VERÄNDERT UNSEREN ALLTAG':fontcolor=white:fontsize=60:x=(w-text_w)/2:y=1390:enable='between(t,0,7)',drawtext=fontfile=$REG:text='Schneller, als viele denken.':fontcolor=0x20d7ff:fontsize=42:x=(w-text_w)/2:y=1490:enable='between(t,0,7)',drawtext=fontfile=$FONT:text='PLANEN. LERNEN. VERSTEHEN.':fontcolor=white:fontsize=56:x=(w-text_w)/2:y=1390:enable='between(t,7,14)',drawtext=fontfile=$FONT:text='ARBEITSSCHRITTE VERBINDEN':fontcolor=white:fontsize=52:x=(w-text_w)/2:y=1390:enable='between(t,14,21)',drawtext=fontfile=$FONT:text='PRÜFEN UND DATEN SCHÜTZEN':fontcolor=white:fontsize=52:x=(w-text_w)/2:y=1390:enable='between(t,21,28)',drawtext=fontfile=$FONT:text='KI ALS WERKZEUG':fontcolor=white:fontsize=66:x=(w-text_w)/2:y=1390:enable='gte(t,28)',drawtext=fontfile=$REG:text='Nicht als Autopilot.':fontcolor=0x20d7ff:fontsize=46:x=(w-text_w)/2:y=1490:enable='gte(t,28)',format=yuv420p[v]" -map '[v]' -map 1:a -c:v libx264 -preset medium -crf 19 -c:a aac -b:a 192k -shortest -movflags +faststart out/video.mp4
+
+      - name: Quality gates
+        run: |
+          set -euo pipefail
+          test "$(stat -c%s out/video.mp4)" -gt 3000000
+          test "$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 out/video.mp4)" = 1080
+          test "$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 out/video.mp4)" = 1920
+          test "$(python -c "import json; print(len(json.load(open('out/pexels-sources.json'))))")" = 5
+          echo '{"passed":true,"scene_count":5,"visual_source":"pexels","speech":"edge_tts_neural","music":"none"}' > out/quality-report.json
+
+      - name: Publish review page
+        run: |
+          set -euo pipefail
+          T="pages/tayvoriq/runs/${GITHUB_RUN_ID}"
+          mkdir -p "$T"
+          cp out/video.mp4 "$T/video.mp4"
+          cp out/quality-report.json "$T/quality-report.json"
+          cp out/pexels-sources.json "$T/pexels-sources.json"
+          cat > "$T/index.html" <<'HTML'
+          <!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="background:#07111f;color:white;font-family:Arial;text-align:center;padding:20px"><h1>TAYVORIQ Review</h1><p>✅ 5 echte Pexels-Szenen · klare Neuralstimme · keine Musik</p><video controls playsinline style="width:min(92vw,520px);border-radius:18px" src="video.mp4"></video><p><a style="color:#35e69a;font-size:20px" href="video.mp4">🎬 Direktes Video</a></p></body></html>
+          HTML
+          touch pages/.nojekyll
+          cd pages
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tayvoriq .nojekyll
+          git commit -m "Publish Pexels video ${GITHUB_RUN_ID}"
+          git push origin main
+
+      - name: Verify public links
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 36); do
+            rc=$(curl -L -s -o /dev/null -w '%{http_code}' "$REVIEW_URL" || true)
+            vc=$(curl -L -s -o /dev/null -w '%{http_code}' "$VIDEO_URL" || true)
+            if [ "$rc" = 200 ] && [ "$vc" = 200 ]; then exit 0; fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Send Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          TEXT=$'✅ Neues Video fertig\n🎥 5 echte Pexels-Szenen\n🗣️ Klare deutsche Neuralstimme\n🔇 Keine Pieps-Musik\n🎬 Review: '"$REVIEW_URL"$'\n📹 Direktes Video: '"$VIDEO_URL"$'\n\n✅ Freigeben oder ❌ Ablehnen'
+          curl --fail --silent --show-error --request POST --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${TEXT}" --data-urlencode "disable_web_page_preview=false"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-video-${{ github.run_id }}
+          path: out/
+          retention-days: 7
