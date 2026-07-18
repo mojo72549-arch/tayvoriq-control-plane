@@ -1,0 +1,25 @@
+name: Trigger TAYVORIQ Emergency Video
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/tayvoriq-trigger-emergency.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start Pexels production run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-emergency-video.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref "${GITHUB_REF_NAME}"
+          echo "Emergency Pexels production dispatched."
