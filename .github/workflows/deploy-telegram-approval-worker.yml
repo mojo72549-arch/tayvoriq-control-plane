@@ -1,0 +1,106 @@
+name: Deploy Telegram Approval Worker
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - infra/telegram-approval-worker.js
+      - infra/wrangler.toml
+      - .github/workflows/deploy-telegram-approval-worker.yml
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate deployment secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          APPROVAL_GITHUB_TOKEN: ${{ secrets.APPROVAL_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          test -n "$APPROVAL_GITHUB_TOKEN"
+
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+
+      - name: Configure Worker secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          APPROVAL_GITHUB_TOKEN: ${{ secrets.APPROVAL_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$TELEGRAM_BOT_TOKEN" | npx wrangler secret put TELEGRAM_BOT_TOKEN
+          printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
+          printf '%s' "$APPROVAL_GITHUB_TOKEN" | npx wrangler secret put GITHUB_TOKEN
+
+      - name: Deploy Worker
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx wrangler deploy | tee deploy.log
+          URL=$(grep -Eo 'https://[^ ]+\.workers\.dev' deploy.log | tail -1)
+          test -n "$URL"
+          echo "worker_url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Register Telegram webhook
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+            --data-urlencode "url=${WORKER_URL}" \
+            --data-urlencode "allowed_updates=[\"message\",\"callback_query\"]"
+
+      - name: Verify Telegram webhook
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo" \
+            | tee webhook-info.json
+          python - <<'PY'
+          import json
+          data=json.load(open('webhook-info.json'))
+          assert data.get('ok') is True, data
+          url=data.get('result',{}).get('url','')
+          assert url.startswith('https://'), data
+          print('Webhook active:', url)
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: telegram-worker-deployment-${{ github.run_id }}
+          path: |
+            infra/deploy.log
+            infra/webhook-info.json
+          retention-days: 14
