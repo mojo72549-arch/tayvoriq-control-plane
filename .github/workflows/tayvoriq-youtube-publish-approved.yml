@@ -1,0 +1,103 @@
+name: TAYVORIQ Publish Approved Video to YouTube
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: Public MP4 URL from approved review run
+        required: true
+        type: string
+      title:
+        description: YouTube Shorts title
+        required: true
+        type: string
+      description:
+        description: YouTube description
+        required: true
+        type: string
+      tags:
+        description: Comma-separated tags
+        required: false
+        default: KI,Technologie,TAYVORIQ,Shorts
+        type: string
+      privacy:
+        description: Upload visibility
+        required: true
+        default: private
+        type: choice
+        options: [private, unlisted, public]
+  repository_dispatch:
+    types: [telegram_approve_youtube]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: youtube-publish-${{ github.event.client_payload.run_id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      VIDEO_URL: ${{ github.event.client_payload.video_url || inputs.video_url }}
+      VIDEO_TITLE: ${{ github.event.client_payload.title || inputs.title }}
+      VIDEO_DESCRIPTION: ${{ github.event.client_payload.description || inputs.description }}
+      VIDEO_TAGS: ${{ github.event.client_payload.tags || inputs.tags }}
+      VIDEO_PRIVACY: ${{ github.event.client_payload.privacy || inputs.privacy || 'private' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate approval payload and credentials
+        run: |
+          set -euo pipefail
+          test -n "$VIDEO_URL"
+          test -n "$VIDEO_TITLE"
+          test -n "$YOUTUBE_CLIENT_ID"
+          test -n "$YOUTUBE_CLIENT_SECRET"
+          test -n "$YOUTUBE_REFRESH_TOKEN"
+          case "$VIDEO_URL" in
+            https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/*/video.mp4) ;;
+            *) echo 'Rejected non-TAYVORIQ video URL' >&2; exit 1;;
+          esac
+
+      - name: Install YouTube uploader
+        run: pip install requests google-api-python-client google-auth google-auth-httplib2
+
+      - name: Upload approved Short
+        run: |
+          python tools/youtube_publish_approved.py \
+            --video-url "$VIDEO_URL" \
+            --title "$VIDEO_TITLE" \
+            --description "$VIDEO_DESCRIPTION" \
+            --tags "$VIDEO_TAGS" \
+            --privacy "$VIDEO_PRIVACY" \
+            --output youtube-result.json
+
+      - name: Send YouTube result and TikTok instructions to Telegram
+        run: |
+          set -euo pipefail
+          URL=$(python -c "import json; print(json.load(open('youtube-result.json'))['url'])")
+          TEXT=$'✅ YouTube-Upload erfolgreich\n🎬 YouTube Short: '"$URL"$'\n\n📱 TikTok:\n1. Öffne den Review-Link aus der Freigabe-Nachricht.\n2. Lade die MP4 herunter.\n3. Öffne TikTok und tippe auf +.\n4. Wähle die MP4, kontrolliere Cover und Untertitel.\n5. Übernimm den gelieferten Titel, CTA und die Hashtags.\n6. Veröffentliche erst nach der TikTok-Vorschauprüfung.'
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "disable_web_page_preview=false"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: youtube-publish-result-${{ github.run_id }}
+          path: youtube-result.json
+          retention-days: 30
