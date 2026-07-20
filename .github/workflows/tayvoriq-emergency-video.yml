@@ -229,7 +229,7 @@ jobs:
           done
           exit 1
 
-      - name: Send Telegram message with working video link
+      - name: Send Telegram review with approval buttons
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -237,12 +237,27 @@ jobs:
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
-          TEXT=$'✅ Neue Fassung fertig\n🎥 5 echte Pexels-Szenen\n🧼 Keine Texte auf den Szenen\n🗣️ Menschlichere deutsche Stimme\n🎯 Sinnvoller gesprochener CTA\n🎬 Review: '"$REVIEW_URL"$'\n📹 Direktes Video: '"$VIDEO_URL"$'\n\n✅ Freigeben oder ❌ Ablehnen'
+          TEXT=$'✅ Neue Fassung fertig\n🎥 5 echte Pexels-Szenen\n🧼 Keine Texte auf den Szenen\n🗣️ Menschlichere deutsche Stimme\n🎯 Sinnvoller gesprochener CTA\n🎬 Review: '"$REVIEW_URL"$'\n📹 Direktes Video: '"$VIDEO_URL"$'\n\nBitte prüfen und anschließend freigeben oder ablehnen.'
+          REPLY_MARKUP=$(python - "$GITHUB_RUN_ID" "$REVIEW_URL" <<'PY'
+          import json, sys
+          run_id, review_url = sys.argv[1], sys.argv[2]
+          print(json.dumps({
+              'inline_keyboard': [
+                  [{'text': '🎬 Review öffnen', 'url': review_url}],
+                  [
+                      {'text': '✅ Freigeben', 'callback_data': f'approve:{run_id}'},
+                      {'text': '❌ Ablehnen', 'callback_data': f'reject:{run_id}'},
+                  ],
+              ]
+          }, ensure_ascii=False))
+          PY
+          )
           curl --fail --silent --show-error \
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${TEXT}" \
+            --data-urlencode "reply_markup=${REPLY_MARKUP}" \
             --data-urlencode "disable_web_page_preview=false"
 
       - name: Upload evidence artifact
