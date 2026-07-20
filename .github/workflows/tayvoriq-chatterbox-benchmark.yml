@@ -1,0 +1,142 @@
+name: TAYVORIQ Chatterbox Voice Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tayvoriq-chatterbox-benchmark.yml
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+  HF_HOME: ${{ github.workspace }}/.cache/huggingface
+  TORCH_HOME: ${{ github.workspace }}/.cache/torch
+  TAYVORIQ_CHATTERBOX_CPU_THREADS: "4"
+  TAYVORIQ_CHATTERBOX_MAX_CHUNKS: "3"
+  TAYVORIQ_CHATTERBOX_MAX_CHARS: "430"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout private implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore Chatterbox model cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/huggingface
+            .cache/torch
+          key: tayvoriq-chatterbox-v3-cpu-py311-v1
+
+      - name: Install CPU voice engines
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
+          python -m pip install "chatterbox-tts==0.1.7" "edge-tts==7.2.8"
+
+      - name: Prepare identical German benchmark text
+        run: |
+          mkdir -p benchmark
+          cat > benchmark/narration.txt <<'TEXT'
+          Diese neue KI-Funktion wird gerade stark diskutiert. Der entscheidende Punkt ist nicht nur die Geschwindigkeit. Die Systeme übernehmen inzwischen komplette Arbeitsschritte und liefern erste Vorschläge selbst. Für dich bedeutet das: Prüfe jetzt, welche wiederkehrenden Aufgaben du sinnvoll automatisieren kannst. Im nächsten Teil vergleichen wir Nutzen und Grenzen. Folge diesem Kanal für den nächsten Trendcheck.
+          TEXT
+
+      - name: Generate Chatterbox Multilingual V3 sample
+        id: chatterbox
+        timeout-minutes: 12
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_chatterbox_worker.py \
+            --text-file ../benchmark/narration.txt \
+            --output ../benchmark/chatterbox-v3.wav \
+            --report ../benchmark/chatterbox-v3-report.json \
+            --language de \
+            --model-version v3 \
+            --exaggeration 0.46 \
+            --cfg-weight 0.34 \
+            --pause-ms 220
+
+      - name: Generate Edge fallback comparison
+        if: always()
+        run: |
+          set -euo pipefail
+          edge-tts \
+            --voice de-DE-ConradNeural \
+            --rate=-3% \
+            --pitch=-3Hz \
+            --file benchmark/narration.txt \
+            --write-media benchmark/edge-fallback.mp3
+
+      - name: Validate and summarize samples
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          root = Path("benchmark")
+          summary = {"samples": {}, "chatterbox_ready": False}
+          for name, filename in {
+              "chatterbox": "chatterbox-v3.wav",
+              "edge": "edge-fallback.mp3",
+          }.items():
+              path = root / filename
+              item = {"exists": path.is_file(), "bytes": path.stat().st_size if path.is_file() else 0}
+              if path.is_file():
+                  probe = subprocess.run(
+                      ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", str(path)],
+                      capture_output=True,
+                      text=True,
+                      check=False,
+                  )
+                  data = json.loads(probe.stdout or "{}") if probe.returncode == 0 else {}
+                  item["duration_seconds"] = round(float((data.get("format") or {}).get("duration") or 0), 3)
+              summary["samples"][name] = item
+
+          chatterbox = summary["samples"]["chatterbox"]
+          summary["chatterbox_ready"] = bool(
+              chatterbox.get("exists")
+              and int(chatterbox.get("bytes") or 0) > 4096
+              and float(chatterbox.get("duration_seconds") or 0) > 5
+          )
+          (root / "benchmark-summary.json").write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          if not summary["chatterbox_ready"]:
+              raise SystemExit(1)
+          PY
+
+      - name: Upload listenable A-B comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-chatterbox-edge-comparison-${{ github.run_id }}
+          path: benchmark/**
+          if-no-files-found: error
+          retention-days: 14
