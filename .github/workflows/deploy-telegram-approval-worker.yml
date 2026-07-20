@@ -45,6 +45,18 @@ jobs:
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
 
+      - name: Deploy Worker code
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx wrangler deploy | tee deploy.log
+          URL=$(grep -Eo 'https://[^ ]+\.workers\.dev' deploy.log | tail -1)
+          test -n "$URL"
+          echo "worker_url=$URL" >> "$GITHUB_OUTPUT"
+
       - name: Configure Worker secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -59,18 +71,6 @@ jobs:
           printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
           printf '%s' "$APPROVAL_GITHUB_TOKEN" | npx wrangler secret put GITHUB_TOKEN
           printf '%s' "$TELEGRAM_WEBHOOK_SECRET" | npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
-
-      - name: Deploy Worker
-        id: deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          npx wrangler deploy | tee deploy.log
-          URL=$(grep -Eo 'https://[^ ]+\.workers\.dev' deploy.log | tail -1)
-          test -n "$URL"
-          echo "worker_url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Register Telegram webhook
         env:
@@ -89,18 +89,20 @@ jobs:
       - name: Verify Telegram webhook
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
         run: |
           set -euo pipefail
           curl --fail --silent --show-error \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo" \
             | tee webhook-info.json
-          python - <<'PY'
-          import json
-          data=json.load(open('webhook-info.json'))
+          python - "$WORKER_URL" <<'PY'
+          import json, sys
+          data = json.load(open('webhook-info.json', encoding='utf-8'))
           assert data.get('ok') is True, data
-          url=data.get('result',{}).get('url','')
-          assert url.startswith('https://'), data
-          print('Webhook active:', url)
+          actual = data.get('result', {}).get('url', '').rstrip('/')
+          expected = sys.argv[1].rstrip('/')
+          assert actual == expected, (expected, actual, data)
+          print('Webhook active:', actual)
           PY
 
       - uses: actions/upload-artifact@v4
