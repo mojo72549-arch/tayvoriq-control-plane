@@ -32,6 +32,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           APPROVAL_GITHUB_TOKEN: ${{ secrets.APPROVAL_GITHUB_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
@@ -39,6 +40,7 @@ jobs:
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
           test -n "$APPROVAL_GITHUB_TOKEN"
+          test -n "$TELEGRAM_WEBHOOK_SECRET"
 
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
@@ -50,11 +52,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           APPROVAL_GITHUB_TOKEN: ${{ secrets.APPROVAL_GITHUB_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
           printf '%s' "$TELEGRAM_BOT_TOKEN" | npx wrangler secret put TELEGRAM_BOT_TOKEN
           printf '%s' "$TELEGRAM_CHAT_ID" | npx wrangler secret put TELEGRAM_CHAT_ID
           printf '%s' "$APPROVAL_GITHUB_TOKEN" | npx wrangler secret put GITHUB_TOKEN
+          printf '%s' "$TELEGRAM_WEBHOOK_SECRET" | npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
 
       - name: Deploy Worker
         id: deploy
@@ -71,6 +75,7 @@ jobs:
       - name: Register Telegram webhook
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
           WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
         run: |
           set -euo pipefail
@@ -78,7 +83,8 @@ jobs:
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
             --data-urlencode "url=${WORKER_URL}" \
-            --data-urlencode "allowed_updates=[\"message\",\"callback_query\"]"
+            --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET}" \
+            --data-urlencode 'allowed_updates=["message","callback_query"]'
 
       - name: Verify Telegram webhook
         env:
