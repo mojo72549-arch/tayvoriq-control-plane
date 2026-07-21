@@ -44,17 +44,32 @@ jobs:
           path: |
             .cache/huggingface
             .cache/torch
-          key: tayvoriq-chatterbox-v3-cpu-py311-v1
+          key: tayvoriq-chatterbox-v3-cpu-py311-v2
 
       - name: Install CPU voice engines
         timeout-minutes: 12
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg git
           python -m pip install --upgrade pip
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
-          python -m pip install "chatterbox-tts==0.1.7" "edge-tts==7.2.8"
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" "edge-tts==7.2.8"
+          python - <<'PY'
+          import inspect
+          import torch
+          from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+          signature = inspect.signature(ChatterboxMultilingualTTS.from_pretrained)
+          if "t3_model" not in signature.parameters:
+              raise SystemExit("Installed Chatterbox build does not expose t3_model and cannot load V3")
+          print({"chatterbox_import": "passed", "torch": torch.__version__, "device": "cpu", "model": "multilingual-v3", "signature": str(signature)})
+          PY
+
+      - name: Validate Chatterbox routing contract
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/test_tayvoriq_chatterbox_router.py
 
       - name: Prepare identical German benchmark text
         run: |
@@ -141,4 +156,4 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-# run-now nonce: 2026-07-21T00:15:00+02:00
+# run-now nonce: 2026-07-21T22:36:00+02:00
