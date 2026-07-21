@@ -1,6 +1,7 @@
 name: Trigger TAYVORIQ Full Production Now
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -15,6 +16,56 @@ jobs:
   dispatch-full-production:
     runs-on: ubuntu-latest
     steps:
+      - name: Send Telegram start probe
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+          chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+          if not token or not chat_id:
+              raise SystemExit("Telegram start probe blocked: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing")
+
+          def telegram(method, payload):
+              url = f"https://api.telegram.org/bot{token}/{method}"
+              request = urllib.request.Request(
+                  url,
+                  data=urllib.parse.urlencode(payload).encode("utf-8"),
+                  method="POST",
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=25) as response:
+                      body = response.read().decode("utf-8", errors="replace")
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode("utf-8", errors="replace")
+                  raise RuntimeError(f"Telegram HTTP {exc.code}: {body[:500]}") from exc
+              data = json.loads(body or "{}")
+              if not data.get("ok"):
+                  safe = {key: data.get(key) for key in ("ok", "error_code", "description")}
+                  raise RuntimeError("Telegram API rejected request: " + json.dumps(safe, ensure_ascii=False))
+              return data.get("result") or {}
+
+          bot = telegram("getMe", {})
+          result = telegram(
+              "sendMessage",
+              {
+                  "chat_id": chat_id,
+                  "text": "🚀 TAYVORIQ Produktionslauf gestartet. Trend, Stimme, Rendering und Quality-Gates laufen jetzt. Die finale Video-Freigabe folgt nur bei bestandenem Ergebnis.",
+                  "disable_web_page_preview": "true",
+              },
+          )
+          print(json.dumps({"telegram_probe": "sent", "bot_username": bot.get("username"), "message_id": result.get("message_id")}, ensure_ascii=False))
+          PY
+
       - name: Trigger full Golden Path
         env:
           GH_TOKEN: ${{ github.token }}
@@ -28,4 +79,4 @@ jobs:
             -f topic=""
           echo "Full TAYVORIQ production was dispatched."
 
-# run-now nonce: 2026-07-21T11:17:19+02:00
+# run-now nonce: 2026-07-21T22:39:00+02:00
