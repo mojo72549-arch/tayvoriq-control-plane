@@ -2,11 +2,6 @@ name: Trigger TAYVORIQ Full Production Now
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/tayvoriq-trigger-full-now.yml
 
 permissions:
   actions: write
@@ -16,8 +11,7 @@ jobs:
   dispatch-full-production:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Telegram start probe
-        continue-on-error: true
+      - name: Send and verify Telegram start message
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -33,7 +27,7 @@ jobs:
           token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
           chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
           if not token or not chat_id:
-              raise SystemExit("Telegram start probe blocked: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing")
+              raise SystemExit("Telegram delivery blocked: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing")
 
           def telegram(method, payload):
               url = f"https://api.telegram.org/bot{token}/{method}"
@@ -63,7 +57,14 @@ jobs:
                   "disable_web_page_preview": "true",
               },
           )
-          print(json.dumps({"telegram_probe": "sent", "bot_username": bot.get("username"), "message_id": result.get("message_id")}, ensure_ascii=False))
+          if not result.get("message_id"):
+              raise RuntimeError("Telegram returned no message_id; delivery is not proven")
+          print(json.dumps({
+              "telegram_probe": "sent",
+              "bot_username": bot.get("username"),
+              "message_id": result.get("message_id"),
+              "chat_id": str((result.get("chat") or {}).get("id") or ""),
+          }, ensure_ascii=False))
           PY
 
       - name: Trigger full Golden Path
@@ -77,6 +78,4 @@ jobs:
             -f mode=full \
             -f trend_scope=auto_scope \
             -f topic=""
-          echo "Full TAYVORIQ production was dispatched."
-
-# run-now nonce: 2026-07-21T22:39:00+02:00
+          echo "Full TAYVORIQ production was dispatched after confirmed Telegram delivery."
