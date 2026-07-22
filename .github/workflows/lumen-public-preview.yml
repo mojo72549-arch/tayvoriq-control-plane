@@ -1,11 +1,6 @@
 name: Project Lumen Public Preview Build
 
 on:
-  push:
-    branches: [ project-lumen-public-preview ]
-    paths:
-      - 'lumen-public-preview/**'
-      - '.github/workflows/lumen-public-preview.yml'
   pull_request:
     branches: [ main ]
     paths:
@@ -21,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout public build branch
+      - name: Checkout public preview
         uses: actions/checkout@v4
 
       - name: Restore sanitized Project Lumen source
