@@ -12,9 +12,9 @@ permissions:
   actions: write
   contents: read
 
-# Uses the Golden Path concurrency group to replace any old unbounded attempt.
-# The implementation remains Chatterbox-premium-first, but nested full reruns
-# are disabled and temporary audit failures retry the existing render only.
+# Replace any stale Golden Path with the latest bounded implementation. The
+# replacement keeps Chatterbox premium-first, uses YouTube OAuth for real trend
+# signals and sends Telegram only after a verified final video exists.
 concurrency:
   group: tayvoriq-golden-path
   cancel-in-progress: true
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Dispatch bounded premium production chain
+      - name: Dispatch latest bounded premium production chain
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -32,6 +32,6 @@ jobs:
           gh workflow run tayvoriq-trigger-full-now.yml \
             --repo "${GITHUB_REPOSITORY}" \
             --ref main
-          echo "Bounded Chatterbox-premium production dispatched with stage-local audit retries."
+          echo "Latest bounded production dispatched with YouTube OAuth trend auth, source-trigger grounding and final-only Telegram."
 
-# run-now nonce: 2026-07-22T16:25:55+02:00
+# run-now nonce: 2026-07-22T18:11:00+02:00
