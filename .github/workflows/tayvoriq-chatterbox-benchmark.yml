@@ -9,7 +9,12 @@ on:
       - .github/workflows/tayvoriq-chatterbox-benchmark.yml
 
 permissions:
+  actions: write
   contents: read
+
+concurrency:
+  group: tayvoriq-chatterbox-benchmark
+  cancel-in-progress: true
 
 env:
   PYTHONUTF8: "1"
@@ -176,4 +181,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-# run-now nonce: 2026-07-22T09:45:00+02:00
+      - name: Start full production after green benchmark
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-trigger-full-now.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref main
+          echo "Green Chatterbox benchmark dispatched the full TAYVORIQ production trigger."
+
+# run-now nonce: 2026-07-22T09:52:00+02:00
