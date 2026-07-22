@@ -6,6 +6,11 @@ on:
     paths:
       - 'lumen-public-preview/**'
       - '.github/workflows/lumen-public-preview.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'lumen-public-preview/**'
+      - '.github/workflows/lumen-public-preview.yml'
   workflow_dispatch:
 
 permissions:
