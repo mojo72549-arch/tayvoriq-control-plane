@@ -12,9 +12,9 @@ permissions:
   actions: write
   contents: read
 
-# Uses the Golden Path concurrency group to replace the currently running
-# unbounded attempt. The new implementation remains Chatterbox-premium-first,
-# but its worker is process-tree bounded and falls back only after a real fault.
+# Uses the Golden Path concurrency group to replace any old unbounded attempt.
+# The implementation remains Chatterbox-premium-first, but nested full reruns
+# are disabled and temporary audit failures retry the existing render only.
 concurrency:
   group: tayvoriq-golden-path
   cancel-in-progress: true
@@ -32,6 +32,6 @@ jobs:
           gh workflow run tayvoriq-trigger-full-now.yml \
             --repo "${GITHUB_REPOSITORY}" \
             --ref main
-          echo "Slow run replaced. Chatterbox-premium-first production dispatched."
+          echo "Bounded Chatterbox-premium production dispatched with stage-local audit retries."
 
-# run-now nonce: 2026-07-22T12:18:00+02:00
+# run-now nonce: 2026-07-22T15:10:00+02:00
