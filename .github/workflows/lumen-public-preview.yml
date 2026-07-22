@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           cat lumen-public-preview/source.part*.b64 > /tmp/project-lumen-source.tar.gz.b64
           base64 -d /tmp/project-lumen-source.tar.gz.b64 > /tmp/project-lumen-source.tar.gz
-          echo 'aa80a6708425dae0f5e93f8dd7d172895978f779fbf77aba9533a66141b1b28b  /tmp/project-lumen-source.tar.gz' | sha256sum -c -
+          echo '0d036bd30346f65c34695cfb8eac8e177b98feebc5224dac308ae496e9b000d9  /tmp/project-lumen-source.tar.gz' | sha256sum -c -
           tar -xzf /tmp/project-lumen-source.tar.gz
 
       - name: Set up Java 17
@@ -65,16 +65,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/windows
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.8_Public_Preview.apk
+          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.9_Public_Preview.apk
           cp project-lumen-preview/windows/* dist/windows/
           cp project-lumen-preview/README.md dist/
-          sha256sum dist/Project_Lumen_13.1.8_Public_Preview.apk > dist/Project_Lumen_13.1.8_Public_Preview.sha256
+          sha256sum dist/Project_Lumen_13.1.9_Public_Preview.apk > dist/Project_Lumen_13.1.9_Public_Preview.sha256
           (cd dist && zip -r Project_Lumen_Windows_Public_Preview.zip windows >/dev/null)
 
       - name: Upload APK and Windows preview
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-8-public-preview
+          name: project-lumen-13-1-9-public-preview
           path: dist/
           if-no-files-found: error
           retention-days: 30
