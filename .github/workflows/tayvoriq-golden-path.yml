@@ -39,7 +39,7 @@ concurrency:
 
 env:
   PYTHONUTF8: "1"
-  PYTHONPATH: ${{ github.workspace }}/implementation
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
   TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
@@ -121,34 +121,32 @@ jobs:
           path: |
             .cache/huggingface
             .cache/torch
-          key: tayvoriq-chatterbox-v3-cpu-py311-v1
+          key: tayvoriq-chatterbox-v3-cpu-py311-v3
 
       - name: Install validation and media dependencies
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y ffmpeg rsync
+          sudo apt-get install -y ffmpeg rsync git
           python -m pip install --upgrade pip
-          pip install -r implementation/requirements.txt pytest
+          python -m pip install -r implementation/requirements.txt pytest
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
 
-      - name: Validate Chatterbox routing contract
-        working-directory: implementation
-        run: |
-          set -euo pipefail
-          python -m pytest -q tests/test_tayvoriq_chatterbox_router.py
-
-      - name: Install free Chatterbox CPU voice
+      - name: Install free Chatterbox V3 CPU voice
         id: chatterbox_install
         continue-on-error: true
-        timeout-minutes: 12
+        timeout-minutes: 15
         run: |
           set -euo pipefail
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
-          python -m pip install "chatterbox-tts==0.1.7"
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"
           python - <<'PY'
+          import inspect
           import torch
           from chatterbox.mtl_tts import ChatterboxMultilingualTTS
-          print({"chatterbox_import": "passed", "torch": torch.__version__, "device": "cpu", "model": "multilingual-v3"})
+          signature = inspect.signature(ChatterboxMultilingualTTS.from_pretrained)
+          if "t3_model" not in signature.parameters:
+              raise SystemExit("Installed Chatterbox build cannot select multilingual V3")
+          print({"chatterbox_import": "passed", "torch": torch.__version__, "device": "cpu", "model": "multilingual-v3", "signature": str(signature)})
           PY
 
       - name: Report voice provider readiness
@@ -158,6 +156,12 @@ jobs:
           else
             echo "::warning title=Chatterbox unavailable::Installation failed or timed out. Edge Neural TTS remains active as the automatic fallback."
           fi
+
+      - name: Validate Chatterbox routing contract
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/test_tayvoriq_chatterbox_router.py
 
       - name: Compile and run production preflight
         working-directory: implementation
