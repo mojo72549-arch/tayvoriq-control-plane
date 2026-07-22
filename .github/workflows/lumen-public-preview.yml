@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: project-lumen-public-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,6 +36,9 @@ jobs:
           base64 -d /tmp/project-lumen-13.1.9-patch.tar.gz.b64 > /tmp/project-lumen-13.1.9-patch.tar.gz
           echo 'fe9380cd06760fa19e8d4bfeb1d7ee85d6752cf43e14e97e923d6cbc63d56106  /tmp/project-lumen-13.1.9-patch.tar.gz' | sha256sum -c -
           tar -xzf /tmp/project-lumen-13.1.9-patch.tar.gz
+
+          sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          grep -q 'text("v13.1.9"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
