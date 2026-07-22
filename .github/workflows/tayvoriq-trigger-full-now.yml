@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/tayvoriq-trigger-full-now.yml
+      - .github/run-now/tayvoriq-full.txt
 
 permissions:
   actions: write
@@ -16,7 +16,7 @@ jobs:
   dispatch-full-production:
     runs-on: ubuntu-latest
     steps:
-      - name: Send and verify Telegram start message
+      - name: Validate Telegram target silently
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -54,21 +54,12 @@ jobs:
               return data.get("result") or {}
 
           bot = telegram("getMe", {})
-          result = telegram(
-              "sendMessage",
-              {
-                  "chat_id": chat_id,
-                  "text": "🚀 TAYVORIQ Produktionslauf gestartet. Trend, Stimme, Rendering und Quality-Gates laufen jetzt. Die finale Video-Freigabe folgt nur bei bestandenem Ergebnis.",
-                  "disable_web_page_preview": "true",
-              },
-          )
-          if not result.get("message_id"):
-              raise RuntimeError("Telegram returned no message_id; delivery is not proven")
+          chat = telegram("getChat", {"chat_id": chat_id})
           print(json.dumps({
-              "telegram_probe": "sent",
+              "telegram_probe": "validated_without_message",
               "bot_username": bot.get("username"),
-              "message_id": result.get("message_id"),
-              "chat_id": str((result.get("chat") or {}).get("id") or ""),
+              "chat_id": str(chat.get("id") or ""),
+              "user_visible_message_sent": False,
           }, ensure_ascii=False))
           PY
 
@@ -83,6 +74,4 @@ jobs:
             -f mode=full \
             -f trend_scope=auto_scope \
             -f topic=""
-          echo "Full TAYVORIQ production was dispatched after confirmed Telegram delivery."
-
-# run-now nonce: 2026-07-22T10:01:00+02:00
+          echo "Full TAYVORIQ production was dispatched after silent Telegram validation."
