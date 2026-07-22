@@ -2,6 +2,11 @@ name: Trigger TAYVORIQ Full Production Now
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tayvoriq-trigger-full-now.yml
 
 permissions:
   actions: write
@@ -79,3 +84,5 @@ jobs:
             -f trend_scope=auto_scope \
             -f topic=""
           echo "Full TAYVORIQ production was dispatched after confirmed Telegram delivery."
+
+# run-now nonce: 2026-07-22T10:01:00+02:00
