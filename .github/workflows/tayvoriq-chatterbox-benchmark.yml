@@ -89,11 +89,13 @@ jobs:
           })
           PY
 
-      - name: Validate Chatterbox routing contract
+      - name: Validate Chatterbox and timeout-recovery contracts
         working-directory: implementation
         run: |
           set -euo pipefail
-          python -m pytest -q tests/test_tayvoriq_chatterbox_router.py
+          python -m pytest -q \
+            tests/test_tayvoriq_chatterbox_router.py \
+            tests/test_tayvoriq_v23_resilience.py
 
       - name: Generate Chatterbox Multilingual V3 sample
         id: chatterbox
@@ -190,6 +192,6 @@ jobs:
           gh workflow run tayvoriq-trigger-full-now.yml \
             --repo "${GITHUB_REPOSITORY}" \
             --ref main
-          echo "Green Chatterbox benchmark dispatched the full TAYVORIQ production trigger."
+          echo "Green Chatterbox benchmark and timeout recovery contract dispatched full production."
 
-# run-now nonce: 2026-07-22T10:07:00+02:00
+# run-now nonce: 2026-07-22T11:23:00+02:00
