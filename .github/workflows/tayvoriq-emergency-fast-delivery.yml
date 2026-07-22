@@ -1,4 +1,4 @@
-name: TAYVORIQ Emergency Fast Delivery
+name: TAYVORIQ Emergency Premium Recovery
 
 on:
   workflow_dispatch:
@@ -12,9 +12,9 @@ permissions:
   actions: write
   contents: read
 
-# This group is intentionally identical to the Golden Path group. Starting
-# this recovery workflow cancels a currently running slow Golden Path before
-# a fresh run is dispatched with the latest implementation.
+# Uses the Golden Path concurrency group to replace the currently running
+# unbounded attempt. The new implementation remains Chatterbox-premium-first,
+# but its worker is process-tree bounded and falls back only after a real fault.
 concurrency:
   group: tayvoriq-golden-path
   cancel-in-progress: true
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Dispatch verified fast delivery chain
+      - name: Dispatch bounded premium production chain
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -32,4 +32,6 @@ jobs:
           gh workflow run tayvoriq-trigger-full-now.yml \
             --repo "${GITHUB_REPOSITORY}" \
             --ref main
-          echo "Slow Golden Path replaced. Fast delivery trigger dispatched."
+          echo "Slow run replaced. Chatterbox-premium-first production dispatched."
+
+# run-now nonce: 2026-07-22T12:18:00+02:00
