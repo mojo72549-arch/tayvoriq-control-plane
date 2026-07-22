@@ -47,7 +47,7 @@ env:
   TAYVORIQ_CHATTERBOX_ENABLED: "true"
   TAYVORIQ_CHATTERBOX_MODEL_VERSION: "v3"
   TAYVORIQ_CHATTERBOX_LANGUAGE: "de"
-  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "360"
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "300"
   TAYVORIQ_CHATTERBOX_CPU_THREADS: "4"
   TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.46"
   TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.34"
@@ -62,14 +62,17 @@ env:
   ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
   ELEVENLABS_GERMAN_VOICE_ID: ${{ secrets.ELEVENLABS_GERMAN_VOICE_ID }}
   ELEVENLABS_MODEL_ID: "eleven_multilingual_v2"
-  YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+  YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+  YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+  YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+  YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
 jobs:
   golden-path:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 45
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -88,6 +91,14 @@ jobs:
               missing=1
             fi
           done
+          if [ -z "${YOUTUBE_DATA_API_KEY:-}" ]; then
+            for name in YOUTUBE_CLIENT_ID YOUTUBE_CLIENT_SECRET YOUTUBE_REFRESH_TOKEN; do
+              if [ -z "${!name:-}" ]; then
+                echo "::error title=Missing YouTube trend authentication::$name is not configured and no YOUTUBE_API_KEY fallback exists"
+                missing=1
+              fi
+            done
+          fi
           exit "$missing"
 
       - name: Checkout private implementation
@@ -175,7 +186,7 @@ jobs:
         if: inputs.mode == 'quality_gate_only'
         run: echo "Quality Gate passed. Start this workflow once with mode=full."
 
-      - name: Run adaptive production recovery chain
+      - name: Run bounded production chain
         id: controller
         if: inputs.mode == 'full'
         working-directory: implementation
@@ -186,81 +197,55 @@ jobs:
           final_state="TECHNICAL_FAILURE"
           final_exit=1
           topic="${{ inputs.topic }}"
-
+          active_scope="${{ inputs.trend_scope }}"
+          active_mode="auto_trend"
           if [ -n "$topic" ]; then
-            scopes=("${{ inputs.trend_scope }}")
-            modes=("manual_topic")
-          else
-            scopes=("${{ inputs.trend_scope }}" "technology_ai" "business_economy" "world_society")
-            modes=("auto_trend" "auto_trend" "auto_trend" "auto_trend")
+            active_mode="manual_topic"
           fi
 
-          max_attempts=${#scopes[@]}
-          for ((index=0; index<max_attempts; index++)); do
-            attempt=$((index + 1))
-            active_scope="${scopes[$index]}"
-            active_mode="${modes[$index]}"
-            echo "=== Production recovery ${attempt}/${max_attempts}: mode=${active_mode}, scope=${active_scope} ==="
+          attempt_dir="out/tayvoriq-self-heal/attempt-1"
+          rm -rf "$attempt_dir"
+          mkdir -p "$attempt_dir"
+          echo "=== Bounded production: mode=${active_mode}, scope=${active_scope} ==="
 
-            attempt_dir="out/tayvoriq-self-heal/attempt-${attempt}"
-            rm -rf "$attempt_dir"
-            mkdir -p "$attempt_dir"
+          set +e
+          python tools/tayvoriq_autonomous_entrypoint.py \
+            --trend-mode "$active_mode" \
+            --trend-scope "$active_scope" \
+            --topic "$topic" \
+            --language "Deutsch" \
+            --platform "youtube_tiktok" \
+            --target-duration "35" \
+            --llm-provider "auto" \
+            --outdir "out/tayvoriq-youtube-tiktok" \
+            --site-root "site/tayvoriq" \
+            --run-id "${GITHUB_RUN_ID}-1" \
+            --state-out "out/tayvoriq-review-state.json" \
+            --report-out "$attempt_dir/report.json" \
+            --request-out "$attempt_dir/request.json" \
+            --self-heal-depth "0" \
+            --target-branch "feature/multi-platform-distribution-package" \
+            2>&1 | tee "$attempt_dir/controller-console.log"
+          final_exit=${PIPESTATUS[0]}
+          set -e
 
-            set +e
-            python tools/tayvoriq_autonomous_entrypoint.py \
-              --trend-mode "$active_mode" \
-              --trend-scope "$active_scope" \
-              --topic "$topic" \
-              --language "Deutsch" \
-              --platform "youtube_tiktok" \
-              --target-duration "35" \
-              --llm-provider "auto" \
-              --outdir "out/tayvoriq-youtube-tiktok" \
-              --site-root "site/tayvoriq" \
-              --run-id "${GITHUB_RUN_ID}-${attempt}" \
-              --state-out "out/tayvoriq-review-state.json" \
-              --report-out "$attempt_dir/report.json" \
-              --request-out "$attempt_dir/request.json" \
-              --self-heal-depth "0" \
-              --target-branch "feature/multi-platform-distribution-package" \
-              2>&1 | tee "$attempt_dir/controller-console.log"
-            controller_exit=${PIPESTATUS[0]}
-            set -e
-
-            state=$(python - "$attempt_dir/report.json" <<'PY'
+          final_state=$(python - "$attempt_dir/report.json" <<'PY'
           import json, sys
           from pathlib import Path
           path = Path(sys.argv[1])
           report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
           print(str(report.get("state") or "TECHNICAL_FAILURE"))
           PY
-            )
+          )
 
-            echo "attempt=${attempt} state=${state} exit=${controller_exit} scope=${active_scope}"
-            cp "$attempt_dir/report.json" out/tayvoriq-self-heal/report.json 2>/dev/null || true
-            cp "$attempt_dir/request.json" out/tayvoriq-self-heal/request.json 2>/dev/null || true
-            cp "$attempt_dir/controller-console.log" out/tayvoriq-self-heal/controller-console.log
-            final_state="$state"
-            final_exit="$controller_exit"
-
-            if [ "$state" = "SUCCESS" ]; then
-              echo "$attempt" > out/tayvoriq-self-heal/successful-attempt.txt
-              echo "$active_scope" > out/tayvoriq-self-heal/successful-scope.txt
-              break
-            fi
-
-            if [ "$state" != "PUBLISHABLE_OUTPUT_RETRY_REQUIRED" ] && [ "$state" != "SKIPPED_NO_PUBLISHABLE_TREND" ]; then
-              echo "Non-retryable state: $state"
-              break
-            fi
-
-            python tools/tayvoriq_send_telegram.py \
-              --state "RECOVERY_${attempt}_OF_${max_attempts}" \
-              --conclusion "neutral" \
-              --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-              --review-id "${GITHUB_RUN_ID}" \
-              --review-url "" || true
-          done
+          cp "$attempt_dir/report.json" out/tayvoriq-self-heal/report.json 2>/dev/null || true
+          cp "$attempt_dir/request.json" out/tayvoriq-self-heal/request.json 2>/dev/null || true
+          cp "$attempt_dir/controller-console.log" out/tayvoriq-self-heal/controller-console.log
+          echo "attempt=1 state=${final_state} exit=${final_exit} scope=${active_scope}"
+          if [ "$final_state" = "SUCCESS" ]; then
+            echo "1" > out/tayvoriq-self-heal/successful-attempt.txt
+            echo "$active_scope" > out/tayvoriq-self-heal/successful-scope.txt
+          fi
 
           echo "exit_code=${final_exit}" >> "$GITHUB_OUTPUT"
           echo "state=${final_state}" >> "$GITHUB_OUTPUT"
@@ -367,18 +352,6 @@ jobs:
           print("Definition of Done passed: SUCCESS report, valid 1080x1920 MP4, review publication and Telegram approval message confirmed.")
           PY
 
-      - name: Send final blocked status
-        if: inputs.mode == 'full' && steps.result.outputs.success != 'true'
-        continue-on-error: true
-        working-directory: implementation
-        run: |
-          python tools/tayvoriq_send_telegram.py \
-            --state "RECOVERY_EXHAUSTED_${{ steps.result.outputs.state }}" \
-            --conclusion "failure" \
-            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            --review-id "${GITHUB_RUN_ID}" \
-            --review-url ""
-
       - name: Collect compact diagnostics
         if: always()
         continue-on-error: true
@@ -414,5 +387,5 @@ jobs:
         env:
           FINAL_STATE: ${{ steps.result.outputs.state }}
         run: |
-          echo "::error title=TAYVORIQ production incomplete::Adaptive recovery ended with state ${FINAL_STATE}. Diagnostics were uploaded; no incomplete video was published."
+          echo "::error title=TAYVORIQ production incomplete::Bounded production ended with state ${FINAL_STATE}. Diagnostics were uploaded; no incomplete video was published."
           exit 1
