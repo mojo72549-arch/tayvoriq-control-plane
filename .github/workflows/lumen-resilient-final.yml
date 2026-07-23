@@ -1,4 +1,4 @@
-name: Project Lumen 13.1.17 HTTP 451 Recovery Build
+name: Project Lumen 13.1.18 Source API Recovery Build
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: project-lumen-13-1-17-http451-${{ github.event.pull_request.number || github.ref }}
+  group: project-lumen-13-1-18-source-api-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -83,23 +83,34 @@ jobs:
           set -euo pipefail
           python3 lumen-public-preview/apply-http451-recovery-fix.py project-lumen-preview
 
-      - name: Verify v13.1.17 safety gates
+      - name: Apply same-origin Source API recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-xtream-source-api-recovery-fix.py project-lumen-preview
+
+      - name: Verify v13.1.18 safety and recovery gates
         shell: bash
         run: |
           set -euo pipefail
           MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
-          grep -q 'text("v13.1.17"' "$MAIN"
+          grep -q 'text("v13.1.18"' "$MAIN"
           grep -q 'READ_TIMEOUT_MS = 45_000' "$MAIN"
           grep -q 'setRequestProperty("Range"' "$MAIN"
           grep -q 'status == 206' "$MAIN"
           grep -q 'bestPartial' "$MAIN"
           grep -q 'IMPORT-PARTIAL-RECOVERY' "$MAIN"
           grep -q 'IMPORT-PROTOCOL-RECOVERY' "$MAIN"
-          grep -q 'status == 451' "$MAIN"
           grep -q 'IMPORT-HTTP-451-RECOVERY' "$MAIN"
-          grep -q 'IMPORT-ACCESS-DENIED' "$MAIN"
-          grep -q 'browserCompatibilityProfile' "$MAIN"
-          grep -q 'Mozilla/5.0 (Linux; Android 13; Mobile)' "$MAIN"
+          grep -q 'tryXtreamSourceApiRecovery' "$MAIN"
+          grep -q 'player_api.php' "$MAIN"
+          grep -q 'get_live_categories' "$MAIN"
+          grep -q 'get_live_streams' "$MAIN"
+          grep -q 'IMPORT-XTREAM-API-OK' "$MAIN"
+          grep -q 'JsonReader' "$MAIN"
+          grep -q 'writer.write("#EXTM3U\\n")' "$MAIN"
+          grep -q 'versionCode 132800' project-lumen-preview/app/build.gradle
+          grep -q "versionName '13.1.18-source-api-recovery-preview'" project-lumen-preview/app/build.gradle
           if grep -q 'Proxy(' "$MAIN"; then
             echo 'Unexpected proxy bypass code detected' >&2
             exit 1
@@ -108,8 +119,10 @@ jobs:
             echo 'Unexpected TLS verifier bypass detected' >&2
             exit 1
           fi
-          grep -q 'versionCode 132700' project-lumen-preview/app/build.gradle
-          grep -q "versionName '13.1.17-http451-recovery-preview'" project-lumen-preview/app/build.gradle
+          if grep -q 'setHostnameVerifier' "$MAIN"; then
+            echo 'Unexpected hostname verification bypass detected' >&2
+            exit 1
+          fi
 
       - uses: actions/setup-java@v4
         with:
@@ -130,38 +143,54 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.17.log
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.18.log
 
       - name: Prepare release files
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.17_HTTP451_Recovery.apk
+          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.18_Source_API_Recovery.apk
           cp project-lumen-preview/README.md dist/README.md
-          cp android-build-13.1.17.log dist/android-build-13.1.17.log
+          cp android-build-13.1.18.log dist/android-build-13.1.18.log
           cat > dist/PATCH_NOTES.txt <<'EOF'
-          Project Lumen 13.1.17 HTTP 451 Recovery
+          Project Lumen 13.1.18 Same-Origin Source API Recovery
 
-          Root cause from log MRXFYS3N:
-          - HTTPS-to-HTTP protocol recovery succeeds on the nonstandard port
-          - the reached HTTP endpoint then rejects the VLC-style request with HTTP 451
-          - zero playlist bytes are returned, so parser and large-file recovery cannot run
+          Root cause from smartphone log MRXI7SGL on 2026-07-23:
+          - guarded HTTPS-to-HTTP recovery succeeds
+          - the reached server identifies itself as CDN PROXY SERVICE
+          - get.php returns HTTP 451 for both the VLC profile and the Android browser profile
+          - zero playlist bytes are returned
 
           Recovery:
-          - detect HTTP 451 separately from generic HTTP failures
-          - retry exactly once with a standard Android browser-compatible request profile
-          - restart that compatibility attempt without an HTTP Range header
-          - preserve credentials, path and query unchanged
-          - do not use a proxy, VPN, hostname-verifier bypass or TLS downgrade beyond the existing guarded recovery
-          - if HTTP 451 remains, show IMPORT-ACCESS-DENIED with an actionable provider/network explanation
-          - log only sanitized response metadata and the request-profile name
+          - keep the existing get.php path as the primary import
+          - after confirmed HTTP 451, detect standard username/password query fields locally
+          - call player_api.php on the exact same scheme, host, port and path root
+          - retrieve live categories and live streams through the neutral Source API adapter
+          - parse large JSON arrays as a stream instead of loading them fully into memory
+          - generate the temporary M3U locally on the device
+          - construct stream URLs only for the same source origin
+          - keep credentials and complete URLs out of diagnostics
+          - no proxy, VPN, direct-IP substitution, hostname-verifier bypass or external server
+          - if player_api.php is also blocked, retain the clear IMPORT-ACCESS-DENIED result
           EOF
-          sha256sum dist/Project_Lumen_13.1.17_HTTP451_Recovery.apk > dist/Project_Lumen_13.1.17_HTTP451_Recovery.sha256
+          sha256sum dist/Project_Lumen_13.1.18_Source_API_Recovery.apk > dist/Project_Lumen_13.1.18_Source_API_Recovery.sha256
 
       - uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-17-http451-recovery
+          name: project-lumen-13-1-18-source-api-recovery
           path: dist/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Preserve generated source on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-18-build-debug
+          path: |
+            project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+            project-lumen-preview/app/build.gradle
+            android-build-13.1.18.log
+          if-no-files-found: warn
+          retention-days: 7
