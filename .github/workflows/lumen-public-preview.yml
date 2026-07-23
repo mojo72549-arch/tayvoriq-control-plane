@@ -45,6 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 lumen-public-preview/apply-tls-fix.py project-lumen-preview
+          sed -i "s/applicationId 'com.projectlumen.publicpreview'/applicationId 'com.projectlumen.publicpreview.tlsrecovery'/" project-lumen-preview/app/build.gradle
 
       - name: Verify TLS recovery safety gates
         shell: bash
@@ -56,6 +57,7 @@ jobs:
           grep -q 'currentPort == 443' "$MAIN"
           grep -q 'recoveryAlreadyUsed' "$MAIN"
           grep -q 'text("v13.1.10"' "$MAIN"
+          grep -q "applicationId 'com.projectlumen.publicpreview.tlsrecovery'" project-lumen-preview/app/build.gradle
           grep -q 'versionCode 132000' project-lumen-preview/app/build.gradle
           grep -q "versionName '13.1.10-tls-transport-recovery-preview'" project-lumen-preview/app/build.gradle
 
@@ -102,6 +104,7 @@ jobs:
           cat > dist/PATCH_NOTES.txt <<'EOF'
           Project Lumen 13.1.10 TLS Transport Recovery
 
+          - installable side-by-side with the previous public preview
           - guarded recovery for HTTP sources redirected to broken HTTPS on the same non-443 port
           - recovery is allowed only once, only for the same host and same explicit port
           - direct HTTPS sources and standard port 443 never downgrade
