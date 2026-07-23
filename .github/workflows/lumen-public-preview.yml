@@ -38,22 +38,73 @@ jobs:
           sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
           grep -q 'text("v13.1.9"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
-      - name: Package restored source diagnostics
+      - name: Apply HTTP origin transport recovery
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p diagnostics
-          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java diagnostics/MainActivity.java
-          grep -RInE 'IMPORT-CONNECT|TLS packet|HttpsURLConnection|HttpURLConnection|openConnection|Location|redirect|https://|http://' project-lumen-preview/app/src/main/java > diagnostics/transport-references.txt || true
-          tar -czf diagnostics/project-lumen-restored-source.tar.gz project-lumen-preview
+          python3 lumen-public-preview/apply-tls-fix.py project-lumen-preview
+          sed -i "s/applicationId 'com.projectlumen.publicpreview'/applicationId 'com.projectlumen.publicpreview.tlsrecovery'/" project-lumen-preview/app/build.gradle
 
-      - name: Upload restored source diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: project-lumen-restored-source
-          path: diagnostics/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Apply large library list recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-list-fix.py project-lumen-preview
+
+      - name: Apply nonstandard-port protocol recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-nonstandard-port-fix.py project-lumen-preview
+
+      - name: Restore and apply shareable diagnostics log
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat lumen-public-preview/diagnostics-log.part*.b64 > /tmp/apply-diagnostics-log-fix.py.b64
+          base64 -d /tmp/apply-diagnostics-log-fix.py.b64 > /tmp/apply-diagnostics-log-fix.py
+          echo 'c3edf3920f500f707dab2c0d6370f028e2c5d1aabc823ea14451606c377c948a  /tmp/apply-diagnostics-log-fix.py' | sha256sum -c -
+          python3 /tmp/apply-diagnostics-log-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-diagnostics-compile-fix.py project-lumen-preview
+
+      - name: Apply direct log sharing recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-log-share-text-fix.py project-lumen-preview
+
+      - name: Verify transport, list and log safety gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          grep -q 'IMPORT-HTTP-REDIRECT-RECOVERY' "$MAIN"
+          grep -q 'IMPORT-PROTOCOL-RECOVERY' "$MAIN"
+          grep -q 'VLC/3.0.20 LibVLC/3.0.20' "$MAIN"
+          grep -q 'explicitNonStandardHttps' "$MAIN"
+          grep -q 'original.getPort() != 443' "$MAIN"
+          grep -q 'recoveryPort == 443' "$MAIN"
+          grep -q 'LIVE_PAGE_SIZE = 200' "$MAIN"
+          grep -q 'Senderliste ist sichtbar' "$MAIN"
+          grep -q 'encryptFileWithProgress' "$MAIN"
+          grep -q 'ChannelPage' "$MAIN"
+          ! grep -q 'visibleChannels()' "$MAIN"
+          grep -q 'beginDiagnosticSession("Server + Login", null)' "$MAIN"
+          grep -q 'beginDiagnosticSession("Playlist-Link", null)' "$MAIN"
+          grep -q 'share.putExtra(Intent.EXTRA_TEXT, shareBody)' "$MAIN"
+          grep -q 'share.putExtra(Intent.EXTRA_STREAM, uri)' "$MAIN"
+          grep -q 'MediaStore.Downloads.EXTERNAL_CONTENT_URI' "$MAIN"
+          grep -q 'MediaStore.MediaColumns.DISPLAY_NAME' "$MAIN"
+          grep -q 'import java.io.ByteArrayOutputStream;' "$MAIN"
+          ! grep -q 'BuildConfig.VERSION_NAME' "$MAIN"
+          grep -q 'Logdatei teilen' "$MAIN"
+          grep -q 'installCrashLogger()' "$MAIN"
+          grep -q 'MAX_DIAGNOSTIC_LOG_BYTES' "$MAIN"
+          grep -q '\[AUSGEBLENDET\]' "$MAIN"
+          grep -q 'text("v13.1.15"' "$MAIN"
+          grep -q "applicationId 'com.projectlumen.publicpreview.tlsrecovery'" project-lumen-preview/app/build.gradle
+          grep -q 'versionCode 132500' project-lumen-preview/app/build.gradle
+          grep -q "versionName '13.1.15-direct-log-share-preview'" project-lumen-preview/app/build.gradle
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -85,23 +136,45 @@ jobs:
 
       - name: Build Android APK
         working-directory: project-lumen-preview
-        run: gradle --no-daemon clean assembleDebug
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build.log
+
+      - name: Upload Android build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-15-build-log
+          path: android-build.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Prepare public downloads
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist/windows
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.9_Public_Preview.apk
+          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.15_Direct_Log_Share.apk
           cp project-lumen-preview/windows/* dist/windows/
           cp project-lumen-preview/README.md dist/
-          sha256sum dist/Project_Lumen_13.1.9_Public_Preview.apk > dist/Project_Lumen_13.1.9_Public_Preview.sha256
+          cat > dist/PATCH_NOTES.txt <<'EOF'
+          Project Lumen 13.1.15 Direct Log Share
+
+          - places the complete sanitized diagnostic log directly in the Android share text
+          - keeps the TXT attachment and Downloads/Lumen Flow copy
+          - starts logging as soon as Server + Login or Playlist-Link is confirmed
+          - records validation failures that previously left Log-ID not-started
+          - credentials, tokens and complete addresses remain hidden
+          - retains v13.1.13 protocol recovery and v13.1.12 large-library paging
+          EOF
+          sha256sum dist/Project_Lumen_13.1.15_Direct_Log_Share.apk > dist/Project_Lumen_13.1.15_Direct_Log_Share.sha256
           (cd dist && zip -r Project_Lumen_Windows_Public_Preview.zip windows >/dev/null)
 
       - name: Upload APK and Windows preview
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-9-public-preview
+          name: project-lumen-13-1-15-direct-log-share
           path: dist/
           if-no-files-found: error
           retention-days: 30
