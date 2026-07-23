@@ -1,4 +1,4 @@
-name: Project Lumen 13.1.16 Final Build
+name: Project Lumen 13.1.17 HTTP 451 Recovery Build
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: project-lumen-13-1-16-final-${{ github.event.pull_request.number || github.ref }}
+  group: project-lumen-13-1-17-http451-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -77,24 +77,39 @@ jobs:
           PY
           python3 lumen-public-preview/apply-resilient-download-fix.py project-lumen-preview
 
-      - name: Verify v13.1.16 safety gates
+      - name: Apply HTTP 451 compatibility recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-http451-recovery-fix.py project-lumen-preview
+
+      - name: Verify v13.1.17 safety gates
         shell: bash
         run: |
           set -euo pipefail
           MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
-          grep -q 'text("v13.1.16"' "$MAIN"
+          grep -q 'text("v13.1.17"' "$MAIN"
           grep -q 'READ_TIMEOUT_MS = 45_000' "$MAIN"
-          grep -q 'DOWNLOAD_PROGRESS_STEP_BYTES' "$MAIN"
           grep -q 'setRequestProperty("Range"' "$MAIN"
           grep -q 'status == 206' "$MAIN"
           grep -q 'bestPartial' "$MAIN"
           grep -q 'IMPORT-PARTIAL-RECOVERY' "$MAIN"
-          grep -q 'resolveSharedSessionId' "$MAIN"
-          grep -q 'HTTP-Antwort' "$MAIN"
-          grep -q 'LIVE_PAGE_SIZE = 200' "$MAIN"
           grep -q 'IMPORT-PROTOCOL-RECOVERY' "$MAIN"
-          grep -q 'versionCode 132600' project-lumen-preview/app/build.gradle
-          grep -q "versionName '13.1.16-resilient-download-preview'" project-lumen-preview/app/build.gradle
+          grep -q 'status == 451' "$MAIN"
+          grep -q 'IMPORT-HTTP-451-RECOVERY' "$MAIN"
+          grep -q 'IMPORT-ACCESS-DENIED' "$MAIN"
+          grep -q 'browserCompatibilityProfile' "$MAIN"
+          grep -q 'Mozilla/5.0 (Linux; Android 13; Mobile)' "$MAIN"
+          if grep -q 'Proxy(' "$MAIN"; then
+            echo 'Unexpected proxy bypass code detected' >&2
+            exit 1
+          fi
+          if grep -q 'HostnameVerifier' "$MAIN"; then
+            echo 'Unexpected TLS verifier bypass detected' >&2
+            exit 1
+          fi
+          grep -q 'versionCode 132700' project-lumen-preview/app/build.gradle
+          grep -q "versionName '13.1.17-http451-recovery-preview'" project-lumen-preview/app/build.gradle
 
       - uses: actions/setup-java@v4
         with:
@@ -115,39 +130,38 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.16.log
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.17.log
 
       - name: Prepare release files
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.16_Resilient_Download.apk
+          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.17_HTTP451_Recovery.apk
           cp project-lumen-preview/README.md dist/README.md
-          cp android-build-13.1.16.log dist/android-build-13.1.16.log
+          cp android-build-13.1.17.log dist/android-build-13.1.17.log
           cat > dist/PATCH_NOTES.txt <<'EOF'
-          Project Lumen 13.1.16 Resilient Download
+          Project Lumen 13.1.17 HTTP 451 Recovery
 
-          Root cause from log MRXEI4DM:
-          - the HTTP playlist server transferred data successfully
-          - the mobile connection was aborted after 14.2 MB
-          - a retry then hit a temporary DNS resolution failure
-          - previous builds deleted every partial file and restarted at zero
+          Root cause from log MRXFYS3N:
+          - HTTPS-to-HTTP protocol recovery succeeds on the nonstandard port
+          - the reached HTTP endpoint then rejects the VLC-style request with HTTP 451
+          - zero playlist bytes are returned, so parser and large-file recovery cannot run
 
           Recovery:
-          - 45 second stall detection
-          - best valid M3U partial file preserved across retries
-          - HTTP Range resume when supported
-          - largest validated partial playlist used after repeated failure
-          - progress logging throttled to every 4 MB
-          - sanitized HTTP response metadata in the diagnostic log
-          - shared Log-ID recovered from the real session content
+          - detect HTTP 451 separately from generic HTTP failures
+          - retry exactly once with a standard Android browser-compatible request profile
+          - restart that compatibility attempt without an HTTP Range header
+          - preserve credentials, path and query unchanged
+          - do not use a proxy, VPN, hostname-verifier bypass or TLS downgrade beyond the existing guarded recovery
+          - if HTTP 451 remains, show IMPORT-ACCESS-DENIED with an actionable provider/network explanation
+          - log only sanitized response metadata and the request-profile name
           EOF
-          sha256sum dist/Project_Lumen_13.1.16_Resilient_Download.apk > dist/Project_Lumen_13.1.16_Resilient_Download.sha256
+          sha256sum dist/Project_Lumen_13.1.17_HTTP451_Recovery.apk > dist/Project_Lumen_13.1.17_HTTP451_Recovery.sha256
 
       - uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-16-resilient-download-final
+          name: project-lumen-13-1-17-http451-recovery
           path: dist/
           if-no-files-found: error
           retention-days: 30
