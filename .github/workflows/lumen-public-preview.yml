@@ -1,6 +1,11 @@
 name: Project Lumen Public Preview Build
 
 on:
+  push:
+    branches: [ project-lumen-tls-fix ]
+    paths:
+      - 'lumen-public-preview/**'
+      - '.github/workflows/lumen-public-preview.yml'
   pull_request:
     branches: [ main ]
     paths:
