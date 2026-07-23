@@ -63,7 +63,7 @@ def main() -> None:
     status_marker = '''                if (status == 416 && requestedResumeFrom > 0
                         && countRecoverablePlaylistEntries(target, MIN_RECOVERABLE_PLAYLIST_ENTRIES) >= MIN_RECOVERABLE_PLAYLIST_ENTRIES) {
 '''
-    status_recovery = '''                if (status == 451) {
+    status_recovery = r'''                if (status == 451) {
                     String responseServer = connection.getHeaderField("Server");
                     String responseType = connection.getContentType();
                     appendDiagnosticLog(
