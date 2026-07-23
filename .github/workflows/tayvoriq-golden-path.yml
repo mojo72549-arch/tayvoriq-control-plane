@@ -52,6 +52,8 @@ env:
   TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.46"
   TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.34"
   TAYVORIQ_CHATTERBOX_PAUSE_MS: "220"
+  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1200"
+  TAYVORIQ_TELEGRAM_PROGRESS: "false"
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -219,7 +221,7 @@ jobs:
             --llm-provider "auto" \
             --outdir "out/tayvoriq-youtube-tiktok" \
             --site-root "site/tayvoriq" \
-            --run-id "${GITHUB_RUN_ID}-1" \
+            --run-id "${GITHUB_RUN_ID}" \
             --state-out "out/tayvoriq-review-state.json" \
             --report-out "$attempt_dir/report.json" \
             --request-out "$attempt_dir/request.json" \
@@ -241,6 +243,34 @@ jobs:
           cp "$attempt_dir/report.json" out/tayvoriq-self-heal/report.json 2>/dev/null || true
           cp "$attempt_dir/request.json" out/tayvoriq-self-heal/request.json 2>/dev/null || true
           cp "$attempt_dir/controller-console.log" out/tayvoriq-self-heal/controller-console.log
+
+          if [ "$final_state" != "SUCCESS" ]; then
+            echo "=== Resume checkpoint: audit an already completed render without rerendering ==="
+            set +e
+            python tools/tayvoriq_resume_existing_render.py \
+              --outdir "out/tayvoriq-youtube-tiktok" \
+              --site-root "site/tayvoriq" \
+              --run-id "${GITHUB_RUN_ID}" \
+              --state-out "out/tayvoriq-review-state.json" \
+              --report-out "out/tayvoriq-self-heal/report.json"
+            resume_exit=$?
+            set -e
+            if [ "$resume_exit" -eq 0 ]; then
+              final_state="SUCCESS"
+              final_exit=0
+            else
+              final_state=$(python - <<'PY'
+              import json
+              from pathlib import Path
+              path = Path("out/tayvoriq-self-heal/report.json")
+              report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+              print(str(report.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"))
+              PY
+              )
+              final_exit="$resume_exit"
+            fi
+          fi
+
           echo "attempt=1 state=${final_state} exit=${final_exit} scope=${active_scope}"
           if [ "$final_state" = "SUCCESS" ]; then
             echo "1" > out/tayvoriq-self-heal/successful-attempt.txt
@@ -269,6 +299,25 @@ jobs:
               handle.write(f"success={'true' if success else 'false'}\n")
           print(json.dumps(report, ensure_ascii=False, indent=2))
           PY
+
+      - name: Validate final publication gates
+        id: publication_gate
+        if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          JOB_DIR=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path("out/tayvoriq-review-state.json").read_text(encoding="utf-8"))
+          print(str(state.get("job_dir") or ""))
+          PY
+          )
+          test -n "$JOB_DIR"
+          test -d "$JOB_DIR"
+          python tools/tayvoriq_publication_quality_gate_v2.py \
+            --job-dir "$JOB_DIR" \
+            --targets youtube_tiktok
 
       - name: Publish review page
         id: publish_review
@@ -307,6 +356,7 @@ jobs:
         env:
           TELEGRAM_OUTCOME: ${{ steps.telegram_final.outcome }}
           PUBLISH_OUTCOME: ${{ steps.publish_review.outcome }}
+          PUBLICATION_GATE_OUTCOME: ${{ steps.publication_gate.outcome }}
         run: |
           python - <<'PY'
           import json
@@ -339,8 +389,17 @@ jobs:
                   if int(stream.get("width") or 0) != 1080 or int(stream.get("height") or 0) != 1920:
                       failures.append(f"invalid_resolution={stream.get('width')}x{stream.get('height')}")
 
+          gate_reports = list(Path("out").rglob("publication_quality_gate.json"))
+          if not gate_reports:
+              failures.append("missing_publication_gate_report")
+          else:
+              gate = json.loads(gate_reports[-1].read_text(encoding="utf-8"))
+              if gate.get("passed") is not True:
+                  failures.append("publication_gate_not_passed")
           if not Path("site/tayvoriq").is_dir():
               failures.append("missing_review_site")
+          if os.environ.get("PUBLICATION_GATE_OUTCOME") != "success":
+              failures.append(f"publication_gate_outcome={os.environ.get('PUBLICATION_GATE_OUTCOME')}")
           if os.environ.get("PUBLISH_OUTCOME") != "success":
               failures.append(f"publish_outcome={os.environ.get('PUBLISH_OUTCOME')}")
           if os.environ.get("TELEGRAM_OUTCOME") != "success":
@@ -349,7 +408,7 @@ jobs:
           if failures:
               print("::error title=TAYVORIQ evidence missing::" + ", ".join(failures))
               raise SystemExit(1)
-          print("Definition of Done passed: SUCCESS report, valid 1080x1920 MP4, review publication and Telegram approval message confirmed.")
+          print("Definition of Done passed: strict publication gate, valid 1080x1920 MP4, review publication and Telegram approval message confirmed.")
           PY
 
       - name: Collect compact diagnostics
