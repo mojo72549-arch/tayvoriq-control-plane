@@ -40,6 +40,15 @@ jobs:
           sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
           grep -q 'text("v13.1.9"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
+      - name: Diagnose playlist transport implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== transport references ==='
+          grep -RInE 'IMPORT-CONNECT|TLS packet|HttpsURLConnection|HttpURLConnection|openConnection|https://|http://' project-lumen-preview/app/src/main/java || true
+          echo '=== MainActivity relevant source ==='
+          nl -ba project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java | sed -n '1,760p'
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
