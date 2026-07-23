@@ -40,26 +40,27 @@ jobs:
           sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
           grep -q 'text("v13.1.9"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
-      - name: Apply guarded TLS transport recovery
+      - name: Apply HTTP origin transport recovery
         shell: bash
         run: |
           set -euo pipefail
           python3 lumen-public-preview/apply-tls-fix.py project-lumen-preview
           sed -i "s/applicationId 'com.projectlumen.publicpreview'/applicationId 'com.projectlumen.publicpreview.tlsrecovery'/" project-lumen-preview/app/build.gradle
 
-      - name: Verify TLS recovery safety gates
+      - name: Verify HTTP recovery safety gates
         shell: bash
         run: |
           set -euo pipefail
           MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
-          grep -q 'IMPORT-TLS-RECOVERY' "$MAIN"
-          grep -q 'IMPORT-TLS-MISMATCH' "$MAIN"
-          grep -q 'currentPort == 443' "$MAIN"
-          grep -q 'recoveryAlreadyUsed' "$MAIN"
-          grep -q 'text("v13.1.10"' "$MAIN"
+          grep -q 'IMPORT-HTTP-REDIRECT-RECOVERY' "$MAIN"
+          grep -q 'IMPORT-HTTP-RECOVERY' "$MAIN"
+          grep -q 'VLC/3.0.20 LibVLC/3.0.20' "$MAIN"
+          grep -q 'recoveryPort == 443' "$MAIN"
+          grep -q '!"http".equalsIgnoreCase(original.getProtocol())' "$MAIN"
+          grep -q 'text("v13.1.11"' "$MAIN"
           grep -q "applicationId 'com.projectlumen.publicpreview.tlsrecovery'" project-lumen-preview/app/build.gradle
-          grep -q 'versionCode 132000' project-lumen-preview/app/build.gradle
-          grep -q "versionName '13.1.10-tls-transport-recovery-preview'" project-lumen-preview/app/build.gradle
+          grep -q 'versionCode 132100' project-lumen-preview/app/build.gradle
+          grep -q "versionName '13.1.11-http-origin-recovery-preview'" project-lumen-preview/app/build.gradle
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -98,26 +99,28 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/windows
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.10_TLS_Recovery.apk
+          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.11_HTTP_Recovery.apk
           cp project-lumen-preview/windows/* dist/windows/
           cp project-lumen-preview/README.md dist/
           cat > dist/PATCH_NOTES.txt <<'EOF'
-          Project Lumen 13.1.10 TLS Transport Recovery
+          Project Lumen 13.1.11 HTTP Origin Recovery
 
-          - installable side-by-side with the previous public preview
-          - guarded recovery for HTTP sources redirected to broken HTTPS on the same non-443 port
-          - recovery is allowed only once, only for the same host and same explicit port
-          - direct HTTPS sources and standard port 443 never downgrade
+          - fixes the real v13.1.10 IMPORT-TLS-MISMATCH smartphone result
+          - uses a standard media-player user agent for M3U retrieval
+          - automatically retains HTTP when an explicitly entered HTTP source is redirected to broken HTTPS
+          - also recovers when the HTTPS mismatch is detected only during connection setup
+          - never downgrades a source that the user entered directly as HTTPS
+          - never downgrades standard TLS port 443
           - credentials and full source addresses remain hidden in diagnostics
           - active library remains unchanged when import fails
           EOF
-          sha256sum dist/Project_Lumen_13.1.10_TLS_Recovery.apk > dist/Project_Lumen_13.1.10_TLS_Recovery.sha256
+          sha256sum dist/Project_Lumen_13.1.11_HTTP_Recovery.apk > dist/Project_Lumen_13.1.11_HTTP_Recovery.sha256
           (cd dist && zip -r Project_Lumen_Windows_Public_Preview.zip windows >/dev/null)
 
       - name: Upload APK and Windows preview
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-10-tls-recovery
+          name: project-lumen-13-1-11-http-origin-recovery
           path: dist/
           if-no-files-found: error
           retention-days: 30
