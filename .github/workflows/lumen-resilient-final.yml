@@ -143,14 +143,18 @@ jobs:
           set -o pipefail
           gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.18.log
 
-      - name: Prepare release files
+      - name: Prepare release and diagnostic files
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           mkdir -p dist
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.18_Xtream_API_Recovery.apk
-          cp project-lumen-preview/README.md dist/README.md
-          cp android-build-13.1.18.log dist/android-build-13.1.18.log
+          if [ -f project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.18_Xtream_API_Recovery.apk
+            sha256sum dist/Project_Lumen_13.1.18_Xtream_API_Recovery.apk > dist/Project_Lumen_13.1.18_Xtream_API_Recovery.sha256
+          fi
+          [ -f project-lumen-preview/README.md ] && cp project-lumen-preview/README.md dist/README.md || true
+          [ -f android-build-13.1.18.log ] && cp android-build-13.1.18.log dist/android-build-13.1.18.log || true
           cat > dist/PATCH_NOTES.txt <<'EOF'
           Project Lumen 13.1.18 Xtream API Recovery
 
@@ -169,9 +173,9 @@ jobs:
           - report IMPORT-XTREAM-OK on success and IMPORT-XTREAM-BLOCKED when the provider/network also blocks the official API
           - never log complete URLs or credentials
           EOF
-          sha256sum dist/Project_Lumen_13.1.18_Xtream_API_Recovery.apk > dist/Project_Lumen_13.1.18_Xtream_API_Recovery.sha256
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: project-lumen-13-1-18-xtream-api-recovery
           path: dist/
