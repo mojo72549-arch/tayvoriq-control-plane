@@ -69,6 +69,12 @@ jobs:
           python3 /tmp/apply-diagnostics-log-fix.py project-lumen-preview
           python3 lumen-public-preview/apply-diagnostics-compile-fix.py project-lumen-preview
 
+      - name: Apply direct log sharing recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-log-share-text-fix.py project-lumen-preview
+
       - name: Verify transport, list and log safety gates
         shell: bash
         run: |
@@ -85,7 +91,10 @@ jobs:
           grep -q 'encryptFileWithProgress' "$MAIN"
           grep -q 'ChannelPage' "$MAIN"
           ! grep -q 'visibleChannels()' "$MAIN"
-          grep -q 'beginDiagnosticSession(origin, sourceUrl)' "$MAIN"
+          grep -q 'beginDiagnosticSession("Server + Login", null)' "$MAIN"
+          grep -q 'beginDiagnosticSession("Playlist-Link", null)' "$MAIN"
+          grep -q 'share.putExtra(Intent.EXTRA_TEXT, shareBody)' "$MAIN"
+          grep -q 'share.putExtra(Intent.EXTRA_STREAM, uri)' "$MAIN"
           grep -q 'MediaStore.Downloads.EXTERNAL_CONTENT_URI' "$MAIN"
           grep -q 'MediaStore.MediaColumns.DISPLAY_NAME' "$MAIN"
           grep -q 'import java.io.ByteArrayOutputStream;' "$MAIN"
@@ -94,27 +103,10 @@ jobs:
           grep -q 'installCrashLogger()' "$MAIN"
           grep -q 'MAX_DIAGNOSTIC_LOG_BYTES' "$MAIN"
           grep -q '\[AUSGEBLENDET\]' "$MAIN"
-          grep -q 'text("v13.1.14"' "$MAIN"
+          grep -q 'text("v13.1.15"' "$MAIN"
           grep -q "applicationId 'com.projectlumen.publicpreview.tlsrecovery'" project-lumen-preview/app/build.gradle
-          grep -q 'versionCode 132400' project-lumen-preview/app/build.gradle
-          grep -q "versionName '13.1.14-diagnostics-log-preview'" project-lumen-preview/app/build.gradle
-
-      - name: Package generated diagnostics source
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p generated-source
-          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java generated-source/MainActivity.java
-          cp project-lumen-preview/app/build.gradle generated-source/app-build.gradle
-          cp project-lumen-preview/app/src/main/AndroidManifest.xml generated-source/AndroidManifest.xml
-
-      - name: Upload generated diagnostics source
-        uses: actions/upload-artifact@v4
-        with:
-          name: project-lumen-13-1-14-generated-source
-          path: generated-source/
-          if-no-files-found: error
-          retention-days: 7
+          grep -q 'versionCode 132500' project-lumen-preview/app/build.gradle
+          grep -q "versionName '13.1.15-direct-log-share-preview'" project-lumen-preview/app/build.gradle
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -155,7 +147,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-14-build-log
+          name: project-lumen-13-1-15-build-log
           path: android-build.log
           if-no-files-found: warn
           retention-days: 7
@@ -165,28 +157,26 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/windows
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.14_Diagnostics_Log.apk
+          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.15_Direct_Log_Share.apk
           cp project-lumen-preview/windows/* dist/windows/
           cp project-lumen-preview/README.md dist/
           cat > dist/PATCH_NOTES.txt <<'EOF'
-          Project Lumen 13.1.14 Shareable Diagnostics Log
+          Project Lumen 13.1.15 Direct Log Share
 
-          - starts a fresh technical log automatically when an import begins
-          - captures import phases, sanitized endpoint metadata, device/network context and exception stack traces
-          - captures fatal uncaught app errors before the process exits
-          - adds a Logdatei teilen button to the diagnostic popup and settings
-          - exports a TXT file through the Android share sheet and also stores it under Downloads/Lumen Flow
-          - removes usernames, passwords, bearer tokens and full URLs from the exported log
-          - bounds the internal log to 1 MB
+          - places the complete sanitized diagnostic log directly in the Android share text
+          - keeps the TXT attachment and Downloads/Lumen Flow copy
+          - starts logging as soon as Server + Login or Playlist-Link is confirmed
+          - records validation failures that previously left Log-ID not-started
+          - credentials, tokens and complete addresses remain hidden
           - retains v13.1.13 protocol recovery and v13.1.12 large-library paging
           EOF
-          sha256sum dist/Project_Lumen_13.1.14_Diagnostics_Log.apk > dist/Project_Lumen_13.1.14_Diagnostics_Log.sha256
+          sha256sum dist/Project_Lumen_13.1.15_Direct_Log_Share.apk > dist/Project_Lumen_13.1.15_Direct_Log_Share.sha256
           (cd dist && zip -r Project_Lumen_Windows_Public_Preview.zip windows >/dev/null)
 
       - name: Upload APK and Windows preview
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-14-diagnostics-log
+          name: project-lumen-13-1-15-direct-log-share
           path: dist/
           if-no-files-found: error
           retention-days: 30
