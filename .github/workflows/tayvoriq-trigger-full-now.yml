@@ -7,14 +7,20 @@ on:
       - main
     paths:
       - .github/run-now/tayvoriq-full.txt
+      - .github/workflows/tayvoriq-trigger-full-now.yml
 
 permissions:
   actions: write
   contents: read
 
+concurrency:
+  group: tayvoriq-full-production-trigger
+  cancel-in-progress: true
+
 jobs:
   dispatch-full-production:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Validate Telegram target silently
         env:
@@ -63,7 +69,7 @@ jobs:
           }, ensure_ascii=False))
           PY
 
-      - name: Trigger full Golden Path
+      - name: Trigger full Golden Path from latest main
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -74,4 +80,6 @@ jobs:
             -f mode=full \
             -f trend_scope=auto_scope \
             -f topic=""
-          echo "Full TAYVORIQ production was dispatched after silent Telegram validation."
+          echo "V27 quality-first shared-master production was dispatched from latest main."
+
+# run-now nonce: 2026-07-23T12:55:00+02:00
