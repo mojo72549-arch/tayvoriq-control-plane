@@ -88,6 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 lumen-public-preview/apply-xtream-api-recovery-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-xtream-compile-fix.py project-lumen-preview
 
       - name: Verify v13.1.18 safety gates
         shell: bash
@@ -111,6 +112,11 @@ jobs:
           grep -q 'IMPORT-XTREAM-OK' "$MAIN"
           grep -q 'IMPORT-XTREAM-BLOCKED' "$MAIN"
           grep -q 'ProjectLumen/13.1.18 Android' "$MAIN"
+          grep -q 'Integer.toHexString(blockedPlaylistUrl.getHost()' "$MAIN"
+          if grep -q 'shortHash(blockedPlaylistUrl.getHost())' "$MAIN"; then
+            echo 'Unresolved host-id helper detected' >&2
+            exit 1
+          fi
           if grep -q 'Proxy(' "$MAIN"; then
             echo 'Unexpected proxy bypass code detected' >&2
             exit 1
