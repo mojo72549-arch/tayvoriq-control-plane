@@ -99,6 +99,23 @@ jobs:
           grep -q 'versionCode 132400' project-lumen-preview/app/build.gradle
           grep -q "versionName '13.1.14-diagnostics-log-preview'" project-lumen-preview/app/build.gradle
 
+      - name: Package generated diagnostics source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p generated-source
+          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java generated-source/MainActivity.java
+          cp project-lumen-preview/app/build.gradle generated-source/app-build.gradle
+          cp project-lumen-preview/app/src/main/AndroidManifest.xml generated-source/AndroidManifest.xml
+
+      - name: Upload generated diagnostics source
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-14-generated-source
+          path: generated-source/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
