@@ -89,6 +89,12 @@ jobs:
           set -euo pipefail
           python3 lumen-public-preview/apply-xtream-source-api-recovery-fix.py project-lumen-preview
 
+      - name: Apply Source API compile helper fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-xtream-source-api-compile-fix.py project-lumen-preview
+
       - name: Verify v13.1.18 safety and recovery gates
         shell: bash
         run: |
@@ -109,6 +115,15 @@ jobs:
           grep -q 'IMPORT-XTREAM-API-OK' "$MAIN"
           grep -q 'JsonReader' "$MAIN"
           grep -q 'writer.write("#EXTM3U\\n")' "$MAIN"
+          grep -q 'shortHostHash(active.getHost())' "$MAIN"
+          if grep -q 'effectivePort(active)' "$MAIN"; then
+            echo 'Undefined effectivePort helper remains' >&2
+            exit 1
+          fi
+          if grep -q 'hashHost(active.getHost())' "$MAIN"; then
+            echo 'Undefined hashHost helper remains' >&2
+            exit 1
+          fi
           grep -q 'versionCode 132800' project-lumen-preview/app/build.gradle
           grep -q "versionName '13.1.18-source-api-recovery-preview'" project-lumen-preview/app/build.gradle
           if grep -q 'Proxy(' "$MAIN"; then
