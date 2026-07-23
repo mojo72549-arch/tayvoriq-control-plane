@@ -40,6 +40,23 @@ jobs:
           sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
           grep -q 'text("v13.1.9"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
+      - name: Capture transport diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostics
+          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java diagnostics/MainActivity.java
+          grep -RInE 'IMPORT-CONNECT|TLS packet|HttpsURLConnection|HttpURLConnection|openConnection|Location|redirect|https://|http://' project-lumen-preview/app/src/main/java > diagnostics/transport-references.txt || true
+          tar -czf diagnostics/project-lumen-restored-source.tar.gz project-lumen-preview
+
+      - name: Upload transport diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-tls-diagnostics
+          path: diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
