@@ -67,6 +67,7 @@ jobs:
           base64 -d /tmp/apply-diagnostics-log-fix.py.b64 > /tmp/apply-diagnostics-log-fix.py
           echo 'c3edf3920f500f707dab2c0d6370f028e2c5d1aabc823ea14451606c377c948a  /tmp/apply-diagnostics-log-fix.py' | sha256sum -c -
           python3 /tmp/apply-diagnostics-log-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-diagnostics-compile-fix.py project-lumen-preview
 
       - name: Verify transport, list and log safety gates
         shell: bash
@@ -86,6 +87,9 @@ jobs:
           ! grep -q 'visibleChannels()' "$MAIN"
           grep -q 'beginDiagnosticSession(origin, sourceUrl)' "$MAIN"
           grep -q 'MediaStore.Downloads.EXTERNAL_CONTENT_URI' "$MAIN"
+          grep -q 'MediaStore.MediaColumns.DISPLAY_NAME' "$MAIN"
+          grep -q 'import java.io.ByteArrayOutputStream;' "$MAIN"
+          ! grep -q 'BuildConfig.VERSION_NAME' "$MAIN"
           grep -q 'Logdatei teilen' "$MAIN"
           grep -q 'installCrashLogger()' "$MAIN"
           grep -q 'MAX_DIAGNOSTIC_LOG_BYTES' "$MAIN"
@@ -125,7 +129,19 @@ jobs:
 
       - name: Build Android APK
         working-directory: project-lumen-preview
-        run: gradle --no-daemon clean assembleDebug
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build.log
+
+      - name: Upload Android build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-14-build-log
+          path: android-build.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Prepare public downloads
         shell: bash
