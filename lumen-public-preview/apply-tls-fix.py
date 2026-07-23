@@ -14,7 +14,7 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        raise SystemExit("usage: apply_tls_fix.py <project-root>")
+        raise SystemExit("usage: apply_tls_fix_v11.py <project-root>")
 
     root = pathlib.Path(sys.argv[1])
     main_java = root / "app/src/main/java/com/projectlumen/publicpreview/MainActivity.java"
@@ -29,22 +29,20 @@ def main() -> None:
     replacement = r'''    private void downloadAttempt(String sourceUrl, File target, int connectTimeout, int attempt) throws Exception {
         URL original = new URL(sourceUrl);
         URL current = original;
-        boolean recoverableHttpToHttpsRedirectSeen = false;
-        boolean tlsRecoveryUsed = false;
+        boolean httpOrigin = "http".equalsIgnoreCase(original.getProtocol());
+        boolean protocolRecoveryUsed = false;
 
-        for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
+        for (int redirect = 0; redirect <= MAX_REDIRECTS + 2; redirect++) {
             HttpURLConnection connection = (HttpURLConnection) current.openConnection();
             connection.setConnectTimeout(connectTimeout);
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setInstanceFollowRedirects(false);
             connection.setUseCaches(false);
-            connection.setRequestProperty("Accept", "*/*");
+            connection.setRequestProperty("Accept", "application/x-mpegURL, application/vnd.apple.mpegurl, text/plain, */*");
             connection.setRequestProperty("Accept-Encoding", "identity");
             connection.setRequestProperty("Cache-Control", "no-cache");
             connection.setRequestProperty("Connection", "close");
-            connection.setRequestProperty("User-Agent", attempt == 1
-                    ? "ProjectLumen/13.1.10 Android"
-                    : "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36");
+            connection.setRequestProperty("User-Agent", "VLC/3.0.20 LibVLC/3.0.20");
             try {
                 final int status;
                 try {
@@ -55,20 +53,15 @@ def main() -> None:
                             "Der Server hat innerhalb von " + (connectTimeout / 1000) + " Sekunden nicht geantwortet.",
                             true, timeout);
                 } catch (IOException network) {
-                    URL recovery = buildTlsMismatchRecoveryUrl(
-                            original,
-                            current,
-                            recoverableHttpToHttpsRedirectSeen,
-                            tlsRecoveryUsed,
-                            network);
+                    URL recovery = buildHttpOriginRecoveryUrl(original, current, protocolRecoveryUsed, network);
                     if (recovery != null) {
-                        tlsRecoveryUsed = true;
+                        protocolRecoveryUsed = true;
                         current = recovery;
                         runOnUiThread(() -> showDiagnostic(
                                 "Serverprotokoll wird korrigiert",
-                                "Code IMPORT-TLS-RECOVERY\n"
-                                        + "Der Server hat HTTPS angekündigt, liefert auf diesem Port aber unverschlüsseltes HTTP.\n"
-                                        + "Lumen verwendet einmalig wieder die ursprünglich eingegebene HTTP-Verbindung.\n\n"
+                                "Code IMPORT-HTTP-RECOVERY\n"
+                                        + "Die Quelle wurde ausdrücklich mit HTTP eingegeben. Der Server hat zwischendurch fälschlich HTTPS verwendet.\n"
+                                        + "Lumen setzt den Abruf automatisch über HTTP fort.\n\n"
                                         + "Adresse und Zugangsdaten bleiben ausgeblendet.",
                                 false));
                         continue;
@@ -76,7 +69,9 @@ def main() -> None:
                     if (isTlsPlaintextMismatch(network)) {
                         throw new ImportFailure(
                                 "IMPORT-TLS-MISMATCH",
-                                "Der Server meldet HTTPS, liefert auf dem angesprochenen Port jedoch kein TLS. Bitte die ursprüngliche HTTP-Adresse verwenden.",
+                                httpOrigin
+                                        ? "Der Server liefert auf seinem HTTPS-Ziel kein TLS. Der automatische HTTP-Rückweg konnte nicht verwendet werden."
+                                        : "Der HTTPS-Server liefert auf dem angesprochenen Port kein TLS.",
                                 false,
                                 network);
                     }
@@ -88,12 +83,22 @@ def main() -> None:
                     if (location == null || location.isBlank()) {
                         throw new ImportFailure("IMPORT-REDIRECT", "Serverumleitung enthält kein Ziel.", false);
                     }
-                    if (redirect == MAX_REDIRECTS) {
+                    if (redirect >= MAX_REDIRECTS + 1) {
                         throw new ImportFailure("IMPORT-REDIRECT", "Zu viele Serverumleitungen.", false);
                     }
                     URL next = new URL(current, location);
-                    if (isRecoverableHttpToHttpsRedirect(original, current, next)) {
-                        recoverableHttpToHttpsRedirectSeen = true;
+                    URL recoveredRedirect = buildBrokenHttpsRedirectRecoveryUrl(original, next, protocolRecoveryUsed);
+                    if (recoveredRedirect != null) {
+                        protocolRecoveryUsed = true;
+                        current = recoveredRedirect;
+                        runOnUiThread(() -> showDiagnostic(
+                                "Serverumleitung wird korrigiert",
+                                "Code IMPORT-HTTP-REDIRECT-RECOVERY\n"
+                                        + "Die HTTP-Quelle wurde auf ein nicht funktionierendes HTTPS-Ziel umgeleitet.\n"
+                                        + "Lumen behält automatisch das funktionierende HTTP-Protokoll bei.\n\n"
+                                        + "Adresse und Zugangsdaten bleiben ausgeblendet.",
+                                false));
+                        continue;
                     }
                     current = next;
                     continue;
@@ -160,41 +165,48 @@ def main() -> None:
         throw new ImportFailure("IMPORT-REDIRECT", "Zu viele Serverumleitungen.", false);
     }
 
-    private static boolean isRecoverableHttpToHttpsRedirect(URL original, URL from, URL to) {
-        if (!"http".equalsIgnoreCase(original.getProtocol())) return false;
-        if (!"http".equalsIgnoreCase(from.getProtocol())) return false;
-        if (!"https".equalsIgnoreCase(to.getProtocol())) return false;
-        if (!sameHost(original, from) || !sameHost(original, to)) return false;
+    private static URL buildBrokenHttpsRedirectRecoveryUrl(
+            URL original,
+            URL redirected,
+            boolean recoveryAlreadyUsed) throws Exception {
+        if (recoveryAlreadyUsed) return null;
+        if (!"http".equalsIgnoreCase(original.getProtocol())) return null;
+        if (!"https".equalsIgnoreCase(redirected.getProtocol())) return null;
 
-        int originalPort = effectivePort(original);
-        int targetPort = effectivePort(to);
-        return originalPort > 0
-                && targetPort == originalPort
-                && targetPort != 443
-                && to.getPort() != -1;
+        int recoveryPort = redirected.getPort();
+        if (recoveryPort == -1 && sameHost(original, redirected) && original.getPort() != -1) {
+            recoveryPort = original.getPort();
+        }
+        if (recoveryPort <= 0 || recoveryPort == 443) return null;
+
+        return withHttpScheme(redirected, recoveryPort);
     }
 
-    private static URL buildTlsMismatchRecoveryUrl(
+    private static URL buildHttpOriginRecoveryUrl(
             URL original,
             URL current,
-            boolean recoverableRedirectSeen,
             boolean recoveryAlreadyUsed,
             IOException failure) throws Exception {
-        if (!recoverableRedirectSeen || recoveryAlreadyUsed || !isTlsPlaintextMismatch(failure)) return null;
+        if (recoveryAlreadyUsed || !isTlsPlaintextMismatch(failure)) return null;
         if (!"http".equalsIgnoreCase(original.getProtocol())) return null;
         if (!"https".equalsIgnoreCase(current.getProtocol())) return null;
-        if (!sameHost(original, current)) return null;
 
-        int originalPort = effectivePort(original);
-        int currentPort = effectivePort(current);
-        if (originalPort <= 0 || currentPort != originalPort || currentPort == 443 || current.getPort() == -1) return null;
+        int recoveryPort = current.getPort();
+        if (recoveryPort == -1 && sameHost(original, current) && original.getPort() != -1) {
+            recoveryPort = original.getPort();
+        }
+        if (recoveryPort <= 0 || recoveryPort == 443) return null;
 
-        URI uri = current.toURI();
+        return withHttpScheme(current, recoveryPort);
+    }
+
+    private static URL withHttpScheme(URL source, int port) throws Exception {
+        URI uri = source.toURI();
         return new URI(
                 "http",
                 uri.getUserInfo(),
                 uri.getHost(),
-                uri.getPort(),
+                port,
                 uri.getPath(),
                 uri.getQuery(),
                 uri.getFragment()).toURL();
@@ -222,49 +234,46 @@ def main() -> None:
                 && left.getHost().equalsIgnoreCase(right.getHost());
     }
 
-    private static int effectivePort(URL url) {
-        return url.getPort() == -1 ? url.getDefaultPort() : url.getPort();
-    }
-
 '''
 
     text = text[:start] + replacement + text[end:]
-    text = text.replace('text("v13.1.9"', 'text("v13.1.10"')
-    text = text.replace('ProjectLumen/13.1.9 Android', 'ProjectLumen/13.1.10 Android')
+    text = text.replace('text("v13.1.9"', 'text("v13.1.11"')
+    text = text.replace('ProjectLumen/13.1.9 Android', 'ProjectLumen/13.1.11 Android')
     main_java.write_text(text, encoding="utf-8")
 
     gradle_text = gradle.read_text(encoding="utf-8")
-    gradle_text = replace_once(gradle_text, "versionCode 131900", "versionCode 132000", "versionCode")
+    gradle_text = replace_once(gradle_text, "versionCode 131900", "versionCode 132100", "versionCode")
     gradle_text = replace_once(
         gradle_text,
         "versionName '13.1.9-network-recovery-preview'",
-        "versionName '13.1.10-tls-transport-recovery-preview'",
+        "versionName '13.1.11-http-origin-recovery-preview'",
         "versionName",
     )
     gradle.write_text(gradle_text, encoding="utf-8")
 
     strings_text = strings.read_text(encoding="utf-8")
-    strings_text = strings_text.replace("Project Lumen 13.1.8 Preview", "Project Lumen 13.1.10 Preview")
+    strings_text = strings_text.replace("Project Lumen 13.1.8 Preview", "Project Lumen 13.1.11 Preview")
     strings.write_text(strings_text, encoding="utf-8")
 
     if readme.exists():
         readme_text = readme.read_text(encoding="utf-8")
-        readme_text = readme_text.replace("Project Lumen 13.1.9", "Project Lumen 13.1.10")
-        readme_text = readme_text.replace("## v13.1.9", "## v13.1.10")
+        readme_text = readme_text.replace("Project Lumen 13.1.9", "Project Lumen 13.1.11")
+        readme_text = readme_text.replace("## v13.1.9", "## v13.1.11")
         readme.write_text(readme_text, encoding="utf-8")
 
     checks = {
-        "IMPORT-TLS-RECOVERY": "IMPORT-TLS-RECOVERY" in text,
-        "IMPORT-TLS-MISMATCH": "IMPORT-TLS-MISMATCH" in text,
-        "version 13.1.10": 'text("v13.1.10"' in text,
-        "safe port guard": "currentPort == 443" in text,
-        "single recovery guard": "recoveryAlreadyUsed" in text,
+        "HTTP redirect recovery": "IMPORT-HTTP-REDIRECT-RECOVERY" in text,
+        "HTTP TLS recovery": "IMPORT-HTTP-RECOVERY" in text,
+        "VLC media user-agent": 'VLC/3.0.20 LibVLC/3.0.20' in text,
+        "direct HTTPS protected": '!\"http\".equalsIgnoreCase(original.getProtocol())' in text,
+        "port 443 protected": "recoveryPort == 443" in text,
+        "version 13.1.11": 'text("v13.1.11"' in text,
     }
     failed = [name for name, ok in checks.items() if not ok]
     if failed:
         raise SystemExit("patch verification failed: " + ", ".join(failed))
 
-    print("Project Lumen 13.1.10 TLS transport patch applied")
+    print("Project Lumen 13.1.11 HTTP origin recovery patch applied")
     for name in checks:
         print(f"OK: {name}")
 
