@@ -3,9 +3,7 @@ name: Project Lumen Public Preview Build
 on:
   pull_request:
     branches: [ lumen-build-base-13-1-9 ]
-    paths:
-      - 'lumen-public-preview/**'
-      - '.github/workflows/lumen-public-preview.yml'
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
