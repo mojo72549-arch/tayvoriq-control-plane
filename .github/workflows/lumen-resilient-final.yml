@@ -62,11 +62,11 @@ jobs:
               'share_block + "    private void clearDiagnosticLog() {"',
               'share_block')
           text = text.replace(
-              "        '''            showDiagnostic\n                    \"Senderliste ist sichtbar\"",
-              "        r'''            showDiagnostic\n                    \"Senderliste ist sichtbar\"")
+              "        '''            showDiagnostic(\n                    \"Senderliste ist sichtbar\"",
+              "        r'''            showDiagnostic(\n                    \"Senderliste ist sichtbar\"")
           text = text.replace(
-              "        '''            showDiagnostic\n                    partialRecovery ?",
-              "        r'''            showDiagnostic\n                    partialRecovery ?")
+              "        '''            showDiagnostic(\n                    partialRecovery ?",
+              "        r'''            showDiagnostic(\n                    partialRecovery ?")
           text = text.replace(
               "        '''                showDiagnostic(\"Senderliste bereit\"",
               "        r'''                showDiagnostic(\"Senderliste bereit\"")
