@@ -40,22 +40,24 @@ jobs:
           sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
           grep -q 'text("v13.1.9"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
-      - name: Package restored source diagnostics
+      - name: Apply guarded TLS transport recovery
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p diagnostics
-          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java diagnostics/MainActivity.java
-          grep -RInE 'IMPORT-CONNECT|TLS packet|HttpsURLConnection|HttpURLConnection|openConnection|Location|redirect|https://|http://' project-lumen-preview/app/src/main/java > diagnostics/transport-references.txt || true
-          tar -czf diagnostics/project-lumen-restored-source.tar.gz project-lumen-preview
+          python3 lumen-public-preview/apply-tls-fix.py project-lumen-preview
 
-      - name: Upload restored source diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: project-lumen-restored-source
-          path: diagnostics/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Verify TLS recovery safety gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          grep -q 'IMPORT-TLS-RECOVERY' "$MAIN"
+          grep -q 'IMPORT-TLS-MISMATCH' "$MAIN"
+          grep -q 'currentPort == 443' "$MAIN"
+          grep -q 'recoveryAlreadyUsed' "$MAIN"
+          grep -q 'text("v13.1.10"' "$MAIN"
+          grep -q 'versionCode 132000' project-lumen-preview/app/build.gradle
+          grep -q "versionName '13.1.10-tls-transport-recovery-preview'" project-lumen-preview/app/build.gradle
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -94,16 +96,25 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/windows
-          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.9_Public_Preview.apk
+          cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.10_TLS_Recovery.apk
           cp project-lumen-preview/windows/* dist/windows/
           cp project-lumen-preview/README.md dist/
-          sha256sum dist/Project_Lumen_13.1.9_Public_Preview.apk > dist/Project_Lumen_13.1.9_Public_Preview.sha256
+          cat > dist/PATCH_NOTES.txt <<'EOF'
+          Project Lumen 13.1.10 TLS Transport Recovery
+
+          - guarded recovery for HTTP sources redirected to broken HTTPS on the same non-443 port
+          - recovery is allowed only once, only for the same host and same explicit port
+          - direct HTTPS sources and standard port 443 never downgrade
+          - credentials and full source addresses remain hidden in diagnostics
+          - active library remains unchanged when import fails
+          EOF
+          sha256sum dist/Project_Lumen_13.1.10_TLS_Recovery.apk > dist/Project_Lumen_13.1.10_TLS_Recovery.sha256
           (cd dist && zip -r Project_Lumen_Windows_Public_Preview.zip windows >/dev/null)
 
       - name: Upload APK and Windows preview
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-1-9-public-preview
+          name: project-lumen-13-1-10-tls-recovery
           path: dist/
           if-no-files-found: error
           retention-days: 30
