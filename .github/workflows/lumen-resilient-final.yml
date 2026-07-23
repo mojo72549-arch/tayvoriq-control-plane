@@ -1,4 +1,4 @@
-name: Project Lumen 13.1.19 Account Status Build
+name: Project Lumen 13.1.20 Channel Adapter Fix Build
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: project-lumen-13-1-19-account-status-${{ github.event.pull_request.number || github.ref }}
+  group: project-lumen-13-1-20-channel-adapter-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -96,12 +96,18 @@ jobs:
           set -euo pipefail
           python3 lumen-public-preview/apply-account-status-fix.py project-lumen-preview
 
-      - name: Verify v13.1.19 safety gates
+      - name: Apply ChannelAdapter crash fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-channel-adapter-crash-fix.py project-lumen-preview
+
+      - name: Verify v13.1.20 safety gates
         shell: bash
         run: |
           set -euo pipefail
           MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
-          grep -q 'text("v13.1.19"' "$MAIN"
+          grep -q 'text("v13.1.20"' "$MAIN"
           grep -q 'READ_TIMEOUT_MS = 45_000' "$MAIN"
           grep -q 'setRequestProperty("Range"' "$MAIN"
           grep -q 'status == 206' "$MAIN"
@@ -119,9 +125,9 @@ jobs:
           grep -q 'IMPORT-XTREAM-BLOCKED' "$MAIN"
           grep -q 'IMPORT-SUBSCRIPTION-EXPIRED' "$MAIN"
           grep -q 'IMPORT-ACCOUNT-INACTIVE' "$MAIN"
-          grep -q 'Xtream-Zugang abgelaufen' "$MAIN"
-          grep -q 'Status: Expired' "$MAIN"
-          grep -q 'ProjectLumen/13.1.19 Android' "$MAIN"
+          grep -q 'class ChannelAdapter' "$MAIN"
+          grep -q 'android.R.layout.simple_list_item_2, android.R.id.text1' "$MAIN"
+          grep -q 'ProjectLumen/13.1.20 Android' "$MAIN"
           grep -q 'Integer.toHexString(blockedPlaylistUrl.getHost()' "$MAIN"
           if grep -q 'shortHash(blockedPlaylistUrl.getHost())' "$MAIN"; then
             echo 'Unresolved host-id helper detected' >&2
@@ -135,8 +141,8 @@ jobs:
             echo 'Unexpected TLS verifier bypass detected' >&2
             exit 1
           fi
-          grep -q 'versionCode 132900' project-lumen-preview/app/build.gradle
-          grep -q "versionName '13.1.19-account-status-preview'" project-lumen-preview/app/build.gradle
+          grep -q 'versionCode 133000' project-lumen-preview/app/build.gradle
+          grep -q "versionName '13.1.20-channel-adapter-fix-preview'" project-lumen-preview/app/build.gradle
 
       - uses: actions/setup-java@v4
         with:
@@ -157,7 +163,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.19.log
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.20.log
 
       - name: Prepare release and diagnostic files
         if: always()
@@ -166,34 +172,33 @@ jobs:
           set -u
           mkdir -p dist
           if [ -f project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.19_Account_Status.apk
-            sha256sum dist/Project_Lumen_13.1.19_Account_Status.apk > dist/Project_Lumen_13.1.19_Account_Status.sha256
+            cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.20_Channel_Adapter_Fix.apk
+            sha256sum dist/Project_Lumen_13.1.20_Channel_Adapter_Fix.apk > dist/Project_Lumen_13.1.20_Channel_Adapter_Fix.sha256
           fi
           [ -f project-lumen-preview/README.md ] && cp project-lumen-preview/README.md dist/README.md || true
-          [ -f android-build-13.1.19.log ] && cp android-build-13.1.19.log dist/android-build-13.1.19.log || true
+          [ -f android-build-13.1.20.log ] && cp android-build-13.1.20.log dist/android-build-13.1.20.log || true
           cat > dist/PATCH_NOTES.txt <<'EOF'
-          Project Lumen 13.1.19 Account Status Diagnosis
+          Project Lumen 13.1.20 Channel Adapter Crash Fix
 
-          Root cause from log MRXMGC2Y:
-          - HTTPS-to-HTTP recovery succeeds
-          - /get.php returns HTTP 451 with VLC and Android-browser profiles
-          - player_api.php is reachable and returns HTTP 200
-          - credentials are recognized, but user_info.status is Expired
-          - subsequent catalogue requests return HTTP 451 because the provider account is not active
+          Root cause from log MRXXAVHC:
+          - the HTTP source is now reachable and returns HTTP 200
+          - the complete 81,625,800-byte playlist downloads successfully
+          - all 100,000 entries are parsed successfully
+          - the main thread crashes only when ListView asks ChannelAdapter for its first row
+          - the three-argument ArrayAdapter constructor treats simple_list_item_2 itself as a TextView
+          - that layout is actually a TwoLineListItem container, causing ClassCastException
 
           Correction:
-          - stop immediately after the authentication response reports Expired
-          - show IMPORT-SUBSCRIPTION-EXPIRED instead of misclassifying the result as a generic network/provider block
-          - classify Disabled and Banned as IMPORT-ACCOUNT-INACTIVE
-          - do not perform category, live-stream or VOD requests for an inactive account
-          - preserve the previous library and sanitized diagnostics
-          - continue to use only the same provider host, port and credentials; no proxy, VPN, alternate host or TLS bypass
+          - bind ArrayAdapter explicitly to android.R.id.text1 inside simple_list_item_2
+          - retain the existing two-line channel/group row design and ChannelAdapter.getView logic
+          - keep 200-entry paging so the 100,000-entry library remains responsive
+          - preserve all download, HTTP 451, Xtream, account-status, encryption and diagnostic fixes
           EOF
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: project-lumen-13-1-19-account-status
+          name: project-lumen-13-1-20-channel-adapter-fix
           path: dist/
           if-no-files-found: error
           retention-days: 30
