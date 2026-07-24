@@ -1,0 +1,39 @@
+name: Project Lumen R3 Chunk Bundle Diagnostics
+
+on:
+  pull_request:
+    branches: [ lumen-13-1-27-r1-country-media-hubs ]
+    paths:
+      - '.github/workflows/lumen-r3-chunk-diagnostics.yml'
+      - 'lumen-public-preview/patch-13.1.28-r3.chunk*.b64'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact R3 bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostic
+          cat lumen-public-preview/patch-13.1.28-r3.chunk*.b64 > /tmp/r3.b64
+          wc -c lumen-public-preview/patch-13.1.28-r3.chunk*.b64 /tmp/r3.b64 | tee diagnostic/sizes.txt
+          sha256sum lumen-public-preview/patch-13.1.28-r3.chunk*.b64 /tmp/r3.b64 | tee diagnostic/checksums.txt
+          echo 'bd4a2f01bfb11f428e03928715d86a67d86c30ad55e8b6dd259e4c96d662e91c  /tmp/r3.b64' | sha256sum -c -
+          base64 -d /tmp/r3.b64 > /tmp/r3.patch.gz
+          echo 'e006388e85d48513ca4fc36b20b02cf104d454712719ebcc967e087774eb1dc4  /tmp/r3.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/r3.patch.gz > /tmp/r3.patch
+          echo 'fff643584318c2cc46b77d9b414134de9e9d2e5111ddbab48c1171e0725d28d3  /tmp/r3.patch' | sha256sum -c -
+          head -n 20 /tmp/r3.patch > diagnostic/patch-head.txt
+          tail -n 20 /tmp/r3.patch > diagnostic/patch-tail.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-lumen-r3-chunk-bundle-diagnostics
+          path: diagnostic/
+          if-no-files-found: error
+          retention-days: 7
