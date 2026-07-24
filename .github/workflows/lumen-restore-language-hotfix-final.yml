@@ -7,6 +7,7 @@ on:
       - '.github/workflows/lumen-restore-language-hotfix-final.yml'
       - 'lumen-public-preview/patch-13.1.25-fast-catalog-visual-quality.gz.b64'
       - 'lumen-public-preview/patch-13.1.26-restore-language-hotfix.gz.b64'
+      - 'lumen-public-preview/project-lumen-pilot-debug.jks.b64'
       - 'lumen-public-preview/**'
 
 permissions:
@@ -108,7 +109,45 @@ jobs:
           patch --batch --forward -p0 < /tmp/lumen-13.1.26.patch
           sed -i 's/text("v13.1.25"/text("v13.1.26"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
-      - name: Verify restore language and safety gates
+      - name: Configure stable side-by-side pilot signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d lumen-public-preview/project-lumen-pilot-debug.jks.b64 > project-lumen-preview/project-lumen-pilot-debug.jks
+          echo '09d67cdecac40a4e03edcfd09047377ed4a9e9c01c5bc23140e1f15b0b2cbef8  project-lumen-preview/project-lumen-pilot-debug.jks' | sha256sum -c -
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('project-lumen-preview/app/build.gradle')
+          text = path.read_text(encoding='utf-8')
+          old_app = "applicationId 'com.projectlumen.publicpreview.tlsrecovery'"
+          if text.count(old_app) != 1:
+              raise SystemExit('Expected original pilot applicationId exactly once')
+          text = text.replace(old_app, "applicationId 'com.projectlumen.publicpreview.pilotstable'", 1)
+          signing = """    signingConfigs {
+              pilot {
+                  storeFile file('../project-lumen-pilot-debug.jks')
+                  storePassword 'projectlumenpilot'
+                  keyAlias 'lumenPilot'
+                  keyPassword 'projectlumenpilot'
+              }
+          }
+
+          """
+          if text.count('    defaultConfig {') != 1:
+              raise SystemExit('Expected defaultConfig exactly once')
+          text = text.replace('    defaultConfig {', signing + '    defaultConfig {', 1)
+          debug = """        debug {
+              signingConfig signingConfigs.pilot
+              applicationIdSuffix '.debug'"""
+          original_debug = """        debug {
+              applicationIdSuffix '.debug'"""
+          if text.count(original_debug) != 1:
+              raise SystemExit('Expected debug buildType exactly once')
+          text = text.replace(original_debug, debug, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify restore language signing and safety gates
         shell: bash
         run: |
           set -euo pipefail
@@ -127,6 +166,8 @@ jobs:
           grep -q 'languageHubFromOrdinal' "$MAIN"
           grep -q 'RESTORE_HARD_TIMEOUT_MS = 45_000L' "$MAIN"
           grep -q 'safeMessage(Throwable e)' "$MAIN"
+          grep -q "applicationId 'com.projectlumen.publicpreview.pilotstable'" "$GRADLE"
+          grep -q 'signingConfig signingConfigs.pilot' "$GRADLE"
           grep -q 'versionCode 133600' "$GRADLE"
           grep -q "versionName '13.1.26-restore-language-hotfix-preview'" "$GRADLE"
           grep -q 'com.github.bumptech.glide:glide:4.16.0' "$GRADLE"
@@ -157,6 +198,17 @@ jobs:
           set -o pipefail
           gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.26.log
 
+      - name: Verify stable pilot certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+          APKSIGNER="$SDK_ROOT/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee pilot-certificate.txt
+          grep -qi 'Project Lumen Pilot' pilot-certificate.txt
+          grep -qi '25:50:24:15:18:D5:D5:62:D7:5E:E5:E2:71:A4:CF:F5:30:B2:BA:CF:86:D1:8E:EE:56:42:D2:C2:0D:AF:9E:96' pilot-certificate.txt
+
       - name: Prepare release files
         if: always()
         shell: bash
@@ -164,12 +216,19 @@ jobs:
           set -u
           mkdir -p dist
           if [ -f project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.26_Restore_Language_Hotfix.apk
-            sha256sum dist/Project_Lumen_13.1.26_Restore_Language_Hotfix.apk > dist/Project_Lumen_13.1.26_Restore_Language_Hotfix.sha256
+            cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.26_Restore_Language_Hotfix_Stable_Pilot.apk
+            sha256sum dist/Project_Lumen_13.1.26_Restore_Language_Hotfix_Stable_Pilot.apk > dist/Project_Lumen_13.1.26_Restore_Language_Hotfix_Stable_Pilot.sha256
           fi
           [ -f android-build-13.1.26.log ] && cp android-build-13.1.26.log dist/android-build-13.1.26.log || true
+          [ -f pilot-certificate.txt ] && cp pilot-certificate.txt dist/pilot-certificate.txt || true
           cat > dist/PATCH_NOTES.txt <<'EOF'
-          Project Lumen 13.1.26 Restore and Language Hotfix
+          Project Lumen 13.1.26 Restore and Language Hotfix - Stable Pilot
+
+          Installation:
+          - installs side by side with the earlier 13.1.25 debug preview
+          - uses the new stable pilot package and a fixed test-only pilot signing certificate
+          - the playlist must be imported once into this stable pilot app
+          - future stable pilot builds can update this package without another uninstall
 
           Corrected:
           - cold-start restoration always tries the encrypted quick-start catalog first
@@ -182,12 +241,16 @@ jobs:
           - stronger German and Turkish country/language recognition
           - start content scroll is reset to avoid clipped restoration cards
           - Media3 playback, encrypted raw playlist fallback, logos/posters and safe diagnostics remain
+
+          Security scope:
+          - this certificate is for the public pilot/debug package only
+          - production distribution will use a separate private applicationId and release key
           EOF
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: project-lumen-13-1-26-restore-language-hotfix
+          name: project-lumen-13-1-26-restore-language-hotfix-stable-pilot
           path: dist/
           if-no-files-found: error
           retention-days: 30
