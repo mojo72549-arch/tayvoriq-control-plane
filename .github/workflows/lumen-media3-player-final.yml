@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/lumen-media3-player-final.yml'
       - 'lumen-public-preview/apply-media3-player-fix.py'
+      - 'lumen-public-preview/apply-media3-sdk35-compat-fix.py'
       - 'lumen-public-preview/apply-poc-home-persistence-fix.py'
       - 'lumen-public-preview/apply-import-start-watchdog-fix.py'
 
@@ -91,6 +92,7 @@ jobs:
           python3 lumen-public-preview/apply-import-start-watchdog-fix.py project-lumen-preview
           python3 lumen-public-preview/apply-poc-home-persistence-fix.py project-lumen-preview
           python3 lumen-public-preview/apply-media3-player-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-media3-sdk35-compat-fix.py project-lumen-preview
 
       - name: Verify v13.1.23 safety, UX and player gates
         shell: bash
@@ -117,6 +119,7 @@ jobs:
           grep -q 'playbackErrorCategory' "$MAIN"
           grep -q 'describeStreamEndpoint' "$MAIN"
           grep -q 'ProjectLumen/13.1.23 Android' "$MAIN"
+          grep -q 'def media3_version = "1.9.4"' "$GRADLE"
           grep -q 'androidx.media3:media3-exoplayer:' "$GRADLE"
           grep -q 'androidx.media3:media3-exoplayer-hls:' "$GRADLE"
           grep -q 'androidx.media3:media3-exoplayer-dash:' "$GRADLE"
@@ -141,7 +144,7 @@ jobs:
             exit 1
           fi
           if grep -q 'HostnameVerifier' "$MAIN"; then
-            echo 'Unexpected TLS verifier bypass detected' >&2
+            echo 'Unexpected TLS verifier bypass code detected' >&2
             exit 1
           fi
 
@@ -197,6 +200,7 @@ jobs:
           - distinguish HTTP, network, format/container and decoder failures
           - log only scheme, port, hashed host, stream type and file extension
           - never log full stream URLs, usernames or passwords
+          - pin Media3 1.9.4 to the current compileSdk 35 / AGP 8.8.2 build baseline
           - preserve the 13.1.22 POC home, encrypted persistence and import watchdog
           EOF
 
