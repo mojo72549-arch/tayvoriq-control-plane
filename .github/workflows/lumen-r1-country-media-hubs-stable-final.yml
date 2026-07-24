@@ -72,7 +72,7 @@ jobs:
               "        r'''            showDiagnostic(\n                    partialRecovery ?")
           text = text.replace(
               "        '''                showDiagnostic(\"Senderliste bereit\"",
-              "        r'''                showDiagnostic(\n                    \"Senderliste bereit\"")
+              "        r'''                showDiagnostic(\"Senderliste bereit\"")
           text = text.replace(
               "        '''                showDiagnostic(partialRecovery ?",
               "        r'''                showDiagnostic(partialRecovery ?")
