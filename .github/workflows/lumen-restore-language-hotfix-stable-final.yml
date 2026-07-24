@@ -177,9 +177,9 @@ jobs:
             --out "$OUTPUT" \
             "$INPUT"
           "$APKSIGNER" verify --verbose --print-certs "$OUTPUT" | tee pilot-certificate.txt
-          grep -qi 'Project Lumen Pilot' pilot-certificate.txt
-          grep -qi '25:50:24:15:18:D5:D5:62:D7:5E:E5:E2:71:A4:CF:F5:30:B2:BA:CF:86:D1:8E:EE:56:42:D2:C2:0D:AF:9E:96' pilot-certificate.txt
           sha256sum "$OUTPUT" > dist/Project_Lumen_13.1.26_Restore_Language_Hotfix_Stable_Pilot.sha256
+          grep -qi 'Project Lumen Pilot' pilot-certificate.txt
+          grep -qi '2550241518d5d562d75ee5e271a4cff530b2bacf86d18eee5642d2c20daf9e96' pilot-certificate.txt
 
       - name: Prepare release files
         if: always()
