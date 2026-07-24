@@ -5,7 +5,7 @@ on:
     branches: [ lumen-13-1-28-r3-epg-search-favorites ]
     paths:
       - '.github/workflows/lumen-r3-source-export-for-r4.yml'
-      - 'lumen-public-preview/patch-13.1.28-r3.part*.b64'
+      - 'lumen-public-preview/patch-13.1.28-r3.chunk*.b64'
 
 permissions:
   actions: read
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat lumen-public-preview/patch-13.1.28-r3.part*.b64 > /tmp/lumen-13.1.28-r3.b64
+          cat lumen-public-preview/patch-13.1.28-r3.chunk*.b64 > /tmp/lumen-13.1.28-r3.b64
           base64 -d /tmp/lumen-13.1.28-r3.b64 > /tmp/lumen-13.1.28-r3.patch.gz
           gzip -dc /tmp/lumen-13.1.28-r3.patch.gz > /tmp/lumen-13.1.28-r3.patch
           sha256sum /tmp/lumen-13.1.28-r3.b64 /tmp/lumen-13.1.28-r3.patch.gz /tmp/lumen-13.1.28-r3.patch
