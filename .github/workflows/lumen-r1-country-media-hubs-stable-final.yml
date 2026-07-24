@@ -5,7 +5,7 @@ on:
     branches: [ lumen-build-base-13-1-9 ]
     paths:
       - '.github/workflows/lumen-r1-country-media-hubs-stable-final.yml'
-      - 'lumen-public-preview/patch-13.1.27-r1-country-media-hubs.gz.b64'
+      - 'lumen-public-preview/patch-13.1.27-r1.part*.b64'
       - 'lumen-public-preview/project-lumen-pilot-debug.jks.b64'
       - 'lumen-public-preview/**'
 
@@ -112,7 +112,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 -d lumen-public-preview/patch-13.1.27-r1-country-media-hubs.gz.b64 > /tmp/lumen-13.1.27.patch.gz
+          cat lumen-public-preview/patch-13.1.27-r1.part*.b64 > /tmp/lumen-13.1.27.b64
+          echo 'f3d26bf9a3dc1786bb4fc61ea168d3c1df463e91e84286f0878c9dafc78883bd  /tmp/lumen-13.1.27.b64' | sha256sum -c -
+          base64 -d /tmp/lumen-13.1.27.b64 > /tmp/lumen-13.1.27.patch.gz
           echo 'd90e015d46da708a368cc17843f8459fc60756f20cfe68970f3e733ab4538822  /tmp/lumen-13.1.27.patch.gz' | sha256sum -c -
           gzip -dc /tmp/lumen-13.1.27.patch.gz > /tmp/lumen-13.1.27.patch
           patch --batch --forward -p0 < /tmp/lumen-13.1.27.patch
