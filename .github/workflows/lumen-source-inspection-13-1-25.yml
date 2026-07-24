@@ -1,0 +1,117 @@
+name: Project Lumen 13.1.25 Source Inspection
+
+on:
+  pull_request:
+    branches: [ lumen-build-base-13-1-9 ]
+    paths:
+      - '.github/workflows/lumen-source-inspection-13-1-25.yml'
+      - 'lumen-public-preview/patch-13.1.25-fast-catalog-visual-quality.gz.b64'
+      - 'lumen-public-preview/**'
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Project Lumen through v13.1.15
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat lumen-public-preview/source.part*.b64 > /tmp/source.b64
+          base64 -d /tmp/source.b64 > /tmp/source.tar.gz
+          echo 'aa80a6708425dae0f5e93f8dd7d172895978f779fbf77aba9533a66141b1b28b  /tmp/source.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/source.tar.gz
+
+          cat lumen-public-preview/patch-13.1.9.part*.b64 > /tmp/patch.b64
+          base64 -d /tmp/patch.b64 > /tmp/patch.tar.gz
+          echo 'fe9380cd06760fa19e8d4bfeb1d7ee85d6752cf43e14e97e923d6cbc63d56106  /tmp/patch.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/patch.tar.gz
+
+          sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          python3 lumen-public-preview/apply-tls-fix.py project-lumen-preview
+          sed -i "s/applicationId 'com.projectlumen.publicpreview'/applicationId 'com.projectlumen.publicpreview.tlsrecovery'/" project-lumen-preview/app/build.gradle
+          python3 lumen-public-preview/apply-list-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-nonstandard-port-fix.py project-lumen-preview
+
+          cat lumen-public-preview/diagnostics-log.part*.b64 > /tmp/diagnostics.b64
+          base64 -d /tmp/diagnostics.b64 > /tmp/diagnostics.py
+          echo 'c3edf3920f500f707dab2c0d6370f028e2c5d1aabc823ea14451606c377c948a  /tmp/diagnostics.py' | sha256sum -c -
+          python3 /tmp/diagnostics.py project-lumen-preview
+          python3 lumen-public-preview/apply-diagnostics-compile-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-log-share-text-fix.py project-lumen-preview
+
+      - name: Correct and apply resilient download patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lumen-public-preview/apply-resilient-download-fix.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'download_block + "    private static URL buildBrokenHttpsRedirectRecoveryUrl("',
+              'download_block')
+          text = text.replace(
+              'share_block + "    private void clearDiagnosticLog() {"',
+              'share_block')
+          text = text.replace(
+              "        '''            showDiagnostic(\n                    \"Senderliste ist sichtbar\"",
+              "        r'''            showDiagnostic(\n                    \"Senderliste ist sichtbar\"")
+          text = text.replace(
+              "        '''            showDiagnostic(\n                    partialRecovery ?",
+              "        r'''            showDiagnostic(\n                    partialRecovery ?")
+          text = text.replace(
+              "        '''                showDiagnostic(\"Senderliste bereit\"",
+              "        r'''                showDiagnostic(\"Senderliste bereit\"")
+          text = text.replace(
+              "        '''                showDiagnostic(partialRecovery ?",
+              "        r'''                showDiagnostic(partialRecovery ?")
+          path.write_text(text, encoding='utf-8')
+          PY
+          python3 lumen-public-preview/apply-resilient-download-fix.py project-lumen-preview
+
+      - name: Apply transport, persistence, Media3 and premium UI fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-http451-recovery-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-xtream-api-recovery-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-xtream-compile-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-account-status-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-channel-adapter-crash-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-import-start-watchdog-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-poc-home-persistence-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-media3-player-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-media3-sdk35-compat-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-premium-ui-language-hubs-fix.py project-lumen-preview
+
+      - name: Apply v13.1.25 performance and visual patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d lumen-public-preview/patch-13.1.25-fast-catalog-visual-quality.gz.b64 > /tmp/lumen-13.1.25.patch.gz
+          gzip -dc /tmp/lumen-13.1.25.patch.gz > /tmp/lumen-13.1.25.patch
+          patch --batch --forward -p0 < /tmp/lumen-13.1.25.patch
+
+      - name: Package generated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p generated-source
+          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java generated-source/MainActivity.java
+          cp project-lumen-preview/app/build.gradle generated-source/app-build.gradle
+          cp project-lumen-preview/app/src/main/AndroidManifest.xml generated-source/AndroidManifest.xml
+          cp project-lumen-preview/app/src/main/res/values/strings.xml generated-source/strings.xml
+          grep -nE 'restoreActiveSource|readEncryptedCatalog|writeEncryptedCatalog|RESTORE-CATALOG|CATALOG-MIGRATION|LanguageHub|renderStart|buildHomeSnapshot|activeSnapshot|class Channel' generated-source/MainActivity.java > generated-source/restore-language-references.txt || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-25-generated-source
+          path: generated-source/
+          if-no-files-found: error
+          retention-days: 7

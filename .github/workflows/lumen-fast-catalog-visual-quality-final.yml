@@ -1,0 +1,206 @@
+name: Project Lumen 13.1.25 Fast Catalog and Visual Quality Build
+
+on:
+  pull_request:
+    branches: [ lumen-build-base-13-1-9 ]
+    paths:
+      - '.github/workflows/lumen-fast-catalog-visual-quality-final.yml'
+      - 'lumen-public-preview/patch-13.1.25-fast-catalog-visual-quality.gz.b64'
+      - 'lumen-public-preview/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-lumen-13-1-25-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Project Lumen through v13.1.15
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat lumen-public-preview/source.part*.b64 > /tmp/source.b64
+          base64 -d /tmp/source.b64 > /tmp/source.tar.gz
+          echo 'aa80a6708425dae0f5e93f8dd7d172895978f779fbf77aba9533a66141b1b28b  /tmp/source.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/source.tar.gz
+
+          cat lumen-public-preview/patch-13.1.9.part*.b64 > /tmp/patch.b64
+          base64 -d /tmp/patch.b64 > /tmp/patch.tar.gz
+          echo 'fe9380cd06760fa19e8d4bfeb1d7ee85d6752cf43e14e97e923d6cbc63d56106  /tmp/patch.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/patch.tar.gz
+
+          sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          python3 lumen-public-preview/apply-tls-fix.py project-lumen-preview
+          sed -i "s/applicationId 'com.projectlumen.publicpreview'/applicationId 'com.projectlumen.publicpreview.tlsrecovery'/" project-lumen-preview/app/build.gradle
+          python3 lumen-public-preview/apply-list-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-nonstandard-port-fix.py project-lumen-preview
+
+          cat lumen-public-preview/diagnostics-log.part*.b64 > /tmp/diagnostics.b64
+          base64 -d /tmp/diagnostics.b64 > /tmp/diagnostics.py
+          echo 'c3edf3920f500f707dab2c0d6370f028e2c5d1aabc823ea14451606c377c948a  /tmp/diagnostics.py' | sha256sum -c -
+          python3 /tmp/diagnostics.py project-lumen-preview
+          python3 lumen-public-preview/apply-diagnostics-compile-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-log-share-text-fix.py project-lumen-preview
+
+      - name: Correct and apply resilient download patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lumen-public-preview/apply-resilient-download-fix.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'download_block + "    private static URL buildBrokenHttpsRedirectRecoveryUrl("',
+              'download_block')
+          text = text.replace(
+              'share_block + "    private void clearDiagnosticLog() {"',
+              'share_block')
+          text = text.replace(
+              "        '''            showDiagnostic(\n                    \"Senderliste ist sichtbar\"",
+              "        r'''            showDiagnostic(\n                    \"Senderliste ist sichtbar\"")
+          text = text.replace(
+              "        '''            showDiagnostic(\n                    partialRecovery ?",
+              "        r'''            showDiagnostic(\n                    partialRecovery ?")
+          text = text.replace(
+              "        '''                showDiagnostic(\"Senderliste bereit\"",
+              "        r'''                showDiagnostic(\"Senderliste bereit\"")
+          text = text.replace(
+              "        '''                showDiagnostic(partialRecovery ?",
+              "        r'''                showDiagnostic(partialRecovery ?")
+          path.write_text(text, encoding='utf-8')
+          PY
+          python3 lumen-public-preview/apply-resilient-download-fix.py project-lumen-preview
+
+      - name: Apply transport, persistence, Media3 and premium UI fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-http451-recovery-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-xtream-api-recovery-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-xtream-compile-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-account-status-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-channel-adapter-crash-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-import-start-watchdog-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-poc-home-persistence-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-media3-player-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-media3-sdk35-compat-fix.py project-lumen-preview
+          python3 lumen-public-preview/apply-premium-ui-language-hubs-fix.py project-lumen-preview
+
+      - name: Apply v13.1.25 performance and visual patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d lumen-public-preview/patch-13.1.25-fast-catalog-visual-quality.gz.b64 > /tmp/lumen-13.1.25.patch.gz
+          gzip -dc /tmp/lumen-13.1.25.patch.gz > /tmp/lumen-13.1.25.patch
+          patch --batch --forward -p0 < /tmp/lumen-13.1.25.patch
+
+      - name: Verify v13.1.25 performance, visuals and safety gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          GRADLE=project-lumen-preview/app/build.gradle
+          grep -q 'text("v13.1.25"' "$MAIN"
+          grep -q 'Parser=FAST-1PASS' "$MAIN"
+          grep -q 'attribute(line, lower, "tvg-logo")' "$MAIN"
+          grep -q 'private volatile List<Channel> activeSnapshot' "$MAIN"
+          grep -q 'Code=RESTORE-CATALOG-OK' "$MAIN"
+          grep -q 'Code=CATALOG-WRITE-OK' "$MAIN"
+          grep -q 'GZIPOutputStream' "$MAIN"
+          grep -q 'Glide.with(this)' "$MAIN"
+          grep -q 'DiskCacheStrategy.AUTOMATIC' "$MAIN"
+          grep -q 'attachPremiumFocus' "$MAIN"
+          grep -q 'final MediaSection section' "$MAIN"
+          grep -q 'final LanguageHub hub' "$MAIN"
+          grep -q 'private PlayerView playerView' "$MAIN"
+          grep -q 'PLAY-MEDIA3-' "$MAIN"
+          grep -q 'Code=RESTORE-OK' "$MAIN"
+          grep -q 'IMPORT-WORKER-START-TIMEOUT' "$MAIN"
+          grep -q 'DOWNLOAD_PROGRESS_STEP_BYTES = 8L' "$MAIN"
+          grep -q 'versionCode 133500' "$GRADLE"
+          grep -q "versionName '13.1.25-fast-catalog-visual-quality-preview'" "$GRADLE"
+          grep -q 'com.github.bumptech.glide:glide:4.16.0' "$GRADLE"
+          if grep -q 'replaceAll("\[\^a-z0-9\]+"' "$MAIN"; then
+            echo 'Slow regex language normalization remains' >&2
+            exit 1
+          fi
+          if grep -q 'Proxy(' "$MAIN"; then
+            echo 'Unexpected proxy bypass code detected' >&2
+            exit 1
+          fi
+          if grep -q 'HostnameVerifier' "$MAIN"; then
+            echo 'Unexpected TLS verifier bypass detected' >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build Android APK
+        working-directory: project-lumen-preview
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.25.log
+
+      - name: Prepare release files
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          mkdir -p dist
+          if [ -f project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk dist/Project_Lumen_13.1.25_Fast_Catalog_Visual_Quality.apk
+            sha256sum dist/Project_Lumen_13.1.25_Fast_Catalog_Visual_Quality.apk > dist/Project_Lumen_13.1.25_Fast_Catalog_Visual_Quality.sha256
+          fi
+          [ -f project-lumen-preview/README.md ] && cp project-lumen-preview/README.md dist/README.md || true
+          [ -f android-build-13.1.25.log ] && cp android-build-13.1.25.log dist/android-build-13.1.25.log || true
+          cat > dist/PATCH_NOTES.txt <<'EOF'
+          Project Lumen 13.1.25 Fast Catalog and Visual Quality
+
+          Performance diagnosis from real device log MRYUU2E7:
+          - server response latency: about 17 seconds
+          - 81.6 MB mobile download: about 33 seconds
+          - application parsing plus premium-home preparation: almost 11 seconds
+
+          Improvements:
+          - one-pass M3U metadata parser with one lowercase conversion per EXTINF row
+          - manual language normalization without per-channel regular expressions
+          - media type, language hub and search text computed once per channel
+          - zero-copy immutable UI snapshots instead of copying 100,000 entries on every render
+          - compact GZIP-compressed AES-GCM encrypted quick-start catalog
+          - later app starts prefer RESTORE-CATALOG-OK and avoid decrypting/reparsing the 81 MB raw M3U
+          - first launch after upgrading from 13.1.24 performs a one-time catalog migration
+          - download progress updates every 8 MB to reduce UI/log churn
+          - real tvg-logo/poster artwork via Glide with memory/disk caching and crossfade
+          - portrait cards for films/series, wide logo cards for live TV
+          - remote-focus scale/elevation animation
+          - Media3 player, encrypted raw source fallback and diagnostics remain intact
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-lumen-13-1-25-fast-catalog-visual-quality
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
