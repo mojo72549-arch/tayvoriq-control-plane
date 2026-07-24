@@ -2,9 +2,9 @@ package com.projectlumen.publicpreview;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.ViewGroup;
 import android.widget.*;
 import java.text.DateFormat;
 import java.util.Date;
@@ -38,13 +38,16 @@ public final class ActivationActivity extends Activity {
         purchase.setOnClickListener(v -> BillingGateway.forPilot(this).startYearlyPurchase((success, code, token) ->
                 Toast.makeText(this, "Store-Konfiguration ausstehend. Code " + code, Toast.LENGTH_LONG).show()));
         root.addView(purchase, margin(0, 10, 0, 0));
-        if (BuildConfig.DEBUG) {
+        if (isDebuggable()) {
             Button importToken = button("Test-Entitlement importieren");
             importToken.setOnClickListener(v -> importToken()); root.addView(importToken, margin(0, 10, 0, 0));
         }
         root.addView(text("Produktionsgrenze: Ein Store-Kauf darf erst nach serverseitiger Prüfung des Store-Belegs ein kurzlebiges, signiertes Entitlement erzeugen. Der Backend-Vertrag akzeptiert keine Playlistdateien, Stream-URLs oder EPG-Daten.",
                 14, MUTED, false), margin(0, 22, 0, 0));
         setContentView(scroll); restore.requestFocus();
+    }
+    private boolean isDebuggable() {
+        return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
     }
     private void importToken() {
         EditText field = new EditText(this); field.setHint("Signiertes Entitlement-Token"); field.setMinLines(4);
