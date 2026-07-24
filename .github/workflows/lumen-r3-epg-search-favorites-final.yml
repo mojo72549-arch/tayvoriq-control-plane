@@ -1,0 +1,164 @@
+name: Project Lumen 13.1.28 R3 Final Stable Build
+
+on:
+  pull_request:
+    branches: [ lumen-13-1-27-r1-country-media-hubs ]
+    paths:
+      - '.github/workflows/lumen-r3-epg-search-favorites-final.yml'
+      - 'lumen-public-preview/patch-13.1.28-r3.chunk*.b64'
+      - 'lumen-public-preview/project-lumen-pilot-debug.jks.b64'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: project-lumen-13-1-28-r3-final-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore verified 13.1.27 R1 generated source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api -H 'Accept: application/vnd.github+json' \
+            /repos/${{ github.repository }}/actions/artifacts/8604202966/zip > /tmp/r1-source.zip
+          unzip -q /tmp/r1-source.zip -d /tmp/r1-source
+          echo 'e24b476fd13ab8b67b5a6144dbff45ab721203a2bb74080217e50ee5358fdfb5  /tmp/r1-source/project-lumen-13.1.27-r1-generated-source.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/r1-source/project-lumen-13.1.27-r1-generated-source.tar.gz
+          test -f project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          grep -q 'text("v13.1.27"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+
+      - name: Apply verified 13.1.28 R3 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat lumen-public-preview/patch-13.1.28-r3.chunk*.b64 > /tmp/lumen-13.1.28.b64
+          echo 'bd4a2f01bfb11f428e03928715d86a67d86c30ad55e8b6dd259e4c96d662e91c  /tmp/lumen-13.1.28.b64' | sha256sum -c -
+          base64 -d /tmp/lumen-13.1.28.b64 > /tmp/lumen-13.1.28.patch.gz
+          echo 'e006388e85d48513ca4fc36b20b02cf104d454712719ebcc967e087774eb1dc4  /tmp/lumen-13.1.28.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/lumen-13.1.28.patch.gz > /tmp/lumen-13.1.28.patch
+          echo 'fff643584318c2cc46b77d9b414134de9e9d2e5111ddbab48c1171e0725d28d3  /tmp/lumen-13.1.28.patch' | sha256sum -c -
+          patch --batch --forward -p1 < /tmp/lumen-13.1.28.patch
+
+      - name: Verify R3 functional and security gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          EPG=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/EpgStore.java
+          GRADLE=project-lumen-preview/app/build.gradle
+
+          grep -q 'text("v13.1.28"' "$MAIN"
+          grep -q 'CATALOG_VERSION = 4' "$MAIN"
+          grep -q 'CATALOG_VERSION_R1 = 3' "$MAIN"
+          grep -q 'Screen { START, MEDIA, EPG, SEARCH, FAVORITES' "$MAIN"
+          grep -q 'REQUEST_EPG_FILE = 4103' "$MAIN"
+          grep -q 'EpgStore.Snapshot' "$MAIN"
+          grep -q 'Code=EPG-R3-OK' "$MAIN"
+          grep -q 'Code=FAVORITE-R3-OK' "$MAIN"
+          grep -q 'globalSearchPage' "$MAIN"
+          grep -q 'XMLTV-Link' "$MAIN"
+          grep -q 'versionCode 133800' "$GRADLE"
+          grep -q "versionName '13.1.28-r3-epg-search-favorites-preview'" "$GRADLE"
+          test -f "$EPG"
+          grep -q 'FEATURE_SECURE_PROCESSING' "$EPG"
+          grep -q 'MAX_PROGRAMS = 500_000' "$EPG"
+
+          if grep -q 'HostnameVerifier' "$MAIN"; then
+            echo 'Unexpected TLS verifier bypass detected' >&2
+            exit 1
+          fi
+          if grep -q 'Proxy(' "$MAIN"; then
+            echo 'Unexpected proxy bypass code detected' >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build Android APK
+        working-directory: project-lumen-preview
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.28.log
+
+      - name: Sign and verify with stable pilot certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d lumen-public-preview/project-lumen-pilot-debug.jks.b64 > /tmp/project-lumen-pilot-debug.jks
+          echo '09d67cdecac40a4e03edcfd09047377ed4a9e9c01c5bc23140e1f15b0b2cbef8  /tmp/project-lumen-pilot-debug.jks' | sha256sum -c -
+          mkdir -p dist
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+          APKSIGNER="$SDK_ROOT/build-tools/35.0.0/apksigner"
+          INPUT=project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk
+          OUTPUT=dist/Project_Lumen_13.1.28_R3_EPG_Search_Favorites_Stable_Pilot.apk
+          "$APKSIGNER" sign \
+            --ks /tmp/project-lumen-pilot-debug.jks \
+            --ks-key-alias lumenPilot \
+            --ks-pass pass:projectlumenpilot \
+            --key-pass pass:projectlumenpilot \
+            --out "$OUTPUT" \
+            "$INPUT"
+          "$APKSIGNER" verify --verbose --print-certs "$OUTPUT" | tee pilot-certificate.txt
+          sha256sum "$OUTPUT" > dist/Project_Lumen_13.1.28_R3_EPG_Search_Favorites_Stable_Pilot.sha256
+          grep -qi 'Project Lumen Pilot' pilot-certificate.txt
+          grep -qi '2550241518d5d562d75ee5e271a4cff530b2bacf86d18eee5642d2c20daf9e96' pilot-certificate.txt
+
+      - name: Prepare release files
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          mkdir -p dist
+          [ -f android-build-13.1.28.log ] && cp android-build-13.1.28.log dist/android-build-13.1.28.log || true
+          [ -f pilot-certificate.txt ] && cp pilot-certificate.txt dist/pilot-certificate.txt || true
+          cat > dist/PATCH_NOTES.txt <<'EOF'
+          Project Lumen 13.1.28 R3 EPG Search and Favorites - Stable Pilot
+
+          Delivered:
+          - XMLTV import from local file or URL
+          - secure streaming XML parser with size and programme limits
+          - channel mapping by tvg-id, XMLTV id and display name
+          - Now/Next and programme time navigation
+          - separately AES-GCM encrypted last-working EPG store
+          - local global search across Live-TV, Films and Series
+          - language/country and media search filters
+          - persistent favorites across restart and update
+          - catalog v4 with tvg-id and v1-v3 compatibility
+          - missing EPG does not block playback
+
+          Acceptance boundary:
+          - technical R3 implementation on the R1 baseline
+          - R2 premium content flow acceptance remains separate
+          - Gates C and D remain open until Samsung and TV/D-pad tests pass
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-lumen-13-1-28-r3-final-stable-signed
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
