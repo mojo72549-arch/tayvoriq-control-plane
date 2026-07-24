@@ -40,7 +40,17 @@ jobs:
           base64 -d /tmp/lumen-13.1.28-r3.b64 > /tmp/lumen-13.1.28-r3.patch.gz
           gzip -dc /tmp/lumen-13.1.28-r3.patch.gz > /tmp/lumen-13.1.28-r3.patch
           sha256sum /tmp/lumen-13.1.28-r3.b64 /tmp/lumen-13.1.28-r3.patch.gz /tmp/lumen-13.1.28-r3.patch
-          patch --batch --forward -p1 < /tmp/lumen-13.1.28-r3.patch
+          if patch --dry-run --batch --forward -p0 < /tmp/lumen-13.1.28-r3.patch >/tmp/patch-p0.log 2>&1; then
+            cat /tmp/patch-p0.log
+            patch --batch --forward -p0 < /tmp/lumen-13.1.28-r3.patch
+          elif patch --dry-run --batch --forward -p1 < /tmp/lumen-13.1.28-r3.patch >/tmp/patch-p1.log 2>&1; then
+            cat /tmp/patch-p1.log
+            patch --batch --forward -p1 < /tmp/lumen-13.1.28-r3.patch
+          else
+            cat /tmp/patch-p0.log >&2 || true
+            cat /tmp/patch-p1.log >&2 || true
+            exit 1
+          fi
           grep -q 'text("v13.1.28"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
           grep -q 'CATALOG_VERSION = 4' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
 
