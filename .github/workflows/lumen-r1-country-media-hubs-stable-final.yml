@@ -72,7 +72,7 @@ jobs:
               "        r'''            showDiagnostic(\n                    partialRecovery ?")
           text = text.replace(
               "        '''                showDiagnostic(\"Senderliste bereit\"",
-              "        r'''                showDiagnostic(\"Senderliste bereit\"")
+              "        r'''                showDiagnostic(\n                    \"Senderliste bereit\"")
           text = text.replace(
               "        '''                showDiagnostic(partialRecovery ?",
               "        r'''                showDiagnostic(partialRecovery ?")
@@ -113,7 +113,7 @@ jobs:
         run: |
           set -euo pipefail
           cat lumen-public-preview/patch-13.1.27-r1.part*.b64 > /tmp/lumen-13.1.27.b64
-          echo 'f3d26bf9a3dc1786bb4fc61ea168d3c1df463e91e84286f0878c9dafc78883bd  /tmp/lumen-13.1.27.b64' | sha256sum -c -
+          echo 'a06f08bc585e9276d890068b87354ec755b763d7e995ccbdcfb4b7cb214f6cae  /tmp/lumen-13.1.27.b64' | sha256sum -c -
           base64 -d /tmp/lumen-13.1.27.b64 > /tmp/lumen-13.1.27.patch.gz
           echo 'd90e015d46da708a368cc17843f8459fc60756f20cfe68970f3e733ab4538822  /tmp/lumen-13.1.27.patch.gz' | sha256sum -c -
           gzip -dc /tmp/lumen-13.1.27.patch.gz > /tmp/lumen-13.1.27.patch
