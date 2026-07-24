@@ -60,6 +60,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Persist active delivery run
+        continue-on-error: true
         run: |
           set -euo pipefail
           mkdir -p .github/run-now
@@ -71,6 +72,7 @@ jobs:
           git add .github/run-now/latest-delivery-run.json
           if ! git diff --cached --quiet; then
             git commit -m "ops: record active TAYVORIQ delivery run"
+            git pull --rebase origin main
             git push origin main
           fi
 
@@ -142,6 +144,26 @@ jobs:
           set -euo pipefail
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+
+      - name: Verify active voice router is not silent fallback
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import tayvoriq_dual_platform_render_v23_entry as entry
+          fn = entry.renderer_v28.v2.engine.synthesize_voice
+          closure = [cell.cell_contents for cell in (fn.__closure__ or ())]
+          assert entry.tts_router_v27.synthesize_voice in closure, (
+              "V28 post-audio gate is not wrapping the Chatterbox/Edge router"
+          )
+          print({
+              "voice_router_binding": "passed",
+              "outer_gate": fn.__name__,
+              "premium": "chatterbox_multilingual_v3",
+              "fallback": "edge_tts",
+              "silent_fallback": False,
+          })
+          PY
 
       - name: Produce and strictly audit one current video
         id: production
@@ -255,4 +277,4 @@ jobs:
           echo "::error title=TAYVORIQ delivery incomplete::Final state ${FINAL_STATE}. No incomplete video was sent."
           exit 1
 
-# delivery nonce: 2026-07-24T11:18:00+02:00
+# delivery nonce: 2026-07-24T11:42:00+02:00
