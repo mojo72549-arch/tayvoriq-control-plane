@@ -1,0 +1,36 @@
+name: Project Lumen R3 Patch Export for R4
+
+on:
+  pull_request:
+    branches: [ lumen-13-1-28-r3-epg-search-favorites ]
+    paths:
+      - '.github/workflows/lumen-r3-patch-export-for-r4.yml'
+      - 'lumen-public-preview/patch-13.1.28-r3.part*.b64'
+
+permissions:
+  contents: read
+
+jobs:
+  export-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct R3 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat lumen-public-preview/patch-13.1.28-r3.part*.b64 > project-lumen-13.1.28-r3.b64
+          base64 -d project-lumen-13.1.28-r3.b64 > project-lumen-13.1.28-r3.patch.gz
+          gzip -dc project-lumen-13.1.28-r3.patch.gz > project-lumen-13.1.28-r3.patch
+          sha256sum project-lumen-13.1.28-r3.b64 project-lumen-13.1.28-r3.patch.gz project-lumen-13.1.28-r3.patch > project-lumen-13.1.28-r3.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-28-r3-patch-export
+          path: |
+            project-lumen-13.1.28-r3.b64
+            project-lumen-13.1.28-r3.patch.gz
+            project-lumen-13.1.28-r3.patch
+            project-lumen-13.1.28-r3.sha256
+          if-no-files-found: error
+          retention-days: 7
