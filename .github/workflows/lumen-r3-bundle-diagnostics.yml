@@ -1,0 +1,38 @@
+name: Project Lumen R3 Patch Bundle Diagnostics
+
+on:
+  pull_request:
+    branches: [ lumen-13-1-27-r1-country-media-hubs ]
+    paths:
+      - '.github/workflows/lumen-r3-bundle-diagnostics.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect R3 bundle
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p diagnostic
+          cat lumen-public-preview/patch-13.1.28-r3.part*.b64 > /tmp/r3.b64
+          wc -c lumen-public-preview/patch-13.1.28-r3.part*.b64 /tmp/r3.b64 | tee diagnostic/sizes.txt
+          sha256sum lumen-public-preview/patch-13.1.28-r3.part*.b64 /tmp/r3.b64 | tee diagnostic/checksums.txt
+          base64 -d /tmp/r3.b64 > /tmp/r3.patch.gz
+          sha256sum /tmp/r3.patch.gz | tee -a diagnostic/checksums.txt
+          gzip -t /tmp/r3.patch.gz
+          gzip -dc /tmp/r3.patch.gz > /tmp/r3.patch
+          sha256sum /tmp/r3.patch | tee -a diagnostic/checksums.txt
+          head -n 20 /tmp/r3.patch > diagnostic/patch-head.txt
+          tail -n 20 /tmp/r3.patch > diagnostic/patch-tail.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: project-lumen-r3-patch-bundle-diagnostics
+          path: diagnostic/
+          if-no-files-found: error
+          retention-days: 7
