@@ -1,8 +1,8 @@
 TAYVORIQ full production trigger
-run_nonce=2026-07-23T09:18:00+02:00
-reason=run-after-process-tree-kill-chatterbox-pcm-and-strict-audit-resume
+run_nonce=2026-07-24T10:05:00+02:00
+reason=preflight-import-order-isolation-fixed-run-v27-quality-first
 telegram=final-only
 voice=chatterbox-premium-first-edge-only-strict-fallback
-runtime=bounded-production-plus-audit-resume
+runtime=single-shared-master-render-plus-audit-resume
 quality_gates=unchanged-and-explicit-v2
-implementation_head=f198fc89dd096c8ce5782fd8e07bb8c2e83a9023
+implementation_head=2e1a5a415a879032b91e03d5a52bbc3e22b69d87
