@@ -9,7 +9,7 @@ on:
       - .github/workflows/tayvoriq-deliver-video-now.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: tayvoriq-final-video-delivery
@@ -58,6 +58,21 @@ jobs:
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+
+      - name: Persist active delivery run
+        run: |
+          set -euo pipefail
+          mkdir -p .github/run-now
+          printf '{"run_id":%s,"status":"in_progress","url":"https://github.com/%s/actions/runs/%s","started_at":"%s","workflow":"TAYVORIQ Deliver Video Now"}\n' \
+            "$GITHUB_RUN_ID" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > .github/run-now/latest-delivery-run.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/run-now/latest-delivery-run.json
+          if ! git diff --cached --quiet; then
+            git commit -m "ops: record active TAYVORIQ delivery run"
+            git push origin main
+          fi
 
       - name: Validate required secrets
         shell: bash
@@ -212,7 +227,7 @@ jobs:
           TELEGRAM_OUTCOME: ${{ steps.telegram_final.outcome }}
         run: |
           set -euo pipefail
-          python -c 'import json,pathlib,os,subprocess; s=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); j=pathlib.Path(s["job_dir"]); vids=[j/"short_youtube.mp4",j/"short_tiktok.mp4"]; assert all(v.is_file() and v.stat().st_size>100000 for v in vids); assert os.environ["PUBLICATION_GATE_OUTCOME"]=="success"; assert os.environ["PUBLISH_OUTCOME"]=="success"; assert os.environ["TELEGRAM_OUTCOME"]=="success"; print({"definition_of_done":"passed","job_dir":str(j),"videos":[str(v) for v in vids]})'
+          python -c 'import json,pathlib,os; s=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); j=pathlib.Path(s["job_dir"]); vids=[j/"short_youtube.mp4",j/"short_tiktok.mp4"]; assert all(v.is_file() and v.stat().st_size>100000 for v in vids); assert os.environ["PUBLICATION_GATE_OUTCOME"]=="success"; assert os.environ["PUBLISH_OUTCOME"]=="success"; assert os.environ["TELEGRAM_OUTCOME"]=="success"; print({"definition_of_done":"passed","job_dir":str(j),"videos":[str(v) for v in vids]})'
 
       - name: Collect diagnostics
         if: always()
@@ -240,4 +255,4 @@ jobs:
           echo "::error title=TAYVORIQ delivery incomplete::Final state ${FINAL_STATE}. No incomplete video was sent."
           exit 1
 
-# delivery nonce: 2026-07-24T11:05:00+02:00
+# delivery nonce: 2026-07-24T11:18:00+02:00
