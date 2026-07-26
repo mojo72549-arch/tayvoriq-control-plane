@@ -1,0 +1,34 @@
+name: TAYVORIQ FREE RUN NOW
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".automation/tayvoriq-run-now.json"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: tayvoriq-free-run-now
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch one complete Golden Path production
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run "TAYVORIQ Golden Path" \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f mode=full \
+            -f trend_scope=auto_scope \
+            -f topic=''
+          echo "One full TAYVORIQ production was dispatched on the public control plane." >> "$GITHUB_STEP_SUMMARY"

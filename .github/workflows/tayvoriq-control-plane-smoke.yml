@@ -2,12 +2,17 @@ name: TAYVORIQ Control Plane Smoke
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-control-plane-smoke.yml"
+      - ".automation/tayvoriq-free-runner-smoke.md"
 
 permissions:
   contents: read
 
 concurrency:
-  group: tayvoriq-control-plane-smoke
+  group: tayvoriq-control-plane-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -25,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$PRIVATE_REPO_TOKEN" ]; then
-            echo "Missing required secret: PRIVATE_REPO_TOKEN" >&2
+            echo "::error title=Missing secret::PRIVATE_REPO_TOKEN is not configured in the public control-plane repository"
             exit 2
           fi
 
@@ -61,11 +66,18 @@ jobs:
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
-      - name: Upload diagnostics
+      - name: Publish compact result to workflow summary
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tayvoriq-control-plane-smoke-${{ github.run_id }}
-          path: implementation/out/control-plane/**
-          if-no-files-found: warn
-          retention-days: 30
+        working-directory: implementation
+        run: |
+          {
+            echo "## TAYVORIQ free-runner smoke"
+            echo
+            if [ -f out/control-plane/preflight.json ]; then
+              echo '```json'
+              cat out/control-plane/preflight.json
+              echo '```'
+            else
+              echo "Preflight report was not created. Inspect the failed step above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
