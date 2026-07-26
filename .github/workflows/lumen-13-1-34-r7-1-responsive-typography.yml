@@ -41,7 +41,7 @@ jobs:
             echo 'R3 inline source parts:'
             wc -c lumen-public-preview/r3-source-inline.part*.b64
           } | tee dist/source-restore-diagnostics.txt
-          cat lumen-public-preview/r3-source-inline.part*.b64 > /tmp/r3-source.zip.b64
+          cat lumen-public-preview/r3-source-inline.part*.b64 | tr -d '[:space:]' > /tmp/r3-source.zip.b64
           wc -c /tmp/r3-source.zip.b64 | tee -a dist/source-restore-diagnostics.txt
           base64 -d /tmp/r3-source.zip.b64 > /tmp/r3-source.zip
           sha256sum /tmp/r3-source.zip | tee -a dist/source-restore-diagnostics.txt
