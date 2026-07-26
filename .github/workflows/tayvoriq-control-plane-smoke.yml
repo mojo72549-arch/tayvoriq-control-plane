@@ -17,7 +17,7 @@ concurrency:
 
 env:
   PYTHONUTF8: "1"
-  PYTHONPATH: ${{ github.workspace }}/implementation
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
 
 jobs:
   smoke:
@@ -34,11 +34,11 @@ jobs:
             exit 2
           fi
 
-      - name: Checkout private implementation
+      - name: Checkout private implementation fix
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: feature/multi-platform-distribution-package
+          ref: fix/source-grounded-wildfire-compiler
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
@@ -63,16 +63,23 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out/control-plane
-          python -m compileall -q tools src
+          python -m compileall -q tools src tests/test_tayvoriq_wildfire_source_grounding.py
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+
+      - name: Validate source-grounded wildfire compiler
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/test_tayvoriq_wildfire_source_grounding.py
 
       - name: Publish compact result to workflow summary
         if: always()
         working-directory: implementation
         run: |
           {
-            echo "## TAYVORIQ free-runner smoke"
+            echo "## TAYVORIQ source-grounding smoke"
             echo
+            echo "Private ref: fix/source-grounded-wildfire-compiler"
             if [ -f out/control-plane/preflight.json ]; then
               echo '```json'
               cat out/control-plane/preflight.json
