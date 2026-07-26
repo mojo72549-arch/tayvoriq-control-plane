@@ -37,12 +37,21 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist /tmp/r3-source
+          PARTS=(
+            lumen-public-preview/r3-source-inline.part00.b64
+            lumen-public-preview/r3-source-inline.part01a.b64
+            lumen-public-preview/r3-source-inline.part01b.b64
+            lumen-public-preview/r3-source-inline.part01c.b64
+            lumen-public-preview/r3-source-inline.part02.b64
+            lumen-public-preview/r3-source-inline.part03.b64
+          )
           {
-            echo 'R3 inline source parts:'
-            wc -c lumen-public-preview/r3-source-inline.part*.b64
+            echo 'R3 exact inline source parts:'
+            wc -c "${PARTS[@]}"
           } | tee dist/source-restore-diagnostics.txt
-          cat lumen-public-preview/r3-source-inline.part*.b64 | tr -d '[:space:]' > /tmp/r3-source.zip.b64
+          cat "${PARTS[@]}" | tr -d '[:space:]' > /tmp/r3-source.zip.b64
           wc -c /tmp/r3-source.zip.b64 | tee -a dist/source-restore-diagnostics.txt
+          test "$(stat -c %s /tmp/r3-source.zip.b64)" = "71468"
           base64 -d /tmp/r3-source.zip.b64 > /tmp/r3-source.zip
           sha256sum /tmp/r3-source.zip | tee -a dist/source-restore-diagnostics.txt
           test "$(stat -c %s /tmp/r3-source.zip)" = "53600"
