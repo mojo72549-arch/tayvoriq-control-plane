@@ -3,7 +3,7 @@ name: TAYVORIQ Artifact Cleanup
 on:
   workflow_dispatch:
   schedule:
-    - cron: "20 2 * * *"
+    - cron: "20 */6 * * *"
   push:
     branches:
       - main
@@ -23,12 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Delete workflow artifacts older than two days
+      - name: Delete workflow artifacts older than twelve hours
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          cutoff=$(date -u -d '2 days ago' +%s)
+          cutoff=$(date -u -d '12 hours ago' +%s)
           deleted=0
 
           while IFS=$'\t' read -r artifact_id created_at artifact_name; do
