@@ -1,0 +1,76 @@
+name: TAYVORIQ Daily Orchestrator
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "45 5 * * *"
+    - cron: "45 6 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tayvoriq-daily-orchestrator.yml
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: tayvoriq-daily-orchestrator
+  cancel-in-progress: true
+
+jobs:
+  dispatch-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve Europe/Berlin production slot
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          event_name = os.environ.get("EVENT_NAME", "")
+          event_schedule = os.environ.get("EVENT_SCHEDULE", "")
+          now = datetime.now(ZoneInfo("Europe/Berlin"))
+
+          if event_name in {"workflow_dispatch", "push"}:
+              should_run = True
+              reason = f"explicit trigger: {event_name}"
+          else:
+              offset_hours = int(now.utcoffset().total_seconds() // 3600)
+              expected = "45 5 * * *" if offset_hours == 2 else "45 6 * * *"
+              should_run = event_schedule == expected
+              reason = (
+                  f"Berlin={now.isoformat()} offset={offset_hours:+d} "
+                  f"received={event_schedule!r} expected={expected!r}"
+              )
+
+          output = os.environ["GITHUB_OUTPUT"]
+          with open(output, "a", encoding="utf-8") as handle:
+              handle.write(f"should_run={'true' if should_run else 'false'}\n")
+              handle.write(f"reason={reason}\n")
+
+          print({"should_run": should_run, "reason": reason})
+          PY
+
+      - name: Start one complete TAYVORIQ production
+        if: steps.gate.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-deliver-video-now.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main
+          echo "Production workflow dispatched."
+
+      - name: Record skipped daylight-saving slot
+        if: steps.gate.outputs.should_run != 'true'
+        run: echo "Skipped duplicate UTC schedule slot — ${{ steps.gate.outputs.reason }}"
