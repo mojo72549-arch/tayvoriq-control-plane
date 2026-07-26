@@ -36,11 +36,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p dist /tmp/r3-source
+          {
+            echo 'R3 inline source parts:'
+            wc -c lumen-public-preview/r3-source-inline.part*.b64
+          } | tee dist/source-restore-diagnostics.txt
           cat lumen-public-preview/r3-source-inline.part*.b64 > /tmp/r3-source.zip.b64
+          wc -c /tmp/r3-source.zip.b64 | tee -a dist/source-restore-diagnostics.txt
           base64 -d /tmp/r3-source.zip.b64 > /tmp/r3-source.zip
+          sha256sum /tmp/r3-source.zip | tee -a dist/source-restore-diagnostics.txt
+          test "$(stat -c %s /tmp/r3-source.zip)" = "53600"
           echo '91f6a52769ed967c0a2f68ce14567fecaacc7580510465587022898f801e3e2e  /tmp/r3-source.zip' | sha256sum -c -
-          mkdir -p /tmp/r3-source
+          unzip -t /tmp/r3-source.zip | tee -a dist/source-restore-diagnostics.txt
           unzip -q /tmp/r3-source.zip -d /tmp/r3-source
+          sha256sum /tmp/r3-source/project-lumen-13.1.28-r3-generated-source.tar.gz | tee -a dist/source-restore-diagnostics.txt
           echo 'b49069866878a95d97ab19d5c6e8e66f8302a15c6beb83de25c8348e34af7c92  /tmp/r3-source/project-lumen-13.1.28-r3-generated-source.tar.gz' | sha256sum -c -
           tar -xzf /tmp/r3-source/project-lumen-13.1.28-r3-generated-source.tar.gz
           grep -q 'text("v13.1.28"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
