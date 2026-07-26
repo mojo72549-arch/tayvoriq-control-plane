@@ -1,0 +1,50 @@
+name: TAYVORIQ Artifact Cleanup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 2 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tayvoriq-artifact-cleanup.yml
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: tayvoriq-artifact-cleanup
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete workflow artifacts older than two days
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '2 days ago' +%s)
+          deleted=0
+
+          while IFS=$'\t' read -r artifact_id created_at artifact_name; do
+            [ -n "$artifact_id" ] || continue
+            created_epoch=$(date -u -d "$created_at" +%s)
+            if [ "$created_epoch" -lt "$cutoff" ]; then
+              echo "Deleting artifact ${artifact_name} (${artifact_id}) created ${created_at}"
+              gh api \
+                --method DELETE \
+                "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+              deleted=$((deleted + 1))
+            fi
+          done < <(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+              --jq '.artifacts[] | [.id, .created_at, .name] | @tsv'
+          )
+
+          echo "Deleted ${deleted} expired artifact(s)."
