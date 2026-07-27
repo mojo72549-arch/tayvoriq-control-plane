@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'relay/lumen-build-relay.tar.xz.b64.part*'
+      - 'relay/rebuild-*'
       - '.github/workflows/lumen-android-relay.yml'
 
 permissions:
@@ -59,10 +60,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apksigner verify --verbose --print-certs dist/Project_Lumen_v13.1.37_P0_Robust.apk | tee dist/apk-signature.txt
-          aapt dump badging dist/Project_Lumen_v13.1.37_P0_Robust.apk | tee dist/apk-badging.txt
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs dist/Project_Lumen_v13.1.37_P0_Robust.apk 2>&1 | tee dist/apk-signature.txt
+          "$BUILD_TOOLS/aapt" dump badging dist/Project_Lumen_v13.1.37_P0_Robust.apk 2>&1 | tee dist/apk-badging.txt
           grep -q "package: name='com.projectlumen.pilot.robust'" dist/apk-badging.txt
           grep -q "versionName='13.1.37-p0-robust.1'" dist/apk-badging.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" dist/apk-signature.txt
 
       - name: Upload APK and build evidence
         if: always()
