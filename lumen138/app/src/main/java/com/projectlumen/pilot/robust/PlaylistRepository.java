@@ -23,11 +23,9 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
 
 final class PlaylistRepository {
     interface Progress { void update(String stage, String detail); }
@@ -40,6 +38,7 @@ final class PlaylistRepository {
     private static final long DOWNLOAD_REPORT_BYTES = 4L * 1024L * 1024L;
     private static final long DOWNLOAD_REPORT_INTERVAL_MS = 1_500L;
     private static final String KEY_ALIAS = "lumen_playlist_key_v1";
+    private static final String PREF_BLOCKED_CANDIDATE_BYTES = "blocked_candidate_bytes";
 
     private final File current;
     private final File backup;
@@ -64,29 +63,52 @@ final class PlaylistRepository {
 
     List<Channel> restore(Progress progress) throws Exception {
         if (hasRecoverableCandidate()) {
-            progress.update("RESTORE-CANDIDATE-FOUND",
-                    "Vollständig geladener Import gefunden. Schnelle Prüfung und Indexaufbau laufen.");
-            try {
-                long started = SystemClock.elapsedRealtime();
-                List<Channel> recovered = parseEncrypted(temp, progress, "RESTORE-CANDIDATE-PARSE");
-                if (recovered.isEmpty()) {
-                    throw new IllegalArgumentException(
-                            "Die wiederhergestellte Playlist enthält keine unterstützten Einträge.");
+            if (legacyRecoveryRequiresReimport()) {
+                progress.update("RESTORE-CANDIDATE-REIMPORT-REQUIRED",
+                        "Dieser Altimport wurde auf dem Gerät bereits sicher beendet. "
+                                + "Bitte den Playlist-Link einmal neu laden.");
+                if (!current.exists()) {
+                    throw new IllegalStateException(
+                            "Der alte 13.1.38-Import kann auf diesem Samsung nicht zuverlässig "
+                                    + "entschlüsselt werden. Bitte über + Quelle den Playlist-Link "
+                                    + "einmal neu laden; 13.1.41 verarbeitet ihn anschließend in einem Durchlauf.");
                 }
-                writeCandidateCache(recovered, progress);
-                commitCandidate();
-                String pendingName = prefs.getString(
-                        "pending_source_name", "Wiederhergestellte Playlist");
-                long pendingBytes = prefs.getLong("pending_source_bytes", 0L);
-                saveActiveMetadata(pendingName, pendingBytes, recovered.size());
-                clearPendingMetadata();
-                progress.update("RESTORE-CANDIDATE-COMMIT",
-                        "entries=" + recovered.size() + " durationMs="
-                                + (SystemClock.elapsedRealtime() - started));
-                return recovered;
-            } catch (Exception candidateFailure) {
-                progress.update("RESTORE-CANDIDATE-ERROR", safeMessage(candidateFailure));
-                if (!current.exists()) throw candidateFailure;
+            } else {
+                progress.update("RESTORE-CANDIDATE-FOUND",
+                        "Vollständig geladener Altimport gefunden. Blockmigration und Indexaufbau starten.");
+                try {
+                    long started = SystemClock.elapsedRealtime();
+                    List<Channel> recovered = parseEncrypted(
+                            temp, progress, "RESTORE-CANDIDATE-PARSE");
+                    if (recovered.isEmpty()) {
+                        throw new IllegalArgumentException(
+                                "Die wiederhergestellte Playlist enthält keine unterstützten Einträge.");
+                    }
+                    writeCandidateCache(recovered, progress);
+                    commitCandidate();
+                    String pendingName = prefs.getString(
+                            "pending_source_name", "Wiederhergestellte Playlist");
+                    long pendingBytes = prefs.getLong("pending_source_bytes", 0L);
+                    saveActiveMetadata(pendingName, pendingBytes, recovered.size());
+                    clearPendingMetadata();
+                    clearCandidateBlock();
+                    progress.update("RESTORE-CANDIDATE-COMMIT",
+                            "entries=" + recovered.size() + " durationMs="
+                                    + (SystemClock.elapsedRealtime() - started));
+                    return recovered;
+                } catch (Exception candidateFailure) {
+                    markCandidateBlocked();
+                    progress.update("RESTORE-CANDIDATE-ERROR",
+                            safeMessage(candidateFailure)
+                                    + " · weiterer automatischer Endlosversuch wurde gesperrt");
+                    if (!current.exists()) {
+                        throw new IllegalStateException(
+                                safeMessage(candidateFailure)
+                                        + " Bitte den Playlist-Link einmal neu laden; "
+                                        + "die neue Ein-Durchlauf-Verarbeitung umgeht diesen Altpfad.",
+                                candidateFailure);
+                    }
+                }
             }
         }
 
@@ -109,9 +131,10 @@ final class PlaylistRepository {
         }
 
         progress.update("RESTORE-DECRYPT-START",
-                "Einmaliger Indexaufbau aus der verschlüsselten Bibliothek.");
+                "Einmaliger blockweiser Indexaufbau aus der verschlüsselten Bibliothek.");
         try {
-            List<Channel> channels = parseEncrypted(current, progress, "RESTORE-PARSE-PROGRESS");
+            List<Channel> channels = parseEncrypted(
+                    current, progress, "RESTORE-PARSE-PROGRESS");
             activateRebuiltCache(channels, progress);
             progress.update("CATALOG-READY", "entries=" + channels.size());
             return channels;
@@ -123,7 +146,8 @@ final class PlaylistRepository {
             if (CatalogCache.usable(cacheBackup)) {
                 channels = CatalogCache.read(cacheBackup);
             } else {
-                channels = parseEncrypted(backup, progress, "RESTORE-BACKUP-PROGRESS");
+                channels = parseEncrypted(
+                        backup, progress, "RESTORE-BACKUP-PROGRESS");
             }
             copyFile(backup, current);
             activateRebuiltCache(channels, progress);
@@ -143,7 +167,7 @@ final class PlaylistRepository {
         connection.setConnectTimeout(20_000);
         connection.setReadTimeout(60_000);
         connection.setInstanceFollowRedirects(true);
-        connection.setRequestProperty("User-Agent", "ProjectLumen/13.1.40");
+        connection.setRequestProperty("User-Agent", "ProjectLumen/13.1.41");
         connection.setRequestProperty("Accept", "*/*");
         try {
             progress.update("IMPORT-CONNECT", "Verbindung wird aufgebaut.");
@@ -153,7 +177,8 @@ final class PlaylistRepository {
             }
             long declared = connection.getContentLengthLong();
             progress.update("IMPORT-DOWNLOAD", declared > 0
-                    ? "Gesamtgröße " + declared + " Bytes · Download und Indexaufbau laufen parallel."
+                    ? "Gesamtgröße " + declared
+                            + " Bytes · Download und Indexaufbau laufen parallel."
                     : "Download und Indexaufbau laufen parallel.");
             try (InputStream input = new BufferedInputStream(
                     connection.getInputStream(), 1024 * 1024)) {
@@ -168,8 +193,11 @@ final class PlaylistRepository {
                             Progress progress) throws Exception {
         rememberPendingName(name);
         try (InputStream input = resolver.openInputStream(uri)) {
-            if (input == null) throw new IllegalArgumentException("Datei konnte nicht geöffnet werden.");
-            return importStream(name, new BufferedInputStream(input, 1024 * 1024), progress);
+            if (input == null) {
+                throw new IllegalArgumentException("Datei konnte nicht geöffnet werden.");
+            }
+            return importStream(name,
+                    new BufferedInputStream(input, 1024 * 1024), progress);
         }
     }
 
@@ -179,6 +207,11 @@ final class PlaylistRepository {
 
     boolean hasRecoverableCandidate() {
         return temp.exists() && temp.length() > 32;
+    }
+
+    boolean legacyRecoveryRequiresReimport() {
+        return hasRecoverableCandidate()
+                && prefs.getLong(PREF_BLOCKED_CANDIDATE_BYTES, -1L) == temp.length();
     }
 
     private List<Channel> importStream(String name, InputStream input,
@@ -193,13 +226,16 @@ final class PlaylistRepository {
                     securedInput, MAX_ENTRIES, IMPORT_STREAM_TIMEOUT_MS,
                     (lines, entries, elapsedMs, limitReached) -> progress.update(
                             "IMPORT-INDEX-PROGRESS",
-                            "Zeilen=" + lines + " · Einträge=" + entries + " · Dauer="
-                                    + elapsedMs + " ms"
-                                    + (limitReached ? " · Limit erreicht; Integrität wird abgeschlossen" : "")));
+                            "Zeilen=" + lines + " · Einträge=" + entries
+                                    + " · Dauer=" + elapsedMs + " ms"
+                                    + (limitReached
+                                    ? " · Limit erreicht; Integrität wird abgeschlossen"
+                                    : "")));
 
             if (!securedInput.reachedEof()) {
                 throw new IllegalStateException("Playlist wurde nicht vollständig empfangen.");
             }
+            securedInput.finishEncryption();
             long bytes = securedInput.totalBytes();
             prefs.edit().putLong("pending_source_bytes", bytes).apply();
             if (channels.isEmpty()) {
@@ -211,12 +247,16 @@ final class PlaylistRepository {
             commitCandidate();
             saveActiveMetadata(name, bytes, channels.size());
             clearPendingMetadata();
+            clearCandidateBlock();
             progress.update("IMPORT-DONE",
-                    "entries=" + channels.size() + " bytes=" + bytes + " onePass=true");
+                    "entries=" + channels.size() + " bytes=" + bytes
+                            + " onePass=true cache=true");
             return channels;
         } catch (Exception failure) {
-            boolean fullyReceived = securedInput != null && securedInput.reachedEof();
-            if (!fullyReceived) {
+            boolean complete = securedInput != null
+                    && securedInput.reachedEof()
+                    && securedInput.encryptionFinalized();
+            if (!complete) {
                 deleteCandidateFiles();
                 clearPendingMetadata();
             } else {
@@ -224,7 +264,7 @@ final class PlaylistRepository {
                 prefs.edit().putLong("pending_source_bytes",
                         securedInput.totalBytes()).apply();
                 progress.update("IMPORT-PAUSED",
-                        "Download ist vollständig. Kandidat bleibt für die schnelle Fortsetzung gespeichert.");
+                        "Download ist vollständig. Kandidat bleibt für die Fortsetzung gespeichert.");
             }
             throw failure;
         } finally {
@@ -234,9 +274,11 @@ final class PlaylistRepository {
         }
     }
 
-    private void writeCandidateCache(List<Channel> channels, Progress progress) throws Exception {
+    private void writeCandidateCache(List<Channel> channels,
+                                     Progress progress) throws Exception {
         if (cacheTemp.exists() && !cacheTemp.delete()) {
-            throw new IllegalStateException("Alter Kandidatenindex konnte nicht ersetzt werden.");
+            throw new IllegalStateException(
+                    "Alter Kandidatenindex konnte nicht ersetzt werden.");
         }
         long started = SystemClock.elapsedRealtime();
         progress.update("IMPORT-CACHE-WRITE-START",
@@ -247,17 +289,20 @@ final class PlaylistRepository {
                         + (SystemClock.elapsedRealtime() - started));
     }
 
-    private void activateRebuiltCache(List<Channel> channels, Progress progress) throws Exception {
+    private void activateRebuiltCache(List<Channel> channels,
+                                      Progress progress) throws Exception {
         if (cacheTemp.exists()) cacheTemp.delete();
         long started = SystemClock.elapsedRealtime();
         CatalogCache.write(cacheTemp, channels);
         if (cacheCurrent.exists() && !cacheCurrent.delete()) {
             cacheTemp.delete();
-            throw new IllegalStateException("Alter Schnellindex konnte nicht ersetzt werden.");
+            throw new IllegalStateException(
+                    "Alter Schnellindex konnte nicht ersetzt werden.");
         }
         if (!cacheTemp.renameTo(cacheCurrent)) {
             cacheTemp.delete();
-            throw new IllegalStateException("Neuer Schnellindex konnte nicht aktiviert werden.");
+            throw new IllegalStateException(
+                    "Neuer Schnellindex konnte nicht aktiviert werden.");
         }
         progress.update("RESTORE-CACHE-BUILT",
                 "entries=" + channels.size() + " durationMs="
@@ -267,43 +312,25 @@ final class PlaylistRepository {
     private List<Channel> parseEncrypted(File file, Progress progress,
                                          String progressStage) throws Exception {
         long encryptedBytes = file.length();
-        try (InputStream input = decrypt(file)) {
-            List<Channel> parsed = M3uParser.parse(
-                    input, MAX_ENTRIES, RESTORE_PARSE_TIMEOUT_MS,
-                    (lines, entries, elapsedMs, limitReached) -> progress.update(
-                            progressStage,
-                            "Zeilen=" + lines + " · Einträge=" + entries + " · Dauer="
-                                    + elapsedMs + " ms"
-                                    + (limitReached ? " · Limit erreicht; Integrität wird geprüft" : "")));
-            return Collections.unmodifiableList(parsed);
+        File clearTemp = new File(file.getParentFile(),
+                file.getName() + ".recovery.tmp");
+        try {
+            return LegacyCandidateMigrator.migrate(
+                    file,
+                    clearTemp,
+                    key(),
+                    MAX_ENTRIES,
+                    RESTORE_PARSE_TIMEOUT_MS,
+                    (stage, detail) -> progress.update(
+                            progressStage + "-" + stage, detail));
         } catch (Exception failure) {
             progress.update(progressStage + "-ERROR",
-                    "encryptedBytes=" + encryptedBytes + " · " + safeMessage(failure));
+                    "encryptedBytes=" + encryptedBytes + " · "
+                            + safeMessage(failure));
             throw failure;
+        } finally {
+            if (clearTemp.exists()) clearTemp.delete();
         }
-    }
-
-    private InputStream decrypt(File file) throws Exception {
-        FileInputStream raw = new FileInputStream(file);
-        int ivLength = raw.read();
-        if (ivLength < 12 || ivLength > 32) {
-            raw.close();
-            throw new IllegalStateException("Verschlüsselte Bibliothek ist beschädigt.");
-        }
-        byte[] iv = new byte[ivLength];
-        int offset = 0;
-        while (offset < ivLength) {
-            int count = raw.read(iv, offset, ivLength - offset);
-            if (count < 0) break;
-            offset += count;
-        }
-        if (offset != ivLength) {
-            raw.close();
-            throw new IllegalStateException("Verschlüsselte Bibliothek ist unvollständig.");
-        }
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, iv));
-        return new CipherInputStream(new BufferedInputStream(raw, 1024 * 1024), cipher);
     }
 
     private SecretKey key() throws Exception {
@@ -324,8 +351,10 @@ final class PlaylistRepository {
     }
 
     private void commitCandidate() throws Exception {
-        deleteRequired(backup, "Alte Playlist-Sicherung konnte nicht ersetzt werden.");
-        deleteRequired(cacheBackup, "Alter Index-Backup konnte nicht ersetzt werden.");
+        deleteRequired(backup,
+                "Alte Playlist-Sicherung konnte nicht ersetzt werden.");
+        deleteRequired(cacheBackup,
+                "Alter Index-Backup konnte nicht ersetzt werden.");
 
         boolean previousPlaylistMoved = false;
         boolean previousCacheMoved = false;
@@ -347,12 +376,14 @@ final class PlaylistRepository {
 
         if (!temp.renameTo(current)) {
             restorePrevious(previousPlaylistMoved, previousCacheMoved);
-            throw new IllegalStateException("Neue Bibliothek konnte nicht aktiviert werden.");
+            throw new IllegalStateException(
+                    "Neue Bibliothek konnte nicht aktiviert werden.");
         }
         if (!cacheTemp.renameTo(cacheCurrent)) {
             current.renameTo(temp);
             restorePrevious(previousPlaylistMoved, previousCacheMoved);
-            throw new IllegalStateException("Neuer Schnellindex konnte nicht aktiviert werden.");
+            throw new IllegalStateException(
+                    "Neuer Schnellindex konnte nicht aktiviert werden.");
         }
     }
 
@@ -387,13 +418,34 @@ final class PlaylistRepository {
                 .apply();
     }
 
-    private void deleteCandidateFiles() throws Exception {
-        deleteRequired(temp, "Alte Kandidatendatei konnte nicht ersetzt werden.");
-        deleteRequired(cacheTemp, "Alter Kandidatenindex konnte nicht ersetzt werden.");
+    private void markCandidateBlocked() {
+        if (temp.exists()) {
+            prefs.edit()
+                    .putLong(PREF_BLOCKED_CANDIDATE_BYTES, temp.length())
+                    .apply();
+        }
     }
 
-    private static void deleteRequired(File file, String message) throws Exception {
-        if (file.exists() && !file.delete()) throw new IllegalStateException(message);
+    private void clearCandidateBlock() {
+        prefs.edit().remove(PREF_BLOCKED_CANDIDATE_BYTES).apply();
+    }
+
+    private void deleteCandidateFiles() throws Exception {
+        deleteRequired(temp,
+                "Alte Kandidatendatei konnte nicht ersetzt werden.");
+        deleteRequired(cacheTemp,
+                "Alter Kandidatenindex konnte nicht ersetzt werden.");
+        clearCandidateBlock();
+        File clearTemp = new File(temp.getParentFile(),
+                temp.getName() + ".recovery.tmp");
+        if (clearTemp.exists()) clearTemp.delete();
+    }
+
+    private static void deleteRequired(File file, String message)
+            throws Exception {
+        if (file.exists() && !file.delete()) {
+            throw new IllegalStateException(message);
+        }
     }
 
     private static void copyFile(File source, File target) throws Exception {
@@ -412,7 +464,8 @@ final class PlaylistRepository {
     private static String safeName(String value) {
         String result = value == null ? "" : value.trim();
         if (result.isBlank()) result = "Meine Quelle";
-        return result.replaceAll("[\\r\\n\\t]", " ").replaceAll("\\s{2,}", " ");
+        return result.replaceAll("[\\r\\n\\t]", " ")
+                .replaceAll("\\s{2,}", " ");
     }
 
     private static String safeMessage(Throwable failure) {
@@ -431,16 +484,19 @@ final class PlaylistRepository {
         private long reportedBytes;
         private long lastReportAt;
         private boolean eof;
+        private boolean encryptionFinalized;
         private boolean closed;
 
-        EncryptingInputStream(InputStream source, Progress progress) throws Exception {
+        EncryptingInputStream(InputStream source, Progress progress)
+                throws Exception {
             super(source);
             this.progress = progress;
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, key());
             byte[] iv = cipher.getIV();
             FileOutputStream file = new FileOutputStream(temp);
-            BufferedOutputStream raw = new BufferedOutputStream(file, 1024 * 1024);
+            BufferedOutputStream raw = new BufferedOutputStream(
+                    file, 1024 * 1024);
             raw.write(iv.length);
             raw.write(iv);
             encryptedOutput = new CipherOutputStream(raw, cipher);
@@ -460,7 +516,8 @@ final class PlaylistRepository {
         }
 
         @Override
-        public int read(byte[] buffer, int offset, int length) throws IOException {
+        public int read(byte[] buffer, int offset, int length)
+                throws IOException {
             int count = super.read(buffer, offset, length);
             if (count < 0) {
                 eof = true;
@@ -475,7 +532,8 @@ final class PlaylistRepository {
         private void record(int count) throws IOException {
             total += count;
             if (total > MAX_BYTES) {
-                throw new IOException("Playlist überschreitet das sichere Limit von 256 MB.");
+                throw new IOException(
+                        "Playlist überschreitet das sichere Limit von 256 MB.");
             }
             long now = SystemClock.elapsedRealtime();
             if (total - reportedBytes >= DOWNLOAD_REPORT_BYTES
@@ -483,22 +541,32 @@ final class PlaylistRepository {
                 reportedBytes = total;
                 lastReportAt = now;
                 progress.update("IMPORT-DOWNLOAD",
-                        "Empfangen, verschlüsselt und indexiert: " + total + " Bytes.");
+                        "Empfangen, verschlüsselt und indexiert: "
+                                + total + " Bytes.");
             }
+        }
+
+        void finishEncryption() throws IOException {
+            if (encryptionFinalized) return;
+            encryptedOutput.close();
+            encryptionFinalized = true;
         }
 
         long totalBytes() { return total; }
         boolean reachedEof() { return eof; }
+        boolean encryptionFinalized() { return encryptionFinalized; }
 
         @Override
         public void close() throws IOException {
             if (closed) return;
             closed = true;
             IOException failure = null;
-            try {
-                encryptedOutput.close();
-            } catch (IOException closeFailure) {
-                failure = closeFailure;
+            if (!encryptionFinalized) {
+                try {
+                    finishEncryption();
+                } catch (IOException closeFailure) {
+                    failure = closeFailure;
+                }
             }
             try {
                 super.close();
