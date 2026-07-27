@@ -1,0 +1,452 @@
+name: TAYVORIQ Golden Path
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Zuerst quality_gate_only, danach full"
+        required: true
+        default: "quality_gate_only"
+        type: choice
+        options:
+          - quality_gate_only
+          - full
+      trend_scope:
+        description: "Trendbereich"
+        required: true
+        default: "auto_scope"
+        type: choice
+        options:
+          - auto_scope
+          - technology_ai
+          - business_economy
+          - world_society
+          - sports
+          - creator_media
+          - mobility_energy
+          - science_future
+      topic:
+        description: "Optionales manuelles Thema"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-golden-path
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  TAYVORIQ_CLOUD_MODE: "true"
+  TAYVORIQ_RENDER_SIZE: "1080x1920"
+  TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
+  TAYVORIQ_TTS_PROVIDER: "auto"
+  TAYVORIQ_CHATTERBOX_ENABLED: "true"
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: "v3"
+  TAYVORIQ_CHATTERBOX_LANGUAGE: "de"
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "300"
+  TAYVORIQ_CHATTERBOX_CPU_THREADS: "4"
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.46"
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.34"
+  TAYVORIQ_CHATTERBOX_PAUSE_MS: "220"
+  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1200"
+  TAYVORIQ_TELEGRAM_PROGRESS: "false"
+  HF_HOME: ${{ github.workspace }}/.cache/huggingface
+  TORCH_HOME: ${{ github.workspace }}/.cache/torch
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+  ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+  ELEVENLABS_GERMAN_VOICE_ID: ${{ secrets.ELEVENLABS_GERMAN_VOICE_ID }}
+  ELEVENLABS_MODEL_ID: "eleven_multilingual_v2"
+  YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+  YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+  YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+  YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  golden-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Validate required control-plane secrets
+        shell: bash
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Missing required secret::$name is not configured"
+              missing=1
+            fi
+          done
+          if [ -z "${YOUTUBE_DATA_API_KEY:-}" ]; then
+            for name in YOUTUBE_CLIENT_ID YOUTUBE_CLIENT_SECRET YOUTUBE_REFRESH_TOKEN; do
+              if [ -z "${!name:-}" ]; then
+                echo "::error title=Missing YouTube trend authentication::$name is not configured and no YOUTUBE_API_KEY fallback exists"
+                missing=1
+              fi
+            done
+          fi
+          exit "$missing"
+
+      - name: Checkout private implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Checkout Pages repository
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: implementation/requirements.txt
+
+      - name: Restore Chatterbox model cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/huggingface
+            .cache/torch
+          key: tayvoriq-chatterbox-v3-cpu-py311-v3
+
+      - name: Install validation and media dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg rsync git
+          python -m pip install --upgrade pip
+          python -m pip install -r implementation/requirements.txt pytest
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
+
+      - name: Install free Chatterbox V3 CPU voice
+        id: chatterbox_install
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          set -euo pipefail
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"
+          python - <<'PY'
+          import inspect
+          import torch
+          from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+          signature = inspect.signature(ChatterboxMultilingualTTS.from_pretrained)
+          if "t3_model" not in signature.parameters:
+              raise SystemExit("Installed Chatterbox build cannot select multilingual V3")
+          print({"chatterbox_import": "passed", "torch": torch.__version__, "device": "cpu", "model": "multilingual-v3", "signature": str(signature)})
+          PY
+
+      - name: Report voice provider readiness
+        run: |
+          if [ "${{ steps.chatterbox_install.outcome }}" = "success" ]; then
+            echo "Chatterbox Multilingual V3 is ready and will be attempted first."
+          else
+            echo "::warning title=Chatterbox unavailable::Installation failed or timed out. Edge Neural TTS remains active as the automatic fallback."
+          fi
+
+      - name: Validate Chatterbox routing contract
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m pytest -q tests/test_tayvoriq_chatterbox_router.py
+
+      - name: Compile and run production preflight
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          mkdir -p out/control-plane
+          python -m compileall -q tools src
+          python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+
+      - name: Stop after quality gate when requested
+        if: inputs.mode == 'quality_gate_only'
+        run: echo "Quality Gate passed. Start this workflow once with mode=full."
+
+      - name: Run bounded production chain
+        id: controller
+        if: inputs.mode == 'full'
+        continue-on-error: true
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p out/tayvoriq-self-heal
+          final_state="TECHNICAL_FAILURE"
+          final_exit=1
+          topic="${{ inputs.topic }}"
+          active_scope="${{ inputs.trend_scope }}"
+          active_mode="auto_trend"
+          if [ -n "$topic" ]; then
+            active_mode="manual_topic"
+          fi
+
+          attempt_dir="out/tayvoriq-self-heal/attempt-1"
+          rm -rf "$attempt_dir"
+          mkdir -p "$attempt_dir"
+          echo "=== Bounded production: mode=${active_mode}, scope=${active_scope} ==="
+
+          set +e
+          python tools/tayvoriq_autonomous_entrypoint.py \
+            --trend-mode "$active_mode" \
+            --trend-scope "$active_scope" \
+            --topic "$topic" \
+            --language "Deutsch" \
+            --platform "youtube_tiktok" \
+            --target-duration "35" \
+            --llm-provider "auto" \
+            --outdir "out/tayvoriq-youtube-tiktok" \
+            --site-root "site/tayvoriq" \
+            --run-id "${GITHUB_RUN_ID}" \
+            --state-out "out/tayvoriq-review-state.json" \
+            --report-out "$attempt_dir/report.json" \
+            --request-out "$attempt_dir/request.json" \
+            --self-heal-depth "0" \
+            --target-branch "feature/multi-platform-distribution-package" \
+            2>&1 | tee "$attempt_dir/controller-console.log"
+          final_exit=${PIPESTATUS[0]}
+          set -e
+
+          final_state=$(python - "$attempt_dir/report.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+          print(str(report.get("state") or "TECHNICAL_FAILURE"))
+          PY
+          )
+
+          cp "$attempt_dir/report.json" out/tayvoriq-self-heal/report.json 2>/dev/null || true
+          cp "$attempt_dir/request.json" out/tayvoriq-self-heal/request.json 2>/dev/null || true
+          cp "$attempt_dir/controller-console.log" out/tayvoriq-self-heal/controller-console.log
+
+          if [ "$final_state" != "SUCCESS" ]; then
+            echo "=== Resume checkpoint: audit an already completed render without rerendering ==="
+            set +e
+            python tools/tayvoriq_resume_existing_render.py \
+              --outdir "out/tayvoriq-youtube-tiktok" \
+              --site-root "site/tayvoriq" \
+              --run-id "${GITHUB_RUN_ID}" \
+              --state-out "out/tayvoriq-review-state.json" \
+              --report-out "out/tayvoriq-self-heal/report.json"
+            resume_exit=$?
+            set -e
+            if [ "$resume_exit" -eq 0 ]; then
+              final_state="SUCCESS"
+              final_exit=0
+            else
+              final_state=$(python - <<'PY'
+              import json
+              from pathlib import Path
+              path = Path("out/tayvoriq-self-heal/report.json")
+              report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+              print(str(report.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"))
+              PY
+              )
+              final_exit="$resume_exit"
+            fi
+          fi
+
+          echo "attempt=1 state=${final_state} exit=${final_exit} scope=${active_scope}"
+          if [ "$final_state" = "SUCCESS" ]; then
+            echo "1" > out/tayvoriq-self-heal/successful-attempt.txt
+            echo "$active_scope" > out/tayvoriq-self-heal/successful-scope.txt
+          fi
+
+          echo "exit_code=${final_exit}" >> "$GITHUB_OUTPUT"
+          echo "state=${final_state}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Resolve production result
+        id: result
+        if: always() && inputs.mode == 'full'
+        working-directory: implementation
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("out/tayvoriq-self-heal/report.json")
+          report = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+          state = str(report.get("state") or "TECHNICAL_FAILURE")
+          success = state == "SUCCESS"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"state={state}\n")
+              handle.write(f"success={'true' if success else 'false'}\n")
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Validate final publication gates
+        id: publication_gate
+        if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          JOB_DIR=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path("out/tayvoriq-review-state.json").read_text(encoding="utf-8"))
+          print(str(state.get("job_dir") or ""))
+          PY
+          )
+          test -n "$JOB_DIR"
+          test -d "$JOB_DIR"
+          python tools/tayvoriq_publication_quality_gate_v2.py \
+            --job-dir "$JOB_DIR" \
+            --targets youtube_tiktok
+
+      - name: Publish review page
+        id: publish_review
+        if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
+        run: |
+          set -euo pipefail
+          test -d implementation/site/tayvoriq
+          rm -rf pages-worktree/tayvoriq
+          mkdir -p pages-worktree/tayvoriq
+          rsync -a implementation/site/tayvoriq/ pages-worktree/tayvoriq/
+          touch pages-worktree/.nojekyll
+          cd pages-worktree
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tayvoriq .nojekyll
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish TAYVORIQ review ${GITHUB_RUN_ID}"
+            git push origin main
+          fi
+
+      - name: Send final Telegram review with approval actions
+        id: telegram_final
+        if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
+        working-directory: implementation
+        run: |
+          python tools/tayvoriq_send_telegram.py \
+            --state "SUCCESS" \
+            --conclusion "success" \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Validate evidence-based Definition of Done
+        if: inputs.mode == 'full' && steps.result.outputs.success == 'true'
+        working-directory: implementation
+        env:
+          TELEGRAM_OUTCOME: ${{ steps.telegram_final.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish_review.outcome }}
+          PUBLICATION_GATE_OUTCOME: ${{ steps.publication_gate.outcome }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          failures = []
+          report_path = Path("out/tayvoriq-self-heal/report.json")
+          if not report_path.is_file():
+              failures.append("missing_final_report")
+          else:
+              report = json.loads(report_path.read_text(encoding="utf-8"))
+              if str(report.get("state")) != "SUCCESS":
+                  failures.append(f"report_state={report.get('state')}")
+
+          videos = [p for p in Path("out").rglob("*.mp4") if p.is_file() and p.stat().st_size > 100_000]
+          if not videos:
+              failures.append("missing_nonempty_mp4")
+          else:
+              video = max(videos, key=lambda p: p.stat().st_size)
+              probe = subprocess.run(
+                  ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,duration", "-of", "json", str(video)],
+                  capture_output=True, text=True, check=False,
+              )
+              if probe.returncode != 0:
+                  failures.append("ffprobe_failed")
+              else:
+                  stream = ((json.loads(probe.stdout or "{}").get("streams") or [{}])[0])
+                  if int(stream.get("width") or 0) != 1080 or int(stream.get("height") or 0) != 1920:
+                      failures.append(f"invalid_resolution={stream.get('width')}x{stream.get('height')}")
+
+          gate_reports = list(Path("out").rglob("publication_quality_gate.json"))
+          if not gate_reports:
+              failures.append("missing_publication_gate_report")
+          else:
+              gate = json.loads(gate_reports[-1].read_text(encoding="utf-8"))
+              if gate.get("passed") is not True:
+                  failures.append("publication_gate_not_passed")
+          if not Path("site/tayvoriq").is_dir():
+              failures.append("missing_review_site")
+          if os.environ.get("PUBLICATION_GATE_OUTCOME") != "success":
+              failures.append(f"publication_gate_outcome={os.environ.get('PUBLICATION_GATE_OUTCOME')}")
+          if os.environ.get("PUBLISH_OUTCOME") != "success":
+              failures.append(f"publish_outcome={os.environ.get('PUBLISH_OUTCOME')}")
+          if os.environ.get("TELEGRAM_OUTCOME") != "success":
+              failures.append(f"telegram_outcome={os.environ.get('TELEGRAM_OUTCOME')}")
+
+          if failures:
+              print("::error title=TAYVORIQ evidence missing::" + ", ".join(failures))
+              raise SystemExit(1)
+          print("Definition of Done passed: strict publication gate, valid 1080x1920 MP4, review publication and Telegram approval message confirmed.")
+          PY
+
+      - name: Collect compact diagnostics
+        if: always()
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          python tools/tayvoriq_collect_compact_diagnostics.py \
+            --root out \
+            --destination out/tayvoriq-compact-diagnostics \
+            --max-file-bytes 10485760
+
+      - name: Upload compact diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-compact-diagnostics-${{ github.run_id }}
+          path: implementation/out/tayvoriq-compact-diagnostics/**
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload complete review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-review-${{ github.run_id }}
+          path: |
+            implementation/out/**
+            implementation/site/tayvoriq/**
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Fail incomplete production after diagnostics
+        if: inputs.mode == 'full' && steps.result.outputs.success != 'true'
+        env:
+          FINAL_STATE: ${{ steps.result.outputs.state }}
+        run: |
+          echo "::error title=TAYVORIQ production incomplete::Bounded production ended with state ${FINAL_STATE}. Diagnostics were uploaded; no incomplete video was published."
+          exit 1
