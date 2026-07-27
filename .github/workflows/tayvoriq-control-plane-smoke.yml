@@ -11,13 +11,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: tayvoriq-control-plane-smoke-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   PYTHONUTF8: "1"
-  PYTHONPATH: ${{ github.workspace }}/implementation
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
 
 jobs:
   smoke:
@@ -27,18 +23,13 @@ jobs:
       - name: Validate private repository token
         env:
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "$PRIVATE_REPO_TOKEN" ]; then
-            echo "::error title=Missing secret::PRIVATE_REPO_TOKEN is not configured in the public control-plane repository"
-            exit 2
-          fi
+        run: test -n "$PRIVATE_REPO_TOKEN"
 
-      - name: Checkout private implementation
+      - name: Checkout private V35 implementation fix
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: feature/multi-platform-distribution-package
+          ref: fix/pre-render-contract-v35
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
@@ -52,7 +43,6 @@ jobs:
 
       - name: Install validation dependencies
         run: |
-          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
@@ -61,23 +51,13 @@ jobs:
       - name: Compile and run production-critical preflight
         working-directory: implementation
         run: |
-          set -euo pipefail
-          mkdir -p out/control-plane
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
-      - name: Publish compact result to workflow summary
-        if: always()
+      - name: Validate final pre-render and approval contracts
         working-directory: implementation
         run: |
-          {
-            echo "## TAYVORIQ free-runner smoke"
-            echo
-            if [ -f out/control-plane/preflight.json ]; then
-              echo '```json'
-              cat out/control-plane/preflight.json
-              echo '```'
-            else
-              echo "Preflight report was not created. Inspect the failed step above."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          python -m pytest -q \
+            tests/test_tayvoriq_generic_script_contract_v34.py \
+            tests/test_tayvoriq_manual_review_contract_v30.py \
+            tests/test_tayvoriq_bilger_audit_safe_v33.py
