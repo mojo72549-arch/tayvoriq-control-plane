@@ -60,11 +60,17 @@ jobs:
       - name: Validate title-centered cluster regression
         working-directory: implementation
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          mkdir -p out/control-plane
+          set +e
           python -m pytest -q \
             tests/test_tayvoriq_public_interest_title_state.py \
             tests/test_tayvoriq_canonical_production_entrypoint.py \
-            tests/test_tayvoriq_v27_canonical_final_package.py
+            tests/test_tayvoriq_v27_canonical_final_package.py \
+            2>&1 | tee out/control-plane/trend-cluster-pytest.log
+          code=${PIPESTATUS[0]}
+          set -e
+          exit "$code"
 
       - name: Validate live two-publisher public-interest fallback
         working-directory: implementation
@@ -119,11 +125,13 @@ jobs:
           )
           PY
 
-      - name: Upload live discovery evidence
+      - name: Upload trend-cluster diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tayvoriq-live-trend-${{ github.run_id }}
-          path: implementation/out/control-plane/live-trend-selection.json
+          path: |
+            implementation/out/control-plane/trend-cluster-pytest.log
+            implementation/out/control-plane/live-trend-selection.json
           if-no-files-found: warn
           retention-days: 1
