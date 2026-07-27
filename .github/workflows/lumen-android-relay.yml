@@ -1,0 +1,75 @@
+name: Project Lumen Android Relay
+
+on:
+  pull_request:
+    paths:
+      - 'relay/lumen138.part00'
+      - 'relay/lumen138.part01'
+      - '.github/workflows/lumen-android-relay.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-lumen-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout relay input
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 35 tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+
+      - name: Set up pinned Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Restore verified source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat relay/lumen138.part00 relay/lumen138.part01 | base64 --decode > /tmp/lumen138-source.tar.xz
+          echo "fda5f0ae06d07c350a6544c70bf541059e5311dc201dbba0a76e7b2c63893f7b  /tmp/lumen138-source.tar.xz" | sha256sum --check
+          tar -xJf /tmp/lumen138-source.tar.xz
+          base64 --decode lumen138/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
+          echo "764e0c501b8c13fb1eae852bcaddd16aab0c31109cf17de97bde5d15327a8817  lumen138/ci/keys/lumen-pilot-v1.jks" | sha256sum --check
+
+      - name: Compile, lint and assemble signed APK
+        working-directory: lumen138
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../dist
+          gradle --no-daemon lintDebug assembleDebug 2>&1 | tee ../dist/android-build.log
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/Project_Lumen_v13.1.38_P0_Robust_Link_Import.apk
+          sha256sum ../dist/Project_Lumen_v13.1.38_P0_Robust_Link_Import.apk > ../dist/Project_Lumen_v13.1.38_P0_Robust_Link_Import.apk.sha256
+
+      - name: Verify package, version and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/Project_Lumen_v13.1.38_P0_Robust_Link_Import.apk | tee dist/apk-signature.txt
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging dist/Project_Lumen_v13.1.38_P0_Robust_Link_Import.apk | tee dist/apk-badging.txt
+          grep -q "package: name='com.projectlumen.pilot.robust'" dist/apk-badging.txt
+          grep -q "versionName='13.1.38-p0-robust-link'" dist/apk-badging.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" dist/apk-signature.txt
+
+      - name: Upload APK and build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-v13-1-38-p0-robust-link-${{ github.sha }}
+          path: dist/
+          if-no-files-found: warn
+          retention-days: 30
