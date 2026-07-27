@@ -1,0 +1,98 @@
+name: Apply TAYVORIQ Golden Path V35 Fix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/apply-golden-path-v35-fix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply guarded success-report patch
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path(".github/workflows/tayvoriq-golden-path.yml")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  "      - name: Run bounded production chain\n"
+                  "        id: controller\n"
+                  "        if: inputs.mode == 'full'\n",
+                  "      - name: Run bounded production chain\n"
+                  "        id: controller\n"
+                  "        if: inputs.mode == 'full'\n"
+                  "        continue-on-error: true\n",
+              ),
+              (
+                  "      - name: Resolve production result\n"
+                  "        id: result\n"
+                  "        if: inputs.mode == 'full'\n",
+                  "      - name: Resolve production result\n"
+                  "        id: result\n"
+                  "        if: always() && inputs.mode == 'full'\n",
+              ),
+              (
+                  "          echo \"exit_code=${final_exit}\" >> \"$GITHUB_OUTPUT\"\n"
+                  "          echo \"state=${final_state}\" >> \"$GITHUB_OUTPUT\"\n\n"
+                  "      - name: Resolve production result\n",
+                  "          echo \"exit_code=${final_exit}\" >> \"$GITHUB_OUTPUT\"\n"
+                  "          echo \"state=${final_state}\" >> \"$GITHUB_OUTPUT\"\n"
+                  "          exit 0\n\n"
+                  "      - name: Resolve production result\n",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Guard failed: expected exactly one match, found {count}: {old.splitlines()[0]}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Validate patched workflow contract
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          text = Path(".github/workflows/tayvoriq-golden-path.yml").read_text(encoding="utf-8")
+          required = (
+              "id: controller\n        if: inputs.mode == 'full'\n        continue-on-error: true",
+              "id: result\n        if: always() && inputs.mode == 'full'",
+              "echo \"state=${final_state}\" >> \"$GITHUB_OUTPUT\"\n          exit 0",
+          )
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit(f"Patched workflow contract incomplete: {missing}")
+          print("V35 success-report contract validated.")
+          PY
+
+      - name: Commit guarded patch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/tayvoriq-golden-path.yml
+          if git diff --cached --quiet; then
+            echo "Golden Path already contains the V35 fix."
+            exit 0
+          fi
+          git commit -m "fix(tayvoriq): trust successful controller report"
+          git push origin HEAD:main
