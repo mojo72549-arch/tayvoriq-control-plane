@@ -17,7 +17,7 @@ concurrency:
 
 env:
   PYTHONUTF8: "1"
-  PYTHONPATH: ${{ github.workspace }}/implementation
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
 
 jobs:
   smoke:
@@ -34,11 +34,11 @@ jobs:
             exit 2
           fi
 
-      - name: Checkout private implementation
+      - name: Checkout private implementation fix
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: feature/multi-platform-distribution-package
+          ref: fix/manual-approval-contract-and-review-gate
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
@@ -66,18 +66,26 @@ jobs:
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
+      - name: Validate review-ready script and manual approval contract
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/test_tayvoriq_wildfire_source_grounding.py \
+            tests/test_tayvoriq_manual_review_contract_v30.py
+
       - name: Publish compact result to workflow summary
         if: always()
         working-directory: implementation
         run: |
           {
-            echo "## TAYVORIQ free-runner smoke"
+            echo "## TAYVORIQ manual-review contract smoke"
             echo
+            echo "Validates a review-ready video package and mandatory Telegram approval before upload."
+            echo "TikTok remains manual; Instagram is not part of this delivery path."
             if [ -f out/control-plane/preflight.json ]; then
               echo '```json'
               cat out/control-plane/preflight.json
               echo '```'
-            else
-              echo "Preflight report was not created. Inspect the failed step above."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
