@@ -2,12 +2,13 @@ name: Apply TAYVORIQ Golden Path V35 Fix
 
 on:
   push:
+    branches: [main]
     paths:
       - ".github/workflows/apply-golden-path-v35-fix.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   patch:
@@ -84,15 +85,10 @@ jobs:
           print("V35 success-report contract validated.")
           PY
 
-      - name: Commit guarded patch
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/tayvoriq-golden-path.yml
-          if git diff --cached --quiet; then
-            echo "Golden Path already contains the V35 fix."
-            exit 0
-          fi
-          git commit -m "fix(tayvoriq): trust successful controller report"
-          git push origin HEAD:main
+      - name: Upload validated Golden Path
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-golden-path-v35-${{ github.run_id }}
+          path: .github/workflows/tayvoriq-golden-path.yml
+          if-no-files-found: error
+          retention-days: 1
