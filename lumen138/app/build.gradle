@@ -41,6 +41,9 @@ android {
 
     buildFeatures { buildConfig true }
     packaging { resources.excludes += ['META-INF/LICENSE*', 'META-INF/NOTICE*'] }
+    testOptions { unitTests.returnDefaultValues = true }
 }
 
-dependencies { }
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}
