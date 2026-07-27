@@ -1,0 +1,14 @@
+Samsung SM-G980F / Android 13
+- upgrade without clearing app data
+- cold start with legacy catalog
+- close/reopen
+- remove from recents/reopen
+- process kill during import
+- process kill immediately after import
+- device reboot
+- rapid repeated open attempts
+- active catalog corruption -> raw fallback
+- active generation corruption -> previous generation
+- low-memory restore
+
+Expected: no crash, no silent deletion, last valid library remains usable.
