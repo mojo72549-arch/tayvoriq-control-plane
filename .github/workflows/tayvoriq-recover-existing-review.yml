@@ -5,6 +5,11 @@ on:
   push:
     paths:
       - ".automation/tayvoriq-recover-existing-review-request.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".automation/tayvoriq-recover-existing-review-request.json"
+      - ".github/workflows/tayvoriq-recover-existing-review.yml"
 
 permissions:
   actions: read
