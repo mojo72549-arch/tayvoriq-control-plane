@@ -79,15 +79,16 @@ jobs:
           fi
           exit "$code"
 
-      - name: Upload compact root-fix diagnostics
+      - name: Upload validated direct V27 result
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tayvoriq-v27-root-fix-${{ github.run_id }}
           path: |
+            implementation/tools/tayvoriq_dual_platform_render_v27.py
             implementation/out/control-plane/v27-root-fix.log
             implementation/out/control-plane/preflight.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 1
 
       - name: Commit validated direct fix to private branch
