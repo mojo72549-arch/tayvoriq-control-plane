@@ -3,7 +3,7 @@ name: Project Lumen Android Relay
 on:
   pull_request:
     paths:
-      - 'relay/lumen-build-relay.tar.xz.b64'
+      - 'relay/lumen-build-relay.tar.xz.b64.part*'
       - '.github/workflows/lumen-android-relay.yml'
 
 permissions:
@@ -38,7 +38,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode relay/lumen-build-relay.tar.xz.b64 > /tmp/lumen-build-relay.tar.xz
+          cat relay/lumen-build-relay.tar.xz.b64.part* > /tmp/lumen-build-relay.tar.xz.b64
+          base64 --decode /tmp/lumen-build-relay.tar.xz.b64 > /tmp/lumen-build-relay.tar.xz
           echo "c617e95631564c3eb15ee6e6c26554fcc23a1d761c44e8bebf4e7a10c9954d7a  /tmp/lumen-build-relay.tar.xz" | sha256sum --check
           tar -xJf /tmp/lumen-build-relay.tar.xz
           base64 --decode lumen-build-relay/ci/keys/lumen-pilot-v1.jks.b64 > lumen-build-relay/ci/keys/lumen-pilot-v1.jks
