@@ -4,60 +4,118 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 final class M3uParser {
-    private static final Pattern GROUP = Pattern.compile("group-title=\\\"([^\\\"]*)\\\"", Pattern.CASE_INSENSITIVE);
-    private static final Pattern TVG_ID = Pattern.compile("tvg-id=\\\"([^\\\"]*)\\\"", Pattern.CASE_INSENSITIVE);
+    interface Progress {
+        void update(long linesRead, int entries, long elapsedMs, boolean entryLimitReached);
+    }
 
-    static List<Channel> parse(InputStream input, int maxEntries) throws Exception {
-        ArrayList<Channel> result = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8), 64 * 1024)) {
+    private static final int READER_BUFFER = 1024 * 1024;
+    private static final int PROGRESS_EVERY_ENTRIES = 5_000;
+    private static final int DEADLINE_CHECK_EVERY_LINES = 2_048;
+
+    static List<Channel> parse(InputStream input, int maxEntries, long timeoutMs, Progress progress) throws Exception {
+        ArrayList<Channel> result = new ArrayList<>(Math.min(maxEntries, 16_384));
+        long startedNs = System.nanoTime();
+        long deadlineNs = startedNs + timeoutMs * 1_000_000L;
+        long linesRead = 0;
+        int nextProgressEntry = PROGRESS_EVERY_ENTRIES;
+        boolean limitReached = false;
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(input, StandardCharsets.UTF_8), READER_BUFFER)) {
             String line;
             String pendingName = null;
             String pendingGroup = null;
             String pendingId = null;
-            while ((line = reader.readLine()) != null && result.size() < maxEntries) {
-                String value = line.trim();
-                if (value.isEmpty() || value.equalsIgnoreCase("#EXTM3U")) continue;
-                if (value.regionMatches(true, 0, "#EXTINF", 0, 7)) {
+
+            while ((line = reader.readLine()) != null) {
+                linesRead++;
+
+                if ((linesRead % DEADLINE_CHECK_EVERY_LINES) == 0 && System.nanoTime() > deadlineNs) {
+                    long elapsed = elapsedMs(startedNs);
+                    throw new IllegalStateException(
+                            "Playlist-Prüfung wurde nach " + elapsed + " ms abgebrochen. "
+                                    + result.size() + " Einträge wurden bis dahin erkannt.");
+                }
+
+                String value = cleanLine(line, linesRead == 1);
+                if (value.isEmpty() || equalsIgnoreCase(value, "#EXTM3U")) continue;
+
+                if (startsWithIgnoreCase(value, "#EXTINF")) {
                     int comma = value.lastIndexOf(',');
-                    pendingName = comma >= 0 && comma + 1 < value.length() ? value.substring(comma + 1).trim() : "Unbenannter Eintrag";
-                    pendingGroup = attr(GROUP, value, "Weitere");
-                    pendingId = attr(TVG_ID, value, "");
+                    pendingName = comma >= 0 && comma + 1 < value.length()
+                            ? value.substring(comma + 1).trim()
+                            : "Unbenannter Eintrag";
+                    pendingGroup = attribute(value, "group-title=\"", "Weitere");
+                    pendingId = attribute(value, "tvg-id=\"", "");
                     continue;
                 }
-                if (value.startsWith("#")) continue;
-                if (value.startsWith("http://") || value.startsWith("https://")) {
-                    String name = pendingName == null ? fallbackName(value) : pendingName;
-                    String group = pendingGroup == null ? "Weitere" : pendingGroup;
-                    String id = pendingId == null || pendingId.isBlank() ? hash(name + "|" + value) : pendingId;
+
+                if (value.charAt(0) == '#') continue;
+
+                boolean supportedUrl = startsWithIgnoreCase(value, "http://")
+                        || startsWithIgnoreCase(value, "https://");
+                if (!supportedUrl) continue;
+
+                if (result.size() < maxEntries) {
+                    String name = pendingName == null || pendingName.isBlank()
+                            ? fallbackName(value) : pendingName;
+                    String group = pendingGroup == null || pendingGroup.isBlank()
+                            ? "Weitere" : pendingGroup;
+                    String id = pendingId == null || pendingId.isBlank()
+                            ? stableFastId(name, value) : pendingId;
                     result.add(new Channel(id, name, group, value, classify(name, group, value)));
-                    pendingName = null;
-                    pendingGroup = null;
-                    pendingId = null;
+                } else {
+                    limitReached = true;
+                }
+
+                pendingName = null;
+                pendingGroup = null;
+                pendingId = null;
+
+                if (result.size() >= nextProgressEntry) {
+                    progress(progress, linesRead, result.size(), startedNs, limitReached);
+                    nextProgressEntry += PROGRESS_EVERY_ENTRIES;
                 }
             }
         }
+
+        progress(progress, linesRead, result.size(), startedNs, limitReached);
         return result;
     }
 
-    private static String attr(Pattern pattern, String text, String fallback) {
-        Matcher matcher = pattern.matcher(text);
-        return matcher.find() ? matcher.group(1).trim() : fallback;
+    private static String cleanLine(String line, boolean firstLine) {
+        String value = line == null ? "" : line.trim();
+        if (firstLine && !value.isEmpty() && value.charAt(0) == '\uFEFF') {
+            value = value.substring(1).trim();
+        }
+        return value;
+    }
+
+    private static String attribute(String text, String key, String fallback) {
+        int start = indexOfIgnoreCase(text, key, 0);
+        if (start < 0) return fallback;
+        start += key.length();
+        int end = text.indexOf('"', start);
+        if (end < 0) return fallback;
+        String value = text.substring(start, end).trim();
+        return value.isEmpty() ? fallback : value;
     }
 
     private static Channel.Type classify(String name, String group, String url) {
-        String text = (name + " " + group + " " + url).toLowerCase(Locale.ROOT);
-        if (text.contains("/series/") || text.contains("series") || text.contains("serie")
-                || text.contains("dizi") || text.contains("episode") || text.contains("staffel")) return Channel.Type.SERIES;
-        if (text.contains("/movie/") || text.contains(" movie") || text.contains("film")
-                || text.contains("vod") || text.contains("cinema") || text.contains("sinema")) return Channel.Type.MOVIE;
+        if (containsIgnoreCase(url, "/series/") || containsIgnoreCase(group, "series")
+                || containsIgnoreCase(group, "serie") || containsIgnoreCase(group, "dizi")
+                || containsIgnoreCase(name, "episode") || containsIgnoreCase(name, "staffel")) {
+            return Channel.Type.SERIES;
+        }
+        if (containsIgnoreCase(url, "/movie/") || containsIgnoreCase(group, "movie")
+                || containsIgnoreCase(group, "film") || containsIgnoreCase(group, "vod")
+                || containsIgnoreCase(group, "cinema") || containsIgnoreCase(group, "sinema")) {
+            return Channel.Type.MOVIE;
+        }
         return Channel.Type.LIVE;
     }
 
@@ -69,14 +127,50 @@ final class M3uParser {
         return value.isBlank() ? "Stream" : value;
     }
 
-    private static String hash(String value) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder out = new StringBuilder();
-            for (int i = 0; i < 8; i++) out.append(String.format(Locale.ROOT, "%02x", digest[i]));
-            return out.toString();
-        } catch (Exception ignored) {
-            return Integer.toHexString(value.hashCode());
+    private static String stableFastId(String name, String url) {
+        long hash = 0xcbf29ce484222325L;
+        hash = fnv1a(hash, name);
+        hash ^= '|';
+        hash *= 0x100000001b3L;
+        hash = fnv1a(hash, url);
+        return Long.toUnsignedString(hash, 16);
+    }
+
+    private static long fnv1a(long hash, String value) {
+        for (int i = 0; i < value.length(); i++) {
+            hash ^= value.charAt(i);
+            hash *= 0x100000001b3L;
         }
+        return hash;
+    }
+
+    private static boolean startsWithIgnoreCase(String text, String prefix) {
+        return text.length() >= prefix.length() && text.regionMatches(true, 0, prefix, 0, prefix.length());
+    }
+
+    private static boolean equalsIgnoreCase(String left, String right) {
+        return left.length() == right.length() && left.regionMatches(true, 0, right, 0, right.length());
+    }
+
+    private static boolean containsIgnoreCase(String text, String needle) {
+        return text != null && indexOfIgnoreCase(text, needle, 0) >= 0;
+    }
+
+    private static int indexOfIgnoreCase(String text, String needle, int fromIndex) {
+        if (text == null || needle == null) return -1;
+        int limit = text.length() - needle.length();
+        for (int i = Math.max(0, fromIndex); i <= limit; i++) {
+            if (text.regionMatches(true, i, needle, 0, needle.length())) return i;
+        }
+        return -1;
+    }
+
+    private static void progress(Progress progress, long linesRead, int entries,
+                                 long startedNs, boolean limitReached) {
+        if (progress != null) progress.update(linesRead, entries, elapsedMs(startedNs), limitReached);
+    }
+
+    private static long elapsedMs(long startedNs) {
+        return (System.nanoTime() - startedNs) / 1_000_000L;
     }
 }
