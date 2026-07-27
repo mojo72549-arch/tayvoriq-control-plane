@@ -72,6 +72,7 @@ public final class MainActivity extends Activity {
     private Mode mode = Mode.LIVE;
     private boolean busy = true;
     private long lastInputEvent;
+    private Runnable pendingFilter;
 
     private TextView footerStatus;
     private TextView empty;
@@ -86,7 +87,6 @@ public final class MainActivity extends Activity {
     private Button liveButton;
     private Button movieButton;
     private Button seriesButton;
-    private Runnable pendingFilter;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -116,27 +116,21 @@ public final class MainActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
-        TextView brandTitle = text("", tv() ? 27 : 23, Color.WHITE, true);
-        brandTitle.setText(brandText());
-        brandTitle.setSingleLine(true);
-        brandTitle.setEllipsize(TextUtils.TruncateAt.END);
-        brand.addView(brandTitle);
-
-        LinearLayout brandMeta = new LinearLayout(this);
-        brandMeta.setOrientation(LinearLayout.HORIZONTAL);
-        brandMeta.setGravity(Gravity.CENTER_VERTICAL);
-        TextView premium = text("PREMIUM MEDIA PLAYER", tv() ? 11 : 9, TEXT_SECONDARY, true);
-        premium.setLetterSpacing(0.12f);
-        brandMeta.addView(premium);
-        TextView version = text("  13.1.40", tv() ? 11 : 9, ACCENT, true);
-        version.setSingleLine(true);
-        brandMeta.addView(version);
-        brand.addView(brandMeta);
-        header.addView(brand, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView title = text("", tv() ? 27 : 23, Color.WHITE, true);
+        title.setText(brandText());
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        brand.addView(title);
+        TextView meta = text("PREMIUM MEDIA PLAYER  ·  " + BuildConfig.VERSION_NAME,
+                tv() ? 11 : 9, TEXT_SECONDARY, true);
+        meta.setLetterSpacing(0.08f);
+        meta.setSingleLine(true);
+        meta.setEllipsize(TextUtils.TruncateAt.END);
+        brand.addView(meta);
+        header.addView(brand, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
         Button diagnostics = actionButton("Diagnose", false);
         diagnostics.setOnClickListener(v -> startActivity(
@@ -186,7 +180,6 @@ public final class MainActivity extends Activity {
         });
         searchBar.addView(search, new LinearLayout.LayoutParams(
                 0, dp(tv() ? 54 : 47), 1f));
-
         count = text("0", tv() ? 14 : 12, BG, true);
         count.setGravity(Gravity.CENTER);
         count.setMinWidth(dp(tv() ? 50 : 42));
@@ -202,11 +195,13 @@ public final class MainActivity extends Activity {
         loadingCard.setOrientation(LinearLayout.VERTICAL);
         loadingCard.setPadding(dp(14), dp(11), dp(14), dp(11));
         loadingCard.setBackground(roundRect(0xEE0D2233, 16, 0xFF2C5369));
-        loadingTitle = text("Bibliothek wird geöffnet", tv() ? 16 : 14, Color.WHITE, true);
+        loadingTitle = text("Bibliothek wird geöffnet",
+                tv() ? 16 : 14, Color.WHITE, true);
         loadingTitle.setSingleLine(true);
         loadingCard.addView(loadingTitle);
-        loadingDetail = text("Bitte einen Moment …", tv() ? 13 : 11, TEXT_SECONDARY, false);
-        loadingDetail.setMaxLines(2);
+        loadingDetail = text("Bitte einen Moment …",
+                tv() ? 13 : 11, TEXT_SECONDARY, false);
+        loadingDetail.setMaxLines(3);
         LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -234,7 +229,6 @@ public final class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
         hostParams.setMargins(0, dp(8), 0, dp(5));
         root.addView(host, hostParams);
-
         list = new ListView(this);
         list.setDivider(new ColorDrawable(Color.TRANSPARENT));
         list.setDividerHeight(dp(7));
@@ -263,11 +257,11 @@ public final class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
         list.setEmptyView(emptyPanel);
-
         adapter = new CatalogAdapter(this);
         list.setAdapter(adapter);
 
-        footerStatus = text("Lokale Bibliothek", tv() ? 12 : 10, 0xFF7790A3, false);
+        footerStatus = text("Lokale Bibliothek",
+                tv() ? 12 : 10, 0xFF7790A3, false);
         footerStatus.setSingleLine(true);
         footerStatus.setEllipsize(TextUtils.TruncateAt.END);
         root.addView(footerStatus);
@@ -276,12 +270,19 @@ public final class MainActivity extends Activity {
 
     private void restore() {
         boolean candidate = repository.hasRecoverableCandidate();
+        boolean reimportRequired = repository.legacyRecoveryRequiresReimport();
         setBusy(true,
-                candidate ? "Import wird abgeschlossen" : "Bibliothek wird geöffnet",
-                candidate
-                        ? "Die bereits geladene Playlist wird geprüft und für den Schnellstart indexiert."
+                reimportRequired ? "Altimport wurde sicher angehalten"
+                        : candidate ? "Import wird abgeschlossen"
+                        : "Bibliothek wird geöffnet",
+                reimportRequired
+                        ? "Bitte den Playlist-Link einmal über + Quelle neu laden."
+                        : candidate
+                        ? "Die bereits geladene Playlist wird blockweise migriert und indexiert."
                         : "Gespeicherter Schnellindex wird geladen.");
-        log.event("-", "RESTORE-QUEUED", "thread=background candidate=" + candidate);
+        log.event("-", "RESTORE-QUEUED",
+                "thread=background candidate=" + candidate
+                        + " reimportRequired=" + reimportRequired);
         worker.execute(() -> {
             long started = SystemClock.elapsedRealtime();
             try {
@@ -305,13 +306,20 @@ public final class MainActivity extends Activity {
                 log.exception("-", "RESTORE-ERROR", failure);
                 main.post(() -> {
                     setBusy(false, "", "");
-                    boolean recoverable = repository.hasRecoverableCandidate();
-                    footerStatus.setText(recoverable
-                            ? "Importprüfung pausiert · Diagnose öffnen"
-                            : "Wiederherstellung fehlgeschlagen · Diagnose öffnen");
-                    empty.setText(recoverable
-                            ? "Import noch nicht abgeschlossen\nDie geladene Datei bleibt sicher gespeichert."
-                            : "Bibliothek konnte nicht geöffnet werden\nQuelle erneut hinzufügen oder Diagnose öffnen.");
+                    boolean needsReload = repository.legacyRecoveryRequiresReimport()
+                            || message(failure).contains("Playlist-Link einmal neu laden");
+                    if (needsReload) {
+                        footerStatus.setText("Altimport beendet · + Quelle ist wieder verfügbar");
+                        empty.setText("Playlist-Link einmal neu laden\n"
+                                + "Neue Importe werden gleichzeitig geladen, verschlüsselt und indexiert.");
+                        Toast.makeText(this,
+                                "Bitte + Quelle öffnen und den Playlist-Link einmal neu laden.",
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        footerStatus.setText("Wiederherstellung fehlgeschlagen · Diagnose öffnen");
+                        empty.setText("Bibliothek konnte nicht geöffnet werden\n"
+                                + "Quelle erneut hinzufügen oder Diagnose öffnen.");
+                    }
                 });
             }
         });
@@ -321,9 +329,7 @@ public final class MainActivity extends Activity {
         if (busy) return;
         new AlertDialog.Builder(this)
                 .setTitle("Quelle hinzufügen")
-                .setItems(new String[]{
-                                "Server + Login",
-                                "Playlist-Link",
+                .setItems(new String[]{"Server + Login", "Playlist-Link",
                                 "Lokale M3U/M3U8-Datei"},
                         (dialog, which) -> {
                             if (which == 0) promptServer();
@@ -341,7 +347,7 @@ public final class MainActivity extends Activity {
         url.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         new AlertDialog.Builder(this)
                 .setTitle("Playlist-Link")
-                .setMessage("Download, Verschlüsselung und Katalogaufbau laufen jetzt in einem gemeinsamen Hintergrundvorgang.")
+                .setMessage("Download, Verschlüsselung und Katalogaufbau laufen gemeinsam im Hintergrund.")
                 .setView(form(name, url))
                 .setPositiveButton("Laden", (dialog, which) -> {
                     try {
@@ -363,7 +369,7 @@ public final class MainActivity extends Activity {
         EditText pass = input("Passwort", true);
         new AlertDialog.Builder(this)
                 .setTitle("Server + Login")
-                .setMessage("Lumen erstellt die Playlist-Adresse lokal. Zugangsdaten erscheinen nicht in der Diagnose.")
+                .setMessage("Zugangsdaten werden lokal verarbeitet und nicht in der Diagnose angezeigt.")
                 .setView(form(name, server, user, pass))
                 .setPositiveButton("Verbinden", (dialog, which) -> {
                     try {
@@ -463,10 +469,14 @@ public final class MainActivity extends Activity {
         return stage.contains("CONNECT") || stage.contains("DOWNLOAD")
                 || stage.contains("INDEX") || stage.contains("PARSE")
                 || stage.contains("CACHE") || stage.contains("CANDIDATE")
-                || stage.contains("ROLLBACK") || stage.equals("IMPORT-PAUSED");
+                || stage.contains("LEGACY") || stage.contains("ROLLBACK")
+                || stage.equals("IMPORT-PAUSED");
     }
 
     private static String progressTitle(String stage) {
+        if (stage.contains("REIMPORT-REQUIRED")) return "Playlist-Link neu laden";
+        if (stage.contains("LEGACY-DECRYPT")) return "Altimport wird entschlüsselt";
+        if (stage.contains("LEGACY-PARSE")) return "Altimport wird indexiert";
         if (stage.contains("CACHE") && stage.contains("RESTORE")) {
             return "Bibliothek wird sofort geöffnet";
         }
@@ -524,9 +534,10 @@ public final class MainActivity extends Activity {
         footerStatus.setText(recoverable
                 ? "Download vollständig · Abschluss wird beim nächsten Start fortgesetzt"
                 : "Import fehlgeschlagen · bisherige Bibliothek bleibt aktiv");
-        Toast.makeText(this, recoverable
-                ? "Die geladene Playlist bleibt gespeichert und wird beim nächsten Start fortgesetzt."
-                : "Import fehlgeschlagen. Diagnose öffnen; die bisherige Bibliothek wurde nicht ersetzt.",
+        Toast.makeText(this,
+                recoverable
+                        ? "Die geladene Playlist bleibt gespeichert."
+                        : "Import fehlgeschlagen. Diagnose öffnen; die bisherige Bibliothek wurde nicht ersetzt.",
                 Toast.LENGTH_LONG).show();
     }
 
@@ -585,8 +596,7 @@ public final class MainActivity extends Activity {
         button.setTextColor(selected ? BG : 0xFFDCE7EE);
         button.setBackground(roundRect(
                 selected ? ACCENT : SURFACE_ALT,
-                13,
-                selected ? ACCENT : STROKE));
+                13, selected ? ACCENT : STROKE));
     }
 
     private void scheduleFilter() {
@@ -730,8 +740,7 @@ public final class MainActivity extends Activity {
         button.setTextColor(primary ? BG : 0xFFE5EEF4);
         button.setBackground(roundRect(
                 primary ? ACCENT : SURFACE_ALT,
-                12,
-                primary ? ACCENT : STROKE));
+                12, primary ? ACCENT : STROKE));
         return button;
     }
 
