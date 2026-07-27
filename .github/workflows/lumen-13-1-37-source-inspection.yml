@@ -1,0 +1,64 @@
+name: Project Lumen 13.1.37 Generated Source Inspection
+
+on:
+  pull_request:
+    branches: [ lumen-13-1-36-p0-crash-safe-library ]
+    paths:
+      - '.github/workflows/lumen-13-1-37-source-inspection.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-generated-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Restore canonical verified R3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r3-source
+          PARTS=(
+            lumen-public-preview/r3-source-inline.part00.b64
+            lumen-public-preview/r3-source-inline.part01a.b64
+            lumen-public-preview/r3-source-inline.part01b.b64
+            lumen-public-preview/r3-source-inline.part01c.b64
+            lumen-public-preview/r3-source-inline.part02.b64
+            lumen-public-preview/r3-source-inline.part03.b64
+          )
+          cat "${PARTS[@]}" | tr -d '[:space:]' > /tmp/r3-source.zip.b64
+          base64 -d /tmp/r3-source.zip.b64 > /tmp/r3-source.zip
+          echo '91f6a52769ed967c0a2f68ce14567fecaacc7580510465587022898f801e3e2e  /tmp/r3-source.zip' | sha256sum -c -
+          unzip -q /tmp/r3-source.zip -d /tmp/r3-source
+          tar -xzf /tmp/r3-source/project-lumen-13.1.28-r3-generated-source.tar.gz
+      - name: Apply cumulative integrations through 13.1.36
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-r4-profile-integration.py project-lumen-preview
+          python3 lumen-public-preview/apply-rc1-cumulative-integration.py project-lumen-preview
+          python3 lumen-public-preview/apply-r7-premium-ui.py project-lumen-preview
+          python3 lumen-public-preview/apply-r7-1-responsive-typography.py project-lumen-preview
+          python3 lumen-public-preview/apply-r7-2-network-diagnostics.py project-lumen-preview
+          python3 lumen-public-preview/apply-r7-3-p0-library-recovery.py project-lumen-preview
+      - name: Collect generated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p generated-source/app/src/main/java/com/projectlumen/publicpreview
+          mkdir -p generated-source/app/src/main
+          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java generated-source/app/src/main/java/com/projectlumen/publicpreview/
+          cp project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/LibraryGenerationStore.java generated-source/app/src/main/java/com/projectlumen/publicpreview/
+          cp project-lumen-preview/app/src/main/AndroidManifest.xml generated-source/app/src/main/
+          cp project-lumen-preview/app/build.gradle generated-source/app/
+          grep -nE 'render|livePage|PAGE|Senderliste|diagnostic|showDiagnostic|mediaSection|filtered' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java > generated-source/method-index.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-37-generated-source-inspection
+          path: generated-source/
+          if-no-files-found: error
+          retention-days: 3
