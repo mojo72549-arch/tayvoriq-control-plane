@@ -11,13 +11,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: tayvoriq-control-plane-smoke-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   PYTHONUTF8: "1"
-  PYTHONPATH: ${{ github.workspace }}/implementation
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
 
 jobs:
   smoke:
@@ -27,18 +23,13 @@ jobs:
       - name: Validate private repository token
         env:
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "$PRIVATE_REPO_TOKEN" ]; then
-            echo "::error title=Missing secret::PRIVATE_REPO_TOKEN is not configured in the public control-plane repository"
-            exit 2
-          fi
+        run: test -n "$PRIVATE_REPO_TOKEN"
 
-      - name: Checkout private implementation
+      - name: Checkout private trend-cluster fix
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: feature/multi-platform-distribution-package
+          ref: fix/title-centered-public-trend-clustering
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
@@ -66,18 +57,73 @@ jobs:
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
-      - name: Publish compact result to workflow summary
-        if: always()
+      - name: Validate title-centered cluster regression
         working-directory: implementation
         run: |
-          {
-            echo "## TAYVORIQ free-runner smoke"
-            echo
-            if [ -f out/control-plane/preflight.json ]; then
-              echo '```json'
-              cat out/control-plane/preflight.json
-              echo '```'
-            else
-              echo "Preflight report was not created. Inspect the failed step above."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          python -m pytest -q \
+            tests/test_tayvoriq_public_interest_title_state.py \
+            tests/test_tayvoriq_canonical_production_entrypoint.py \
+            tests/test_tayvoriq_v27_canonical_final_package.py
+
+      - name: Validate live two-publisher public-interest fallback
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          mkdir -p out/control-plane
+          python tools/tayvoriq_trend_discovery_v8.py \
+            --mode auto_trend \
+            --manual-topic "" \
+            --scope auto_scope \
+            --language Deutsch \
+            --out out/control-plane/live-trend-selection.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(
+              Path("out/control-plane/live-trend-selection.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          selected = report.get("selected_candidate") or {}
+          topic = str(report.get("selected_topic") or "").strip()
+          publishers = int(selected.get("independent_news_count") or 0)
+          has_cause = bool(selected.get("factual_context_has_cause"))
+          current = bool(selected.get("current_trend_confirmed"))
+          if not topic:
+              raise SystemExit(
+                  "Live discovery did not produce a selected public-interest topic"
+              )
+          if publishers < 2:
+              raise SystemExit(
+                  f"Selected topic has only {publishers} independent publishers"
+              )
+          if not has_cause:
+              raise SystemExit("Selected topic has no source-backed causal context")
+          if not current:
+              raise SystemExit("Selected topic is not marked current and confirmed")
+          print(
+              json.dumps(
+                  {
+                      "selected_topic": topic,
+                      "independent_publishers": publishers,
+                      "source_backed_cause": has_cause,
+                      "current_trend_confirmed": current,
+                      "trend_origin": selected.get("trend_origin"),
+                      "social_origin": selected.get("social_origin"),
+                  },
+                  ensure_ascii=False,
+                  indent=2,
+              )
+          )
+          PY
+
+      - name: Upload live discovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-live-trend-${{ github.run_id }}
+          path: implementation/out/control-plane/live-trend-selection.json
+          if-no-files-found: warn
+          retention-days: 1
