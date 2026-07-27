@@ -191,6 +191,7 @@ jobs:
       - name: Run bounded production chain
         id: controller
         if: inputs.mode == 'full'
+        continue-on-error: true
         working-directory: implementation
         shell: bash
         run: |
@@ -279,10 +280,11 @@ jobs:
 
           echo "exit_code=${final_exit}" >> "$GITHUB_OUTPUT"
           echo "state=${final_state}" >> "$GITHUB_OUTPUT"
+          exit 0
 
       - name: Resolve production result
         id: result
-        if: inputs.mode == 'full'
+        if: always() && inputs.mode == 'full'
         working-directory: implementation
         run: |
           python - <<'PY'
