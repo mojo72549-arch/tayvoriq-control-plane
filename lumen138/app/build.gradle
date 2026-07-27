@@ -8,8 +8,8 @@ android {
         applicationId 'com.projectlumen.pilot.robust'
         minSdk 26
         targetSdk 35
-        versionCode 1314100
-        versionName '13.1.41-p0-legacy-migration'
+        versionCode 1314200
+        versionName '13.1.42-p0-media3-player'
         buildConfigField 'String', 'BUILD_CHANNEL', '"closed-pilot-p0"'
     }
 
@@ -45,5 +45,10 @@ android {
 }
 
 dependencies {
+    def media3_version = '1.10.1'
+    implementation "androidx.media3:media3-exoplayer:${media3_version}"
+    implementation "androidx.media3:media3-exoplayer-hls:${media3_version}"
+    implementation "androidx.media3:media3-ui:${media3_version}"
+
     testImplementation 'junit:junit:4.13.2'
 }
