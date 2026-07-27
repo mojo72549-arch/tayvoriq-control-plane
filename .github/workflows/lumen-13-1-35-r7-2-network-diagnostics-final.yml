@@ -25,12 +25,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/r3-source
-          cat \
-            lumen-public-preview/r3-source-inline.part00.b64 \
-            lumen-public-preview/r3-source-inline.part01.b64 \
-            lumen-public-preview/r3-source-inline.part02.b64 \
-            lumen-public-preview/r3-source-inline.part03.b64 \
-            | tr -d '[:space:]' > /tmp/r3-source.zip.b64
+          PARTS=(
+            lumen-public-preview/r3-source-inline.part00.b64
+            lumen-public-preview/r3-source-inline.part01a.b64
+            lumen-public-preview/r3-source-inline.part01b.b64
+            lumen-public-preview/r3-source-inline.part01c.b64
+            lumen-public-preview/r3-source-inline.part02.b64
+            lumen-public-preview/r3-source-inline.part03.b64
+          )
+          cat "${PARTS[@]}" | tr -d '[:space:]' > /tmp/r3-source.zip.b64
+          test "$(stat -c %s /tmp/r3-source.zip.b64)" = "71468"
           base64 -d /tmp/r3-source.zip.b64 > /tmp/r3-source.zip
           test "$(stat -c %s /tmp/r3-source.zip)" = "53600"
           echo '91f6a52769ed967c0a2f68ce14567fecaacc7580510465587022898f801e3e2e  /tmp/r3-source.zip' | sha256sum -c -
