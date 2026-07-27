@@ -39,6 +39,11 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    lint {
+        abortOnError true
+        disable 'UnsafeOptInUsageError'
+    }
+
     buildFeatures { buildConfig true }
     packaging { resources.excludes += ['META-INF/LICENSE*', 'META-INF/NOTICE*'] }
     testOptions { unitTests.returnDefaultValues = true }
