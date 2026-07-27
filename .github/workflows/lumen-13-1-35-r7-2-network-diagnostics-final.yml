@@ -1,0 +1,121 @@
+name: Project Lumen 13.1.35 R7.2 Final Stable Build
+
+on:
+  pull_request:
+    branches: [ lumen-13-1-34-r7-1-responsive-typography ]
+    paths:
+      - '.github/workflows/lumen-13-1-35-r7-2-network-diagnostics-final.yml'
+      - 'lumen-public-preview/apply-r7-2-network-diagnostics.py'
+      - 'lumen-public-preview/R7_2_NETWORK_DIAGNOSTICS_ACCEPTANCE.md'
+
+permissions:
+  contents: read
+
+actions:
+
+jobs:
+  build-r7-2-final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Restore canonical verified R3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/r3-source
+          cat \
+            lumen-public-preview/r3-source-inline.part00.b64 \
+            lumen-public-preview/r3-source-inline.part01.b64 \
+            lumen-public-preview/r3-source-inline.part02.b64 \
+            lumen-public-preview/r3-source-inline.part03.b64 \
+            | tr -d '[:space:]' > /tmp/r3-source.zip.b64
+          base64 -d /tmp/r3-source.zip.b64 > /tmp/r3-source.zip
+          test "$(stat -c %s /tmp/r3-source.zip)" = "53600"
+          echo '91f6a52769ed967c0a2f68ce14567fecaacc7580510465587022898f801e3e2e  /tmp/r3-source.zip' | sha256sum -c -
+          unzip -q /tmp/r3-source.zip -d /tmp/r3-source
+          echo 'b49069866878a95d97ab19d5c6e8e66f8302a15c6beb83de25c8348e34af7c92  /tmp/r3-source/project-lumen-13.1.28-r3-generated-source.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/r3-source/project-lumen-13.1.28-r3-generated-source.tar.gz
+
+      - name: Apply R4 through R7.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 lumen-public-preview/apply-r4-profile-integration.py project-lumen-preview
+          python3 lumen-public-preview/apply-rc1-cumulative-integration.py project-lumen-preview
+          python3 lumen-public-preview/apply-r7-premium-ui.py project-lumen-preview
+          python3 lumen-public-preview/apply-r7-1-responsive-typography.py project-lumen-preview
+          python3 lumen-public-preview/apply-r7-2-network-diagnostics.py project-lumen-preview
+
+      - name: Verify R7.2 gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview
+          MAIN=$BASE/MainActivity.java
+          GRADLE=project-lumen-preview/app/build.gradle
+          grep -q 'versionCode 134500' "$GRADLE"
+          grep -q "versionName '13.1.35-r7.2-network-diagnostics-pilot'" "$GRADLE"
+          grep -q '"IMPORT-DNS"' "$MAIN"
+          grep -q 'attempt < 2' "$MAIN"
+          grep -q '"IMPORT-OFFLINE"' "$MAIN"
+          grep -q 'append("App=").append(appVersionName())' "$MAIN"
+          grep -q 'diagnosticSensitiveHost' "$MAIN"
+          grep -q '\[HOST AUSGEBLENDET\]' "$MAIN"
+          grep -q 'compactThrowableForLog' "$MAIN"
+          grep -q 'Die bereinigte Logdatei ist angehängt.' "$MAIN"
+          if grep -R -nE 'HostnameVerifier|setHostnameVerifier|new Proxy\(' "$BASE"; then
+            exit 1
+          fi
+          if grep -R -nE 'https?://[^" ]+get\.php\?username=|password=[^&" ]+' "$BASE"; then
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build Android APK
+        working-directory: project-lumen-preview
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon clean assembleDebug 2>&1 | tee ../android-build-13.1.35-r7-2.log
+
+      - name: Sign stable pilot APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d lumen-public-preview/project-lumen-pilot-debug.jks.b64 > /tmp/lumen-pilot.jks
+          echo '09d67cdecac40a4e03edcfd09047377ed4a9e9c01c5bc23140e1f15b0b2cbef8  /tmp/lumen-pilot.jks' | sha256sum -c -
+          mkdir -p dist
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+          APKSIGNER="$SDK_ROOT/build-tools/35.0.0/apksigner"
+          INPUT=project-lumen-preview/app/build/outputs/apk/debug/app-debug.apk
+          OUTPUT=dist/Project_Lumen_13.1.35_R7.2_Network_Diagnostics_Stable_Pilot.apk
+          "$APKSIGNER" sign --ks /tmp/lumen-pilot.jks --ks-key-alias lumenPilot \
+            --ks-pass pass:projectlumenpilot --key-pass pass:projectlumenpilot \
+            --out "$OUTPUT" "$INPUT"
+          "$APKSIGNER" verify --verbose --print-certs "$OUTPUT" | tee dist/pilot-certificate.txt
+          grep -qi 'Project Lumen Pilot' dist/pilot-certificate.txt
+          grep -qi '2550241518d5d562d75ee5e271a4cff530b2bacf86d18eee5642d2c20daf9e96' dist/pilot-certificate.txt
+          sha256sum "$OUTPUT" > dist/Project_Lumen_13.1.35_R7.2_Network_Diagnostics_Stable_Pilot.sha256
+          cp lumen-public-preview/R7_2_NETWORK_DIAGNOSTICS_ACCEPTANCE.md dist/
+          cp android-build-13.1.35-r7-2.log dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-1-35-r7-2-final-stable
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
