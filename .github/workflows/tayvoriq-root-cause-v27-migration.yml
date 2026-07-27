@@ -27,9 +27,7 @@ jobs:
       - name: Validate private repository token
         env:
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: |
-          set -euo pipefail
-          test -n "$PRIVATE_REPO_TOKEN"
+        run: test -n "$PRIVATE_REPO_TOKEN"
 
       - name: Checkout private implementation root-fix branch
         uses: actions/checkout@v4
@@ -40,330 +38,9 @@ jobs:
           path: implementation
           fetch-depth: 0
 
-      - name: Replace V27 final-package defect at its source
+      - name: Apply direct V27 canonical-package migration
         working-directory: implementation
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("tools/tayvoriq_dual_platform_render_v27.py")
-          text = path.read_text(encoding="utf-8")
-          start = text.index("def _universalize_package(")
-          end = text.index("\ndef rewrite_variant_v27(", start)
-
-          replacement = r'''def _universalize_package(
-              package: dict[str, Any],
-              *,
-              target_duration: int,
-          ) -> dict[str, Any]:
-              """Build and validate the one canonical YouTube/TikTok package.
-
-              This is the only stage allowed to create the final shared CTA and final
-              script. It enforces both limits from the same object that is handed to
-              the renderer, so a previously valid editorial package cannot become a
-              too-short render package after validation.
-              """
-
-              result = copy.deepcopy(package)
-              answers_source = result.get("editorial_answers")
-              if not isinstance(answers_source, dict):
-                  raise RuntimeError(
-                      "CONTENT_REJECTED:v27-final-package-missing-editorial-answers"
-                  )
-
-              editorial_keys = (
-                  "what_happened",
-                  "why_happening",
-                  "who_is_affected",
-                  "personal_impact",
-                  "action_now",
-              )
-              answers = {
-                  key: v2.ensure_sentence(answers_source.get(key) or result.get(key))
-                  for key in editorial_keys
-              }
-              missing = [key for key, value in answers.items() if not v2.clean(value)]
-              if missing:
-                  raise RuntimeError(
-                      "CONTENT_REJECTED:v27-final-package-missing-answers:"
-                      + ",".join(missing)
-                  )
-
-              series_next = v2.ensure_sentence(result.get("series_next"))
-              viewer_payoff = v2.ensure_sentence(result.get("viewer_payoff"))
-              cta = v2.clean(
-                  " ".join(
-                      part
-                      for part in (
-                          series_next,
-                          viewer_payoff,
-                          _UNIVERSAL_ACTION,
-                      )
-                      if v2.clean(part)
-                  )
-              )
-
-              minimum_words, duration_maximum = v2.engine.duration_word_range(
-                  target_duration
-              )
-              maximum_words = min(duration_maximum, 63)
-              repair_target = min(maximum_words, max(minimum_words + 2, 53))
-
-              def rebuild() -> tuple[str, str, int, int, int, float]:
-                  body_value = v2.clean(
-                      " ".join(answers[key] for key in editorial_keys)
-                  )
-                  script_value = v2.clean(f"{body_value} {cta}")
-                  body_count = v2.words(body_value)
-                  cta_count = v2.words(cta)
-                  total_count = v2.words(script_value)
-                  ratio = body_count / max(1, total_count)
-                  return (
-                      body_value,
-                      script_value,
-                      body_count,
-                      cta_count,
-                      total_count,
-                      ratio,
-                  )
-
-              body, script, body_words, cta_words, total_words, cta_start_ratio = (
-                  rebuild()
-              )
-              deficit = max(0, repair_target - total_words)
-              if deficit:
-                  padding_by_count = {
-                      1: "regelmäßig",
-                      2: "besonders sorgfältig",
-                      3: "zusätzlich besonders sorgfältig",
-                      4: "regelmäßig und besonders sorgfältig",
-                      5: "regelmäßig vor Entscheidungen besonders sorgfältig",
-                      6: "regelmäßig und vor Entscheidungen besonders sorgfältig",
-                      7: "regelmäßig und vor wichtigen Entscheidungen besonders sorgfältig",
-                      8: "regelmäßig und vor besonders wichtigen Entscheidungen äußerst sorgfältig",
-                  }
-                  action_words = v2.words(answers["action_now"])
-                  capacity = max(0, 15 - action_words)
-                  if deficit not in padding_by_count or deficit > capacity:
-                      raise RuntimeError(
-                          "CONTENT_REJECTED:v27-final-package-minimum-capacity:"
-                          f"deficit={deficit},capacity={capacity}"
-                      )
-                  action = v2.clean(answers["action_now"]).rstrip(".!? ")
-                  answers["action_now"] = v2.ensure_sentence(
-                      f"{action} {padding_by_count[deficit]}"
-                  )
-                  body, script, body_words, cta_words, total_words, cta_start_ratio = (
-                      rebuild()
-                  )
-
-              issues: list[str] = []
-              lower_cta = cta.casefold()
-              if "folg" not in lower_cta:
-                  issues.append("tiktok_cta_missing_follow")
-              if "abonn" not in lower_cta:
-                  issues.append("youtube_cta_missing_subscribe")
-              if "abonniere diesem" in lower_cta:
-                  issues.append("german_cta_case_error")
-              if body_words < 38 or body_words > 49:
-                  issues.append(f"editorial_body_outside_gate:{body_words}")
-              if total_words < minimum_words:
-                  issues.append(f"script_too_short:{total_words}:min={minimum_words}")
-              if total_words > maximum_words:
-                  issues.append(f"script_too_long:{total_words}:max={maximum_words}")
-              if cta_start_ratio < 0.72:
-                  issues.append(f"cta_too_early:{cta_start_ratio:.3f}")
-              if issues:
-                  raise RuntimeError(
-                      "CONTENT_REJECTED:v27-final-package-gate:"
-                      + ",".join(issues)
-                  )
-
-              result.update(
-                  {
-                      **answers,
-                      "editorial_answers": answers,
-                      "script_body": body,
-                      "series_next": series_next,
-                      "viewer_payoff": viewer_payoff,
-                      "cta": cta,
-                      "script": script,
-                      "platform": "youtube_tiktok",
-                      "universal_platform_cta": True,
-                      "shared_master_render_requested": True,
-                      "approval_status": "PENDING_REVIEW",
-                      "upload_status": "NOT_STARTED_PENDING_APPROVAL",
-                      "instagram_status": "NOT_CONFIGURED_EXCLUDED",
-                      "context_metrics": {
-                          "cta_start_ratio": round(cta_start_ratio, 3),
-                          "body_words": body_words,
-                          "cta_words": cta_words,
-                          "editorial_body_words": body_words,
-                          "script_words": total_words,
-                          "minimum_script_words": minimum_words,
-                          "maximum_script_words": maximum_words,
-                      },
-                      "content_editor_version": "v27-canonical-final-package-v2",
-                      "final_package_contract": {
-                          "version": "v27-canonical-final-package-v2",
-                          "word_count": total_words,
-                          "minimum_words": minimum_words,
-                          "maximum_words": maximum_words,
-                          "quality_gates_weakened": False,
-                      },
-                      "platform_gate_validation": {
-                          "youtube_shorts": {
-                              "passed": True,
-                              "required_action": "subscribe",
-                          },
-                          "tiktok": {
-                              "passed": True,
-                              "required_action": "follow",
-                              "distribution": "manual_after_user_approval",
-                          },
-                      },
-                  }
-              )
-              return result
-          '''
-
-          import textwrap
-          replacement = textwrap.dedent(replacement)
-          patched = text[:start] + replacement + text[end:]
-          path.write_text(patched, encoding="utf-8")
-          PY
-
-      - name: Add production-import integration regression
-        working-directory: implementation
-        run: |
-          set -euo pipefail
-          cat > tests/test_tayvoriq_v27_canonical_final_package.py <<'PY'
-          from __future__ import annotations
-
-          import tayvoriq_dual_platform_render_v23_entry as production_entry
-          import tayvoriq_dual_platform_render_v27 as v27
-
-
-          EDITORIAL = {
-              "what_happened": (
-                  "Feuerwehr bekämpft weiter Waldbrände in Frankreich und Spanien."
-              ),
-              "why_happening": (
-                  "Die Feuer wachsen, weil Hitze und Trockenheit anhalten."
-              ),
-              "who_is_affected": (
-                  "Betroffen sind Anwohner, Reisende und Einsatzkräfte vor Ort."
-              ),
-              "personal_impact": (
-                  "Für dich können Reisen und Luftqualität regional beeinträchtigt werden."
-              ),
-              "action_now": (
-                  "Prüfe lokale Warnungen vor deiner geplanten Reise."
-              ),
-          }
-
-
-          def package() -> dict[str, object]:
-              body = " ".join(EDITORIAL.values())
-              return {
-                  "title": "Waldbrände in Frankreich und Spanien",
-                  "category": "world_society",
-                  "language": "Deutsch",
-                  "platform": "youtube_shorts",
-                  "target_duration": 35,
-                  "editorial_answers": dict(EDITORIAL),
-                  "script_body": body,
-                  "series_next": "Im nächsten Teil prüfe ich konkrete Schutzschritte.",
-                  "viewer_payoff": "So weißt du, was du jetzt tun kannst.",
-                  "context_metrics": {},
-              }
-
-
-          def test_v27_repairs_the_exact_final_package_before_render():
-              result = v27._universalize_package(package(), target_duration=35)
-              words = v27.v2.words(result["script"])
-
-              assert 51 <= words <= 63
-              assert 38 <= v27.v2.words(result["script_body"]) <= 49
-              assert result["script"].endswith(result["cta"])
-              assert result["approval_status"] == "PENDING_REVIEW"
-              assert result["upload_status"] == "NOT_STARTED_PENDING_APPROVAL"
-              assert result["instagram_status"] == "NOT_CONFIGURED_EXCLUDED"
-              assert result["final_package_contract"]["quality_gates_weakened"] is False
-
-
-          def test_production_import_order_keeps_the_direct_v27_contract():
-              runtime_v27 = production_entry.renderer_v29.v28.v27
-              result = runtime_v27._universalize_package(
-                  package(),
-                  target_duration=35,
-              )
-              words = runtime_v27.v2.words(result["script"])
-
-              assert runtime_v27._universalize_package is v27._universalize_package
-              assert 51 <= words <= 63
-              assert result["content_editor_version"] == (
-                  "v27-canonical-final-package-v2"
-              )
-
-
-          def test_actual_v20_counter_no_longer_reports_script_too_short():
-              runtime_v27 = production_entry.renderer_v29.v28.v27
-              result = runtime_v27._universalize_package(
-                  package(),
-                  target_duration=35,
-              )
-              result["speech_preflight"] = {
-                  "passed": True,
-                  "visible_script_preserved": True,
-              }
-              report = runtime_v27.v25.v20.quality_report_v20(
-                  result,
-                  native_voice_configured=True,
-              )
-
-              assert not any(
-                  str(issue).startswith("script_too_short")
-                  for issue in report.get("issues", [])
-              )
-          PY
-
-      - name: Remove superseded wrapper experiment
-        working-directory: implementation
-        run: |
-          rm -f tools/tayvoriq_dual_platform_render_v38.py
-
-      - name: Add architecture decision record
-        working-directory: implementation
-        run: |
-          mkdir -p docs/tayvoriq
-          cat > docs/tayvoriq/ADR-001-canonical-final-package.md <<'MD'
-          # ADR-001: Canonical final package at V27
-
-          ## Problem
-          The renderer family used import-time monkeypatching and captured callable
-          references. Later modules validated one package while V27 reconstructed a
-          different final script and checked only the maximum word count. Tests could
-          pass against a patched module object while production retained an older
-          callable or a newly shortened package.
-
-          ## Decision
-          V27 owns the final shared YouTube/TikTok package. The same function now:
-          - builds the universal CTA;
-          - builds the final script;
-          - enforces minimum and maximum duration word counts;
-          - preserves all source-derived editorial sentences;
-          - records the manual-review and upload-hold states.
-
-          No later renderer version may rebuild `script`, `script_body` or `cta`.
-          Later stages may only consume this package, render it and audit evidence.
-
-          ## Verification
-          The regression test imports the exact production entrypoint and passes the
-          resulting package through the actual V20 word counter. A unit-only import
-          is not sufficient for this contract.
-          MD
+        run: python tools/apply_v27_canonical_contract.py
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -380,30 +57,48 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r implementation/requirements.txt pytest
 
-      - name: Validate root fix through production import order
+      - name: Validate direct root fix through production import order
         working-directory: implementation
         run: |
-          set -euo pipefail
+          set -uo pipefail
           mkdir -p out/control-plane
-          python -m compileall -q tools src
-          python tools/tayvoriq_preflight_check.py \
-            --report-out out/control-plane/preflight.json
-          python -m pytest -q \
-            tests/test_tayvoriq_v27_canonical_final_package.py \
-            tests/test_tayvoriq_manual_review_contract_v30.py \
-            tests/test_tayvoriq_bilger_audit_safe_v33.py
+          set +e
+          {
+            python -m compileall -q tools src &&
+            python tools/tayvoriq_preflight_check.py \
+              --report-out out/control-plane/preflight.json &&
+            python -m pytest -q \
+              tests/test_tayvoriq_v27_canonical_final_package.py \
+              tests/test_tayvoriq_manual_review_contract_v30.py \
+              tests/test_tayvoriq_bilger_audit_safe_v33.py
+          } 2>&1 | tee out/control-plane/v27-root-fix.log
+          code=${PIPESTATUS[0]}
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "::error title=V27 root-fix validation::$(tail -n 30 out/control-plane/v27-root-fix.log | tr '\n' ' ' | cut -c1-3500)"
+          fi
+          exit "$code"
 
-      - name: Commit validated root fix to private branch
+      - name: Upload compact root-fix diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-v27-root-fix-${{ github.run_id }}
+          path: |
+            implementation/out/control-plane/v27-root-fix.log
+            implementation/out/control-plane/preflight.json
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Commit validated direct fix to private branch
         working-directory: implementation
-        env:
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add tools/tayvoriq_dual_platform_render_v27.py
           if git diff --cached --quiet; then
-            echo "Root fix already applied."
+            echo "Direct V27 fix already committed."
             exit 0
           fi
           git commit -m "fix(tayvoriq): make V27 the canonical final package"
