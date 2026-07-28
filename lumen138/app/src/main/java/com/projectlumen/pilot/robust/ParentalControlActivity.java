@@ -1,6 +1,7 @@
 package com.projectlumen.pilot.robust;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -8,7 +9,6 @@ import android.os.Bundle;
 import android.text.InputFilter;
 import android.text.InputType;
 import android.view.Gravity;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -24,7 +24,6 @@ public final class ParentalControlActivity extends Activity {
     private static final int DANGER = 0xFFE94D5F;
 
     private LinearLayout root;
-    private TextView status;
     private DiagnosticLog log;
 
     @Override protected void onCreate(Bundle state) {
@@ -44,9 +43,7 @@ public final class ParentalControlActivity extends Activity {
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(18), dp(18), dp(18), dp(18));
-        root.setBackground(new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF040A14, 0xFF082032, 0xFF211B3D}));
+        root.setBackground(new LumenFlowDrawable());
         setContentView(root);
     }
 
@@ -63,7 +60,7 @@ public final class ParentalControlActivity extends Activity {
         brand.setOrientation(LinearLayout.VERTICAL);
         brand.setPadding(dp(10), 0, 0, 0);
         brand.addView(text("PROJECT LUMEN", 21, Color.WHITE, true));
-        brand.addView(text("JUGENDSCHUTZ", 10, 0xFF9DB6C8, true));
+        brand.addView(text("JUGENDSCHUTZ UND ERWACHSENENBEREICH", 10, 0xFF9DB6C8, true));
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
         root.addView(header);
 
@@ -77,15 +74,15 @@ public final class ParentalControlActivity extends Activity {
 
         boolean hasPin = ParentalControl.hasPin();
         boolean unlocked = ParentalControl.isUnlocked();
-        status = text(unlocked ? "Erwachsenenbereiche vorübergehend entsperrt"
+        TextView status = text(unlocked ? "Elternzugang ist vorübergehend entsperrt"
                 : "Erwachsenenbereiche sind vollständig verborgen",
                 17, unlocked ? ACCENT : Color.WHITE, true);
         status.setGravity(Gravity.CENTER_HORIZONTAL);
         card.addView(status);
 
         TextView detail = text(unlocked
-                        ? "Die Freigabe endet automatisch nach spätestens 10 Minuten oder sobald die App verlassen wird."
-                        : "Titel, Kategorien, Logos, Suche und Trefferzahlen bleiben für Kinder unsichtbar.",
+                        ? "Jetzt kann der getrennte 18+-Filmbereich geöffnet werden. Die Freigabe endet nach spätestens 10 Minuten oder beim Verlassen der App."
+                        : "Hier wird die 6-stellige Eltern-PIN festgelegt. Titel, Kategorien, Logos, Suche und Trefferzahlen bleiben vorher unsichtbar.",
                 13, 0xFFB6CAD7, false);
         detail.setGravity(Gravity.CENTER_HORIZONTAL);
         detail.setPadding(0, dp(7), 0, dp(14));
@@ -147,7 +144,7 @@ public final class ParentalControlActivity extends Activity {
             try {
                 if (ParentalControl.unlock(pin.getText().toString())) {
                     log.event("-", "PARENTAL-UNLOCK-APPROVED", "durationMinutes=10");
-                    toast("Erwachsenenbereiche wurden vorübergehend entsperrt.");
+                    toast("Elternzugang wurde vorübergehend entsperrt.");
                     render();
                 } else {
                     log.event("-", "PARENTAL-UNLOCK-DENIED", "reason=invalid-pin");
@@ -171,8 +168,13 @@ public final class ParentalControlActivity extends Activity {
         remaining.setGravity(Gravity.CENTER);
         card.addView(remaining);
 
+        Button openAdult = button("18+ Filme jetzt öffnen", true);
+        openAdult.setOnClickListener(v -> openAdultMovies());
+        card.addView(openAdult, buttonParams());
+
         Button lock = button("Jetzt wieder sperren", false);
         lock.setOnClickListener(v -> {
+            AdultContentPolicy.setAdultMode(false);
             ParentalControl.lock("manual");
             log.event("-", "PARENTAL-LOCK", "reason=manual");
             render();
@@ -199,6 +201,23 @@ public final class ParentalControlActivity extends Activity {
             }
         });
         card.addView(change, buttonParams());
+    }
+
+    private void openAdultMovies() {
+        if (!ParentalControl.isUnlocked()) {
+            toast("Elternzugang ist nicht mehr freigegeben.");
+            render();
+            return;
+        }
+        AdultContentPolicy.setAdultMode(true);
+        getSharedPreferences("lumen_premium_view_state", MODE_PRIVATE).edit()
+                .putString("mode", "MOVIES")
+                .putString("language", "ALL").apply();
+        log.event("-", "PARENTAL-SCOPE", "adultMode=true source=parental-screen");
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private EditText pinInput(String hint) {
