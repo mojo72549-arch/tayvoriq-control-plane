@@ -34,7 +34,6 @@ final class AdultContentPolicy {
                     || token.equals("18plus") || token.equals("erotik")
                     || token.equals("erotic") || token.equals("porno")
                     || token.equals("porn") || token.equals("pornhub")
-                    || token.equals("sex") || token.equals("seks")
                     || token.equals("playboy") || token.equals("hustler")
                     || token.equals("brazzers") || token.equals("redlight")) {
                 return true;
