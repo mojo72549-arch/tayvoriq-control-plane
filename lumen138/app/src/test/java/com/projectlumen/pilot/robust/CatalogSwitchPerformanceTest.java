@@ -9,7 +9,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class CatalogSwitchPerformanceTest {
-    @Test public void repeatedLanguageSwitchesUseCachedFlags() {
+    @Test public void repeatedLanguageSwitchesUsePreparedBuckets() {
         ArrayList<Channel> channels = new ArrayList<>(100_000);
         for (int index = 0; index < 100_000; index++) {
             String group;
@@ -35,6 +35,7 @@ public final class CatalogSwitchPerformanceTest {
             channels.add(new Channel("id-" + index, name, group,
                     "http://example.test/" + index + ".ts", Channel.Type.LIVE));
         }
+        CatalogSession.publish(channels);
 
         long started = System.nanoTime();
         int total = 0;
@@ -42,15 +43,13 @@ public final class CatalogSwitchPerformanceTest {
             MediaLanguage.Code wanted = round % 4 == 0 ? MediaLanguage.Code.DE
                     : round % 4 == 1 ? MediaLanguage.Code.TR
                     : round % 4 == 2 ? MediaLanguage.Code.EN : MediaLanguage.Code.OTHER;
-            for (Channel channel : channels) {
-                if (MediaLanguage.detect(channel) == wanted) total++;
-            }
+            total += CatalogSession.family(Channel.Type.LIVE, wanted).size();
         }
         long durationMs = (System.nanoTime() - started) / 1_000_000L;
 
         assertEquals(500_000, total);
-        assertTrue("20 cached switches over 100k rows took " + durationMs + " ms",
-                durationMs < 2_500L);
+        assertTrue("20 prepared switches over 100k rows took " + durationMs + " ms",
+                durationMs < 250L);
     }
 
     @Test public void cachedAdultProjectionIsLinearAndStable() {
