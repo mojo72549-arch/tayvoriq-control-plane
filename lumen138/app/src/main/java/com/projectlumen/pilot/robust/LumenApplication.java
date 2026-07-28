@@ -16,21 +16,17 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.lang.ref.WeakReference;
-
-/** Process-level parental lock, dedicated adult hub and brand installer. */
+/** Process-level parental lock and premium-shell installer. */
 public final class LumenApplication extends Application
         implements Application.ActivityLifecycleCallbacks {
-    private static final String ACTIONS_TAG = "lumen-parental-actions-v2";
+    static final String EXTRA_ADULT_CONTENT = "lumen_parental_adult_content";
+    private static final String ACTIONS_TAG = "lumen-parental-actions-v3";
+
     private final Handler main = new Handler(Looper.getMainLooper());
     private int startedActivities;
-    private boolean pendingCatalogRefresh;
-    private WeakReference<MainActivity> mainActivity = new WeakReference<>(null);
 
     private final Runnable backgroundLock = () -> {
-        if (startedActivities == 0) {
-            pendingCatalogRefresh = ParentalControl.isUnlocked() || AdultContentPolicy.isAdultMode();
-            AdultContentPolicy.setAdultMode(false);
+        if (startedActivities == 0 && ParentalControl.isUnlocked()) {
             ParentalControl.lock("app-background");
             DiagnosticLog.get(this).event("-", "PARENTAL-LOCK", "reason=app-background");
         }
@@ -39,24 +35,14 @@ public final class LumenApplication extends Application
     @Override public void onCreate() {
         super.onCreate();
         ParentalControl.initialize(this);
-        ParentalControl.setListener((unlocked, reason) -> {
-            if (!unlocked) AdultContentPolicy.setAdultMode(false);
-            DiagnosticLog.get(this).event("-",
-                    unlocked ? "PARENTAL-UNLOCK" : "PARENTAL-LOCK",
-                    "reason=" + safeReason(reason));
-            if (startedActivities == 0) {
-                pendingCatalogRefresh = true;
-                return;
-            }
-            refreshMainActivity();
-        });
+        ParentalControl.setListener((unlocked, reason) ->
+                DiagnosticLog.get(this).event("-",
+                        unlocked ? "PARENTAL-UNLOCK" : "PARENTAL-LOCK",
+                        "reason=" + safeReason(reason)));
         registerActivityLifecycleCallbacks(this);
     }
 
     @Override public void onActivityCreated(Activity activity, Bundle state) {
-        if (activity instanceof MainActivity) {
-            mainActivity = new WeakReference<>((MainActivity) activity);
-        }
         blockAdultPlayerIfNeeded(activity);
     }
 
@@ -69,12 +55,8 @@ public final class LumenApplication extends Application
     @Override public void onActivityResumed(Activity activity) {
         if (activity instanceof MainActivity) {
             installPremiumShell(activity);
-            if (pendingCatalogRefresh) {
-                pendingCatalogRefresh = false;
-                activity.recreate();
-                return;
-            }
-        } else if (activity instanceof ParentalControlActivity) {
+        } else if (activity instanceof ParentalControlActivity
+                || activity instanceof AdultCatalogActivity) {
             installFlowBackground(activity);
         }
         blockAdultPlayerIfNeeded(activity);
@@ -91,26 +73,14 @@ public final class LumenApplication extends Application
     }
 
     @Override public void onActivitySaveInstanceState(Activity activity, Bundle state) { }
-
-    @Override public void onActivityDestroyed(Activity activity) {
-        MainActivity current = mainActivity.get();
-        if (activity == current) mainActivity.clear();
-    }
-
-    private void refreshMainActivity() {
-        MainActivity activity = mainActivity.get();
-        if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
-            activity.recreate();
-        } else {
-            pendingCatalogRefresh = true;
-        }
-    }
+    @Override public void onActivityDestroyed(Activity activity) { }
 
     private void blockAdultPlayerIfNeeded(Activity activity) {
-        if (!(activity instanceof PlayerActivity) || ParentalControl.isUnlocked()) return;
-        String name = activity.getIntent().getStringExtra(PlayerActivity.EXTRA_NAME);
-        if (!AdultContentPolicy.isAdultText(name)) return;
-        DiagnosticLog.get(this).event("-", "PARENTAL-BLOCK", "target=player");
+        if (!(activity instanceof PlayerActivity)) return;
+        boolean adult = activity.getIntent().getBooleanExtra(EXTRA_ADULT_CONTENT, false);
+        if (!adult || ParentalControl.isUnlocked()) return;
+        DiagnosticLog.get(this).event("-", "PARENTAL-BLOCK",
+                "target=player reason=session-locked");
         activity.finish();
     }
 
@@ -131,25 +101,13 @@ public final class LumenApplication extends Application
         actions.addView(parental, weighted(activity, 0));
 
         if (ParentalControl.isUnlocked()) {
-            boolean adult = AdultContentPolicy.isAdultMode();
-            Button scope = actionButton(activity,
-                    adult ? "Familienbereich" : "18+ Filme öffnen",
-                    adult ? 0xFF62E7D3 : 0xFFE94D5F,
-                    adult ? 0xFF050D18 : Color.WHITE);
-            scope.setOnClickListener(v -> {
-                boolean next = !AdultContentPolicy.isAdultMode();
-                AdultContentPolicy.setAdultMode(next);
-                if (next) {
-                    activity.getSharedPreferences("lumen_premium_view_state", MODE_PRIVATE)
-                            .edit().putString("mode", "MOVIES")
-                            .putString("language", "ALL").apply();
-                }
-                DiagnosticLog.get(activity).event("-", "PARENTAL-SCOPE",
-                        "adultMode=" + next);
-                activity.recreate();
+            Button adult = actionButton(activity, "18+ Filme öffnen", 0xFFE94D5F, Color.WHITE);
+            adult.setOnClickListener(v -> {
+                DiagnosticLog.get(activity).event("-", "PARENTAL-ADULT-HUB-OPEN",
+                        "source=main isolated=true");
+                activity.startActivity(new Intent(activity, AdultCatalogActivity.class));
             });
-            LinearLayout.LayoutParams scopeParams = weighted(activity, dp(activity, 7));
-            actions.addView(scope, scopeParams);
+            actions.addView(adult, weighted(activity, dp(activity, 7)));
         }
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(activity, 41));
@@ -176,8 +134,8 @@ public final class LumenApplication extends Application
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                ViewGroup found = findMainColumn(group.getChildAt(i));
+            for (int index = 0; index < group.getChildCount(); index++) {
+                ViewGroup found = findMainColumn(group.getChildAt(index));
                 if (found != null) return found;
             }
         }
@@ -225,14 +183,23 @@ public final class LumenApplication extends Application
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                installHeaderLogo(group.getChildAt(i));
+            for (int index = 0; index < group.getChildCount(); index++) {
+                installHeaderLogo(group.getChildAt(index));
             }
         }
     }
 
     private static String safeReason(String reason) {
         if (reason == null || reason.isBlank()) return "state-change";
-        return reason.replaceAll("[^a-zA-Z0-9_-]", "_");
+        StringBuilder safe = new StringBuilder(reason.length());
+        for (int index = 0; index < reason.length(); index++) {
+            char value = reason.charAt(index);
+            boolean allowed = value >= 'a' && value <= 'z'
+                    || value >= 'A' && value <= 'Z'
+                    || value >= '0' && value <= '9'
+                    || value == '_' || value == '-';
+            safe.append(allowed ? value : '_');
+        }
+        return safe.toString();
     }
 }
