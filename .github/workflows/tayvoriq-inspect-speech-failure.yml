@@ -1,0 +1,72 @@
+name: TAYVORIQ Inspect Speech Failure
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-inspect-speech-failure.yml"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download and extract failed job log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -L --fail-with-body \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/jobs/90234382404/logs" \
+            -o job.log
+          python - <<'PY'
+          from pathlib import Path
+
+          lines = Path("job.log").read_text(encoding="utf-8-sig", errors="replace").splitlines()
+          markers = (
+              "required_spoken_concept_missing",
+              "transcript_similarity",
+              "transcript_length_ratio",
+              '"passed": false',
+              '"similarity"',
+              '"required_concepts"',
+              '"transcription"',
+              "Process completed with exit code",
+          )
+          selected = []
+          for index, line in enumerate(lines):
+              if any(marker in line for marker in markers):
+                  start = max(0, index - 8)
+                  end = min(len(lines), index + 40)
+                  selected.extend(lines[start:end])
+          deduped = []
+          seen = set()
+          for line in selected:
+              key = line.strip()
+              if not key or key in seen:
+                  continue
+              seen.add(key)
+              deduped.append(line)
+          if not deduped:
+              deduped = lines[-220:]
+          Path("speech-failure-extract.txt").write_text(
+              "\n".join(deduped) + "\n", encoding="utf-8"
+          )
+          print("\n".join(deduped))
+          PY
+
+      - name: Upload speech failure extract
+        uses: actions/upload-artifact@v4
+        with:
+          name: speech-failure-extract-30346666753
+          path: speech-failure-extract.txt
+          if-no-files-found: error
+          retention-days: 7
