@@ -5,9 +5,9 @@ import android.app.Application;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.TextView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
 
@@ -16,9 +16,12 @@ public final class LumenApplication extends Application
         implements Application.ActivityLifecycleCallbacks {
     private final Handler main = new Handler(Looper.getMainLooper());
     private int startedActivities;
+    private boolean pendingCatalogRefresh;
     private WeakReference<MainActivity> mainActivity = new WeakReference<>(null);
+
     private final Runnable backgroundLock = () -> {
         if (startedActivities == 0) {
+            pendingCatalogRefresh = ParentalControl.isUnlocked();
             ParentalControl.lock("app-background");
             DiagnosticLog.get(this).event("-", "PARENTAL-LOCK", "reason=app-background");
         }
@@ -28,12 +31,14 @@ public final class LumenApplication extends Application
         super.onCreate();
         ParentalControl.initialize(this);
         ParentalControl.setListener((unlocked, reason) -> {
-            DiagnosticLog.get(this).event("-", unlocked ? "PARENTAL-UNLOCK" : "PARENTAL-LOCK",
+            DiagnosticLog.get(this).event("-",
+                    unlocked ? "PARENTAL-UNLOCK" : "PARENTAL-LOCK",
                     "reason=" + safeReason(reason));
-            MainActivity activity = mainActivity.get();
-            if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
-                activity.recreate();
+            if (startedActivities == 0) {
+                pendingCatalogRefresh = true;
+                return;
             }
+            refreshMainActivity();
         });
         registerActivityLifecycleCallbacks(this);
     }
@@ -52,7 +57,14 @@ public final class LumenApplication extends Application
     }
 
     @Override public void onActivityResumed(Activity activity) {
-        if (activity instanceof MainActivity) installHeaderLogo(activity.getWindow().getDecorView());
+        if (activity instanceof MainActivity) {
+            installHeaderLogo(activity.getWindow().getDecorView());
+            if (pendingCatalogRefresh) {
+                pendingCatalogRefresh = false;
+                activity.recreate();
+                return;
+            }
+        }
         blockAdultPlayerIfNeeded(activity);
     }
 
@@ -71,6 +83,15 @@ public final class LumenApplication extends Application
     @Override public void onActivityDestroyed(Activity activity) {
         MainActivity current = mainActivity.get();
         if (activity == current) mainActivity.clear();
+    }
+
+    private void refreshMainActivity() {
+        MainActivity activity = mainActivity.get();
+        if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
+            activity.recreate();
+        } else {
+            pendingCatalogRefresh = true;
+        }
     }
 
     private void blockAdultPlayerIfNeeded(Activity activity) {
@@ -93,7 +114,9 @@ public final class LumenApplication extends Application
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) installHeaderLogo(group.getChildAt(i));
+            for (int i = 0; i < group.getChildCount(); i++) {
+                installHeaderLogo(group.getChildAt(i));
+            }
         }
     }
 
