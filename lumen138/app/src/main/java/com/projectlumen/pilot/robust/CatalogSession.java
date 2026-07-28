@@ -10,6 +10,7 @@ final class CatalogSession {
 
     private static volatile List<Channel> raw = Collections.emptyList();
     private static volatile List<Channel> family = Collections.emptyList();
+    private static volatile List<Channel> protectedCatalog = Collections.emptyList();
     private static volatile List<List<Channel>> familyBuckets = Collections.emptyList();
     private static volatile List<Channel> adultLive = Collections.emptyList();
     private static volatile List<Channel> adultMovies = Collections.emptyList();
@@ -68,6 +69,7 @@ final class CatalogSession {
 
         raw = Collections.unmodifiableList(rawCopy);
         family = Collections.unmodifiableList(safeCopy);
+        protectedCatalog = AdultContentPolicy.protectClassified(raw, family);
         familyBuckets = Collections.unmodifiableList(immutableBuckets);
         adultLive = Collections.unmodifiableList(liveAdult);
         adultMovies = Collections.unmodifiableList(movieAdult);
@@ -77,6 +79,7 @@ final class CatalogSession {
 
     static List<Channel> raw() { return raw; }
     static List<Channel> family() { return family; }
+    static List<Channel> protectedCatalog() { return protectedCatalog; }
     static List<Channel> adultLive() { return adultLive; }
     static List<Channel> adultMovies() { return adultMovies; }
     static List<Channel> adultSeries() { return adultSeries; }
