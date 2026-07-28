@@ -81,7 +81,7 @@ public final class ParentalControlActivity extends Activity {
         card.addView(status);
 
         TextView detail = text(unlocked
-                        ? "Jetzt kann der getrennte 18+-Filmbereich geöffnet werden. Die Freigabe endet nach spätestens 10 Minuten oder beim Verlassen der App."
+                        ? "Der getrennte 18+-Filmbereich kann jetzt geöffnet werden. Der normale Filmkatalog bleibt unverändert und familiengeeignet."
                         : "Hier wird die 6-stellige Eltern-PIN festgelegt. Titel, Kategorien, Logos, Suche und Trefferzahlen bleiben vorher unsichtbar.",
                 13, 0xFFB6CAD7, false);
         detail.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -168,13 +168,12 @@ public final class ParentalControlActivity extends Activity {
         remaining.setGravity(Gravity.CENTER);
         card.addView(remaining);
 
-        Button openAdult = button("18+ Filme jetzt öffnen", true);
+        Button openAdult = button("18+ Filme sicher öffnen", true);
         openAdult.setOnClickListener(v -> openAdultMovies());
         card.addView(openAdult, buttonParams());
 
         Button lock = button("Jetzt wieder sperren", false);
         lock.setOnClickListener(v -> {
-            AdultContentPolicy.setAdultMode(false);
             ParentalControl.lock("manual");
             log.event("-", "PARENTAL-LOCK", "reason=manual");
             render();
@@ -209,15 +208,8 @@ public final class ParentalControlActivity extends Activity {
             render();
             return;
         }
-        AdultContentPolicy.setAdultMode(true);
-        getSharedPreferences("lumen_premium_view_state", MODE_PRIVATE).edit()
-                .putString("mode", "MOVIES")
-                .putString("language", "ALL").apply();
-        log.event("-", "PARENTAL-SCOPE", "adultMode=true source=parental-screen");
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
+        log.event("-", "PARENTAL-ADULT-HUB-OPEN", "isolated=true mainRestart=false");
+        startActivity(new Intent(this, AdultCatalogActivity.class));
     }
 
     private EditText pinInput(String hint) {
