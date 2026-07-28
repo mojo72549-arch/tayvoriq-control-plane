@@ -22,6 +22,7 @@ final class CatalogCache {
     private static final int MAX_ENTRIES = 100_000;
     private static final int MAX_STRING_BYTES = 4 * 1024 * 1024;
     private static final int BUFFER_BYTES = 4 * 1024 * 1024;
+    private static final int MAX_PREVIEW_ROWS = 500;
     private static final Object IO_LOCK = new Object();
 
     private static volatile MemorySnapshot memory;
@@ -45,13 +46,14 @@ final class CatalogCache {
             String path = canonicalPath(file);
             if (snapshot != null && snapshot.matches(path, file)) {
                 CatalogSession.publish(AdultContentPolicy.raw(snapshot.channels));
-                return snapshot.channels;
+                return AdultContentPolicy.protectClassified(
+                        CatalogSession.raw(), CatalogSession.family());
             }
 
             Parsed parsed = readMapped(file);
-            List<Channel> protectedList = AdultContentPolicy.protectClassified(
-                    parsed.raw, parsed.safe);
             CatalogSession.publish(parsed.raw);
+            List<Channel> protectedList = AdultContentPolicy.protectClassified(
+                    CatalogSession.raw(), CatalogSession.family());
             memory = new MemorySnapshot(path, file.length(), file.lastModified(), protectedList);
 
             if (parsed.version != VERSION_PRECISE_SAFETY) {
@@ -59,6 +61,71 @@ final class CatalogCache {
             }
             return protectedList;
         }
+    }
+
+    /**
+     * Reads only enough sequential cache rows to paint a usable first screen.
+     * It never publishes a partial catalog and never returns protected content.
+     */
+    static List<Channel> readPreview(File file, Channel.Type wantedType,
+                                     MediaLanguage.Code wantedLanguage, int limit) throws Exception {
+        validateFile(file);
+        int wantedRows = Math.max(1, Math.min(MAX_PREVIEW_ROWS, limit));
+        MediaLanguage.Code language = wantedLanguage == null
+                ? MediaLanguage.Code.ALL : wantedLanguage;
+        ArrayList<Channel> result = new ArrayList<>(wantedRows);
+
+        try (FileInputStream input = new FileInputStream(file);
+             FileChannel channel = input.getChannel()) {
+            long size = channel.size();
+            if (size < 12 || size > Integer.MAX_VALUE) {
+                throw new IllegalStateException("Katalogcache hat eine ungültige Größe.");
+            }
+            ByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, size);
+            int magic = buffer.getInt();
+            int version = buffer.getInt();
+            int count = buffer.getInt();
+            validateHeader(magic, version, count);
+
+            Channel.Type[] types = Channel.Type.values();
+            MediaLanguage.Code[] languages = MediaLanguage.Code.values();
+            for (int index = 0; index < count && result.size() < wantedRows; index++) {
+                String id = readString(buffer);
+                String name = readString(buffer);
+                String group = readString(buffer);
+                String url = readString(buffer);
+                String logo = readString(buffer);
+                int typeIndex = unsignedByte(buffer);
+                if (typeIndex >= types.length) {
+                    throw new IllegalStateException("Ungültiger Medientyp im Cache.");
+                }
+
+                MediaLanguage.Code cachedLanguage = null;
+                byte cachedAdultClass = AdultContentPolicy.CLASS_UNKNOWN;
+                if (version == VERSION_FAST_FLAGS || version == VERSION_PRECISE_SAFETY) {
+                    int languageIndex = unsignedByte(buffer);
+                    byte storedAdultClass = buffer.get();
+                    if (languageIndex >= languages.length) {
+                        throw new IllegalStateException("Ungültige Sprachkennung im Cache.");
+                    }
+                    validateAdultClass(storedAdultClass);
+                    cachedLanguage = languages[languageIndex];
+                    cachedAdultClass = version == VERSION_PRECISE_SAFETY
+                            ? storedAdultClass : AdultContentPolicy.CLASS_UNKNOWN;
+                }
+
+                Channel entry = new Channel(id, name, group, url, logo, types[typeIndex],
+                        cachedLanguage, cachedAdultClass);
+                if (entry.adult) continue;
+                if (wantedType != null && entry.type != wantedType) continue;
+                if (language != MediaLanguage.Code.ALL
+                        && MediaLanguage.detect(entry) != language) continue;
+                result.add(entry);
+            }
+        } catch (BufferUnderflowException incomplete) {
+            throw new IllegalStateException("Katalogcache wurde unvollständig geschrieben.", incomplete);
+        }
+        return Collections.unmodifiableList(result);
     }
 
     static boolean usable(File file) {
@@ -76,17 +143,7 @@ final class CatalogCache {
             int magic = buffer.getInt();
             int version = buffer.getInt();
             int count = buffer.getInt();
-            if (magic != MAGIC) {
-                throw new IllegalStateException("Katalogcache hat eine ungültige Kennung.");
-            }
-            if (version != VERSION_LEGACY_LOGO && version != VERSION_FAST_FLAGS
-                    && version != VERSION_PRECISE_SAFETY) {
-                throw new IllegalStateException(
-                        "Schnellindex wird einmalig aus der verschlüsselten Playlist aufgebaut.");
-            }
-            if (count < 0 || count > MAX_ENTRIES) {
-                throw new IllegalStateException("Katalogcache enthält eine ungültige Eintragszahl.");
-            }
+            validateHeader(magic, version, count);
 
             ArrayList<Channel> raw = new ArrayList<>(count);
             ArrayList<Channel> safe = new ArrayList<>(count);
@@ -111,10 +168,7 @@ final class CatalogCache {
                     if (languageIndex >= languages.length) {
                         throw new IllegalStateException("Ungültige Sprachkennung im Cache.");
                     }
-                    if (storedAdultClass < AdultContentPolicy.CLASS_SAFE
-                            || storedAdultClass > AdultContentPolicy.CLASS_ADULT_BRAND) {
-                        throw new IllegalStateException("Ungültige Jugendschutzkennung im Cache.");
-                    }
+                    validateAdultClass(storedAdultClass);
                     // v3 contains the former, over-broad brand rules. Recompute once.
                     byte trustedAdultClass = version == VERSION_PRECISE_SAFETY
                             ? storedAdultClass : AdultContentPolicy.CLASS_UNKNOWN;
@@ -129,6 +183,27 @@ final class CatalogCache {
             return new Parsed(version, raw, safe);
         } catch (BufferUnderflowException incomplete) {
             throw new IllegalStateException("Katalogcache wurde unvollständig geschrieben.", incomplete);
+        }
+    }
+
+    private static void validateHeader(int magic, int version, int count) {
+        if (magic != MAGIC) {
+            throw new IllegalStateException("Katalogcache hat eine ungültige Kennung.");
+        }
+        if (version != VERSION_LEGACY_LOGO && version != VERSION_FAST_FLAGS
+                && version != VERSION_PRECISE_SAFETY) {
+            throw new IllegalStateException(
+                    "Schnellindex wird einmalig aus der verschlüsselten Playlist aufgebaut.");
+        }
+        if (count < 0 || count > MAX_ENTRIES) {
+            throw new IllegalStateException("Katalogcache enthält eine ungültige Eintragszahl.");
+        }
+    }
+
+    private static void validateAdultClass(byte storedAdultClass) {
+        if (storedAdultClass < AdultContentPolicy.CLASS_SAFE
+                || storedAdultClass > AdultContentPolicy.CLASS_ADULT_BRAND) {
+            throw new IllegalStateException("Ungültige Jugendschutzkennung im Cache.");
         }
     }
 
@@ -154,7 +229,7 @@ final class CatalogCache {
                 writeString(output, entry.logo);
                 output.writeByte(entry.type.ordinal());
                 output.writeByte(entry.language.ordinal());
-                output.writeByte(entry.adultClass);
+                output.writeByte(entry.automaticAdultClass);
             }
             output.flush();
             buffered.flush();
