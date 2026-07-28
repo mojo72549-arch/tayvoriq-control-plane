@@ -23,8 +23,9 @@ final class AdultContentPolicy {
     static boolean isAdultText(String value) {
         if (value == null || value.isBlank()) return false;
         String normalized = normalize(value);
-        if (normalized.contains(" 18+ ") || normalized.contains(" adults only ")
-                || normalized.contains(" adult only ") || normalized.contains(" after dark ")
+        if (normalized.contains(" adults only ")
+                || normalized.contains(" adult only ")
+                || normalized.contains(" after dark ")
                 || normalized.contains(" red light ")) return true;
 
         String[] tokens = normalized.trim().split(" +");
@@ -56,7 +57,7 @@ final class AdultContentPolicy {
 
     private static String normalize(String value) {
         String lower = value.toLowerCase(Locale.ROOT)
-                .replace('+', 'plus')
+                .replace("+", "plus")
                 .replace('ı', 'i')
                 .replace('ş', 's')
                 .replace('ğ', 'g')
