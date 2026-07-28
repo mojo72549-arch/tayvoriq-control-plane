@@ -16,6 +16,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ProjectLumenRobust"
         android:usesCleartextTraffic="true">
+        <activity android:name=".LanguageCatalogActivity" android:exported="false" />
         <activity android:name=".AdultCatalogActivity" android:exported="false" />
         <activity android:name=".ParentalControlActivity" android:exported="false" />
         <activity android:name=".DiagnosticsActivity" android:exported="false" />
