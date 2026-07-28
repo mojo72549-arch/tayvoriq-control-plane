@@ -16,7 +16,8 @@ final class M3uParser {
     private static final int PROGRESS_EVERY_ENTRIES = 5_000;
     private static final int DEADLINE_CHECK_EVERY_LINES = 2_048;
 
-    static List<Channel> parse(InputStream input, int maxEntries, long timeoutMs, Progress progress) throws Exception {
+    static List<Channel> parse(InputStream input, int maxEntries, long timeoutMs,
+                               Progress progress) throws Exception {
         ArrayList<Channel> result = new ArrayList<>(Math.min(maxEntries, 16_384));
         long startedNs = System.nanoTime();
         long deadlineNs = startedNs + timeoutMs * 1_000_000L;
@@ -34,7 +35,8 @@ final class M3uParser {
             while ((line = reader.readLine()) != null) {
                 linesRead++;
 
-                if ((linesRead % DEADLINE_CHECK_EVERY_LINES) == 0 && System.nanoTime() > deadlineNs) {
+                if ((linesRead % DEADLINE_CHECK_EVERY_LINES) == 0
+                        && System.nanoTime() > deadlineNs) {
                     long elapsed = elapsedMs(startedNs);
                     throw new IllegalStateException(
                             "Playlist-Prüfung wurde nach " + elapsed + " ms abgebrochen. "
@@ -67,7 +69,8 @@ final class M3uParser {
                             ? "Weitere" : pendingGroup;
                     String id = pendingId == null || pendingId.isBlank()
                             ? stableFastId(name, value) : pendingId;
-                    result.add(new Channel(id, name, group, value, classify(name, group, value)));
+                    result.add(new Channel(id, name, group, value,
+                            classify(name, group, value)));
                 } else {
                     limitReached = true;
                 }
@@ -84,7 +87,7 @@ final class M3uParser {
         }
 
         progress(progress, linesRead, result.size(), startedNs, limitReached);
-        return result;
+        return AdultContentPolicy.protect(result);
     }
 
     private static String cleanLine(String line, boolean firstLine) {
@@ -145,11 +148,13 @@ final class M3uParser {
     }
 
     private static boolean startsWithIgnoreCase(String text, String prefix) {
-        return text.length() >= prefix.length() && text.regionMatches(true, 0, prefix, 0, prefix.length());
+        return text.length() >= prefix.length()
+                && text.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 
     private static boolean equalsIgnoreCase(String left, String right) {
-        return left.length() == right.length() && left.regionMatches(true, 0, right, 0, right.length());
+        return left.length() == right.length()
+                && left.regionMatches(true, 0, right, 0, right.length());
     }
 
     private static boolean containsIgnoreCase(String text, String needle) {
@@ -167,7 +172,9 @@ final class M3uParser {
 
     private static void progress(Progress progress, long linesRead, int entries,
                                  long startedNs, boolean limitReached) {
-        if (progress != null) progress.update(linesRead, entries, elapsedMs(startedNs), limitReached);
+        if (progress != null) {
+            progress.update(linesRead, entries, elapsedMs(startedNs), limitReached);
+        }
     }
 
     private static long elapsedMs(long startedNs) {
