@@ -30,11 +30,11 @@ final class ParentalControl {
     private static final String FAILED = "failed_attempts";
     private static final String LOCKED_UNTIL = "locked_until_epoch";
     private static final AtomicLong GENERATION = new AtomicLong(1);
-    private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
     private static volatile Context app;
     private static volatile long unlockedUntilElapsed;
     private static volatile Listener listener;
+    private static volatile Handler mainHandler;
     private static final Runnable EXPIRY = () -> lock("timeout");
 
     private ParentalControl() { }
@@ -43,6 +43,7 @@ final class ParentalControl {
         app = context.getApplicationContext();
         unlockedUntilElapsed = 0L;
         GENERATION.incrementAndGet();
+        handler();
     }
 
     static void setListener(Listener value) { listener = value; }
@@ -92,7 +93,7 @@ final class ParentalControl {
     static boolean isUnlocked() {
         long until = unlockedUntilElapsed;
         if (until <= 0L) return false;
-        if (SystemClock.elapsedRealtime() >= until) {
+        if (elapsedRealtime() >= until) {
             lock("timeout");
             return false;
         }
@@ -100,7 +101,7 @@ final class ParentalControl {
     }
 
     static long unlockRemainingMs() {
-        return isUnlocked() ? Math.max(0L, unlockedUntilElapsed - SystemClock.elapsedRealtime()) : 0L;
+        return isUnlocked() ? Math.max(0L, unlockedUntilElapsed - elapsedRealtime()) : 0L;
     }
 
     static long lockoutRemainingMs() {
@@ -112,7 +113,8 @@ final class ParentalControl {
     static void lock(String reason) {
         boolean changed = unlockedUntilElapsed > 0L;
         unlockedUntilElapsed = 0L;
-        MAIN.removeCallbacks(EXPIRY);
+        Handler handler = handler();
+        if (handler != null) handler.removeCallbacks(EXPIRY);
         if (changed) {
             GENERATION.incrementAndGet();
             notifyListener(false, reason == null ? "locked" : reason);
@@ -120,16 +122,40 @@ final class ParentalControl {
     }
 
     private static void unlockWithoutVerification(String reason) {
-        unlockedUntilElapsed = SystemClock.elapsedRealtime() + UNLOCK_MS;
+        unlockedUntilElapsed = elapsedRealtime() + UNLOCK_MS;
         GENERATION.incrementAndGet();
-        MAIN.removeCallbacks(EXPIRY);
-        MAIN.postDelayed(EXPIRY, UNLOCK_MS);
+        Handler handler = handler();
+        if (handler != null) {
+            handler.removeCallbacks(EXPIRY);
+            handler.postDelayed(EXPIRY, UNLOCK_MS);
+        }
         notifyListener(true, reason);
     }
 
     private static void notifyListener(boolean unlocked, String reason) {
         Listener value = listener;
-        if (value != null) MAIN.post(() -> value.onStateChanged(unlocked, reason));
+        if (value == null) return;
+        Handler handler = handler();
+        if (handler != null) handler.post(() -> value.onStateChanged(unlocked, reason));
+        else value.onStateChanged(unlocked, reason);
+    }
+
+    private static Handler handler() {
+        Handler existing = mainHandler;
+        if (existing != null) return existing;
+        try {
+            Looper looper = Looper.getMainLooper();
+            if (looper == null) return null;
+            mainHandler = new Handler(looper);
+            return mainHandler;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static long elapsedRealtime() {
+        try { return SystemClock.elapsedRealtime(); }
+        catch (Throwable ignored) { return 0L; }
     }
 
     private static void registerFailure() {
