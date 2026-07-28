@@ -17,7 +17,8 @@ public final class AdultContentPolicyTest {
         assertTrue(AdultContentPolicy.isAdultText("Erotik Filme"));
         assertTrue(AdultContentPolicy.isAdultText("Yetişkin Porno"));
         assertTrue(AdultContentPolicy.isAdultText("Adults Only"));
-        assertTrue(AdultContentPolicy.isAdultText("VIP HOT"));
+        assertTrue(AdultContentPolicy.isAdult(new Channel(
+                "hot", "Protected Movie", "VIP HOT", "http://example/hot", Channel.Type.MOVIE)));
     }
 
     @Test public void doesNotHideHarmlessTitlesBySubstring() {
