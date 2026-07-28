@@ -4,18 +4,15 @@
         <shape android:shape="rectangle">
             <gradient
                 android:angle="0"
-                android:startColor="#06101D"
-                android:centerColor="#092233"
-                android:endColor="#124A5D" />
+                android:startColor="#FF040A14"
+                android:centerColor="#FF071D2D"
+                android:endColor="#FF211B3D" />
             <corners android:radius="16dp" />
         </shape>
     </item>
-    <item android:gravity="center">
-        <shape android:shape="rectangle">
-            <size android:width="250dp" android:height="72dp" />
-            <solid android:color="#17354A" />
-            <stroke android:width="2dp" android:color="#5EEAD4" />
-            <corners android:radius="18dp" />
-        </shape>
-    </item>
+    <item
+        android:drawable="@drawable/ic_lumen_mark_tile"
+        android:gravity="center"
+        android:width="72dp"
+        android:height="72dp" />
 </layer-list>
