@@ -48,14 +48,14 @@ final class CatalogCache {
             }
 
             Parsed parsed = readMapped(file);
-            if (parsed.version == VERSION_LEGACY_LOGO) {
-                upgradeAtomically(file, parsed.raw);
-            }
-
             List<Channel> protectedList = AdultContentPolicy.protectClassified(
                     parsed.raw, parsed.safe);
             CatalogSession.publish(parsed.raw);
             memory = new MemorySnapshot(path, file.length(), file.lastModified(), protectedList);
+
+            if (parsed.version == VERSION_LEGACY_LOGO) {
+                scheduleUpgrade(file, parsed.raw, protectedList);
+            }
             return protectedList;
         }
     }
@@ -157,7 +157,28 @@ final class CatalogCache {
         }
     }
 
-    private static void upgradeAtomically(File current, List<Channel> raw) {
+    private static void scheduleUpgrade(File current, List<Channel> raw,
+                                        List<Channel> protectedList) {
+        File target = current;
+        String path = canonicalPath(current);
+        Thread upgrade = new Thread(() -> {
+            synchronized (IO_LOCK) {
+                try {
+                    if (!target.exists() || cacheVersion(target) != VERSION_LEGACY_LOGO) return;
+                    if (upgradeAtomically(target, raw)) {
+                        memory = new MemorySnapshot(path, target.length(),
+                                target.lastModified(), protectedList);
+                    }
+                } catch (Throwable ignored) {
+                    // Existing v2 cache remains valid and can be retried later.
+                }
+            }
+        }, "lumen-cache-v3-upgrade");
+        upgrade.setDaemon(true);
+        upgrade.start();
+    }
+
+    private static boolean upgradeAtomically(File current, List<Channel> raw) {
         File parent = current.getParentFile();
         File upgraded = new File(parent, current.getName() + ".v3.tmp");
         File backup = new File(parent, current.getName() + ".v2.bak");
@@ -167,17 +188,30 @@ final class CatalogCache {
             writeInternal(upgraded, raw);
             if (!current.renameTo(backup)) {
                 upgraded.delete();
-                return;
+                return false;
             }
             if (!upgraded.renameTo(current)) {
                 backup.renameTo(current);
                 upgraded.delete();
-                return;
+                return false;
             }
             backup.delete();
+            return true;
         } catch (Throwable ignored) {
             upgraded.delete();
             if (!current.exists() && backup.exists()) backup.renameTo(current);
+            return false;
+        }
+    }
+
+    private static int cacheVersion(File file) throws Exception {
+        try (FileInputStream input = new FileInputStream(file);
+             FileChannel channel = input.getChannel()) {
+            ByteBuffer header = ByteBuffer.allocate(8);
+            while (header.hasRemaining() && channel.read(header) >= 0) { }
+            if (header.position() < 8) return -1;
+            header.flip();
+            return header.getInt() == MAGIC ? header.getInt() : -1;
         }
     }
 
