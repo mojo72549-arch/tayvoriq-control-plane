@@ -21,11 +21,17 @@ import java.util.Locale;
 final class CatalogAdapter extends BaseAdapter {
     private final Context context;
     private final LogoLoader logoLoader;
+    private final boolean safetyBadge;
     private List<Channel> items = Collections.emptyList();
 
     CatalogAdapter(Context context) {
+        this(context, false);
+    }
+
+    CatalogAdapter(Context context, boolean safetyBadge) {
         this.context = context;
         this.logoLoader = LogoLoader.get(context);
+        this.safetyBadge = safetyBadge;
     }
 
     void submit(List<Channel> values) {
@@ -96,7 +102,7 @@ final class CatalogAdapter extends BaseAdapter {
             language.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             language.setGravity(Gravity.CENTER);
             language.setBackground(roundRect(0xFF7DE8D8, 10, 0xFF7DE8D8));
-            row.addView(language, new LinearLayout.LayoutParams(dp(31), dp(27)));
+            row.addView(language, new LinearLayout.LayoutParams(dp(38), dp(27)));
 
             TextView play = new TextView(context);
             play.setText("›");
@@ -127,12 +133,23 @@ final class CatalogAdapter extends BaseAdapter {
             holder.logoHost.setBackground(roundRect(brand.fill, 13, brand.stroke));
             logoLoader.load(channel.logo, holder.logoImage, holder.logoFallback);
             holder.name.setText(channel.name);
-            holder.group.setText(channel.group + "  ·  " + typeLabel(channel.type));
-            holder.language.setText(MediaLanguage.shortLabel(channel));
-            MediaLanguage.Code code = MediaLanguage.detect(channel);
-            int chip = code == MediaLanguage.Code.TR ? 0xFFE94D5F
-                    : code == MediaLanguage.Code.DE ? 0xFFF4D35E : 0xFF7DE8D8;
-            holder.language.setBackground(roundRect(chip, 10, chip));
+
+            if (safetyBadge && channel.adult) {
+                String classLabel = AdultContentPolicy.classLabel(channel.adultClass);
+                holder.group.setText(channel.group + "  ·  " + classLabel);
+                boolean age18 = AdultContentPolicy.isAge18Class(channel.adultClass);
+                holder.language.setText(age18 ? "18" : "XXX");
+                int chip = age18 ? 0xFFF4A340 : 0xFFE94D5F;
+                holder.language.setBackground(roundRect(chip, 10, chip));
+            } else {
+                holder.group.setText(channel.group + "  ·  " + typeLabel(channel.type));
+                holder.language.setText(MediaLanguage.shortLabel(channel));
+                MediaLanguage.Code code = MediaLanguage.detect(channel);
+                int chip = code == MediaLanguage.Code.TR ? 0xFFE94D5F
+                        : code == MediaLanguage.Code.DE ? 0xFFF4D35E
+                        : code == MediaLanguage.Code.EN ? 0xFF6EB6FF : 0xFF7DE8D8;
+                holder.language.setBackground(roundRect(chip, 10, chip));
+            }
         }
         return convertView;
     }
