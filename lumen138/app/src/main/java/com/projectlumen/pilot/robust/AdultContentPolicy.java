@@ -7,9 +7,12 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Fail-closed classification for explicit, adult-branded and FSK-18 content.
- * The normal catalog is permanently family-safe. Protected rows are exposed
- * only through the dedicated parent activity.
+ * Fail-closed classification for explicit adult and age-18 content.
+ *
+ * Precision rule: a single ambiguous movie title or brand word must never be
+ * enough to move normal content into the parent-only catalog. Explicit group
+ * labels win, age labels are kept separate, and URL evidence is deliberately
+ * limited to unambiguous path tokens.
  */
 final class AdultContentPolicy {
     static final byte CLASS_UNKNOWN = -1;
@@ -18,20 +21,24 @@ final class AdultContentPolicy {
     static final byte CLASS_AGE_18 = 2;
     static final byte CLASS_ADULT_BRAND = 3;
 
-    private static final int TOKEN_LIMIT = 32;
+    private static final int MODE_GROUP = 1;
+    private static final int MODE_TITLE = 2;
+    private static final int MODE_URL = 3;
+    private static final int TOKEN_LIMIT = 36;
+
     private static final int PREVIOUS_NONE = 0;
-    private static final int PREVIOUS_AFTER = 1;
-    private static final int PREVIOUS_RED = 2;
-    private static final int PREVIOUS_NUR = 3;
-    private static final int PREVIOUS_18 = 4;
-    private static final int PREVIOUS_FSK = 5;
-    private static final int PREVIOUS_AB = 6;
-    private static final int PREVIOUS_ADULTS = 7;
-    private static final int PREVIOUS_MAN = 8;
-    private static final int PREVIOUS_BLUE = 9;
-    private static final int PREVIOUS_DIGITAL = 10;
-    private static final int PREVIOUS_REALITY = 11;
-    private static final int PREVIOUS_NAUGHTY = 12;
+    private static final int PREVIOUS_FSK = 1;
+    private static final int PREVIOUS_AB = 2;
+    private static final int PREVIOUS_ADULTS = 3;
+    private static final int PREVIOUS_NUR = 4;
+    private static final int PREVIOUS_FOR = 5;
+    private static final int PREVIOUS_RED = 6;
+    private static final int PREVIOUS_WICKED = 7;
+    private static final int PREVIOUS_VIVID = 8;
+    private static final int PREVIOUS_PLAYBOY = 9;
+    private static final int PREVIOUS_HUSTLER = 10;
+    private static final int PREVIOUS_PENTHOUSE = 11;
+    private static final int PREVIOUS_PRIVATE = 12;
 
     private AdultContentPolicy() { }
 
@@ -40,16 +47,26 @@ final class AdultContentPolicy {
     }
 
     static byte classifyRaw(String group, String name, String url) {
-        byte groupClass = scan(group, true);
+        byte groupClass = scan(group, MODE_GROUP);
         if (groupClass != CLASS_SAFE) return groupClass;
-        byte nameClass = scan(name, false);
-        if (nameClass != CLASS_SAFE) return nameClass;
-        return scan(url, false);
+
+        byte titleClass = scan(name, MODE_TITLE);
+        if (titleClass != CLASS_SAFE) return titleClass;
+
+        return scan(url, MODE_URL);
     }
 
-    /** Conservative generic check used by tests and defensive UI guards. */
+    /** Generic label check used by tests and defensive UI validation. */
     static boolean isAdultText(String value) {
-        return scan(value, false) != CLASS_SAFE;
+        return scan(value, MODE_GROUP) != CLASS_SAFE;
+    }
+
+    static boolean isExplicitClass(byte value) {
+        return value == CLASS_EXPLICIT || value == CLASS_ADULT_BRAND;
+    }
+
+    static boolean isAge18Class(byte value) {
+        return value == CLASS_AGE_18;
     }
 
     static List<Channel> protect(List<Channel> source) {
@@ -86,17 +103,12 @@ final class AdultContentPolicy {
 
     static String classLabel(byte value) {
         if (value == CLASS_AGE_18) return "FSK 18";
-        if (value == CLASS_ADULT_BRAND) return "Adult-Marke";
-        if (value == CLASS_EXPLICIT) return "Erwachseneninhalt";
+        if (value == CLASS_ADULT_BRAND) return "XXX-Marke";
+        if (value == CLASS_EXPLICIT) return "XXX / Erotik";
         return "Sicher";
     }
 
-    /**
-     * Allocation-bounded scanner without regex or token arrays. Weak words such
-     * as HOT or SEX are accepted only in category/group labels. FSK 18, 18+ and
-     * AB 18 are protected in both categories and titles.
-     */
-    private static byte scan(String value, boolean broadGroupRules) {
+    private static byte scan(String value, int mode) {
         if (value == null || value.isBlank()) return CLASS_SAFE;
         StringBuilder token = new StringBuilder(TOKEN_LIMIT);
         boolean overflow = false;
@@ -118,49 +130,50 @@ final class AdultContentPolicy {
             }
 
             if (!overflow && token.length() > 0) {
-                byte direct = directClass(token, broadGroupRules);
+                byte direct = directClass(token, mode);
                 if (direct != CLASS_SAFE) return direct;
 
-                if (previous == PREVIOUS_RED && tokenEquals(token, "light")) {
-                    return CLASS_ADULT_BRAND;
-                }
-                if (previous == PREVIOUS_FSK && tokenEquals(token, "18")) {
-                    return CLASS_AGE_18;
-                }
-                if (previous == PREVIOUS_AB && tokenEquals(token, "18")) {
+                if ((previous == PREVIOUS_FSK || previous == PREVIOUS_AB)
+                        && tokenEquals(token, "18")) {
                     return CLASS_AGE_18;
                 }
                 if (previous == PREVIOUS_ADULTS && tokenEquals(token, "only")) {
                     return CLASS_EXPLICIT;
                 }
-                if (previous == PREVIOUS_MAN && tokenEquals(token, "x")) {
-                    return CLASS_ADULT_BRAND;
+                if (previous == PREVIOUS_FOR
+                        && (tokenEquals(token, "adults") || tokenEquals(token, "adult"))) {
+                    return CLASS_EXPLICIT;
                 }
-                if (previous == PREVIOUS_BLUE && tokenEquals(token, "hustler")) {
-                    return CLASS_ADULT_BRAND;
+                if (previous == PREVIOUS_NUR
+                        && (tokenEquals(token, "erwachsene")
+                        || tokenEquals(token, "erwachsenen"))) {
+                    return CLASS_EXPLICIT;
                 }
-                if (previous == PREVIOUS_DIGITAL && tokenEquals(token, "playground")) {
-                    return CLASS_ADULT_BRAND;
-                }
-                if (previous == PREVIOUS_REALITY && tokenEquals(token, "kings")) {
-                    return CLASS_ADULT_BRAND;
-                }
-                if (previous == PREVIOUS_NAUGHTY && tokenEquals(token, "america")) {
+                if (previous == PREVIOUS_RED && tokenEquals(token, "light")) {
                     return CLASS_ADULT_BRAND;
                 }
 
-                if (broadGroupRules) {
-                    if (previous == PREVIOUS_AFTER && tokenEquals(token, "dark")) {
-                        return CLASS_EXPLICIT;
-                    }
-                    if (previous == PREVIOUS_NUR
-                            && (tokenEquals(token, "erwachsene")
-                            || tokenEquals(token, "erwachsenen"))) {
-                        return CLASS_EXPLICIT;
-                    }
-                    if (previous == PREVIOUS_18 && isMediaContext(token)) {
-                        return CLASS_AGE_18;
-                    }
+                // Ambiguous brand words need a second, adult-specific token.
+                if (mode != MODE_URL && previous == PREVIOUS_WICKED
+                        && (tokenEquals(token, "pictures") || tokenEquals(token, "adult")
+                        || tokenEquals(token, "xxx") || tokenEquals(token, "studios"))) {
+                    return CLASS_ADULT_BRAND;
+                }
+                if (mode != MODE_URL && previous == PREVIOUS_VIVID
+                        && (tokenEquals(token, "entertainment") || tokenEquals(token, "adult")
+                        || tokenEquals(token, "xxx"))) {
+                    return CLASS_ADULT_BRAND;
+                }
+                if (mode != MODE_URL && (previous == PREVIOUS_PLAYBOY
+                        || previous == PREVIOUS_HUSTLER || previous == PREVIOUS_PENTHOUSE)
+                        && (tokenEquals(token, "tv") || tokenEquals(token, "channel")
+                        || tokenEquals(token, "adult") || tokenEquals(token, "xxx"))) {
+                    return CLASS_ADULT_BRAND;
+                }
+                if (mode != MODE_URL && previous == PREVIOUS_PRIVATE
+                        && (tokenEquals(token, "spice") || tokenEquals(token, "xxx")
+                        || tokenEquals(token, "adult"))) {
+                    return CLASS_ADULT_BRAND;
                 }
 
                 previous = nextPrevious(token);
@@ -173,7 +186,7 @@ final class AdultContentPolicy {
         return CLASS_SAFE;
     }
 
-    private static byte directClass(StringBuilder token, boolean broadGroupRules) {
+    private static byte directClass(StringBuilder token, int mode) {
         if (tokenEquals(token, "fsk18") || tokenEquals(token, "fsk18plus")
                 || tokenEquals(token, "18plus") || tokenEquals(token, "18only")
                 || tokenEquals(token, "ab18") || tokenEquals(token, "r18")
@@ -183,55 +196,59 @@ final class AdultContentPolicy {
 
         if (tokenEquals(token, "xxx") || tokenEquals(token, "adult")
                 || tokenEquals(token, "adults") || tokenEquals(token, "erotik")
-                || tokenEquals(token, "erotic") || tokenEquals(token, "porno")
+                || tokenEquals(token, "erotic") || tokenEquals(token, "erotica")
+                || tokenEquals(token, "erotico") || tokenEquals(token, "erotique")
+                || tokenEquals(token, "erotiek") || tokenEquals(token, "erotyka")
+                || tokenEquals(token, "erotika") || tokenEquals(token, "porno")
                 || tokenEquals(token, "porn") || tokenEquals(token, "yetiskin")
-                || tokenEquals(token, "erwachsene") || tokenEquals(token, "erwachsenen")) {
+                || tokenEquals(token, "erwachsene") || tokenEquals(token, "erwachsenen")
+                || tokenEquals(token, "adulte") || tokenEquals(token, "adultes")
+                || tokenEquals(token, "adulto") || tokenEquals(token, "adultos")
+                || tokenEquals(token, "adulti") || tokenEquals(token, "doroslych")
+                || tokenEquals(token, "odrasli") || tokenEquals(token, "odrasle")
+                || tokenEquals(token, "volwassen") || tokenEquals(token, "порно")
+                || tokenEquals(token, "эротика") || tokenEquals(token, "للكبار")
+                || tokenEquals(token, "اباحي") || tokenEquals(token, "إباحي")) {
             return CLASS_EXPLICIT;
         }
 
-        if (tokenEquals(token, "pornhub") || tokenEquals(token, "playboy")
-                || tokenEquals(token, "hustler") || tokenEquals(token, "brazzers")
-                || tokenEquals(token, "redlight") || tokenEquals(token, "dorcel")
-                || tokenEquals(token, "penthouse") || tokenEquals(token, "xhamster")
-                || tokenEquals(token, "youporn") || tokenEquals(token, "redtube")
-                || tokenEquals(token, "bangbros") || tokenEquals(token, "vivid")
-                || tokenEquals(token, "babestation") || tokenEquals(token, "exxxotica")
-                || tokenEquals(token, "wicked") || tokenEquals(token, "privatexxx")) {
+        if (tokenEquals(token, "pornhub") || tokenEquals(token, "brazzers")
+                || tokenEquals(token, "xhamster") || tokenEquals(token, "youporn")
+                || tokenEquals(token, "redtube") || tokenEquals(token, "bangbros")
+                || tokenEquals(token, "dorcel") || tokenEquals(token, "privatexxx")
+                || tokenEquals(token, "exxxotica") || tokenEquals(token, "babestation")) {
             return CLASS_ADULT_BRAND;
         }
 
-        if (broadGroupRules && (tokenEquals(token, "sex") || tokenEquals(token, "sexy")
-                || tokenEquals(token, "hot") || tokenEquals(token, "venus")
-                || tokenEquals(token, "babe") || tokenEquals(token, "babes")
-                || tokenEquals(token, "private"))) {
-            return CLASS_EXPLICIT;
+        if (mode == MODE_GROUP) {
+            if (tokenEquals(token, "sex") || tokenEquals(token, "sexy")
+                    || tokenEquals(token, "hot") || tokenEquals(token, "venus")
+                    || tokenEquals(token, "babe") || tokenEquals(token, "babes")
+                    || tokenEquals(token, "private")) {
+                return CLASS_EXPLICIT;
+            }
+            if (tokenEquals(token, "playboy") || tokenEquals(token, "hustler")
+                    || tokenEquals(token, "penthouse")) {
+                return CLASS_ADULT_BRAND;
+            }
         }
         return CLASS_SAFE;
     }
 
     private static int nextPrevious(StringBuilder token) {
-        if (tokenEquals(token, "after")) return PREVIOUS_AFTER;
-        if (tokenEquals(token, "red")) return PREVIOUS_RED;
-        if (tokenEquals(token, "nur")) return PREVIOUS_NUR;
-        if (tokenEquals(token, "18")) return PREVIOUS_18;
         if (tokenEquals(token, "fsk")) return PREVIOUS_FSK;
         if (tokenEquals(token, "ab")) return PREVIOUS_AB;
-        if (tokenEquals(token, "adults") || tokenEquals(token, "adult")) return PREVIOUS_ADULTS;
-        if (tokenEquals(token, "man")) return PREVIOUS_MAN;
-        if (tokenEquals(token, "blue")) return PREVIOUS_BLUE;
-        if (tokenEquals(token, "digital")) return PREVIOUS_DIGITAL;
-        if (tokenEquals(token, "reality")) return PREVIOUS_REALITY;
-        if (tokenEquals(token, "naughty")) return PREVIOUS_NAUGHTY;
+        if (tokenEquals(token, "adult") || tokenEquals(token, "adults")) return PREVIOUS_ADULTS;
+        if (tokenEquals(token, "nur")) return PREVIOUS_NUR;
+        if (tokenEquals(token, "for")) return PREVIOUS_FOR;
+        if (tokenEquals(token, "red")) return PREVIOUS_RED;
+        if (tokenEquals(token, "wicked")) return PREVIOUS_WICKED;
+        if (tokenEquals(token, "vivid")) return PREVIOUS_VIVID;
+        if (tokenEquals(token, "playboy")) return PREVIOUS_PLAYBOY;
+        if (tokenEquals(token, "hustler")) return PREVIOUS_HUSTLER;
+        if (tokenEquals(token, "penthouse")) return PREVIOUS_PENTHOUSE;
+        if (tokenEquals(token, "private")) return PREVIOUS_PRIVATE;
         return PREVIOUS_NONE;
-    }
-
-    private static boolean isMediaContext(StringBuilder token) {
-        return tokenEquals(token, "vod") || tokenEquals(token, "movie")
-                || tokenEquals(token, "movies") || tokenEquals(token, "film")
-                || tokenEquals(token, "filme") || tokenEquals(token, "cinema")
-                || tokenEquals(token, "sinema") || tokenEquals(token, "plus")
-                || tokenEquals(token, "only") || tokenEquals(token, "bereich")
-                || tokenEquals(token, "category") || tokenEquals(token, "kategorie");
     }
 
     private static boolean tokenEquals(StringBuilder token, String expected) {
@@ -248,8 +265,13 @@ final class AdultContentPolicy {
         if (lower == 'ş') return 's';
         if (lower == 'ğ') return 'g';
         if (lower == 'ç') return 'c';
-        if (lower == 'ö') return 'o';
-        if (lower == 'ü') return 'u';
+        if (lower == 'ö' || lower == 'ó' || lower == 'ò' || lower == 'ô') return 'o';
+        if (lower == 'ü' || lower == 'ú' || lower == 'ù' || lower == 'û') return 'u';
+        if (lower == 'ä' || lower == 'á' || lower == 'à' || lower == 'â') return 'a';
+        if (lower == 'é' || lower == 'è' || lower == 'ê' || lower == 'ë') return 'e';
+        if (lower == 'í' || lower == 'ì' || lower == 'î' || lower == 'ï') return 'i';
+        if (lower == 'ñ') return 'n';
+        if (lower == 'ł') return 'l';
         return lower;
     }
 
