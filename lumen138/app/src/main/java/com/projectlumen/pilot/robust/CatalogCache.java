@@ -16,7 +16,7 @@ import java.util.List;
 /** Compact, versioned catalog cache used for sub-second app restore. */
 final class CatalogCache {
     private static final int MAGIC = 0x4C554D34; // LUM4
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
     private static final int MAX_ENTRIES = 100_000;
     private static final int MAX_STRING_BYTES = 4 * 1024 * 1024;
     private static final int BUFFER_BYTES = 1024 * 1024;
@@ -25,7 +25,8 @@ final class CatalogCache {
 
     static void write(File file, List<Channel> channels) throws Exception {
         if (file == null) throw new IllegalArgumentException("Cache-Zieldatei fehlt.");
-        List<Channel> safe = AdultContentPolicy.raw(channels);
+        List<Channel> safe = AdultContentPolicy.raw(
+                channels == null ? Collections.emptyList() : channels);
         if (safe.size() > MAX_ENTRIES) throw new IllegalArgumentException("Zu viele Katalogeinträge.");
         File parent = file.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
@@ -43,6 +44,7 @@ final class CatalogCache {
                 writeString(output, channel.name);
                 writeString(output, channel.group);
                 writeString(output, channel.url);
+                writeString(output, channel.logo);
                 output.writeByte(channel.type.ordinal());
             }
             output.flush();
@@ -61,7 +63,9 @@ final class CatalogCache {
             int version = input.readInt();
             int count = input.readInt();
             if (magic != MAGIC) throw new IllegalStateException("Katalogcache hat eine ungültige Kennung.");
-            if (version != VERSION) throw new IllegalStateException("Katalogcache-Version wird nicht unterstützt.");
+            if (version != VERSION) {
+                throw new IllegalStateException("Logo-Index wird einmalig aus der verschlüsselten Playlist aufgebaut.");
+            }
             if (count < 0 || count > MAX_ENTRIES) {
                 throw new IllegalStateException("Katalogcache enthält eine ungültige Eintragszahl.");
             }
@@ -72,9 +76,10 @@ final class CatalogCache {
                 String name = readString(input);
                 String group = readString(input);
                 String url = readString(input);
+                String logo = readString(input);
                 int typeIndex = input.readUnsignedByte();
                 if (typeIndex >= types.length) throw new IllegalStateException("Ungültiger Medientyp im Cache.");
-                result.add(new Channel(id, name, group, url, types[typeIndex]));
+                result.add(new Channel(id, name, group, url, logo, types[typeIndex]));
             }
             return AdultContentPolicy.protect(result);
         } catch (EOFException incomplete) {
