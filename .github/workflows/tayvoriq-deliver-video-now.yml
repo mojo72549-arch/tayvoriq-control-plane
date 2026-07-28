@@ -25,22 +25,27 @@ env:
   TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
   TAYVORIQ_TTS_PROVIDER: "chatterbox_v3"
   TAYVORIQ_CHATTERBOX_ENABLED: "true"
+  TAYVORIQ_CHATTERBOX_REQUIRED: "true"
   TAYVORIQ_CHATTERBOX_MODEL_VERSION: "v3"
   TAYVORIQ_CHATTERBOX_LANGUAGE: "de"
   TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "360"
   TAYVORIQ_CHATTERBOX_MAX_CHUNKS: "2"
   TAYVORIQ_CHATTERBOX_MAX_CHARS: "520"
   TAYVORIQ_CHATTERBOX_CPU_THREADS: "4"
-  TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.32"
-  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.42"
-  TAYVORIQ_CHATTERBOX_PAUSE_MS: "230"
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.42"
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.36"
+  TAYVORIQ_CHATTERBOX_PAUSE_MS: "360"
+  TAYVORIQ_CHATTERBOX_NATURAL_PAUSE_MS: "360"
+  TAYVORIQ_NATURAL_VOICE_WPM: "132"
+  TAYVORIQ_NATURAL_VOICE_MIN_SECONDS: "23.5"
+  TAYVORIQ_NATURAL_VOICE_MAX_SECONDS: "29.0"
   TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"
   TAYVORIQ_NARRATOR_TONE_REQUIRED: "true"
-  TAYVORIQ_RENDER_TIMEOUT_SECONDS: "360"
-  TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: "360"
-  TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "240"
+  TAYVORIQ_RENDER_TIMEOUT_SECONDS: "900"
+  TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: "120"
+  TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "300"
   TAYVORIQ_AUDIT_RETRY_DELAYS: "0,10,25"
-  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1500"
+  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "2700"
   TAYVORIQ_TELEGRAM_PROGRESS: "false"
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
@@ -58,7 +63,7 @@ env:
 jobs:
   deliver:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -135,7 +140,6 @@ jobs:
 
       - name: Install Chatterbox V3 premium voice
         id: chatterbox
-        continue-on-error: true
         timeout-minutes: 10
         run: |
           set -euo pipefail
@@ -149,23 +153,26 @@ jobs:
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
-      - name: Verify active voice router is not silent fallback
+      - name: Verify premium voice router contract
         working-directory: implementation
         run: |
           set -euo pipefail
           python - <<'PY'
+          import os
           import tayvoriq_dual_platform_render_v23_entry as entry
           fn = entry.renderer_v28.v2.engine.synthesize_voice
           closure = [cell.cell_contents for cell in (fn.__closure__ or ())]
           assert entry.tts_router_v27.synthesize_voice in closure, (
-              "V28 post-audio gate is not wrapping the Chatterbox/Edge router"
+              "V28 post-audio gate is not wrapping the Chatterbox router"
           )
+          assert os.environ.get("TAYVORIQ_CHATTERBOX_REQUIRED") == "true"
+          assert os.environ.get("TAYVORIQ_NARRATOR_TONE_REQUIRED") == "true"
           print({
               "voice_router_binding": "passed",
               "outer_gate": fn.__name__,
               "premium": "chatterbox_multilingual_v3",
-              "fallback": "edge_tts",
-              "silent_fallback": False,
+              "edge_fallback": "forbidden",
+              "narrator_tone_required": True,
           })
           PY
 
@@ -201,9 +208,38 @@ jobs:
           echo "process_exit=$process_exit" >> "$GITHUB_OUTPUT"
           echo "Production state: $state, process exit: $process_exit"
 
+      - name: Validate premium narrator evidence
+        id: narrator_gate
+        if: steps.production.outputs.state == 'SUCCESS'
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          state = json.loads(Path("out/tayvoriq-review-state.json").read_text(encoding="utf-8"))
+          job_dir = Path(state["job_dir"])
+          audio = json.loads((job_dir / "audio_report.json").read_text(encoding="utf-8"))
+          provider = str(audio.get("voice_provider_used") or audio.get("provider") or "").casefold()
+          assert "chatterbox" in provider, f"Premium provider missing: {provider}"
+          assert not bool(audio.get("fallback")), "Fallback voice is not review eligible"
+          assert bool(audio.get("narrator_tone_applied")), "Deep narrator tone was not applied"
+          assert bool(audio.get("premium_voice_contract_passed")), "Premium voice contract failed"
+          settings = dict(audio.get("voice_settings") or {})
+          assert float(settings.get("narrator_pitch_factor") or 1.0) <= 0.91
+          print({
+              "premium_narrator_gate": "passed",
+              "provider": provider,
+              "fallback": False,
+              "narrator_tone_applied": True,
+              "pitch_factor": settings.get("narrator_pitch_factor"),
+          })
+          PY
+
       - name: Validate final publication gates
         id: publication_gate
-        if: steps.production.outputs.state == 'SUCCESS'
+        if: steps.production.outputs.state == 'SUCCESS' && steps.narrator_gate.outcome == 'success'
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -214,7 +250,7 @@ jobs:
 
       - name: Publish review page
         id: publish_review
-        if: steps.production.outputs.state == 'SUCCESS'
+        if: steps.production.outputs.state == 'SUCCESS' && steps.narrator_gate.outcome == 'success' && steps.publication_gate.outcome == 'success'
         run: |
           set -euo pipefail
           test -d implementation/site/tayvoriq
@@ -233,7 +269,7 @@ jobs:
 
       - name: Send only final Telegram approval review
         id: telegram_final
-        if: steps.production.outputs.state == 'SUCCESS'
+        if: steps.production.outputs.state == 'SUCCESS' && steps.narrator_gate.outcome == 'success' && steps.publication_gate.outcome == 'success' && steps.publish_review.outcome == 'success'
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -248,12 +284,13 @@ jobs:
         if: steps.production.outputs.state == 'SUCCESS'
         working-directory: implementation
         env:
+          NARRATOR_GATE_OUTCOME: ${{ steps.narrator_gate.outcome }}
           PUBLICATION_GATE_OUTCOME: ${{ steps.publication_gate.outcome }}
           PUBLISH_OUTCOME: ${{ steps.publish_review.outcome }}
           TELEGRAM_OUTCOME: ${{ steps.telegram_final.outcome }}
         run: |
           set -euo pipefail
-          python -c 'import json,pathlib,os; s=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); j=pathlib.Path(s["job_dir"]); vids=[j/"short_youtube.mp4",j/"short_tiktok.mp4"]; assert all(v.is_file() and v.stat().st_size>100000 for v in vids); assert os.environ["PUBLICATION_GATE_OUTCOME"]=="success"; assert os.environ["PUBLISH_OUTCOME"]=="success"; assert os.environ["TELEGRAM_OUTCOME"]=="success"; print({"definition_of_done":"passed","job_dir":str(j),"videos":[str(v) for v in vids]})'
+          python -c 'import json,pathlib,os; s=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); j=pathlib.Path(s["job_dir"]); vids=[j/"short_youtube.mp4",j/"short_tiktok.mp4"]; assert all(v.is_file() and v.stat().st_size>100000 for v in vids); assert os.environ["NARRATOR_GATE_OUTCOME"]=="success"; assert os.environ["PUBLICATION_GATE_OUTCOME"]=="success"; assert os.environ["PUBLISH_OUTCOME"]=="success"; assert os.environ["TELEGRAM_OUTCOME"]=="success"; print({"definition_of_done":"passed","job_dir":str(j),"videos":[str(v) for v in vids]})'
 
       - name: Collect diagnostics
         if: always()
@@ -274,11 +311,15 @@ jobs:
           retention-days: 30
 
       - name: Fail when no approved review was delivered
-        if: steps.production.outputs.state != 'SUCCESS'
+        if: steps.production.outputs.state != 'SUCCESS' || steps.narrator_gate.outcome != 'success' || steps.publication_gate.outcome != 'success' || steps.publish_review.outcome != 'success' || steps.telegram_final.outcome != 'success'
         env:
           FINAL_STATE: ${{ steps.production.outputs.state }}
+          NARRATOR_GATE: ${{ steps.narrator_gate.outcome }}
+          PUBLICATION_GATE: ${{ steps.publication_gate.outcome }}
+          REVIEW_PUBLISH: ${{ steps.publish_review.outcome }}
+          TELEGRAM_FINAL: ${{ steps.telegram_final.outcome }}
         run: |
-          echo "::error title=TAYVORIQ delivery incomplete::Final state ${FINAL_STATE}. No incomplete video was sent."
+          echo "::error title=TAYVORIQ delivery incomplete::state=${FINAL_STATE}, narrator=${NARRATOR_GATE}, publication=${PUBLICATION_GATE}, review=${REVIEW_PUBLISH}, telegram=${TELEGRAM_FINAL}. No incomplete video was sent."
           exit 1
 
-# delivery nonce: 2026-07-28T13:15:00+02:00
+# delivery nonce: 2026-07-28T13:42:00+02:00
