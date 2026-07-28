@@ -9,6 +9,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,7 +21,7 @@ import android.widget.TextView;
 public final class LumenApplication extends Application
         implements Application.ActivityLifecycleCallbacks {
     static final String EXTRA_ADULT_CONTENT = "lumen_parental_adult_content";
-    private static final String ACTIONS_TAG = "lumen-parental-actions-v3";
+    private static final String ACTIONS_TAG = "lumen-premium-actions-v4";
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private int startedActivities;
@@ -56,7 +57,8 @@ public final class LumenApplication extends Application
         if (activity instanceof MainActivity) {
             installPremiumShell(activity);
         } else if (activity instanceof ParentalControlActivity
-                || activity instanceof AdultCatalogActivity) {
+                || activity instanceof AdultCatalogActivity
+                || activity instanceof LanguageCatalogActivity) {
             installFlowBackground(activity);
         }
         blockAdultPlayerIfNeeded(activity);
@@ -95,13 +97,20 @@ public final class LumenApplication extends Application
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setGravity(Gravity.CENTER_VERTICAL);
 
-        Button parental = actionButton(activity, "🛡  Jugendschutz", 0xFF17354A, Color.WHITE);
+        Button languages = actionButton(activity, "🌐 Sprachen", 0xFF17354A, Color.WHITE);
+        languages.setOnClickListener(v -> {
+            DiagnosticLog.get(activity).event("-", "LANGUAGE-HUB-OPEN", "source=main");
+            activity.startActivity(new Intent(activity, LanguageCatalogActivity.class));
+        });
+        actions.addView(languages, weighted(activity, 0));
+
+        Button parental = actionButton(activity, "🛡 Jugendschutz", 0xFF17354A, Color.WHITE);
         parental.setOnClickListener(v -> activity.startActivity(
                 new Intent(activity, ParentalControlActivity.class)));
-        actions.addView(parental, weighted(activity, 0));
+        actions.addView(parental, weighted(activity, dp(activity, 7)));
 
         if (ParentalControl.isUnlocked()) {
-            Button adult = actionButton(activity, "18+ Filme öffnen", 0xFFE94D5F, Color.WHITE);
+            Button adult = actionButton(activity, "18+ Bereich", 0xFFE94D5F, Color.WHITE);
             adult.setOnClickListener(v -> {
                 DiagnosticLog.get(activity).event("-", "PARENTAL-ADULT-HUB-OPEN",
                         "source=main isolated=true");
@@ -147,12 +156,13 @@ public final class LumenApplication extends Application
         button.setText(label);
         button.setAllCaps(false);
         button.setSingleLine(true);
-        button.setTextSize(11);
+        button.setEllipsize(TextUtils.TruncateAt.END);
+        button.setTextSize(10);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setTextColor(textColor);
         button.setMinWidth(0);
         button.setMinHeight(0);
-        button.setPadding(dp(activity, 8), 0, dp(activity, 8), 0);
+        button.setPadding(dp(activity, 6), 0, dp(activity, 6), 0);
         GradientDrawable background = new GradientDrawable();
         background.setColor(fill);
         background.setCornerRadius(dp(activity, 13));
