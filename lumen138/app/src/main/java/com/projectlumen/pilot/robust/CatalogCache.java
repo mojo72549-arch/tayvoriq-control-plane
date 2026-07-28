@@ -13,11 +13,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Fast, versioned catalog cache with persisted language and safety flags. */
+/** Fast, versioned catalog cache with persisted language and precise safety flags. */
 final class CatalogCache {
     private static final int MAGIC = 0x4C554D34; // LUM4
     private static final int VERSION_LEGACY_LOGO = 2;
     private static final int VERSION_FAST_FLAGS = 3;
+    private static final int VERSION_PRECISE_SAFETY = 4;
     private static final int MAX_ENTRIES = 100_000;
     private static final int MAX_STRING_BYTES = 4 * 1024 * 1024;
     private static final int BUFFER_BYTES = 4 * 1024 * 1024;
@@ -53,7 +54,7 @@ final class CatalogCache {
             CatalogSession.publish(parsed.raw);
             memory = new MemorySnapshot(path, file.length(), file.lastModified(), protectedList);
 
-            if (parsed.version == VERSION_LEGACY_LOGO) {
+            if (parsed.version != VERSION_PRECISE_SAFETY) {
                 scheduleUpgrade(file, parsed.raw, protectedList);
             }
             return protectedList;
@@ -78,7 +79,8 @@ final class CatalogCache {
             if (magic != MAGIC) {
                 throw new IllegalStateException("Katalogcache hat eine ungültige Kennung.");
             }
-            if (version != VERSION_LEGACY_LOGO && version != VERSION_FAST_FLAGS) {
+            if (version != VERSION_LEGACY_LOGO && version != VERSION_FAST_FLAGS
+                    && version != VERSION_PRECISE_SAFETY) {
                 throw new IllegalStateException(
                         "Schnellindex wird einmalig aus der verschlüsselten Playlist aufgebaut.");
             }
@@ -103,18 +105,21 @@ final class CatalogCache {
                 }
 
                 Channel entry;
-                if (version == VERSION_FAST_FLAGS) {
+                if (version == VERSION_FAST_FLAGS || version == VERSION_PRECISE_SAFETY) {
                     int languageIndex = unsignedByte(buffer);
-                    byte adultClass = buffer.get();
+                    byte storedAdultClass = buffer.get();
                     if (languageIndex >= languages.length) {
                         throw new IllegalStateException("Ungültige Sprachkennung im Cache.");
                     }
-                    if (adultClass < AdultContentPolicy.CLASS_SAFE
-                            || adultClass > AdultContentPolicy.CLASS_ADULT_BRAND) {
+                    if (storedAdultClass < AdultContentPolicy.CLASS_SAFE
+                            || storedAdultClass > AdultContentPolicy.CLASS_ADULT_BRAND) {
                         throw new IllegalStateException("Ungültige Jugendschutzkennung im Cache.");
                     }
+                    // v3 contains the former, over-broad brand rules. Recompute once.
+                    byte trustedAdultClass = version == VERSION_PRECISE_SAFETY
+                            ? storedAdultClass : AdultContentPolicy.CLASS_UNKNOWN;
                     entry = new Channel(id, name, group, url, logo, types[typeIndex],
-                            languages[languageIndex], adultClass);
+                            languages[languageIndex], trustedAdultClass);
                 } else {
                     entry = new Channel(id, name, group, url, logo, types[typeIndex]);
                 }
@@ -139,7 +144,7 @@ final class CatalogCache {
              BufferedOutputStream buffered = new BufferedOutputStream(rawFile, BUFFER_BYTES);
              DataOutputStream output = new DataOutputStream(buffered)) {
             output.writeInt(MAGIC);
-            output.writeInt(VERSION_FAST_FLAGS);
+            output.writeInt(VERSION_PRECISE_SAFETY);
             output.writeInt(raw.size());
             for (Channel entry : raw) {
                 writeString(output, entry.id);
@@ -164,24 +169,24 @@ final class CatalogCache {
         Thread upgrade = new Thread(() -> {
             synchronized (IO_LOCK) {
                 try {
-                    if (!target.exists() || cacheVersion(target) != VERSION_LEGACY_LOGO) return;
+                    if (!target.exists() || cacheVersion(target) == VERSION_PRECISE_SAFETY) return;
                     if (upgradeAtomically(target, raw)) {
                         memory = new MemorySnapshot(path, target.length(),
                                 target.lastModified(), protectedList);
                     }
                 } catch (Throwable ignored) {
-                    // Existing v2 cache remains valid and can be retried later.
+                    // Existing cache remains valid and can be retried later.
                 }
             }
-        }, "lumen-cache-v3-upgrade");
+        }, "lumen-cache-v4-upgrade");
         upgrade.setDaemon(true);
         upgrade.start();
     }
 
     private static boolean upgradeAtomically(File current, List<Channel> raw) {
         File parent = current.getParentFile();
-        File upgraded = new File(parent, current.getName() + ".v3.tmp");
-        File backup = new File(parent, current.getName() + ".v2.bak");
+        File upgraded = new File(parent, current.getName() + ".v4.tmp");
+        File backup = new File(parent, current.getName() + ".previous.bak");
         try {
             if (upgraded.exists()) upgraded.delete();
             if (backup.exists()) backup.delete();
