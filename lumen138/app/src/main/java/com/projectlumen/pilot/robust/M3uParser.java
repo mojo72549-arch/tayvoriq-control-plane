@@ -31,6 +31,7 @@ final class M3uParser {
             String pendingName = null;
             String pendingGroup = null;
             String pendingId = null;
+            String pendingLogo = null;
 
             while ((line = reader.readLine()) != null) {
                 linesRead++;
@@ -53,6 +54,7 @@ final class M3uParser {
                             : "Unbenannter Eintrag";
                     pendingGroup = attribute(value, "group-title=\"", "Weitere");
                     pendingId = attribute(value, "tvg-id=\"", "");
+                    pendingLogo = safeLogo(attribute(value, "tvg-logo=\"", ""));
                     continue;
                 }
 
@@ -70,6 +72,7 @@ final class M3uParser {
                     String id = pendingId == null || pendingId.isBlank()
                             ? stableFastId(name, value) : pendingId;
                     result.add(new Channel(id, name, group, value,
+                            pendingLogo == null ? "" : pendingLogo,
                             classify(name, group, value)));
                 } else {
                     limitReached = true;
@@ -78,6 +81,7 @@ final class M3uParser {
                 pendingName = null;
                 pendingGroup = null;
                 pendingId = null;
+                pendingLogo = null;
 
                 if (result.size() >= nextProgressEntry) {
                     progress(progress, linesRead, result.size(), startedNs, limitReached);
@@ -106,6 +110,15 @@ final class M3uParser {
         if (end < 0) return fallback;
         String value = text.substring(start, end).trim();
         return value.isEmpty() ? fallback : value;
+    }
+
+    private static String safeLogo(String value) {
+        if (value == null || value.isBlank()) return "";
+        if (value.length() > 2048) return "";
+        if (startsWithIgnoreCase(value, "http://") || startsWithIgnoreCase(value, "https://")) {
+            return value;
+        }
+        return "";
     }
 
     private static Channel.Type classify(String name, String group, String url) {
