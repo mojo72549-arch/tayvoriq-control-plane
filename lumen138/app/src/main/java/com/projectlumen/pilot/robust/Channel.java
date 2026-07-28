@@ -11,8 +11,10 @@ final class Channel {
     final String logo;
     final Type type;
     final MediaLanguage.Code language;
+    final byte automaticAdultClass;
     final byte adultClass;
     final boolean adult;
+    final int policyRevision;
 
     Channel(String id, String name, String group, String url, Type type) {
         this(id, name, group, url, "", type);
@@ -33,9 +35,11 @@ final class Channel {
         this.language = cachedLanguage == null || cachedLanguage == MediaLanguage.Code.ALL
                 ? MediaLanguage.detectRaw(this.group, this.name)
                 : cachedLanguage;
-        this.adultClass = cachedAdultClass == AdultContentPolicy.CLASS_UNKNOWN
+        this.automaticAdultClass = cachedAdultClass == AdultContentPolicy.CLASS_UNKNOWN
                 ? AdultContentPolicy.classifyRaw(this.group, this.name, this.url)
                 : cachedAdultClass;
+        this.adultClass = AdultGroupPolicy.resolve(this.group, this.automaticAdultClass);
         this.adult = this.adultClass != AdultContentPolicy.CLASS_SAFE;
+        this.policyRevision = AdultGroupPolicy.revision();
     }
 }
