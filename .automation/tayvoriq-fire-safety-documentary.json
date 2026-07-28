@@ -1,14 +1,15 @@
 {
-  "request": "deep-fire-safety-documentary-v30-cpu-bounded",
+  "request": "deep-fire-safety-documentary-v4-clear-diction",
   "private_branch": "fix/deep-documentary-fire-safety-v29",
   "target_duration_seconds": 65,
   "voice_profile": "deep-warm-calm-german-documentary",
   "required_provider": "chatterbox_multilingual_v3",
   "edge_fallback_allowed": false,
-  "speech_intelligibility_gate": true,
+  "speech_intelligibility_gate": "whisper-small-additive-semantic-variants",
   "official_safety_sources_required": true,
   "manual_telegram_approval_required": true,
   "platform_upload": false,
   "cpu_voice_contract": "two-coherent-chunks-900-second-budget-with-failure-evidence",
-  "requested_at": "2026-07-28T11:25:00+02:00"
+  "script_contract": "short-complete-sentences-explicit-emergency-sequence",
+  "requested_at": "2026-07-28T12:05:00+02:00"
 }
