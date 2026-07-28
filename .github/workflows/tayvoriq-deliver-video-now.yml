@@ -226,6 +226,7 @@ jobs:
           assert not bool(audio.get("fallback")), "Fallback voice is not review eligible"
           assert bool(audio.get("narrator_tone_applied")), "Deep narrator tone was not applied"
           assert bool(audio.get("premium_voice_contract_passed")), "Premium voice contract failed"
+          assert bool(audio.get("natural_pacing_contract_passed")), "Natural narrator pacing failed"
           settings = dict(audio.get("voice_settings") or {})
           assert float(settings.get("narrator_pitch_factor") or 1.0) <= 0.91
           print({
@@ -233,7 +234,9 @@ jobs:
               "provider": provider,
               "fallback": False,
               "narrator_tone_applied": True,
+              "natural_pacing_contract_passed": True,
               "pitch_factor": settings.get("narrator_pitch_factor"),
+              "natural_voice_target_seconds": audio.get("natural_voice_target_seconds"),
           })
           PY
 
@@ -322,4 +325,4 @@ jobs:
           echo "::error title=TAYVORIQ delivery incomplete::state=${FINAL_STATE}, narrator=${NARRATOR_GATE}, publication=${PUBLICATION_GATE}, review=${REVIEW_PUBLISH}, telegram=${TELEGRAM_FINAL}. No incomplete video was sent."
           exit 1
 
-# delivery nonce: 2026-07-28T13:42:00+02:00
+# delivery nonce: 2026-07-28T14:08:00+02:00
