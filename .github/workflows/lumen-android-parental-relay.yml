@@ -1,6 +1,9 @@
 name: Project Lumen Android Parental Relay
 
 on:
+  push:
+    branches:
+      - 'build/project-lumen-v13.1.44-parental'
   pull_request:
     paths:
       - 'lumen138/**'
