@@ -21,7 +21,7 @@ import android.widget.TextView;
 public final class LumenApplication extends Application
         implements Application.ActivityLifecycleCallbacks {
     static final String EXTRA_ADULT_CONTENT = "lumen_parental_adult_content";
-    private static final String ACTIONS_TAG = "lumen-premium-actions-v4";
+    private static final String ACTIONS_TAG = "lumen-premium-actions-v5";
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private int startedActivities;
@@ -36,6 +36,7 @@ public final class LumenApplication extends Application
     @Override public void onCreate() {
         super.onCreate();
         ParentalControl.initialize(this);
+        AdultGroupPolicy.initialize(this);
         ParentalControl.setListener((unlocked, reason) ->
                 DiagnosticLog.get(this).event("-",
                         unlocked ? "PARENTAL-UNLOCK" : "PARENTAL-LOCK",
@@ -56,10 +57,15 @@ public final class LumenApplication extends Application
     @Override public void onActivityResumed(Activity activity) {
         if (activity instanceof MainActivity) {
             installPremiumShell(activity);
+            FastCatalogCoordinator.install((MainActivity) activity);
         } else if (activity instanceof ParentalControlActivity
                 || activity instanceof AdultCatalogActivity
+                || activity instanceof AdultCategoryManagerActivity
                 || activity instanceof LanguageCatalogActivity) {
             installFlowBackground(activity);
+            if (activity instanceof AdultCatalogActivity) {
+                FastCatalogCoordinator.installAdultTools(activity);
+            }
         }
         blockAdultPlayerIfNeeded(activity);
     }
