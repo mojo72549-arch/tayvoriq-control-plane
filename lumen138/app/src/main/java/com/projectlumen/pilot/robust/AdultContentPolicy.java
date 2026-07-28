@@ -17,6 +17,7 @@ final class AdultContentPolicy {
     private static final int PREVIOUS_AFTER = 1;
     private static final int PREVIOUS_RED = 2;
     private static final int PREVIOUS_NUR = 3;
+    private static final int PREVIOUS_18 = 4;
 
     private AdultContentPolicy() { }
 
@@ -89,10 +90,12 @@ final class AdultContentPolicy {
                     if (previous == PREVIOUS_NUR
                             && (tokenEquals(token, "erwachsene")
                             || tokenEquals(token, "erwachsenen"))) return true;
+                    if (previous == PREVIOUS_18 && isMediaContext(token)) return true;
                 }
                 previous = tokenEquals(token, "after") ? PREVIOUS_AFTER
                         : tokenEquals(token, "red") ? PREVIOUS_RED
                         : tokenEquals(token, "nur") ? PREVIOUS_NUR
+                        : tokenEquals(token, "18") ? PREVIOUS_18
                         : PREVIOUS_NONE;
             } else {
                 previous = PREVIOUS_NONE;
@@ -124,11 +127,21 @@ final class AdultContentPolicy {
     }
 
     private static boolean isWeakGroupToken(StringBuilder token) {
-        return tokenEquals(token, "18")
-                || tokenEquals(token, "sex")
+        return tokenEquals(token, "sex")
                 || tokenEquals(token, "sexy")
                 || tokenEquals(token, "hot")
                 || tokenEquals(token, "venus");
+    }
+
+    private static boolean isMediaContext(StringBuilder token) {
+        return tokenEquals(token, "vod")
+                || tokenEquals(token, "movie")
+                || tokenEquals(token, "movies")
+                || tokenEquals(token, "film")
+                || tokenEquals(token, "filme")
+                || tokenEquals(token, "cinema")
+                || tokenEquals(token, "sinema")
+                || tokenEquals(token, "plus");
     }
 
     private static boolean tokenEquals(StringBuilder token, String expected) {
