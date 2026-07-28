@@ -81,7 +81,7 @@ public final class ParentalControlActivity extends Activity {
         card.addView(status);
 
         TextView detail = text(unlocked
-                        ? "Der getrennte 18+-Filmbereich kann jetzt geöffnet werden. Der normale Filmkatalog bleibt unverändert und familiengeeignet."
+                        ? "Der getrennte 18+-Bereich für Filme, Serien und Live-Sender kann jetzt geöffnet werden. Der Familienkatalog bleibt unverändert und geschützt."
                         : "Hier wird die 6-stellige Eltern-PIN festgelegt. Titel, Kategorien, Logos, Suche und Trefferzahlen bleiben vorher unsichtbar.",
                 13, 0xFFB6CAD7, false);
         detail.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -168,8 +168,8 @@ public final class ParentalControlActivity extends Activity {
         remaining.setGravity(Gravity.CENTER);
         card.addView(remaining);
 
-        Button openAdult = button("18+ Filme sicher öffnen", true);
-        openAdult.setOnClickListener(v -> openAdultMovies());
+        Button openAdult = button("18+ Bereich sicher öffnen", true);
+        openAdult.setOnClickListener(v -> openAdultArea());
         card.addView(openAdult, buttonParams());
 
         Button lock = button("Jetzt wieder sperren", false);
@@ -202,13 +202,13 @@ public final class ParentalControlActivity extends Activity {
         card.addView(change, buttonParams());
     }
 
-    private void openAdultMovies() {
+    private void openAdultArea() {
         if (!ParentalControl.isUnlocked()) {
             toast("Elternzugang ist nicht mehr freigegeben.");
             render();
             return;
         }
-        log.event("-", "PARENTAL-ADULT-HUB-OPEN", "isolated=true mainRestart=false");
+        log.event("-", "PARENTAL-ADULT-HUB-OPEN", "isolated=true mainRestart=false scopes=3");
         startActivity(new Intent(this, AdultCatalogActivity.class));
     }
 
