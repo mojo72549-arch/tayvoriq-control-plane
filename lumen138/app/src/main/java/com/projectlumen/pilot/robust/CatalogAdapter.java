@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,7 @@ import android.widget.TextView;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 final class CatalogAdapter extends BaseAdapter {
     private final Context context;
@@ -43,42 +45,54 @@ final class CatalogAdapter extends BaseAdapter {
             LinearLayout row = new LinearLayout(context);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(11), dp(8), dp(10), dp(8));
-            row.setBackground(roundRect(0xE80D2233, 14, 0xFF24465B));
+            row.setPadding(dp(10), dp(8), dp(9), dp(8));
+            row.setBackground(roundRect(0xEC0C2030, 16, 0xFF244D64));
 
-            TextView badge = new TextView(context);
-            badge.setTextColor(0xFF06101D);
-            badge.setTextSize(14);
-            badge.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            badge.setGravity(Gravity.CENTER);
-            badge.setBackground(roundRect(0xFF5EEAD4, 12, 0xFF5EEAD4));
-            row.addView(badge, new LinearLayout.LayoutParams(dp(38), dp(38)));
+            TextView logo = new TextView(context);
+            logo.setTextColor(Color.WHITE);
+            logo.setTextSize(11);
+            logo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            logo.setGravity(Gravity.CENTER);
+            logo.setMaxLines(2);
+            logo.setEllipsize(TextUtils.TruncateAt.END);
+            row.addView(logo, new LinearLayout.LayoutParams(dp(52), dp(48)));
 
             LinearLayout labels = new LinearLayout(context);
             labels.setOrientation(LinearLayout.VERTICAL);
-            labels.setPadding(dp(11), 0, dp(8), 0);
+            labels.setPadding(dp(11), 0, dp(6), 0);
+
             TextView name = new TextView(context);
             name.setTextColor(Color.WHITE);
             name.setTextSize(15);
             name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             name.setSingleLine(true);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            labels.addView(name);
+
             TextView group = new TextView(context);
-            group.setTextColor(0xFF92A9BA);
+            group.setTextColor(0xFF93AFC1);
             group.setTextSize(11);
             group.setSingleLine(true);
-            labels.addView(name);
+            group.setEllipsize(TextUtils.TruncateAt.END);
             labels.addView(group);
-            row.addView(labels, new LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+
+            TextView language = new TextView(context);
+            language.setTextColor(0xFF07111E);
+            language.setTextSize(10);
+            language.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            language.setGravity(Gravity.CENTER);
+            language.setBackground(roundRect(0xFF7DE8D8, 10, 0xFF7DE8D8));
+            row.addView(language, new LinearLayout.LayoutParams(dp(31), dp(27)));
 
             TextView play = new TextView(context);
             play.setText("›");
-            play.setTextColor(0xFF5EEAD4);
+            play.setTextColor(0xFF63E6D2);
             play.setTextSize(28);
             play.setGravity(Gravity.CENTER);
-            row.addView(play, new LinearLayout.LayoutParams(dp(34), dp(42)));
+            row.addView(play, new LinearLayout.LayoutParams(dp(31), dp(42)));
 
-            holder = new Holder(badge, name, group);
+            holder = new Holder(logo, name, group, language);
             row.setTag(holder);
             convertView = row;
         } else {
@@ -87,23 +101,26 @@ final class CatalogAdapter extends BaseAdapter {
 
         Channel channel = item(position);
         if (channel == null) {
-            holder.badge.setText("");
+            holder.logo.setText("");
             holder.name.setText("");
             holder.group.setText("");
+            holder.language.setText("");
         } else {
-            holder.badge.setText(initial(channel.name));
+            Brand brand = Brand.of(channel.name);
+            holder.logo.setText(brand.label);
+            holder.logo.setBackground(roundRect(brand.fill, 13, brand.stroke));
             holder.name.setText(channel.name);
-            holder.group.setText(channel.group + "  ·  " + label(channel.type));
+            holder.group.setText(channel.group + "  ·  " + typeLabel(channel.type));
+            holder.language.setText(MediaLanguage.shortLabel(channel));
+            MediaLanguage.Code code = MediaLanguage.detect(channel);
+            int chip = code == MediaLanguage.Code.TR ? 0xFFE94D5F
+                    : code == MediaLanguage.Code.DE ? 0xFFF4D35E : 0xFF7DE8D8;
+            holder.language.setBackground(roundRect(chip, 10, chip));
         }
         return convertView;
     }
 
-    private static String initial(String value) {
-        if (value == null || value.isBlank()) return "•";
-        return value.substring(0, 1).toUpperCase();
-    }
-
-    private static String label(Channel.Type type) {
+    private static String typeLabel(Channel.Type type) {
         return type == Channel.Type.MOVIE ? "Film"
                 : type == Channel.Type.SERIES ? "Serie" : "Live";
     }
@@ -121,14 +138,48 @@ final class CatalogAdapter extends BaseAdapter {
     }
 
     private static final class Holder {
-        final TextView badge;
+        final TextView logo;
         final TextView name;
         final TextView group;
+        final TextView language;
 
-        Holder(TextView badge, TextView name, TextView group) {
-            this.badge = badge;
+        Holder(TextView logo, TextView name, TextView group, TextView language) {
+            this.logo = logo;
             this.name = name;
             this.group = group;
+            this.language = language;
+        }
+    }
+
+    private static final class Brand {
+        final String label;
+        final int fill;
+        final int stroke;
+
+        Brand(String label, int fill, int stroke) {
+            this.label = label;
+            this.fill = fill;
+            this.stroke = stroke;
+        }
+
+        static Brand of(String value) {
+            String name = value == null ? "" : value.toLowerCase(Locale.ROOT);
+            if (name.contains("kanal d")) return new Brand("KANAL\nD", 0xFF1478C9, 0xFF66B8F0);
+            if (name.contains("trt 1") || name.startsWith("trt1")) return new Brand("TRT 1", 0xFFE2263E, 0xFFFF7486);
+            if (name.startsWith("trt")) return new Brand("TRT", 0xFFE2263E, 0xFFFF7486);
+            if (name.contains("rtl zwei") || name.contains("rtl2")) return new Brand("RTL\nZWEI", 0xFFF29F24, 0xFFFFCF6B);
+            if (name.contains("rtl")) return new Brand("RTL", 0xFFE64167, 0xFFFF8EA6);
+            if (name.contains("zdf")) return new Brand("ZDF", 0xFFF07B22, 0xFFFFB172);
+            if (name.contains("ard") || name.contains("das erste")) return new Brand("ARD", 0xFF1677C8, 0xFF70B7EE);
+            if (name.contains("show tv")) return new Brand("SHOW", 0xFF7B3FB5, 0xFFB98BE2);
+            if (name.startsWith("atv") || name.contains(" atv")) return new Brand("atv", 0xFFE65C2A, 0xFFFFA27F);
+            if (name.contains("tv8")) return new Brand("TV8", 0xFFE32936, 0xFFFF7F88);
+            if (name.contains("star tv")) return new Brand("STAR", 0xFF2168B5, 0xFF77B9F3);
+            if (name.contains("pro7") || name.contains("pro sieben")) return new Brand("PRO7", 0xFFDB263E, 0xFFFF8595);
+            if (name.contains("sat.1") || name.contains("sat 1")) return new Brand("SAT.1", 0xFF244B91, 0xFF75A0E8);
+            String clean = value == null ? "" : value.trim();
+            String label = clean.isEmpty() ? "•" : clean.substring(0, Math.min(2, clean.length())).toUpperCase(Locale.ROOT);
+            return new Brand(label, 0xFF173B50, 0xFF3B6B83);
         }
     }
 }
