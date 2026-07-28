@@ -37,6 +37,7 @@ public final class AdultCatalogActivity extends Activity {
     private static final int CARD = 0xEE0B2030;
     private static final int STROKE = 0xFF2A5269;
     private static final int ACCENT = 0xFFE94D5F;
+    private static final int AGE_ACCENT = 0xFFF4A340;
     private static final int TEXT_SECONDARY = 0xFF9DB6C8;
 
     private enum Scope {
@@ -50,6 +51,18 @@ public final class AdultCatalogActivity extends Activity {
         Scope(String label, Channel.Type type) {
             this.label = label;
             this.type = type;
+        }
+    }
+
+    private enum Protection {
+        EXPLICIT("XXX / Erotik"),
+        AGE_18("FSK 18"),
+        ALL("Alle geschützt");
+
+        final String label;
+
+        Protection(String label) {
+            this.label = label;
         }
     }
 
@@ -67,6 +80,7 @@ public final class AdultCatalogActivity extends Activity {
     private List<Channel> series = Collections.emptyList();
     private List<Channel> live = Collections.emptyList();
     private Scope scope = Scope.MOVIES;
+    private Protection protection = Protection.EXPLICIT;
     private EditText search;
     private TextView count;
     private TextView empty;
@@ -75,6 +89,9 @@ public final class AdultCatalogActivity extends Activity {
     private Button moviesButton;
     private Button seriesButton;
     private Button liveButton;
+    private Button explicitButton;
+    private Button ageButton;
+    private Button allProtectedButton;
     private volatile boolean destroyed;
 
     @Override protected void onCreate(Bundle state) {
@@ -114,24 +131,36 @@ public final class AdultCatalogActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(14), dp(12), dp(14), dp(10));
+        root.setPadding(dp(14), dp(10), dp(14), dp(9));
         stage.addView(root, new FrameLayout.LayoutParams(-1, -1));
 
-        LinearLayout header = new LinearLayout(this);
-        header.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout brandRow = new LinearLayout(this);
+        brandRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView logo = new TextView(this);
         logo.setBackgroundResource(R.drawable.ic_lumen_mark_tile);
         logo.setContentDescription("Project Lumen Logo");
-        header.addView(logo, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        brandRow.addView(logo, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
-        titles.setPadding(dp(10), 0, dp(6), 0);
-        titles.addView(text("18+ BEREICH", 20, Color.WHITE, true));
+        titles.setPadding(dp(10), 0, 0, 0);
+        TextView title = text("18+ BEREICH", 21, Color.WHITE, true);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        titles.addView(title);
         TextView subtitle = text("GESCHÜTZTER ELTERNZUGANG", 9, TEXT_SECONDARY, true);
-        subtitle.setLetterSpacing(0.06f);
+        subtitle.setSingleLine(true);
+        subtitle.setEllipsize(TextUtils.TruncateAt.END);
+        subtitle.setLetterSpacing(0.04f);
         titles.addView(subtitle);
-        header.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
+        brandRow.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
+        root.addView(brandRow);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionRowParams = new LinearLayout.LayoutParams(-1, dp(40));
+        actionRowParams.setMargins(0, dp(7), 0, 0);
+        root.addView(actions, actionRowParams);
 
         Button lock = button("Sperren", true);
         lock.setOnClickListener(v -> {
@@ -139,22 +168,18 @@ public final class AdultCatalogActivity extends Activity {
             log.event("-", "PARENTAL-LOCK", "reason=adult-hub-manual");
             finish();
         });
-        header.addView(lock, new LinearLayout.LayoutParams(dp(88), dp(39)));
+        actions.addView(lock, weighted(0));
 
         Button back = button("Zurück", false);
         back.setOnClickListener(v -> finish());
-        LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(dp(82), dp(39));
-        backParams.setMargins(dp(7), 0, 0, 0);
-        header.addView(back, backParams);
-        root.addView(header);
+        actions.addView(back, weighted(dp(7)));
 
-        TextView notice = text("XXX-, Erotik- und FSK-18-Inhalte werden getrennt vom Familienkatalog angezeigt. "
-                        + "Bei unklarer Kennzeichnung bleibt der Inhalt gesperrt.",
-                12, 0xFFBDD0DC, false);
-        notice.setPadding(dp(12), dp(10), dp(12), dp(10));
+        TextView notice = text("XXX/Erotik und FSK 18 sind getrennt. Mehrdeutige Filmtitel allein werden nicht geschützt.",
+                11, 0xFFBDD0DC, false);
+        notice.setPadding(dp(11), dp(8), dp(11), dp(8));
         notice.setBackground(roundRect(CARD, 14, STROKE));
         LinearLayout.LayoutParams noticeParams = new LinearLayout.LayoutParams(-1, -2);
-        noticeParams.setMargins(0, dp(11), 0, dp(8));
+        noticeParams.setMargins(0, dp(8), 0, dp(7));
         root.addView(notice, noticeParams);
 
         LinearLayout scopes = new LinearLayout(this);
@@ -165,17 +190,29 @@ public final class AdultCatalogActivity extends Activity {
         scopes.addView(moviesButton, weighted(0));
         scopes.addView(seriesButton, weighted(dp(6)));
         scopes.addView(liveButton, weighted(dp(6)));
-        root.addView(scopes, new LinearLayout.LayoutParams(-1, dp(42)));
+        root.addView(scopes, new LinearLayout.LayoutParams(-1, dp(40)));
+
+        LinearLayout protectionRow = new LinearLayout(this);
+        protectionRow.setOrientation(LinearLayout.HORIZONTAL);
+        explicitButton = protectionButton("XXX / Erotik", Protection.EXPLICIT);
+        ageButton = protectionButton("FSK 18", Protection.AGE_18);
+        allProtectedButton = protectionButton("Alle", Protection.ALL);
+        protectionRow.addView(explicitButton, weighted(0));
+        protectionRow.addView(ageButton, weighted(dp(6)));
+        protectionRow.addView(allProtectedButton, weighted(dp(6)));
+        LinearLayout.LayoutParams protectionParams = new LinearLayout.LayoutParams(-1, dp(40));
+        protectionParams.setMargins(0, dp(6), 0, 0);
+        root.addView(protectionRow, protectionParams);
 
         LinearLayout searchRow = new LinearLayout(this);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams searchRowParams = new LinearLayout.LayoutParams(-1, -2);
-        searchRowParams.setMargins(0, dp(8), 0, 0);
+        searchRowParams.setMargins(0, dp(7), 0, 0);
         root.addView(searchRow, searchRowParams);
 
         search = new EditText(this);
         search.setSingleLine(true);
-        search.setHint("Im geschützten Bereich suchen");
+        search.setHint("Geschützt suchen");
         search.setTextColor(Color.WHITE);
         search.setHintTextColor(0xFF7896AA);
         search.setTextSize(14);
@@ -188,21 +225,21 @@ public final class AdultCatalogActivity extends Activity {
             }
             @Override public void afterTextChanged(Editable editable) { }
         });
-        searchRow.addView(search, new LinearLayout.LayoutParams(0, dp(46), 1f));
+        searchRow.addView(search, new LinearLayout.LayoutParams(0, dp(44), 1f));
 
         count = text("0", 12, Color.WHITE, true);
         count.setGravity(Gravity.CENTER);
         count.setMinWidth(dp(48));
         count.setBackground(roundRect(ACCENT, 18, ACCENT));
-        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, dp(40));
+        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, dp(38));
         countParams.setMargins(dp(8), 0, 0, 0);
         searchRow.addView(count, countParams);
 
-        status = text("Geschützter Katalog wird vorbereitet …", 11, TEXT_SECONDARY, false);
+        status = text("Geschützter Katalog wird geprüft …", 11, TEXT_SECONDARY, false);
         status.setSingleLine(true);
         status.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-1, -2);
-        statusParams.setMargins(0, dp(7), 0, dp(4));
+        statusParams.setMargins(0, dp(6), 0, dp(3));
         root.addView(status, statusParams);
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -214,7 +251,7 @@ public final class AdultCatalogActivity extends Activity {
 
         FrameLayout host = new FrameLayout(this);
         LinearLayout.LayoutParams hostParams = new LinearLayout.LayoutParams(-1, 0, 1f);
-        hostParams.setMargins(0, dp(8), 0, 0);
+        hostParams.setMargins(0, dp(7), 0, 0);
         root.addView(host, hostParams);
 
         ListView list = new ListView(this);
@@ -223,7 +260,7 @@ public final class AdultCatalogActivity extends Activity {
         list.setFastScrollEnabled(true);
         list.setCacheColorHint(Color.TRANSPARENT);
         list.setSelector(roundRect(0x33E94D5F, 16, ACCENT));
-        adapter = new CatalogAdapter(this);
+        adapter = new CatalogAdapter(this, true);
         list.setAdapter(adapter);
         list.setOnItemClickListener((parent, view, position, id) -> openContent(adapter.item(position)));
         host.addView(list, new FrameLayout.LayoutParams(-1, -1));
@@ -233,7 +270,7 @@ public final class AdultCatalogActivity extends Activity {
         empty.setPadding(dp(22), dp(22), dp(22), dp(22));
         host.addView(empty, new FrameLayout.LayoutParams(-1, -1));
         list.setEmptyView(empty);
-        updateScopeStyles();
+        updateStyles();
     }
 
     private void loadProtectedCatalog() {
@@ -282,23 +319,42 @@ public final class AdultCatalogActivity extends Activity {
         button.setOnClickListener(v -> {
             scope = target;
             search.setText("");
-            updateScopeStyles();
+            updateStyles();
             filterAsync();
         });
         return button;
     }
 
-    private void updateScopeStyles() {
-        styleScope(moviesButton, scope == Scope.MOVIES);
-        styleScope(seriesButton, scope == Scope.SERIES);
-        styleScope(liveButton, scope == Scope.LIVE);
+    private Button protectionButton(String label, Protection target) {
+        Button button = button(label, false);
+        button.setTextSize(10);
+        button.setOnClickListener(v -> {
+            protection = target;
+            search.setText("");
+            updateStyles();
+            filterAsync();
+        });
+        return button;
     }
 
-    private void styleScope(Button button, boolean selected) {
+    private void updateStyles() {
+        styleButton(moviesButton, scope == Scope.MOVIES, ACCENT);
+        styleButton(seriesButton, scope == Scope.SERIES, ACCENT);
+        styleButton(liveButton, scope == Scope.LIVE, ACCENT);
+        styleButton(explicitButton, protection == Protection.EXPLICIT, ACCENT);
+        styleButton(ageButton, protection == Protection.AGE_18, AGE_ACCENT);
+        styleButton(allProtectedButton, protection == Protection.ALL, 0xFF6B7FE8);
+        if (count != null) {
+            int chip = protection == Protection.AGE_18 ? AGE_ACCENT : ACCENT;
+            count.setBackground(roundRect(chip, 18, chip));
+        }
+    }
+
+    private void styleButton(Button button, boolean selected, int selectedColor) {
         if (button == null) return;
-        button.setTextColor(selected ? Color.WHITE : 0xFFD9E5EC);
-        button.setBackground(roundRect(selected ? ACCENT : 0xFF17354A,
-                12, selected ? ACCENT : STROKE));
+        button.setTextColor(Color.WHITE);
+        button.setBackground(roundRect(selected ? selectedColor : 0xFF17354A,
+                12, selected ? selectedColor : STROKE));
     }
 
     private List<Channel> selectedSource() {
@@ -307,37 +363,57 @@ public final class AdultCatalogActivity extends Activity {
         return movies;
     }
 
+    private boolean matchesProtection(Channel channel, Protection wanted) {
+        if (wanted == Protection.ALL) return channel.adult;
+        if (wanted == Protection.AGE_18) {
+            return AdultContentPolicy.isAge18Class(channel.adultClass);
+        }
+        return AdultContentPolicy.isExplicitClass(channel.adultClass);
+    }
+
     private void filterAsync() {
         if (search == null || adapter == null) return;
         int generation = filterGeneration.incrementAndGet();
         String query = search.getText().toString().trim();
         Scope wantedScope = scope;
+        Protection wantedProtection = protection;
         List<Channel> source = selectedSource();
         worker.execute(() -> {
             ArrayList<Channel> result = new ArrayList<>();
             for (Channel channel : source) {
                 if (Thread.currentThread().isInterrupted()) return;
+                if (!matchesProtection(channel, wantedProtection)) continue;
                 if (query.isEmpty() || containsIgnoreCase(channel.name, query)
                         || containsIgnoreCase(channel.group, query)) {
                     result.add(channel);
                 }
             }
+            List<Channel> immutable = Collections.unmodifiableList(result);
             main.post(() -> {
-                if (!alive() || generation != filterGeneration.get() || wantedScope != scope) return;
-                adapter.submit(Collections.unmodifiableList(result));
-                count.setText(String.valueOf(result.size()));
-                status.setText(source.isEmpty()
-                        ? "Keine eindeutig markierten 18+-" + wantedScope.label + " gefunden"
-                        : source.size() + " geschützte " + wantedScope.label
-                        + " · Elternzugang aktiv");
-                empty.setText(source.isEmpty()
-                        ? "Keine eindeutig markierte 18+-Kategorie für " + wantedScope.label
-                        + " erkannt.\nDer Familienkatalog wird niemals ersatzweise angezeigt."
-                        : "Keine Treffer im geschützten Bereich.");
+                if (!alive() || generation != filterGeneration.get()
+                        || wantedScope != scope || wantedProtection != protection) return;
+                adapter.submit(immutable);
+                count.setText(String.valueOf(immutable.size()));
+                status.setText(immutable.size() + " " + wantedProtection.label + " · "
+                        + wantedScope.label + " · Elternzugang aktiv");
+                empty.setText(emptyMessage(wantedScope, wantedProtection));
                 log.event("-", "ADULT-SCOPE-READY", "type=" + wantedScope.type
-                        + " rows=" + result.size());
+                        + " protection=" + wantedProtection + " rows=" + immutable.size());
             });
         });
+    }
+
+    private static String emptyMessage(Scope scope, Protection protection) {
+        if (protection == Protection.EXPLICIT) {
+            return "Keine eindeutig als XXX oder Erotik gekennzeichneten " + scope.label
+                    + " gefunden.\nNormale Filme werden nicht ersatzweise angezeigt.";
+        }
+        if (protection == Protection.AGE_18) {
+            return "Keine eindeutig mit FSK 18 oder 18+ gekennzeichneten " + scope.label
+                    + " gefunden.\nXXX/Erotik bleibt davon getrennt.";
+        }
+        return "Keine eindeutig geschützten " + scope.label
+                + " gefunden.\nDer Familienkatalog wird niemals ersatzweise angezeigt.";
     }
 
     private void openContent(Channel channel) {
