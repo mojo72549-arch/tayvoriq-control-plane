@@ -1,0 +1,375 @@
+name: TAYVORIQ Fire Safety Documentary
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-fire-safety-documentary.yml"
+      - ".automation/tayvoriq-fire-safety-documentary.json"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: tayvoriq-fire-safety-documentary
+  cancel-in-progress: false
+
+jobs:
+  render-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PYTHONUTF8: "1"
+      PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+      TAYVORIQ_TTS_PROVIDER: "chatterbox_v3"
+      TAYVORIQ_CHATTERBOX_ENABLED: "true"
+      TAYVORIQ_CHATTERBOX_MODEL_VERSION: "v3"
+      TAYVORIQ_CHATTERBOX_LANGUAGE: "de"
+      TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "480"
+      TAYVORIQ_CHATTERBOX_CPU_THREADS: "4"
+      TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.34"
+      TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.44"
+      TAYVORIQ_CHATTERBOX_NATURAL_PAUSE_MS: "480"
+      TAYVORIQ_DOCUMENTARY_TARGET_WPM: "128"
+      TAYVORIQ_DOCUMENTARY_TARGET_F0_HZ: "112"
+      TAYVORIQ_NATURAL_VOICE_MIN_SECONDS: "58"
+      TAYVORIQ_NATURAL_VOICE_MAX_SECONDS: "64"
+      TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
+      TAYVORIQ_RENDER_SIZE: "1080x1920"
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+      TORCH_HOME: ${{ github.workspace }}/.cache/torch
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN PEXELS_API_KEY TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID; do
+            test -n "${!name:-}" || { echo "::error title=Missing secret::$name"; exit 2; }
+          done
+
+      - name: Checkout private documentary fix
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: fix/deep-documentary-fire-safety-v29
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Checkout Pages repository
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: implementation/requirements.txt
+
+      - name: Restore voice and transcription cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/huggingface
+            .cache/torch
+          key: tayvoriq-documentary-v29-cpu-py311-v2
+
+      - name: Install media, voice and speech dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg rsync git libsndfile1
+          python -m pip install --upgrade pip
+          python -m pip install -r implementation/requirements.txt pytest numpy edge-tts faster-whisper
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"
+          ffmpeg -hide_banner -filters 2>/dev/null | grep -q rubberband || {
+            echo "::error title=Missing audio filter::ffmpeg rubberband filter is required for transparent pitch correction"
+            exit 2
+          }
+
+      - name: Validate content, voice and speech contracts
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools src
+          python -m pytest -q \
+            tests/test_tayvoriq_fire_safety_documentary_v2.py \
+            tests/test_tayvoriq_fire_safety_documentary_v3.py \
+            tests/test_tayvoriq_documentary_voice_gate_v29.py \
+            tests/test_tayvoriq_speech_intelligibility_gate.py
+
+      - name: Create and select deep narrator reference
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          mkdir -p out/documentary-reference
+          python - <<'PY'
+          import asyncio
+          import json
+          from pathlib import Path
+
+          import edge_tts
+          import tayvoriq_tts_router_v29 as router
+
+          root = Path("out/documentary-reference").resolve()
+          text = (
+              "Ein ruhiger Erzähler spricht warm, tief und souverän. "
+              "Er setzt klare Pausen, bleibt verständlich und trägt eine ernste Geschichte ohne Hektik."
+          )
+          voices = ("de-DE-KillianNeural", "de-DE-ConradNeural")
+
+          async def generate() -> list[dict[str, object]]:
+              reports = []
+              for voice in voices:
+                  target = root / f"{voice}.mp3"
+                  try:
+                      communicator = edge_tts.Communicate(
+                          text=text,
+                          voice=voice,
+                          rate="-8%",
+                          pitch="-10Hz",
+                          volume="+0%",
+                      )
+                      await communicator.save(str(target))
+                      metrics = router._voice_measurements(target)
+                      reports.append({
+                          "voice": voice,
+                          "path": str(target),
+                          "bytes": target.stat().st_size,
+                          "metrics": metrics,
+                      })
+                  except Exception as exc:
+                      reports.append({"voice": voice, "error": f"{type(exc).__name__}: {exc}"})
+              return reports
+
+          reports = asyncio.run(generate())
+          usable = [
+              item for item in reports
+              if "metrics" in item
+              and 75 <= float(item["metrics"]["median_f0_hz"]) <= 155
+              and float(item["metrics"]["pitch_span_hz"]) >= 10
+          ]
+          if not usable:
+              raise SystemExit("No usable deep narrator reference: " + json.dumps(reports, ensure_ascii=False))
+          selected = min(usable, key=lambda item: float(item["metrics"]["median_f0_hz"]))
+          payload = {"selected": selected, "candidates": reports, "contract": "internal-timbre-reference-only-final-audio-is-chatterbox-v3"}
+          (root / "reference_selection.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          with Path("../reference-env.txt").open("w", encoding="utf-8") as handle:
+              handle.write("TAYVORIQ_CHATTERBOX_REFERENCE_AUDIO=" + selected["path"] + "\n")
+          print(json.dumps(payload, ensure_ascii=False, indent=2))
+          PY
+          cat ../reference-env.txt >> "$GITHUB_ENV"
+
+      - name: Render verified wildfire safety documentary
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_fire_safety_documentary_v3.py \
+            --out-dir "${GITHUB_WORKSPACE}/implementation/out/fire-safety-documentary"
+
+      - name: Verify spoken safety instructions locally
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("out/fire-safety-documentary")
+          package = json.loads((root / "text_package.json").read_text(encoding="utf-8"))
+          audio = json.loads((root / "audio_report.json").read_text(encoding="utf-8"))
+          (root / "spoken_reference.txt").write_text(
+              package["speech_preflight"]["tts_text"] + "\n",
+              encoding="utf-8",
+          )
+          voice = root / audio["voice_path"]
+          if not voice.is_file():
+              raise SystemExit(f"Voice file missing: {voice}")
+          print(voice)
+          PY
+          AUDIO_PATH=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("out/fire-safety-documentary")
+          audio=json.loads((root/"audio_report.json").read_text(encoding="utf-8"))
+          print(root/audio["voice_path"])
+          PY
+          )
+          python tools/tayvoriq_speech_intelligibility_gate.py \
+            --audio "$AUDIO_PATH" \
+            --reference-text-file out/fire-safety-documentary/spoken_reference.txt \
+            --report out/fire-safety-documentary/speech_intelligibility_report.json \
+            --model-size base
+
+      - name: Validate final evidence contract
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          root = Path("out/fire-safety-documentary")
+          quality = json.loads((root / "quality_report.json").read_text(encoding="utf-8"))
+          audio = json.loads((root / "audio_report.json").read_text(encoding="utf-8"))
+          speech = json.loads((root / "speech_intelligibility_report.json").read_text(encoding="utf-8"))
+          job = json.loads((root / "job.json").read_text(encoding="utf-8"))
+          package = json.loads((root / "text_package.json").read_text(encoding="utf-8"))
+          video = root / "short.mp4"
+          gate = audio.get("documentary_voice_gate") or {}
+          worker = audio.get("worker_report") or {}
+          failures = []
+
+          if quality.get("passed") is not True:
+              failures.append("final_quality_failed")
+          if package.get("content_quality_gate", {}).get("passed") is not True:
+              failures.append("content_gate_failed")
+          if not all(package.get("content_quality_gate", {}).get("requirements", {}).values()):
+              failures.append("safety_requirement_missing")
+          if audio.get("provider") != "chatterbox_multilingual_v3":
+              failures.append(f"provider={audio.get('provider')}")
+          if str(audio.get("model_id") or "").casefold() != "v3":
+              failures.append(f"model_id={audio.get('model_id')}")
+          if worker.get("model_version_fallback") is True:
+              failures.append("chatterbox_v3_downgraded")
+          if audio.get("fallback") is not False:
+              failures.append("fallback_voice_used")
+          if gate.get("passed") is not True:
+              failures.append("documentary_voice_gate_failed")
+          median_f0 = float((gate.get("after_master") or {}).get("median_f0_hz") or 0)
+          if not 84 <= median_f0 <= 125:
+              failures.append(f"median_f0={median_f0}")
+          wpm = float(gate.get("speaking_rate_wpm") or 0)
+          if not 108 <= wpm <= 145:
+              failures.append(f"speaking_rate={wpm}")
+          if speech.get("passed") is not True:
+              failures.append("speech_intelligibility_failed")
+          if not all(speech.get("required_concepts", {}).values()):
+              failures.append("spoken_safety_concept_missing")
+          if speech.get("similarity", 0) < 0.68:
+              failures.append(f"speech_similarity={speech.get('similarity')}")
+          if quality.get("subtitles_complete") is not True:
+              failures.append("subtitle_coverage_incomplete")
+          if int(quality.get("pexels_scene_count") or 0) < 6:
+              failures.append("insufficient_real_video_scenes")
+          if job.get("approval_status") != "PENDING_REVIEW":
+              failures.append(f"approval={job.get('approval_status')}")
+          if job.get("upload_status") != "NOT_STARTED_PENDING_APPROVAL":
+              failures.append(f"upload={job.get('upload_status')}")
+          if not video.is_file() or video.stat().st_size < 500_000:
+              failures.append("missing_mp4")
+          if failures:
+              raise SystemExit(", ".join(failures))
+
+          probe = subprocess.run(
+              ["ffprobe", "-v", "error", "-show_entries", "stream=width,height:format=duration", "-of", "json", str(video)],
+              capture_output=True, text=True, check=True,
+          )
+          evidence = {
+              "quality": quality,
+              "voice": gate,
+              "speech": speech,
+              "video_probe": json.loads(probe.stdout),
+              "approval_status": job["approval_status"],
+              "upload_status": job["upload_status"],
+          }
+          (root / "final_evidence.json").write_text(
+              json.dumps(evidence, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(evidence, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Build and publish review page
+        env:
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          REVIEW_ID="${GITHUB_RUN_ID}"
+          SOURCE="implementation/out/fire-safety-documentary"
+          TARGET="pages-worktree/tayvoriq/runs/${REVIEW_ID}"
+          mkdir -p "$TARGET"
+          cp "$SOURCE/short.mp4" "$TARGET/tayvoriq-review.mp4"
+          cp "$SOURCE/audio_report.json" "$TARGET/audio_report.json"
+          cp "$SOURCE/quality_report.json" "$TARGET/quality_report.json"
+          cp "$SOURCE/speech_intelligibility_report.json" "$TARGET/speech_intelligibility_report.json"
+          cp "$SOURCE/text_package.json" "$TARGET/text_package.json"
+          cp "$SOURCE/final_evidence.json" "$TARGET/final_evidence.json"
+          cp implementation/out/documentary-reference/reference_selection.json "$TARGET/reference_selection.json"
+          F0=$(jq -r '.documentary_voice_gate.after_master.median_f0_hz' "$SOURCE/audio_report.json")
+          WPM=$(jq -r '.documentary_voice_gate.speaking_rate_wpm' "$SOURCE/audio_report.json")
+          SIMILARITY=$(jq -r '.similarity' "$SOURCE/speech_intelligibility_report.json")
+          cat > "$TARGET/index.html" <<HTML
+          <!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TAYVORIQ Waldbrand-Sicherheitsreview</title><style>body{margin:0;background:#090b10;color:#fff;font-family:system-ui,sans-serif}main{max-width:620px;margin:auto;padding:24px}video{width:100%;max-height:78vh;background:#000;border-radius:18px}h1{font-size:1.4rem}.notice{padding:14px;border:1px solid #343947;border-radius:12px;background:#121620;color:#d3d7df;line-height:1.55}.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.badge{padding:7px 10px;border-radius:999px;background:#163822;color:#baf7c9;font-weight:700;font-size:.88rem}a{color:#8fc8ff}</style></head><body><main><div class="badges"><span class="badge">Tiefe Chatterbox‑V3‑Stimme</span><span class="badge">F0 ${F0} Hz</span><span class="badge">${WPM} Wörter/Min.</span><span class="badge">Sprachprüfung ${SIMILARITY}</span></div><h1>🔥 Waldbrand: So reagierst du richtig</h1><video controls playsinline preload="metadata" src="tayvoriq-review.mp4"></video><div class="notice"><strong>Noch nicht veröffentlicht.</strong><p>Geprüft wurden Erzählerstimme, Aussprache, Prävention, Verhalten bei Rauch und Feuer, Notruf 112, Notrufangaben, Untertitel und Sicherheits‑CTA. Entscheide anschließend ausschließlich in Telegram mit „Freigeben“ oder „Ablehnen“.</p></div><p><a href="tayvoriq-review.mp4">Video direkt öffnen</a></p></main></body></html>
+          HTML
+          touch pages-worktree/.nojekyll
+          cd pages-worktree
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "tayvoriq/runs/${REVIEW_ID}" .nojekyll
+          git commit -m "Publish deep fire-safety TAYVORIQ review ${REVIEW_ID}"
+          git push origin main
+
+      - name: Upload documentary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-review-${{ github.run_id }}
+          path: |
+            implementation/out/fire-safety-documentary/**
+            implementation/out/documentary-reference/reference_selection.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Wait for review page
+        run: |
+          set -euo pipefail
+          REVIEW_URL="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+          for attempt in $(seq 1 30); do
+            code=$(curl -L -s -o /dev/null -w '%{http_code}' "$REVIEW_URL" || true)
+            if [ "$code" = "200" ]; then
+              echo "Review page ready: $REVIEW_URL"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error title=Review page unavailable::$REVIEW_URL"
+          exit 1
+
+      - name: Send Telegram approval review
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_send_telegram.py \
+            --state SUCCESS \
+            --conclusion success \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --approval-mode manual
+
+      - name: Confirm no platform upload
+        run: |
+          echo "Deep fire-safety documentary published only for human review."
+          echo "No YouTube, TikTok or Instagram upload was performed."
