@@ -41,6 +41,7 @@ final class FastCatalogCoordinator {
         return thread;
     });
     private static final Map<Activity, State> STATES = new WeakHashMap<>();
+    private static final Map<Activity, Integer> ADULT_REVISIONS = new WeakHashMap<>();
     private static final String ADULT_TOOLS_TAG = "lumen-adult-category-tools-v1";
 
     private FastCatalogCoordinator() { }
@@ -74,6 +75,8 @@ final class FastCatalogCoordinator {
     static void installAdultTools(Activity activity) {
         if (!(activity instanceof AdultCatalogActivity)
                 || !ParentalControl.isUnlocked()) return;
+        refreshAdultCatalogIfPolicyChanged(activity);
+
         ViewGroup root = findVerticalRoot(activity.findViewById(android.R.id.content));
         if (root == null || root.findViewWithTag(ADULT_TOOLS_TAG) != null) return;
 
@@ -96,6 +99,27 @@ final class FastCatalogCoordinator {
         params.setMargins(0, dp(activity, 8), 0, dp(activity, 6));
         int index = Math.min(1, root.getChildCount());
         root.addView(manage, index, params);
+    }
+
+    private static void refreshAdultCatalogIfPolicyChanged(Activity activity) {
+        int revision = AdultGroupPolicy.revision();
+        Integer previous;
+        synchronized (ADULT_REVISIONS) {
+            previous = ADULT_REVISIONS.put(activity, revision);
+        }
+        if (previous == null || previous == revision) return;
+        try {
+            View progress = (View) readField(activity, "progress");
+            TextView status = (TextView) readField(activity, "status");
+            if (progress != null) progress.setVisibility(View.VISIBLE);
+            if (status != null) status.setText("Neue Kategoriezuordnung wird übernommen …");
+            invoke(activity, "loadProtectedCatalog");
+            DiagnosticLog.get(activity).event("-", "ADULT-CATALOG-POLICY-REFRESH",
+                    "fromRevision=" + previous + " toRevision=" + revision);
+        } catch (Throwable failure) {
+            DiagnosticLog.get(activity).exception("-", "ADULT-CATALOG-POLICY-REFRESH-ERROR",
+                    failure);
+        }
     }
 
     private static void hook(MainActivity activity, State state, String buttonField,
