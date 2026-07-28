@@ -8,19 +8,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public final class CatalogCacheTest {
     @Test
-    public void writesAndReadsOneHundredThousandEntriesWithLogos() throws Exception {
+    public void writesAndReadsOneHundredThousandEntriesWithCachedFlagsAndLogos() throws Exception {
         ArrayList<Channel> source = new ArrayList<>(100_000);
         for (int index = 0; index < 100_000; index++) {
             Channel.Type type = index % 11 == 0 ? Channel.Type.SERIES
                     : index % 5 == 0 ? Channel.Type.MOVIE : Channel.Type.LIVE;
+            String group = index % 4 == 0 ? "DE | Gruppe " + (index % 120)
+                    : index % 4 == 1 ? "TR | Gruppe " + (index % 120)
+                    : index % 4 == 2 ? "UK | English" : "Italia";
             source.add(new Channel(
                     "id-" + index,
                     "Eintrag " + index,
-                    "Gruppe " + (index % 120),
+                    group,
                     "https://example.test/stream/" + index + ".ts",
                     "https://img.example.test/logo/" + index + ".png",
                     type));
@@ -38,8 +43,19 @@ public final class CatalogCacheTest {
         assertEquals("https://img.example.test/logo/0.png", restored.get(0).logo);
         assertEquals("https://img.example.test/logo/99999.png", restored.get(99_999).logo);
         assertEquals(Channel.Type.MOVIE, restored.get(99_995).type);
+        assertEquals(MediaLanguage.Code.DE, restored.get(0).language);
+        assertEquals(MediaLanguage.Code.TR, restored.get(1).language);
+        assertEquals(MediaLanguage.Code.EN, restored.get(2).language);
+        assertEquals(MediaLanguage.Code.OTHER, restored.get(3).language);
+        assertFalse(restored.get(18).adult);
         assertTrue("Cache roundtrip took " + durationMs + " ms", durationMs < 30_000L);
         assertTrue(file.length() > 1_000_000L);
+
+        long memoryStarted = System.nanoTime();
+        List<Channel> memoryHit = CatalogCache.read(file);
+        long memoryDurationMs = (System.nanoTime() - memoryStarted) / 1_000_000L;
+        assertSame(restored, memoryHit);
+        assertTrue("Process memory hit took " + memoryDurationMs + " ms", memoryDurationMs < 250L);
 
         file.delete();
     }
