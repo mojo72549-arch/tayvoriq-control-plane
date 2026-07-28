@@ -51,6 +51,7 @@ final class CatalogCache {
             buffered.flush();
             rawFile.getFD().sync();
         }
+        CatalogSession.publish(safe);
     }
 
     static List<Channel> read(File file) throws Exception {
@@ -81,6 +82,7 @@ final class CatalogCache {
                 if (typeIndex >= types.length) throw new IllegalStateException("Ungültiger Medientyp im Cache.");
                 result.add(new Channel(id, name, group, url, logo, types[typeIndex]));
             }
+            CatalogSession.publish(result);
             return AdultContentPolicy.protect(result);
         } catch (EOFException incomplete) {
             throw new IllegalStateException("Katalogcache wurde unvollständig geschrieben.", incomplete);
