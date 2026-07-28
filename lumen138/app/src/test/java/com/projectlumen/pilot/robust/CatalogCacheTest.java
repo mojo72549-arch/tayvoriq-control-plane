@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 public final class CatalogCacheTest {
     @Test
-    public void writesAndReadsOneHundredThousandEntries() throws Exception {
+    public void writesAndReadsOneHundredThousandEntriesWithLogos() throws Exception {
         ArrayList<Channel> source = new ArrayList<>(100_000);
         for (int index = 0; index < 100_000; index++) {
             Channel.Type type = index % 11 == 0 ? Channel.Type.SERIES
@@ -22,6 +22,7 @@ public final class CatalogCacheTest {
                     "Eintrag " + index,
                     "Gruppe " + (index % 120),
                     "https://example.test/stream/" + index + ".ts",
+                    "https://img.example.test/logo/" + index + ".png",
                     type));
         }
 
@@ -34,6 +35,8 @@ public final class CatalogCacheTest {
         assertEquals(100_000, restored.size());
         assertEquals("Eintrag 0", restored.get(0).name);
         assertEquals("Eintrag 99999", restored.get(99_999).name);
+        assertEquals("https://img.example.test/logo/0.png", restored.get(0).logo);
+        assertEquals("https://img.example.test/logo/99999.png", restored.get(99_999).logo);
         assertEquals(Channel.Type.MOVIE, restored.get(99_995).type);
         assertTrue("Cache roundtrip took " + durationMs + " ms", durationMs < 30_000L);
         assertTrue(file.length() > 1_000_000L);
