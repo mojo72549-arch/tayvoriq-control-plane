@@ -2,7 +2,11 @@ package com.projectlumen.pilot.robust;
 
 import org.junit.Test;
 
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,5 +62,37 @@ public final class CatalogCacheTest {
         assertTrue("Process memory hit took " + memoryDurationMs + " ms", memoryDurationMs < 250L);
 
         file.delete();
+    }
+
+    @Test
+    public void versionThreeCacheRecomputesFormerWickedFalsePositive() throws Exception {
+        File file = Files.createTempFile("lumen-v3-stale-", ".bin").toFile();
+        try (DataOutputStream output = new DataOutputStream(new BufferedOutputStream(
+                new FileOutputStream(file)))) {
+            output.writeInt(0x4C554D34);
+            output.writeInt(3);
+            output.writeInt(1);
+            writeString(output, "wicked-id");
+            writeString(output, "Wicked - 2024");
+            writeString(output, "TR Drama Filmleri");
+            writeString(output, "https://provider/movie/wicked-2024.mp4");
+            writeString(output, "https://images/wicked.jpg");
+            output.writeByte(Channel.Type.MOVIE.ordinal());
+            output.writeByte(MediaLanguage.Code.TR.ordinal());
+            output.writeByte(AdultContentPolicy.CLASS_ADULT_BRAND);
+        }
+
+        List<Channel> restored = CatalogCache.read(file);
+        assertEquals(1, restored.size());
+        assertEquals("Wicked - 2024", restored.get(0).name);
+        assertFalse(restored.get(0).adult);
+        assertEquals(AdultContentPolicy.CLASS_SAFE, restored.get(0).adultClass);
+        assertEquals(1, AdultContentPolicy.raw(restored).size());
+    }
+
+    private static void writeString(DataOutputStream output, String value) throws Exception {
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        output.writeInt(bytes.length);
+        output.write(bytes);
     }
 }
