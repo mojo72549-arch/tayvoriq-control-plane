@@ -27,15 +27,36 @@ public final class AdultContentPolicyTest {
                 "hot", "Protected Movie", "VIP HOT", "http://example/hot", Channel.Type.MOVIE)));
     }
 
+    @Test public void wickedAndOtherAmbiguousMovieTitlesRemainSafe() {
+        assertFalse(movie("Wicked - 2024", "TR Drama Filmleri", "https://cdn/movie/wicked-2024.mp4").adult);
+        assertFalse(movie("The Dark and the Wicked", "TR Korku / Gerilim", "https://cdn/movie/123.mp4").adult);
+        assertFalse(movie("Wicked - 2024", "TR Altyazılı Filmler", "https://img/wicked-poster.jpg").adult);
+        assertFalse(movie("Vivid", "Drama", "https://cdn/vivid-2024.mp4").adult);
+        assertFalse(movie("Private Life", "Drama", "https://cdn/private-life.mp4").adult);
+        assertTrue(movie("Studio Channel", "Wicked Pictures XXX", "https://cdn/1.mp4").adult);
+        assertTrue(movie("Protected", "Normal", "https://provider/adult/movie/1.mp4").adult);
+    }
+
     @Test public void doesNotHideHarmlessTitlesOrNumberedGroups() {
         assertFalse(AdultContentPolicy.isAdultText("Essex County News"));
         assertFalse(AdultContentPolicy.isAdultText("Hotbird International"));
         assertFalse(AdultContentPolicy.isAdultText("RTL Zwei"));
         assertFalse(AdultContentPolicy.isAdultText("Kanal D Dizileri"));
-        assertFalse(AdultContentPolicy.isAdultText("Sex Education Documentary"));
+        assertFalse(movie("Sex Education Documentary", "Dokumentation", "http://example/1").adult);
         assertFalse(AdultContentPolicy.isAdultText("Group 18"));
         assertFalse(AdultContentPolicy.isAdultText("Gruppe 18"));
         assertFalse(AdultContentPolicy.isAdultText("Channel 18 News"));
+    }
+
+    @Test public void explicitAndAge18ClassesRemainSeparate() {
+        Channel explicit = movie("Protected", "XXX Movies", "http://example/1");
+        Channel age18 = movie("Uncut Thriller", "FSK 18 Filme", "http://example/2");
+        assertTrue(AdultContentPolicy.isExplicitClass(explicit.adultClass));
+        assertFalse(AdultContentPolicy.isAge18Class(explicit.adultClass));
+        assertTrue(AdultContentPolicy.isAge18Class(age18.adultClass));
+        assertFalse(AdultContentPolicy.isExplicitClass(age18.adultClass));
+        assertEquals("XXX / Erotik", AdultContentPolicy.classLabel(explicit.adultClass));
+        assertEquals("FSK 18", AdultContentPolicy.classLabel(age18.adultClass));
     }
 
     @Test public void familyProjectionAlwaysRemovesProtectedRowsButRawCatalogRemainsComplete() {
@@ -68,5 +89,9 @@ public final class AdultContentPolicyTest {
                 Channel.Type.MOVIE, MediaLanguage.Code.EN, AdultContentPolicy.CLASS_AGE_18);
         assertTrue(cached.adult);
         assertEquals("FSK 18", AdultContentPolicy.classLabel(cached.adultClass));
+    }
+
+    private static Channel movie(String name, String group, String url) {
+        return new Channel("id", name, group, url, Channel.Type.MOVIE);
     }
 }
