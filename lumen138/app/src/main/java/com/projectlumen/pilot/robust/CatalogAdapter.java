@@ -9,6 +9,8 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -18,9 +20,13 @@ import java.util.Locale;
 
 final class CatalogAdapter extends BaseAdapter {
     private final Context context;
+    private final LogoLoader logoLoader;
     private List<Channel> items = Collections.emptyList();
 
-    CatalogAdapter(Context context) { this.context = context; }
+    CatalogAdapter(Context context) {
+        this.context = context;
+        this.logoLoader = LogoLoader.get(context);
+    }
 
     void submit(List<Channel> values) {
         items = values == null ? Collections.emptyList() : values;
@@ -48,14 +54,21 @@ final class CatalogAdapter extends BaseAdapter {
             row.setPadding(dp(10), dp(8), dp(9), dp(8));
             row.setBackground(roundRect(0xEC0C2030, 16, 0xFF244D64));
 
-            TextView logo = new TextView(context);
-            logo.setTextColor(Color.WHITE);
-            logo.setTextSize(11);
-            logo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            logo.setGravity(Gravity.CENTER);
-            logo.setMaxLines(2);
-            logo.setEllipsize(TextUtils.TruncateAt.END);
-            row.addView(logo, new LinearLayout.LayoutParams(dp(52), dp(48)));
+            FrameLayout logoHost = new FrameLayout(context);
+            ImageView logoImage = new ImageView(context);
+            logoImage.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            logoImage.setPadding(dp(4), dp(4), dp(4), dp(4));
+            logoHost.addView(logoImage, new FrameLayout.LayoutParams(-1, -1));
+
+            TextView logoFallback = new TextView(context);
+            logoFallback.setTextColor(Color.WHITE);
+            logoFallback.setTextSize(11);
+            logoFallback.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            logoFallback.setGravity(Gravity.CENTER);
+            logoFallback.setMaxLines(2);
+            logoFallback.setEllipsize(TextUtils.TruncateAt.END);
+            logoHost.addView(logoFallback, new FrameLayout.LayoutParams(-1, -1));
+            row.addView(logoHost, new LinearLayout.LayoutParams(dp(58), dp(50)));
 
             LinearLayout labels = new LinearLayout(context);
             labels.setOrientation(LinearLayout.VERTICAL);
@@ -92,7 +105,7 @@ final class CatalogAdapter extends BaseAdapter {
             play.setGravity(Gravity.CENTER);
             row.addView(play, new LinearLayout.LayoutParams(dp(31), dp(42)));
 
-            holder = new Holder(logo, name, group, language);
+            holder = new Holder(logoHost, logoImage, logoFallback, name, group, language);
             row.setTag(holder);
             convertView = row;
         } else {
@@ -101,14 +114,18 @@ final class CatalogAdapter extends BaseAdapter {
 
         Channel channel = item(position);
         if (channel == null) {
-            holder.logo.setText("");
+            holder.logoImage.setTag("");
+            holder.logoImage.setImageDrawable(null);
+            holder.logoImage.setVisibility(View.INVISIBLE);
+            holder.logoFallback.setText("");
             holder.name.setText("");
             holder.group.setText("");
             holder.language.setText("");
         } else {
             Brand brand = Brand.of(channel.name);
-            holder.logo.setText(brand.label);
-            holder.logo.setBackground(roundRect(brand.fill, 13, brand.stroke));
+            holder.logoFallback.setText(brand.label);
+            holder.logoHost.setBackground(roundRect(brand.fill, 13, brand.stroke));
+            logoLoader.load(channel.logo, holder.logoImage, holder.logoFallback);
             holder.name.setText(channel.name);
             holder.group.setText(channel.group + "  ·  " + typeLabel(channel.type));
             holder.language.setText(MediaLanguage.shortLabel(channel));
@@ -138,13 +155,18 @@ final class CatalogAdapter extends BaseAdapter {
     }
 
     private static final class Holder {
-        final TextView logo;
+        final FrameLayout logoHost;
+        final ImageView logoImage;
+        final TextView logoFallback;
         final TextView name;
         final TextView group;
         final TextView language;
 
-        Holder(TextView logo, TextView name, TextView group, TextView language) {
-            this.logo = logo;
+        Holder(FrameLayout logoHost, ImageView logoImage, TextView logoFallback,
+               TextView name, TextView group, TextView language) {
+            this.logoHost = logoHost;
+            this.logoImage = logoImage;
+            this.logoFallback = logoFallback;
             this.name = name;
             this.group = group;
             this.language = language;
@@ -175,7 +197,7 @@ final class CatalogAdapter extends BaseAdapter {
             if (name.startsWith("atv") || name.contains(" atv")) return new Brand("atv", 0xFFE65C2A, 0xFFFFA27F);
             if (name.contains("tv8")) return new Brand("TV8", 0xFFE32936, 0xFFFF7F88);
             if (name.contains("star tv")) return new Brand("STAR", 0xFF2168B5, 0xFF77B9F3);
-            if (name.contains("pro7") || name.contains("pro sieben")) return new Brand("PRO7", 0xFFDB263E, 0xFFFF8595);
+            if (name.contains("pro7") || name.contains("pro sieben") || name.contains("prosieben")) return new Brand("PRO7", 0xFFDB263E, 0xFFFF8595);
             if (name.contains("sat.1") || name.contains("sat 1")) return new Brand("SAT.1", 0xFF244B91, 0xFF75A0E8);
             String clean = value == null ? "" : value.trim();
             String label = clean.isEmpty() ? "•" : clean.substring(0, Math.min(2, clean.length())).toUpperCase(Locale.ROOT);
