@@ -19,13 +19,24 @@ public final class MediaLanguageTest {
         assertEquals(MediaLanguage.Code.TR, MediaLanguage.detect(channel("TRT 1", "Ulusal")));
     }
 
+    @Test public void detectsEnglishAndKeepsOtherCountriesSeparate() {
+        assertEquals(MediaLanguage.Code.EN, MediaLanguage.detect(channel("BBC One", "UK")));
+        assertEquals(MediaLanguage.Code.EN, MediaLanguage.detect(channel("NBC News", "US English")));
+        assertEquals(MediaLanguage.Code.EN, MediaLanguage.detect(channel("Channel 4", "Entertainment")));
+        assertEquals(MediaLanguage.Code.OTHER, MediaLanguage.detect(channel("Rai Uno", "Italia")));
+        assertEquals(MediaLanguage.Code.OTHER, MediaLanguage.detect(channel("France 2", "France")));
+    }
+
     @Test public void explicitPlaylistGroupWinsOverAmbiguousBrand() {
         assertEquals(MediaLanguage.Code.TR, MediaLanguage.detect(channel("RTL International", "TR | Avrupa")));
         assertEquals(MediaLanguage.Code.DE, MediaLanguage.detect(channel("Kanal D Europe", "DE | International")));
+        assertEquals(MediaLanguage.Code.EN, MediaLanguage.detect(channel("RTL World", "UK | English")));
     }
 
-    @Test public void keepsUnknownContentSeparate() {
-        assertEquals(MediaLanguage.Code.OTHER, MediaLanguage.detect(channel("BBC One", "UK")));
+    @Test public void cachedLanguageIsReturnedWithoutReclassification() {
+        Channel channel = new Channel("id", "Ambiguous", "Unknown", "http://example.test/live.ts", "",
+                Channel.Type.LIVE, MediaLanguage.Code.EN, AdultContentPolicy.CLASS_SAFE);
+        assertEquals(MediaLanguage.Code.EN, MediaLanguage.detect(channel));
     }
 
     private static Channel channel(String name, String group) {
