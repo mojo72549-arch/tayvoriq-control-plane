@@ -9,6 +9,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -26,18 +27,31 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Dedicated parent-only movie catalog. It never mutates or recreates MainActivity. */
+/** Dedicated parent-only catalog. It never mutates or recreates MainActivity. */
 public final class AdultCatalogActivity extends Activity {
     private static final int BG = 0xFF050D18;
     private static final int CARD = 0xEE0B2030;
     private static final int STROKE = 0xFF2A5269;
     private static final int ACCENT = 0xFFE94D5F;
     private static final int TEXT_SECONDARY = 0xFF9DB6C8;
+
+    private enum Scope {
+        MOVIES("Filme", Channel.Type.MOVIE),
+        SERIES("Serien", Channel.Type.SERIES),
+        LIVE("Live-TV", Channel.Type.LIVE);
+
+        final String label;
+        final Channel.Type type;
+
+        Scope(String label, Channel.Type type) {
+            this.label = label;
+            this.type = type;
+        }
+    }
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService worker = Executors.newSingleThreadExecutor(r -> {
@@ -49,12 +63,18 @@ public final class AdultCatalogActivity extends Activity {
 
     private DiagnosticLog log;
     private CatalogAdapter adapter;
-    private List<Channel> adultMovies = Collections.emptyList();
+    private List<Channel> movies = Collections.emptyList();
+    private List<Channel> series = Collections.emptyList();
+    private List<Channel> live = Collections.emptyList();
+    private Scope scope = Scope.MOVIES;
     private EditText search;
     private TextView count;
     private TextView empty;
     private TextView status;
     private ProgressBar progress;
+    private Button moviesButton;
+    private Button seriesButton;
+    private Button liveButton;
     private volatile boolean destroyed;
 
     @Override protected void onCreate(Bundle state) {
@@ -68,7 +88,7 @@ public final class AdultCatalogActivity extends Activity {
             return;
         }
         buildUi();
-        loadAdultCatalog();
+        loadProtectedCatalog();
     }
 
     @Override protected void onResume() {
@@ -107,8 +127,8 @@ public final class AdultCatalogActivity extends Activity {
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
         titles.setPadding(dp(10), 0, dp(6), 0);
-        titles.addView(text("18+ FILME", 20, Color.WHITE, true));
-        TextView subtitle = text("GESCHÜTZTER ELTERNBEREICH", 9, TEXT_SECONDARY, true);
+        titles.addView(text("18+ BEREICH", 20, Color.WHITE, true));
+        TextView subtitle = text("GESCHÜTZTER ELTERNZUGANG", 9, TEXT_SECONDARY, true);
         subtitle.setLetterSpacing(0.06f);
         titles.addView(subtitle);
         header.addView(titles, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -128,8 +148,8 @@ public final class AdultCatalogActivity extends Activity {
         header.addView(back, backParams);
         root.addView(header);
 
-        TextView notice = text("Nur eindeutig erkannte Erwachsenenfilme werden hier angezeigt. "
-                + "Der normale Filmkatalog bleibt vollständig getrennt.",
+        TextView notice = text("XXX-, Erotik- und FSK-18-Inhalte werden getrennt vom Familienkatalog angezeigt. "
+                        + "Bei unklarer Kennzeichnung bleibt der Inhalt gesperrt.",
                 12, 0xFFBDD0DC, false);
         notice.setPadding(dp(12), dp(10), dp(12), dp(10));
         notice.setBackground(roundRect(CARD, 14, STROKE));
@@ -137,8 +157,22 @@ public final class AdultCatalogActivity extends Activity {
         noticeParams.setMargins(0, dp(11), 0, dp(8));
         root.addView(notice, noticeParams);
 
+        LinearLayout scopes = new LinearLayout(this);
+        scopes.setOrientation(LinearLayout.HORIZONTAL);
+        moviesButton = scopeButton("Filme", Scope.MOVIES);
+        seriesButton = scopeButton("Serien", Scope.SERIES);
+        liveButton = scopeButton("Live-TV", Scope.LIVE);
+        scopes.addView(moviesButton, weighted(0));
+        scopes.addView(seriesButton, weighted(dp(6)));
+        scopes.addView(liveButton, weighted(dp(6)));
+        root.addView(scopes, new LinearLayout.LayoutParams(-1, dp(42)));
+
         LinearLayout searchRow = new LinearLayout(this);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams searchRowParams = new LinearLayout.LayoutParams(-1, -2);
+        searchRowParams.setMargins(0, dp(8), 0, 0);
+        root.addView(searchRow, searchRowParams);
+
         search = new EditText(this);
         search.setSingleLine(true);
         search.setHint("Im geschützten Bereich suchen");
@@ -149,7 +183,9 @@ public final class AdultCatalogActivity extends Activity {
         search.setBackground(roundRect(CARD, 14, STROKE));
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { filterAsync(); }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterAsync();
+            }
             @Override public void afterTextChanged(Editable editable) { }
         });
         searchRow.addView(search, new LinearLayout.LayoutParams(0, dp(46), 1f));
@@ -161,7 +197,6 @@ public final class AdultCatalogActivity extends Activity {
         LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, dp(40));
         countParams.setMargins(dp(8), 0, 0, 0);
         searchRow.addView(count, countParams);
-        root.addView(searchRow);
 
         status = text("Geschützter Katalog wird vorbereitet …", 11, TEXT_SECONDARY, false);
         status.setSingleLine(true);
@@ -172,7 +207,9 @@ public final class AdultCatalogActivity extends Activity {
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);
-        if (progress.getIndeterminateDrawable() != null) progress.getIndeterminateDrawable().setTint(ACCENT);
+        if (progress.getIndeterminateDrawable() != null) {
+            progress.getIndeterminateDrawable().setTint(ACCENT);
+        }
         root.addView(progress, new LinearLayout.LayoutParams(-1, dp(3)));
 
         FrameLayout host = new FrameLayout(this);
@@ -188,19 +225,20 @@ public final class AdultCatalogActivity extends Activity {
         list.setSelector(roundRect(0x33E94D5F, 16, ACCENT));
         adapter = new CatalogAdapter(this);
         list.setAdapter(adapter);
-        list.setOnItemClickListener((parent, view, position, id) -> openMovie(adapter.item(position)));
+        list.setOnItemClickListener((parent, view, position, id) -> openContent(adapter.item(position)));
         host.addView(list, new FrameLayout.LayoutParams(-1, -1));
 
-        empty = text("Noch keine 18+-Filme geladen.", 15, TEXT_SECONDARY, false);
+        empty = text("Noch keine geschützten Inhalte geladen.", 15, TEXT_SECONDARY, false);
         empty.setGravity(Gravity.CENTER);
         empty.setPadding(dp(22), dp(22), dp(22), dp(22));
         host.addView(empty, new FrameLayout.LayoutParams(-1, -1));
         list.setEmptyView(empty);
+        updateScopeStyles();
     }
 
-    private void loadAdultCatalog() {
+    private void loadProtectedCatalog() {
         worker.execute(() -> {
-            long started = android.os.SystemClock.elapsedRealtime();
+            long started = SystemClock.elapsedRealtime();
             try {
                 List<Channel> raw = CatalogSession.raw();
                 boolean memoryHit = !raw.isEmpty();
@@ -209,24 +247,20 @@ public final class AdultCatalogActivity extends Activity {
                     List<Channel> restored = repository.restore((stage, detail) ->
                             log.event("-", "ADULT-" + stage, detail));
                     CatalogSession.publish(restored);
-                    raw = CatalogSession.raw();
                 }
-                List<Channel> found = AdultContentPolicy.adultMovies(raw);
-                long duration = android.os.SystemClock.elapsedRealtime() - started;
-                log.event("-", "ADULT-CATALOG-READY", "rows=" + found.size()
-                        + " raw=" + raw.size() + " memoryHit=" + memoryHit
-                        + " durationMs=" + duration);
+                List<Channel> foundMovies = CatalogSession.adultMovies();
+                List<Channel> foundSeries = CatalogSession.adultSeries();
+                List<Channel> foundLive = CatalogSession.adultLive();
+                long duration = SystemClock.elapsedRealtime() - started;
+                log.event("-", "ADULT-CATALOG-READY", "movies=" + foundMovies.size()
+                        + " series=" + foundSeries.size() + " live=" + foundLive.size()
+                        + " memoryHit=" + memoryHit + " durationMs=" + duration);
                 main.post(() -> {
                     if (!alive()) return;
-                    adultMovies = found;
+                    movies = foundMovies;
+                    series = foundSeries;
+                    live = foundLive;
                     progress.setVisibility(View.GONE);
-                    status.setText(found.isEmpty()
-                            ? "Keine eindeutig markierte 18+-Filmkategorie gefunden"
-                            : found.size() + " geschützte Filme · Elternzugang aktiv");
-                    empty.setText(found.isEmpty()
-                            ? "Keine eindeutig markierte 18+-Filmkategorie erkannt.\n"
-                            + "Der normale Filmkatalog wird aus Sicherheitsgründen nicht angezeigt."
-                            : "Keine Treffer im geschützten Bereich.");
                     filterAsync();
                 });
             } catch (Throwable failure) {
@@ -243,28 +277,70 @@ public final class AdultCatalogActivity extends Activity {
         });
     }
 
+    private Button scopeButton(String label, Scope target) {
+        Button button = button(label, false);
+        button.setOnClickListener(v -> {
+            scope = target;
+            search.setText("");
+            updateScopeStyles();
+            filterAsync();
+        });
+        return button;
+    }
+
+    private void updateScopeStyles() {
+        styleScope(moviesButton, scope == Scope.MOVIES);
+        styleScope(seriesButton, scope == Scope.SERIES);
+        styleScope(liveButton, scope == Scope.LIVE);
+    }
+
+    private void styleScope(Button button, boolean selected) {
+        if (button == null) return;
+        button.setTextColor(selected ? Color.WHITE : 0xFFD9E5EC);
+        button.setBackground(roundRect(selected ? ACCENT : 0xFF17354A,
+                12, selected ? ACCENT : STROKE));
+    }
+
+    private List<Channel> selectedSource() {
+        if (scope == Scope.SERIES) return series;
+        if (scope == Scope.LIVE) return live;
+        return movies;
+    }
+
     private void filterAsync() {
         if (search == null || adapter == null) return;
         int generation = filterGeneration.incrementAndGet();
-        String query = search.getText().toString().trim().toLowerCase(Locale.ROOT);
-        List<Channel> source = adultMovies;
+        String query = search.getText().toString().trim();
+        Scope wantedScope = scope;
+        List<Channel> source = selectedSource();
         worker.execute(() -> {
             ArrayList<Channel> result = new ArrayList<>();
             for (Channel channel : source) {
                 if (Thread.currentThread().isInterrupted()) return;
-                if (query.isEmpty() || contains(channel.name, query) || contains(channel.group, query)) {
+                if (query.isEmpty() || containsIgnoreCase(channel.name, query)
+                        || containsIgnoreCase(channel.group, query)) {
                     result.add(channel);
                 }
             }
             main.post(() -> {
-                if (!alive() || generation != filterGeneration.get()) return;
-                adapter.submit(result);
+                if (!alive() || generation != filterGeneration.get() || wantedScope != scope) return;
+                adapter.submit(Collections.unmodifiableList(result));
                 count.setText(String.valueOf(result.size()));
+                status.setText(source.isEmpty()
+                        ? "Keine eindeutig markierten 18+-" + wantedScope.label + " gefunden"
+                        : source.size() + " geschützte " + wantedScope.label
+                        + " · Elternzugang aktiv");
+                empty.setText(source.isEmpty()
+                        ? "Keine eindeutig markierte 18+-Kategorie für " + wantedScope.label
+                        + " erkannt.\nDer Familienkatalog wird niemals ersatzweise angezeigt."
+                        : "Keine Treffer im geschützten Bereich.");
+                log.event("-", "ADULT-SCOPE-READY", "type=" + wantedScope.type
+                        + " rows=" + result.size());
             });
         });
     }
 
-    private void openMovie(Channel channel) {
+    private void openContent(Channel channel) {
         if (channel == null) return;
         if (!ParentalControl.isUnlocked()) {
             Toast.makeText(this, "Elternzugang ist gesperrt.", Toast.LENGTH_LONG).show();
@@ -277,7 +353,8 @@ public final class AdultCatalogActivity extends Activity {
         player.putExtra(PlayerActivity.EXTRA_NAME, channel.name);
         player.putExtra(PlayerActivity.EXTRA_INTERACTION, interaction);
         player.putExtra(LumenApplication.EXTRA_ADULT_CONTENT, true);
-        log.event(interaction, "PARENTAL-ADULT-PLAY", "authorized=true type=MOVIE");
+        log.event(interaction, "PARENTAL-ADULT-PLAY", "authorized=true type="
+                + channel.type + " class=" + AdultContentPolicy.classLabel(channel.adultClass));
         startActivity(player);
     }
 
@@ -285,8 +362,13 @@ public final class AdultCatalogActivity extends Activity {
         return !destroyed && !isFinishing() && !isDestroyed();
     }
 
-    private static boolean contains(String value, String query) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(query);
+    private static boolean containsIgnoreCase(String value, String query) {
+        if (value == null || query == null) return false;
+        int limit = value.length() - query.length();
+        for (int index = 0; index <= limit; index++) {
+            if (value.regionMatches(true, index, query, 0, query.length())) return true;
+        }
+        return false;
     }
 
     private Button button(String label, boolean danger) {
@@ -303,6 +385,12 @@ public final class AdultCatalogActivity extends Activity {
         button.setBackground(roundRect(danger ? ACCENT : 0xFF17354A,
                 12, danger ? ACCENT : STROKE));
         return button;
+    }
+
+    private LinearLayout.LayoutParams weighted(int leftMargin) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -1, 1f);
+        params.setMargins(leftMargin, 0, 0, 0);
+        return params;
     }
 
     private TextView text(String value, float size, int color, boolean bold) {
