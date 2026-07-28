@@ -63,7 +63,7 @@ jobs:
           ! grep -R "Pattern\|split(" lumen138/app/src/main/java/com/projectlumen/pilot/robust/AdultContentPolicy.java
           grep -q "LanguageCatalogActivity" lumen138/app/src/main/AndroidManifest.xml
           grep -q "AdultCatalogActivity" lumen138/app/src/main/AndroidManifest.xml
-          grep -q "CatalogSwitchPerformanceTest" <(find lumen138/app/src/test -type f -print)
+          find lumen138/app/src/test -type f -name 'CatalogSwitchPerformanceTest.java' | grep -q CatalogSwitchPerformanceTest
 
       - name: Test fast start language switches adult safety logos and Media3
         working-directory: lumen138
