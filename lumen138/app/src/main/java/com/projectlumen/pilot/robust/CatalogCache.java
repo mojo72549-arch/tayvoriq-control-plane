@@ -25,7 +25,7 @@ final class CatalogCache {
 
     static void write(File file, List<Channel> channels) throws Exception {
         if (file == null) throw new IllegalArgumentException("Cache-Zieldatei fehlt.");
-        List<Channel> safe = channels == null ? Collections.emptyList() : channels;
+        List<Channel> safe = AdultContentPolicy.raw(channels);
         if (safe.size() > MAX_ENTRIES) throw new IllegalArgumentException("Zu viele Katalogeinträge.");
         File parent = file.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
@@ -76,7 +76,7 @@ final class CatalogCache {
                 if (typeIndex >= types.length) throw new IllegalStateException("Ungültiger Medientyp im Cache.");
                 result.add(new Channel(id, name, group, url, types[typeIndex]));
             }
-            return Collections.unmodifiableList(result);
+            return AdultContentPolicy.protect(result);
         } catch (EOFException incomplete) {
             throw new IllegalStateException("Katalogcache wurde unvollständig geschrieben.", incomplete);
         }
