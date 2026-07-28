@@ -6,13 +6,17 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Fail-closed adult-content classification and catalog projection.
- * Raw entries remain available for an explicitly unlocked parent session,
- * but locked callers never receive adult rows in lists, search or counters.
+ * The normal catalog never mixes adult rows. A dedicated adult projection exists
+ * only for a currently unlocked parent session.
  */
 final class AdultContentPolicy {
+    private static final AtomicLong SCOPE_GENERATION = new AtomicLong(1);
+    private static volatile boolean adultMode;
+
     private AdultContentPolicy() { }
 
     static boolean isAdult(Channel channel) {
@@ -42,6 +46,19 @@ final class AdultContentPolicy {
         return false;
     }
 
+    static boolean isAdultMode() {
+        if (!ParentalControl.isUnlocked() && adultMode) setAdultMode(false);
+        return adultMode && ParentalControl.isUnlocked();
+    }
+
+    static void setAdultMode(boolean enabled) {
+        boolean next = enabled && ParentalControl.isUnlocked();
+        if (adultMode != next) {
+            adultMode = next;
+            SCOPE_GENERATION.incrementAndGet();
+        }
+    }
+
     static List<Channel> protect(List<Channel> source) {
         if (source instanceof ProtectedChannelList) return source;
         return new ProtectedChannelList(source);
@@ -52,6 +69,10 @@ final class AdultContentPolicy {
             return ((ProtectedChannelList) source).raw();
         }
         return source == null ? Collections.emptyList() : source;
+    }
+
+    private static long projectionGeneration() {
+        return ParentalControl.generation() * 31L + SCOPE_GENERATION.get();
     }
 
     private static String normalize(String value) {
@@ -94,20 +115,18 @@ final class AdultContentPolicy {
         List<Channel> raw() { return raw; }
 
         private List<Channel> current() {
-            long wanted = ParentalControl.generation();
+            long wanted = projectionGeneration();
             List<Channel> snapshot = visible;
             if (generation == wanted) return snapshot;
             synchronized (this) {
                 if (generation == wanted) return visible;
-                if (ParentalControl.isUnlocked()) {
-                    visible = raw;
-                } else {
-                    ArrayList<Channel> safe = new ArrayList<>(raw.size());
-                    for (Channel channel : raw) {
-                        if (!isAdult(channel)) safe.add(channel);
-                    }
-                    visible = Collections.unmodifiableList(safe);
+                boolean adultOnly = isAdultMode();
+                ArrayList<Channel> filtered = new ArrayList<>(raw.size());
+                for (Channel channel : raw) {
+                    boolean adult = isAdult(channel);
+                    if (adultOnly ? adult : !adult) filtered.add(channel);
                 }
+                visible = Collections.unmodifiableList(filtered);
                 generation = wanted;
                 return visible;
             }
