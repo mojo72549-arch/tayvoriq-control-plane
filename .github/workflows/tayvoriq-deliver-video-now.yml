@@ -3,7 +3,7 @@ name: TAYVORIQ Deliver Video Now
 on:
   workflow_dispatch:
   schedule:
-    - cron: "36 7 * * *"
+    - cron: "36 5 * * *"
   push:
     branches:
       - main
@@ -281,4 +281,4 @@ jobs:
           echo "::error title=TAYVORIQ delivery incomplete::Final state ${FINAL_STATE}. No incomplete video was sent."
           exit 1
 
-# delivery nonce: 2026-07-28T13:05:00+02:00
+# delivery nonce: 2026-07-28T13:15:00+02:00
