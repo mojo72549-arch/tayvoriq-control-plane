@@ -71,6 +71,7 @@ public final class MainActivity extends Activity {
     });
     private final AtomicInteger filterGeneration = new AtomicInteger();
     private final Map<String, Button> languageButtons = new LinkedHashMap<>();
+    private final Map<String, Button> groupButtons = new LinkedHashMap<>();
 
     private DiagnosticLog log;
     private UiStallWatchdog watchdog;
@@ -105,6 +106,8 @@ public final class MainActivity extends Activity {
     private Button groupButton;
     private HorizontalScrollView languageScroll;
     private LinearLayout languageRow;
+    private HorizontalScrollView groupScroll;
+    private LinearLayout groupRow;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -120,7 +123,7 @@ public final class MainActivity extends Activity {
         log.event("-", "APP-CREATE-START", "thread=" + Thread.currentThread().getName());
         buildUi();
         log.event("-", "APP-CREATE-END",
-                "uiReady=true premiumShell=true providerLanguages=true swipeLanguages=true");
+                "uiReady=true premiumShell=true providerLanguages=true swipeLanguages=true swipeCategories=true");
         restore();
     }
 
@@ -238,22 +241,25 @@ public final class MainActivity extends Activity {
         root.addView(languageScroll, languageParams);
         renderLanguageButtons(availableLanguages);
 
-        groupButton = baseChoiceButton("Alle Gruppen");
-        groupButton.setTextSize(tv() ? 14 : 12);
-        groupButton.setGravity(Gravity.CENTER_VERTICAL);
-        groupButton.setPadding(dp(13), 0, dp(13), 0);
-        groupButton.setEllipsize(TextUtils.TruncateAt.END);
-        groupButton.setOnClickListener(v -> showGroupChooser());
+        groupScroll = new HorizontalScrollView(this);
+        groupScroll.setHorizontalScrollBarEnabled(false);
+        groupScroll.setFillViewport(false);
+        groupScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        groupRow = new LinearLayout(this);
+        groupRow.setOrientation(LinearLayout.HORIZONTAL);
+        groupRow.setGravity(Gravity.CENTER_VERTICAL);
+        groupScroll.addView(groupRow, new HorizontalScrollView.LayoutParams(-2, -1));
         LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(
-                -1, dp(tv() ? 47 : 41));
+                -1, dp(tv() ? 48 : 41));
         groupParams.setMargins(0, 0, 0, dp(8));
-        root.addView(groupButton, groupParams);
+        root.addView(groupScroll, groupParams);
+        renderGroupButtons(availableGroups);
 
         LinearLayout searchBar = new LinearLayout(this);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
         search = new EditText(this);
         search.setSingleLine(true);
-        search.setHint("Sender, Film, Serie oder Gruppe suchen");
+        search.setHint("Sender, Film, Serie oder Kategorie suchen");
         search.setTextColor(Color.WHITE);
         search.setHintTextColor(0xFF7896AA);
         search.setTextSize(tv() ? 17 : 14);
@@ -582,6 +588,7 @@ public final class MainActivity extends Activity {
         availableGroups = Collections.emptyList();
         saveViewState();
         renderLanguageButtons(availableLanguages);
+        renderGroupButtons(availableGroups);
         updateSelectionStyles();
         setBusy(false, "", "");
         footerStatus.setText(repository.sourceName() + " · " + all.size()
@@ -636,6 +643,7 @@ public final class MainActivity extends Activity {
             mode = target;
             selectedGroup = ProviderCatalog.ALL_GROUPS;
             availableGroups = Collections.emptyList();
+            renderGroupButtons(availableGroups);
             search.setText("");
             saveViewState();
             updateSelectionStyles();
@@ -672,6 +680,7 @@ public final class MainActivity extends Activity {
         selectedLanguage = languageId == null ? ProviderLanguage.ALL : languageId;
         selectedGroup = ProviderCatalog.ALL_GROUPS;
         availableGroups = Collections.emptyList();
+        renderGroupButtons(availableGroups);
         search.setText("");
         saveViewState();
         updateSelectionStyles();
@@ -683,17 +692,81 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void renderGroupButtons(List<String> groups) {
+        if (groupRow == null) return;
+        groupRow.removeAllViews();
+        groupButtons.clear();
+        List<String> safe = groups == null ? Collections.emptyList() : groups;
+
+        groupButton = categoryButton(allCategoryLabel(), ProviderCatalog.ALL_GROUPS, 0);
+        int index = 1;
+        for (String group : safe) {
+            if (group == null || group.isBlank()) continue;
+            categoryButton(group, group, index++);
+        }
+
+        if (safe.size() > 8) {
+            Button searchButton = baseChoiceButton("Kategorien suchen");
+            searchButton.setTextSize(tv() ? 13 : 11);
+            searchButton.setMinWidth(dp(tv() ? 154 : 112));
+            searchButton.setPadding(dp(tv() ? 14 : 11), 0, dp(tv() ? 14 : 11), 0);
+            searchButton.setContentDescription("Kategorien durchsuchen");
+            searchButton.setOnClickListener(v -> showGroupChooser());
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    -2, dp(tv() ? 46 : 39));
+            params.setMargins(dp(6), 0, 0, 0);
+            groupRow.addView(searchButton, params);
+        }
+        updateGroupStyles();
+    }
+
+    private Button categoryButton(String label, String value, int index) {
+        Button button = baseChoiceButton(label);
+        button.setTextSize(tv() ? 13 : 11);
+        button.setMinWidth(dp(tv() ? 126 : 88));
+        button.setMaxWidth(dp(tv() ? 300 : 220));
+        button.setPadding(dp(tv() ? 14 : 11), 0, dp(tv() ? 14 : 11), 0);
+        button.setEllipsize(TextUtils.TruncateAt.END);
+        button.setContentDescription("Kategorie " + label);
+        button.setOnClickListener(v -> selectGroup(value));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                -2, dp(tv() ? 46 : 39));
+        if (index > 0) params.setMargins(dp(6), 0, 0, 0);
+        groupRow.addView(button, params);
+        groupButtons.put(value == null ? ProviderCatalog.ALL_GROUPS : value, button);
+        return button;
+    }
+
+    private void selectGroup(String group) {
+        selectedGroup = group == null ? ProviderCatalog.ALL_GROUPS : group;
+        if (search != null) search.setText("");
+        saveViewState();
+        updateSelectionStyles();
+        filterNow();
+        Button selected = groupButtons.get(selectedGroup);
+        if (selected != null && groupScroll != null) {
+            groupScroll.post(() -> groupScroll.smoothScrollTo(
+                    Math.max(0, selected.getLeft() - dp(12)), 0));
+        }
+    }
+
+    private String allCategoryLabel() {
+        if (mode == Mode.MOVIES) return "Alle Filmkategorien";
+        if (mode == Mode.SERIES) return "Alle Serienkategorien";
+        return "Alle Sendergruppen";
+    }
+
     private void showGroupChooser() {
         if (busy) return;
         List<String> groups = availableGroups;
         if (groups.isEmpty()) {
-            Toast.makeText(this, "In diesem Bereich wurden keine Gruppen gefunden.",
+            Toast.makeText(this, "In diesem Bereich wurden keine Kategorien gefunden.",
                     Toast.LENGTH_SHORT).show();
             return;
         }
 
         ArrayList<String> choices = new ArrayList<>(groups.size() + 1);
-        choices.add("Alle Gruppen");
+        choices.add(allCategoryLabel());
         choices.addAll(groups);
 
         LinearLayout panel = new LinearLayout(this);
@@ -701,7 +774,7 @@ public final class MainActivity extends Activity {
         int padding = dp(14);
         panel.setPadding(padding, dp(4), padding, 0);
 
-        EditText groupSearch = input("Gruppen durchsuchen", false);
+        EditText groupSearch = input("Kategorien durchsuchen", false);
         panel.addView(groupSearch, new LinearLayout.LayoutParams(-1, dp(48)));
 
         ListView groupList = new ListView(this);
@@ -714,7 +787,7 @@ public final class MainActivity extends Activity {
         panel.addView(groupList, listParams);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Gruppe auswählen · " + groups.size())
+                .setTitle("Kategorie auswählen · " + groups.size())
                 .setView(panel)
                 .setNegativeButton("Abbrechen", null)
                 .create();
@@ -729,12 +802,8 @@ public final class MainActivity extends Activity {
 
         groupList.setOnItemClickListener((parent, view, position, id) -> {
             String selected = groupAdapter.getItem(position);
-            selectedGroup = selected == null || selected.equals("Alle Gruppen")
-                    ? ProviderCatalog.ALL_GROUPS : selected;
-            search.setText("");
-            saveViewState();
-            updateSelectionStyles();
-            filterNow();
+            selectGroup(selected == null || selected.equals(allCategoryLabel())
+                    ? ProviderCatalog.ALL_GROUPS : selected);
             dialog.dismiss();
         });
         dialog.show();
@@ -758,8 +827,7 @@ public final class MainActivity extends Activity {
         styleChoice(movieButton, mode == Mode.MOVIES, ACCENT);
         styleChoice(seriesButton, mode == Mode.SERIES, ACCENT);
         updateLanguageStyles();
-        styleChoice(groupButton, !selectedGroup.isEmpty(), ACCENT_BLUE);
-        updateGroupButton();
+        updateGroupStyles();
         if (sectionTitle != null) {
             String title = label(mode) + "  ·  " + selectedLanguageLabel();
             if (!selectedGroup.isEmpty()) title += "  ·  " + selectedGroup;
@@ -782,12 +850,16 @@ public final class MainActivity extends Activity {
         return "Alle";
     }
 
-    private void updateGroupButton() {
-        if (groupButton == null) return;
-        String title = selectedGroup.isEmpty() ? "Alle Gruppen" : selectedGroup;
-        groupButton.setText(title + "  ·  " + availableGroups.size() + "  ▾");
-        groupButton.setEnabled(!busy && !availableGroups.isEmpty());
-        groupButton.setAlpha(groupButton.isEnabled() ? 1f : 0.6f);
+    private void updateGroupStyles() {
+        Button allButton = groupButtons.get(ProviderCatalog.ALL_GROUPS);
+        if (allButton != null) {
+            allButton.setText(allCategoryLabel() + " · " + availableGroups.size());
+        }
+        for (Map.Entry<String, Button> entry : groupButtons.entrySet()) {
+            styleChoice(entry.getValue(), entry.getKey().equals(selectedGroup), ACCENT);
+            entry.getValue().setEnabled(!busy);
+            entry.getValue().setAlpha(busy ? 0.65f : 1f);
+        }
     }
 
     private void styleChoice(Button button, boolean selected, int selectedColor) {
@@ -842,12 +914,13 @@ public final class MainActivity extends Activity {
                 availableLanguages = snapshot.languages;
                 availableGroups = snapshot.groups;
                 renderLanguageButtons(snapshot.languages);
+                renderGroupButtons(snapshot.groups);
                 adapter.submit(snapshot.rows);
                 count.setText(Integer.toString(snapshot.rows.size()));
                 updateSelectionStyles();
 
                 if (!busy) {
-                    String groupLabel = selectedGroup.isEmpty() ? "Alle Gruppen" : selectedGroup;
+                    String groupLabel = selectedGroup.isEmpty() ? allCategoryLabel() : selectedGroup;
                     footerStatus.setText(repository.sourceName() + " · " + label(wantedMode)
                             + " · " + selectedLanguageLabel()
                             + " · " + groupLabel + " · " + snapshot.rows.size() + " Treffer");
@@ -934,7 +1007,7 @@ public final class MainActivity extends Activity {
             loadingProgress.setIndeterminate(true);
         }
         updateLanguageStyles();
-        updateGroupButton();
+        updateGroupStyles();
     }
 
     private Button actionButton(String value, boolean primary) {
