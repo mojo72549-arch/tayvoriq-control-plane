@@ -28,7 +28,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android 35 tools
+      - name: Install Android 36 tools
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" >/dev/null
 
       - name: Set up pinned Gradle
@@ -79,7 +79,7 @@ jobs:
           APK=dist/Project_Lumen_13.2.0_RC1_Internal_Debug.apk
           "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify             --verbose --print-certs "$APK" | tee dist/apk-signature.txt
           "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt" dump badging "$APK"             | tee dist/apk-badging.txt
-          "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump xmltree "$APK"             AndroidManifest.xml | tee dist/apk-manifest.txt
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt" dump xmltree "$APK"             AndroidManifest.xml | tee dist/apk-manifest.txt
           grep -q "package: name='com.projectlumen.pilot.robust'" dist/apk-badging.txt
           grep -q "versionCode='1320001'" dist/apk-badging.txt
           grep -q "versionName='13.2.0-rc1-release-hardening'" dist/apk-badging.txt
