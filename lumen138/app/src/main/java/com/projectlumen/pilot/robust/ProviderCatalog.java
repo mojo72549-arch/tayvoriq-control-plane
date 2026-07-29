@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /** Builds one immutable UI snapshot from the current protected catalog. */
 final class ProviderCatalog {
@@ -45,7 +44,7 @@ final class ProviderCatalog {
         languageMap.put(ProviderLanguage.ALL, ProviderLanguage.allFacet());
         for (Channel channel : safe) {
             if (channel == null || channel.type != wantedType) continue;
-            ProviderLanguage.Facet facet = ProviderLanguage.detect(channel);
+            ProviderLanguage.Facet facet = ProviderLanguageCache.detect(channel);
             if (facet != null && !facet.id.isBlank()) languageMap.putIfAbsent(facet.id, facet);
         }
 
@@ -57,7 +56,7 @@ final class ProviderCatalog {
         LinkedHashMap<String, String> groupMap = new LinkedHashMap<>();
         for (Channel channel : safe) {
             if (channel == null || channel.type != wantedType) continue;
-            if (!ProviderLanguage.matches(channel, selectedLanguage)) continue;
+            if (!ProviderLanguageCache.matches(channel, selectedLanguage)) continue;
             String group = safeGroup(channel.group);
             groupMap.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
         }
@@ -72,7 +71,7 @@ final class ProviderCatalog {
         ArrayList<Channel> rows = new ArrayList<>();
         for (Channel channel : safe) {
             if (channel == null || channel.type != wantedType) continue;
-            if (!ProviderLanguage.matches(channel, selectedLanguage)) continue;
+            if (!ProviderLanguageCache.matches(channel, selectedLanguage)) continue;
             if (!selectedGroup.isBlank() && !safeGroup(channel.group).equalsIgnoreCase(selectedGroup)) {
                 continue;
             }
