@@ -8,9 +8,10 @@ android {
         applicationId 'com.projectlumen.pilot.robust'
         minSdk 26
         targetSdk 35
-        versionCode 1314800
-        versionName '13.1.48-p0-media-facets'
+        versionCode 1314900
+        versionName '13.1.49-p0-no-parental'
         buildConfigField 'String', 'BUILD_CHANNEL', '"closed-pilot-p0"'
+        buildConfigField 'boolean', 'PARENTAL_PROTECTION_ENABLED', 'false'
     }
 
     signingConfigs {
