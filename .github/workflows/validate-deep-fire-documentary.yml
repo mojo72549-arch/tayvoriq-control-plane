@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  EXPECTED_PRIVATE_HEAD: "ef257bbd857d6a09d819ed889d5142988fdf3c79"
+  EXPECTED_PRIVATE_HEAD: "8196cb8d2d0f8a97125a3284804f75b308549c06"
 
 jobs:
   validate:
@@ -62,6 +62,7 @@ jobs:
             tools/tayvoriq_tts_router_v30.py \
             tools/tayvoriq_speech_intelligibility_gate.py \
             tools/tayvoriq_speech_intelligibility_gate_v3.py \
+            tools/tayvoriq_documentary_segment_repair_v1.py \
             tools/tayvoriq_dual_platform_render_v23_entry.py
 
       - name: Run documentary contract tests
@@ -76,7 +77,8 @@ jobs:
             tests/test_tayvoriq_fire_safety_documentary_v4.py \
             tests/test_tayvoriq_fire_safety_v4_render_binding.py \
             tests/test_tayvoriq_speech_intelligibility_gate.py \
-            tests/test_tayvoriq_natural_chatterbox_v28.py
+            tests/test_tayvoriq_natural_chatterbox_v28.py \
+            tests/test_tayvoriq_documentary_segment_repair_v1.py
 
       - name: Verify manual approval hold
         working-directory: implementation
