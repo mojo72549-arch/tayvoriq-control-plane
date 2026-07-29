@@ -1,6 +1,8 @@
 package com.projectlumen.pilot.robust;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -37,7 +39,8 @@ public final class DiagnosticsActivity extends Activity {
         logo.setContentDescription("Project Lumen Logo");
         titleRow.addView(logo, new LinearLayout.LayoutParams(dp(44), dp(44)));
         TextView title = new TextView(this);
-        title.setText("Project Lumen System");
+        title.setText(BuildConfig.DIAGNOSTICS_UI_ENABLED
+                ? "Project Lumen System" : "Project Lumen Mehr");
         title.setTextColor(Color.WHITE);
         title.setTextSize(21);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -45,19 +48,57 @@ public final class DiagnosticsActivity extends Activity {
         titleRow.addView(title, new LinearLayout.LayoutParams(0, dp(48), 1f));
         root.addView(titleRow);
 
+        Button parental = button(ParentalControl.isUnlocked()
+                ? "Jugendschutz · entsperrt" : "Jugendschutz · aktiv", true);
+        parental.setOnClickListener(v -> startActivity(
+                new Intent(this, ParentalControlActivity.class)));
+        LinearLayout.LayoutParams parentalParams = new LinearLayout.LayoutParams(-1, dp(48));
+        parentalParams.setMargins(0, dp(12), 0, dp(8));
+        root.addView(parental, parentalParams);
+
+        Button delete = button("Lokale App-Daten vollständig löschen", false);
+        delete.setOnClickListener(v -> confirmDeleteAllData());
+        LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(-1, dp(48));
+        deleteParams.setMargins(0, 0, 0, dp(8));
+        root.addView(delete, deleteParams);
+
+        if (BuildConfig.DIAGNOSTICS_UI_ENABLED) {
+            addDiagnosticControls(root);
+        } else {
+            TextView privacy = new TextView(this);
+            privacy.setText("Playlists, Zugangsdaten, Schnellindex, Verlauf und Eltern-PIN "
+                    + "werden ausschließlich lokal verwaltet. Über die Löschfunktion werden "
+                    + "alle App-Daten des Geräts entfernt.");
+            privacy.setTextColor(0xFFB6CAD7);
+            privacy.setTextSize(13);
+            privacy.setLineSpacing(0, 1.18f);
+            privacy.setPadding(dp(2), dp(8), dp(2), dp(8));
+            root.addView(privacy);
+        }
+
+        setContentView(root);
+        refresh();
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (body != null) refresh();
+    }
+
+    private void addDiagnosticControls(LinearLayout root) {
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button copy = button("Kopieren");
+        Button copy = button("Kopieren", false);
         copy.setOnClickListener(v -> copy());
         actions.addView(copy, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        Button share = button("Teilen");
+        Button share = button("Teilen", false);
         share.setOnClickListener(v -> share());
         actions.addView(share, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        Button clear = button("Leeren");
+        Button clear = button("Leeren", false);
         clear.setOnClickListener(v -> { log.clear(); refresh(); });
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(48), 1f));
         LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, dp(48));
-        actionsParams.setMargins(0, dp(8), 0, dp(8));
+        actionsParams.setMargins(0, dp(4), 0, dp(8));
         root.addView(actions, actionsParams);
 
         ScrollView scroll = new ScrollView(this);
@@ -68,11 +109,29 @@ public final class DiagnosticsActivity extends Activity {
         body.setPadding(0, dp(10), 0, dp(10));
         scroll.addView(body);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
-        setContentView(root);
-        refresh();
     }
 
-    private void refresh() { body.setText(log.read()); }
+    private void refresh() {
+        if (body != null) body.setText(log.read());
+    }
+
+    private void confirmDeleteAllData() {
+        new AlertDialog.Builder(this)
+                .setTitle("Alle lokalen App-Daten löschen?")
+                .setMessage("Dadurch werden Playlists, Bibliothek, Zugangsdaten, Favoriten, "
+                        + "Profile, Verlauf, Diagnose und Eltern-PIN dieses Geräts dauerhaft entfernt.")
+                .setNegativeButton("Abbrechen", null)
+                .setPositiveButton("Alle Daten löschen", (dialog, which) -> {
+                    ActivityManager manager =
+                            (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                    if (manager == null || !manager.clearApplicationUserData()) {
+                        Toast.makeText(this,
+                                "Die lokalen App-Daten konnten nicht vollständig gelöscht werden.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                })
+                .show();
+    }
 
     private void copy() {
         ((ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE))
@@ -88,16 +147,16 @@ public final class DiagnosticsActivity extends Activity {
         startActivity(Intent.createChooser(intent, "Diagnose teilen"));
     }
 
-    private Button button(String text) {
+    private Button button(String text, boolean primary) {
         Button button = new Button(this);
         button.setText(text);
         button.setAllCaps(false);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setTextColor(Color.WHITE);
+        button.setTextColor(primary ? 0xFF050D18 : Color.WHITE);
         GradientDrawable background = new GradientDrawable();
-        background.setColor(0xFF17354A);
+        background.setColor(primary ? 0xFF62E7D3 : 0xFF17354A);
         background.setCornerRadius(dp(12));
-        background.setStroke(dp(1), 0xFF2A5269);
+        background.setStroke(dp(1), primary ? 0xFF62E7D3 : 0xFF2A5269);
         button.setBackground(background);
         return button;
     }
