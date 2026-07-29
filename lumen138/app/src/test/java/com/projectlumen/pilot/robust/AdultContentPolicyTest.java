@@ -17,6 +17,10 @@ public final class AdultContentPolicyTest {
         assertTrue(AdultContentPolicy.isAdultText("Erotik Filme"));
         assertTrue(AdultContentPolicy.isAdultText("Yetişkin Porno"));
         assertTrue(AdultContentPolicy.isAdultText("Adults Only"));
+        assertTrue(AdultContentPolicy.isAdultText("Dorcel HD"));
+        assertTrue(AdultContentPolicy.isAdultText("Penthouse Live"));
+        assertTrue(AdultContentPolicy.isAdultText("Seks TV"));
+        assertTrue(AdultContentPolicy.isAdultText("Nur für Erwachsene"));
     }
 
     @Test public void doesNotHideHarmlessTitlesBySubstring() {
@@ -25,6 +29,8 @@ public final class AdultContentPolicyTest {
         assertFalse(AdultContentPolicy.isAdultText("RTL Zwei"));
         assertFalse(AdultContentPolicy.isAdultText("Kanal D Dizileri"));
         assertFalse(AdultContentPolicy.isAdultText("Sex Education Documentary"));
+        assertFalse(AdultContentPolicy.isAdultText("Private Practice"));
+        assertFalse(AdultContentPolicy.isAdultText("Venus – Planetendokumentation"));
     }
 
     @Test public void lockedProjectionRemovesRowsButRawCatalogRemainsComplete() {
@@ -35,7 +41,7 @@ public final class AdultContentPolicyTest {
                 new Channel("3", "TRT 1", "TR Live", "http://example/3", Channel.Type.LIVE));
         List<Channel> protectedList = AdultContentPolicy.protect(raw);
         assertEquals(2, protectedList.size());
-        assertEquals(3, AdultContentPolicy.raw(protectedList).size());
+        assertEquals(3, AdultContentPolicy.rawSize(protectedList));
         assertEquals("RTL", protectedList.get(0).name);
         assertEquals("TRT 1", protectedList.get(1).name);
     }
