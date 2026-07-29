@@ -3,4 +3,4 @@ Dynamic provider-driven language facets
 Horizontal swipe language rail
 No hard-coded Other language bucket
 Preserve dynamic groups, parental protection, Media3 and 100k cache
-Isolated branch gate 2026-07-29T10:03Z
+Target relay gate 2026-07-29T10:06Z
