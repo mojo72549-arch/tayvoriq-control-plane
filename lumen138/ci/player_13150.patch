@@ -1,0 +1,94 @@
+diff --git a/lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlayerActivity.java b/lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlayerActivity.java
+--- a/lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlayerActivity.java
++++ b/lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlayerActivity.java
+@@ -69,6 +69,8 @@ public final class PlayerActivity extends Activity {
+     private boolean fallbackUsed;
+     private boolean audioAutoRecoveryUsed;
+     private int audioChoiceIndex = -1;
++    private int automaticHttpRetries;
++    private Runnable pendingRecovery;
+ 
+     @Override
+     protected void onCreate(Bundle state) {
+@@ -102,6 +104,10 @@ public final class PlayerActivity extends Activity {
+ 
+     @Override
+     protected void onStop() {
++        if (pendingRecovery != null && playerView != null) {
++            playerView.removeCallbacks(pendingRecovery);
++            pendingRecovery = null;
++        }
+         releasePlayer();
+         super.onStop();
+     }
+@@ -198,7 +204,7 @@ public final class PlayerActivity extends Activity {
+ 
+         try {
+             DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
+-                    .setUserAgent("ProjectLumen/13.1.43 Media3")
++                    .setUserAgent("ProjectLumen/13.1.50 Media3")
+                     .setConnectTimeoutMs(15_000)
+                     .setReadTimeoutMs(30_000)
+                     .setAllowCrossProtocolRedirects(true);
+@@ -282,17 +288,48 @@ public final class PlayerActivity extends Activity {
+         public void onPlayerError(PlaybackException error) {
+             String errorName = errorName(error);
+             String details = errorDetails(error);
++            int httpStatus = PlaybackFailurePolicy.httpStatus(details);
++            boolean httpFailure = PlaybackFailurePolicy.isHttpFailure(errorName, httpStatus);
+             log.event(interaction, "PLAY-ERROR", "engine=Media3 code=" + error.errorCode
+                     + " name=" + errorName + " forcedTs=" + forceTs
+-                    + " elapsedMs=" + elapsed() + " " + details);
+-            if (!fallbackUsed && !forceTs && shouldFallback(errorName, url)) {
++                    + " elapsedMs=" + elapsed() + " httpFailure=" + httpFailure
++                    + " automaticHttpRetries=" + automaticHttpRetries + " " + details);
++            if (httpFailure && PlaybackFailurePolicy.shouldAutoRetry(
++                    httpStatus, automaticHttpRetries)) {
++                automaticHttpRetries++;
++                long delayMs = PlaybackFailurePolicy.retryDelayMs(httpStatus);
++                status.setText("Server antwortet mit HTTP " + httpStatus
++                        + " · neuer Versuch in " + Math.max(1, delayMs / 1000) + " Sek.");
++                log.event(interaction, "PLAY-HTTP-RECOVERY-SCHEDULED",
++                        "httpStatus=" + httpStatus + " delayMs=" + delayMs
++                                + " attempt=" + automaticHttpRetries);
++                pendingRecovery = () -> {
++                    pendingRecovery = null;
++                    log.event(interaction, "PLAY-HTTP-RECOVERY-START",
++                            "httpStatus=" + httpStatus
++                                    + " attempt=" + automaticHttpRetries);
++                    startPlayer(false);
++                };
++                playerView.postDelayed(pendingRecovery, delayMs);
++                return;
++            }
++            if (!httpFailure && !fallbackUsed && !forceTs
++                    && shouldFallback(errorName, url)) {
+                 fallbackUsed = true;
+                 log.event(interaction, "PLAY-FALLBACK-TS", "reason=" + errorName);
+                 status.setText("Format wird als MPEG-TS erneut geöffnet …");
+                 playerView.postDelayed(() -> startPlayer(true), 250);
+                 return;
+             }
+-            showError(errorName, friendlyMessage(errorName, details), true);
++            String diagnosticCode = PlaybackFailurePolicy.diagnosticCode(errorName, httpStatus);
++            showError(diagnosticCode, PlaybackFailurePolicy.message(errorName, details), true);
+         }
+     };
+@@ -394,11 +431,17 @@ public final class PlayerActivity extends Activity {
+     }
+ 
+     private void retry() {
++        if (pendingRecovery != null && playerView != null) {
++            playerView.removeCallbacks(pendingRecovery);
++            pendingRecovery = null;
++        }
+         fallbackUsed = false;
+         forceTs = false;
+         audioAutoRecoveryUsed = false;
++        automaticHttpRetries = 0;
+         resumePosition = C.TIME_UNSET;
+         playWhenReady = true;
+-        log.event(interaction, "PLAY-RETRY", "manual=true");
++        log.event(interaction, "PLAY-RETRY", "manual=true httpRecoveryReset=true");
+         startPlayer(false);
+     }
