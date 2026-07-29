@@ -98,6 +98,9 @@ final class ProviderCatalog {
     }
 
     private static String safeGroup(String value) {
-        return value == null || value.isBlank() ? "Weitere" : value.trim();
+        if (value == null || value.isBlank() || value.trim().equalsIgnoreCase("Weitere")) {
+            return "Ohne Kategorie";
+        }
+        return value.trim();
     }
 }
