@@ -30,7 +30,9 @@ final class AdultContentPolicy {
                 "18 plus", "ab 18", "adults only", "adult only", "for adults",
                 "only adults", "after dark", "red light", "redlight tv",
                 "erwachsene inhalte", "nur fur erwachsene", "yetişkin içerik",
-                "yetiskin icerik", "18 yas ustu", "18 yaş üstü")) {
+                "yetiskin icerik", "18 yas ustu", "18 yaş üstü",
+                "sex tv", "sex live", "sex vod", "sex movies", "sex channel",
+                "seks tv", "seks live", "seks vod", "cinsel tv", "cinsel icerik")) {
             return true;
         }
 
@@ -68,8 +70,7 @@ final class AdultContentPolicy {
                 || token.equals("18plus") || token.equals("erotik")
                 || token.equals("erotic") || token.equals("porno")
                 || token.equals("porn") || token.equals("pornhub")
-                || token.equals("sex") || token.equals("seks")
-                || token.equals("cinsel") || token.equals("yetiskin")
+                || token.equals("yetiskin")
                 || token.equals("erwachsene") || token.equals("erwachsenen")
                 || token.equals("playboy") || token.equals("hustler")
                 || token.equals("brazzers") || token.equals("dorcel")
@@ -93,7 +94,7 @@ final class AdultContentPolicy {
 
     private static String normalize(String value) {
         String lower = value.toLowerCase(Locale.ROOT)
-                .replace('+', ' ')
+                .replace("+", " plus ")
                 .replace('ı', 'i')
                 .replace('ş', 's')
                 .replace('ğ', 'g')
