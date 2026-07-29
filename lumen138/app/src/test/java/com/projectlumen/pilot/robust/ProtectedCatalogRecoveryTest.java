@@ -1,5 +1,7 @@
 package com.projectlumen.pilot.robust;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -10,6 +12,14 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 public final class ProtectedCatalogRecoveryTest {
+    @Before public void enableProtectionForRecoveryTests() {
+        ParentalFeature.setEnabledForTests(true);
+    }
+
+    @After public void clearProtectionOverride() {
+        ParentalFeature.setEnabledForTests(null);
+    }
+
     @Test public void parserKeepsRestrictedRowsAndClassifiesVodAsMovies() throws Exception {
         ParentalControl.lock("test");
         String m3u = "#EXTM3U\n"
