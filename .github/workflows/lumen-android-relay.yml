@@ -7,16 +7,17 @@ on:
       - '.github/workflows/lumen-android-relay.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-lumen-android:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout readable source branch
+      - name: Checkout exact same-repository head commit
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Set up Java 17
@@ -62,6 +63,21 @@ jobs:
           test "$(grep -c 'new HorizontalScrollView(this)' app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java)" -ge 2
           grep -q 'Alle Filmkategorien' app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java
           grep -q 'Alle Serienkategorien' app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java
+
+      - name: Persist exact compiled media facet source
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "project-lumen-build"
+          git config user.email "project-lumen-build@users.noreply.github.com"
+          git add lumen138/app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java
+          if git diff --cached --quiet; then
+            echo "Verified 13.1.48 source is already committed"
+          else
+            git commit -m "Persist verified 13.1.48 media facet rails"
+            git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          fi
 
       - name: Test movie series category rails parental protection and Media3
         working-directory: lumen138
