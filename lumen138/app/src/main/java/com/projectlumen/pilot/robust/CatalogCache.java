@@ -5,8 +5,6 @@ import android.security.keystore.KeyProperties;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.CipherInputStream;
-import java.io.CipherOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -22,6 +20,8 @@ import java.util.List;
 import java.util.Locale;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
