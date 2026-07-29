@@ -6,6 +6,11 @@ on:
     branches: [main]
     paths:
       - ".automation/tayvoriq-fire-safety-segment-repair.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".automation/tayvoriq-fire-safety-segment-repair.json"
+      - ".github/workflows/tayvoriq-fire-safety-segment-repair.yml"
 
 permissions:
   actions: read
