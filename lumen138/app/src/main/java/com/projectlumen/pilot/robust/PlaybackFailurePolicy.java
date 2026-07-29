@@ -5,6 +5,7 @@ import java.util.Locale;
 /** Pure playback failure decisions used by the Media3 player and JVM tests. */
 final class PlaybackFailurePolicy {
     private static final long TRANSIENT_RETRY_DELAY_MS = 2_500L;
+    private static final String HTTP_509 = "HTTP_509";
 
     private PlaybackFailurePolicy() { }
 
@@ -16,7 +17,8 @@ final class PlaybackFailurePolicy {
             boolean transientFailure = isTransientHttp(status);
             boolean retry = transientFailure && automaticRetryCount < 1;
             return new Decision(
-                    status > 0 ? "HTTP_" + status : "HTTP_SERVER_ERROR",
+                    status == 509 ? HTTP_509
+                            : status > 0 ? "HTTP_" + status : "HTTP_SERVER_ERROR",
                     httpMessage(status, retry),
                     retry,
                     retry ? TRANSIENT_RETRY_DELAY_MS : 0L,
