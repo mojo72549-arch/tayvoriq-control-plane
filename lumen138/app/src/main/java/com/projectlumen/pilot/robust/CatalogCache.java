@@ -10,13 +10,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /** Compact, versioned catalog cache used for sub-second app restore. */
 final class CatalogCache {
     private static final int MAGIC = 0x4C554D34; // LUM4
-    private static final int VERSION = 1;
+    // v2 rebuilds 13.1.44 indexes so adult VOD receives corrected media types.
+    private static final int VERSION = 2;
     private static final int MAX_ENTRIES = 100_000;
     private static final int MAX_STRING_BYTES = 4 * 1024 * 1024;
     private static final int BUFFER_BYTES = 1024 * 1024;
@@ -25,8 +25,8 @@ final class CatalogCache {
 
     static void write(File file, List<Channel> channels) throws Exception {
         if (file == null) throw new IllegalArgumentException("Cache-Zieldatei fehlt.");
-        List<Channel> safe = AdultContentPolicy.raw(channels);
-        if (safe.size() > MAX_ENTRIES) throw new IllegalArgumentException("Zu viele Katalogeinträge.");
+        List<Channel> raw = AdultContentPolicy.raw(channels);
+        if (raw.size() > MAX_ENTRIES) throw new IllegalArgumentException("Zu viele Katalogeinträge.");
         File parent = file.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
             throw new IllegalStateException("Cache-Verzeichnis konnte nicht erstellt werden.");
@@ -37,8 +37,8 @@ final class CatalogCache {
              DataOutputStream output = new DataOutputStream(buffered)) {
             output.writeInt(MAGIC);
             output.writeInt(VERSION);
-            output.writeInt(safe.size());
-            for (Channel channel : safe) {
+            output.writeInt(raw.size());
+            for (Channel channel : raw) {
                 writeString(output, channel.id);
                 writeString(output, channel.name);
                 writeString(output, channel.group);
