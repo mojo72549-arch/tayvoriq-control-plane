@@ -45,26 +45,20 @@ public final class DiagnosticsActivity extends Activity {
         titleRow.addView(title, new LinearLayout.LayoutParams(0, dp(48), 1f));
         root.addView(titleRow);
 
-        Button parental = button(ParentalControl.isUnlocked()
-                ? "Jugendschutz · entsperrt" : "Jugendschutz · aktiv", true);
-        parental.setOnClickListener(v -> startActivity(
-                new Intent(this, ParentalControlActivity.class)));
-        LinearLayout.LayoutParams parentalParams = new LinearLayout.LayoutParams(-1, dp(48));
-        parentalParams.setMargins(0, dp(8), 0, dp(8));
-        root.addView(parental, parentalParams);
-
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button copy = button("Kopieren", false);
+        Button copy = button("Kopieren");
         copy.setOnClickListener(v -> copy());
         actions.addView(copy, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        Button share = button("Teilen", false);
+        Button share = button("Teilen");
         share.setOnClickListener(v -> share());
         actions.addView(share, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        Button clear = button("Leeren", false);
+        Button clear = button("Leeren");
         clear.setOnClickListener(v -> { log.clear(); refresh(); });
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        root.addView(actions);
+        LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(-1, dp(48));
+        actionsParams.setMargins(0, dp(8), 0, dp(8));
+        root.addView(actions, actionsParams);
 
         ScrollView scroll = new ScrollView(this);
         body = new TextView(this);
@@ -94,16 +88,16 @@ public final class DiagnosticsActivity extends Activity {
         startActivity(Intent.createChooser(intent, "Diagnose teilen"));
     }
 
-    private Button button(String text, boolean primary) {
+    private Button button(String text) {
         Button button = new Button(this);
         button.setText(text);
         button.setAllCaps(false);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setTextColor(primary ? 0xFF050D18 : Color.WHITE);
+        button.setTextColor(Color.WHITE);
         GradientDrawable background = new GradientDrawable();
-        background.setColor(primary ? 0xFF62E7D3 : 0xFF17354A);
+        background.setColor(0xFF17354A);
         background.setCornerRadius(dp(12));
-        background.setStroke(dp(1), primary ? 0xFF62E7D3 : 0xFF2A5269);
+        background.setStroke(dp(1), 0xFF2A5269);
         button.setBackground(background);
         return button;
     }
