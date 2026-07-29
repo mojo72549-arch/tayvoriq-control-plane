@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:startColor="#FF040A14"
+                android:centerColor="#FF071D2D"
+                android:endColor="#FF211B3D" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    <item
+        android:drawable="@drawable/ic_lumen_mark_tile"
+        android:gravity="center"
+        android:width="72dp"
+        android:height="72dp" />
+</layer-list>

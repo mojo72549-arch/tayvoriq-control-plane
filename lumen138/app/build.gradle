@@ -1,0 +1,59 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.projectlumen.pilot.robust'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.projectlumen.pilot.robust'
+        minSdk 26
+        targetSdk 35
+        versionCode 1315000
+        versionName '13.1.50-p0-player-http-recovery'
+        buildConfigField 'String', 'BUILD_CHANNEL', '"closed-pilot-p0"'
+    }
+
+    signingConfigs {
+        pilot {
+            storeFile rootProject.file('ci/keys/lumen-pilot-v1.jks')
+            storePassword System.getenv('LUMEN_PILOT_STORE_PASSWORD') ?: 'LumenPilot137!'
+            keyAlias 'lumen-pilot'
+            keyPassword System.getenv('LUMEN_PILOT_KEY_PASSWORD') ?: 'LumenPilot137!'
+            enableV1Signing true
+            enableV2Signing true
+        }
+    }
+
+    buildTypes {
+        debug { signingConfig signingConfigs.pilot; debuggable true }
+        release {
+            signingConfig signingConfigs.pilot
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+        disable 'UnsafeOptInUsageError'
+    }
+
+    buildFeatures { buildConfig true }
+    packaging { resources.excludes += ['META-INF/LICENSE*', 'META-INF/NOTICE*'] }
+    testOptions { unitTests.returnDefaultValues = true }
+}
+
+dependencies {
+    def media3_version = '1.9.3'
+    implementation "androidx.media3:media3-exoplayer:${media3_version}"
+    implementation "androidx.media3:media3-exoplayer-hls:${media3_version}"
+    implementation "androidx.media3:media3-ui:${media3_version}"
+
+    testImplementation 'junit:junit:4.13.2'
+}

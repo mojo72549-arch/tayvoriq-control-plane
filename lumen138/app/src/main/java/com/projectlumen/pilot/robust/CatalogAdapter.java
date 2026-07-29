@@ -1,0 +1,224 @@
+package com.projectlumen.pilot.robust;
+
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.text.TextUtils;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+
+final class CatalogAdapter extends BaseAdapter {
+    private final Context context;
+    private final LogoLoader logoLoader;
+    private final boolean safetyBadge;
+    private List<Channel> items = Collections.emptyList();
+
+    CatalogAdapter(Context context) {
+        this(context, false);
+    }
+
+    CatalogAdapter(Context context, boolean safetyBadge) {
+        this.context = context;
+        this.logoLoader = LogoLoader.get(context);
+        this.safetyBadge = safetyBadge;
+    }
+
+    void submit(List<Channel> values) {
+        items = values == null ? Collections.emptyList() : values;
+        notifyDataSetChanged();
+    }
+
+    Channel item(int position) {
+        return position >= 0 && position < items.size() ? items.get(position) : null;
+    }
+
+    @Override public int getCount() { return items.size(); }
+    @Override public Object getItem(int position) { return item(position); }
+    @Override public long getItemId(int position) {
+        Channel channel = item(position);
+        return channel == null ? position : channel.id.hashCode();
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+        Holder holder;
+        if (convertView == null) {
+            LinearLayout row = new LinearLayout(context);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(10), dp(8), dp(9), dp(8));
+            row.setBackground(roundRect(0xEC0C2030, 16, 0xFF244D64));
+
+            FrameLayout logoHost = new FrameLayout(context);
+            ImageView logoImage = new ImageView(context);
+            logoImage.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            logoImage.setPadding(dp(4), dp(4), dp(4), dp(4));
+            logoHost.addView(logoImage, new FrameLayout.LayoutParams(-1, -1));
+
+            TextView logoFallback = new TextView(context);
+            logoFallback.setTextColor(Color.WHITE);
+            logoFallback.setTextSize(11);
+            logoFallback.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            logoFallback.setGravity(Gravity.CENTER);
+            logoFallback.setMaxLines(2);
+            logoFallback.setEllipsize(TextUtils.TruncateAt.END);
+            logoHost.addView(logoFallback, new FrameLayout.LayoutParams(-1, -1));
+            row.addView(logoHost, new LinearLayout.LayoutParams(dp(58), dp(50)));
+
+            LinearLayout labels = new LinearLayout(context);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            labels.setPadding(dp(11), 0, dp(6), 0);
+
+            TextView name = new TextView(context);
+            name.setTextColor(Color.WHITE);
+            name.setTextSize(15);
+            name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            name.setSingleLine(true);
+            name.setEllipsize(TextUtils.TruncateAt.END);
+            labels.addView(name);
+
+            TextView group = new TextView(context);
+            group.setTextColor(0xFF93AFC1);
+            group.setTextSize(11);
+            group.setSingleLine(true);
+            group.setEllipsize(TextUtils.TruncateAt.END);
+            labels.addView(group);
+            row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+
+            TextView language = new TextView(context);
+            language.setTextColor(0xFF07111E);
+            language.setTextSize(10);
+            language.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            language.setGravity(Gravity.CENTER);
+            language.setBackground(roundRect(0xFF7DE8D8, 10, 0xFF7DE8D8));
+            row.addView(language, new LinearLayout.LayoutParams(dp(38), dp(27)));
+
+            TextView play = new TextView(context);
+            play.setText("›");
+            play.setTextColor(0xFF63E6D2);
+            play.setTextSize(28);
+            play.setGravity(Gravity.CENTER);
+            row.addView(play, new LinearLayout.LayoutParams(dp(31), dp(42)));
+
+            holder = new Holder(logoHost, logoImage, logoFallback, name, group, language);
+            row.setTag(holder);
+            convertView = row;
+        } else {
+            holder = (Holder) convertView.getTag();
+        }
+
+        Channel channel = item(position);
+        if (channel == null) {
+            holder.logoImage.setTag("");
+            holder.logoImage.setImageDrawable(null);
+            holder.logoImage.setVisibility(View.INVISIBLE);
+            holder.logoFallback.setText("");
+            holder.name.setText("");
+            holder.group.setText("");
+            holder.language.setText("");
+        } else {
+            Brand brand = Brand.of(channel.name);
+            holder.logoFallback.setText(brand.label);
+            holder.logoHost.setBackground(roundRect(brand.fill, 13, brand.stroke));
+            logoLoader.load(channel.logo, holder.logoImage, holder.logoFallback);
+            holder.name.setText(channel.name);
+
+            if (safetyBadge && channel.adult) {
+                String classLabel = AdultContentPolicy.classLabel(channel.adultClass);
+                holder.group.setText(channel.group + "  ·  " + classLabel);
+                boolean age18 = AdultContentPolicy.isAge18Class(channel.adultClass);
+                holder.language.setText(age18 ? "18" : "XXX");
+                int chip = age18 ? 0xFFF4A340 : 0xFFE94D5F;
+                holder.language.setBackground(roundRect(chip, 10, chip));
+            } else {
+                holder.group.setText(channel.group + "  ·  " + typeLabel(channel.type));
+                holder.language.setText(MediaLanguage.shortLabel(channel));
+                MediaLanguage.Code code = MediaLanguage.detect(channel);
+                int chip = code == MediaLanguage.Code.TR ? 0xFFE94D5F
+                        : code == MediaLanguage.Code.DE ? 0xFFF4D35E
+                        : code == MediaLanguage.Code.EN ? 0xFF6EB6FF : 0xFF7DE8D8;
+                holder.language.setBackground(roundRect(chip, 10, chip));
+            }
+        }
+        return convertView;
+    }
+
+    private static String typeLabel(Channel.Type type) {
+        return type == Channel.Type.MOVIE ? "Film"
+                : type == Channel.Type.SERIES ? "Serie" : "Live";
+    }
+
+    private GradientDrawable roundRect(int color, int radius, int stroke) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radius));
+        drawable.setStroke(dp(1), stroke);
+        return drawable;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * context.getResources().getDisplayMetrics().density);
+    }
+
+    private static final class Holder {
+        final FrameLayout logoHost;
+        final ImageView logoImage;
+        final TextView logoFallback;
+        final TextView name;
+        final TextView group;
+        final TextView language;
+
+        Holder(FrameLayout logoHost, ImageView logoImage, TextView logoFallback,
+               TextView name, TextView group, TextView language) {
+            this.logoHost = logoHost;
+            this.logoImage = logoImage;
+            this.logoFallback = logoFallback;
+            this.name = name;
+            this.group = group;
+            this.language = language;
+        }
+    }
+
+    private static final class Brand {
+        final String label;
+        final int fill;
+        final int stroke;
+
+        Brand(String label, int fill, int stroke) {
+            this.label = label;
+            this.fill = fill;
+            this.stroke = stroke;
+        }
+
+        static Brand of(String value) {
+            String name = value == null ? "" : value.toLowerCase(Locale.ROOT);
+            if (name.contains("kanal d")) return new Brand("KANAL\nD", 0xFF1478C9, 0xFF66B8F0);
+            if (name.contains("trt 1") || name.startsWith("trt1")) return new Brand("TRT 1", 0xFFE2263E, 0xFFFF7486);
+            if (name.startsWith("trt")) return new Brand("TRT", 0xFFE2263E, 0xFFFF7486);
+            if (name.contains("rtl zwei") || name.contains("rtl2")) return new Brand("RTL\nZWEI", 0xFFF29F24, 0xFFFFCF6B);
+            if (name.contains("rtl")) return new Brand("RTL", 0xFFE64167, 0xFFFF8EA6);
+            if (name.contains("zdf")) return new Brand("ZDF", 0xFFF07B22, 0xFFFFB172);
+            if (name.contains("ard") || name.contains("das erste")) return new Brand("ARD", 0xFF1677C8, 0xFF70B7EE);
+            if (name.contains("show tv")) return new Brand("SHOW", 0xFF7B3FB5, 0xFFB98BE2);
+            if (name.startsWith("atv") || name.contains(" atv")) return new Brand("atv", 0xFFE65C2A, 0xFFFFA27F);
+            if (name.contains("tv8")) return new Brand("TV8", 0xFFE32936, 0xFFFF7F88);
+            if (name.contains("star tv")) return new Brand("STAR", 0xFF2168B5, 0xFF77B9F3);
+            if (name.contains("pro7") || name.contains("pro sieben") || name.contains("prosieben")) return new Brand("PRO7", 0xFFDB263E, 0xFFFF8595);
+            if (name.contains("sat.1") || name.contains("sat 1")) return new Brand("SAT.1", 0xFF244B91, 0xFF75A0E8);
+            String clean = value == null ? "" : value.trim();
+            String label = clean.isEmpty() ? "•" : clean.substring(0, Math.min(2, clean.length())).toUpperCase(Locale.ROOT);
+            return new Brand(label, 0xFF173B50, 0xFF3B6B83);
+        }
+    }
+}
