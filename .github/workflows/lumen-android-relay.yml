@@ -52,44 +52,42 @@ jobs:
           base64 --decode /tmp/lumen-old/lumen-build-relay/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
           echo "764e0c501b8c13fb1eae852bcaddd16aab0c31109cf17de97bde5d15327a8817  lumen138/ci/keys/lumen-pilot-v1.jks" | sha256sum --check
 
-      - name: Verify precise adult catalog architecture
+      - name: Apply and verify HTTP recovery patch
         shell: bash
         run: |
           set -euo pipefail
-          grep -q "VERSION_PRECISE_SAFETY = 4" lumen138/app/src/main/java/com/projectlumen/pilot/robust/CatalogCache.java
-          grep -q "version == VERSION_PRECISE_SAFETY" lumen138/app/src/main/java/com/projectlumen/pilot/robust/CatalogCache.java
-          grep -q "Wicked - 2024" lumen138/app/src/test/java/com/projectlumen/pilot/robust/AdultContentPolicyTest.java
-          grep -q "versionThreeCacheRecomputesFormerWickedFalsePositive" lumen138/app/src/test/java/com/projectlumen/pilot/robust/CatalogCacheTest.java
-          grep -q "XXX / Erotik" lumen138/app/src/main/java/com/projectlumen/pilot/robust/AdultCatalogActivity.java
-          grep -q "FSK 18" lumen138/app/src/main/java/com/projectlumen/pilot/robust/AdultCatalogActivity.java
-          ! grep -R "Pattern\|split(" lumen138/app/src/main/java/com/projectlumen/pilot/robust/AdultContentPolicy.java
-          grep -q "CatalogAdapter(this, true)" lumen138/app/src/main/java/com/projectlumen/pilot/robust/AdultCatalogActivity.java
+          git apply --check lumen138/ci/player_13150.patch
+          git apply lumen138/ci/player_13150.patch
+          grep -q "HTTP_509_PROVIDER_LIMIT" lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlaybackFailurePolicy.java
+          grep -q "PLAY-HTTP-RECOVERY-SCHEDULED" lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlayerActivity.java
+          grep -q "automaticHttpRetries" lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlayerActivity.java
+          grep -q "ProjectLumen/13.1.50 Media3" lumen138/app/src/main/java/com/projectlumen/pilot/robust/PlayerActivity.java
+          grep -q "http509IsProviderLimitNotParsingFailure" lumen138/app/src/test/java/com/projectlumen/pilot/robust/PlaybackFailurePolicyTest.java
 
-      - name: Test precision cache performance logos and Media3
+      - name: Test player recovery cache logos and Media3
         working-directory: lumen138
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p ../dist
           gradle --no-daemon testDebugUnitTest lintDebug assembleDebug 2>&1 | tee ../dist/android-build.log
-          cp app/build/outputs/apk/debug/app-debug.apk ../dist/Project_Lumen_v13.1.48_P0_Adult_Precision.apk
-          sha256sum ../dist/Project_Lumen_v13.1.48_P0_Adult_Precision.apk > ../dist/Project_Lumen_v13.1.48_P0_Adult_Precision.apk.sha256
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/Project_Lumen_v13.1.50_P0_Player_HTTP_Recovery.apk
+          sha256sum ../dist/Project_Lumen_v13.1.50_P0_Player_HTTP_Recovery.apk > ../dist/Project_Lumen_v13.1.50_P0_Player_HTTP_Recovery.apk.sha256
           if [ -d app/build/reports/tests ]; then cp -R app/build/reports/tests ../dist/test-reports; fi
           if [ -f app/build/reports/lint-results-debug.html ]; then cp app/build/reports/lint-results-debug.html ../dist/; fi
 
-      - name: Verify package update path signature and protected activities
+      - name: Verify package update path signature and activities
         shell: bash
         run: |
           set -euo pipefail
-          APK=dist/Project_Lumen_v13.1.48_P0_Adult_Precision.apk
+          APK=dist/Project_Lumen_v13.1.50_P0_Player_HTTP_Recovery.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee dist/apk-signature.txt
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | tee dist/apk-badging.txt
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee dist/apk-manifest.txt
           grep -q "package: name='com.projectlumen.pilot.robust'" dist/apk-badging.txt
-          grep -q "versionCode='1314800'" dist/apk-badging.txt
-          grep -q "versionName='13.1.48-p0-adult-precision'" dist/apk-badging.txt
-          grep -q "com.projectlumen.pilot.robust.LanguageCatalogActivity" dist/apk-manifest.txt
-          grep -q "com.projectlumen.pilot.robust.AdultCatalogActivity" dist/apk-manifest.txt
+          grep -q "versionCode='1315000'" dist/apk-badging.txt
+          grep -q "versionName='13.1.50-p0-player-http-recovery'" dist/apk-badging.txt
+          grep -q "com.projectlumen.pilot.robust.PlayerActivity" dist/apk-manifest.txt
           grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" dist/apk-signature.txt
           grep -q "Signer #1 certificate SHA-256 digest: 90ef91b7294414e49a92dbb8e6d58c51aa3603d1aab73715c4d9318854d1e9ce" dist/apk-signature.txt
 
@@ -97,7 +95,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-v13-1-48-adult-precision-${{ github.sha }}
+          name: project-lumen-v13-1-50-player-http-recovery-${{ github.sha }}
           path: dist/
           if-no-files-found: warn
           retention-days: 30
