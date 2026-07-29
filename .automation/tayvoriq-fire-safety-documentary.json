@@ -1,17 +1,18 @@
 {
-  "request": "deep-fire-safety-documentary-v4-bounded-pacing",
+  "request": "deep-fire-safety-documentary-v4.1-clear-diction-rerender",
   "private_branch": "fix/deep-documentary-fire-safety-v29",
+  "expected_private_head": "920bcd290ed276453e1914e1d331006b83b93f1e",
   "target_duration_seconds": 65,
   "voice_profile": "deep-warm-calm-german-documentary",
   "required_provider": "chatterbox_multilingual_v3",
   "edge_fallback_allowed": false,
-  "speech_intelligibility_gate": "whisper-small-additive-semantic-variants",
+  "speech_intelligibility_gate": "v3-isolated-clear-diction-with-small-fire-and-wind-smoke-concepts",
   "official_safety_sources_required": true,
   "manual_telegram_approval_required": true,
   "platform_upload": false,
   "cpu_voice_contract": "two-coherent-chunks-900-second-budget-with-failure-evidence",
-  "script_contract": "short-complete-sentences-explicit-emergency-sequence",
+  "script_contract": "v4.1-short-complete-sentences-no-warnemenschen-merge",
   "render_binding_contract": "closed-over-original-v3-builder-no-runtime-recursion",
   "pacing_contract": "pitch-neutral-auto-correction-only-for-145-to-155-wpm-final-gate-145",
-  "requested_at": "2026-07-28T12:30:00+02:00"
+  "requested_at": "2026-07-29T10:46:00+02:00"
 }
