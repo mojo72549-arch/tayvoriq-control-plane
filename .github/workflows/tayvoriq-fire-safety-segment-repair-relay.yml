@@ -1,0 +1,64 @@
+name: TAYVORIQ Segment Repair Relay
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".automation/tayvoriq-fire-safety-segment-repair.json"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: tayvoriq-segment-repair-relay
+  cancel-in-progress: false
+
+jobs:
+  dispatch-and-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - name: Dispatch main repair workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-fire-safety-segment-repair.yml --ref main
+
+      - name: Resolve dispatched run
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          for attempt in $(seq 1 30); do
+            run_id=$(gh run list \
+              --workflow tayvoriq-fire-safety-segment-repair.yml \
+              --branch main \
+              --event workflow_dispatch \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty')
+            if [ -n "$run_id" ]; then
+              echo "Dispatched repair run: $run_id"
+              echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error title=Repair run missing::Could not resolve dispatched workflow run"
+          exit 1
+
+      - name: Watch repair to final state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ steps.resolve.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          echo "Watching https://github.com/${GH_REPO}/actions/runs/${RUN_ID}"
+          gh run watch "$RUN_ID" --exit-status --interval 10
