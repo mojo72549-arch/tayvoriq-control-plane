@@ -52,42 +52,43 @@ jobs:
           base64 --decode /tmp/lumen-old/lumen-build-relay/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
           echo "764e0c501b8c13fb1eae852bcaddd16aab0c31109cf17de97bde5d15327a8817  lumen138/ci/keys/lumen-pilot-v1.jks" | sha256sum --check
 
-      - name: Test all languages dynamic groups parental protection and Media3
+      - name: Test no-parental catalog languages categories and Media3
         working-directory: lumen138
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p ../dist
           gradle --no-daemon testDebugUnitTest lintDebug assembleDebug 2>&1 | tee ../dist/android-build.log
-          cp app/build/outputs/apk/debug/app-debug.apk ../dist/Project_Lumen_v13.1.46_P0_Dynamic_Groups.apk
-          sha256sum ../dist/Project_Lumen_v13.1.46_P0_Dynamic_Groups.apk > ../dist/Project_Lumen_v13.1.46_P0_Dynamic_Groups.apk.sha256
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/Project_Lumen_v13.1.49_P0_No_Parental.apk
+          sha256sum ../dist/Project_Lumen_v13.1.49_P0_No_Parental.apk > ../dist/Project_Lumen_v13.1.49_P0_No_Parental.apk.sha256
           if [ -d app/build/reports/tests ]; then cp -R app/build/reports/tests ../dist/test-reports; fi
           if [ -f app/build/reports/lint-results-debug.html ]; then cp app/build/reports/lint-results-debug.html ../dist/; fi
 
-      - name: Verify package update path signature branding and group code
+      - name: Verify no parental component package signature and swipe rails
         shell: bash
         run: |
           set -euo pipefail
-          APK=dist/Project_Lumen_v13.1.46_P0_Dynamic_Groups.apk
+          APK=dist/Project_Lumen_v13.1.49_P0_No_Parental.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee dist/apk-signature.txt
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | tee dist/apk-badging.txt
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee dist/apk-manifest.txt
           grep -q "package: name='com.projectlumen.pilot.robust'" dist/apk-badging.txt
-          grep -q "versionCode='1314600'" dist/apk-badging.txt
-          grep -q "versionName='13.1.46-p0-dynamic-groups'" dist/apk-badging.txt
+          grep -q "versionCode='1314900'" dist/apk-badging.txt
+          grep -q "versionName='13.1.49-p0-no-parental'" dist/apk-badging.txt
           grep -q "application-label:'Project Lumen Premium'" dist/apk-badging.txt
-          grep -q "application-icon-.*:'res/mipmap" dist/apk-badging.txt
-          grep -q "com.projectlumen.pilot.robust.LumenApplication" dist/apk-manifest.txt
-          grep -q "com.projectlumen.pilot.robust.ParentalControlActivity" dist/apk-manifest.txt
           grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" dist/apk-signature.txt
           grep -q "Signer #1 certificate SHA-256 digest: 90ef91b7294414e49a92dbb8e6d58c51aa3603d1aab73715c4d9318854d1e9ce" dist/apk-signature.txt
+          grep -q "PARENTAL_PROTECTION_ENABLED = false" lumen138/app/build/generated/source/buildConfig/debug/com/projectlumen/pilot/robust/BuildConfig.java
+          if grep -q "ParentalControlActivity" dist/apk-manifest.txt; then exit 1; fi
+          if grep -q "Jugendschutz" lumen138/app/src/main/java/com/projectlumen/pilot/robust/DiagnosticsActivity.java; then exit 1; fi
+          test "$(grep -c 'new HorizontalScrollView(this)' lumen138/app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java)" -ge 2
           unzip -l "$APK" | grep -q 'classes.dex'
 
       - name: Upload APK and build evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-v13-1-46-dynamic-groups-${{ github.sha }}
+          name: project-lumen-v13-1-49-no-parental-${{ github.sha }}
           path: dist/
           if-no-files-found: warn
           retention-days: 30
