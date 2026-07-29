@@ -7,11 +7,13 @@ on:
       - 'lumen138/**'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-lumen-android:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'build/project-lumen-v13.1.47-provider-languages-r3'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -92,3 +94,26 @@ jobs:
           path: dist/
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Publish run pointer
+        if: always()
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p relay-output
+          cat > relay-output/lumen-13.1.47-run.txt <<EOF
+          run_id=$RUN_ID
+          run_attempt=$RUN_ATTEMPT
+          source_sha=$HEAD_SHA
+          artifact_name=project-lumen-v13-1-47-provider-languages-$HEAD_SHA
+          EOF
+          git config user.name "Project Lumen Build Relay"
+          git config user.email "actions@users.noreply.github.com"
+          git add relay-output/lumen-13.1.47-run.txt
+          git commit -m "Publish Project Lumen 13.1.47 build run $RUN_ID"
+          git push origin "HEAD:$HEAD_REF"
