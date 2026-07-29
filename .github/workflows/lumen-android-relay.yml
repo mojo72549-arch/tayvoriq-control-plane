@@ -29,12 +29,12 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android 35 tools
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" >/dev/null
 
       - name: Set up pinned Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.10.2'
+          gradle-version: '8.13'
 
       - name: Reject embedded keys and credentials
         shell: bash
@@ -64,7 +64,7 @@ jobs:
           cp app/build/outputs/bundle/release/app-release.aab             ../dist/Project_Lumen_13.2.0_RC1_UNSIGNED_DO_NOT_UPLOAD.aab
           sha256sum ../dist/Project_Lumen_13.2.0_RC1_Internal_Debug.apk             ../dist/Project_Lumen_13.2.0_RC1_UNSIGNED_DO_NOT_UPLOAD.aab             > ../dist/SHA256SUMS.txt
           if [ -d app/build/reports/tests ]; then cp -R app/build/reports/tests ../dist/test-reports; fi
-          if [ -d app/build/reports/lint-results-debug.html ]; then
+          if [ -f app/build/reports/lint-results-debug.html ]; then
             cp app/build/reports/lint-results-debug.html ../dist/
           fi
           if [ -f app/build/reports/lint-results-release.html ]; then
@@ -77,8 +77,8 @@ jobs:
         run: |
           set -euo pipefail
           APK=dist/Project_Lumen_13.2.0_RC1_Internal_Debug.apk
-          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify             --verbose --print-certs "$APK" | tee dist/apk-signature.txt
-          "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK"             | tee dist/apk-badging.txt
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify             --verbose --print-certs "$APK" | tee dist/apk-signature.txt
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt" dump badging "$APK"             | tee dist/apk-badging.txt
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump xmltree "$APK"             AndroidManifest.xml | tee dist/apk-manifest.txt
           grep -q "package: name='com.projectlumen.pilot.robust'" dist/apk-badging.txt
           grep -q "versionCode='1320001'" dist/apk-badging.txt
