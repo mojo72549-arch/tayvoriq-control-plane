@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  EXPECTED_PRIVATE_HEAD: "9eac8c4fcd1d0f5a1ca0d3979a950ae1f4e465c2"
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -25,6 +28,14 @@ jobs:
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
+
+      - name: Verify exact private revision
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "Private documentary revision: $actual"
+          test "$actual" = "$EXPECTED_PRIVATE_HEAD"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -75,6 +86,7 @@ jobs:
           python - <<'PY'
           import tayvoriq_fire_safety_documentary_v4 as story
           package = story.build_package()
+          assert package["content_editor_version"] == "fire-safety-documentary-v4.1-clear-diction"
           assert package["approval_status"] == "PENDING_REVIEW"
           assert package["upload_status"] == "NOT_STARTED_PENDING_APPROVAL"
           assert package["instagram_status"] == "NOT_CONFIGURED_EXCLUDED"
