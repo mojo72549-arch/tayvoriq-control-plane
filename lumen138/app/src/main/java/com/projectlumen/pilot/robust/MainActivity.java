@@ -30,6 +30,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -41,8 +42,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,6 +70,7 @@ public final class MainActivity extends Activity {
         return thread;
     });
     private final AtomicInteger filterGeneration = new AtomicInteger();
+    private final Map<String, Button> languageButtons = new LinkedHashMap<>();
 
     private DiagnosticLog log;
     private UiStallWatchdog watchdog;
@@ -74,10 +78,12 @@ public final class MainActivity extends Activity {
     private SharedPreferences preferences;
     private List<Channel> all = Collections.emptyList();
     private List<String> availableGroups = Collections.emptyList();
+    private List<ProviderLanguage.Facet> availableLanguages =
+            Collections.singletonList(ProviderLanguage.allFacet());
     private CatalogAdapter adapter;
     private Mode mode = Mode.LIVE;
-    private MediaLanguage.Code language = MediaLanguage.Code.ALL;
-    private String selectedGroup = CatalogGroups.ALL;
+    private String selectedLanguage = ProviderLanguage.ALL;
+    private String selectedGroup = ProviderCatalog.ALL_GROUPS;
     private boolean busy = true;
     private long lastInputEvent;
     private Runnable pendingFilter;
@@ -96,11 +102,9 @@ public final class MainActivity extends Activity {
     private Button liveButton;
     private Button movieButton;
     private Button seriesButton;
-    private Button allLanguageButton;
-    private Button germanButton;
-    private Button turkishButton;
-    private Button otherLanguageButton;
     private Button groupButton;
+    private HorizontalScrollView languageScroll;
+    private LinearLayout languageRow;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -115,27 +119,40 @@ public final class MainActivity extends Activity {
         restoreViewState();
         log.event("-", "APP-CREATE-START", "thread=" + Thread.currentThread().getName());
         buildUi();
-        log.event("-", "APP-CREATE-END", "uiReady=true premiumShell=true dynamicGroups=true");
+        log.event("-", "APP-CREATE-END",
+                "uiReady=true premiumShell=true providerLanguages=true swipeLanguages=true");
         restore();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!busy && all != null && !all.isEmpty()) filterNow();
+    }
+
     private void restoreViewState() {
-        try { mode = Mode.valueOf(preferences.getString("mode", Mode.LIVE.name())); }
-        catch (Exception ignored) { mode = Mode.LIVE; }
         try {
-            language = MediaLanguage.Code.valueOf(
-                    preferences.getString("language", MediaLanguage.Code.ALL.name()));
+            mode = Mode.valueOf(preferences.getString("mode", Mode.LIVE.name()));
         } catch (Exception ignored) {
-            language = MediaLanguage.Code.ALL;
+            mode = Mode.LIVE;
         }
-        selectedGroup = preferences.getString("group", CatalogGroups.ALL);
-        if (selectedGroup == null) selectedGroup = CatalogGroups.ALL;
+
+        String saved = preferences.getString("provider_language", null);
+        if (saved == null) {
+            String legacy = preferences.getString("language", "ALL");
+            if ("DE".equals(legacy)) saved = "de";
+            else if ("TR".equals(legacy)) saved = "tr";
+            else saved = ProviderLanguage.ALL;
+        }
+        selectedLanguage = saved == null ? ProviderLanguage.ALL : saved;
+        selectedGroup = preferences.getString("group", ProviderCatalog.ALL_GROUPS);
+        if (selectedGroup == null) selectedGroup = ProviderCatalog.ALL_GROUPS;
     }
 
     private void saveViewState() {
         preferences.edit()
                 .putString("mode", mode.name())
-                .putString("language", language.name())
+                .putString("provider_language", selectedLanguage)
                 .putString("group", selectedGroup)
                 .apply();
     }
@@ -207,20 +224,19 @@ public final class MainActivity extends Activity {
         modes.addView(seriesButton, weighted(dp(6)));
         root.addView(modes, new LinearLayout.LayoutParams(-1, dp(tv() ? 49 : 42)));
 
-        LinearLayout languages = new LinearLayout(this);
-        languages.setOrientation(LinearLayout.HORIZONTAL);
-        germanButton = languageButton(tv() ? "🇩🇪 Deutsch" : "🇩🇪 DE", MediaLanguage.Code.DE);
-        turkishButton = languageButton(tv() ? "🇹🇷 Türkçe" : "🇹🇷 TR", MediaLanguage.Code.TR);
-        otherLanguageButton = languageButton("Weitere", MediaLanguage.Code.OTHER);
-        allLanguageButton = languageButton("Alle", MediaLanguage.Code.ALL);
-        languages.addView(germanButton, weighted(0));
-        languages.addView(turkishButton, weighted(dp(5)));
-        languages.addView(otherLanguageButton, weighted(dp(5)));
-        languages.addView(allLanguageButton, weighted(dp(5)));
+        languageScroll = new HorizontalScrollView(this);
+        languageScroll.setHorizontalScrollBarEnabled(false);
+        languageScroll.setFillViewport(false);
+        languageScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        languageRow = new LinearLayout(this);
+        languageRow.setOrientation(LinearLayout.HORIZONTAL);
+        languageRow.setGravity(Gravity.CENTER_VERTICAL);
+        languageScroll.addView(languageRow, new HorizontalScrollView.LayoutParams(-2, -1));
         LinearLayout.LayoutParams languageParams = new LinearLayout.LayoutParams(
-                -1, dp(tv() ? 46 : 39));
+                -1, dp(tv() ? 48 : 41));
         languageParams.setMargins(0, dp(7), 0, dp(7));
-        root.addView(languages, languageParams);
+        root.addView(languageScroll, languageParams);
+        renderLanguageButtons(availableLanguages);
 
         groupButton = baseChoiceButton("Alle Gruppen");
         groupButton.setTextSize(tv() ? 14 : 12);
@@ -560,10 +576,12 @@ public final class MainActivity extends Activity {
         all = result;
         search.setText("");
         mode = Mode.LIVE;
-        language = MediaLanguage.Code.ALL;
-        selectedGroup = CatalogGroups.ALL;
+        selectedLanguage = ProviderLanguage.ALL;
+        selectedGroup = ProviderCatalog.ALL_GROUPS;
+        availableLanguages = Collections.singletonList(ProviderLanguage.allFacet());
         availableGroups = Collections.emptyList();
         saveViewState();
+        renderLanguageButtons(availableLanguages);
         updateSelectionStyles();
         setBusy(false, "", "");
         footerStatus.setText(repository.sourceName() + " · " + all.size()
@@ -602,8 +620,9 @@ public final class MainActivity extends Activity {
                     Toast.LENGTH_LONG).show();
             return;
         }
+        ProviderLanguage.Facet facet = ProviderLanguage.detect(channel);
         log.event(interaction, "SELECTION-VALIDATE-OK", "type=" + channel.type
-                + " language=" + MediaLanguage.detect(channel));
+                + " providerLanguage=" + (facet == null ? "unknown" : facet.id));
         Intent intent = new Intent(this, PlayerActivity.class);
         intent.putExtra(PlayerActivity.EXTRA_URL, channel.url);
         intent.putExtra(PlayerActivity.EXTRA_NAME, channel.name);
@@ -615,7 +634,7 @@ public final class MainActivity extends Activity {
         Button button = baseChoiceButton(label);
         button.setOnClickListener(v -> {
             mode = target;
-            selectedGroup = CatalogGroups.ALL;
+            selectedGroup = ProviderCatalog.ALL_GROUPS;
             availableGroups = Collections.emptyList();
             search.setText("");
             saveViewState();
@@ -625,19 +644,43 @@ public final class MainActivity extends Activity {
         return button;
     }
 
-    private Button languageButton(String label, MediaLanguage.Code target) {
-        Button button = baseChoiceButton(label);
-        button.setTextSize(tv() ? 13 : 11);
-        button.setOnClickListener(v -> {
-            language = target;
-            selectedGroup = CatalogGroups.ALL;
-            availableGroups = Collections.emptyList();
-            search.setText("");
-            saveViewState();
-            updateSelectionStyles();
-            filterNow();
-        });
-        return button;
+    private void renderLanguageButtons(List<ProviderLanguage.Facet> facets) {
+        if (languageRow == null) return;
+        languageRow.removeAllViews();
+        languageButtons.clear();
+        List<ProviderLanguage.Facet> safe = facets == null || facets.isEmpty()
+                ? Collections.singletonList(ProviderLanguage.allFacet()) : facets;
+        int index = 0;
+        for (ProviderLanguage.Facet facet : safe) {
+            Button button = baseChoiceButton(facet.display());
+            button.setTextSize(tv() ? 13 : 11);
+            button.setMinWidth(dp(tv() ? 116 : 78));
+            button.setPadding(dp(tv() ? 14 : 11), 0, dp(tv() ? 14 : 11), 0);
+            button.setContentDescription("Sprache " + facet.label);
+            button.setOnClickListener(v -> selectLanguage(facet.id));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    -2, dp(tv() ? 46 : 39));
+            if (index > 0) params.setMargins(dp(6), 0, 0, 0);
+            languageRow.addView(button, params);
+            languageButtons.put(facet.id, button);
+            index++;
+        }
+        updateLanguageStyles();
+    }
+
+    private void selectLanguage(String languageId) {
+        selectedLanguage = languageId == null ? ProviderLanguage.ALL : languageId;
+        selectedGroup = ProviderCatalog.ALL_GROUPS;
+        availableGroups = Collections.emptyList();
+        search.setText("");
+        saveViewState();
+        updateSelectionStyles();
+        filterNow();
+        Button selected = languageButtons.get(selectedLanguage);
+        if (selected != null && languageScroll != null) {
+            languageScroll.post(() -> languageScroll.smoothScrollTo(
+                    Math.max(0, selected.getLeft() - dp(12)), 0));
+        }
     }
 
     private void showGroupChooser() {
@@ -665,7 +708,8 @@ public final class MainActivity extends Activity {
         ArrayAdapter<String> groupAdapter = new ArrayAdapter<>(
                 this, android.R.layout.simple_list_item_1, choices);
         groupList.setAdapter(groupAdapter);
-        LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(-1, dp(tv() ? 520 : 420));
+        LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(
+                -1, dp(tv() ? 520 : 420));
         listParams.setMargins(0, dp(6), 0, 0);
         panel.addView(groupList, listParams);
 
@@ -686,7 +730,7 @@ public final class MainActivity extends Activity {
         groupList.setOnItemClickListener((parent, view, position, id) -> {
             String selected = groupAdapter.getItem(position);
             selectedGroup = selected == null || selected.equals("Alle Gruppen")
-                    ? CatalogGroups.ALL : selected;
+                    ? ProviderCatalog.ALL_GROUPS : selected;
             search.setText("");
             saveViewState();
             updateSelectionStyles();
@@ -713,17 +757,29 @@ public final class MainActivity extends Activity {
         styleChoice(liveButton, mode == Mode.LIVE, ACCENT);
         styleChoice(movieButton, mode == Mode.MOVIES, ACCENT);
         styleChoice(seriesButton, mode == Mode.SERIES, ACCENT);
-        styleChoice(germanButton, language == MediaLanguage.Code.DE, 0xFFF4D35E);
-        styleChoice(turkishButton, language == MediaLanguage.Code.TR, 0xFFE94D5F);
-        styleChoice(otherLanguageButton, language == MediaLanguage.Code.OTHER, 0xFFC8A7FF);
-        styleChoice(allLanguageButton, language == MediaLanguage.Code.ALL, ACCENT_BLUE);
+        updateLanguageStyles();
         styleChoice(groupButton, !selectedGroup.isEmpty(), ACCENT_BLUE);
         updateGroupButton();
         if (sectionTitle != null) {
-            String title = label(mode) + "  ·  " + MediaLanguage.label(language);
+            String title = label(mode) + "  ·  " + selectedLanguageLabel();
             if (!selectedGroup.isEmpty()) title += "  ·  " + selectedGroup;
             sectionTitle.setText(title);
         }
+    }
+
+    private void updateLanguageStyles() {
+        for (Map.Entry<String, Button> entry : languageButtons.entrySet()) {
+            styleChoice(entry.getValue(), entry.getKey().equals(selectedLanguage), ACCENT_BLUE);
+            entry.getValue().setEnabled(!busy);
+            entry.getValue().setAlpha(busy ? 0.65f : 1f);
+        }
+    }
+
+    private String selectedLanguageLabel() {
+        for (ProviderLanguage.Facet facet : availableLanguages) {
+            if (facet.id.equals(selectedLanguage)) return facet.label;
+        }
+        return "Alle";
     }
 
     private void updateGroupButton() {
@@ -752,30 +808,40 @@ public final class MainActivity extends Activity {
         pendingFilter = null;
         int generation = filterGeneration.incrementAndGet();
         Mode wantedMode = mode;
-        MediaLanguage.Code wantedLanguage = language;
+        String wantedLanguage = selectedLanguage;
         String wantedGroup = selectedGroup;
-        String query = search.getText().toString().trim();
+        String query = search == null ? "" : search.getText().toString().trim();
         List<Channel> base = all;
         log.event("-", "LIST-SNAPSHOT-REQUEST", "mode=" + wantedMode
-                + " language=" + wantedLanguage + " base=" + base.size()
+                + " providerLanguage=" + (wantedLanguage.isBlank() ? "all" : wantedLanguage)
+                + " base=" + base.size()
                 + " groupSelected=" + !wantedGroup.isEmpty()
                 + " queryLength=" + query.length());
         worker.execute(() -> {
             long started = SystemClock.elapsedRealtime();
-            CatalogGroups.Snapshot snapshot = CatalogGroups.build(
+            ProviderCatalog.Snapshot snapshot = ProviderCatalog.build(
                     base, type(wantedMode), wantedLanguage, wantedGroup, query);
             long duration = SystemClock.elapsedRealtime() - started;
             main.post(() -> {
                 if (generation != filterGeneration.get()
                         || wantedMode != mode
-                        || wantedLanguage != language
+                        || !TextUtils.equals(wantedLanguage, selectedLanguage)
                         || !TextUtils.equals(wantedGroup, selectedGroup)) return;
 
-                if (!TextUtils.equals(wantedGroup, snapshot.selectedGroup)) {
-                    selectedGroup = snapshot.selectedGroup;
-                    saveViewState();
+                boolean changed = false;
+                if (!TextUtils.equals(selectedLanguage, snapshot.selectedLanguage)) {
+                    selectedLanguage = snapshot.selectedLanguage;
+                    changed = true;
                 }
+                if (!TextUtils.equals(selectedGroup, snapshot.selectedGroup)) {
+                    selectedGroup = snapshot.selectedGroup;
+                    changed = true;
+                }
+                if (changed) saveViewState();
+
+                availableLanguages = snapshot.languages;
                 availableGroups = snapshot.groups;
+                renderLanguageButtons(snapshot.languages);
                 adapter.submit(snapshot.rows);
                 count.setText(Integer.toString(snapshot.rows.size()));
                 updateSelectionStyles();
@@ -783,13 +849,15 @@ public final class MainActivity extends Activity {
                 if (!busy) {
                     String groupLabel = selectedGroup.isEmpty() ? "Alle Gruppen" : selectedGroup;
                     footerStatus.setText(repository.sourceName() + " · " + label(wantedMode)
-                            + " · " + MediaLanguage.label(wantedLanguage)
+                            + " · " + selectedLanguageLabel()
                             + " · " + groupLabel + " · " + snapshot.rows.size() + " Treffer");
                 }
                 log.event("-", "LIST-SNAPSHOT-READY", "rows=" + snapshot.rows.size()
+                        + " languages=" + Math.max(0, snapshot.languages.size() - 1)
                         + " groups=" + snapshot.groups.size()
                         + " durationMs=" + duration
-                        + " language=" + wantedLanguage
+                        + " providerLanguage="
+                        + (selectedLanguage.isBlank() ? "all" : selectedLanguage)
                         + " groupSelected=" + !selectedGroup.isEmpty());
                 list.post(() -> log.event("-", "LIST-FIRST-FRAME",
                         "visibleChildren=" + list.getChildCount()));
@@ -865,6 +933,7 @@ public final class MainActivity extends Activity {
             loadingDetail.setText(detail);
             loadingProgress.setIndeterminate(true);
         }
+        updateLanguageStyles();
         updateGroupButton();
     }
 
@@ -912,6 +981,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (pendingFilter != null) main.removeCallbacks(pendingFilter);
         watchdog.stop();
         worker.shutdownNow();
         super.onDestroy();
