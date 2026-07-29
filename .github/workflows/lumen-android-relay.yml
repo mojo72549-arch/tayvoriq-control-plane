@@ -52,44 +52,59 @@ jobs:
           base64 --decode /tmp/lumen-old/lumen-build-relay/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
           echo "764e0c501b8c13fb1eae852bcaddd16aab0c31109cf17de97bde5d15327a8817  lumen138/ci/keys/lumen-pilot-v1.jks" | sha256sum --check
 
-      - name: Test provider languages swipe groups parental protection and Media3
+      - name: Apply committed 13.1.48 media facet source transformation
         working-directory: lumen138
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p ../dist
-          gradle --no-daemon testDebugUnitTest lintDebug assembleDebug 2>&1 | tee ../dist/android-build.log
-          cp app/build/outputs/apk/debug/app-debug.apk ../dist/Project_Lumen_v13.1.47_P0_Provider_Languages.apk
-          sha256sum ../dist/Project_Lumen_v13.1.47_P0_Provider_Languages.apk > ../dist/Project_Lumen_v13.1.47_P0_Provider_Languages.apk.sha256
-          if [ -d app/build/reports/tests ]; then cp -R app/build/reports/tests ../dist/test-reports; fi
-          if [ -f app/build/reports/lint-results-debug.html ]; then cp app/build/reports/lint-results-debug.html ../dist/; fi
+          python3 ci/apply_v148.py
+          grep -q 'swipeCategories=true' app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java
+          test "$(grep -c 'new HorizontalScrollView(this)' app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java)" -ge 2
+          grep -q 'Alle Filmkategorien' app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java
+          grep -q 'Alle Serienkategorien' app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java
 
-      - name: Verify package signature branding and dynamic language rail
+      - name: Test movie series category rails parental protection and Media3
+        working-directory: lumen138
         shell: bash
         run: |
           set -euo pipefail
-          APK=dist/Project_Lumen_v13.1.47_P0_Provider_Languages.apk
+          mkdir -p ../dist/patched-source
+          gradle --no-daemon testDebugUnitTest lintDebug assembleDebug 2>&1 | tee ../dist/android-build.log
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/Project_Lumen_v13.1.48_P0_Media_Facets.apk
+          sha256sum ../dist/Project_Lumen_v13.1.48_P0_Media_Facets.apk > ../dist/Project_Lumen_v13.1.48_P0_Media_Facets.apk.sha256
+          cp app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java ../dist/patched-source/MainActivity.java
+          if [ -d app/build/reports/tests ]; then cp -R app/build/reports/tests ../dist/test-reports; fi
+          if [ -f app/build/reports/lint-results-debug.html ]; then cp app/build/reports/lint-results-debug.html ../dist/; fi
+
+      - name: Verify package signature branding and both swipe rails
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=dist/Project_Lumen_v13.1.48_P0_Media_Facets.apk
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee dist/apk-signature.txt
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | tee dist/apk-badging.txt
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee dist/apk-manifest.txt
           grep -q "package: name='com.projectlumen.pilot.robust'" dist/apk-badging.txt
-          grep -q "versionCode='1314700'" dist/apk-badging.txt
-          grep -q "versionName='13.1.47-p0-provider-languages'" dist/apk-badging.txt
+          grep -q "versionCode='1314800'" dist/apk-badging.txt
+          grep -q "versionName='13.1.48-p0-media-facets'" dist/apk-badging.txt
           grep -q "application-label:'Project Lumen Premium'" dist/apk-badging.txt
           grep -q "application-icon-.*:'res/mipmap" dist/apk-badging.txt
           grep -q "com.projectlumen.pilot.robust.LumenApplication" dist/apk-manifest.txt
           grep -q "com.projectlumen.pilot.robust.ParentalControlActivity" dist/apk-manifest.txt
           grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" dist/apk-signature.txt
           grep -q "Signer #1 certificate SHA-256 digest: 90ef91b7294414e49a92dbb8e6d58c51aa3603d1aab73715c4d9318854d1e9ce" dist/apk-signature.txt
-          grep -q "HorizontalScrollView" lumen138/app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java
-          if grep -q 'languageButton("Weitere"' lumen138/app/src/main/java/com/projectlumen/pilot/robust/MainActivity.java; then exit 1; fi
+          test "$(grep -c 'new HorizontalScrollView(this)' dist/patched-source/MainActivity.java)" -ge 2
+          grep -q 'renderGroupButtons(snapshot.groups)' dist/patched-source/MainActivity.java
+          grep -q 'Alle Filmkategorien' dist/patched-source/MainActivity.java
+          grep -q 'Alle Serienkategorien' dist/patched-source/MainActivity.java
+          if grep -q 'groupButton.setOnClickListener(v -> showGroupChooser())' dist/patched-source/MainActivity.java; then exit 1; fi
           unzip -l "$APK" | grep -q 'classes.dex'
 
-      - name: Upload APK and build evidence
+      - name: Upload APK patched source and build evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-v13-1-47-provider-languages-${{ github.sha }}
+          name: project-lumen-v13-1-48-media-facets-${{ github.sha }}
           path: dist/
           if-no-files-found: warn
           retention-days: 30
