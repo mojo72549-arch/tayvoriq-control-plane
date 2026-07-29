@@ -1,5 +1,7 @@
 package com.projectlumen.pilot.robust;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -10,6 +12,14 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public final class ProviderCatalogTest {
+    @Before public void enableProtectionForProviderTests() {
+        ParentalFeature.setEnabledForTests(true);
+    }
+
+    @After public void clearProtectionOverride() {
+        ParentalFeature.setEnabledForTests(null);
+    }
+
     @Test public void exposesOnlyLanguagesActuallyProvidedInPlaylistOrder() {
         List<Channel> source = Arrays.asList(
                 channel("1", "ERT 1", "GR | LIVE", Channel.Type.LIVE),
