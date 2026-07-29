@@ -3,4 +3,4 @@ Dynamic provider-driven language facets
 Horizontal swipe language rail
 No hard-coded Other language bucket
 Preserve dynamic groups, parental protection, Media3 and 100k cache
-Gate retry 2026-07-29T10:00Z
+Final current-base relay 2026-07-29T10:12Z
