@@ -11,7 +11,7 @@ import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
 
-/** Process-level parental lock and brand installer. */
+/** Process-level app lifecycle and brand installer. */
 public final class LumenApplication extends Application
         implements Application.ActivityLifecycleCallbacks {
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -20,6 +20,7 @@ public final class LumenApplication extends Application
     private WeakReference<MainActivity> mainActivity = new WeakReference<>(null);
 
     private final Runnable backgroundLock = () -> {
+        if (!ParentalFeature.enabled()) return;
         if (startedActivities == 0) {
             pendingCatalogRefresh = ParentalControl.isUnlocked();
             ParentalControl.lock("app-background");
@@ -29,17 +30,19 @@ public final class LumenApplication extends Application
 
     @Override public void onCreate() {
         super.onCreate();
-        ParentalControl.initialize(this);
-        ParentalControl.setListener((unlocked, reason) -> {
-            DiagnosticLog.get(this).event("-",
-                    unlocked ? "PARENTAL-UNLOCK" : "PARENTAL-LOCK",
-                    "reason=" + safeReason(reason));
-            if (startedActivities == 0) {
-                pendingCatalogRefresh = true;
-                return;
-            }
-            refreshMainActivity();
-        });
+        if (ParentalFeature.enabled()) {
+            ParentalControl.initialize(this);
+            ParentalControl.setListener((unlocked, reason) -> {
+                DiagnosticLog.get(this).event("-",
+                        unlocked ? "PARENTAL-UNLOCK" : "PARENTAL-LOCK",
+                        "reason=" + safeReason(reason));
+                if (startedActivities == 0) {
+                    pendingCatalogRefresh = true;
+                    return;
+                }
+                refreshMainActivity();
+            });
+        }
         registerActivityLifecycleCallbacks(this);
     }
 
@@ -59,7 +62,7 @@ public final class LumenApplication extends Application
     @Override public void onActivityResumed(Activity activity) {
         if (activity instanceof MainActivity) {
             installHeaderLogo(activity.getWindow().getDecorView());
-            if (pendingCatalogRefresh) {
+            if (ParentalFeature.enabled() && pendingCatalogRefresh) {
                 pendingCatalogRefresh = false;
                 activity.recreate();
                 return;
@@ -72,7 +75,8 @@ public final class LumenApplication extends Application
 
     @Override public void onActivityStopped(Activity activity) {
         startedActivities = Math.max(0, startedActivities - 1);
-        if (startedActivities == 0 && !activity.isChangingConfigurations()) {
+        if (ParentalFeature.enabled() && startedActivities == 0
+                && !activity.isChangingConfigurations()) {
             main.removeCallbacks(backgroundLock);
             main.postDelayed(backgroundLock, 600L);
         }
@@ -95,6 +99,7 @@ public final class LumenApplication extends Application
     }
 
     private void blockAdultPlayerIfNeeded(Activity activity) {
+        if (!ParentalFeature.enabled()) return;
         if (!(activity instanceof PlayerActivity) || ParentalControl.isUnlocked()) return;
         String name = activity.getIntent().getStringExtra(PlayerActivity.EXTRA_NAME);
         if (!AdultContentPolicy.isAdultText(name)) return;
