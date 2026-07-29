@@ -9,8 +9,10 @@ import java.util.Locale;
 
 /**
  * Fail-closed adult-content classification and catalog projection.
- * Raw entries remain available for an explicitly unlocked parent session,
- * but locked callers never receive adult rows in lists, search or counters.
+ *
+ * The raw catalog is never modified or truncated. Locked callers receive a
+ * filtered projection, while an explicitly unlocked parent session receives
+ * the complete raw catalog again.
  */
 final class AdultContentPolicy {
     private AdultContentPolicy() { }
@@ -23,21 +25,24 @@ final class AdultContentPolicy {
     static boolean isAdultText(String value) {
         if (value == null || value.isBlank()) return false;
         String normalized = normalize(value);
-        if (normalized.contains(" adults only ")
-                || normalized.contains(" adult only ")
-                || normalized.contains(" after dark ")
-                || normalized.contains(" red light ")) return true;
+
+        if (containsPhrase(normalized,
+                "18 plus", "ab 18", "adults only", "adult only", "for adults",
+                "only adults", "after dark", "red light", "redlight tv",
+                "erwachsene inhalte", "nur fur erwachsene", "yetişkin içerik",
+                "yetiskin icerik", "18 yas ustu", "18 yaş üstü")) {
+            return true;
+        }
+
+        String compact = normalized.replace(" ", "");
+        if (compact.contains("18plus") || compact.contains("xxxvod")
+                || compact.contains("adultvod") || compact.contains("pornovod")) {
+            return true;
+        }
 
         String[] tokens = normalized.trim().split(" +");
         for (String token : tokens) {
-            if (token.equals("xxx") || token.equals("adult") || token.equals("adults")
-                    || token.equals("18plus") || token.equals("erotik")
-                    || token.equals("erotic") || token.equals("porno")
-                    || token.equals("porn") || token.equals("pornhub")
-                    || token.equals("playboy") || token.equals("hustler")
-                    || token.equals("brazzers") || token.equals("redlight")) {
-                return true;
-            }
+            if (isStrongAdultToken(token)) return true;
         }
         return false;
     }
@@ -54,22 +59,55 @@ final class AdultContentPolicy {
         return source == null ? Collections.emptyList() : source;
     }
 
+    static int rawSize(List<Channel> source) {
+        return raw(source).size();
+    }
+
+    private static boolean isStrongAdultToken(String token) {
+        return token.equals("xxx") || token.equals("adult") || token.equals("adults")
+                || token.equals("18plus") || token.equals("erotik")
+                || token.equals("erotic") || token.equals("porno")
+                || token.equals("porn") || token.equals("pornhub")
+                || token.equals("sex") || token.equals("seks")
+                || token.equals("cinsel") || token.equals("yetiskin")
+                || token.equals("erwachsene") || token.equals("erwachsenen")
+                || token.equals("playboy") || token.equals("hustler")
+                || token.equals("brazzers") || token.equals("dorcel")
+                || token.equals("penthouse") || token.equals("redlight")
+                || token.equals("babestation") || token.equals("bangbros")
+                || token.equals("realitykings") || token.equals("naughtyamerica")
+                || token.equals("vividxxx") || token.equals("passionxxx")
+                || token.equals("privategold") || token.equals("maturexxx")
+                || token.equals("milfxxx");
+    }
+
+    private static boolean containsPhrase(String normalized, String... phrases) {
+        for (String phrase : phrases) {
+            String candidate = normalize(phrase).trim();
+            if (!candidate.isEmpty() && normalized.contains(" " + candidate + " ")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static String normalize(String value) {
         String lower = value.toLowerCase(Locale.ROOT)
-                .replace("+", "plus")
+                .replace('+', ' ')
                 .replace('ı', 'i')
                 .replace('ş', 's')
                 .replace('ğ', 'g')
                 .replace('ç', 'c')
                 .replace('ö', 'o')
-                .replace('ü', 'u');
+                .replace('ü', 'u')
+                .replace('ä', 'a')
+                .replace('ß', 's');
         StringBuilder result = new StringBuilder(lower.length() + 2);
         result.append(' ');
         boolean previousSpace = true;
         for (int i = 0; i < lower.length(); i++) {
             char c = lower.charAt(i);
-            boolean allowed = Character.isLetterOrDigit(c);
-            if (allowed) {
+            if (Character.isLetterOrDigit(c)) {
                 result.append(c);
                 previousSpace = false;
             } else if (!previousSpace) {
