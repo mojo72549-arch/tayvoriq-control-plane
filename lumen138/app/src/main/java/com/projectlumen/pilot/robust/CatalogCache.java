@@ -82,7 +82,7 @@ final class CatalogCache {
                 output.flush();
             }
             buffered.flush();
-            rawFile.getFD().sync();
+            if (isAndroidRuntime()) rawFile.getFD().sync();
         } catch (Exception failure) {
             if (file.exists()) file.delete();
             throw failure;
