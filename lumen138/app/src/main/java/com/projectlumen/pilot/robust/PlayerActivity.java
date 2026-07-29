@@ -68,7 +68,11 @@ public final class PlayerActivity extends Activity {
     private boolean forceTs;
     private boolean fallbackUsed;
     private boolean audioAutoRecoveryUsed;
+    private boolean stopped;
+    private boolean compatibilityProfile;
+    private int automaticRetryCount;
     private int audioChoiceIndex = -1;
+    private Runnable pendingRetry;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -86,29 +90,37 @@ public final class PlayerActivity extends Activity {
         if (name == null || name.isBlank()) name = "Stream";
 
         buildUi();
-        log.event(interaction, "PLAYER-VIEW-CREATE-END", "created=true engine=Media3 audioRecovery=true");
+        log.event(interaction, "PLAYER-VIEW-CREATE-END",
+                "created=true engine=Media3 audioRecovery=true httpRecovery=true");
         logDeviceAudioState();
         if (url == null || url.isBlank()) {
             showError("PLAY-NO-URL", "Keine abspielbare Streamadresse vorhanden.", false);
         } else {
-            log.event(interaction, "PLAYER-SET-MEDIA", "urlPresent=true profile=" + profile(url));
+            log.event(interaction, "PLAYER-SET-MEDIA",
+                    "urlPresent=true profile=" + profile(url));
         }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        if (url != null && !url.isBlank()) startPlayer(false);
+        stopped = false;
+        if (url != null && !url.isBlank() && player == null && pendingRetry == null) {
+            startPlayer(false, false);
+        }
     }
 
     @Override
     protected void onStop() {
+        stopped = true;
+        cancelPendingRetry();
         releasePlayer();
         super.onStop();
     }
 
     @Override
     protected void onDestroy() {
+        cancelPendingRetry();
         releasePlayer();
         super.onDestroy();
     }
@@ -184,12 +196,19 @@ public final class PlayerActivity extends Activity {
         root.addView(errorCard, errorParams);
     }
 
-    private void startPlayer(boolean forcedTs) {
+    private void startPlayer(boolean forcedTs, boolean compatibility) {
+        cancelPendingRetry();
         releasePlayer();
         forceTs = forcedTs;
+        compatibilityProfile = compatibility;
         openedAt = SystemClock.elapsedRealtime();
         errorCard.setVisibility(View.GONE);
-        status.setText(forcedTs ? "MPEG-TS-Fallback wird geöffnet …" : "Verbindung wird aufgebaut …");
+        if (compatibility) {
+            status.setText("Serververbindung wird neu aufgebaut …");
+        } else {
+            status.setText(forcedTs
+                    ? "MPEG-TS-Fallback wird geöffnet …" : "Verbindung wird aufgebaut …");
+        }
         audioChoices.clear();
         audioChoiceIndex = -1;
         audioButton.setText("Ton: Auto");
@@ -197,8 +216,11 @@ public final class PlayerActivity extends Activity {
         audioButton.setAlpha(0.55f);
 
         try {
+            String userAgent = compatibility
+                    ? "VLC/3.0.20 LibVLC/3.0.20"
+                    : "ProjectLumen/13.1.50 Media3";
             DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
-                    .setUserAgent("ProjectLumen/13.1.43 Media3")
+                    .setUserAgent(userAgent)
                     .setConnectTimeoutMs(15_000)
                     .setReadTimeoutMs(30_000)
                     .setAllowCrossProtocolRedirects(true);
@@ -223,12 +245,16 @@ public final class PlayerActivity extends Activity {
             player.addListener(listener);
             playerView.setPlayer(player);
 
-            MediaItem item = mediaItem(url, forcedTs);
-            player.setMediaItem(item);
-            if (resumePosition != C.TIME_UNSET && !isLikelyLive(url)) player.seekTo(resumePosition);
+            player.setMediaItem(mediaItem(url, forcedTs));
+            if (resumePosition != C.TIME_UNSET && !isLikelyLive(url)) {
+                player.seekTo(resumePosition);
+            }
             player.setPlayWhenReady(playWhenReady);
-            log.event(interaction, "PLAY-PREPARE-START", "engine=Media3 forcedTs="
-                    + forcedTs + " profile=" + profile(url) + " decoderFallback=true");
+            log.event(interaction, "PLAY-PREPARE-START",
+                    "engine=Media3 forcedTs=" + forcedTs
+                            + " profile=" + profile(url)
+                            + " connectionProfile=" + (compatibility ? "COMPAT" : "LUMEN")
+                            + " decoderFallback=true");
             player.prepare();
             player.play();
         } catch (Throwable failure) {
@@ -245,9 +271,14 @@ public final class PlayerActivity extends Activity {
                 status.setText("Stream wird gepuffert …");
                 log.event(interaction, "PLAY-BUFFER-START", "elapsedMs=" + elapsed());
             } else if (state == Player.STATE_READY) {
-                status.setText(audioChoices.isEmpty() ? "Bild bereit · Tonspur wird geprüft" : "Wiedergabe bereit");
-                log.event(interaction, "PLAY-READY", "elapsedMs=" + elapsed()
-                        + " volume=" + (player == null ? -1f : player.getVolume()));
+                pendingRetry = null;
+                status.setText(audioChoices.isEmpty()
+                        ? "Bild bereit · Tonspur wird geprüft" : "Wiedergabe bereit");
+                log.event(interaction, "PLAY-READY",
+                        "elapsedMs=" + elapsed()
+                                + " volume=" + (player == null ? -1f : player.getVolume())
+                                + " connectionProfile="
+                                + (compatibilityProfile ? "COMPAT" : "LUMEN"));
             } else if (state == Player.STATE_ENDED) {
                 status.setText("Wiedergabe beendet");
                 log.event(interaction, "PLAY-ENDED", "elapsedMs=" + elapsed());
@@ -262,39 +293,99 @@ public final class PlayerActivity extends Activity {
         @Override
         public void onIsPlayingChanged(boolean playing) {
             if (playing) {
-                status.setText(audioChoices.isEmpty() ? "Bild läuft · keine Tonspur erkannt" : "Wiedergabe läuft");
-                log.event(interaction, "PLAY-STARTED", "elapsedMs=" + elapsed()
-                        + " audioChoices=" + audioChoices.size());
+                status.setText(audioChoices.isEmpty()
+                        ? "Bild läuft · keine Tonspur erkannt" : "Wiedergabe läuft");
+                log.event(interaction, "PLAY-STARTED",
+                        "elapsedMs=" + elapsed() + " audioChoices=" + audioChoices.size());
             }
         }
 
         @Override
         public void onRenderedFirstFrame() {
-            log.event(interaction, "PLAY-FIRST-FRAME", "elapsedMs=" + elapsed() + " engine=Media3");
+            log.event(interaction, "PLAY-FIRST-FRAME",
+                    "elapsedMs=" + elapsed() + " engine=Media3");
         }
 
         @Override
         public void onVideoSizeChanged(VideoSize size) {
-            log.event(interaction, "PLAY-VIDEO-SIZE", "width=" + size.width + " height=" + size.height);
+            log.event(interaction, "PLAY-VIDEO-SIZE",
+                    "width=" + size.width + " height=" + size.height);
         }
 
         @Override
         public void onPlayerError(PlaybackException error) {
-            String errorName = errorName(error);
+            String mediaError = errorName(error);
+            int httpStatus = httpStatus(error);
             String details = errorDetails(error);
-            log.event(interaction, "PLAY-ERROR", "engine=Media3 code=" + error.errorCode
-                    + " name=" + errorName + " forcedTs=" + forceTs
-                    + " elapsedMs=" + elapsed() + " " + details);
-            if (!fallbackUsed && !forceTs && shouldFallback(errorName, url)) {
-                fallbackUsed = true;
-                log.event(interaction, "PLAY-FALLBACK-TS", "reason=" + errorName);
-                status.setText("Format wird als MPEG-TS erneut geöffnet …");
-                playerView.postDelayed(() -> startPlayer(true), 250);
+            PlaybackFailurePolicy.Decision decision = PlaybackFailurePolicy.decide(
+                    mediaError, httpStatus, automaticRetryCount, forceTs, url);
+
+            log.event(interaction, "PLAY-ERROR",
+                    "engine=Media3 code=" + error.errorCode
+                            + " name=" + mediaError
+                            + " classified=" + decision.code
+                            + " forcedTs=" + forceTs
+                            + " elapsedMs=" + elapsed() + " " + details);
+
+            if (httpStatus > 0) {
+                log.event(interaction, "PLAY-HTTP-STATUS",
+                        "status=" + httpStatus
+                                + " automaticRetryCount=" + automaticRetryCount
+                                + " connectionProfile="
+                                + (compatibilityProfile ? "COMPAT" : "LUMEN"));
+            }
+
+            if (decision.automaticRetry) {
+                scheduleAutomaticRetry(decision, httpStatus);
                 return;
             }
-            showError(errorName, friendlyMessage(errorName, details), true);
+
+            if (!fallbackUsed && decision.transportStreamFallback) {
+                fallbackUsed = true;
+                log.event(interaction, "PLAY-FALLBACK-TS", "reason=" + mediaError);
+                status.setText("Format wird als MPEG-TS erneut geöffnet …");
+                playerView.postDelayed(() -> {
+                    if (!stopped && !isFinishing()) startPlayer(true, compatibilityProfile);
+                }, 250L);
+                return;
+            }
+
+            if (httpStatus > 0 && automaticRetryCount > 0) {
+                log.event(interaction, "PLAY-HTTP-RETRY-EXHAUSTED",
+                        "status=" + httpStatus + " attempts=" + automaticRetryCount);
+            }
+            showError(decision.code, decision.message, true);
         }
     };
+
+    private void scheduleAutomaticRetry(PlaybackFailurePolicy.Decision decision,
+                                        int httpStatus) {
+        automaticRetryCount++;
+        compatibilityProfile = true;
+        releasePlayer();
+        errorCard.setVisibility(View.GONE);
+        status.setText(httpStatus > 0
+                ? "Server meldet HTTP " + httpStatus + " · neuer Versuch …"
+                : "Verbindung wird einmal neu aufgebaut …");
+        log.event(interaction, "PLAY-HTTP-RETRY-SCHEDULED",
+                "status=" + httpStatus
+                        + " attempt=" + automaticRetryCount
+                        + " delayMs=" + decision.retryDelayMs
+                        + " nextProfile=COMPAT");
+        pendingRetry = () -> {
+            pendingRetry = null;
+            if (!stopped && !isFinishing() && !isDestroyed()) {
+                startPlayer(false, true);
+            }
+        };
+        playerView.postDelayed(pendingRetry, decision.retryDelayMs);
+    }
+
+    private void cancelPendingRetry() {
+        if (pendingRetry == null || playerView == null) return;
+        playerView.removeCallbacks(pendingRetry);
+        pendingRetry = null;
+    }
 
     private void inspectAndRecoverAudio(Tracks tracks) {
         audioChoices.clear();
@@ -313,7 +404,8 @@ public final class PlayerActivity extends Activity {
                 boolean selected = group.isTrackSelected(index);
                 if (supported) supportedTracks++;
                 if (selected) selectedTracks++;
-                AudioChoice choice = new AudioChoice(mediaGroup, index, format, supported, selected);
+                AudioChoice choice = new AudioChoice(
+                        mediaGroup, index, format, supported, selected);
                 audioChoices.add(choice);
                 if (firstSupported == null && supported) firstSupported = choice;
                 log.event(interaction, "PLAY-AUDIO-TRACK",
@@ -329,8 +421,10 @@ public final class PlayerActivity extends Activity {
             }
         }
 
-        log.event(interaction, "PLAY-AUDIO-SUMMARY", "tracks=" + audioTracks
-                + " supported=" + supportedTracks + " selected=" + selectedTracks);
+        log.event(interaction, "PLAY-AUDIO-SUMMARY",
+                "tracks=" + audioTracks
+                        + " supported=" + supportedTracks
+                        + " selected=" + selectedTracks);
 
         if (supportedTracks > 0) {
             audioButton.setEnabled(true);
@@ -341,11 +435,14 @@ public final class PlayerActivity extends Activity {
                     ? "Ton: " + audioChoices.get(selectedIndex).shortLabel() : "Ton: Auto");
         }
 
-        if (selectedTracks == 0 && firstSupported != null && !audioAutoRecoveryUsed && player != null) {
+        if (selectedTracks == 0 && firstSupported != null
+                && !audioAutoRecoveryUsed && player != null) {
             audioAutoRecoveryUsed = true;
-            TrackSelectionOverride override = new TrackSelectionOverride(firstSupported.group, firstSupported.trackIndex);
-            player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
-                    .setOverrideForType(override).build());
+            TrackSelectionOverride override = new TrackSelectionOverride(
+                    firstSupported.group, firstSupported.trackIndex);
+            player.setTrackSelectionParameters(
+                    player.getTrackSelectionParameters().buildUpon()
+                            .setOverrideForType(override).build());
             log.event(interaction, "PLAY-AUDIO-AUTO-SELECT",
                     "mime=" + safe(firstSupported.format.sampleMimeType)
                             + " language=" + safe(firstSupported.format.language));
@@ -360,7 +457,9 @@ public final class PlayerActivity extends Activity {
     }
 
     private int selectedChoiceIndex() {
-        for (int i = 0; i < audioChoices.size(); i++) if (audioChoices.get(i).selected) return i;
+        for (int index = 0; index < audioChoices.size(); index++) {
+            if (audioChoices.get(index).selected) return index;
+        }
         return -1;
     }
 
@@ -371,15 +470,18 @@ public final class PlayerActivity extends Activity {
             int index = (Math.max(-1, start) + step) % audioChoices.size();
             AudioChoice choice = audioChoices.get(index);
             if (!choice.supported) continue;
-            TrackSelectionOverride override = new TrackSelectionOverride(choice.group, choice.trackIndex);
-            player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon()
-                    .setOverrideForType(override).build());
+            TrackSelectionOverride override = new TrackSelectionOverride(
+                    choice.group, choice.trackIndex);
+            player.setTrackSelectionParameters(
+                    player.getTrackSelectionParameters().buildUpon()
+                            .setOverrideForType(override).build());
             audioChoiceIndex = index;
             audioButton.setText("Ton: " + choice.shortLabel());
             status.setText("Tonspur " + choice.longLabel() + " wird aktiviert …");
-            log.event(interaction, "PLAY-AUDIO-MANUAL-SELECT", "index=" + index
-                    + " mime=" + safe(choice.format.sampleMimeType)
-                    + " language=" + safe(choice.format.language));
+            log.event(interaction, "PLAY-AUDIO-MANUAL-SELECT",
+                    "index=" + index
+                            + " mime=" + safe(choice.format.sampleMimeType)
+                            + " language=" + safe(choice.format.language));
             return;
         }
     }
@@ -387,21 +489,24 @@ public final class PlayerActivity extends Activity {
     private void logDeviceAudioState() {
         AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (audio == null) return;
-        log.event(interaction, "PLAY-DEVICE-AUDIO", "musicVolume="
-                + audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-                + " musicMax=" + audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                + " musicMuted=" + audio.isStreamMute(AudioManager.STREAM_MUSIC)
-                + " mode=" + audio.getMode());
+        log.event(interaction, "PLAY-DEVICE-AUDIO",
+                "musicVolume=" + audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                        + " musicMax=" + audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                        + " musicMuted=" + audio.isStreamMute(AudioManager.STREAM_MUSIC)
+                        + " mode=" + audio.getMode());
     }
 
     private void retry() {
+        cancelPendingRetry();
         fallbackUsed = false;
         forceTs = false;
+        compatibilityProfile = false;
+        automaticRetryCount = 0;
         audioAutoRecoveryUsed = false;
         resumePosition = C.TIME_UNSET;
         playWhenReady = true;
-        log.event(interaction, "PLAY-RETRY", "manual=true");
-        startPlayer(false);
+        log.event(interaction, "PLAY-RETRY", "manual=true resetHttpRecovery=true");
+        startPlayer(false, false);
     }
 
     private void releasePlayer() {
@@ -422,7 +527,8 @@ public final class PlayerActivity extends Activity {
 
     private void showError(String code, String message, boolean retryVisible) {
         status.setText("Wiedergabe nicht möglich");
-        errorText.setText("Wiedergabe nicht möglich\n\n" + message + "\n\nDiagnosecode: " + code);
+        errorText.setText("Wiedergabe nicht möglich\n\n"
+                + message + "\n\nDiagnosecode: " + code);
         View retry = errorCard.findViewWithTag("retry");
         if (retry != null) retry.setVisibility(retryVisible ? View.VISIBLE : View.GONE);
         errorCard.setVisibility(View.VISIBLE);
@@ -439,37 +545,30 @@ public final class PlayerActivity extends Activity {
         return builder.build();
     }
 
-    private static boolean shouldFallback(String errorName, String streamUrl) {
-        if (streamUrl == null) return false;
-        String lower = streamUrl.toLowerCase(Locale.ROOT);
-        if (lower.contains(".m3u8")) return false;
-        return errorName.contains("PARSING") || errorName.contains("UNSPECIFIED")
-                || lower.contains("/live/") || lower.endsWith(".ts") || lower.contains(".ts?");
-    }
-
-    private static String friendlyMessage(String errorName, String details) {
-        if (errorName.contains("BAD_HTTP_STATUS")) {
-            return details.contains("httpStatus=401") || details.contains("httpStatus=403")
-                    ? "Der Server hat den Stream abgewiesen. Zugang oder Streamadresse prüfen."
-                    : "Der Streaming-Server hat mit einem Fehlerstatus geantwortet.";
-        }
-        if (errorName.contains("TIMEOUT")) return "Der Streaming-Server antwortet nicht rechtzeitig.";
-        if (errorName.contains("NETWORK_CONNECTION_FAILED")) return "Die Netzwerkverbindung zum Streaming-Server ist fehlgeschlagen.";
-        if (errorName.contains("PARSING") || errorName.contains("CONTENT_TYPE")) return "Das gelieferte Streamformat konnte nicht erkannt oder gelesen werden.";
-        if (errorName.contains("DECODER") || errorName.contains("DECODING")) return "Der Video- oder Audiocodec wird auf diesem Gerät nicht unterstützt.";
-        return "Der genaue technische Fehler wurde in der Diagnose gespeichert.";
-    }
-
     private static String errorName(PlaybackException error) {
         String value = error == null ? null : error.getErrorCodeName();
-        return value == null || value.isBlank() ? "ERROR_CODE_UNSPECIFIED" : value;
+        return value == null || value.isBlank()
+                ? "ERROR_CODE_UNSPECIFIED" : value;
+    }
+
+    private static int httpStatus(Throwable error) {
+        Throwable current = error;
+        int depth = 0;
+        while (current != null && depth < 8) {
+            if (current instanceof HttpDataSource.InvalidResponseCodeException) {
+                return ((HttpDataSource.InvalidResponseCodeException) current).responseCode;
+            }
+            current = current.getCause();
+            depth++;
+        }
+        return -1;
     }
 
     private static String errorDetails(PlaybackException error) {
         StringBuilder result = new StringBuilder("causeChain=");
         Throwable current = error;
         int depth = 0;
-        while (current != null && depth < 6) {
+        while (current != null && depth < 8) {
             if (depth > 0) result.append('>');
             result.append(current.getClass().getSimpleName());
             if (current instanceof HttpDataSource.InvalidResponseCodeException) {
@@ -485,7 +584,8 @@ public final class PlayerActivity extends Activity {
     private static String profile(String streamUrl) {
         String lower = streamUrl.toLowerCase(Locale.ROOT);
         if (lower.contains(".m3u8")) return "HLS";
-        if (lower.endsWith(".ts") || lower.contains(".ts?") || lower.contains("/live/")) return "MPEG-TS-LIVE";
+        if (lower.endsWith(".ts") || lower.contains(".ts?")
+                || lower.contains("/live/")) return "MPEG-TS-LIVE";
         return "AUTO";
     }
 
@@ -497,11 +597,13 @@ public final class PlayerActivity extends Activity {
     }
 
     private static String safe(String value) {
-        return value == null || value.isBlank() ? "-" : value.replaceAll("[\\r\\n\\t]", " ");
+        return value == null || value.isBlank()
+                ? "-" : value.replaceAll("[\\r\\n\\t]", " ");
     }
 
     private long elapsed() {
-        return openedAt <= 0 ? 0 : Math.max(0, SystemClock.elapsedRealtime() - openedAt);
+        return openedAt <= 0 ? 0
+                : Math.max(0, SystemClock.elapsedRealtime() - openedAt);
     }
 
     private TextView text(String value, int size, int color, boolean bold) {
@@ -555,14 +657,19 @@ public final class PlayerActivity extends Activity {
         }
 
         String shortLabel() {
-            if (format.language != null && !format.language.isBlank()) return format.language.toUpperCase(Locale.ROOT);
-            String mime = format.sampleMimeType == null ? "Audio" : format.sampleMimeType;
+            if (format.language != null && !format.language.isBlank()) {
+                return format.language.toUpperCase(Locale.ROOT);
+            }
+            String mime = format.sampleMimeType == null
+                    ? "Audio" : format.sampleMimeType;
             int slash = mime.indexOf('/');
-            return (slash >= 0 ? mime.substring(slash + 1) : mime).toUpperCase(Locale.ROOT);
+            return (slash >= 0 ? mime.substring(slash + 1) : mime)
+                    .toUpperCase(Locale.ROOT);
         }
 
         String longLabel() {
-            return shortLabel() + (format.channelCount > 0 ? " · " + format.channelCount + " Kanäle" : "");
+            return shortLabel() + (format.channelCount > 0
+                    ? " · " + format.channelCount + " Kanäle" : "");
         }
     }
 }
