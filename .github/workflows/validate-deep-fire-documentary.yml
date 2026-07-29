@@ -74,7 +74,7 @@ jobs:
         run: |
           python - <<'PY'
           import tayvoriq_fire_safety_documentary_v4 as story
-          package = story.build_package_v4({})
+          package = story.build_package()
           assert package["approval_status"] == "PENDING_REVIEW"
           assert package["upload_status"] == "NOT_STARTED_PENDING_APPROVAL"
           assert package["instagram_status"] == "NOT_CONFIGURED_EXCLUDED"
