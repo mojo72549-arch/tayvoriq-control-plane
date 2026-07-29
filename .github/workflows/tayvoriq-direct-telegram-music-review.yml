@@ -1,0 +1,323 @@
+name: TAYVORIQ Direct Telegram Music Review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-direct-telegram-music-review.yml
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "send or poll"
+        required: true
+        default: "poll"
+        type: choice
+        options: [send, poll]
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tayvoriq-direct-telegram-music-review
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  send-review:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'send')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout decision repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install FFmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Verify Telegram secrets
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+
+      - name: Download positively reviewed master
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            "https://raw.githubusercontent.com/mojo72549-arch/mind-reset-daily/main/tayvoriq/runs/30277119576/tayvoriq-review.mp4" \
+            --output source-review.mp4
+          test -s source-review.mp4
+          ffprobe -v error -show_entries stream=codec_type,width,height:format=duration -of json source-review.mp4
+
+      - name: Add subtle original documentary music
+        run: |
+          set -euo pipefail
+          DURATION="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 source-review.mp4)"
+          export DURATION
+          python - <<'PY'
+          import math
+          import os
+          import random
+          import wave
+          from array import array
+
+          duration = float(os.environ["DURATION"])
+          rate = 44100
+          count = int(duration * rate)
+          rng = random.Random(72549)
+          frequencies = (73.42, 110.00, 146.83, 220.00)
+          phases = [rng.random() * 2 * math.pi for _ in frequencies]
+          pcm = array("h")
+          for i in range(count):
+              t = i / rate
+              intro = min(1.0, t / 1.8)
+              outro = min(1.0, max(0.0, duration - t) / 3.0)
+              breath = 0.72 + 0.18 * math.sin(2 * math.pi * 0.055 * t) + 0.10 * math.sin(2 * math.pi * 0.031 * t + 1.3)
+              signal = 0.0
+              for index, frequency in enumerate(frequencies):
+                  signal += (0.40, 0.27, 0.20, 0.13)[index] * math.sin(2 * math.pi * frequency * t + phases[index])
+              signal += 0.05 * math.sin(2 * math.pi * 36.71 * t)
+              signal *= 0.32 * intro * outro * breath
+              pcm.append(max(-32767, min(32767, int(signal * 32767))))
+          with wave.open("documentary-bed.wav", "wb") as handle:
+              handle.setnchannels(1)
+              handle.setsampwidth(2)
+              handle.setframerate(rate)
+              handle.writeframes(pcm.tobytes())
+          PY
+          FADE_OUT_START="$(python - <<PY
+          print(max(0.0, float('$DURATION') - 3.0))
+          PY
+          )"
+          ffmpeg -y -loglevel error \
+            -i source-review.mp4 -i documentary-bed.wav \
+            -filter_complex "[0:a]asplit=2[voice][control];[1:a]atrim=0:${DURATION},asetpts=N/SR/TB,volume=-27dB,afade=t=in:st=0:d=1.8,afade=t=out:st=${FADE_OUT_START}:d=3[music];[music][control]sidechaincompress=threshold=0.018:ratio=10:attack=18:release=420:makeup=1[ducked];[voice][ducked]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=0.95[aout]" \
+            -map 0:v:0 -map "[aout]" -c:v copy -c:a aac -b:a 192k -movflags +faststart -shortest \
+            final-tayvoriq-music-review.mp4
+          test -s final-tayvoriq-music-review.mp4
+
+      - name: Verify final media
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import subprocess
+          data = json.loads(subprocess.check_output([
+              "ffprobe", "-v", "error", "-show_entries", "stream=codec_type,width,height:format=duration",
+              "-of", "json", "final-tayvoriq-music-review.mp4"
+          ], text=True))
+          streams = data.get("streams") or []
+          kinds = {item.get("codec_type") for item in streams}
+          assert {"video", "audio"}.issubset(kinds), data
+          video = next(item for item in streams if item.get("codec_type") == "video")
+          assert (int(video.get("width") or 0), int(video.get("height") or 0)) == (1080, 1920), data
+          assert float((data.get("format") or {}).get("duration") or 0) > 20, data
+          print(json.dumps(data, indent=2))
+          PY
+
+      - name: Disable stale webhook polling conflict
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteWebhook" \
+            --header "Content-Type: application/json" \
+            --data '{"drop_pending_updates":false}'
+
+      - name: Send final video with approval buttons
+        id: telegram
+        run: |
+          set -euo pipefail
+          REVIEW_ID="${{ github.run_id }}"
+          KEYBOARD="$(python - <<PY
+          import json
+          print(json.dumps({
+              "inline_keyboard": [[
+                  {"text": "✅ Freigeben", "callback_data": "tayvoriq-direct:approve:${REVIEW_ID}"},
+                  {"text": "❌ Ablehnen", "callback_data": "tayvoriq-direct:reject:${REVIEW_ID}"}
+              ]]
+          }, ensure_ascii=False))
+          PY
+          )"
+          RESPONSE="$(curl --fail --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            --form-string "chat_id=${TELEGRAM_CHAT_ID}" \
+            --form "video=@final-tayvoriq-music-review.mp4;type=video/mp4" \
+            --form-string $'caption=🟢 TAYVORIQ Musik-Review ist bereit\n\nDie bereits positiv bewertete Stimme und das Bildmaterial wurden beibehalten. Ergänzt wurde eine dezente Dokumentar-Hintergrundmusik mit automatischer Absenkung unter der Stimme.\n\nNoch nicht veröffentlicht. Bitte vollständig ansehen und anschließend entscheiden.' \
+            --form-string "supports_streaming=true" \
+            --form-string "reply_markup=${KEYBOARD}")"
+          printf '%s\n' "$RESPONSE" > telegram-send-result.json
+          python - <<'PY'
+          import json
+          data=json.load(open("telegram-send-result.json", encoding="utf-8"))
+          assert data.get("ok") is True, data
+          print("Telegram-Zustellung bestätigt, message_id=", data["result"].get("message_id"))
+          PY
+          echo "review_id=$REVIEW_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Save pending review state
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-direct-reviews
+          python - <<PY
+          import json
+          from pathlib import Path
+          result=json.load(open("telegram-send-result.json", encoding="utf-8"))
+          review_id="${{ steps.telegram.outputs.review_id }}"
+          state={
+              "review_id": review_id,
+              "status": "PENDING_REVIEW",
+              "telegram_message_id": result["result"].get("message_id"),
+              "source_review_id": "30277119576",
+              "background_music": {
+                  "passed": True,
+                  "original_score": True,
+                  "music_gain_db": -27.0,
+                  "narration_ducking": True,
+                  "fade_in_seconds": 1.8,
+                  "fade_out_seconds": 3.0,
+              },
+              "platform_upload_performed": False,
+          }
+          Path(f".automation/tayvoriq-direct-reviews/{review_id}.json").write_text(
+              json.dumps(state, ensure_ascii=False, indent=2)+"\n", encoding="utf-8"
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-direct-reviews
+          git commit -m "Record pending TAYVORIQ Telegram review ${{ steps.telegram.outputs.review_id }}"
+          git pull --rebase origin main
+          git push origin main
+
+  poll-decision:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'poll')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout decision repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify Telegram secrets
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+
+      - name: Process direct Telegram decision
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          token=os.environ["TELEGRAM_BOT_TOKEN"].strip()
+          chat_expected=os.environ["TELEGRAM_CHAT_ID"].strip()
+          state_path=Path(".automation/tayvoriq-direct-poller-state.json")
+          state={"next_update_id":0,"decisions":{}}
+          if state_path.exists():
+              try: state.update(json.loads(state_path.read_text(encoding="utf-8")))
+              except Exception: pass
+
+          def call(method,payload):
+              req=urllib.request.Request(
+                  f"https://api.telegram.org/bot{token}/{method}",
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={"Content-Type":"application/json"}, method="POST")
+              with urllib.request.urlopen(req,timeout=30) as response:
+                  data=json.loads(response.read().decode("utf-8"))
+              if not data.get("ok"): raise RuntimeError(data)
+              return data.get("result")
+
+          updates=call("getUpdates",{
+              "offset":int(state.get("next_update_id") or 0),"limit":100,"timeout":0,
+              "allowed_updates":["callback_query"]}) or []
+          pattern=re.compile(r"^tayvoriq-direct:(approve|reject):(\d{6,})$")
+          changed=False
+          for update in updates:
+              state["next_update_id"]=max(int(state.get("next_update_id") or 0),int(update.get("update_id") or 0)+1)
+              callback=update.get("callback_query") or {}
+              match=pattern.fullmatch(str(callback.get("data") or ""))
+              if not match: continue
+              action,review_id=match.groups()
+              message=callback.get("message") or {}
+              chat_id=str((message.get("chat") or {}).get("id") or "")
+              callback_id=str(callback.get("id") or "")
+              message_id=int(message.get("message_id") or 0)
+              if chat_id != chat_expected:
+                  call("answerCallbackQuery",{"callback_query_id":callback_id,"text":"Nicht autorisierter Chat.","show_alert":True})
+                  continue
+              review_path=Path(f".automation/tayvoriq-direct-reviews/{review_id}.json")
+              if not review_path.exists():
+                  call("answerCallbackQuery",{"callback_query_id":callback_id,"text":"Review nicht gefunden.","show_alert":True})
+                  continue
+              review=json.loads(review_path.read_text(encoding="utf-8"))
+              if review.get("status") in {"APPROVED","REJECTED"}:
+                  call("answerCallbackQuery",{"callback_query_id":callback_id,"text":"Review bereits verarbeitet."})
+                  continue
+              status="APPROVED" if action=="approve" else "REJECTED"
+              review.update({
+                  "status":status,
+                  "processed_at":datetime.now(timezone.utc).isoformat(),
+                  "source":"telegram_direct_callback",
+                  "publication_pending_capacity":status=="APPROVED",
+              })
+              review_path.write_text(json.dumps(review,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+              state.setdefault("decisions",{})[review_id]=review
+              changed=True
+              call("answerCallbackQuery",{
+                  "callback_query_id":callback_id,
+                  "text":"Freigabe gespeichert." if status=="APPROVED" else "Review abgelehnt."})
+              if message_id:
+                  call("editMessageReplyMarkup",{
+                      "chat_id":chat_id,"message_id":message_id,
+                      "reply_markup":{"inline_keyboard":[]}})
+              text=(
+                  f"✅ TAYVORIQ Review {review_id} freigegeben.\n\nDie Entscheidung ist gespeichert. "
+                  "Der Plattform-Upload wird separat nach dem Publication-Gate ausgeführt."
+                  if status=="APPROVED"
+                  else f"❌ TAYVORIQ Review {review_id} abgelehnt. Es wird nichts veröffentlicht."
+              )
+              call("sendMessage",{"chat_id":chat_expected,"text":text})
+
+          state_path.parent.mkdir(parents=True,exist_ok=True)
+          state["last_checked_at"]=datetime.now(timezone.utc).isoformat()
+          state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print("changed=",changed)
+          PY
+
+      - name: Commit processed decision
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-direct-poller-state.json .automation/tayvoriq-direct-reviews 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No new decision."
+            exit 0
+          fi
+          git commit -m "Record direct TAYVORIQ Telegram decision"
+          git pull --rebase origin main
+          git push origin main
