@@ -109,17 +109,68 @@ final class M3uParser {
     }
 
     private static Channel.Type classify(String name, String group, String url) {
-        if (containsIgnoreCase(url, "/series/") || containsIgnoreCase(group, "series")
-                || containsIgnoreCase(group, "serie") || containsIgnoreCase(group, "dizi")
-                || containsIgnoreCase(name, "episode") || containsIgnoreCase(name, "staffel")) {
-            return Channel.Type.SERIES;
-        }
-        if (containsIgnoreCase(url, "/movie/") || containsIgnoreCase(group, "movie")
-                || containsIgnoreCase(group, "film") || containsIgnoreCase(group, "vod")
-                || containsIgnoreCase(group, "cinema") || containsIgnoreCase(group, "sinema")) {
-            return Channel.Type.MOVIE;
+        if (isSeries(name, group, url)) return Channel.Type.SERIES;
+        if (isMovie(group, url)) return Channel.Type.MOVIE;
+
+        boolean adult = AdultContentPolicy.isAdultText(group)
+                || AdultContentPolicy.isAdultText(name);
+        if (adult) {
+            // Many providers expose adult VOD without /movie/ or a VOD group name.
+            // Keep explicit live stations live; classify the remaining adult
+            // catalog as movies so PIN-unlocked VOD is not stranded in Live-TV.
+            return isExplicitLive(name, group, url)
+                    ? Channel.Type.LIVE : Channel.Type.MOVIE;
         }
         return Channel.Type.LIVE;
+    }
+
+    private static boolean isSeries(String name, String group, String url) {
+        return containsIgnoreCase(url, "/series/")
+                || containsIgnoreCase(group, "series")
+                || containsIgnoreCase(group, "serie")
+                || containsIgnoreCase(group, "dizi")
+                || containsIgnoreCase(name, "episode")
+                || containsIgnoreCase(name, "staffel");
+    }
+
+    private static boolean isMovie(String group, String url) {
+        return containsIgnoreCase(url, "/movie/")
+                || hasVideoFileExtension(url)
+                || containsIgnoreCase(group, "movie")
+                || containsIgnoreCase(group, "film")
+                || containsIgnoreCase(group, "vod")
+                || containsIgnoreCase(group, "cinema")
+                || containsIgnoreCase(group, "sinema");
+    }
+
+    private static boolean isExplicitLive(String name, String group, String url) {
+        return containsIgnoreCase(url, "/live/")
+                || endsWithPathIgnoreCase(url, ".ts")
+                || endsWithPathIgnoreCase(url, ".m3u8")
+                || containsIgnoreCase(group, "live")
+                || containsIgnoreCase(group, "channel")
+                || containsIgnoreCase(group, "kanal")
+                || containsIgnoreCase(group, "sender")
+                || containsIgnoreCase(name, " live")
+                || containsIgnoreCase(name, " tv");
+    }
+
+    private static boolean hasVideoFileExtension(String url) {
+        return endsWithPathIgnoreCase(url, ".mp4")
+                || endsWithPathIgnoreCase(url, ".mkv")
+                || endsWithPathIgnoreCase(url, ".avi")
+                || endsWithPathIgnoreCase(url, ".mov")
+                || endsWithPathIgnoreCase(url, ".m4v")
+                || endsWithPathIgnoreCase(url, ".webm");
+    }
+
+    private static boolean endsWithPathIgnoreCase(String value, String suffix) {
+        if (value == null) return false;
+        int query = value.indexOf('?');
+        String path = query >= 0 ? value.substring(0, query) : value;
+        return path.length() >= suffix.length()
+                && path.regionMatches(true, path.length() - suffix.length(),
+                suffix, 0, suffix.length());
     }
 
     private static String fallbackName(String url) {
