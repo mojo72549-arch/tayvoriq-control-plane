@@ -1,5 +1,13 @@
 plugins { id 'com.android.application' }
 
+def signingValues = [
+        System.getenv('LUMEN_RELEASE_KEYSTORE_PATH'),
+        System.getenv('LUMEN_RELEASE_STORE_PASSWORD'),
+        System.getenv('LUMEN_RELEASE_KEY_ALIAS'),
+        System.getenv('LUMEN_RELEASE_KEY_PASSWORD')
+]
+def releaseSigningReady = signingValues.every { it != null && !it.trim().isEmpty() }
+
 android {
     namespace 'com.projectlumen.pilot.robust'
     compileSdk 35
@@ -8,29 +16,38 @@ android {
         applicationId 'com.projectlumen.pilot.robust'
         minSdk 26
         targetSdk 35
-        versionCode 1314900
-        versionName '13.1.49-p0-no-parental'
-        buildConfigField 'String', 'BUILD_CHANNEL', '"closed-pilot-p0"'
-        buildConfigField 'boolean', 'PARENTAL_PROTECTION_ENABLED', 'false'
+        versionCode 1320001
+        versionName '13.2.0-rc1-release-hardening'
+        buildConfigField 'String', 'BUILD_CHANNEL', '"internal-release-candidate"'
+        buildConfigField 'boolean', 'PARENTAL_PROTECTION_ENABLED', 'true'
     }
 
     signingConfigs {
-        pilot {
-            storeFile rootProject.file('ci/keys/lumen-pilot-v1.jks')
-            storePassword System.getenv('LUMEN_PILOT_STORE_PASSWORD') ?: 'LumenPilot137!'
-            keyAlias 'lumen-pilot'
-            keyPassword System.getenv('LUMEN_PILOT_KEY_PASSWORD') ?: 'LumenPilot137!'
-            enableV1Signing true
-            enableV2Signing true
+        if (releaseSigningReady) {
+            create('release') {
+                storeFile file(signingValues[0])
+                storePassword signingValues[1]
+                keyAlias signingValues[2]
+                keyPassword signingValues[3]
+                enableV1Signing false
+                enableV2Signing true
+                enableV3Signing true
+            }
         }
     }
 
     buildTypes {
-        debug { signingConfig signingConfigs.pilot; debuggable true }
+        debug {
+            debuggable true
+            buildConfigField 'boolean', 'DIAGNOSTICS_UI_ENABLED', 'true'
+        }
         release {
-            signingConfig signingConfigs.pilot
-            minifyEnabled false
-            shrinkResources false
+            if (releaseSigningReady) {
+                signingConfig signingConfigs.getByName('release')
+            }
+            minifyEnabled true
+            shrinkResources true
+            buildConfigField 'boolean', 'DIAGNOSTICS_UI_ENABLED', 'false'
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -42,6 +59,7 @@ android {
 
     lint {
         abortOnError true
+        checkReleaseBuilds true
         disable 'UnsafeOptInUsageError'
     }
 
