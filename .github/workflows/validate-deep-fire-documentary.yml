@@ -1,0 +1,82 @@
+name: Validate Deep Fire Documentary
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/validate-deep-fire-documentary.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Checkout private implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: fix/deep-documentary-fire-safety-v29
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest numpy pillow moviepy==1.0.3
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Compile changed production modules
+        working-directory: implementation
+        run: |
+          python -m py_compile \
+            tools/tayvoriq_fire_safety_documentary_v2.py \
+            tools/tayvoriq_fire_safety_documentary_v3.py \
+            tools/tayvoriq_fire_safety_documentary_v4.py \
+            tools/tayvoriq_fire_safety_story_v29.py \
+            tools/tayvoriq_tts_router_v28.py \
+            tools/tayvoriq_tts_router_v29.py \
+            tools/tayvoriq_tts_router_v30.py \
+            tools/tayvoriq_speech_intelligibility_gate.py \
+            tools/tayvoriq_speech_intelligibility_gate_v3.py \
+            tools/tayvoriq_dual_platform_render_v23_entry.py
+
+      - name: Run documentary contract tests
+        working-directory: implementation
+        env:
+          PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+        run: |
+          pytest -q \
+            tests/test_tayvoriq_documentary_voice_gate_v29.py \
+            tests/test_tayvoriq_fire_safety_documentary_v2.py \
+            tests/test_tayvoriq_fire_safety_documentary_v3.py \
+            tests/test_tayvoriq_fire_safety_documentary_v4.py \
+            tests/test_tayvoriq_fire_safety_v4_render_binding.py \
+            tests/test_tayvoriq_speech_intelligibility_gate.py \
+            tests/test_tayvoriq_natural_chatterbox_v28.py
+
+      - name: Verify manual approval hold
+        working-directory: implementation
+        env:
+          PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+        run: |
+          python - <<'PY'
+          import tayvoriq_fire_safety_documentary_v4 as story
+          package = story.build_package_v4({})
+          assert package["approval_status"] == "PENDING_REVIEW"
+          assert package["upload_status"] == "NOT_STARTED_PENDING_APPROVAL"
+          assert package["instagram_status"] == "NOT_CONFIGURED_EXCLUDED"
+          print("Manual approval and upload hold confirmed")
+          PY
