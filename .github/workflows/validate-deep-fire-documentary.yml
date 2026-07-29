@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  EXPECTED_PRIVATE_HEAD: "d39a8d074808bfe5992bebb91a13e53750ac0d60"
+  EXPECTED_PRIVATE_HEAD: "ef257bbd857d6a09d819ed889d5142988fdf3c79"
 
 jobs:
   validate:
@@ -86,7 +86,7 @@ jobs:
           python - <<'PY'
           import tayvoriq_fire_safety_documentary_v4 as story
           package = story.build_package()
-          assert package["content_editor_version"] == "fire-safety-documentary-v4.2-clear-diction-and-pacing"
+          assert package["content_editor_version"] == "fire-safety-documentary-v4.3-exact-location"
           assert package["approval_status"] == "PENDING_REVIEW"
           assert package["upload_status"] == "NOT_STARTED_PENDING_APPROVAL"
           assert package["instagram_status"] == "NOT_CONFIGURED_EXCLUDED"
