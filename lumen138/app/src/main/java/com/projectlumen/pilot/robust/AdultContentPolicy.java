@@ -8,11 +8,10 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Fail-closed adult-content classification and catalog projection.
+ * Adult-content classification and optional protected catalog projection.
  *
- * The raw catalog is never modified or truncated. Locked callers receive a
- * filtered projection, while an explicitly unlocked parent session receives
- * the complete raw catalog again.
+ * The raw catalog is never modified or truncated. When parental protection is
+ * disabled for a build, callers receive the complete raw catalog immediately.
  */
 final class AdultContentPolicy {
     private AdultContentPolicy() { }
@@ -50,6 +49,7 @@ final class AdultContentPolicy {
     }
 
     static List<Channel> protect(List<Channel> source) {
+        if (!ParentalFeature.enabled()) return raw(source);
         if (source instanceof ProtectedChannelList) return source;
         return new ProtectedChannelList(source);
     }
@@ -133,6 +133,7 @@ final class AdultContentPolicy {
         List<Channel> raw() { return raw; }
 
         private List<Channel> current() {
+            if (!ParentalFeature.enabled()) return raw;
             long wanted = ParentalControl.generation();
             List<Channel> snapshot = visible;
             if (generation == wanted) return snapshot;
