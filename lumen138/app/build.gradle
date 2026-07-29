@@ -10,12 +10,12 @@ def releaseSigningReady = signingValues.every { it != null && !it.trim().isEmpty
 
 android {
     namespace 'com.projectlumen.pilot.robust'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.projectlumen.pilot.robust'
         minSdk 26
-        targetSdk 35
+        targetSdk 36
         versionCode 1320001
         versionName '13.2.0-rc1-release-hardening'
         buildConfigField 'String', 'BUILD_CHANNEL', '"internal-release-candidate"'
@@ -69,7 +69,7 @@ android {
 }
 
 dependencies {
-    def media3_version = '1.9.3'
+    def media3_version = '1.10.1'
     implementation "androidx.media3:media3-exoplayer:${media3_version}"
     implementation "androidx.media3:media3-exoplayer-hls:${media3_version}"
     implementation "androidx.media3:media3-ui:${media3_version}"
