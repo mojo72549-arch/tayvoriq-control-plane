@@ -26,6 +26,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -72,9 +73,11 @@ public final class MainActivity extends Activity {
     private PlaylistRepository repository;
     private SharedPreferences preferences;
     private List<Channel> all = Collections.emptyList();
+    private List<String> availableGroups = Collections.emptyList();
     private CatalogAdapter adapter;
     private Mode mode = Mode.LIVE;
     private MediaLanguage.Code language = MediaLanguage.Code.ALL;
+    private String selectedGroup = CatalogGroups.ALL;
     private boolean busy = true;
     private long lastInputEvent;
     private Runnable pendingFilter;
@@ -96,6 +99,8 @@ public final class MainActivity extends Activity {
     private Button allLanguageButton;
     private Button germanButton;
     private Button turkishButton;
+    private Button otherLanguageButton;
+    private Button groupButton;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -110,22 +115,29 @@ public final class MainActivity extends Activity {
         restoreViewState();
         log.event("-", "APP-CREATE-START", "thread=" + Thread.currentThread().getName());
         buildUi();
-        log.event("-", "APP-CREATE-END", "uiReady=true premiumShell=true");
+        log.event("-", "APP-CREATE-END", "uiReady=true premiumShell=true dynamicGroups=true");
         restore();
     }
 
     private void restoreViewState() {
         try { mode = Mode.valueOf(preferences.getString("mode", Mode.LIVE.name())); }
         catch (Exception ignored) { mode = Mode.LIVE; }
-        try { language = MediaLanguage.Code.valueOf(
-                preferences.getString("language", MediaLanguage.Code.ALL.name())); }
-        catch (Exception ignored) { language = MediaLanguage.Code.ALL; }
-        if (language == MediaLanguage.Code.OTHER) language = MediaLanguage.Code.ALL;
+        try {
+            language = MediaLanguage.Code.valueOf(
+                    preferences.getString("language", MediaLanguage.Code.ALL.name()));
+        } catch (Exception ignored) {
+            language = MediaLanguage.Code.ALL;
+        }
+        selectedGroup = preferences.getString("group", CatalogGroups.ALL);
+        if (selectedGroup == null) selectedGroup = CatalogGroups.ALL;
     }
 
     private void saveViewState() {
-        preferences.edit().putString("mode", mode.name())
-                .putString("language", language.name()).apply();
+        preferences.edit()
+                .putString("mode", mode.name())
+                .putString("language", language.name())
+                .putString("group", selectedGroup)
+                .apply();
     }
 
     private void buildUi() {
@@ -147,7 +159,8 @@ public final class MainActivity extends Activity {
         TextView mark = text("✦", tv() ? 23 : 19, BG, true);
         mark.setGravity(Gravity.CENTER);
         mark.setBackground(roundRect(ACCENT, 13, ACCENT));
-        header.addView(mark, new LinearLayout.LayoutParams(dp(tv() ? 46 : 39), dp(tv() ? 46 : 39)));
+        header.addView(mark, new LinearLayout.LayoutParams(
+                dp(tv() ? 46 : 39), dp(tv() ? 46 : 39)));
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
@@ -173,7 +186,8 @@ public final class MainActivity extends Activity {
         sourceButton = actionButton("+ Quelle", true);
         sourceButton.setEnabled(false);
         sourceButton.setOnClickListener(v -> showSourceMenu());
-        LinearLayout.LayoutParams sourceParams = new LinearLayout.LayoutParams(-2, dp(tv() ? 43 : 37));
+        LinearLayout.LayoutParams sourceParams = new LinearLayout.LayoutParams(
+                -2, dp(tv() ? 43 : 37));
         sourceParams.setMargins(dp(7), 0, 0, 0);
         header.addView(sourceButton, sourceParams);
         root.addView(header);
@@ -195,15 +209,29 @@ public final class MainActivity extends Activity {
 
         LinearLayout languages = new LinearLayout(this);
         languages.setOrientation(LinearLayout.HORIZONTAL);
-        germanButton = languageButton("🇩🇪 Deutsch", MediaLanguage.Code.DE);
-        turkishButton = languageButton("🇹🇷 Türkçe", MediaLanguage.Code.TR);
+        germanButton = languageButton(tv() ? "🇩🇪 Deutsch" : "🇩🇪 DE", MediaLanguage.Code.DE);
+        turkishButton = languageButton(tv() ? "🇹🇷 Türkçe" : "🇹🇷 TR", MediaLanguage.Code.TR);
+        otherLanguageButton = languageButton("Weitere", MediaLanguage.Code.OTHER);
         allLanguageButton = languageButton("Alle", MediaLanguage.Code.ALL);
         languages.addView(germanButton, weighted(0));
-        languages.addView(turkishButton, weighted(dp(6)));
-        languages.addView(allLanguageButton, weighted(dp(6)));
-        LinearLayout.LayoutParams languageParams = new LinearLayout.LayoutParams(-1, dp(tv() ? 46 : 39));
-        languageParams.setMargins(0, dp(7), 0, dp(9));
+        languages.addView(turkishButton, weighted(dp(5)));
+        languages.addView(otherLanguageButton, weighted(dp(5)));
+        languages.addView(allLanguageButton, weighted(dp(5)));
+        LinearLayout.LayoutParams languageParams = new LinearLayout.LayoutParams(
+                -1, dp(tv() ? 46 : 39));
+        languageParams.setMargins(0, dp(7), 0, dp(7));
         root.addView(languages, languageParams);
+
+        groupButton = baseChoiceButton("Alle Gruppen");
+        groupButton.setTextSize(tv() ? 14 : 12);
+        groupButton.setGravity(Gravity.CENTER_VERTICAL);
+        groupButton.setPadding(dp(13), 0, dp(13), 0);
+        groupButton.setEllipsize(TextUtils.TruncateAt.END);
+        groupButton.setOnClickListener(v -> showGroupChooser());
+        LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(
+                -1, dp(tv() ? 47 : 41));
+        groupParams.setMargins(0, 0, 0, dp(8));
+        root.addView(groupButton, groupParams);
 
         LinearLayout searchBar = new LinearLayout(this);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -217,17 +245,21 @@ public final class MainActivity extends Activity {
         search.setBackground(roundRect(SURFACE, 14, STROKE));
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { scheduleFilter(); }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                scheduleFilter();
+            }
             @Override public void afterTextChanged(Editable editable) { }
         });
-        searchBar.addView(search, new LinearLayout.LayoutParams(0, dp(tv() ? 53 : 46), 1f));
+        searchBar.addView(search, new LinearLayout.LayoutParams(
+                0, dp(tv() ? 53 : 46), 1f));
 
         count = text("0", tv() ? 14 : 12, BG, true);
         count.setGravity(Gravity.CENTER);
         count.setMinWidth(dp(tv() ? 51 : 43));
         count.setPadding(dp(9), 0, dp(9), 0);
         count.setBackground(roundRect(ACCENT, 22, ACCENT));
-        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(-2, dp(tv() ? 46 : 40));
+        LinearLayout.LayoutParams countParams = new LinearLayout.LayoutParams(
+                -2, dp(tv() ? 46 : 40));
         countParams.setMargins(dp(8), 0, 0, 0);
         searchBar.addView(count, countParams);
         root.addView(searchBar);
@@ -246,8 +278,12 @@ public final class MainActivity extends Activity {
         loadingCard.addView(loadingDetail, detailParams);
         loadingProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         loadingProgress.setIndeterminate(true);
-        if (loadingProgress.getIndeterminateDrawable() != null) loadingProgress.getIndeterminateDrawable().setTint(ACCENT);
-        if (loadingProgress.getProgressDrawable() != null) loadingProgress.getProgressDrawable().setTint(ACCENT);
+        if (loadingProgress.getIndeterminateDrawable() != null) {
+            loadingProgress.getIndeterminateDrawable().setTint(ACCENT);
+        }
+        if (loadingProgress.getProgressDrawable() != null) {
+            loadingProgress.getProgressDrawable().setTint(ACCENT);
+        }
         loadingCard.addView(loadingProgress, new LinearLayout.LayoutParams(-1, dp(4)));
         LinearLayout.LayoutParams loadingParams = new LinearLayout.LayoutParams(-1, -2);
         loadingParams.setMargins(0, dp(8), 0, 0);
@@ -314,7 +350,8 @@ public final class MainActivity extends Activity {
                     footerStatus.setText(repository.sourceName() + " · " + all.size()
                             + " Einträge · bereit in "
                             + (SystemClock.elapsedRealtime() - started) + " ms");
-                    empty.setText(all.isEmpty() ? "Noch keine Inhalte\nQuelle hinzufügen, um zu starten."
+                    empty.setText(all.isEmpty()
+                            ? "Noch keine Inhalte\nQuelle hinzufügen, um zu starten."
                             : "Keine Treffer in diesem Bereich.");
                     filterNow();
                     log.event("-", "RESTORE-PARSE-END", "entries=" + all.size()
@@ -339,13 +376,16 @@ public final class MainActivity extends Activity {
 
     private void showSourceMenu() {
         if (busy) return;
-        new AlertDialog.Builder(this).setTitle("Quelle hinzufügen")
+        new AlertDialog.Builder(this)
+                .setTitle("Quelle hinzufügen")
                 .setItems(new String[]{"Server + Login", "Playlist-Link", "Lokale M3U/M3U8-Datei"},
                         (dialog, which) -> {
                             if (which == 0) promptServer();
                             else if (which == 1) promptLink();
                             else openLocal();
-                        }).setNegativeButton("Abbrechen", null).show();
+                        })
+                .setNegativeButton("Abbrechen", null)
+                .show();
     }
 
     private void promptLink() {
@@ -353,12 +393,20 @@ public final class MainActivity extends Activity {
         name.setText("Meine Playlist");
         EditText url = input("Vollständiger M3U/M3U8-Link", false);
         url.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        new AlertDialog.Builder(this).setTitle("Playlist-Link")
+        new AlertDialog.Builder(this)
+                .setTitle("Playlist-Link")
                 .setMessage("Download, Verschlüsselung und Katalogaufbau laufen gemeinsam im Hintergrund.")
-                .setView(form(name, url)).setPositiveButton("Laden", (dialog, which) -> {
-                    try { importUrl(name.getText().toString(), requireHttpUrl(url.getText().toString()), "PLAYLIST-LINK"); }
-                    catch (Throwable failure) { validation(failure); }
-                }).setNegativeButton("Abbrechen", null).show();
+                .setView(form(name, url))
+                .setPositiveButton("Laden", (dialog, which) -> {
+                    try {
+                        importUrl(name.getText().toString(),
+                                requireHttpUrl(url.getText().toString()), "PLAYLIST-LINK");
+                    } catch (Throwable failure) {
+                        validation(failure);
+                    }
+                })
+                .setNegativeButton("Abbrechen", null)
+                .show();
     }
 
     private void promptServer() {
@@ -367,31 +415,41 @@ public final class MainActivity extends Activity {
         EditText server = input("Serveradresse, z. B. http://server:8080", false);
         EditText user = input("Benutzername", false);
         EditText pass = input("Passwort", true);
-        new AlertDialog.Builder(this).setTitle("Server + Login")
+        new AlertDialog.Builder(this)
+                .setTitle("Server + Login")
                 .setMessage("Zugangsdaten werden lokal verarbeitet und nicht in der Diagnose angezeigt.")
-                .setView(form(name, server, user, pass)).setPositiveButton("Verbinden", (dialog, which) -> {
+                .setView(form(name, server, user, pass))
+                .setPositiveButton("Verbinden", (dialog, which) -> {
                     try {
                         String base = requireHttpUrl(server.getText().toString());
                         while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
                         String username = user.getText().toString().trim();
                         String password = pass.getText().toString();
-                        if (username.isBlank() || password.isBlank()) throw new IllegalArgumentException("Benutzername oder Passwort fehlt.");
+                        if (username.isBlank() || password.isBlank()) {
+                            throw new IllegalArgumentException("Benutzername oder Passwort fehlt.");
+                        }
                         String url = base + "/get.php?username="
                                 + URLEncoder.encode(username, StandardCharsets.UTF_8.name())
-                                + "&password=" + URLEncoder.encode(password, StandardCharsets.UTF_8.name())
+                                + "&password="
+                                + URLEncoder.encode(password, StandardCharsets.UTF_8.name())
                                 + "&type=m3u_plus&output=mpegts";
                         importUrl(name.getText().toString(), url, "SERVER-LOGIN");
-                    } catch (Throwable failure) { validation(failure); }
-                }).setNegativeButton("Abbrechen", null).show();
+                    } catch (Throwable failure) {
+                        validation(failure);
+                    }
+                })
+                .setNegativeButton("Abbrechen", null)
+                .show();
     }
 
     private void openLocal() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/x-mpegurl",
-                "application/x-mpegurl", "application/vnd.apple.mpegurl",
-                "text/plain", "application/octet-stream"});
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                "audio/x-mpegurl", "application/x-mpegurl",
+                "application/vnd.apple.mpegurl", "text/plain",
+                "application/octet-stream"});
         startActivityForResult(intent, REQUEST_LOCAL);
     }
 
@@ -401,14 +459,17 @@ public final class MainActivity extends Activity {
         if (requestCode != REQUEST_LOCAL || resultCode != RESULT_OK
                 || data == null || data.getData() == null) return;
         Uri uri = data.getData();
-        try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
-        catch (Throwable ignored) { }
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (Throwable ignored) { }
         importLocal(uri);
     }
 
     private void importUrl(String name, String url, String origin) {
         String interaction = log.newInteractionId();
-        setBusy(true, "Quelle wird geladen", "Download, Verschlüsselung und Katalogaufbau laufen parallel.");
+        setBusy(true, "Quelle wird geladen",
+                "Download, Verschlüsselung und Katalogaufbau laufen parallel.");
         log.event(interaction, "IMPORT-START", "origin=" + origin + " urlPresent=true");
         worker.execute(() -> {
             try {
@@ -424,7 +485,8 @@ public final class MainActivity extends Activity {
 
     private void importLocal(Uri uri) {
         String interaction = log.newInteractionId();
-        setBusy(true, "Lokale Quelle wird verarbeitet", "Datei wird verschlüsselt und gleichzeitig katalogisiert.");
+        setBusy(true, "Lokale Quelle wird verarbeitet",
+                "Datei wird verschlüsselt und gleichzeitig katalogisiert.");
         log.event(interaction, "LOCAL-IMPORT-START", "uriPresent=true");
         worker.execute(() -> {
             try {
@@ -451,7 +513,9 @@ public final class MainActivity extends Activity {
                 loadingProgress.setIndeterminate(false);
                 loadingProgress.setMax(100_000);
                 loadingProgress.setProgress(Math.min(100_000, entries));
-            } else loadingProgress.setIndeterminate(true);
+            } else {
+                loadingProgress.setIndeterminate(true);
+            }
             footerStatus.setText(progressTitle(stage) + " · läuft im Hintergrund");
         });
     }
@@ -467,7 +531,9 @@ public final class MainActivity extends Activity {
     private static String progressTitle(String stage) {
         if (stage.contains("LEGACY-DECRYPT")) return "Altimport wird entschlüsselt";
         if (stage.contains("LEGACY-PARSE")) return "Altimport wird indexiert";
-        if (stage.contains("CACHE") && stage.contains("RESTORE")) return "Bibliothek wird sofort geöffnet";
+        if (stage.contains("CACHE") && stage.contains("RESTORE")) {
+            return "Bibliothek wird sofort geöffnet";
+        }
         if (stage.contains("CACHE")) return "Schnellstart wird vorbereitet";
         if (stage.contains("CANDIDATE")) return "Import wird abgeschlossen";
         if (stage.contains("CONNECT")) return "Verbindung wird aufgebaut";
@@ -483,8 +549,11 @@ public final class MainActivity extends Activity {
         start += marker.length();
         int end = start;
         while (end < text.length() && Character.isDigit(text.charAt(end))) end++;
-        try { return end == start ? -1 : Integer.parseInt(text.substring(start, end)); }
-        catch (NumberFormatException ignored) { return -1; }
+        try {
+            return end == start ? -1 : Integer.parseInt(text.substring(start, end));
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 
     private void finishImport(String interaction, List<Channel> result) {
@@ -492,10 +561,13 @@ public final class MainActivity extends Activity {
         search.setText("");
         mode = Mode.LIVE;
         language = MediaLanguage.Code.ALL;
+        selectedGroup = CatalogGroups.ALL;
+        availableGroups = Collections.emptyList();
         saveViewState();
         updateSelectionStyles();
         setBusy(false, "", "");
-        footerStatus.setText(repository.sourceName() + " · " + all.size() + " Einträge · Schnellstart aktiv");
+        footerStatus.setText(repository.sourceName() + " · " + all.size()
+                + " Einträge · Schnellstart aktiv");
         empty.setText("Keine Treffer in diesem Bereich.");
         filterNow();
         log.event(interaction, "CATALOG-READY", "entries=" + all.size());
@@ -508,8 +580,9 @@ public final class MainActivity extends Activity {
         footerStatus.setText(recoverable
                 ? "Download vollständig · Abschluss wird beim nächsten Start fortgesetzt"
                 : "Import fehlgeschlagen · bisherige Bibliothek bleibt aktiv");
-        Toast.makeText(this, recoverable ? "Die geladene Playlist bleibt gespeichert."
-                : "Import fehlgeschlagen. Systemstatus öffnen; bisherige Bibliothek bleibt erhalten.",
+        Toast.makeText(this, recoverable
+                        ? "Die geladene Playlist bleibt gespeichert."
+                        : "Import fehlgeschlagen. Systemstatus öffnen; bisherige Bibliothek bleibt erhalten.",
                 Toast.LENGTH_LONG).show();
     }
 
@@ -517,12 +590,16 @@ public final class MainActivity extends Activity {
         Channel channel = adapter.item(position);
         if (channel == null) return;
         String interaction = log.newInteractionId();
-        long delay = lastInputEvent <= 0 ? 0 : Math.max(0, SystemClock.uptimeMillis() - lastInputEvent);
-        log.event(interaction, "INPUT-DELIVERED", "deliveryDelayMs=" + delay + " position=" + position);
-        log.event(interaction, "SELECTION-VALIDATE-START", "item=" + log.anonymousId(channel.id));
+        long delay = lastInputEvent <= 0 ? 0
+                : Math.max(0, SystemClock.uptimeMillis() - lastInputEvent);
+        log.event(interaction, "INPUT-DELIVERED",
+                "deliveryDelayMs=" + delay + " position=" + position);
+        log.event(interaction, "SELECTION-VALIDATE-START",
+                "item=" + log.anonymousId(channel.id));
         if (channel.url.isBlank()) {
             log.event(interaction, "SELECTION-INVALID", "reason=empty-url");
-            Toast.makeText(this, "Dieser Eintrag enthält keine Stream-Adresse.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Dieser Eintrag enthält keine Stream-Adresse.",
+                    Toast.LENGTH_LONG).show();
             return;
         }
         log.event(interaction, "SELECTION-VALIDATE-OK", "type=" + channel.type
@@ -538,6 +615,8 @@ public final class MainActivity extends Activity {
         Button button = baseChoiceButton(label);
         button.setOnClickListener(v -> {
             mode = target;
+            selectedGroup = CatalogGroups.ALL;
+            availableGroups = Collections.emptyList();
             search.setText("");
             saveViewState();
             updateSelectionStyles();
@@ -551,12 +630,70 @@ public final class MainActivity extends Activity {
         button.setTextSize(tv() ? 13 : 11);
         button.setOnClickListener(v -> {
             language = target;
+            selectedGroup = CatalogGroups.ALL;
+            availableGroups = Collections.emptyList();
             search.setText("");
             saveViewState();
             updateSelectionStyles();
             filterNow();
         });
         return button;
+    }
+
+    private void showGroupChooser() {
+        if (busy) return;
+        List<String> groups = availableGroups;
+        if (groups.isEmpty()) {
+            Toast.makeText(this, "In diesem Bereich wurden keine Gruppen gefunden.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ArrayList<String> choices = new ArrayList<>(groups.size() + 1);
+        choices.add("Alle Gruppen");
+        choices.addAll(groups);
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(14);
+        panel.setPadding(padding, dp(4), padding, 0);
+
+        EditText groupSearch = input("Gruppen durchsuchen", false);
+        panel.addView(groupSearch, new LinearLayout.LayoutParams(-1, dp(48)));
+
+        ListView groupList = new ListView(this);
+        ArrayAdapter<String> groupAdapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_list_item_1, choices);
+        groupList.setAdapter(groupAdapter);
+        LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(-1, dp(tv() ? 520 : 420));
+        listParams.setMargins(0, dp(6), 0, 0);
+        panel.addView(groupList, listParams);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Gruppe auswählen · " + groups.size())
+                .setView(panel)
+                .setNegativeButton("Abbrechen", null)
+                .create();
+
+        groupSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                groupAdapter.getFilter().filter(s);
+            }
+            @Override public void afterTextChanged(Editable editable) { }
+        });
+
+        groupList.setOnItemClickListener((parent, view, position, id) -> {
+            String selected = groupAdapter.getItem(position);
+            selectedGroup = selected == null || selected.equals("Alle Gruppen")
+                    ? CatalogGroups.ALL : selected;
+            search.setText("");
+            saveViewState();
+            updateSelectionStyles();
+            filterNow();
+            dialog.dismiss();
+        });
+        dialog.show();
     }
 
     private Button baseChoiceButton(String label) {
@@ -578,8 +715,23 @@ public final class MainActivity extends Activity {
         styleChoice(seriesButton, mode == Mode.SERIES, ACCENT);
         styleChoice(germanButton, language == MediaLanguage.Code.DE, 0xFFF4D35E);
         styleChoice(turkishButton, language == MediaLanguage.Code.TR, 0xFFE94D5F);
+        styleChoice(otherLanguageButton, language == MediaLanguage.Code.OTHER, 0xFFC8A7FF);
         styleChoice(allLanguageButton, language == MediaLanguage.Code.ALL, ACCENT_BLUE);
-        if (sectionTitle != null) sectionTitle.setText(label(mode) + "  ·  " + MediaLanguage.label(language));
+        styleChoice(groupButton, !selectedGroup.isEmpty(), ACCENT_BLUE);
+        updateGroupButton();
+        if (sectionTitle != null) {
+            String title = label(mode) + "  ·  " + MediaLanguage.label(language);
+            if (!selectedGroup.isEmpty()) title += "  ·  " + selectedGroup;
+            sectionTitle.setText(title);
+        }
+    }
+
+    private void updateGroupButton() {
+        if (groupButton == null) return;
+        String title = selectedGroup.isEmpty() ? "Alle Gruppen" : selectedGroup;
+        groupButton.setText(title + "  ·  " + availableGroups.size() + "  ▾");
+        groupButton.setEnabled(!busy && !availableGroups.isEmpty());
+        groupButton.setAlpha(groupButton.isEnabled() ? 1f : 0.6f);
     }
 
     private void styleChoice(Button button, boolean selected, int selectedColor) {
@@ -601,59 +753,59 @@ public final class MainActivity extends Activity {
         int generation = filterGeneration.incrementAndGet();
         Mode wantedMode = mode;
         MediaLanguage.Code wantedLanguage = language;
+        String wantedGroup = selectedGroup;
         String query = search.getText().toString().trim();
         List<Channel> base = all;
         log.event("-", "LIST-SNAPSHOT-REQUEST", "mode=" + wantedMode
                 + " language=" + wantedLanguage + " base=" + base.size()
+                + " groupSelected=" + !wantedGroup.isEmpty()
                 + " queryLength=" + query.length());
         worker.execute(() -> {
             long started = SystemClock.elapsedRealtime();
-            ArrayList<Channel> result = new ArrayList<>();
-            for (Channel channel : base) {
-                if (!matchesMode(channel, wantedMode)) continue;
-                if (wantedLanguage != MediaLanguage.Code.ALL
-                        && MediaLanguage.detect(channel) != wantedLanguage) continue;
-                if (!query.isBlank() && !matches(channel, query)) continue;
-                result.add(channel);
-            }
-            List<Channel> immutable = Collections.unmodifiableList(result);
+            CatalogGroups.Snapshot snapshot = CatalogGroups.build(
+                    base, type(wantedMode), wantedLanguage, wantedGroup, query);
             long duration = SystemClock.elapsedRealtime() - started;
             main.post(() -> {
-                if (generation != filterGeneration.get() || wantedMode != mode
-                        || wantedLanguage != language) return;
-                adapter.submit(immutable);
-                count.setText(Integer.toString(immutable.size()));
-                if (!busy) footerStatus.setText(repository.sourceName() + " · " + label(wantedMode)
-                        + " · " + MediaLanguage.label(wantedLanguage) + " · "
-                        + immutable.size() + " Treffer");
-                log.event("-", "LIST-SNAPSHOT-READY", "rows=" + immutable.size()
-                        + " durationMs=" + duration + " language=" + wantedLanguage);
+                if (generation != filterGeneration.get()
+                        || wantedMode != mode
+                        || wantedLanguage != language
+                        || !TextUtils.equals(wantedGroup, selectedGroup)) return;
+
+                if (!TextUtils.equals(wantedGroup, snapshot.selectedGroup)) {
+                    selectedGroup = snapshot.selectedGroup;
+                    saveViewState();
+                }
+                availableGroups = snapshot.groups;
+                adapter.submit(snapshot.rows);
+                count.setText(Integer.toString(snapshot.rows.size()));
+                updateSelectionStyles();
+
+                if (!busy) {
+                    String groupLabel = selectedGroup.isEmpty() ? "Alle Gruppen" : selectedGroup;
+                    footerStatus.setText(repository.sourceName() + " · " + label(wantedMode)
+                            + " · " + MediaLanguage.label(wantedLanguage)
+                            + " · " + groupLabel + " · " + snapshot.rows.size() + " Treffer");
+                }
+                log.event("-", "LIST-SNAPSHOT-READY", "rows=" + snapshot.rows.size()
+                        + " groups=" + snapshot.groups.size()
+                        + " durationMs=" + duration
+                        + " language=" + wantedLanguage
+                        + " groupSelected=" + !selectedGroup.isEmpty());
                 list.post(() -> log.event("-", "LIST-FIRST-FRAME",
                         "visibleChildren=" + list.getChildCount()));
             });
         });
     }
 
-    private static boolean matchesMode(Channel channel, Mode mode) {
-        return mode == Mode.LIVE ? channel.type == Channel.Type.LIVE
-                : mode == Mode.MOVIES ? channel.type == Channel.Type.MOVIE
-                : channel.type == Channel.Type.SERIES;
-    }
-
-    private static boolean matches(Channel channel, String query) {
-        return containsIgnoreCase(channel.name, query) || containsIgnoreCase(channel.group, query);
-    }
-
-    private static boolean containsIgnoreCase(String text, String needle) {
-        int limit = text.length() - needle.length();
-        for (int index = 0; index <= limit; index++) {
-            if (text.regionMatches(true, index, needle, 0, needle.length())) return true;
-        }
-        return false;
+    private static Channel.Type type(Mode mode) {
+        return mode == Mode.MOVIES ? Channel.Type.MOVIE
+                : mode == Mode.SERIES ? Channel.Type.SERIES
+                : Channel.Type.LIVE;
     }
 
     private static String label(Mode mode) {
-        return mode == Mode.MOVIES ? "Filme" : mode == Mode.SERIES ? "Serien" : "Live-TV";
+        return mode == Mode.MOVIES ? "Filme"
+                : mode == Mode.SERIES ? "Serien" : "Live-TV";
     }
 
     private EditText input(String hint, boolean password) {
@@ -664,7 +816,10 @@ public final class MainActivity extends Activity {
         editText.setHintTextColor(0xFF7893A7);
         editText.setPadding(dp(12), dp(10), dp(12), dp(10));
         editText.setBackground(roundRect(SURFACE, 12, STROKE));
-        if (password) editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        if (password) {
+            editText.setInputType(
+                    InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        }
         return editText;
     }
 
@@ -684,9 +839,14 @@ public final class MainActivity extends Activity {
         String value = raw == null ? "" : raw.trim();
         if (value.isBlank()) throw new IllegalArgumentException("Adresse fehlt.");
         URI uri = new URI(value);
-        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
-        if (!scheme.equals("http") && !scheme.equals("https")) throw new IllegalArgumentException("Nur HTTP- und HTTPS-Adressen werden unterstützt.");
-        if (uri.getHost() == null && uri.getAuthority() == null) throw new IllegalArgumentException("Serveradresse ist unvollständig.");
+        String scheme = uri.getScheme() == null ? ""
+                : uri.getScheme().toLowerCase(Locale.ROOT);
+        if (!scheme.equals("http") && !scheme.equals("https")) {
+            throw new IllegalArgumentException("Nur HTTP- und HTTPS-Adressen werden unterstützt.");
+        }
+        if (uri.getHost() == null && uri.getAuthority() == null) {
+            throw new IllegalArgumentException("Serveradresse ist unvollständig.");
+        }
         return value;
     }
 
@@ -705,6 +865,7 @@ public final class MainActivity extends Activity {
             loadingDetail.setText(detail);
             loadingProgress.setIndeterminate(true);
         }
+        updateGroupButton();
     }
 
     private Button actionButton(String value, boolean primary) {
@@ -725,14 +886,18 @@ public final class MainActivity extends Activity {
 
     private SpannableString brandText() {
         SpannableString value = new SpannableString("PROJECT LUMEN");
-        value.setSpan(new StyleSpan(Typeface.BOLD), 0, value.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        value.setSpan(new ForegroundColorSpan(ACCENT), 8, value.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        value.setSpan(new StyleSpan(Typeface.BOLD), 0, value.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        value.setSpan(new ForegroundColorSpan(ACCENT), 8, value.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         return value;
     }
 
     private static String message(Throwable failure) {
-        return failure == null || failure.getMessage() == null || failure.getMessage().isBlank()
-                ? "Vorgang konnte nicht abgeschlossen werden." : failure.getMessage();
+        return failure == null || failure.getMessage() == null
+                || failure.getMessage().isBlank()
+                ? "Vorgang konnte nicht abgeschlossen werden."
+                : failure.getMessage();
     }
 
     @Override
