@@ -15,8 +15,8 @@ import java.util.List;
 /** Compact, versioned catalog cache used for sub-second app restore. */
 final class CatalogCache {
     private static final int MAGIC = 0x4C554D34; // LUM4
-    // v2 rebuilds 13.1.44 indexes so adult VOD receives corrected media types.
-    private static final int VERSION = 2;
+    // v3 persists playlist sender logos; older caches are rebuilt from the encrypted playlist.
+    private static final int VERSION = 3;
     private static final int MAX_ENTRIES = 100_000;
     private static final int MAX_STRING_BYTES = 4 * 1024 * 1024;
     private static final int BUFFER_BYTES = 1024 * 1024;
@@ -43,6 +43,7 @@ final class CatalogCache {
                 writeString(output, channel.name);
                 writeString(output, channel.group);
                 writeString(output, channel.url);
+                writeString(output, channel.logoUrl);
                 output.writeByte(channel.type.ordinal());
             }
             output.flush();
@@ -72,9 +73,10 @@ final class CatalogCache {
                 String name = readString(input);
                 String group = readString(input);
                 String url = readString(input);
+                String logo = readString(input);
                 int typeIndex = input.readUnsignedByte();
                 if (typeIndex >= types.length) throw new IllegalStateException("Ungültiger Medientyp im Cache.");
-                result.add(new Channel(id, name, group, url, types[typeIndex]));
+                result.add(new Channel(id, name, group, url, logo, types[typeIndex]));
             }
             return AdultContentPolicy.protect(result);
         } catch (EOFException incomplete) {
