@@ -82,16 +82,16 @@ jobs:
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
           python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"
 
-      - name: Generate short emotional voice sample
+      - name: Generate a few-second warm emotional sample
         run: |
           set -euo pipefail
           mkdir -p sample
           cat > sample/text.txt <<'TEXT'
-          Manchmal reicht ein einziger Moment ... und plötzlich wird alles still. Genau dann zählt nicht nur, was wir sagen – sondern ob man spürt, dass wir es wirklich meinen.
+          Ein einziger Funke genügt ... und plötzlich wird aus Ruhe echte Gefahr. Genau dann zählt jede Sekunde.
           TEXT
           unset TAYVORIQ_CHATTERBOX_REFERENCE_AUDIO || true
           export TAYVORIQ_CHATTERBOX_MAX_CHUNKS=1
-          export TAYVORIQ_CHATTERBOX_MAX_CHARS=420
+          export TAYVORIQ_CHATTERBOX_MAX_CHARS=220
           export TAYVORIQ_CHATTERBOX_CPU_THREADS=4
           python implementation/tools/tayvoriq_chatterbox_worker.py \
             --text-file sample/text.txt \
@@ -99,8 +99,8 @@ jobs:
             --report sample/voice-report.json \
             --language de \
             --model-version v3 \
-            --exaggeration 0.58 \
-            --cfg-weight 0.42 \
+            --exaggeration 0.50 \
+            --cfg-weight 0.50 \
             --pause-ms 420
           python - <<'PY'
           import json
@@ -115,13 +115,13 @@ jobs:
         run: |
           set -euo pipefail
           ffmpeg -y -loglevel error -i sample/raw.wav \
-            -af "highpass=f=55,lowpass=f=15000,acompressor=threshold=-22dB:ratio=1.6:attack=35:release=280,loudnorm=I=-16:TP=-1.5:LRA=11" \
+            -af "highpass=f=55,lowpass=f=15000,acompressor=threshold=-22dB:ratio=1.45:attack=40:release=320,loudnorm=I=-16:TP=-1.5:LRA=11" \
             -c:a aac -b:a 192k sample/voice.m4a
           DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 sample/voice.m4a)
           ffmpeg -y -loglevel error \
             -f lavfi -i "color=c=0x0b0f18:s=1080x1920:r=30:d=${DURATION}" \
             -i sample/voice.m4a \
-            -filter_complex "[0:v]drawbox=x=100:y=520:w=880:h=880:color=0x151d2c@0.92:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='TAYVORIQ':fontcolor=white:fontsize=82:x=(w-text_w)/2:y=650,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='MENSCHLICHER STIMMENTEST':fontcolor=0x9fd3ff:fontsize=42:x=(w-text_w)/2:y=770,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='ohne synthetische Referenz':fontcolor=white:fontsize=35:x=(w-text_w)/2:y=1210[base];[1:a]asplit=2[aout][wavein];[wavein]showwaves=s=760x220:mode=line:rate=30:colors=white[wave];[base][wave]overlay=(W-w)/2:900[outv]" \
+            -filter_complex "[0:v]drawbox=x=100:y=520:w=880:h=880:color=0x151d2c@0.92:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='TAYVORIQ':fontcolor=white:fontsize=82:x=(w-text_w)/2:y=650,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='CHATTERBOX V3':fontcolor=0x9fd3ff:fontsize=46:x=(w-text_w)/2:y=770,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='warm und emotional':fontcolor=white:fontsize=38:x=(w-text_w)/2:y=1210[base];[1:a]asplit=2[aout][wavein];[wavein]showwaves=s=760x220:mode=line:rate=30:colors=white[wave];[base][wave]overlay=(W-w)/2:900[outv]" \
             -map "[outv]" -map "[aout]" -c:v libx264 -pix_fmt yuv420p -preset medium -crf 20 \
             -c:a aac -b:a 192k -shortest -movflags +faststart sample/tayvoriq-human-voice-sample.mp4
           test -s sample/tayvoriq-human-voice-sample.mp4
@@ -138,14 +138,14 @@ jobs:
           cp sample/tayvoriq-human-voice-sample.mp4 "$TARGET/voice-sample.mp4"
           cp sample/voice-report.json "$TARGET/voice-report.json"
           cat > "$TARGET/index.html" <<HTML
-          <!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TAYVORIQ Stimmtest</title><style>body{margin:0;background:#080b12;color:#fff;font-family:system-ui,sans-serif}main{max-width:560px;margin:auto;padding:20px}video{width:100%;max-height:82vh;background:#000;border-radius:18px}.box{margin-top:14px;padding:14px;background:#131a28;border:1px solid #2c3b55;border-radius:14px;line-height:1.5}a{color:#9fd3ff}</style></head><body><main><h1>🎙️ TAYVORIQ Stimmtest</h1><video controls playsinline autoplay src="voice-sample.mp4"></video><div class="box"><strong>Nur ein kurzer Hörtest.</strong><br>Ein zusammenhängender Take, keine synthetische Referenzstimme und kein künstliches Tieferpitchen.</div><p><a href="voice-sample.mp4">Video direkt öffnen</a></p></main></body></html>
+          <!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TAYVORIQ Chatterbox-Stimmtest</title><style>body{margin:0;background:#080b12;color:#fff;font-family:system-ui,sans-serif}main{max-width:560px;margin:auto;padding:20px}video{width:100%;max-height:82vh;background:#000;border-radius:18px}.box{margin-top:14px;padding:14px;background:#131a28;border:1px solid #2c3b55;border-radius:14px;line-height:1.5}a{color:#9fd3ff}</style></head><body><main><h1>🎙️ Chatterbox V3 – kurzer Hörtest</h1><video controls playsinline autoplay src="voice-sample.mp4"></video><div class="box"><strong>Nur wenige Sekunden.</strong><br>Ein zusammenhängender Take, warme emotionale Abstimmung, keine synthetische Referenzstimme und kein künstliches Tieferpitchen.</div><p><a href="voice-sample.mp4">Video direkt öffnen</a></p></main></body></html>
           HTML
           touch pages-worktree/.nojekyll
           cd pages-worktree
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "tayvoriq/voice-samples/${SAMPLE_ID}" .nojekyll
-          git commit -m "Publish TAYVORIQ human voice sample ${SAMPLE_ID}"
+          git commit -m "Publish TAYVORIQ warm emotional Chatterbox sample ${SAMPLE_ID}"
           git push origin main
 
       - name: Wait for sample page
@@ -167,7 +167,7 @@ jobs:
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=🎙️ Kurzer menschlicher Stimmtest ist bereit\n\nNur wenige Sekunden zum Reinhören: mehr Emotion, keine synthetische Referenz und kein künstliches Tieferpitchen.' \
+            --data-urlencode $'text=🎙️ Neuer kurzer Chatterbox-Stimmtest ist bereit\n\nNur wenige Sekunden: warm, emotional, ein zusammenhängender Take und ohne künstliches Tieferpitchen.' \
             --data-urlencode "reply_markup={\"inline_keyboard\":[[{\"text\":\"▶️ Stimmtest anhören\",\"url\":\"${URL}\"}]]}"
 
       - name: Upload sample evidence
