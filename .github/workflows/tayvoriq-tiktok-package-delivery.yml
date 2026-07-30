@@ -1,0 +1,38 @@
+name: TAYVORIQ TikTok Package Delivery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-tiktok-package-delivery.yml"
+      - ".automation/tayvoriq-tiktok-package-delivery.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - name: Validate Telegram secrets
+        run: |
+          set -euo pipefail
+          test -n "${TELEGRAM_BOT_TOKEN:-}"
+          test -n "${TELEGRAM_CHAT_ID:-}"
+
+      - name: Send TikTok upload package
+        run: |
+          set -euo pipefail
+          PACKAGE_URL="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/tiktok/30466280905/"
+          VIDEO_URL="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/30466280905/tayvoriq-review.mp4"
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode $'text=🎵 TikTok-Paket für den ersten TAYVORIQ-Short\n\nDas veröffentlichte Waldbrand-Video ist jetzt als TikTok-Paket vorbereitet. Im Paket kannst du das MP4 herunterladen und die fertige Caption kopieren.\n\nCaption:\nWaldbrand: So reagierst du im Ernstfall richtig\n\nBring dich zuerst in Sicherheit. Teile dieses Video, damit andere im Ernstfall richtig reagieren.\n\n#Waldbrand #Brandschutz #Sicherheit #TAYVORIQ' \
+            --data-urlencode "reply_markup={\"inline_keyboard\":[[{\"text\":\"🎵 TikTok-Paket öffnen\",\"url\":\"${PACKAGE_URL}\"}],[{\"text\":\"⬇️ MP4 direkt öffnen\",\"url\":\"${VIDEO_URL}\"}]]}"
