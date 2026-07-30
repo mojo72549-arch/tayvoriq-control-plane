@@ -1,0 +1,75 @@
+name: Project Lumen 13.2 RC3 Stable49 Direct Build
+
+on:
+  push:
+    branches:
+      - build/project-lumen-v13.2.0-rc3-stable49
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout stable49 RC branch
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android SDK packages
+        shell: bash
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+      - name: Set up pinned Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Restore stable Project Lumen signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode lumen138/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
+          echo "764e0c501b8c13fb1eae852bcaddd16aab0c31109cf17de97bde5d15327a8817  lumen138/ci/keys/lumen-pilot-v1.jks" | sha256sum --check
+      - name: Unit tests lint and signed release APK
+        shell: bash
+        working-directory: lumen138
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          gradle --no-daemon testDebugUnitTest lintDebug assembleRelease 2>&1 | tee "$GITHUB_WORKSPACE/dist/android-build.log"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Samsung.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_FireTV.apk"
+      - name: Verify package version signature and launchers
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-signature.txt"
+          "$AAPT" dump badging "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml | tee "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
+          grep -q "package: name='com.projectlumen.pilot.robust'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          grep -q "versionName='13.2.0-rc3-stable49'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          grep -q 'android.intent.category.LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
+          grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Samsung.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Samsung.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_FireTV.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_FireTV.apk.sha256"
+          printf 'version=13.2.0-rc3-stable49\nbase_commit=d6d161dbfeccd7333122aaf86558b1f1b823cae0\npackage=com.projectlumen.pilot.robust\ncommit=%s\nsignature=stable-project-lumen-pilot\nlauncher=smartphone-and-leanback\n' "$GITHUB_SHA" > "$GITHUB_WORKSPACE/dist/BUILD_INFO.txt"
+      - name: Upload Stable49 RC3 package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-2-0-rc3-stable49-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
