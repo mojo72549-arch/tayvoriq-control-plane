@@ -3,8 +3,8 @@ package com.projectlumen.pilot.robust;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.Set;
 
 /** Lightweight local favorites and recently viewed store; no cloud or account dependency. */
 final class UserCollectionStore {
@@ -20,7 +20,7 @@ final class UserCollectionStore {
 
     private UserCollectionStore(Context context) {
         preferences = context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        favorites = new LinkedHashSet<>(preferences.getStringSet(FAVORITES, Set.of()));
+        favorites = new LinkedHashSet<>(preferences.getStringSet(FAVORITES, Collections.emptySet()));
         recent = decodeRecent(preferences.getString(RECENT, ""));
     }
 
