@@ -121,8 +121,8 @@ jobs:
           ffmpeg -y -loglevel error \
             -f lavfi -i "color=c=0x0b0f18:s=1080x1920:r=30:d=${DURATION}" \
             -i sample/voice.m4a \
-            -filter_complex "[0:v]drawbox=x=100:y=520:w=880:h=880:color=0x151d2c@0.92:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='TAYVORIQ':fontcolor=white:fontsize=82:x=(w-text_w)/2:y=650,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='MENSCHLICHER STIMMENTEST':fontcolor=0x9fd3ff:fontsize=42:x=(w-text_w)/2:y=770,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='ohne synthetische Referenz':fontcolor=white:fontsize=35:x=(w-text_w)/2:y=1210,showwaves=s=760x220:mode=line:rate=30:colors=white[wave];[0:v][wave]overlay=(W-w)/2:900[outv]" \
-            -map "[outv]" -map 1:a:0 -c:v libx264 -pix_fmt yuv420p -preset medium -crf 20 \
+            -filter_complex "[0:v]drawbox=x=100:y=520:w=880:h=880:color=0x151d2c@0.92:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='TAYVORIQ':fontcolor=white:fontsize=82:x=(w-text_w)/2:y=650,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='MENSCHLICHER STIMMENTEST':fontcolor=0x9fd3ff:fontsize=42:x=(w-text_w)/2:y=770,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='ohne synthetische Referenz':fontcolor=white:fontsize=35:x=(w-text_w)/2:y=1210[base];[1:a]asplit=2[aout][wavein];[wavein]showwaves=s=760x220:mode=line:rate=30:colors=white[wave];[base][wave]overlay=(W-w)/2:900[outv]" \
+            -map "[outv]" -map "[aout]" -c:v libx264 -pix_fmt yuv420p -preset medium -crf 20 \
             -c:a aac -b:a 192k -shortest -movflags +faststart sample/tayvoriq-human-voice-sample.mp4
           test -s sample/tayvoriq-human-voice-sample.mp4
           ffprobe -v error -show_entries stream=codec_type,width,height:format=duration -of json sample/tayvoriq-human-voice-sample.mp4
