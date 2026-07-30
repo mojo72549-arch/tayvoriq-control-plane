@@ -3,7 +3,7 @@ name: Project Lumen 13.2 RC5 Stable49 Recovery Build
 on:
   pull_request:
     branches:
-      - main
+      - build/project-lumen-rc5-base
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build-android:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'build/project-lumen-v13.2.0-rc3-stable49'
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.pull_request.head.ref, 'build/project-lumen-rc5-trigger')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
