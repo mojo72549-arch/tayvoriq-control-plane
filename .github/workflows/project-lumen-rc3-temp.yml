@@ -43,6 +43,19 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/dist" /tmp/lumen-rc3
+          sha256sum tmp/lumen-rc3/source.b64.* | tee "$GITHUB_WORKSPACE/dist/source-parts-actual.sha256"
+          cat > "$GITHUB_WORKSPACE/dist/source-parts-expected.sha256" <<'EOF'
+          43566f0115a0dfe2992799d933c084f9a4a0211db8491cf3a7ec4f50cf6e2603  tmp/lumen-rc3/source.b64.01
+          fdf408121379903f97758db03b249ef728582a885d11659636630400427380be  tmp/lumen-rc3/source.b64.02
+          b2e9a20e4f5425bf96049c3dc5c1819af187e0b09d13b663e5233e1e28b247ce  tmp/lumen-rc3/source.b64.03
+          d4c8036314ef5b2740e04f305cf07b8d654ff2359250540d0a1b3d2a545788d5  tmp/lumen-rc3/source.b64.04
+          b3a5c44ad9b9b0d0b3a7aa22b1cb3d79b0e0b9cd8feaf9327d65558dd43a9659  tmp/lumen-rc3/source.b64.05
+          e4b4b7a4d038c87f5bce97f60dc1ab2e6b3f0aa77b46d6505527d8a9907fd3ea  tmp/lumen-rc3/source.b64.06
+          857c9f76667838d34abba3f35f74919b664b4bc79b0d2ac13104f4d4f51a276c  tmp/lumen-rc3/source.b64.07
+          a0a8b7ebca95399ea7bc91595dc39bb4f26331903c35443aa45039f6961e9447  tmp/lumen-rc3/source.b64.08
+          b226a584aeef67f28f3eec22a08671c452639a8bae3fe9ce2adabcd34a86c8d9  tmp/lumen-rc3/source.b64.09
+          EOF
+          sha256sum --check "$GITHUB_WORKSPACE/dist/source-parts-expected.sha256"
           cat tmp/lumen-rc3/source.b64.* | tr -d '\r\n' | base64 --decode > /tmp/lumen-rc3/source.zip
           echo "95a79677310ea54936f5cc43934ce0a5ecc5a2900bf00df01add3a161cac1b31  /tmp/lumen-rc3/source.zip" | sha256sum --check
           unzip -q /tmp/lumen-rc3/source.zip -d /tmp/lumen-rc3
