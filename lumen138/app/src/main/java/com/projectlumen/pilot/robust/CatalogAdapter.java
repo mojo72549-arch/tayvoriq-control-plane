@@ -6,9 +6,13 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -16,16 +20,25 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+/** Virtualized premium rows with playlist logos, favorites and recent tracking. */
 final class CatalogAdapter extends BaseAdapter {
     private final Context context;
+    private final LogoLoader logos;
+    private final UserCollectionStore collections;
     private List<Channel> items = Collections.emptyList();
 
-    CatalogAdapter(Context context) { this.context = context; }
+    CatalogAdapter(Context context) {
+        this.context = context;
+        this.logos = new LogoLoader(context.getApplicationContext());
+        this.collections = UserCollectionStore.init(context);
+    }
 
     void submit(List<Channel> values) {
         items = values == null ? Collections.emptyList() : values;
         notifyDataSetChanged();
     }
+
+    void close() { logos.shutdown(); }
 
     Channel item(int position) {
         return position >= 0 && position < items.size() ? items.get(position) : null;
@@ -38,8 +51,7 @@ final class CatalogAdapter extends BaseAdapter {
         return channel == null ? position : channel.id.hashCode();
     }
 
-    @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    @Override public View getView(int position, View convertView, ViewGroup parent) {
         Holder holder;
         if (convertView == null) {
             LinearLayout row = new LinearLayout(context);
@@ -47,20 +59,27 @@ final class CatalogAdapter extends BaseAdapter {
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(dp(10), dp(8), dp(9), dp(8));
             row.setBackground(roundRect(0xEC0C2030, 16, 0xFF244D64));
+            row.setMinimumHeight(dp(74));
 
-            TextView logo = new TextView(context);
-            logo.setTextColor(Color.WHITE);
-            logo.setTextSize(11);
-            logo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            logo.setGravity(Gravity.CENTER);
-            logo.setMaxLines(2);
-            logo.setEllipsize(TextUtils.TruncateAt.END);
-            row.addView(logo, new LinearLayout.LayoutParams(dp(52), dp(48)));
+            FrameLayout logoHost = new FrameLayout(context);
+            logoHost.setBackground(roundRect(0xFF071522, 13, 0xFF31566C));
+            ImageView logoImage = new ImageView(context);
+            logoImage.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            logoImage.setPadding(dp(4), dp(4), dp(4), dp(4));
+            logoHost.addView(logoImage, new FrameLayout.LayoutParams(-1, -1));
+            TextView logoFallback = new TextView(context);
+            logoFallback.setTextColor(Color.WHITE);
+            logoFallback.setTextSize(11);
+            logoFallback.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            logoFallback.setGravity(Gravity.CENTER);
+            logoFallback.setMaxLines(2);
+            logoFallback.setEllipsize(TextUtils.TruncateAt.END);
+            logoHost.addView(logoFallback, new FrameLayout.LayoutParams(-1, -1));
+            row.addView(logoHost, new LinearLayout.LayoutParams(dp(58), dp(54)));
 
             LinearLayout labels = new LinearLayout(context);
             labels.setOrientation(LinearLayout.VERTICAL);
             labels.setPadding(dp(11), 0, dp(6), 0);
-
             TextView name = new TextView(context);
             name.setTextColor(Color.WHITE);
             name.setTextSize(15);
@@ -68,14 +87,22 @@ final class CatalogAdapter extends BaseAdapter {
             name.setSingleLine(true);
             name.setEllipsize(TextUtils.TruncateAt.END);
             labels.addView(name);
-
             TextView group = new TextView(context);
-            group.setTextColor(0xFF93AFC1);
+            group.setTextColor(0xFFA8C0D0);
             group.setTextSize(11);
             group.setSingleLine(true);
             group.setEllipsize(TextUtils.TruncateAt.END);
             labels.addView(group);
             row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+
+            TextView favorite = new TextView(context);
+            favorite.setTextColor(0xFFFFD166);
+            favorite.setTextSize(24);
+            favorite.setGravity(Gravity.CENTER);
+            favorite.setFocusable(true);
+            favorite.setContentDescription("Favorit umschalten");
+            favorite.setBackground(roundRect(0x3317354A, 12, 0x00315A70));
+            row.addView(favorite, new LinearLayout.LayoutParams(dp(46), dp(46)));
 
             TextView language = new TextView(context);
             language.setTextColor(0xFF07111E);
@@ -83,7 +110,7 @@ final class CatalogAdapter extends BaseAdapter {
             language.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             language.setGravity(Gravity.CENTER);
             language.setBackground(roundRect(0xFF7DE8D8, 10, 0xFF7DE8D8));
-            row.addView(language, new LinearLayout.LayoutParams(dp(31), dp(27)));
+            row.addView(language, new LinearLayout.LayoutParams(dp(38), dp(30)));
 
             TextView play = new TextView(context);
             play.setText("›");
@@ -92,7 +119,7 @@ final class CatalogAdapter extends BaseAdapter {
             play.setGravity(Gravity.CENTER);
             row.addView(play, new LinearLayout.LayoutParams(dp(31), dp(42)));
 
-            holder = new Holder(logo, name, group, language);
+            holder = new Holder(logoImage, logoFallback, name, group, language, favorite);
             row.setTag(holder);
             convertView = row;
         } else {
@@ -101,21 +128,44 @@ final class CatalogAdapter extends BaseAdapter {
 
         Channel channel = item(position);
         if (channel == null) {
-            holder.logo.setText("");
+            holder.logoFallback.setText("");
             holder.name.setText("");
             holder.group.setText("");
             holder.language.setText("");
+            holder.favorite.setText("☆");
+            holder.favorite.setTag(null);
+            holder.logoImage.setImageDrawable(null);
         } else {
             Brand brand = Brand.of(channel.name);
-            holder.logo.setText(brand.label);
-            holder.logo.setBackground(roundRect(brand.fill, 13, brand.stroke));
+            holder.logoFallback.setText(brand.label);
+            holder.logoFallback.setBackground(roundRect(brand.fill, 13, brand.stroke));
+            logos.load(channel.logoUrl, holder.logoImage, holder.logoFallback);
             holder.name.setText(channel.name);
+            ProviderLanguage.Facet facet = ProviderLanguageCache.detect(channel);
+            String languageLabel = facet == null ? MediaLanguage.shortLabel(channel) : facet.flag + " " + facet.label;
             holder.group.setText(channel.group + "  ·  " + typeLabel(channel.type));
-            holder.language.setText(MediaLanguage.shortLabel(channel));
-            MediaLanguage.Code code = MediaLanguage.detect(channel);
-            int chip = code == MediaLanguage.Code.TR ? 0xFFE94D5F
-                    : code == MediaLanguage.Code.DE ? 0xFFF4D35E : 0xFF7DE8D8;
-            holder.language.setBackground(roundRect(chip, 10, chip));
+            holder.language.setText(facet == null ? MediaLanguage.shortLabel(channel) : facet.flag);
+            holder.language.setContentDescription(languageLabel);
+            holder.favorite.setText(collections.isFavorite(channel) ? "★" : "☆");
+            holder.favorite.setTag(channel);
+            holder.favorite.setOnClickListener(view -> {
+                Object tag = view.getTag();
+                if (tag instanceof Channel) {
+                    collections.toggleFavorite((Channel) tag);
+                    notifyDataSetChanged();
+                }
+            });
+            convertView.setOnTouchListener((view, event) -> {
+                if (event.getActionMasked() == MotionEvent.ACTION_UP) collections.markRecent(channel);
+                return false;
+            });
+            convertView.setOnKeyListener((view, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_UP
+                        && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                    collections.markRecent(channel);
+                }
+                return false;
+            });
         }
         return convertView;
     }
@@ -138,16 +188,21 @@ final class CatalogAdapter extends BaseAdapter {
     }
 
     private static final class Holder {
-        final TextView logo;
+        final ImageView logoImage;
+        final TextView logoFallback;
         final TextView name;
         final TextView group;
         final TextView language;
+        final TextView favorite;
 
-        Holder(TextView logo, TextView name, TextView group, TextView language) {
-            this.logo = logo;
+        Holder(ImageView logoImage, TextView logoFallback, TextView name,
+               TextView group, TextView language, TextView favorite) {
+            this.logoImage = logoImage;
+            this.logoFallback = logoFallback;
             this.name = name;
             this.group = group;
             this.language = language;
+            this.favorite = favorite;
         }
     }
 
@@ -174,12 +229,9 @@ final class CatalogAdapter extends BaseAdapter {
             if (name.contains("show tv")) return new Brand("SHOW", 0xFF7B3FB5, 0xFFB98BE2);
             if (name.startsWith("atv") || name.contains(" atv")) return new Brand("atv", 0xFFE65C2A, 0xFFFFA27F);
             if (name.contains("tv8")) return new Brand("TV8", 0xFFE32936, 0xFFFF7F88);
-            if (name.contains("star tv")) return new Brand("STAR", 0xFF2168B5, 0xFF77B9F3);
-            if (name.contains("pro7") || name.contains("pro sieben")) return new Brand("PRO7", 0xFFDB263E, 0xFFFF8595);
-            if (name.contains("sat.1") || name.contains("sat 1")) return new Brand("SAT.1", 0xFF244B91, 0xFF75A0E8);
             String clean = value == null ? "" : value.trim();
-            String label = clean.isEmpty() ? "•" : clean.substring(0, Math.min(2, clean.length())).toUpperCase(Locale.ROOT);
-            return new Brand(label, 0xFF173B50, 0xFF3B6B83);
+            String label = clean.isBlank() ? "LUMEN" : clean.substring(0, Math.min(8, clean.length())).toUpperCase(Locale.ROOT);
+            return new Brand(label, 0xFF17384E, 0xFF4C7891);
         }
     }
 }
