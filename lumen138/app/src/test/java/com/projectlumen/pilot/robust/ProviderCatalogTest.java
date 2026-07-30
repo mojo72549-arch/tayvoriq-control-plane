@@ -30,11 +30,12 @@ public final class ProviderCatalogTest {
                 source, Channel.Type.LIVE, ProviderLanguage.ALL,
                 ProviderCatalog.ALL_GROUPS, "");
 
-        assertEquals(4, snapshot.languages.size());
-        assertEquals("", snapshot.languages.get(0).id);
-        assertEquals("el", snapshot.languages.get(1).id);
-        assertEquals("ar", snapshot.languages.get(2).id);
-        assertEquals("en", snapshot.languages.get(3).id);
+        assertEquals(3, snapshot.languages.size());
+        assertEquals("el", snapshot.languages.get(0).id);
+        assertEquals("ar", snapshot.languages.get(1).id);
+        assertEquals("en", snapshot.languages.get(2).id);
+        assertEquals("el", snapshot.selectedLanguage);
+        assertFalse(hasLanguage(snapshot, ProviderLanguage.ALL));
         assertFalse(hasLanguage(snapshot, "tr"));
         assertFalse(hasLanguage(snapshot, "de"));
     }
@@ -55,7 +56,7 @@ public final class ProviderCatalogTest {
                 "el".equals(ProviderLanguage.detect(channel).id)));
     }
 
-    @Test public void unavailablePersistedLanguageFallsBackToAll() {
+    @Test public void unavailablePersistedLanguageFallsBackToFirstActualLanguage() {
         List<Channel> source = Arrays.asList(
                 channel("1", "ERT 1", "GR | LIVE", Channel.Type.LIVE),
                 channel("2", "BBC One", "UK | LIVE", Channel.Type.LIVE));
@@ -63,8 +64,9 @@ public final class ProviderCatalogTest {
         ProviderCatalog.Snapshot snapshot = ProviderCatalog.build(
                 source, Channel.Type.LIVE, "tr", ProviderCatalog.ALL_GROUPS, "");
 
-        assertEquals(ProviderLanguage.ALL, snapshot.selectedLanguage);
-        assertEquals(2, snapshot.rows.size());
+        assertEquals("el", snapshot.selectedLanguage);
+        assertEquals(1, snapshot.rows.size());
+        assertEquals("ERT 1", snapshot.rows.get(0).name);
     }
 
     @Test public void adultOnlyLanguageDoesNotLeakWhileLocked() {
