@@ -31,6 +31,7 @@ final class M3uParser {
             String pendingName = null;
             String pendingGroup = null;
             String pendingId = null;
+            String pendingLogo = null;
 
             while ((line = reader.readLine()) != null) {
                 linesRead++;
@@ -53,6 +54,7 @@ final class M3uParser {
                             : "Unbenannter Eintrag";
                     pendingGroup = attribute(value, "group-title=\"", "Weitere");
                     pendingId = attribute(value, "tvg-id=\"", "");
+                    pendingLogo = attribute(value, "tvg-logo=\"", "");
                     continue;
                 }
 
@@ -69,7 +71,8 @@ final class M3uParser {
                             ? "Weitere" : pendingGroup;
                     String id = pendingId == null || pendingId.isBlank()
                             ? stableFastId(name, value) : pendingId;
-                    result.add(new Channel(id, name, group, value,
+                    String logo = pendingLogo == null ? "" : pendingLogo;
+                    result.add(new Channel(id, name, group, value, logo,
                             classify(name, group, value)));
                 } else {
                     limitReached = true;
@@ -78,6 +81,7 @@ final class M3uParser {
                 pendingName = null;
                 pendingGroup = null;
                 pendingId = null;
+                pendingLogo = null;
 
                 if (result.size() >= nextProgressEntry) {
                     progress(progress, linesRead, result.size(), startedNs, limitReached);
@@ -115,9 +119,6 @@ final class M3uParser {
         boolean adult = AdultContentPolicy.isAdultText(group)
                 || AdultContentPolicy.isAdultText(name);
         if (adult) {
-            // Many providers expose adult VOD without /movie/ or a VOD group name.
-            // Keep explicit live stations live; classify the remaining adult
-            // catalog as movies so PIN-unlocked VOD is not stranded in Live-TV.
             return isExplicitLive(name, group, url)
                     ? Channel.Type.LIVE : Channel.Type.MOVIE;
         }
