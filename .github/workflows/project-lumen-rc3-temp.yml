@@ -1,0 +1,104 @@
+name: Temporary Project Lumen RC3 Build
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tmp/lumen-rc3/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout RC source carrier
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+
+      - name: Set up pinned Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Reconstruct and validate source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/dist" /tmp/lumen-rc3
+          cat tmp/lumen-rc3/source.b64.* | tr -d '\r\n' | base64 --decode > /tmp/lumen-rc3/source.zip
+          echo "95a79677310ea54936f5cc43934ce0a5ecc5a2900bf00df01add3a161cac1b31  /tmp/lumen-rc3/source.zip" | sha256sum --check
+          unzip -q /tmp/lumen-rc3/source.zip -d /tmp/lumen-rc3
+          test -f /tmp/lumen-rc3/lumen_rc3_build/app/build.gradle
+          cp /tmp/lumen-rc3/source.zip "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Source.zip"
+
+      - name: Create dedicated Recovery RC signing key
+        shell: bash
+        working-directory: /tmp/lumen-rc3/lumen_rc3_build
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -noprompt -v \
+            -keystore rc3-recovery.jks \
+            -storepass 'ProjectLumenRC3!' \
+            -keypass 'ProjectLumenRC3!' \
+            -alias lumen-rc3 \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname 'CN=Project Lumen RC3 Recovery,O=Project Lumen Closed Pilot,C=DE'
+
+      - name: Unit tests lint and signed release APK
+        shell: bash
+        working-directory: /tmp/lumen-rc3/lumen_rc3_build
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          gradle --no-daemon testDebugUnitTest lintDebug assembleRelease 2>&1 | tee "$GITHUB_WORKSPACE/dist/android-build.log"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Universal.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Samsung.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_FireTV.apk"
+
+      - name: Verify package version signature and launchers
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Universal.apk"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-signature.txt"
+          "$AAPT" dump badging "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml | tee "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
+          grep -q "package: name='com.projectlumen.pilot.rc3recovery'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          grep -q "versionName='13.2.0-rc3-recovery'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          grep -q 'android.intent.category.LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
+          grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Universal.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Universal.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Samsung.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Samsung.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_FireTV.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_FireTV.apk.sha256"
+          printf 'version=13.2.0-rc3-recovery\npackage=com.projectlumen.pilot.rc3recovery\nsource_sha=%s\ncommit=%s\nsignature=dedicated-recovery-rc\nlauncher=smartphone-and-leanback\n' \
+            '95a79677310ea54936f5cc43934ce0a5ecc5a2900bf00df01add3a161cac1b31' "$GITHUB_SHA" \
+            > "$GITHUB_WORKSPACE/dist/BUILD_INFO.txt"
+
+      - name: Upload RC3 delivery package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-13-2-0-rc3-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
