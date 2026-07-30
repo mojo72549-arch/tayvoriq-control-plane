@@ -1,0 +1,290 @@
+name: TAYVORIQ Auto-Publish Approved Review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".automation/tayvoriq-reviews/**"
+      - ".automation/tayvoriq-direct-reviews/**"
+      - ".github/workflows/tayvoriq-auto-publish-approved.yml"
+      - "tools/youtube_publish_approved.py"
+  workflow_dispatch:
+    inputs:
+      review_id:
+        description: Optional approved review ID to publish
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tayvoriq-auto-publish-approved
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+  YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+  YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+
+jobs:
+  publish-approved:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate publication credentials
+        run: |
+          set -euo pipefail
+          for name in TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID YOUTUBE_CLIENT_ID YOUTUBE_CLIENT_SECRET YOUTUBE_REFRESH_TOKEN; do
+            test -n "${!name:-}" || { echo "::error title=Missing secret::$name"; exit 2; }
+          done
+
+      - name: Select latest approved unpublished review
+        id: select
+        env:
+          REQUESTED_REVIEW_ID: ${{ inputs.review_id || '' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          requested = os.environ.get("REQUESTED_REVIEW_ID", "").strip()
+          roots = [
+              Path(".automation/tayvoriq-reviews"),
+              Path(".automation/tayvoriq-direct-reviews"),
+          ]
+          candidates = []
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.glob("*.json"):
+                  try:
+                      data = json.loads(path.read_text(encoding="utf-8"))
+                  except Exception:
+                      continue
+                  review_id = str(data.get("review_id") or path.stem)
+                  if requested and review_id != requested:
+                      continue
+                  approved = str(data.get("status") or "") == "APPROVED"
+                  uploaded = bool(data.get("platform_upload_performed"))
+                  if approved and not uploaded:
+                      candidates.append((int(review_id) if review_id.isdigit() else 0, path, data))
+
+          if not candidates:
+              print("No approved unpublished review found.")
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+                  out.write("found=false\n")
+              raise SystemExit(0)
+
+          _, path, data = max(candidates, key=lambda item: item[0])
+          review_id = str(data.get("review_id") or path.stem)
+          Path("selected-review.json").write_text(
+              json.dumps({"path": str(path), "review": data}, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write("found=true\n")
+              out.write(f"review_id={review_id}\n")
+              out.write(f"review_path={path}\n")
+          print(f"Selected approved review {review_id} from {path}")
+          PY
+
+      - name: Resolve verified video and publication metadata
+        if: steps.select.outputs.found == 'true'
+        env:
+          REVIEW_ID: ${{ steps.select.outputs.review_id }}
+        run: |
+          set -euo pipefail
+          BASE="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${REVIEW_ID}"
+          VIDEO_URL=""
+          for candidate in "${BASE}/tayvoriq-review.mp4" "${BASE}/video.mp4"; do
+            code=$(curl -L -s -o /dev/null -w '%{http_code}' "$candidate" || true)
+            if [ "$code" = "200" ]; then
+              VIDEO_URL="$candidate"
+              break
+            fi
+          done
+          test -n "$VIDEO_URL" || { echo "::error title=Approved MP4 unavailable::${BASE}"; exit 1; }
+
+          curl --fail --location --retry 3 "${BASE}/text_package.json" --output text-package.json
+
+          QUALITY_PASSED="false"
+          for report in final_evidence.json quality_report.json; do
+            if curl --fail --location --silent "${BASE}/${report}" --output "$report"; then
+              if python - "$report" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], encoding="utf-8"))
+          raise SystemExit(0 if data.get("passed") is True else 1)
+          PY
+              then
+                QUALITY_PASSED="true"
+              fi
+            fi
+          done
+          test "$QUALITY_PASSED" = "true" || { echo "::error title=Publication gate failed::No passed quality evidence for ${REVIEW_ID}"; exit 1; }
+
+          export VIDEO_URL REVIEW_ID
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          package = json.loads(Path("text-package.json").read_text(encoding="utf-8"))
+          title = str(package.get("title") or package.get("topic") or "TAYVORIQ Short").strip()
+          topic = str(package.get("topic") or title).strip()
+          cta = str(package.get("cta") or "Teile dieses Video, damit andere richtig reagieren.").strip()
+          description = (
+              f"{topic}\n\n{cta}\n\n"
+              "Geprüfte Kurz-Dokumentation von TAYVORIQ.\n"
+              "#Shorts #TAYVORIQ #Waldbrand #Brandschutz #Sicherheit"
+          )
+          tags = "Waldbrand,Brandschutz,Sicherheit,Notruf112,Feuerwehr,TAYVORIQ,Shorts"
+          payload = {
+              "review_id": os.environ["REVIEW_ID"],
+              "video_url": os.environ["VIDEO_URL"],
+              "title": title,
+              "description": description,
+              "tags": tags,
+              "privacy": "public",
+              "tiktok_caption": f"{title}\n\n{cta}\n\n#Waldbrand #Brandschutz #Sicherheit #TAYVORIQ",
+          }
+          Path("publish-payload.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Setup Python
+        if: steps.select.outputs.found == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install YouTube uploader
+        if: steps.select.outputs.found == 'true'
+        run: python -m pip install requests google-api-python-client google-auth google-auth-httplib2
+
+      - name: Upload approved video publicly to YouTube
+        if: steps.select.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+          VIDEO_URL=$(python -c "import json; print(json.load(open('publish-payload.json'))['video_url'])")
+          TITLE=$(python -c "import json; print(json.load(open('publish-payload.json'))['title'])")
+          DESCRIPTION=$(python -c "import json; print(json.load(open('publish-payload.json'))['description'])")
+          TAGS=$(python -c "import json; print(json.load(open('publish-payload.json'))['tags'])")
+          python tools/youtube_publish_approved.py \
+            --video-url "$VIDEO_URL" \
+            --title "$TITLE" \
+            --description "$DESCRIPTION" \
+            --tags "$TAGS" \
+            --privacy public \
+            --output youtube-result.json
+          test -s youtube-result.json
+
+      - name: Mark review as published
+        if: steps.select.outputs.found == 'true'
+        env:
+          REVIEW_PATH: ${{ steps.select.outputs.review_path }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path(os.environ["REVIEW_PATH"])
+          review = json.loads(path.read_text(encoding="utf-8"))
+          result = json.loads(Path("youtube-result.json").read_text(encoding="utf-8"))
+          payload = json.loads(Path("publish-payload.json").read_text(encoding="utf-8"))
+          review.update({
+              "platform_upload_performed": True,
+              "publication_pending": False,
+              "publication_pending_capacity": False,
+              "upload_status": "PUBLISHED_YOUTUBE",
+              "youtube": result,
+              "published_at": datetime.now(timezone.utc).isoformat(),
+              "youtube_privacy": "public",
+              "tiktok_status": "MANUAL_UPLOAD_REQUIRED",
+              "published_payload": payload,
+          })
+          path.write_text(json.dumps(review, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REVIEW_PATH"
+          git commit -m "Publish approved TAYVORIQ review ${{ steps.select.outputs.review_id }} to YouTube"
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Send YouTube result and TikTok how-to to Telegram
+        if: steps.select.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          result = json.load(open("youtube-result.json", encoding="utf-8"))
+          payload = json.load(open("publish-payload.json", encoding="utf-8"))
+          text = (
+              "✅ YouTube-Upload fertig und öffentlich\n\n"
+              f"🎬 YouTube: {result['url']}\n\n"
+              "📱 TikTok – kurz erledigen:\n"
+              f"1. MP4 öffnen: {payload['video_url']}\n"
+              "2. Im Video-Menü herunterladen.\n"
+              "3. TikTok öffnen → + → Hochladen → MP4 auswählen.\n"
+              "4. Cover prüfen, folgenden Text einfügen und auf Posten tippen:\n\n"
+              f"{payload['tiktok_caption']}"
+          )
+          data = urllib.parse.urlencode({
+              "chat_id": os.environ["TELEGRAM_CHAT_ID"],
+              "text": text,
+              "disable_web_page_preview": "false",
+          }).encode("utf-8")
+          request = urllib.request.Request(
+              f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage",
+              data=data,
+              method="POST",
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              print(response.read().decode("utf-8"))
+          PY
+
+      - name: Upload publication evidence
+        if: steps.select.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-youtube-publication-${{ steps.select.outputs.review_id }}
+          path: |
+            selected-review.json
+            publish-payload.json
+            youtube-result.json
+          retention-days: 30
+
+      - name: Notify Telegram on publication failure
+        if: failure()
+        run: |
+          set +e
+          if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+            curl --silent --show-error \
+              --request POST \
+              --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode $'text=🔴 YouTube-Upload fehlgeschlagen\n\nDie Freigabe bleibt gespeichert. Es wird nichts doppelt hochgeladen. Der technische Lauf muss repariert und erneut gestartet werden.'
+          fi
