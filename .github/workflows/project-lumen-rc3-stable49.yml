@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout stable49 RC branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Apply reproducible RC5 recovery patch
         shell: bash
@@ -44,11 +46,20 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Restore stable Project Lumen signing key
+      - name: Restore verified stable Project Lumen signing key
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode lumen138/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
+          OLD_COMMIT=28b0ea71876712ec2638e5cd2ecb6093ee98a637
+          git fetch --no-tags --depth=1 origin "$OLD_COMMIT"
+          mkdir -p /tmp/lumen-old /tmp/lumen-parts lumen138/ci/keys
+          for part in 00 01 02 03 04; do
+            git show "$OLD_COMMIT:relay/lumen-build-relay.tar.xz.b64.part$part" > "/tmp/lumen-parts/part$part"
+          done
+          cat /tmp/lumen-parts/part* | base64 --decode > /tmp/lumen-old/source.tar.xz
+          echo "c617e95631564c3eb15ee6e6c26554fcc23a1d761c44e8bebf4e7a10c9954d7a  /tmp/lumen-old/source.tar.xz" | sha256sum --check
+          tar -xJf /tmp/lumen-old/source.tar.xz -C /tmp/lumen-old
+          base64 --decode /tmp/lumen-old/lumen-build-relay/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
           echo "764e0c501b8c13fb1eae852bcaddd16aab0c31109cf17de97bde5d15327a8817  lumen138/ci/keys/lumen-pilot-v1.jks" | sha256sum --check
 
       - name: Unit tests lint and signed release APK
