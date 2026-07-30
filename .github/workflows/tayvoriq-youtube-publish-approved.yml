@@ -23,7 +23,7 @@ on:
       privacy:
         description: Upload visibility
         required: true
-        default: private
+        default: public
         type: choice
         options: [private, unlisted, public]
   repository_dispatch:
@@ -50,7 +50,7 @@ jobs:
       VIDEO_TITLE: ${{ github.event.client_payload.title || inputs.title }}
       VIDEO_DESCRIPTION: ${{ github.event.client_payload.description || inputs.description }}
       VIDEO_TAGS: ${{ github.event.client_payload.tags || inputs.tags }}
-      VIDEO_PRIVACY: ${{ github.event.client_payload.privacy || inputs.privacy || 'private' }}
+      VIDEO_PRIVACY: ${{ github.event.client_payload.privacy || inputs.privacy || 'public' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -68,6 +68,7 @@ jobs:
           test -n "$YOUTUBE_REFRESH_TOKEN"
           case "$VIDEO_URL" in
             https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/*/video.mp4) ;;
+            https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/*/tayvoriq-review.mp4) ;;
             *) echo 'Rejected non-TAYVORIQ video URL' >&2; exit 1;;
           esac
 
@@ -88,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           URL=$(python -c "import json; print(json.load(open('youtube-result.json'))['url'])")
-          TEXT=$'✅ YouTube-Upload erfolgreich\n🎬 YouTube Short: '"$URL"$'\n\n📱 TikTok:\n1. Öffne den Review-Link aus der Freigabe-Nachricht.\n2. Lade die MP4 herunter.\n3. Öffne TikTok und tippe auf +.\n4. Wähle die MP4, kontrolliere Cover und Untertitel.\n5. Übernimm den gelieferten Titel, CTA und die Hashtags.\n6. Veröffentliche erst nach der TikTok-Vorschauprüfung.'
+          TEXT=$'✅ YouTube-Upload erfolgreich und öffentlich\n🎬 YouTube Short: '"$URL"$'\n\n📱 TikTok:\n1. Review-MP4 öffnen und herunterladen.\n2. TikTok → + → Hochladen.\n3. MP4 auswählen und Cover kontrollieren.\n4. Titel, CTA und Hashtags übernehmen.\n5. Auf Posten tippen.'
           curl --fail --silent --show-error \
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
