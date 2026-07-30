@@ -1,118 +1,13 @@
-name: TAYVORIQ Publish Human Voice Sample
+name: TAYVORIQ Publish Human Voice Sample (manual only)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/tayvoriq-human-voice-sample-publish.yml"
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
-  publish-sample:
+  manual-placeholder:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
     steps:
-      - name: Checkout control plane
-        uses: actions/checkout@v4
-
-      - name: Checkout Pages repository
-        uses: actions/checkout@v4
-        with:
-          repository: mojo72549-arch/mind-reset-daily
-          ref: main
-          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
-          path: pages-worktree
-          fetch-depth: 1
-
-      - name: Install FFmpeg and fonts
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg fonts-dejavu-core
-
-      - name: Download already generated voice sample
-        uses: actions/download-artifact@v4
-        with:
-          name: tayvoriq-human-voice-sample-30534303922
-          path: sample
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: mojo72549-arch/tayvoriq-control-plane
-          run-id: 30534303922
-
-      - name: Verify generated voice evidence
-        run: |
-          set -euo pipefail
-          test -s sample/raw.wav
-          test -s sample/voice-report.json
-          python - <<'PY'
-          import json
-          report=json.load(open('sample/voice-report.json',encoding='utf-8'))
-          assert report.get('passed') is True, report
-          assert report.get('reference_audio_used') is False, report
-          assert int(report.get('chunk_count') or 0) == 1, report
-          print(json.dumps(report,ensure_ascii=False,indent=2))
-          PY
-
-      - name: Render simple vertical sample video
-        run: |
-          set -euo pipefail
-          ffmpeg -y -loglevel error -i sample/raw.wav \
-            -af "highpass=f=55,lowpass=f=15000,acompressor=threshold=-22dB:ratio=1.6:attack=35:release=280,loudnorm=I=-16:TP=-1.5:LRA=11" \
-            -c:a aac -b:a 192k sample/voice.m4a
-          DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 sample/voice.m4a)
-          ffmpeg -y -loglevel error \
-            -f lavfi -i "color=c=0x0b0f18:s=1080x1920:r=30:d=${DURATION}" \
-            -i sample/voice.m4a \
-            -filter_complex "[0:v]drawbox=x=100:y=520:w=880:h=880:color=0x151d2c@0.92:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='TAYVORIQ':fontcolor=white:fontsize=82:x=(w-text_w)/2:y=650,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='MENSCHLICHER STIMMENTEST':fontcolor=0x9fd3ff:fontsize=42:x=(w-text_w)/2:y=770,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='mehr Emotion - kein Pitch Shift':fontcolor=white:fontsize=34:x=(w-text_w)/2:y=1210[base];[1:a]asplit=2[aout][wavein];[wavein]showwaves=s=760x220:mode=line:rate=30:colors=white[wave];[base][wave]overlay=(W-w)/2:900[outv]" \
-            -map "[outv]" -map "[aout]" -c:v libx264 -pix_fmt yuv420p -preset medium -crf 20 \
-            -c:a aac -b:a 192k -shortest -movflags +faststart sample/tayvoriq-human-voice-sample.mp4
-          test -s sample/tayvoriq-human-voice-sample.mp4
-
-      - name: Publish sample page
-        run: |
-          set -euo pipefail
-          SAMPLE_ID="${GITHUB_RUN_ID}"
-          TARGET="pages-worktree/tayvoriq/voice-samples/${SAMPLE_ID}"
-          mkdir -p "$TARGET"
-          cp sample/tayvoriq-human-voice-sample.mp4 "$TARGET/voice-sample.mp4"
-          cp sample/voice-report.json "$TARGET/voice-report.json"
-          cat > "$TARGET/index.html" <<HTML
-          <!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TAYVORIQ Stimmtest</title><style>body{margin:0;background:#080b12;color:#fff;font-family:system-ui,sans-serif}main{max-width:560px;margin:auto;padding:20px}video{width:100%;max-height:82vh;background:#000;border-radius:18px}.box{margin-top:14px;padding:14px;background:#131a28;border:1px solid #2c3b55;border-radius:14px;line-height:1.5}a{color:#9fd3ff}</style></head><body><main><h1>🎙️ Kurzer Stimmtest</h1><video controls playsinline autoplay src="voice-sample.mp4"></video><div class="box">Nur wenige Sekunden zum Reinhören: ein zusammenhängender Take, mehr Emotion, keine synthetische Referenzstimme und kein künstliches Tieferpitchen.</div><p><a href="voice-sample.mp4">Video direkt öffnen</a></p></main></body></html>
-          HTML
-          touch pages-worktree/.nojekyll
-          cd pages-worktree
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "tayvoriq/voice-samples/${SAMPLE_ID}" .nojekyll
-          git commit -m "Publish TAYVORIQ human voice sample ${SAMPLE_ID}"
-          git push origin main
-
-      - name: Wait for page
-        run: |
-          set -euo pipefail
-          URL="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/voice-samples/${GITHUB_RUN_ID}/"
-          for attempt in $(seq 1 30); do
-            code=$(curl -L -s -o /dev/null -w '%{http_code}' "$URL" || true)
-            [ "$code" = "200" ] && exit 0
-            sleep 10
-          done
-          exit 1
-
-      - name: Send Telegram link
-        run: |
-          set -euo pipefail
-          URL="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/voice-samples/${GITHUB_RUN_ID}/"
-          curl --fail --silent --show-error \
-            --request POST \
-            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=🎙️ Dein kurzer menschlicher Stimmtest ist bereit\n\nBitte nur auf Natürlichkeit, Emotion und Erzählgefühl achten.' \
-            --data-urlencode "reply_markup={\"inline_keyboard\":[[{\"text\":\"▶️ Stimmtest anhören\",\"url\":\"${URL}\"}]]}"
+      - run: echo "Manual placeholder only. No Telegram message is sent."
