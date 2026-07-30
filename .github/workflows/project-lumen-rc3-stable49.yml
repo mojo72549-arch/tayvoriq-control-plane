@@ -1,41 +1,56 @@
-name: Project Lumen 13.2 RC3 Stable49 Direct Build
+name: Project Lumen 13.2 RC5 Stable49 Recovery Build
 
 on:
-  push:
+  pull_request:
     branches:
-      - build/project-lumen-v13.2.0-rc3-stable49
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: project-lumen-rc5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'build/project-lumen-v13.2.0-rc3-stable49'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - name: Checkout stable49 RC branch
         uses: actions/checkout@v4
+
+      - name: Apply reproducible RC5 recovery patch
+        shell: bash
+        run: python lumen138/ci/apply_rc5_recovery.py
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
       - name: Install Android SDK packages
         shell: bash
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools" >/dev/null
+
       - name: Set up pinned Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+
       - name: Restore stable Project Lumen signing key
         shell: bash
         run: |
           set -euo pipefail
           base64 --decode lumen138/ci/keys/lumen-pilot-v1.jks.b64 > lumen138/ci/keys/lumen-pilot-v1.jks
           echo "764e0c501b8c13fb1eae852bcaddd16aab0c31109cf17de97bde5d15327a8817  lumen138/ci/keys/lumen-pilot-v1.jks" | sha256sum --check
+
       - name: Unit tests lint and signed release APK
         shell: bash
         working-directory: lumen138
@@ -44,32 +59,35 @@ jobs:
           set -o pipefail
           mkdir -p "$GITHUB_WORKSPACE/dist"
           gradle --no-daemon testDebugUnitTest lintDebug assembleRelease 2>&1 | tee "$GITHUB_WORKSPACE/dist/android-build.log"
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Samsung.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_FireTV.apk"
-      - name: Verify package version signature and launchers
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Samsung.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_FireTV.apk"
+
+      - name: Verify package version signature launchers and Picture-in-Picture
         shell: bash
         run: |
           set -euo pipefail
-          APK="$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk"
+          APK="$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-signature.txt"
           "$AAPT" dump badging "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-badging.txt"
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml | tee "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
           grep -q "package: name='com.projectlumen.pilot.robust'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
-          grep -q "versionName='13.2.0-rc3-stable49'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          grep -q "versionName='13.2.0-rc5-stable49-recovery'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
           grep -q 'android.intent.category.LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
           grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
-          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Universal.apk.sha256"
-          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Samsung.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_Samsung.apk.sha256"
-          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_FireTV.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC3_Stable49_FireTV.apk.sha256"
-          printf 'version=13.2.0-rc3-stable49\nbase_commit=d6d161dbfeccd7333122aaf86558b1f1b823cae0\npackage=com.projectlumen.pilot.robust\ncommit=%s\nsignature=stable-project-lumen-pilot\nlauncher=smartphone-and-leanback\n' "$GITHUB_SHA" > "$GITHUB_WORKSPACE/dist/BUILD_INFO.txt"
-      - name: Upload Stable49 RC3 package
+          grep -q 'android:supportsPictureInPicture' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Samsung.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Samsung.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_FireTV.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_FireTV.apk.sha256"
+          printf 'version=13.2.0-rc5-stable49-recovery\nbase_commit=d6d161dbfeccd7333122aaf86558b1f1b823cae0\npackage=com.projectlumen.pilot.robust\ncommit=%s\nsignature=stable-project-lumen-pilot\nlauncher=smartphone-and-leanback\nback_behavior=picture-in-picture-on-active-smartphone-playback\nprovider_recovery=https-to-http-custom-port\n' "$GITHUB_SHA" > "$GITHUB_WORKSPACE/dist/BUILD_INFO.txt"
+
+      - name: Upload RC5 Samsung Fire TV and universal APKs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-2-0-rc3-stable49-${{ github.sha }}
+          name: project-lumen-13-2-0-rc5-stable49-recovery-${{ github.sha }}
           path: dist/
-          if-no-files-found: error
-          retention-days: 30
+          if-no-files-found: warn
+          retention-days: 7
