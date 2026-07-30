@@ -1,0 +1,176 @@
+name: TAYVORIQ Retire Superseded YouTube Video
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".automation/tayvoriq-reviews/**"
+      - ".github/workflows/tayvoriq-retire-superseded-youtube.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tayvoriq-retire-superseded-youtube
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+  YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+  YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  retire-old-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Select published replacement
+        id: select
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          candidates=[]
+          root=Path('.automation/tayvoriq-reviews')
+          if root.exists():
+              for path in root.glob('*.json'):
+                  try:
+                      data=json.loads(path.read_text(encoding='utf-8'))
+                  except Exception:
+                      continue
+                  old=str(data.get('supersedes_youtube_video_id') or '').strip()
+                  new=str((data.get('youtube') or {}).get('video_id') or '').strip()
+                  published=str(data.get('upload_status') or '') == 'PUBLISHED_YOUTUBE'
+                  retired=bool(data.get('superseded_video_private'))
+                  if old and new and old != new and published and not retired:
+                      rid=str(data.get('review_id') or path.stem)
+                      candidates.append((int(rid) if rid.isdigit() else 0,path,data))
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as out:
+              if not candidates:
+                  out.write('found=false\n')
+              else:
+                  _,path,data=max(candidates,key=lambda item:item[0])
+                  out.write('found=true\n')
+                  out.write(f"review_path={path}\n")
+                  out.write(f"old_video_id={data['supersedes_youtube_video_id']}\n")
+                  out.write(f"new_video_id={(data.get('youtube') or {}).get('video_id')}\n")
+          PY
+
+      - name: Validate YouTube credentials
+        if: steps.select.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+          test -n "$YOUTUBE_CLIENT_ID"
+          test -n "$YOUTUBE_CLIENT_SECRET"
+          test -n "$YOUTUBE_REFRESH_TOKEN"
+
+      - name: Setup Python
+        if: steps.select.outputs.found == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install YouTube client
+        if: steps.select.outputs.found == 'true'
+        run: python -m pip install google-api-python-client google-auth google-auth-httplib2
+
+      - name: Set superseded video to private
+        if: steps.select.outputs.found == 'true'
+        env:
+          OLD_VIDEO_ID: ${{ steps.select.outputs.old_video_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from google.oauth2.credentials import Credentials
+          from googleapiclient.discovery import build
+
+          creds=Credentials(
+              token=None,
+              refresh_token=os.environ['YOUTUBE_REFRESH_TOKEN'],
+              token_uri='https://oauth2.googleapis.com/token',
+              client_id=os.environ['YOUTUBE_CLIENT_ID'],
+              client_secret=os.environ['YOUTUBE_CLIENT_SECRET'],
+              scopes=['https://www.googleapis.com/auth/youtube'],
+          )
+          youtube=build('youtube','v3',credentials=creds,cache_discovery=False)
+          video_id=os.environ['OLD_VIDEO_ID']
+          current=youtube.videos().list(part='status',id=video_id).execute()
+          items=current.get('items') or []
+          if not items:
+              raise SystemExit(f'Old YouTube video not found: {video_id}')
+          status=dict(items[0].get('status') or {})
+          status['privacyStatus']='private'
+          body={'id':video_id,'status':status}
+          result=youtube.videos().update(part='status',body=body).execute()
+          print(json.dumps({'video_id':video_id,'privacyStatus':(result.get('status') or {}).get('privacyStatus')},indent=2))
+          PY
+
+      - name: Persist retirement evidence
+        if: steps.select.outputs.found == 'true'
+        env:
+          REVIEW_PATH: ${{ steps.select.outputs.review_path }}
+          OLD_VIDEO_ID: ${{ steps.select.outputs.old_video_id }}
+          NEW_VIDEO_ID: ${{ steps.select.outputs.new_video_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path=Path(os.environ['REVIEW_PATH'])
+          data=json.loads(path.read_text(encoding='utf-8'))
+          data.update({
+              'superseded_video_private': True,
+              'superseded_video_id': os.environ['OLD_VIDEO_ID'],
+              'replacement_video_id': os.environ['NEW_VIDEO_ID'],
+              'superseded_at': datetime.now(timezone.utc).isoformat(),
+          })
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REVIEW_PATH"
+          git commit -m "Retire superseded TAYVORIQ YouTube video $OLD_VIDEO_ID"
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Notify Telegram
+        if: steps.select.outputs.found == 'true'
+        env:
+          OLD_VIDEO_ID: ${{ steps.select.outputs.old_video_id }}
+          NEW_VIDEO_ID: ${{ steps.select.outputs.new_video_id }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode $'text=✅ Die neue menschlichere Sprecherfassung ist jetzt auf YouTube veröffentlicht.\n\nDie vorherige Version wurde automatisch auf privat gestellt, damit keine doppelte öffentliche Version bestehen bleibt.\n\nNeue Version: https://www.youtube.com/shorts/'"${NEW_VIDEO_ID}"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          set +e
+          curl --silent --show-error \
+            --request POST \
+            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode $'text=🔴 Die neue YouTube-Version wurde veröffentlicht, aber die alte Version konnte noch nicht automatisch auf privat gestellt werden. Der Fehler wird separat repariert; die neue Veröffentlichung bleibt bestehen.'
