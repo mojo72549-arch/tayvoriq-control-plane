@@ -1,3 +1,3 @@
-# RC6 build retry 2
+# RC6 build retry 3
 
-Re-runs the focused RC6 build after aligning the performance and canonical category contracts with the new user experience.
+Re-runs the focused RC6 build after finalizing country-prefix normalization, short category title casing, playback recovery, fast import and persistent restart behavior.
