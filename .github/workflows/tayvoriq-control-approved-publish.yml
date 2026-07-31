@@ -1,0 +1,147 @@
+name: TAYVORIQ Control Approved Publish
+
+on:
+  repository_dispatch:
+    types: [tayvoriq_control_publish_approved]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: tayvoriq-control-approved-publish
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  REVIEW_RUN_ID: ${{ github.event.client_payload.review_run_id }}
+  YOUTUBE_PRIVACY: ${{ github.event.client_payload.youtube_privacy || 'private' }}
+  YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+  YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+  YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+  YOUTUBE_CATEGORY_ID: "28"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  publish-approved-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Validate approval dispatch
+        run: |
+          set -euo pipefail
+          test -n "$REVIEW_RUN_ID"
+          case "$YOUTUBE_PRIVACY" in private|unlisted) ;; *) exit 1 ;; esac
+
+      - name: Checkout publishing implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: implementation/requirements.txt
+
+      - name: Install publishing dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip -q
+          python -m pip install -r implementation/requirements.txt -q
+
+      - name: Download approved review artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-control-review-${{ env.REVIEW_RUN_ID }}
+          path: approved-artifact
+          github-token: ${{ github.token }}
+          run-id: ${{ env.REVIEW_RUN_ID }}
+
+      - name: Locate approved video job
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          jobs=[]
+          for item in Path('approved-artifact').rglob('job.json'):
+              root=item.parent
+              if (root/'short_youtube.mp4').is_file() and (root/'short_tiktok.mp4').is_file():
+                  jobs.append(root.resolve())
+          if not jobs:
+              raise SystemExit('No complete approved job found')
+          root=sorted(jobs, key=lambda p: len(str(p)))[0]
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
+              handle.write(f'TAYVORIQ_APPROVED_JOB_DIR={root}\n')
+          print({'approved_job_dir':str(root)})
+          PY
+
+      - name: Recheck publication quality
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_publication_quality_gate_v2.py \
+            --job-dir "$TAYVORIQ_APPROVED_JOB_DIR" \
+            --targets youtube
+
+      - name: Publish approved YouTube video
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_publish_approved_v2.py \
+            --job-dir "$TAYVORIQ_APPROVED_JOB_DIR" \
+            --approval FREIGEBEN \
+            --targets youtube \
+            --youtube-privacy "$YOUTUBE_PRIVACY" \
+            --tiktok-mode draft_upload \
+            --tiktok-privacy SELF_ONLY
+
+      - name: Send publication result to Telegram
+        if: always()
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib import parse, request
+
+          token=os.environ.get('TELEGRAM_BOT_TOKEN','').strip()
+          chat=os.environ.get('TELEGRAM_CHAT_ID','').strip()
+          result_path=Path(os.environ.get('TAYVORIQ_APPROVED_JOB_DIR','.'))/'publish_result.json'
+          result=json.loads(result_path.read_text(encoding='utf-8')) if result_path.exists() else {}
+          youtube=(result.get('results') or {}).get('youtube_shorts') or {}
+          errors=result.get('errors') or {}
+          if youtube.get('url'):
+              text=(
+                  '✅ Freigabe erfolgreich ausgeführt\n\n'
+                  f"YouTube: {youtube.get('url')}\n"
+                  f"Sichtbarkeit: {youtube.get('privacy_status') or os.environ.get('YOUTUBE_PRIVACY')}\n\n"
+                  'TikTok bleibt manuell: Das zuvor gesendete Telegram-Video speichern und in TikTok hochladen.'
+              )
+          else:
+              text='❌ Veröffentlichung fehlgeschlagen\n\n' + (' | '.join(str(v) for v in errors.values()) or 'Kein Publish-Ergebnis vorhanden.')
+          data=parse.urlencode({'chat_id':chat,'text':text,'disable_web_page_preview':'false'}).encode()
+          with request.urlopen(f'https://api.telegram.org/bot{token}/sendMessage',data=data,timeout=35) as response:
+              payload=json.loads(response.read().decode())
+          if not payload.get('ok'):
+              raise SystemExit(payload)
+          print({'telegram_result_message_id':payload['result']['message_id']})
+          PY
+
+      - name: Upload publication report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-control-publish-result-${{ github.run_id }}
+          path: |
+            approved-artifact/**/publication_quality_gate.json
+            approved-artifact/**/publish_result.json
+          if-no-files-found: warn
+          retention-days: 30
