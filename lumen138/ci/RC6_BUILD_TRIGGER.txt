@@ -1,0 +1,9 @@
+Project Lumen RC6 build gate
+
+Requirements:
+- TRT World HD and extensionless Xtream live URLs start as MPEG-TS
+- HTTPS custom-port playback can recover to HTTP only on verified TLS mismatch
+- initial import supports gzip and larger streaming buffers
+- active catalog metadata is committed before import success is reported
+- app restart prefers the persistent catalog cache
+- language and category rows do not duplicate provider root labels
