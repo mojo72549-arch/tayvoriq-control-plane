@@ -95,6 +95,33 @@ public final class ProviderCatalogTest {
 
         assertEquals(1, snapshot.rows.size());
         assertEquals("ERT 1", snapshot.rows.get(0).name);
+        assertEquals("News", snapshot.selectedGroup);
+    }
+
+    @Test public void hidesSoleProviderRootBelowLanguageFacet() {
+        List<Channel> source = Arrays.asList(
+                channel("1", "TRT World HD", "TRT", Channel.Type.LIVE),
+                channel("2", "Kanal D", "TRT", Channel.Type.LIVE),
+                channel("3", "Show TV", "TRT", Channel.Type.LIVE));
+
+        ProviderCatalog.Snapshot snapshot = ProviderCatalog.build(
+                source, Channel.Type.LIVE, "tr", ProviderCatalog.ALL_GROUPS, "");
+
+        assertEquals("tr", snapshot.selectedLanguage);
+        assertEquals(3, snapshot.rows.size());
+        assertTrue(snapshot.groups.isEmpty());
+    }
+
+    @Test public void stripsLanguagePrefixAndKeepsMeaningfulCategories() {
+        List<Channel> source = Arrays.asList(
+                channel("1", "TRT Haber", "TR | NEWS", Channel.Type.LIVE),
+                channel("2", "A Spor", "TR | SPORTS", Channel.Type.LIVE),
+                channel("3", "Kanal D", "TR | ENTERTAINMENT", Channel.Type.LIVE));
+
+        ProviderCatalog.Snapshot snapshot = ProviderCatalog.build(
+                source, Channel.Type.LIVE, "tr", ProviderCatalog.ALL_GROUPS, "");
+
+        assertEquals(Arrays.asList("News", "Sports", "Entertainment"), snapshot.groups);
     }
 
     private static boolean hasLanguage(ProviderCatalog.Snapshot snapshot, String id) {
