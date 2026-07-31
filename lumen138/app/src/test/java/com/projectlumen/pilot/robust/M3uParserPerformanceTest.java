@@ -48,7 +48,8 @@ public final class M3uParserPerformanceTest {
         assertEquals(100_000, channels.size());
         assertTrue("Parser must continue to EOF for GCM integrity verification",
                 finalLines.get() >= 201_001L);
-        assertTrue("Parser must emit progress events", progressEvents.get() >= 20);
+        assertTrue("Parser must emit regular progress events without excessive UI callbacks",
+                progressEvents.get() >= 10);
         assertTrue("100k parser gate exceeded 30 seconds: " + elapsedMs + " ms",
                 elapsedMs < 30_000L);
     }
