@@ -1,0 +1,36 @@
+name: TAYVORIQ Heat Candidate Audit Observer
+
+on:
+  workflow_run:
+    workflows: ["TAYVORIQ Heat Visual Candidate Audit 2026-07-31"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Record result
+        run: |
+          set -euo pipefail
+          mkdir -p .github/run-now
+          cat > .github/run-now/latest-heat-candidate-audit.json <<JSON
+          {
+            "run_id": "${{ github.event.workflow_run.id }}",
+            "conclusion": "${{ github.event.workflow_run.conclusion }}",
+            "url": "${{ github.event.workflow_run.html_url }}",
+            "updated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/run-now/latest-heat-candidate-audit.json
+          git commit -m "ops: record heat candidate audit ${{ github.event.workflow_run.id }}"
+          git pull --rebase origin main
+          git push origin main
