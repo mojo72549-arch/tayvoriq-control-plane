@@ -28,22 +28,21 @@ jobs:
 
           path=Path('.github/workflows/tayvoriq-semantic-heat-story-v4-20260731.yml')
           text=path.read_text(encoding='utf-8')
-          old='''          PY
-          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k semantic/approved-audio.m4a
-          test -s semantic/approved-audio.m4a
-
-      - name: Select ten sentence-matched real video clips
-'''
-          new='''          PY
-
-      - name: Preserve approved voice and background music
-        run: |
-          set -euo pipefail
-          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k semantic/approved-audio.m4a
-          test -s semantic/approved-audio.m4a
-
-      - name: Select ten sentence-matched real video clips
-'''
+          old=(
+              '          PY\n'
+              '          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k semantic/approved-audio.m4a\n'
+              '          test -s semantic/approved-audio.m4a\n\n'
+              '      - name: Select ten sentence-matched real video clips\n'
+          )
+          new=(
+              '          PY\n\n'
+              '      - name: Preserve approved voice and background music\n'
+              '        run: |\n'
+              '          set -euo pipefail\n'
+              '          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k semantic/approved-audio.m4a\n'
+              '          test -s semantic/approved-audio.m4a\n\n'
+              '      - name: Select ten sentence-matched real video clips\n'
+          )
           if old not in text:
               raise SystemExit('Expected V4 audio boundary block not found')
           path.write_text(text.replace(old,new,1),encoding='utf-8')
