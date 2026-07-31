@@ -1,4 +1,4 @@
-name: Project Lumen 13.2 RC5 Stable49 Recovery Build
+name: Project Lumen 13.2 RC6 Playback Persistence UX Build
 
 on:
   pull_request:
@@ -10,23 +10,27 @@ permissions:
   contents: read
 
 concurrency:
-  group: project-lumen-rc5-${{ github.event.pull_request.number || github.ref }}
+  group: project-lumen-rc6-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-android:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.pull_request.head.ref, 'build/project-lumen-rc5-trigger')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.pull_request.head.ref, 'build/project-lumen-rc6-trigger')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - name: Checkout stable49 RC branch
+      - name: Checkout stable Project Lumen source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Apply reproducible RC5 recovery patch
+      - name: Apply RC5 baseline recovery patch
         shell: bash
         run: python lumen138/ci/apply_rc5_recovery.py
+
+      - name: Apply RC6 playback persistence performance and UX patch
+        shell: bash
+        run: python lumen138/ci/apply_rc6_quality.py
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -70,35 +74,36 @@ jobs:
           set -o pipefail
           mkdir -p "$GITHUB_WORKSPACE/dist"
           gradle --no-daemon testDebugUnitTest lintDebug assembleRelease 2>&1 | tee "$GITHUB_WORKSPACE/dist/android-build.log"
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Samsung.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_FireTV.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_Samsung.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_FireTV.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_Universal.apk"
 
-      - name: Verify package version signature launchers and Picture-in-Picture
+      - name: Verify version signature launchers playback recovery persistence and PiP
         shell: bash
         run: |
           set -euo pipefail
-          APK="$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk"
+          APK="$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_Universal.apk"
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-signature.txt"
           "$AAPT" dump badging "$APK" | tee "$GITHUB_WORKSPACE/dist/apk-badging.txt"
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml | tee "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
           grep -q "package: name='com.projectlumen.pilot.robust'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
-          grep -q "versionName='13.2.0-rc5-stable49-recovery'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          grep -q "versionName='13.2.0-rc6-playback-persistence-ux'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
+          grep -q "application-label:'Project Lumen RC6'" "$GITHUB_WORKSPACE/dist/apk-badging.txt"
           grep -q 'android.intent.category.LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
           grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
           grep -q 'android:supportsPictureInPicture' "$GITHUB_WORKSPACE/dist/apk-manifest.txt"
-          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Universal.apk.sha256"
-          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Samsung.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_Samsung.apk.sha256"
-          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_FireTV.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC5_Stable49_Recovery_FireTV.apk.sha256"
-          printf 'version=13.2.0-rc5-stable49-recovery\nbase_commit=d6d161dbfeccd7333122aaf86558b1f1b823cae0\npackage=com.projectlumen.pilot.robust\ncommit=%s\nsignature=stable-project-lumen-pilot\nlauncher=smartphone-and-leanback\nback_behavior=picture-in-picture-on-active-smartphone-playback\nprovider_recovery=https-to-http-custom-port\n' "$GITHUB_SHA" > "$GITHUB_WORKSPACE/dist/BUILD_INFO.txt"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_Samsung.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_Samsung.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_FireTV.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_FireTV.apk.sha256"
+          sha256sum "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_Universal.apk" > "$GITHUB_WORKSPACE/dist/Project_Lumen_13.2.0_RC6_Universal.apk.sha256"
+          printf 'version=13.2.0-rc6-playback-persistence-ux\nbase=13.2.0-rc5-stable49-recovery\npackage=com.projectlumen.pilot.robust\ncommit=%s\nsignature=stable-project-lumen-pilot\nlauncher=smartphone-and-leanback\nplayback=extensionless-mpegts-and-custom-port-http-recovery\npersistence=cache-first-and-synchronous-active-metadata\nimport=gzip-optional-four-megabyte-buffer\nux=unified-language-and-category-facets\nback_behavior=picture-in-picture-on-active-smartphone-playback\n' "$GITHUB_SHA" > "$GITHUB_WORKSPACE/dist/BUILD_INFO.txt"
 
-      - name: Upload RC5 Samsung Fire TV and universal APKs
+      - name: Upload RC6 Samsung Fire TV and universal APKs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: project-lumen-13-2-0-rc5-stable49-recovery-${{ github.sha }}
+          name: project-lumen-13-2-0-rc6-${{ github.sha }}
           path: dist/
           if-no-files-found: warn
           retention-days: 7
