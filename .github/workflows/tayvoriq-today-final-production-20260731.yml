@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: tayvoriq-heat-record-final-20260731
+  group: tayvoriq-heat-record-final-20260731-v4
   cancel-in-progress: false
 
 env:
@@ -65,9 +65,22 @@ jobs:
       - name: Checkout control plane
         uses: actions/checkout@v4
 
-      - name: Confirm isolated heat-record production
+      - name: Persist isolated heat run
+        continue-on-error: true
         run: |
-          echo "Isolated production run ${GITHUB_RUN_ID}: 40 Grad in Deutschland"
+          set -euo pipefail
+          mkdir -p .github/run-now
+          printf '{"run_id":%s,"status":"in_progress","url":"https://github.com/%s/actions/runs/%s","started_at":"%s","workflow":"TAYVORIQ Heat Record Final V4"}\n' \
+            "$GITHUB_RUN_ID" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > .github/run-now/latest-heat-run.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/run-now/latest-heat-run.json
+          if ! git diff --cached --quiet; then
+            git commit -m "ops: record isolated TAYVORIQ heat production"
+            git pull --rebase origin main
+            git push origin main
+          fi
 
       - name: Validate required secrets
         env:
