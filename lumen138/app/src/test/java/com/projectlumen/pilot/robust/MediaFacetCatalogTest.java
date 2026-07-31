@@ -23,10 +23,10 @@ public final class MediaFacetCatalogTest {
 
         assertEquals(2, snapshot.rows.size());
         assertEquals(2, snapshot.groups.size());
-        assertTrue(snapshot.groups.contains("DE | FILME ACTION"));
-        assertTrue(snapshot.groups.contains("DE | FILME KOMÖDIE"));
-        assertFalse(snapshot.groups.contains("DE | SERIEN KRIMI"));
-        assertFalse(snapshot.groups.contains("DE | LIVE SPORT"));
+        assertTrue(snapshot.groups.contains("Action"));
+        assertTrue(snapshot.groups.contains("Komödie"));
+        assertFalse(snapshot.groups.contains("Krimi"));
+        assertFalse(snapshot.groups.contains("Sport"));
     }
 
     @Test public void seriesExposeOnlySeriesCategoriesForSelectedLanguage() {
@@ -41,9 +41,9 @@ public final class MediaFacetCatalogTest {
 
         assertEquals(2, snapshot.rows.size());
         assertEquals(2, snapshot.groups.size());
-        assertTrue(snapshot.groups.contains("DE | SERIEN KRIMI"));
-        assertTrue(snapshot.groups.contains("DE | SERIEN DRAMA"));
-        assertFalse(snapshot.groups.contains("DE | FILME KRIMI"));
+        assertTrue(snapshot.groups.contains("Krimi"));
+        assertTrue(snapshot.groups.contains("Drama"));
+        assertFalse(snapshot.groups.contains("Filme Krimi"));
     }
 
     @Test public void exactMovieCategorySelectionDoesNotLeakOtherCategories() {
@@ -55,6 +55,7 @@ public final class MediaFacetCatalogTest {
         ProviderCatalog.Snapshot snapshot = ProviderCatalog.build(
                 source, Channel.Type.MOVIE, "de", "DE | FILME ACTION", "");
 
+        assertEquals("Action", snapshot.selectedGroup);
         assertEquals(2, snapshot.rows.size());
         assertTrue(snapshot.rows.stream().allMatch(row ->
                 "DE | FILME ACTION".equals(row.group)));
