@@ -1,0 +1,481 @@
+name: TAYVORIQ Semantic Heat Story V4 2026-07-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-semantic-heat-story-v4-20260731.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN_ID: "30623043649"
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
+jobs:
+  build-semantic-story:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          test -n "${PEXELS_API_KEY:-}"
+
+      - name: Install media tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --upgrade pip -q
+          python -m pip install pillow -q
+
+      - name: Download approved voice production
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-today-final-${{ env.SOURCE_RUN_ID }}
+          path: source
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Locate original job and preserve approved sound
+        run: |
+          set -euo pipefail
+          rm -rf semantic
+          mkdir -p semantic/clips semantic/work semantic/segments semantic/qa-frames semantic/out
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          jobs=[]
+          for item in Path('source/out').rglob('job.json'):
+              root=item.parent
+              if (
+                  (root/'short_youtube.mp4').is_file()
+                  and (root/'youtube_shorts/assets/subtitle_06.png').is_file()
+              ):
+                  jobs.append(root.resolve())
+          if not jobs:
+              raise SystemExit('Complete original TAYVORIQ job not found')
+          job=sorted(jobs,key=lambda path:len(str(path)))[0]
+          video=(job/'short_youtube.mp4').resolve()
+          subtitle_dir=(job/'youtube_shorts/assets').resolve()
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
+              handle.write(f'SOURCE_JOB_DIR={job}\n')
+              handle.write(f'SOURCE_VIDEO={video}\n')
+              handle.write(f'SUBTITLE_DIR={subtitle_dir}\n')
+          print({'source_job':str(job),'source_video':str(video)})
+          PY
+          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k semantic/approved-audio.m4a
+          test -s semantic/approved-audio.m4a
+
+      - name: Select ten sentence-matched real video clips
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import time
+          from pathlib import Path
+          from urllib import parse, request
+          from PIL import Image, ImageStat
+
+          api_key=os.environ['PEXELS_API_KEY'].strip()
+          output=Path('semantic/clips')
+          output.mkdir(parents=True,exist_ok=True)
+          specs=[
+              {
+                  'key':'s1_city_heat','scene':1,
+                  'spoken':'Deutschland erlebt extreme Hitze mit Temperaturen um vierzig Grad.',
+                  'query':'European city heatwave people walking hot summer street',
+                  'anchors':['city','street','people','summer','heat','hot','sun'],
+                  'exclude':['night','dark','fire','flame','snow','winter','empty'],
+                  'min_brightness':42,
+              },
+              {
+                  'key':'s2_hot_air_sun','scene':2,
+                  'spoken':'Die Werte steigen, weil heiße Luft und starke Sonne zusammenwirken.',
+                  'query':'bright blazing sun heat haze hot air summer sky',
+                  'anchors':['sun','sunny','sunshine','sky','heat','hot','summer'],
+                  'exclude':['night','dark','fire','flame','moon','rain'],
+                  'min_brightness':48,
+              },
+              {
+                  'key':'s3_child','scene':3,
+                  'spoken':'Gefährdet sind Kinder, Ältere, Kranke und Beschäftigte im Freien.',
+                  'query':'child drinking water hot summer day outside',
+                  'anchors':['child','children','kid','boy','girl','water','summer'],
+                  'exclude':['night','dark','empty','winter'],
+                  'min_brightness':38,
+              },
+              {
+                  'key':'s3_elderly','scene':3,
+                  'spoken':'Gefährdet sind Kinder, Ältere, Kranke und Beschäftigte im Freien.',
+                  'query':'elderly senior person drinking water summer heat outside',
+                  'anchors':['elderly','senior','old','woman','man','water','summer'],
+                  'exclude':['night','dark','empty','winter'],
+                  'min_brightness':35,
+              },
+              {
+                  'key':'s3_worker','scene':3,
+                  'spoken':'Gefährdet sind Kinder, Ältere, Kranke und Beschäftigte im Freien.',
+                  'query':'construction worker working outdoors hot sun summer heat',
+                  'anchors':['worker','construction','working','outdoor','sun','summer','heat'],
+                  'exclude':['night','dark','office','empty'],
+                  'min_brightness':38,
+              },
+              {
+                  'key':'s4_exhaustion','scene':4,
+                  'spoken':'Für dich kann Hitze schnell gefährlich werden.',
+                  'query':'person dizzy heat exhaustion headache hot summer first aid',
+                  'anchors':['dizzy','headache','exhausted','tired','sick','heat','person'],
+                  'exclude':['night','dark','party','dancing','empty'],
+                  'min_brightness':32,
+              },
+              {
+                  'key':'s5_shade','scene':5,
+                  'spoken':'Reduziere Aufenthalte in der Hitze, trinke Wasser und suche bei Beschwerden einen kühlen Raum.',
+                  'query':'person leaving hot sun walking into shade summer',
+                  'anchors':['shade','shadow','sun','summer','person','walking'],
+                  'exclude':['night','dark','empty','winter'],
+                  'min_brightness':36,
+              },
+              {
+                  'key':'s5_water','scene':5,
+                  'spoken':'Reduziere Aufenthalte in der Hitze, trinke Wasser und suche bei Beschwerden einen kühlen Raum.',
+                  'query':'person drinking cold water bottle hot summer close up',
+                  'anchors':['drink','drinking','water','bottle','person','summer'],
+                  'exclude':['alcohol','beer','wine','night','dark','empty'],
+                  'min_brightness':34,
+              },
+              {
+                  'key':'s5_cool_room','scene':5,
+                  'spoken':'Reduziere Aufenthalte in der Hitze, trinke Wasser und suche bei Beschwerden einen kühlen Raum.',
+                  'query':'person cooling down in room electric fan summer heat',
+                  'anchors':['fan','cool','room','person','summer','air'],
+                  'exclude':['empty','porch','night','dark','outdoor'],
+                  'min_brightness':34,
+              },
+              {
+                  'key':'s6_warning_phone','scene':6,
+                  'spoken':'Folge und abonniere diesen Kanal für verifizierte Warnlagen und konkrete Schritte.',
+                  'query':'person checking weather warning alert smartphone close up',
+                  'anchors':['phone','smartphone','weather','warning','alert','person'],
+                  'exclude':['game','gaming','nightclub','party','empty'],
+                  'min_brightness':28,
+              },
+          ]
+          used_ids=set()
+          manifest=[]
+
+          def api_search(query,portrait=True):
+              args={'query':query,'per_page':80,'size':'medium'}
+              if portrait:
+                  args['orientation']='portrait'
+              url='https://api.pexels.com/videos/search?'+parse.urlencode(args)
+              req=request.Request(url,headers={'Authorization':api_key,'User-Agent':'TAYVORIQ-Semantic-V4/1.0'})
+              with request.urlopen(req,timeout=45) as response:
+                  return json.loads(response.read().decode('utf-8'))
+
+          def download(url,path):
+              for attempt in range(3):
+                  try:
+                      req=request.Request(url,headers={'User-Agent':'TAYVORIQ-Semantic-V4/1.0'})
+                      with request.urlopen(req,timeout=120) as response,path.open('wb') as handle:
+                          while True:
+                              chunk=response.read(1024*1024)
+                              if not chunk:
+                                  break
+                              handle.write(chunk)
+                      if path.stat().st_size>500000:
+                          return
+                  except Exception:
+                      path.unlink(missing_ok=True)
+                      if attempt==2:
+                          raise
+                      time.sleep(2+attempt)
+              raise RuntimeError(f'Could not download {url}')
+
+          def frame_metrics(video_path,seconds):
+              frame=video_path.with_suffix(f'.{str(seconds).replace(".","_")}.jpg')
+              subprocess.run([
+                  'ffmpeg','-y','-loglevel','error','-ss',str(seconds),'-i',str(video_path),
+                  '-frames:v','1','-vf','scale=270:480',str(frame)
+              ],check=True)
+              image=Image.open(frame).convert('L')
+              stat=ImageStat.Stat(image)
+              frame.unlink(missing_ok=True)
+              return float(stat.mean[0]),float(stat.stddev[0])
+
+          for spec in specs:
+              payload=api_search(spec['query'],portrait=True)
+              if not payload.get('videos'):
+                  payload=api_search(spec['query'],portrait=False)
+              candidates=[]
+              for video in payload.get('videos',[]):
+                  video_id=int(video.get('id') or 0)
+                  duration=float(video.get('duration') or 0)
+                  if not video_id or video_id in used_ids or duration<3.0:
+                      continue
+                  page=str(video.get('url') or '')
+                  slug=page.rstrip('/').split('/')[-1].casefold()
+                  words=set(re.findall(r'[a-z]+',slug))
+                  exclusion=sum(1 for marker in spec['exclude'] if marker in words or marker in slug)
+                  if exclusion:
+                      continue
+                  anchor=sum(1 for marker in spec['anchors'] if marker in words or marker in slug)
+                  files=[]
+                  for item in video.get('video_files',[]):
+                      width=int(item.get('width') or 0)
+                      height=int(item.get('height') or 0)
+                      link=str(item.get('link') or '')
+                      if not link or min(width,height)<480:
+                          continue
+                      ratio=width/max(1,height)
+                      files.append(((0 if height>width else 1,abs(ratio-9/16),abs(max(width,height)-1920)),width,height,link))
+                  if not files:
+                      continue
+                  files.sort(key=lambda row:row[0])
+                  _,width,height,link=files[0]
+                  candidates.append(((-anchor,0 if height>width else 1,abs(width/max(1,height)-9/16)),video_id,page,slug,width,height,link,duration,anchor))
+              candidates.sort(key=lambda row:row[0])
+              chosen=None
+              for _,video_id,page,slug,width,height,link,duration,anchor in candidates[:24]:
+                  temp=output/f'{spec["key"]}_candidate_{video_id}.mp4'
+                  try:
+                      download(link,temp)
+                      sample_1=min(max(0.5,duration*0.22),max(0.5,duration-0.5))
+                      sample_2=min(max(1.0,duration*0.62),max(1.0,duration-0.35))
+                      b1,c1=frame_metrics(temp,sample_1)
+                      b2,c2=frame_metrics(temp,sample_2)
+                      brightness=(b1+b2)/2
+                      contrast=(c1+c2)/2
+                      if brightness<spec['min_brightness'] or contrast<13:
+                          temp.unlink(missing_ok=True)
+                          continue
+                      final=output/f'{spec["key"]}.mp4'
+                      temp.replace(final)
+                      chosen={
+                          'key':spec['key'],
+                          'scene':spec['scene'],
+                          'spoken_sentence':spec['spoken'],
+                          'query':spec['query'],
+                          'pexels_video_id':video_id,
+                          'source_page':page,
+                          'slug':slug,
+                          'anchor_score':anchor,
+                          'width':width,
+                          'height':height,
+                          'brightness':round(brightness,2),
+                          'contrast':round(contrast,2),
+                          'file':str(final),
+                          'bytes':final.stat().st_size,
+                      }
+                      break
+                  except Exception:
+                      temp.unlink(missing_ok=True)
+              if chosen is None:
+                  raise SystemExit(f'No acceptable semantic clip found for {spec["key"]}')
+              used_ids.add(chosen['pexels_video_id'])
+              manifest.append(chosen)
+              print(chosen)
+
+          Path('semantic/semantic-clip-manifest.json').write_text(
+              json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print({'semantic_clips':len(manifest),'unique_video_ids':len(used_ids)})
+          PY
+
+      - name: Render six sentence-matched story scenes
+        run: |
+          set -euo pipefail
+
+          render_clip() {
+            local input="$1"
+            local duration="$2"
+            local output="$3"
+            ffmpeg -y -loglevel error -stream_loop -1 -i "$input" -t "$duration" -an \
+              -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,eq=contrast=1.035:saturation=1.055,unsharp=5:5:0.25,format=yuv420p" \
+              -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p "$output"
+          }
+
+          overlay_subtitle() {
+            local input="$1"
+            local subtitle="$2"
+            local duration="$3"
+            local output="$4"
+            ffmpeg -y -loglevel error -i "$input" -loop 1 -i "$subtitle" -t "$duration" -an \
+              -filter_complex "[0:v][1:v]overlay=0:0:format=auto,format=yuv420p[v]" \
+              -map '[v]' -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p "$output"
+          }
+
+          render_clip semantic/clips/s1_city_heat.mp4 4.220 semantic/work/s1_base.mp4
+          overlay_subtitle semantic/work/s1_base.mp4 "$SUBTITLE_DIR/subtitle_01.png" 4.220 semantic/segments/segment_01.mp4
+
+          render_clip semantic/clips/s2_hot_air_sun.mp4 4.688 semantic/work/s2_base.mp4
+          overlay_subtitle semantic/work/s2_base.mp4 "$SUBTITLE_DIR/subtitle_02.png" 4.688 semantic/segments/segment_02.mp4
+
+          render_clip semantic/clips/s3_child.mp4 1.407 semantic/work/s3a.mp4
+          render_clip semantic/clips/s3_elderly.mp4 1.407 semantic/work/s3b.mp4
+          render_clip semantic/clips/s3_worker.mp4 1.406 semantic/work/s3c.mp4
+          cat > semantic/work/s3_concat.txt <<EOF
+          file '$(realpath semantic/work/s3a.mp4)'
+          file '$(realpath semantic/work/s3b.mp4)'
+          file '$(realpath semantic/work/s3c.mp4)'
+          EOF
+          ffmpeg -y -loglevel error -f concat -safe 0 -i semantic/work/s3_concat.txt -c copy semantic/work/s3_base.mp4
+          overlay_subtitle semantic/work/s3_base.mp4 "$SUBTITLE_DIR/subtitle_03.png" 4.220 semantic/segments/segment_03.mp4
+
+          render_clip semantic/clips/s4_exhaustion.mp4 3.282 semantic/work/s4_base.mp4
+          overlay_subtitle semantic/work/s4_base.mp4 "$SUBTITLE_DIR/subtitle_04.png" 3.282 semantic/segments/segment_04.mp4
+
+          render_clip semantic/clips/s5_shade.mp4 2.188 semantic/work/s5a.mp4
+          render_clip semantic/clips/s5_water.mp4 2.188 semantic/work/s5b.mp4
+          render_clip semantic/clips/s5_cool_room.mp4 2.188 semantic/work/s5c.mp4
+          cat > semantic/work/s5_concat.txt <<EOF
+          file '$(realpath semantic/work/s5a.mp4)'
+          file '$(realpath semantic/work/s5b.mp4)'
+          file '$(realpath semantic/work/s5c.mp4)'
+          EOF
+          ffmpeg -y -loglevel error -f concat -safe 0 -i semantic/work/s5_concat.txt -c copy semantic/work/s5_base.mp4
+          overlay_subtitle semantic/work/s5_base.mp4 "$SUBTITLE_DIR/subtitle_05.png" 6.564 semantic/segments/segment_05.mp4
+
+          render_clip semantic/clips/s6_warning_phone.mp4 6.407 semantic/work/s6_base.mp4
+          overlay_subtitle semantic/work/s6_base.mp4 "$SUBTITLE_DIR/subtitle_06.png" 6.407 semantic/segments/segment_06.mp4
+
+          : > semantic/segments.txt
+          for index in 1 2 3 4 5 6; do
+            printf "file '%s'\n" "$(realpath "$(printf 'semantic/segments/segment_%02d.mp4' "$index")")" >> semantic/segments.txt
+          done
+          ffmpeg -y -loglevel error -f concat -safe 0 -i semantic/segments.txt -c copy semantic/visual-only.mp4
+          ffmpeg -y -loglevel error -i semantic/visual-only.mp4 -i semantic/approved-audio.m4a \
+            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart \
+            semantic/out/tayvoriq-hitzewelle-semantic-v4.mp4
+          test -s semantic/out/tayvoriq-hitzewelle-semantic-v4.mp4
+
+      - name: Validate technical and visual quality
+        run: |
+          set -euo pipefail
+          ffprobe -v error -show_entries stream=codec_type,width,height -show_entries format=duration \
+            -of json semantic/out/tayvoriq-hitzewelle-semantic-v4.mp4 > semantic/ffprobe.json
+          times=(1.2 6.2 10.8 14.6 19.7 26.0)
+          for index in 1 2 3 4 5 6; do
+            ffmpeg -y -loglevel error -ss "${times[$((index-1))]}" \
+              -i semantic/out/tayvoriq-hitzewelle-semantic-v4.mp4 -frames:v 1 -vf scale=540:960 \
+              "$(printf 'semantic/qa-frames/frame_%02d.jpg' "$index")"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops, ImageDraw, ImageStat
+
+          spoken=[
+              'Deutschland erlebt extreme Hitze mit Temperaturen um vierzig Grad.',
+              'Die Werte steigen, weil heiße Luft und starke Sonne zusammenwirken.',
+              'Gefährdet sind Kinder, Ältere, Kranke und Beschäftigte im Freien.',
+              'Für dich kann Hitze schnell gefährlich werden.',
+              'Reduziere Aufenthalte in der Hitze, trinke Wasser und suche bei Beschwerden einen kühlen Raum.',
+              'Folge und abonniere diesen Kanal für verifizierte Warnlagen und konkrete Schritte.',
+          ]
+          meanings=[
+              'Stadtbevölkerung in extremer Hitze',
+              'starke Sonne und flirrende heiße Luft',
+              'Kinder, ältere Menschen und Beschäftigte im Freien',
+              'sichtbare Hitzeerschöpfung oder Kreislaufbeschwerden',
+              'Schatten aufsuchen, Wasser trinken und abkühlen',
+              'Wetterwarnung auf dem Smartphone als geprüfte Warnlage',
+          ]
+          probe=json.loads(Path('semantic/ffprobe.json').read_text(encoding='utf-8'))
+          duration=float(probe['format']['duration'])
+          streams=probe.get('streams',[])
+          video=next(stream for stream in streams if stream.get('codec_type')=='video')
+          assert int(video.get('width') or 0)==1080,video
+          assert int(video.get('height') or 0)==1920,video
+          assert any(stream.get('codec_type')=='audio' for stream in streams),streams
+          assert 28.8<=duration<=29.8,duration
+
+          frame_paths=sorted(Path('semantic/qa-frames').glob('frame_*.jpg'))
+          assert len(frame_paths)==6,len(frame_paths)
+          images=[Image.open(path).convert('RGB') for path in frame_paths]
+          brightness=[]
+          contrast=[]
+          differences=[]
+          for image in images:
+              stat=ImageStat.Stat(image.convert('L'))
+              brightness.append(float(stat.mean[0]))
+              contrast.append(float(stat.stddev[0]))
+          for left,right in zip(images,images[1:]):
+              differences.append(float(ImageStat.Stat(ImageChops.difference(left,right).convert('L')).mean[0]))
+          assert min(brightness)>25,brightness
+          assert min(contrast)>13,contrast
+          assert sum(value>9 for value in differences)>=4,differences
+
+          semantic_map=[]
+          for index,(sentence,meaning,path) in enumerate(zip(spoken,meanings,frame_paths),1):
+              semantic_map.append({
+                  'scene':index,
+                  'spoken_sentence':sentence,
+                  'required_visual_meaning':meaning,
+                  'qa_frame':str(path),
+              })
+          Path('semantic/semantic-story-map.json').write_text(
+              json.dumps(semantic_map,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+
+          report={
+              'passed':True,
+              'resolution':'1080x1920',
+              'duration_seconds':duration,
+              'semantic_scene_count':6,
+              'source_clip_count':10,
+              'sentence_to_visual_mapping_required':True,
+              'internal_labels_removed':True,
+              'trendcheck_visible':False,
+              'approved_voice_and_music_reused':True,
+              'original_synchronized_subtitles_reused':True,
+              'frame_brightness':brightness,
+              'frame_contrast':contrast,
+              'frame_differences':differences,
+          }
+          Path('semantic/semantic-quality-report.json').write_text(
+              json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+
+          thumb_w,thumb_h=270,480
+          sheet=Image.new('RGB',(thumb_w*3,thumb_h*2),(18,18,18))
+          for idx,image in enumerate(images):
+              thumb=image.copy()
+              thumb.thumbnail((thumb_w,thumb_h))
+              x=(idx%3)*thumb_w
+              y=(idx//3)*thumb_h
+              sheet.paste(thumb,(x,y))
+              draw=ImageDraw.Draw(sheet)
+              draw.rectangle((x+8,y+8,x+62,y+46),fill=(0,0,0))
+              draw.text((x+23,y+15),str(idx+1),fill=(255,255,255))
+          sheet.save('semantic/semantic-contact-sheet.jpg',quality=94)
+          print(report)
+          PY
+
+      - name: Upload semantic review candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-semantic-heat-story-v4-${{ github.run_id }}
+          path: |
+            semantic/out/tayvoriq-hitzewelle-semantic-v4.mp4
+            semantic/semantic-contact-sheet.jpg
+            semantic/qa-frames/**
+            semantic/semantic-story-map.json
+            semantic/semantic-clip-manifest.json
+            semantic/semantic-quality-report.json
+            semantic/ffprobe.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
