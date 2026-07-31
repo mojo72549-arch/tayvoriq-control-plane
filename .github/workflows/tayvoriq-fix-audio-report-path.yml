@@ -1,0 +1,59 @@
+name: TAYVORIQ Fix Narrator Report Path
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-fix-audio-report-path.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-production-workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Patch narrator gate path
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path=Path('.github/workflows/tayvoriq-today-final-production-20260731.yml')
+          text=path.read_text(encoding='utf-8')
+          old="          audio = json.loads((job_dir / 'audio_report.json').read_text(encoding='utf-8'))"
+          new="""          audio_path = job_dir / 'youtube_shorts' / 'audio_report.json'
+          if not audio_path.is_file():
+              matches = sorted(job_dir.rglob('audio_report.json'))
+              if not matches:
+                  raise FileNotFoundError(f'No audio_report.json found below {job_dir}')
+              audio_path = matches[0]
+          audio = json.loads(audio_path.read_text(encoding='utf-8'))"""
+          if old not in text:
+              if new in text:
+                  print('Narrator report path already fixed')
+                  raise SystemExit(0)
+              raise SystemExit('Expected broken narrator report line not found')
+          path.write_text(text.replace(old,new,1),encoding='utf-8')
+          print('Narrator report path fixed')
+          PY
+
+      - name: Commit fix
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/tayvoriq-today-final-production-20260731.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "fix: locate platform narrator audio report"
+          git pull --rebase origin main
+          git push origin main
