@@ -251,7 +251,11 @@ final class ProviderCatalog {
 
     private static String prettyGroup(String value) {
         String group = safeGroup(value);
-        if (group.length() <= 4 || !group.equals(group.toUpperCase(Locale.ROOT))) return group;
+        if (!group.equals(group.toUpperCase(Locale.ROOT))) return group;
+        String normalized = group.toUpperCase(Locale.ROOT);
+        if (normalized.equals("HD") || normalized.equals("FHD") || normalized.equals("UHD")
+                || normalized.equals("SD") || normalized.equals("TV")
+                || normalized.equals("4K") || normalized.equals("8K")) return normalized;
         String[] words = group.toLowerCase(Locale.ROOT).split("\\s+");
         StringBuilder result = new StringBuilder(group.length());
         for (String word : words) {
