@@ -1,0 +1,153 @@
+name: TAYVORIQ Control Recover Telegram Review 2026-07-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-control-recover-telegram-review-20260731.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: tayvoriq-control-recover-telegram-review-20260731
+  cancel-in-progress: false
+
+env:
+  SOURCE_RUN_ID: "30623043649"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  deliver-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate Telegram configuration
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+
+      - name: Download completed production artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-today-final-${{ env.SOURCE_RUN_ID }}
+          path: source
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Verify finished video and narrator reports
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          state=json.loads(Path('source/out/tayvoriq-review-state.json').read_text(encoding='utf-8'))
+          raw=Path(str(state.get('job_dir') or ''))
+          candidates=[]
+          if raw.parts and raw.parts[0]=='out':
+              candidates.append(Path('source')/raw)
+          candidates.extend(p.parent for p in Path('source/out').rglob('job.json'))
+          job_dir=next((p for p in candidates if (p/'short_youtube.mp4').is_file() and (p/'short_tiktok.mp4').is_file()),None)
+          if job_dir is None:
+              raise SystemExit('No complete rendered job found')
+          job=json.loads((job_dir/'job.json').read_text(encoding='utf-8'))
+          quality=job.get('quality_report') if isinstance(job.get('quality_report'),dict) else {}
+          assert str(job.get('render_status','')).upper()=='DONE',job.get('render_status')
+          assert quality.get('passed') is True,quality
+          for platform in ('youtube_shorts','tiktok'):
+              report=json.loads((job_dir/platform/'audio_report.json').read_text(encoding='utf-8'))
+              provider=str(report.get('voice_provider_used') or report.get('provider') or '').casefold()
+              settings=report.get('voice_settings') if isinstance(report.get('voice_settings'),dict) else {}
+              assert 'chatterbox' in provider,provider
+              assert not bool(report.get('fallback')),report
+              assert bool(settings.get('reference_audio_used')),settings
+              assert bool(report.get('narrator_tone_applied')),report
+              assert bool(report.get('premium_voice_contract_passed')),report
+              assert bool(report.get('natural_pacing_contract_passed')),report
+          video=(job_dir/'short_youtube.mp4').resolve()
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
+              handle.write(f'TAYVORIQ_JOB_DIR={job_dir.resolve()}\n')
+              handle.write(f'TAYVORIQ_TELEGRAM_VIDEO={video}\n')
+          print({'verified':True,'job_dir':str(job_dir),'video_bytes':video.stat().st_size})
+          PY
+
+      - name: Register review for button processing
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-control-review-${{ github.run_id }}
+          path: source/out/**
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Send actual video to Telegram
+        id: telegram
+        run: |
+          set -euo pipefail
+          markup=$(python - <<'PY'
+          import json, os
+          run=os.environ['GITHUB_RUN_ID']
+          technical=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run}"
+          print(json.dumps({
+              'inline_keyboard':[
+                  [
+                      {'text':'✅ Freigeben','callback_data':f'tayvoriqcp:approve:{run}'},
+                      {'text':'❌ Ablehnen','callback_data':f'tayvoriqcp:reject:{run}'},
+                  ],
+                  [{'text':'🔧 Technische Details','url':technical}],
+              ]
+          },ensure_ascii=False))
+          PY
+          )
+          caption=$'🟢 Dein TAYVORIQ-Video ist bereit\n\nThema: 40 Grad in Deutschland – Schutz vor Hitzschlag und Unwettern\nQualität: 96/100\n\nVideo ansehen und danach direkt Freigeben oder Ablehnen.'
+          curl --fail --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@${TAYVORIQ_TELEGRAM_VIDEO};type=video/mp4" \
+            -F "caption=${caption}" \
+            -F "supports_streaming=true" \
+            -F "reply_markup=${markup}" \
+            --output /tmp/telegram-response.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload=json.loads(Path('/tmp/telegram-response.json').read_text(encoding='utf-8'))
+          if not payload.get('ok'):
+              raise SystemExit(payload)
+          message_id=payload['result']['message_id']
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
+              handle.write(f'message_id={message_id}\n')
+          print({'telegram_delivery':'confirmed','message_id':message_id,'approval_buttons':True})
+          PY
+
+      - name: Persist confirmed Telegram delivery
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-control-deliveries
+          cat > ".automation/tayvoriq-control-deliveries/${GITHUB_RUN_ID}.json" <<JSON
+          {
+            "status": "DELIVERED_TO_TELEGRAM",
+            "source_run_id": "${SOURCE_RUN_ID}",
+            "approval_run_id": "${GITHUB_RUN_ID}",
+            "telegram_message_id": "${{ steps.telegram.outputs.message_id }}",
+            "approve_callback": "tayvoriqcp:approve:${GITHUB_RUN_ID}",
+            "reject_callback": "tayvoriqcp:reject:${GITHUB_RUN_ID}",
+            "delivered_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".automation/tayvoriq-control-deliveries/${GITHUB_RUN_ID}.json"
+          git commit -m "ops: confirm TAYVORIQ Telegram delivery ${GITHUB_RUN_ID}"
+          git pull --rebase origin main
+          git push origin main
