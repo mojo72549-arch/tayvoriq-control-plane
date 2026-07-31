@@ -1,0 +1,337 @@
+name: TAYVORIQ Selected Semantic Heat Story V6 2026-07-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-selected-semantic-heat-story-v6-20260731.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN_ID: "30623043649"
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
+jobs:
+  render-selected-story:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install production tools
+        run: |
+          set -euo pipefail
+          test -n "${PEXELS_API_KEY:-}"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install --upgrade pip -q
+          python -m pip install pillow -q
+
+      - name: Download approved voice production
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-today-final-${{ env.SOURCE_RUN_ID }}
+          path: source
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Render manually selected sentence-to-scene story
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import shutil
+          import subprocess
+          import time
+          from pathlib import Path
+          from urllib import request
+          from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageStat
+
+          root=Path('semantic-v6')
+          if root.exists():
+              shutil.rmtree(root)
+          for folder in ('clips','normalized','segments','tmp','qa-frames','out','overlays'):
+              (root/folder).mkdir(parents=True,exist_ok=True)
+
+          def run(command):
+              subprocess.run([str(item) for item in command],check=True)
+
+          jobs=[]
+          for job_file in Path('source/out').rglob('job.json'):
+              job=job_file.parent
+              if (job/'short_youtube.mp4').is_file() and (job/'youtube_shorts/assets/subtitle_06.png').is_file():
+                  jobs.append(job.resolve())
+          if not jobs:
+              raise SystemExit('Approved source job not found')
+          job=sorted(jobs,key=lambda value:len(str(value)))[0]
+          source_video=job/'short_youtube.mp4'
+          subtitle_dir=job/'youtube_shorts/assets'
+          approved_audio=root/'approved-audio.m4a'
+          run(['ffmpeg','-y','-loglevel','error','-i',source_video,'-vn','-c:a','aac','-b:a','192k',approved_audio])
+
+          selected={
+              's1_city_heat':16668262,
+              's2_hot_air_sun':12222644,
+              's3_child':34541751,
+              's3_elderly':8939283,
+              's3_worker':26288493,
+              's4_exhaustion':4764125,
+              's5_shade':35948649,
+              's5_water':8726724,
+              's5_cool_room':8503569,
+              's6_warning_phone':7821861,
+          }
+          expected_meanings={
+              's1_city_heat':'Menschen in einer europäischen Stadt während extremer Hitze',
+              's2_hot_air_sun':'starke direkte Sonne und heiße Luft',
+              's3_child':'Kind im Freien als besonders gefährdete Gruppe',
+              's3_elderly':'ältere Person trinkt Wasser im Sommer',
+              's3_worker':'Beschäftigte arbeiten draußen auf einer Baustelle',
+              's4_exhaustion':'erschöpfte und durstige Person im Freien mit Hitzeproblemen',
+              's5_shade':'Person hält sich im Schatten unter einem Baum auf',
+              's5_water':'Person trinkt sichtbar Wasser',
+              's5_cool_room':'Person kühlt sich in einem Raum vor einem Ventilator ab',
+              's6_warning_phone':'Smartphone mit sichtbarer Hitzewarnung',
+          }
+          api_key=os.environ['PEXELS_API_KEY'].strip()
+          manifest=[]
+
+          def get_video(video_id):
+              req=request.Request(
+                  f'https://api.pexels.com/videos/videos/{video_id}',
+                  headers={'Authorization':api_key,'User-Agent':'TAYVORIQ-Selected-V6/1.0'},
+              )
+              with request.urlopen(req,timeout=45) as response:
+                  return json.loads(response.read().decode('utf-8'))
+
+          def download(url,path):
+              for attempt in range(3):
+                  try:
+                      req=request.Request(url,headers={'User-Agent':'TAYVORIQ-Selected-V6/1.0'})
+                      with request.urlopen(req,timeout=150) as response,path.open('wb') as handle:
+                          while True:
+                              chunk=response.read(1024*1024)
+                              if not chunk:
+                                  break
+                              handle.write(chunk)
+                      if path.stat().st_size>500000:
+                          return
+                  except Exception:
+                      path.unlink(missing_ok=True)
+                      if attempt==2:
+                          raise
+                      time.sleep(2+attempt)
+              raise RuntimeError(f'Download failed: {url}')
+
+          for key,video_id in selected.items():
+              data=get_video(video_id)
+              choices=[]
+              for item in data.get('video_files',[]):
+                  width=int(item.get('width') or 0)
+                  height=int(item.get('height') or 0)
+                  link=str(item.get('link') or '')
+                  if not link or min(width,height)<540:
+                      continue
+                  ratio=width/max(1,height)
+                  score=(0 if height>width else 1,abs(ratio-(9/16)),abs(max(width,height)-1920))
+                  choices.append((score,width,height,link))
+              if not choices:
+                  raise SystemExit(f'No production file for Pexels video {video_id}')
+              choices.sort(key=lambda value:value[0])
+              _,width,height,link=choices[0]
+              target=root/'clips'/f'{key}.mp4'
+              download(link,target)
+              manifest.append({
+                  'key':key,'pexels_video_id':video_id,'source_page':data.get('url'),
+                  'width':width,'height':height,'bytes':target.stat().st_size,
+                  'required_visual_meaning':expected_meanings[key],
+              })
+          (root/'selected-visual-manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          width,height=1080,1920
+          bold='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+          regular='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+
+          def make_badge(path,title,subtitle=None,kind='temperature'):
+              image=Image.new('RGBA',(width,height),(0,0,0,0))
+              draw=ImageDraw.Draw(image)
+              if kind=='temperature':
+                  box=(760,90,1010,250)
+                  draw.rounded_rectangle(box,radius=38,fill=(164,23,35,235),outline=(255,230,230,255),width=4)
+                  draw.text((800,116),title,font=ImageFont.truetype(bold,64),fill='white')
+              else:
+                  box=(80,90,1000,330)
+                  draw.rounded_rectangle(box,radius=42,fill=(132,17,30,240),outline=(255,228,228,255),width=4)
+                  draw.text((125,122),title,font=ImageFont.truetype(bold,54),fill='white')
+                  if subtitle:
+                      draw.text((125,210),subtitle,font=ImageFont.truetype(regular,38),fill=(255,241,241,255))
+              image.save(path)
+
+          temp_badge=root/'overlays'/'temperature.png'
+          warning_badge=root/'overlays'/'warning.png'
+          make_badge(temp_badge,'40 °C',kind='temperature')
+          make_badge(warning_badge,'⚠ HITZEWARNUNG','Amtliche Warnungen prüfen',kind='warning')
+
+          def normalize(key,duration,name,extra_overlay=None):
+              source=root/'clips'/f'{key}.mp4'
+              base=root/'tmp'/f'{name}-base.mp4'
+              run([
+                  'ffmpeg','-y','-loglevel','error','-stream_loop','-1','-i',source,'-t',duration,'-an',
+                  '-vf','scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,eq=contrast=1.035:saturation=1.055,unsharp=5:5:0.25,format=yuv420p',
+                  '-c:v','libx264','-preset','fast','-crf','18','-pix_fmt','yuv420p',base,
+              ])
+              if extra_overlay is None:
+                  target=root/'normalized'/f'{name}.mp4'
+                  base.replace(target)
+                  return target
+              target=root/'normalized'/f'{name}.mp4'
+              run([
+                  'ffmpeg','-y','-loglevel','error','-i',base,'-loop','1','-i',extra_overlay,'-t',duration,'-an',
+                  '-filter_complex','[0:v][1:v]overlay=0:0:format=auto,format=yuv420p[v]',
+                  '-map','[v]','-c:v','libx264','-preset','fast','-crf','18','-pix_fmt','yuv420p',target,
+              ])
+              return target
+
+          def concatenate(parts,target):
+              listing=root/'tmp'/f'{target.stem}.txt'
+              listing.write_text(''.join(f"file '{part.resolve()}'\n" for part in parts),encoding='utf-8')
+              run(['ffmpeg','-y','-loglevel','error','-f','concat','-safe','0','-i',listing,'-c','copy',target])
+              return target
+
+          def add_subtitle(base,index,duration,target):
+              subtitle=subtitle_dir/f'subtitle_{index:02d}.png'
+              run([
+                  'ffmpeg','-y','-loglevel','error','-i',base,'-loop','1','-i',subtitle,'-t',duration,'-an',
+                  '-filter_complex','[0:v][1:v]overlay=0:0:format=auto,format=yuv420p[v]',
+                  '-map','[v]','-c:v','libx264','-preset','fast','-crf','18','-pix_fmt','yuv420p',target,
+              ])
+              return target
+
+          s1=normalize('s1_city_heat',4.220,'s1',temp_badge)
+          add_subtitle(s1,1,4.220,root/'segments'/'segment_01.mp4')
+          s2=normalize('s2_hot_air_sun',4.688,'s2')
+          add_subtitle(s2,2,4.688,root/'segments'/'segment_02.mp4')
+
+          s3=concatenate([
+              normalize('s3_child',1.407,'s3a'),
+              normalize('s3_elderly',1.407,'s3b'),
+              normalize('s3_worker',1.406,'s3c'),
+          ],root/'normalized'/'s3.mp4')
+          add_subtitle(s3,3,4.220,root/'segments'/'segment_03.mp4')
+
+          s4=normalize('s4_exhaustion',3.282,'s4')
+          add_subtitle(s4,4,3.282,root/'segments'/'segment_04.mp4')
+
+          s5=concatenate([
+              normalize('s5_shade',2.188,'s5a'),
+              normalize('s5_water',2.188,'s5b'),
+              normalize('s5_cool_room',2.188,'s5c'),
+          ],root/'normalized'/'s5.mp4')
+          add_subtitle(s5,5,6.564,root/'segments'/'segment_05.mp4')
+
+          s6=normalize('s6_warning_phone',6.407,'s6',warning_badge)
+          add_subtitle(s6,6,6.407,root/'segments'/'segment_06.mp4')
+
+          segments=[root/'segments'/f'segment_{index:02d}.mp4' for index in range(1,7)]
+          visual=concatenate(segments,root/'visual-only.mp4')
+          final=root/'out'/'tayvoriq-hitzewelle-selected-v6.mp4'
+          run([
+              'ffmpeg','-y','-loglevel','error','-i',visual,'-i',approved_audio,
+              '-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-b:a','192k',
+              '-shortest','-movflags','+faststart',final,
+          ])
+          if final.stat().st_size<3000000:
+              raise SystemExit(f'Final video too small: {final.stat().st_size}')
+
+          probe=root/'ffprobe.json'
+          with probe.open('w',encoding='utf-8') as handle:
+              subprocess.run([
+                  'ffprobe','-v','error','-show_entries','stream=codec_type,width,height',
+                  '-show_entries','format=duration','-of','json',final,
+              ],check=True,stdout=handle)
+          details=json.loads(probe.read_text(encoding='utf-8'))
+          duration=float(details['format']['duration'])
+          streams=details.get('streams',[])
+          video_stream=next(item for item in streams if item.get('codec_type')=='video')
+          assert int(video_stream.get('width') or 0)==1080
+          assert int(video_stream.get('height') or 0)==1920
+          assert any(item.get('codec_type')=='audio' for item in streams)
+          assert 28.8<=duration<=29.8,duration
+
+          checks=[
+              (1.2,'Stadt plus 40-Grad-Kennzeichnung'),
+              (6.2,'starke Sonne'),
+              (9.5,'Kind im Freien'),
+              (10.9,'ältere Person mit Wasser'),
+              (12.3,'Baustellenarbeiter im Freien'),
+              (14.5,'sichtbare Hitzeerschöpfung und Durst'),
+              (17.1,'Person im Schatten unter einem Baum'),
+              (19.4,'sichtbares Wassertrinken'),
+              (21.7,'Abkühlung vor elektrischem Ventilator'),
+              (26.0,'Smartphone mit sichtbarer Hitzewarnung'),
+          ]
+          images=[]
+          story_map=[]
+          for index,(timestamp,meaning) in enumerate(checks,1):
+              frame=root/'qa-frames'/f'frame_{index:02d}.jpg'
+              run(['ffmpeg','-y','-loglevel','error','-ss',timestamp,'-i',final,'-frames:v','1','-vf','scale=540:960',frame])
+              images.append(Image.open(frame).convert('RGB'))
+              story_map.append({'frame':index,'timestamp_seconds':timestamp,'required_visual_meaning':meaning,'file':str(frame)})
+
+          brightness=[]
+          contrast=[]
+          for image in images:
+              stat=ImageStat.Stat(image.convert('L'))
+              brightness.append(float(stat.mean[0]))
+              contrast.append(float(stat.stddev[0]))
+          differences=[float(ImageStat.Stat(ImageChops.difference(left,right).convert('L')).mean[0]) for left,right in zip(images,images[1:])]
+          assert min(brightness)>23,brightness
+          assert min(contrast)>12,contrast
+          assert sum(value>8 for value in differences)>=7,differences
+
+          report={
+              'passed':True,'resolution':'1080x1920','duration_seconds':duration,
+              'manual_visual_selection':True,'semantic_story_units':10,
+              'internal_labels_removed':True,'trendcheck_visible':False,
+              'viewer_facing_temperature_badge':True,'viewer_facing_heat_warning':True,
+              'approved_voice_and_music_reused':True,'original_synchronized_subtitles_reused':True,
+              'frame_brightness':brightness,'frame_contrast':contrast,'frame_differences':differences,
+          }
+          (root/'semantic-story-map.json').write_text(json.dumps(story_map,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          (root/'semantic-quality-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          thumb_w,thumb_h=216,384
+          sheet=Image.new('RGB',(thumb_w*5,thumb_h*2),(18,18,18))
+          draw=ImageDraw.Draw(sheet)
+          for index,image in enumerate(images):
+              thumb=image.copy()
+              thumb.thumbnail((thumb_w,thumb_h))
+              x=(index%5)*thumb_w
+              y=(index//5)*thumb_h
+              sheet.paste(thumb,(x,y))
+              draw.rectangle((x+6,y+6,x+44,y+36),fill=(0,0,0))
+              draw.text((x+18,y+11),str(index+1),fill=(255,255,255))
+          sheet.save(root/'semantic-contact-sheet.jpg',quality=94)
+          print(report)
+          PY
+
+      - name: Upload selected review candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-selected-semantic-v6-${{ github.run_id }}
+          path: |
+            semantic-v6/out/tayvoriq-hitzewelle-selected-v6.mp4
+            semantic-v6/semantic-contact-sheet.jpg
+            semantic-v6/qa-frames/**
+            semantic-v6/selected-visual-manifest.json
+            semantic-v6/semantic-story-map.json
+            semantic-v6/semantic-quality-report.json
+            semantic-v6/ffprobe.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
