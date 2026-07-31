@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: tayvoriq-heat-record-final-20260731-v4
+  group: tayvoriq-heat-record-final-20260731-v5
   cancel-in-progress: false
 
 env:
@@ -70,7 +70,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .github/run-now
-          printf '{"run_id":%s,"status":"in_progress","url":"https://github.com/%s/actions/runs/%s","started_at":"%s","workflow":"TAYVORIQ Heat Record Final V4"}\n' \
+          printf '{"run_id":%s,"status":"in_progress","url":"https://github.com/%s/actions/runs/%s","started_at":"%s","workflow":"TAYVORIQ Heat Record Final V5"}\n' \
             "$GITHUB_RUN_ID" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             > .github/run-now/latest-heat-run.json
           git config user.name "github-actions[bot]"
@@ -100,6 +100,32 @@ jobs:
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
+
+      - name: Apply final semantic heat script
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("implementation/tools/tayvoriq_dual_platform_render_v23_entry.py")
+          text = path.read_text(encoding="utf-8")
+          replacements = {
+              "Heiße Luft und starke Sonne treiben die Werte weiter nach oben.":
+                  "Die Werte steigen, weil heiße Luft und starke Sonne zusammenwirken.",
+              "Gefährdet sind Kinder, Ältere, Kranke und Menschen, die draußen arbeiten.":
+                  "Gefährdet sind Kinder, Ältere, Kranke und Beschäftigte im Freien.",
+              "Kreislaufprobleme und starke Hitze können schnell gefährlich werden.":
+                  "Kreislaufprobleme durch Hitze können schnell gefährlich werden.",
+              "Meide Mittagshitze, trinke Wasser und suche bei Beschwerden einen kühlen Raum.":
+                  "Reduziere Aufenthalte in der Hitze, trinke Wasser und suche bei Beschwerden einen kühlen Raum.",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"Expected heat sentence missing: {old}")
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding="utf-8")
+          print({"semantic_heat_patch": "applied", "editorial_body_words": 49})
+          PY
 
       - name: Checkout review pages
         uses: actions/checkout@v4
