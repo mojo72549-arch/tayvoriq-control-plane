@@ -1,4 +1,4 @@
-name: TAYVORIQ Today Final Production 2026-07-31
+name: TAYVORIQ Trend Heat Record Production 2026-07-31
 
 on:
   push:
@@ -70,14 +70,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .github/run-now
-          printf '{"run_id":%s,"status":"in_progress","url":"https://github.com/%s/actions/runs/%s","started_at":"%s","workflow":"TAYVORIQ Today Final Production 2026-07-31"}\n' \
+          printf '{"run_id":%s,"status":"in_progress","url":"https://github.com/%s/actions/runs/%s","started_at":"%s","workflow":"TAYVORIQ Trend Heat Record Production 2026-07-31"}\n' \
             "$GITHUB_RUN_ID" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             > .github/run-now/latest-delivery-run.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .github/run-now/latest-delivery-run.json
           if ! git diff --cached --quiet; then
-            git commit -m "ops: record today's active TAYVORIQ production"
+            git commit -m "ops: record today's heat-record TAYVORIQ production"
             git pull --rebase origin main
             git push origin main
           fi
@@ -156,7 +156,7 @@ jobs:
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
-      - name: Produce and audit today's video
+      - name: Produce and audit today's trend video
         id: production
         working-directory: implementation
         shell: bash
@@ -165,13 +165,13 @@ jobs:
           mkdir -p out/tayvoriq-self-heal
           set +e
           python tools/tayvoriq_autonomous_entrypoint.py \
-            --trend-mode auto_trend \
-            --trend-scope auto_scope \
-            --topic "" \
+            --trend-mode manual_topic \
+            --trend-scope world_society \
+            --topic "40 Grad in Deutschland: So schützt du dich jetzt vor Hitzschlag und Unwettern" \
             --language Deutsch \
             --platform youtube_tiktok \
             --target-duration 35 \
-            --llm-provider auto \
+            --llm-provider template \
             --outdir out/tayvoriq-youtube-tiktok \
             --site-root site/tayvoriq \
             --run-id "${GITHUB_RUN_ID}" \
