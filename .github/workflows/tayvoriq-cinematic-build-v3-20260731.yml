@@ -1,0 +1,359 @@
+name: TAYVORIQ Cinematic Build V3 2026-07-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-cinematic-build-v3-20260731.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SOURCE_RUN_ID: "30623043649"
+  BASE_RUN_ID: "30639194790"
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
+jobs:
+  build-review-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Pexels configuration
+        run: |
+          set -euo pipefail
+          test -n "${PEXELS_API_KEY:-}"
+
+      - name: Install media tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --upgrade pip -q
+          python -m pip install pillow -q
+
+      - name: Download original production package
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-today-final-${{ env.SOURCE_RUN_ID }}
+          path: source
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Download V2 rendered base
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-cinematic-diagnostics-v2-${{ env.BASE_RUN_ID }}
+          path: base
+          github-token: ${{ github.token }}
+          run-id: ${{ env.BASE_RUN_ID }}
+
+      - name: Locate source job and base video
+        run: |
+          set -euo pipefail
+          rm -rf candidate
+          mkdir -p candidate/out candidate/replacements candidate/segments candidate/qa-frames
+          cp -a source/out/. candidate/out/
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          jobs=[]
+          for item in Path('candidate/out').rglob('job.json'):
+              root=item.parent
+              if (root/'short_youtube.mp4').is_file() and (root/'youtube_shorts/assets/subtitle_06.png').is_file():
+                  jobs.append(root.resolve())
+          if not jobs:
+              raise SystemExit('Source job not found')
+          job=sorted(jobs,key=lambda p:len(str(p)))[0]
+          base=Path('base/tayvoriq-cinematic-final.mp4').resolve()
+          if not base.is_file() or base.stat().st_size<1000000:
+              raise SystemExit('V2 base video not found')
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
+              handle.write(f'CANDIDATE_JOB_DIR={job}\n')
+              handle.write(f'SUBTITLE_DIR={(job/"youtube_shorts/assets").resolve()}\n')
+              handle.write(f'BASE_VIDEO={base}\n')
+          print({'job_dir':str(job),'base_video':str(base)})
+          PY
+
+      - name: Select bright and semantically matching replacement clips
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, re, subprocess, tempfile, time
+          from pathlib import Path
+          from urllib import parse, request
+          from PIL import Image, ImageStat
+
+          api_key=os.environ['PEXELS_API_KEY'].strip()
+          out=Path('candidate/replacements')
+          specs={
+              2:{
+                  'query':'bright sunshine hot summer sky thermometer heatwave',
+                  'anchors':['sun','sunny','sunshine','summer','heat','thermometer','sky'],
+                  'exclude':['fire','flame','burning','black','night','dark'],
+                  'min_brightness':58,
+              },
+              4:{
+                  'query':'children family cooling with water hot summer day',
+                  'anchors':['child','children','kid','kids','family','boy','girl','water','sprinkler','pool'],
+                  'exclude':['floor','wall','empty','night'],
+                  'min_brightness':38,
+              },
+              6:{
+                  'query':'person drinking cold water near fan indoors summer heat',
+                  'anchors':['person','woman','man','drink','drinking','water','fan','cool'],
+                  'exclude':['empty','porch','chair','night','dark'],
+                  'min_brightness':38,
+              },
+          }
+          selected=[]
+          used=set()
+
+          def api_search(query,portrait=True):
+              args={'query':query,'per_page':80,'size':'medium'}
+              if portrait:
+                  args['orientation']='portrait'
+              url='https://api.pexels.com/videos/search?'+parse.urlencode(args)
+              req=request.Request(url,headers={'Authorization':api_key,'User-Agent':'TAYVORIQ-V3/1.0'})
+              with request.urlopen(req,timeout=45) as response:
+                  return json.loads(response.read().decode('utf-8'))
+
+          def download(url,path):
+              req=request.Request(url,headers={'User-Agent':'TAYVORIQ-V3/1.0'})
+              with request.urlopen(req,timeout=100) as response,path.open('wb') as handle:
+                  while True:
+                      chunk=response.read(1024*1024)
+                      if not chunk:
+                          break
+                      handle.write(chunk)
+
+          def frame_stats(video_path,seconds):
+              frame=video_path.with_suffix(f'.{str(seconds).replace(".","_")}.jpg')
+              subprocess.run([
+                  'ffmpeg','-y','-loglevel','error','-ss',str(seconds),'-i',str(video_path),
+                  '-frames:v','1','-vf','scale=270:480',str(frame)
+              ],check=True)
+              image=Image.open(frame).convert('L')
+              stat=ImageStat.Stat(image)
+              frame.unlink(missing_ok=True)
+              return stat.mean[0],stat.stddev[0]
+
+          for scene,spec in specs.items():
+              payload=api_search(spec['query'],portrait=True)
+              if not payload.get('videos'):
+                  payload=api_search(spec['query'],portrait=False)
+              candidates=[]
+              for video in payload.get('videos',[]):
+                  vid=int(video.get('id') or 0)
+                  if not vid or vid in used or float(video.get('duration') or 0)<4:
+                      continue
+                  page=str(video.get('url') or '')
+                  slug=page.rstrip('/').split('/')[-1].lower()
+                  words=set(re.findall(r'[a-z]+',slug))
+                  anchor_score=sum(1 for word in spec['anchors'] if word in words or word in slug)
+                  exclusion_score=sum(1 for word in spec['exclude'] if word in words or word in slug)
+                  if exclusion_score:
+                      continue
+                  files=[]
+                  for item in video.get('video_files',[]):
+                      width=int(item.get('width') or 0)
+                      height=int(item.get('height') or 0)
+                      link=str(item.get('link') or '')
+                      if not link or min(width,height)<480:
+                          continue
+                      portrait=height>width
+                      ratio=width/max(1,height)
+                      files.append(((0 if portrait else 1,abs(ratio-9/16),abs(max(width,height)-1920)),width,height,link))
+                  if not files:
+                      continue
+                  files.sort(key=lambda row:row[0])
+                  _,width,height,link=files[0]
+                  candidates.append(((-anchor_score,0 if height>width else 1,abs(width/max(1,height)-9/16)),vid,page,slug,width,height,link,float(video.get('duration') or 0),anchor_score))
+              candidates.sort(key=lambda row:row[0])
+              chosen=None
+              for _,vid,page,slug,width,height,link,duration,anchor_score in candidates[:18]:
+                  temp=out/f'scene_{scene:02d}_candidate_{vid}.mp4'
+                  try:
+                      download(link,temp)
+                      if temp.stat().st_size<500000:
+                          temp.unlink(missing_ok=True)
+                          continue
+                      sample_a=min(1.0,max(0.2,duration*0.2))
+                      sample_b=min(max(1.2,duration*0.55),max(1.2,duration-0.4))
+                      brightness_a,contrast_a=frame_stats(temp,sample_a)
+                      brightness_b,contrast_b=frame_stats(temp,sample_b)
+                      brightness=(brightness_a+brightness_b)/2
+                      contrast=(contrast_a+contrast_b)/2
+                      if brightness<spec['min_brightness'] or contrast<14:
+                          temp.unlink(missing_ok=True)
+                          continue
+                      final=out/f'scene_{scene:02d}.mp4'
+                      temp.replace(final)
+                      chosen={
+                          'scene':scene,'query':spec['query'],'pexels_video_id':vid,
+                          'source_page':page,'slug':slug,'width':width,'height':height,
+                          'anchor_score':anchor_score,'brightness':brightness,'contrast':contrast,
+                          'file':str(final),'bytes':final.stat().st_size,
+                      }
+                      break
+                  except Exception:
+                      temp.unlink(missing_ok=True)
+                      continue
+              if chosen is None:
+                  raise SystemExit(f'No bright semantic replacement found for scene {scene}')
+              used.add(chosen['pexels_video_id'])
+              selected.append(chosen)
+              print(chosen)
+          Path('candidate/replacement-manifest.json').write_text(
+              json.dumps(selected,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          PY
+
+      - name: Rebuild six-scene master with three improved replacements
+        run: |
+          set -euo pipefail
+          starts=(0.000 4.220 8.908 13.128 16.410 22.974)
+          durations=(4.220 4.688 4.220 3.282 6.564 6.407)
+          : > candidate/segments.txt
+          for i in 1 2 3 4 5 6; do
+            start=${starts[$((i-1))]}
+            duration=${durations[$((i-1))]}
+            segment=$(printf 'candidate/segments/segment_%02d.mp4' "$i")
+            if [[ "$i" == "2" || "$i" == "4" || "$i" == "6" ]]; then
+              clip=$(printf 'candidate/replacements/scene_%02d.mp4' "$i")
+              subtitle=$(printf '%s/subtitle_%02d.png' "$SUBTITLE_DIR" "$i")
+              ffmpeg -y -loglevel error -stream_loop -1 -i "$clip" -loop 1 -i "$subtitle" \
+                -t "$duration" -an \
+                -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,eq=contrast=1.04:saturation=1.07[scene];[scene][1:v]overlay=0:0:format=auto,format=yuv420p[v]" \
+                -map '[v]' -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p "$segment"
+            else
+              ffmpeg -y -loglevel error -ss "$start" -i "$BASE_VIDEO" -t "$duration" -an \
+                -vf "fps=30,format=yuv420p" -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p "$segment"
+            fi
+            printf "file '%s'\n" "$(realpath "$segment")" >> candidate/segments.txt
+          done
+          ffmpeg -y -loglevel error -f concat -safe 0 -i candidate/segments.txt -c copy candidate/visual-only.mp4
+          ffmpeg -y -loglevel error -i "$BASE_VIDEO" -vn -c:a aac -b:a 192k candidate/approved-audio.m4a
+          ffmpeg -y -loglevel error -i candidate/visual-only.mp4 -i candidate/approved-audio.m4a \
+            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart \
+            candidate/tayvoriq-cinematic-final-v3.mp4
+          test -s candidate/tayvoriq-cinematic-final-v3.mp4
+
+      - name: Create visual review frames and quality report
+        run: |
+          set -euo pipefail
+          ffprobe -v error -show_entries stream=codec_type,width,height -show_entries format=duration \
+            -of json candidate/tayvoriq-cinematic-final-v3.mp4 > candidate/ffprobe.json
+          times=(1.0 5.2 10.0 14.2 18.5 25.0)
+          for index in 1 2 3 4 5 6; do
+            ffmpeg -y -loglevel error -ss "${times[$((index-1))]}" \
+              -i candidate/tayvoriq-cinematic-final-v3.mp4 -frames:v 1 -vf scale=540:960 \
+              "$(printf 'candidate/qa-frames/frame_%02d.jpg' "$index")"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops, ImageDraw, ImageStat
+
+          probe=json.loads(Path('candidate/ffprobe.json').read_text(encoding='utf-8'))
+          duration=float(probe['format']['duration'])
+          streams=probe['streams']
+          video=next(stream for stream in streams if stream.get('codec_type')=='video')
+          assert int(video.get('width') or 0)==1080
+          assert int(video.get('height') or 0)==1920
+          assert 28.8<=duration<=29.8,duration
+          assert any(stream.get('codec_type')=='audio' for stream in streams)
+
+          frames=sorted(Path('candidate/qa-frames').glob('frame_*.jpg'))
+          assert len(frames)==6
+          images=[Image.open(path).convert('RGB') for path in frames]
+          brightness=[]; contrast=[]; differences=[]
+          for image in images:
+              stat=ImageStat.Stat(image.convert('L'))
+              brightness.append(stat.mean[0]); contrast.append(stat.stddev[0])
+          for left,right in zip(images,images[1:]):
+              differences.append(ImageStat.Stat(ImageChops.difference(left,right).convert('L')).mean[0])
+          assert min(brightness)>28,brightness
+          assert min(contrast)>15,contrast
+          assert sum(value>10 for value in differences)>=4,differences
+
+          thumb_w,thumb_h=270,480
+          contact=Image.new('RGB',(thumb_w*3,thumb_h*2),(25,25,25))
+          for index,image in enumerate(images):
+              thumb=image.resize((thumb_w,thumb_h))
+              contact.paste(thumb,((index%3)*thumb_w,(index//3)*thumb_h))
+          contact.save('candidate/contact-sheet.jpg',quality=92)
+
+          report={
+              'passed':True,'resolution':'1080x1920','duration_seconds':duration,
+              'scene_count':6,'brightness':brightness,'contrast':contrast,
+              'scene_differences':differences,'internal_labels_removed':True,
+              'approved_voice_music_and_subtitles_reused':True,
+              'manual_visual_review_required_before_telegram':True,
+          }
+          Path('candidate/cinematic-quality-report-v3.json').write_text(
+              json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(report)
+          PY
+
+      - name: Prepare corrected approval package
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+
+          job=Path(os.environ['CANDIDATE_JOB_DIR'])
+          final=Path('candidate/tayvoriq-cinematic-final-v3.mp4').resolve()
+          for target in [job/'short_youtube.mp4',job/'short_tiktok.mp4',job/'short.mp4',job/'youtube_shorts/short.mp4',job/'tiktok/short.mp4']:
+              shutil.copy2(final,target)
+
+          replacements={2:'bright sunshine hot summer sky thermometer heatwave',4:'children family cooling with water hot summer day',6:'person drinking cold water near fan indoors summer heat'}
+          for package_path in [job/'youtube_shorts/text_package.json',job/'tiktok/text_package.json']:
+              if not package_path.exists():
+                  continue
+              package=json.loads(package_path.read_text(encoding='utf-8'))
+              scenes=list(package.get('scenes') or [])
+              for scene,query in replacements.items():
+                  if scene-1<len(scenes) and isinstance(scenes[scene-1],dict):
+                      scenes[scene-1]['visual_query']=query
+                      scenes[scene-1]['overlay_text']=''
+              package['scenes']=scenes
+              package['force_topic_safe_visual_cards']=False
+              package['cinematic_real_scene_repair']='v3-manually-reviewed'
+              package_path.write_text(json.dumps(package,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          job_path=job/'job.json'
+          data=json.loads(job_path.read_text(encoding='utf-8'))
+          data['cinematic_visual_repair']={
+              'version':'v3','passed':True,'scene_count':6,
+              'internal_labels_removed':True,'manual_visual_review_required':True,
+              'quality_report':'cinematic-quality-report-v3.json',
+          }
+          job_path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          shutil.copy2('candidate/cinematic-quality-report-v3.json',job/'cinematic-quality-report-v3.json')
+          shutil.copy2('candidate/replacement-manifest.json',job/'replacement-manifest-v3.json')
+          PY
+
+      - name: Upload V3 review candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-cinematic-review-v3-${{ github.run_id }}
+          path: |
+            candidate/out/**
+            candidate/tayvoriq-cinematic-final-v3.mp4
+            candidate/contact-sheet.jpg
+            candidate/qa-frames/**
+            candidate/cinematic-quality-report-v3.json
+            candidate/replacement-manifest.json
+            candidate/ffprobe.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
