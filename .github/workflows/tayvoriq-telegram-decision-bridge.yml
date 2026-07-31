@@ -21,7 +21,7 @@ env:
   PYTHONUTF8: "1"
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  YOUTUBE_PRIVACY: "private"
+  YOUTUBE_PRIVACY: "public"
 
 jobs:
   process-decisions:
@@ -52,7 +52,7 @@ jobs:
           expected_chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
           github_token = os.environ.get("GH_TOKEN", "").strip()
           repository = os.environ["GITHUB_REPOSITORY"]
-          privacy = os.environ.get("YOUTUBE_PRIVACY", "private")
+          privacy = os.environ.get("YOUTUBE_PRIVACY", "public")
           if not token or not expected_chat or not github_token:
               raise SystemExit("Required Telegram/GitHub configuration missing")
 
@@ -212,7 +212,7 @@ jobs:
               telegram("answerCallbackQuery", {
                   "callback_query_id": callback_id,
                   "text": (
-                      "Freigabe erkannt. YouTube-Veröffentlichung startet."
+                      "Freigabe erkannt. Öffentliche YouTube-Veröffentlichung startet."
                       if namespace == "tayvoriqcp" and status == "APPROVED"
                       else "Freigabe gespeichert."
                       if status == "APPROVED"
@@ -231,7 +231,7 @@ jobs:
               elif namespace == "tayvoriqcp":
                   text = (
                       f"✅ Freigabe erkannt.\n\nReview: {review_id}\n"
-                      f"YouTube: {privacy}\nNach Abschluss folgt der YouTube-Link."
+                      "YouTube: Public\nNach Abschluss folgt der öffentliche YouTube-Link."
                   )
               else:
                   text = (
