@@ -146,11 +146,11 @@ final class DiagnosticLog {
         } catch (Exception ignored) { }
     }
 
-    private static String formatLine(long timestamp, String interaction,
-                                     String type, String detail) {
+    private String formatLine(long timestamp, String interaction,
+                              String type, String detail) {
         String stamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.GERMANY)
                 .format(new Date(timestamp));
-        return stamp + " | " + safe(interaction) + " | " + safe(type)
+        return stamp + " | " + session + " | " + safe(interaction) + " | " + safe(type)
                 + " | " + redact(detail) + "\n";
     }
 
