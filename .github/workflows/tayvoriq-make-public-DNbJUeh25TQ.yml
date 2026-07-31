@@ -1,0 +1,156 @@
+name: TAYVORIQ Make Approved Video Public
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-make-public-DNbJUeh25TQ.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tayvoriq-make-public-DNbJUeh25TQ
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  YOUTUBE_VIDEO_ID: "DNbJUeh25TQ"
+  YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+  YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+  YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  make-public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install YouTube client
+        run: |
+          set -euo pipefail
+          python -m pip install -q google-api-python-client google-auth google-auth-httplib2
+
+      - name: Change existing video visibility to public
+        id: visibility
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from google.oauth2.credentials import Credentials
+          from googleapiclient.discovery import build
+
+          video_id = os.environ["YOUTUBE_VIDEO_ID"].strip()
+          creds = Credentials(
+              token=None,
+              refresh_token=os.environ["YOUTUBE_REFRESH_TOKEN"].strip(),
+              token_uri="https://oauth2.googleapis.com/token",
+              client_id=os.environ["YOUTUBE_CLIENT_ID"].strip(),
+              client_secret=os.environ["YOUTUBE_CLIENT_SECRET"].strip(),
+              scopes=["https://www.googleapis.com/auth/youtube"],
+          )
+          service = build("youtube", "v3", credentials=creds, cache_discovery=False)
+          response = service.videos().list(part="status", id=video_id).execute()
+          items = response.get("items") or []
+          if len(items) != 1:
+              raise SystemExit(f"YouTube video not found or not owned: {video_id}")
+          existing = items[0].get("status") or {}
+          mutable = {
+              key: existing[key]
+              for key in (
+                  "embeddable",
+                  "license",
+                  "publicStatsViewable",
+                  "selfDeclaredMadeForKids",
+                  "containsSyntheticMedia",
+              )
+              if key in existing
+          }
+          mutable["privacyStatus"] = "public"
+          updated = service.videos().update(
+              part="status",
+              body={"id": video_id, "status": mutable},
+          ).execute()
+          verified = service.videos().list(part="status", id=video_id).execute()
+          status = ((verified.get("items") or [{}])[0].get("status") or {}).get("privacyStatus")
+          if status != "public":
+              raise SystemExit(f"Visibility verification failed: {status}")
+          result = {
+              "video_id": video_id,
+              "youtube_url": f"https://www.youtube.com/watch?v={video_id}",
+              "privacy_status": status,
+              "api_result": updated.get("status") or {},
+          }
+          Path(".automation/tayvoriq-control-publications/30642782467.json").write_text(
+              json.dumps({
+                  "review_run_id": "30642782467",
+                  "status": "PUBLISHED_PUBLIC",
+                  "youtube_url": result["youtube_url"],
+                  "privacy_status": "public",
+                  "approval_source": "explicit_user_public_correction",
+              }, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          Path("youtube-public-result.json").write_text(
+              json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Persist public publication status
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-control-publications/30642782467.json
+          git commit -m "ops: mark TAYVORIQ review 30642782467 public"
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Confirm public video in Telegram
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from urllib import parse, request
+
+          result=json.load(open("youtube-public-result.json", encoding="utf-8"))
+          text=(
+              "✅ Video ist jetzt öffentlich\n\n"
+              f"YouTube: {result['youtube_url']}\n"
+              "Sichtbarkeit: Public\n\n"
+              "Künftig bedeutet Freigeben automatisch öffentliche Veröffentlichung."
+          )
+          data=parse.urlencode({
+              "chat_id":os.environ["TELEGRAM_CHAT_ID"].strip(),
+              "text":text,
+              "disable_web_page_preview":"false",
+          }).encode()
+          with request.urlopen(
+              f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN'].strip()}/sendMessage",
+              data=data,
+              timeout=35,
+          ) as response:
+              payload=json.loads(response.read().decode())
+          if not payload.get("ok"):
+              raise SystemExit(payload)
+          print({"telegram_message_id": payload["result"].get("message_id")})
+          PY
