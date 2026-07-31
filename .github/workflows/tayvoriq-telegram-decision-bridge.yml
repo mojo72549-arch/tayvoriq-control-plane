@@ -1,4 +1,4 @@
-name: TAYVORIQ Telegram Decision Bridge
+name: TAYVORIQ Unified Telegram Decision Bridge
 
 on:
   push:
@@ -11,20 +11,22 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
-  group: tayvoriq-telegram-decision-bridge
+  group: tayvoriq-unified-telegram-decision-bridge
   cancel-in-progress: false
 
 env:
   PYTHONUTF8: "1"
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  YOUTUBE_PRIVACY: "private"
 
 jobs:
   process-decisions:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
 
     steps:
       - name: Checkout decision repository
@@ -33,13 +35,9 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Validate Telegram secrets
-        run: |
-          set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
-
-      - name: Process Telegram approval callbacks
+      - name: Process all Telegram approval callbacks
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -50,8 +48,14 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
-          token = os.environ["TELEGRAM_BOT_TOKEN"].strip()
-          expected_chat = os.environ["TELEGRAM_CHAT_ID"].strip()
+          token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+          expected_chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+          github_token = os.environ.get("GH_TOKEN", "").strip()
+          repository = os.environ["GITHUB_REPOSITORY"]
+          privacy = os.environ.get("YOUTUBE_PRIVACY", "private")
+          if not token or not expected_chat or not github_token:
+              raise SystemExit("Required Telegram/GitHub configuration missing")
+
           state_path = Path(".automation/tayvoriq-telegram-decision-state.json")
           state = {"next_update_id": 0, "decisions": {}}
           if state_path.exists():
@@ -61,21 +65,39 @@ jobs:
                       state.update(loaded)
               except Exception:
                   pass
+          state.setdefault("decisions", {})
 
-          def call(method, payload):
-              request = urllib.request.Request(
+          def telegram(method, payload):
+              req = urllib.request.Request(
                   f"https://api.telegram.org/bot{token}/{method}",
-                  data=json.dumps(payload).encode("utf-8"),
+                  data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                   headers={"Content-Type": "application/json"},
                   method="POST",
               )
-              with urllib.request.urlopen(request, timeout=35) as response:
-                  data = json.loads(response.read().decode("utf-8"))
-              if not data.get("ok"):
-                  raise RuntimeError(data)
-              return data.get("result")
+              with urllib.request.urlopen(req, timeout=35) as response:
+                  value = json.loads(response.read().decode("utf-8"))
+              if not value.get("ok"):
+                  raise RuntimeError(value)
+              return value.get("result")
 
-          updates = call(
+          def github(method, url, payload=None):
+              body = None if payload is None else json.dumps(payload).encode("utf-8")
+              req = urllib.request.Request(
+                  url,
+                  data=body,
+                  headers={
+                      "Authorization": f"Bearer {github_token}",
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "Content-Type": "application/json",
+                  },
+                  method=method,
+              )
+              with urllib.request.urlopen(req, timeout=35) as response:
+                  raw = response.read()
+              return json.loads(raw.decode("utf-8")) if raw else {}
+
+          updates = telegram(
               "getUpdates",
               {
                   "offset": int(state.get("next_update_id") or 0),
@@ -85,120 +107,145 @@ jobs:
               },
           ) or []
 
-          pattern = re.compile(r"^(tayvoriq(?:-direct)?):(approve|reject):(\d{6,})$")
-          changed = False
+          pattern = re.compile(r"^(tayvoriq|tayvoriq-direct|tayvoriqcp):(approve|reject):(\d{6,})$")
+          handled = 0
 
           for update in updates:
               update_id = int(update.get("update_id") or 0)
               state["next_update_id"] = max(int(state.get("next_update_id") or 0), update_id + 1)
 
-              callback = update.get("callback_query") or {}
-              callback_id = str(callback.get("id") or "")
-              match = pattern.fullmatch(str(callback.get("data") or ""))
-              if not match:
+              callback = update.get("callback_query") if isinstance(update.get("callback_query"), dict) else {}
+              callback_id = str(callback.get("id") or "").strip()
+              callback_data = str(callback.get("data") or "").strip()
+              match = pattern.fullmatch(callback_data)
+              if not callback_id or not match:
                   continue
 
               namespace, action, review_id = match.groups()
-              message = callback.get("message") or {}
-              chat_id = str((message.get("chat") or {}).get("id") or "")
+              message = callback.get("message") if isinstance(callback.get("message"), dict) else {}
+              chat = message.get("chat") if isinstance(message.get("chat"), dict) else {}
+              chat_id = str(chat.get("id") or "").strip()
               message_id = int(message.get("message_id") or 0)
 
               if chat_id != expected_chat:
-                  call(
-                      "answerCallbackQuery",
-                      {
-                          "callback_query_id": callback_id,
-                          "text": "Nicht autorisierter Chat.",
-                          "show_alert": True,
-                      },
-                  )
+                  telegram("answerCallbackQuery", {
+                      "callback_query_id": callback_id,
+                      "text": "Nicht autorisierter Chat.",
+                      "show_alert": True,
+                  })
                   continue
 
-              direct_path = Path(f".automation/tayvoriq-direct-reviews/{review_id}.json")
-              generic_path = Path(f".automation/tayvoriq-reviews/{review_id}.json")
-              review_path = direct_path if direct_path.exists() else generic_path
+              if namespace == "tayvoriqcp":
+                  review_path = Path(f".automation/tayvoriq-control-reviews/{review_id}.json")
+              elif namespace == "tayvoriq-direct":
+                  review_path = Path(f".automation/tayvoriq-direct-reviews/{review_id}.json")
+              else:
+                  review_path = Path(f".automation/tayvoriq-reviews/{review_id}.json")
               review_path.parent.mkdir(parents=True, exist_ok=True)
 
-              if review_path.exists():
-                  try:
-                      review = json.loads(review_path.read_text(encoding="utf-8"))
-                  except Exception:
-                      review = {}
-              else:
-                  review = {
-                      "review_id": review_id,
-                      "status": "PENDING_REVIEW",
-                      "telegram_message_id": message_id,
-                      "platform_upload_performed": False,
-                  }
-
-              existing = str(review.get("status") or "")
-              if existing in {"APPROVED", "REJECTED"}:
-                  call(
-                      "answerCallbackQuery",
-                      {
-                          "callback_query_id": callback_id,
-                          "text": "Review bereits verarbeitet.",
-                      },
-                  )
-                  continue
-
-              status = "APPROVED" if action == "approve" else "REJECTED"
-              review.update(
-                  {
-                      "review_id": review_id,
-                      "status": status,
-                      "processed_at": datetime.now(timezone.utc).isoformat(),
-                      "source": "telegram_callback",
-                      "callback_namespace": namespace,
-                      "telegram_message_id": message_id,
-                      "publication_pending": status == "APPROVED",
-                      "platform_upload_performed": False,
-                  }
-              )
-              review_path.write_text(
-                  json.dumps(review, ensure_ascii=False, indent=2) + "\n",
-                  encoding="utf-8",
-              )
-              state.setdefault("decisions", {})[review_id] = review
-              changed = True
-
-              call(
-                  "answerCallbackQuery",
-                  {
+              try:
+                  review = json.loads(review_path.read_text(encoding="utf-8")) if review_path.exists() else {}
+              except Exception:
+                  review = {}
+              previous = str(review.get("status") or state["decisions"].get(review_id, {}).get("status") or "").upper()
+              if previous in {"APPROVED", "REJECTED"}:
+                  telegram("answerCallbackQuery", {
                       "callback_query_id": callback_id,
-                      "text": "Freigabe gespeichert." if status == "APPROVED" else "Review abgelehnt.",
-                      "show_alert": False,
-                  },
-              )
-
-              if message_id:
-                  call(
-                      "editMessageReplyMarkup",
-                      {
+                      "text": "Diese Review wurde bereits verarbeitet.",
+                  })
+                  if message_id:
+                      telegram("editMessageReplyMarkup", {
                           "chat_id": chat_id,
                           "message_id": message_id,
                           "reply_markup": {"inline_keyboard": []},
+                      })
+                  continue
+
+              now = datetime.now(timezone.utc).isoformat()
+              status = "APPROVED" if action == "approve" else "REJECTED"
+
+              if namespace == "tayvoriqcp" and status == "APPROVED":
+                  artifacts = github(
+                      "GET",
+                      f"https://api.github.com/repos/{repository}/actions/runs/{review_id}/artifacts",
+                  )
+                  expected_artifact = f"tayvoriq-control-review-{review_id}"
+                  artifact_exists = any(
+                      str(item.get("name") or "") == expected_artifact
+                      for item in artifacts.get("artifacts", [])
+                      if isinstance(item, dict)
+                  )
+                  if not artifact_exists:
+                      telegram("answerCallbackQuery", {
+                          "callback_query_id": callback_id,
+                          "text": "Das geprüfte Video-Artefakt fehlt. Freigabe wurde nicht ausgeführt.",
+                          "show_alert": True,
+                      })
+                      continue
+                  github(
+                      "POST",
+                      f"https://api.github.com/repos/{repository}/dispatches",
+                      {
+                          "event_type": "tayvoriq_control_publish_approved",
+                          "client_payload": {
+                              "review_run_id": review_id,
+                              "youtube_privacy": privacy,
+                              "approval_source": "telegram_callback",
+                          },
                       },
                   )
 
-              if status == "APPROVED":
+              review.update({
+                  "review_id": review_id,
+                  "status": status,
+                  "processed_at": now,
+                  "source": "telegram_callback",
+                  "callback_namespace": namespace,
+                  "telegram_message_id": message_id,
+                  "publication_pending": status == "APPROVED",
+                  "youtube_privacy": privacy if namespace == "tayvoriqcp" and status == "APPROVED" else review.get("youtube_privacy"),
+                  "platform_upload_performed": False,
+              })
+              review_path.write_text(json.dumps(review, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+              state["decisions"][review_id] = review
+
+              telegram("answerCallbackQuery", {
+                  "callback_query_id": callback_id,
+                  "text": (
+                      "Freigabe erkannt. YouTube-Veröffentlichung startet."
+                      if namespace == "tayvoriqcp" and status == "APPROVED"
+                      else "Freigabe gespeichert."
+                      if status == "APPROVED"
+                      else "Review abgelehnt."
+                  ),
+              })
+              if message_id:
+                  telegram("editMessageReplyMarkup", {
+                      "chat_id": chat_id,
+                      "message_id": message_id,
+                      "reply_markup": {"inline_keyboard": []},
+                  })
+
+              if status == "REJECTED":
+                  text = f"❌ TAYVORIQ Review {review_id} abgelehnt. Es wird nichts veröffentlicht."
+              elif namespace == "tayvoriqcp":
                   text = (
-                      f"✅ TAYVORIQ Review {review_id} freigegeben.\n\n"
-                      "Deine Entscheidung wurde gespeichert. Das Video bleibt bis zum Publication-Gate gesperrt; "
-                      "danach wird der freigegebene Upload gestartet."
+                      f"✅ Freigabe erkannt.\n\nReview: {review_id}\n"
+                      f"YouTube: {privacy}\nNach Abschluss folgt der YouTube-Link."
                   )
               else:
-                  text = f"❌ TAYVORIQ Review {review_id} abgelehnt. Es wird nichts veröffentlicht."
-              call("sendMessage", {"chat_id": expected_chat, "text": text})
+                  text = (
+                      f"✅ TAYVORIQ Review {review_id} freigegeben.\n\n"
+                      "Deine Entscheidung wurde gespeichert."
+                  )
+              telegram("sendMessage", {"chat_id": expected_chat, "text": text})
+              handled += 1
 
-          state_path.parent.mkdir(parents=True, exist_ok=True)
           state["last_checked_at"] = datetime.now(timezone.utc).isoformat()
-          state_path.write_text(
-              json.dumps(state, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
-          )
-          print(f"updates={len(updates)} changed={changed}")
+          state["last_handled_count"] = handled
+          state_path.parent.mkdir(parents=True, exist_ok=True)
+          state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print({"updates": len(updates), "handled": handled, "next_update_id": state.get("next_update_id")})
           PY
 
       - name: Persist decisions
@@ -208,9 +255,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .automation/tayvoriq-telegram-decision-state.json \
                   .automation/tayvoriq-reviews \
-                  .automation/tayvoriq-direct-reviews 2>/dev/null || true
+                  .automation/tayvoriq-direct-reviews \
+                  .automation/tayvoriq-control-reviews 2>/dev/null || true
           if git diff --cached --quiet; then
-            echo "No new Telegram decision."
             exit 0
           fi
           git commit -m "Record TAYVORIQ Telegram decision"
