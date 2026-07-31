@@ -1,0 +1,28 @@
+name: Dispatch TAYVORIQ Production 2026-07-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-dispatch-production-20260731.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start today's TAYVORIQ production
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'tayvoriq-deliver-video-now.yml',
+              ref: 'main'
+            });
+            core.info('Today's TAYVORIQ production was dispatched.');
