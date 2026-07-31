@@ -1,13 +1,14 @@
 package com.projectlumen.pilot.robust;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -15,6 +16,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.Collections;
 import java.util.List;
@@ -22,15 +24,21 @@ import java.util.Locale;
 
 /** Virtualized premium rows with playlist logos, favorites and recent tracking. */
 final class CatalogAdapter extends BaseAdapter {
+    private static final long DUPLICATE_LAUNCH_WINDOW_MS = 800L;
+
     private final Context context;
     private final LogoLoader logos;
     private final UserCollectionStore collections;
+    private final DiagnosticLog log;
     private List<Channel> items = Collections.emptyList();
+    private long lastLaunchAt;
+    private String lastLaunchId = "";
 
     CatalogAdapter(Context context) {
         this.context = context;
         this.logos = new LogoLoader(context.getApplicationContext());
         this.collections = UserCollectionStore.init(context);
+        this.log = DiagnosticLog.get(context);
     }
 
     void submit(List<Channel> values) {
@@ -60,6 +68,10 @@ final class CatalogAdapter extends BaseAdapter {
             row.setPadding(dp(10), dp(8), dp(9), dp(8));
             row.setBackground(roundRect(0xEC0C2030, 16, 0xFF244D64));
             row.setMinimumHeight(dp(74));
+            row.setClickable(true);
+            row.setFocusable(true);
+            row.setFocusableInTouchMode(false);
+            row.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
 
             FrameLayout logoHost = new FrameLayout(context);
             logoHost.setBackground(roundRect(0xFF071522, 13, 0xFF31566C));
@@ -99,7 +111,9 @@ final class CatalogAdapter extends BaseAdapter {
             favorite.setTextColor(0xFFFFD166);
             favorite.setTextSize(24);
             favorite.setGravity(Gravity.CENTER);
-            favorite.setFocusable(true);
+            favorite.setFocusable(false);
+            favorite.setFocusableInTouchMode(false);
+            favorite.setClickable(true);
             favorite.setContentDescription("Favorit umschalten");
             favorite.setBackground(roundRect(0x3317354A, 12, 0x00315A70));
             row.addView(favorite, new LinearLayout.LayoutParams(dp(46), dp(46)));
@@ -134,7 +148,10 @@ final class CatalogAdapter extends BaseAdapter {
             holder.language.setText("");
             holder.favorite.setText("☆");
             holder.favorite.setTag(null);
+            holder.favorite.setOnClickListener(null);
             holder.logoImage.setImageDrawable(null);
+            convertView.setOnClickListener(null);
+            convertView.setOnKeyListener(null);
         } else {
             Brand brand = Brand.of(channel.name);
             holder.logoFallback.setText(brand.label);
@@ -155,19 +172,62 @@ final class CatalogAdapter extends BaseAdapter {
                     notifyDataSetChanged();
                 }
             });
-            convertView.setOnTouchListener((view, event) -> {
-                if (event.getActionMasked() == MotionEvent.ACTION_UP) collections.markRecent(channel);
-                return false;
-            });
+
+            final int boundPosition = position;
+            convertView.setContentDescription(channel.name + " öffnen");
+            convertView.setOnClickListener(view -> launch(channel, boundPosition, "row"));
             convertView.setOnKeyListener((view, keyCode, event) -> {
                 if (event.getAction() == KeyEvent.ACTION_UP
-                        && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
-                    collections.markRecent(channel);
+                        && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                    view.performClick();
+                    return true;
                 }
                 return false;
             });
         }
         return convertView;
+    }
+
+    private void launch(Channel channel, int position, String source) {
+        if (channel == null) return;
+        long now = SystemClock.elapsedRealtime();
+        String id = channel.id == null ? "" : channel.id;
+        if (id.equals(lastLaunchId) && now - lastLaunchAt < DUPLICATE_LAUNCH_WINDOW_MS) {
+            log.event("-", "ROW-ACTIVATE-DUPLICATE-IGNORED",
+                    "position=" + position + " source=" + source);
+            return;
+        }
+        lastLaunchId = id;
+        lastLaunchAt = now;
+
+        String interaction = log.newInteractionId();
+        log.event(interaction, "ROW-ACTIVATE",
+                "position=" + position + " source=" + source
+                        + " item=" + log.anonymousId(channel.id));
+        if (channel.url == null || channel.url.isBlank()) {
+            log.event(interaction, "SELECTION-INVALID", "reason=empty-url");
+            Toast.makeText(context, "Dieser Eintrag enthält keine Stream-Adresse.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        collections.markRecent(channel);
+        Intent intent = new Intent(context, PlayerActivity.class);
+        intent.putExtra(PlayerActivity.EXTRA_URL, channel.url);
+        intent.putExtra(PlayerActivity.EXTRA_NAME, channel.name);
+        intent.putExtra(PlayerActivity.EXTRA_INTERACTION, interaction);
+        try {
+            log.event(interaction, "PLAYER-INTENT-START",
+                    "type=" + channel.type + " source=" + source);
+            context.startActivity(intent);
+            log.event(interaction, "PLAYER-INTENT-SENT", "activity=PlayerActivity");
+        } catch (Throwable failure) {
+            log.exception(interaction, "PLAYER-INTENT-ERROR", failure);
+            Toast.makeText(context, "Der Player konnte nicht geöffnet werden.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private static String typeLabel(Channel.Type type) {
