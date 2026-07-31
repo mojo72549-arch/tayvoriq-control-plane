@@ -5,12 +5,14 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /** Builds one immutable UI snapshot from the current protected catalog. */
 final class ProviderCatalog {
     static final String ALL_GROUPS = "";
     static final String FAVORITES_GROUP = "★ Favoriten";
     static final String RECENT_GROUP = "↻ Zuletzt angesehen";
+    private static final String UNCATEGORIZED = "Ohne Kategorie";
 
     static final class Snapshot {
         final List<ProviderLanguage.Facet> languages;
@@ -42,8 +44,6 @@ final class ProviderCatalog {
         List<Channel> safe = source == null ? Collections.emptyList() : source;
         Channel.Type wantedType = type == null ? Channel.Type.LIVE : type;
 
-        // Only actual provider languages are exposed. "Alle" remains an internal fallback,
-        // but is no longer rendered as a dominant pseudo-language.
         LinkedHashMap<String, ProviderLanguage.Facet> languageMap = new LinkedHashMap<>();
         for (Channel channel : safe) {
             if (channel == null || channel.type != wantedType) continue;
@@ -58,28 +58,47 @@ final class ProviderCatalog {
             selectedLanguage = languageMap.isEmpty()
                     ? ProviderLanguage.ALL : languageMap.keySet().iterator().next();
         }
+        ProviderLanguage.Facet selectedFacet = languageMap.get(selectedLanguage);
 
         UserCollectionStore collections = UserCollectionStore.current();
         boolean hasFavorites = false;
         boolean hasRecent = false;
+        int languageRows = 0;
         LinkedHashMap<String, String> groupMap = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> groupCounts = new LinkedHashMap<>();
         for (Channel channel : safe) {
             if (channel == null || channel.type != wantedType) continue;
             if (!ProviderLanguageCache.matches(channel, selectedLanguage)) continue;
+            languageRows++;
             if (collections != null && collections.isFavorite(channel)) hasFavorites = true;
             if (collections != null && collections.isRecent(channel)) hasRecent = true;
-            String group = safeGroup(channel.group);
-            groupMap.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
+            String group = canonicalGroup(channel.group, selectedFacet);
+            String key = group.toLowerCase(Locale.ROOT);
+            groupMap.putIfAbsent(key, group);
+            groupCounts.put(key, groupCounts.getOrDefault(key, 0) + 1);
         }
-        LinkedHashMap<String, String> completeGroups = new LinkedHashMap<>();
-        if (hasFavorites) completeGroups.put(FAVORITES_GROUP.toLowerCase(Locale.ROOT), FAVORITES_GROUP);
-        if (hasRecent) completeGroups.put(RECENT_GROUP.toLowerCase(Locale.ROOT), RECENT_GROUP);
-        completeGroups.putAll(groupMap);
-        groupMap = completeGroups;
+
+        LinkedHashMap<String, String> visibleGroups = new LinkedHashMap<>();
+        if (hasFavorites) visibleGroups.put(FAVORITES_GROUP.toLowerCase(Locale.ROOT), FAVORITES_GROUP);
+        if (hasRecent) visibleGroups.put(RECENT_GROUP.toLowerCase(Locale.ROOT), RECENT_GROUP);
+
+        int providerGroupCount = groupMap.size();
+        for (Map.Entry<String, String> entry : groupMap.entrySet()) {
+            String group = entry.getValue();
+            int count = groupCounts.getOrDefault(entry.getKey(), 0);
+            if (isRedundantLanguageGroup(group, selectedFacet)) continue;
+            if (isDominantProviderRoot(group, count, languageRows, providerGroupCount)) continue;
+            visibleGroups.put(entry.getKey(), group);
+        }
 
         String selectedGroup = wantedGroup == null ? ALL_GROUPS : wantedGroup.trim();
         if (!selectedGroup.isBlank()
-                && !groupMap.containsKey(selectedGroup.toLowerCase(Locale.ROOT))) {
+                && !FAVORITES_GROUP.equals(selectedGroup)
+                && !RECENT_GROUP.equals(selectedGroup)) {
+            selectedGroup = canonicalGroup(selectedGroup, selectedFacet);
+        }
+        if (!selectedGroup.isBlank()
+                && !visibleGroups.containsKey(selectedGroup.toLowerCase(Locale.ROOT))) {
             selectedGroup = ALL_GROUPS;
         }
 
@@ -93,7 +112,7 @@ final class ProviderCatalog {
             } else if (RECENT_GROUP.equals(selectedGroup)) {
                 if (collections == null || !collections.isRecent(channel)) continue;
             } else if (!selectedGroup.isBlank()
-                    && !safeGroup(channel.group).equalsIgnoreCase(selectedGroup)) {
+                    && !canonicalGroup(channel.group, selectedFacet).equalsIgnoreCase(selectedGroup)) {
                 continue;
             }
             if (!normalizedQuery.isBlank() && !matchesQuery(channel, normalizedQuery)) continue;
@@ -101,7 +120,7 @@ final class ProviderCatalog {
         }
 
         return new Snapshot(new ArrayList<>(languageMap.values()),
-                new ArrayList<>(groupMap.values()), rows, selectedLanguage, selectedGroup);
+                new ArrayList<>(visibleGroups.values()), rows, selectedLanguage, selectedGroup);
     }
 
     private static boolean matchesQuery(Channel channel, String query) {
@@ -118,10 +137,79 @@ final class ProviderCatalog {
         return false;
     }
 
+    private static String canonicalGroup(String value, ProviderLanguage.Facet facet) {
+        String group = safeGroup(value);
+        if (facet == null || facet.id.isBlank()) return prettyGroup(group);
+
+        String[] prefixes = new String[]{facet.label, facet.id.toUpperCase(Locale.ROOT), facet.id};
+        for (String prefix : prefixes) {
+            String stripped = stripExactPrefix(group, prefix);
+            if (stripped != null) {
+                return stripped.isBlank() ? UNCATEGORIZED : prettyGroup(stripped);
+            }
+        }
+        return prettyGroup(group);
+    }
+
+    private static String stripExactPrefix(String value, String prefix) {
+        if (value == null || prefix == null || prefix.isBlank()) return null;
+        if (value.equalsIgnoreCase(prefix)) return "";
+        if (value.length() <= prefix.length()
+                || !value.regionMatches(true, 0, prefix, 0, prefix.length())) return null;
+        char next = value.charAt(prefix.length());
+        if (!Character.isWhitespace(next) && "|:;•/-–—".indexOf(next) < 0) return null;
+        int index = prefix.length();
+        while (index < value.length()) {
+            char current = value.charAt(index);
+            if (!Character.isWhitespace(current) && "|:;•/-–—".indexOf(current) < 0) break;
+            index++;
+        }
+        return value.substring(index).trim();
+    }
+
+    private static boolean isRedundantLanguageGroup(String group,
+                                                     ProviderLanguage.Facet facet) {
+        if (UNCATEGORIZED.equalsIgnoreCase(group)) return true;
+        if (facet == null) return false;
+        return group.equalsIgnoreCase(facet.label)
+                || group.equalsIgnoreCase(facet.id);
+    }
+
+    private static boolean isDominantProviderRoot(String group, int count,
+                                                   int languageRows, int providerGroupCount) {
+        if (languageRows <= 0 || count <= 0) return false;
+        if (providerGroupCount == 1 && count == languageRows) return true;
+        if (count * 100 < languageRows * 90) return false;
+        String normalized = group.toLowerCase(Locale.ROOT);
+        return normalized.length() <= 18
+                && !normalized.contains("news")
+                && !normalized.contains("sport")
+                && !normalized.contains("movie")
+                && !normalized.contains("film")
+                && !normalized.contains("series")
+                && !normalized.contains("serie")
+                && !normalized.contains("kids")
+                && !normalized.contains("music")
+                && !normalized.contains("doku");
+    }
+
+    private static String prettyGroup(String value) {
+        String group = safeGroup(value);
+        if (group.length() <= 4 || !group.equals(group.toUpperCase(Locale.ROOT))) return group;
+        String[] words = group.toLowerCase(Locale.ROOT).split("\\s+");
+        StringBuilder result = new StringBuilder(group.length());
+        for (String word : words) {
+            if (word.isBlank()) continue;
+            if (result.length() > 0) result.append(' ');
+            result.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return result.toString();
+    }
+
     private static String safeGroup(String value) {
         if (value == null || value.isBlank() || value.trim().equalsIgnoreCase("Weitere")) {
-            return "Ohne Kategorie";
+            return UNCATEGORIZED;
         }
-        return value.trim();
+        return value.trim().replaceAll("\\s{2,}", " ");
     }
 }
