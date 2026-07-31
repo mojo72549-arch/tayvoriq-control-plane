@@ -1,0 +1,74 @@
+name: TAYVORIQ Enforce Public Approval Default
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-enforce-public-default.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  enforce-public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Replace private approval defaults
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('.github/workflows/tayvoriq-telegram-decision-bridge.yml'): [
+                  ('YOUTUBE_PRIVACY: "private"', 'YOUTUBE_PRIVACY: "public"'),
+                  ('privacy = os.environ.get("YOUTUBE_PRIVACY", "private")', 'privacy = os.environ.get("YOUTUBE_PRIVACY", "public")'),
+              ],
+              Path('.github/workflows/tayvoriq-control-approved-publish.yml'): [
+                  ("YOUTUBE_PRIVACY: ${{ github.event.client_payload.youtube_privacy || 'private' }}", 'YOUTUBE_PRIVACY: "public"'),
+                  ('case "$YOUTUBE_PRIVACY" in private|unlisted) ;; *) exit 1 ;; esac', 'test "$YOUTUBE_PRIVACY" = "public"'),
+              ],
+          }
+
+          for path, rules in replacements.items():
+              if not path.exists():
+                  raise SystemExit(f'Missing workflow: {path}')
+              text = path.read_text(encoding='utf-8')
+              for old, new in rules:
+                  if old not in text:
+                      raise SystemExit(f'Expected public-default migration token missing in {path}: {old}')
+                  text = text.replace(old, new)
+              path.write_text(text, encoding='utf-8')
+              print(f'updated {path}')
+          PY
+
+      - name: Verify public-only approval path
+        run: |
+          set -euo pipefail
+          grep -F 'YOUTUBE_PRIVACY: "public"' .github/workflows/tayvoriq-telegram-decision-bridge.yml
+          grep -F 'privacy = os.environ.get("YOUTUBE_PRIVACY", "public")' .github/workflows/tayvoriq-telegram-decision-bridge.yml
+          grep -F 'YOUTUBE_PRIVACY: "public"' .github/workflows/tayvoriq-control-approved-publish.yml
+          grep -F 'test "$YOUTUBE_PRIVACY" = "public"' .github/workflows/tayvoriq-control-approved-publish.yml
+          if grep -Fq 'YOUTUBE_PRIVACY: "private"' .github/workflows/tayvoriq-telegram-decision-bridge.yml; then
+            echo 'Private approval default still present.' >&2
+            exit 1
+          fi
+
+      - name: Persist public-only defaults
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/tayvoriq-telegram-decision-bridge.yml \
+                  .github/workflows/tayvoriq-control-approved-publish.yml
+          git commit -m "fix(tayvoriq): make Telegram approval publish public"
+          git pull --rebase origin main
+          git push origin main
