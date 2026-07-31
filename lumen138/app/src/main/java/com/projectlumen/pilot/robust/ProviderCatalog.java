@@ -139,16 +139,60 @@ final class ProviderCatalog {
 
     private static String canonicalGroup(String value, ProviderLanguage.Facet facet) {
         String group = safeGroup(value);
-        if (facet == null || facet.id.isBlank()) return prettyGroup(group);
+        if (UNCATEGORIZED.equals(group)) return group;
 
-        String[] prefixes = new String[]{facet.label, facet.id.toUpperCase(Locale.ROOT), facet.id};
-        for (String prefix : prefixes) {
-            String stripped = stripExactPrefix(group, prefix);
-            if (stripped != null) {
-                return stripped.isBlank() ? UNCATEGORIZED : prettyGroup(stripped);
+        if (facet != null && !facet.id.isBlank()) {
+            for (String prefix : languagePrefixes(facet)) {
+                String stripped = stripExactPrefix(group, prefix);
+                if (stripped != null) {
+                    group = stripped.isBlank() ? UNCATEGORIZED : stripped;
+                    break;
+                }
             }
         }
+
+        String mediaStripped = stripMediaPrefix(group);
+        if (mediaStripped != null && !mediaStripped.isBlank()) group = mediaStripped;
         return prettyGroup(group);
+    }
+
+    private static String[] languagePrefixes(ProviderLanguage.Facet facet) {
+        String id = facet.id == null ? "" : facet.id.toLowerCase(Locale.ROOT);
+        switch (id) {
+            case "de": return new String[]{facet.label, "DE", "GER", "DEU", "German", "Deutsch"};
+            case "tr": return new String[]{facet.label, "TR", "TUR", "Turkish", "Türkisch", "Turkiye", "Türkiye"};
+            case "el": return new String[]{facet.label, "GR", "EL", "GRE", "Greek", "Griechisch"};
+            case "en": return new String[]{facet.label, "EN", "ENG", "UK", "US", "USA", "English", "Englisch"};
+            case "ar": return new String[]{facet.label, "AR", "ARA", "Arabic", "Arabisch"};
+            case "fr": return new String[]{facet.label, "FR", "FRA", "French", "Französisch"};
+            case "it": return new String[]{facet.label, "IT", "ITA", "Italian", "Italienisch"};
+            case "es": return new String[]{facet.label, "ES", "ESP", "Spanish", "Spanisch"};
+            case "pt": return new String[]{facet.label, "PT", "POR", "BR", "Portuguese", "Portugiesisch"};
+            case "nl": return new String[]{facet.label, "NL", "NLD", "Dutch", "Niederländisch"};
+            case "pl": return new String[]{facet.label, "PL", "POL", "Polish", "Polnisch"};
+            case "ro": return new String[]{facet.label, "RO", "RON", "Romanian", "Rumänisch"};
+            case "bg": return new String[]{facet.label, "BG", "BUL", "Bulgarian", "Bulgarisch"};
+            case "sq": return new String[]{facet.label, "AL", "SQ", "ALB", "Albanian", "Albanisch"};
+            case "ru": return new String[]{facet.label, "RU", "RUS", "Russian", "Russisch"};
+            case "uk": return new String[]{facet.label, "UA", "UKR", "Ukrainian", "Ukrainisch"};
+            case "bs": return new String[]{facet.label, "BA", "BS", "BOS", "Bosnian", "Bosnisch"};
+            case "hr": return new String[]{facet.label, "HR", "HRV", "Croatian", "Kroatisch"};
+            case "sr": return new String[]{facet.label, "RS", "SR", "SRP", "Serbian", "Serbisch"};
+            default: return new String[]{facet.label, facet.id.toUpperCase(Locale.ROOT), facet.id};
+        }
+    }
+
+    private static String stripMediaPrefix(String value) {
+        String[] prefixes = new String[]{
+                "LIVE TV", "LIVE-TV", "LIVE",
+                "FILME", "FILM", "MOVIES", "MOVIE", "VOD",
+                "SERIEN", "SERIE", "SERIES"
+        };
+        for (String prefix : prefixes) {
+            String stripped = stripExactPrefix(value, prefix);
+            if (stripped != null) return stripped;
+        }
+        return null;
     }
 
     private static String stripExactPrefix(String value, String prefix) {
@@ -169,14 +213,26 @@ final class ProviderCatalog {
 
     private static boolean isRedundantLanguageGroup(String group,
                                                      ProviderLanguage.Facet facet) {
-        if (UNCATEGORIZED.equalsIgnoreCase(group)) return true;
-        if (facet == null) return false;
+        if (facet == null) return isMediaRoot(group);
         return group.equalsIgnoreCase(facet.label)
-                || group.equalsIgnoreCase(facet.id);
+                || group.equalsIgnoreCase(facet.id)
+                || isMediaRoot(group);
+    }
+
+    private static boolean isMediaRoot(String group) {
+        if (group == null) return false;
+        String normalized = group.trim().toLowerCase(Locale.ROOT);
+        return normalized.equals("live") || normalized.equals("live tv")
+                || normalized.equals("live-tv") || normalized.equals("filme")
+                || normalized.equals("film") || normalized.equals("movies")
+                || normalized.equals("movie") || normalized.equals("vod")
+                || normalized.equals("serien") || normalized.equals("serie")
+                || normalized.equals("series");
     }
 
     private static boolean isDominantProviderRoot(String group, int count,
                                                    int languageRows, int providerGroupCount) {
+        if (UNCATEGORIZED.equalsIgnoreCase(group)) return false;
         if (languageRows <= 0 || count <= 0) return false;
         if (providerGroupCount == 1 && count == languageRows) return true;
         if (count * 100 < languageRows * 90) return false;
