@@ -1,0 +1,41 @@
+name: TAYVORIQ Semantic V4 Observer
+
+on:
+  workflow_run:
+    workflows: ["TAYVORIQ Semantic Heat Story V4 2026-07-31"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  record-completion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Record semantic workflow result
+        run: |
+          set -euo pipefail
+          mkdir -p .github/run-now
+          cat > .github/run-now/latest-semantic-v4.json <<JSON
+          {
+            "run_id": "${{ github.event.workflow_run.id }}",
+            "status": "${{ github.event.workflow_run.status }}",
+            "conclusion": "${{ github.event.workflow_run.conclusion }}",
+            "head_sha": "${{ github.event.workflow_run.head_sha }}",
+            "url": "${{ github.event.workflow_run.html_url }}",
+            "workflow": "${{ github.event.workflow_run.name }}",
+            "updated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/run-now/latest-semantic-v4.json
+          git commit -m "ops: record semantic V4 run ${{ github.event.workflow_run.id }}"
+          git pull --rebase origin main
+          git push origin main
