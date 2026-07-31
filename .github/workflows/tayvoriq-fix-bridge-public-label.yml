@@ -1,0 +1,56 @@
+name: TAYVORIQ Fix Telegram Public Label
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-fix-bridge-public-label.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set Telegram approval privacy to public
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('.github/workflows/tayvoriq-telegram-decision-bridge.yml')
+          text=path.read_text(encoding='utf-8')
+          rules=[
+              ('YOUTUBE_PRIVACY: "private"','YOUTUBE_PRIVACY: "public"'),
+              ('privacy = os.environ.get("YOUTUBE_PRIVACY", "private")','privacy = os.environ.get("YOUTUBE_PRIVACY", "public")'),
+          ]
+          for old,new in rules:
+              if old not in text:
+                  raise SystemExit(f'Expected token missing: {old}')
+              text=text.replace(old,new)
+          path.write_text(text,encoding='utf-8')
+          PY
+
+      - name: Verify public Telegram decision contract
+        run: |
+          set -euo pipefail
+          grep -F 'YOUTUBE_PRIVACY: "public"' .github/workflows/tayvoriq-telegram-decision-bridge.yml
+          grep -F 'privacy = os.environ.get("YOUTUBE_PRIVACY", "public")' .github/workflows/tayvoriq-telegram-decision-bridge.yml
+
+      - name: Persist public Telegram decision contract
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/tayvoriq-telegram-decision-bridge.yml
+          git commit -m "fix(tayvoriq): make Telegram approval public"
+          git pull --rebase origin main
+          git push origin main
