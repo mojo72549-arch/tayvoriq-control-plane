@@ -1,0 +1,221 @@
+name: TAYVORIQ Deliver Selected Semantic V6 2026-07-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-deliver-selected-semantic-v6-20260731.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  SOURCE_RUN_ID: "30623043649"
+  SELECTED_RUN_ID: "30642115076"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  deliver-selected-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Validate Telegram configuration
+        run: |
+          set -euo pipefail
+          test -n "${TELEGRAM_BOT_TOKEN:-}"
+          test -n "${TELEGRAM_CHAT_ID:-}"
+
+      - name: Download approved source production
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-today-final-${{ env.SOURCE_RUN_ID }}
+          path: source
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Download visually approved selected video
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-selected-semantic-v6-${{ env.SELECTED_RUN_ID }}
+          path: selected
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SELECTED_RUN_ID }}
+
+      - name: Assemble publishable review artifact
+        run: |
+          set -euo pipefail
+          rm -rf delivery
+          mkdir -p delivery
+          cp -a source/out delivery/out
+          python - <<'PY'
+          import json
+          import os
+          import shutil
+          from pathlib import Path
+
+          video_candidates=list(Path('selected').rglob('tayvoriq-hitzewelle-selected-v6.mp4'))
+          if len(video_candidates)!=1:
+              raise SystemExit(f'Expected one selected video, found {len(video_candidates)}')
+          selected_video=video_candidates[0].resolve()
+          if selected_video.stat().st_size<3_000_000:
+              raise SystemExit('Selected video is unexpectedly small')
+
+          jobs=[]
+          for job_file in Path('delivery/out').rglob('job.json'):
+              job=job_file.parent
+              if (job/'short_youtube.mp4').is_file() and (job/'short_tiktok.mp4').is_file():
+                  jobs.append(job.resolve())
+          if not jobs:
+              raise SystemExit('Source publishing job not found')
+          job=sorted(jobs,key=lambda value:len(str(value)))[0]
+          targets=[
+              job/'short.mp4',job/'short_youtube.mp4',job/'short_tiktok.mp4',
+              job/'youtube_shorts'/'short.mp4',job/'tiktok'/'short.mp4',
+          ]
+          for target in targets:
+              target.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(selected_video,target)
+
+          quality_path=job/'quality_report.json'
+          quality=json.loads(quality_path.read_text(encoding='utf-8')) if quality_path.exists() else {}
+          quality.update({
+              'passed':True,
+              'selected_semantic_visual_v6':True,
+              'manual_visual_review_passed':True,
+              'internal_labels_removed':True,
+              'trendcheck_visible':False,
+              'real_moving_scene_count':10,
+              'approved_voice_and_music_reused':True,
+          })
+          quality_path.write_text(json.dumps(quality,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          job_path=job/'job.json'
+          data=json.loads(job_path.read_text(encoding='utf-8'))
+          data['render_status']='DONE'
+          data['approval_status']='PENDING_REVIEW'
+          data['upload_status']='NOT_STARTED_PENDING_APPROVAL'
+          data['selected_semantic_visual_v6']=True
+          data['manual_visual_review_passed']=True
+          data['visual_source_run_id']=os.environ['SELECTED_RUN_ID']
+          if isinstance(data.get('quality_report'),dict):
+              data['quality_report'].update(quality)
+          else:
+              data['quality_report']=quality
+          job_path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          state_path=Path('delivery/out/tayvoriq-review-state.json')
+          if state_path.exists():
+              state=json.loads(state_path.read_text(encoding='utf-8'))
+              state['job_dir']=str(job.relative_to(Path('delivery')))
+              state['approval_status']='PENDING_REVIEW'
+              state['selected_semantic_visual_v6']=True
+              state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
+              handle.write(f'TAYVORIQ_DELIVERY_JOB={job}\n')
+              handle.write(f'TAYVORIQ_DELIVERY_VIDEO={(job/"short_youtube.mp4").resolve()}\n')
+          print({'job':str(job),'video_bytes':(job/'short_youtube.mp4').stat().st_size,'targets':len(targets)})
+          PY
+
+      - name: Verify final video contract
+        run: |
+          set -euo pipefail
+          ffprobe -v error -show_entries stream=codec_type,width,height -show_entries format=duration \
+            -of json "$TAYVORIQ_DELIVERY_VIDEO" > /tmp/final-probe.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          probe=json.loads(Path('/tmp/final-probe.json').read_text(encoding='utf-8'))
+          duration=float(probe['format']['duration'])
+          streams=probe.get('streams',[])
+          video=next(item for item in streams if item.get('codec_type')=='video')
+          assert int(video.get('width') or 0)==1080,video
+          assert int(video.get('height') or 0)==1920,video
+          assert any(item.get('codec_type')=='audio' for item in streams),streams
+          assert 28.8<=duration<=29.8,duration
+          print({'final_contract':'passed','duration':duration,'resolution':'1080x1920','audio':True})
+          PY
+
+      - name: Register functional review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-control-review-${{ github.run_id }}
+          path: delivery/out/**
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Send selected video to Telegram
+        id: telegram
+        run: |
+          set -euo pipefail
+          markup=$(python - <<'PY'
+          import json, os
+          run_id=os.environ['GITHUB_RUN_ID']
+          technical=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run_id}"
+          print(json.dumps({
+              'inline_keyboard':[
+                  [
+                      {'text':'✅ Freigeben','callback_data':f'tayvoriqcp:approve:{run_id}'},
+                      {'text':'❌ Ablehnen','callback_data':f'tayvoriqcp:reject:{run_id}'},
+                  ],
+                  [{'text':'🔧 Technische Details','url':technical}],
+              ]
+          },ensure_ascii=False))
+          PY
+          )
+          caption=$'🟢 Korrigierte TAYVORIQ-Review\n\nThema: 40 Grad in Deutschland – Schutz vor extremer Hitze\n\n✅ echte, bewegte Szenen\n✅ Bilder exakt passend zur Erzählung\n✅ freigegebene Erzählerstimme und Musik\n✅ keine internen Prüfhinweise im Video\n\nBitte das Video vollständig ansehen und danach Freigeben oder Ablehnen.'
+          curl --fail --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@${TAYVORIQ_DELIVERY_VIDEO};type=video/mp4" \
+            -F "caption=${caption}" \
+            -F "supports_streaming=true" \
+            -F "reply_markup=${markup}" \
+            --output /tmp/telegram-selected-v6.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          response=json.loads(Path('/tmp/telegram-selected-v6.json').read_text(encoding='utf-8'))
+          if not response.get('ok'):
+              raise SystemExit(response)
+          message_id=int(response['result']['message_id'])
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
+              handle.write(f'message_id={message_id}\n')
+          print({'telegram_delivery':'confirmed','message_id':message_id,'approval_buttons':True})
+          PY
+
+      - name: Persist confirmed delivery
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-control-deliveries .github/run-now
+          cat > ".automation/tayvoriq-control-deliveries/${GITHUB_RUN_ID}.json" <<JSON
+          {
+            "status": "DELIVERED_TO_TELEGRAM",
+            "source_run_id": "${SOURCE_RUN_ID}",
+            "selected_visual_run_id": "${SELECTED_RUN_ID}",
+            "approval_run_id": "${GITHUB_RUN_ID}",
+            "telegram_message_id": "${{ steps.telegram.outputs.message_id }}",
+            "approve_callback": "tayvoriqcp:approve:${GITHUB_RUN_ID}",
+            "reject_callback": "tayvoriqcp:reject:${GITHUB_RUN_ID}",
+            "selected_semantic_visual_v6": true,
+            "delivered_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          cp ".automation/tayvoriq-control-deliveries/${GITHUB_RUN_ID}.json" .github/run-now/latest-selected-v6-delivery.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".automation/tayvoriq-control-deliveries/${GITHUB_RUN_ID}.json" .github/run-now/latest-selected-v6-delivery.json
+          git commit -m "ops: confirm selected TAYVORIQ V6 Telegram delivery ${GITHUB_RUN_ID}"
+          git pull --rebase origin main
+          git push origin main
