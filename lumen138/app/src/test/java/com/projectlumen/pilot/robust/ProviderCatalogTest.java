@@ -40,7 +40,7 @@ public final class ProviderCatalogTest {
         assertFalse(hasLanguage(snapshot, "de"));
     }
 
-    @Test public void selectingGreekReturnsOnlyGreekRowsAndGroups() {
+    @Test public void selectingGreekReturnsOnlyGreekRowsAndMeaningfulGroups() {
         List<Channel> source = Arrays.asList(
                 channel("1", "ERT 1", "GR | LIVE", Channel.Type.LIVE),
                 channel("2", "Mega", "Greek Entertainment", Channel.Type.LIVE),
@@ -51,7 +51,7 @@ public final class ProviderCatalogTest {
 
         assertEquals("el", snapshot.selectedLanguage);
         assertEquals(2, snapshot.rows.size());
-        assertEquals(2, snapshot.groups.size());
+        assertEquals(Arrays.asList("Entertainment"), snapshot.groups);
         assertTrue(snapshot.rows.stream().allMatch(channel ->
                 "el".equals(ProviderLanguage.detect(channel).id)));
     }
