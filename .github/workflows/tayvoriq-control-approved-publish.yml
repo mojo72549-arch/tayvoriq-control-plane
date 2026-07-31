@@ -15,7 +15,7 @@ concurrency:
 env:
   PYTHONUTF8: "1"
   REVIEW_RUN_ID: ${{ github.event.client_payload.review_run_id }}
-  YOUTUBE_PRIVACY: ${{ github.event.client_payload.youtube_privacy || 'private' }}
+  YOUTUBE_PRIVACY: "public"
   YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
   YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
   YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$REVIEW_RUN_ID"
-          case "$YOUTUBE_PRIVACY" in private|unlisted) ;; *) exit 1 ;; esac
+          test "$YOUTUBE_PRIVACY" = "public"
 
       - name: Checkout publishing implementation
         uses: actions/checkout@v4
@@ -91,7 +91,7 @@ jobs:
             --job-dir "$TAYVORIQ_APPROVED_JOB_DIR" \
             --targets youtube
 
-      - name: Publish approved YouTube video
+      - name: Publish approved YouTube video publicly
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -99,7 +99,7 @@ jobs:
             --job-dir "$TAYVORIQ_APPROVED_JOB_DIR" \
             --approval FREIGEBEN \
             --targets youtube \
-            --youtube-privacy "$YOUTUBE_PRIVACY" \
+            --youtube-privacy public \
             --tiktok-mode draft_upload \
             --tiktok-privacy SELF_ONLY
 
@@ -122,7 +122,7 @@ jobs:
               text=(
                   '✅ Freigabe erfolgreich ausgeführt\n\n'
                   f"YouTube: {youtube.get('url')}\n"
-                  f"Sichtbarkeit: {youtube.get('privacy_status') or os.environ.get('YOUTUBE_PRIVACY')}\n\n"
+                  'Sichtbarkeit: Public\n\n'
                   'TikTok bleibt manuell: Das zuvor gesendete Telegram-Video speichern und in TikTok hochladen.'
               )
           else:
