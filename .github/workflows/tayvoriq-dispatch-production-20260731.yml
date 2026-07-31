@@ -8,21 +8,25 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: read
 
 jobs:
   dispatch-production:
     runs-on: ubuntu-latest
     steps:
-      - name: Start today's TAYVORIQ production
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'tayvoriq-deliver-video-now.yml',
-              ref: 'main'
-            });
-            core.info('Today's TAYVORIQ production was dispatched.');
+      - name: Start today's TAYVORIQ production with repository token
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${PRIVATE_REPO_TOKEN:-}" || { echo "::error title=Missing secret::PRIVATE_REPO_TOKEN"; exit 2; }
+          status=$(curl --silent --show-error --output response.txt --write-out '%{http_code}' \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/tayvoriq-deliver-video-now.yml/dispatches" \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${PRIVATE_REPO_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data '{"ref":"main"}')
+          cat response.txt || true
+          test "$status" = "204" || { echo "::error title=Dispatch failed::HTTP $status"; exit 1; }
+          echo "Today's TAYVORIQ production was dispatched successfully."
