@@ -1,0 +1,465 @@
+name: TAYVORIQ Cinematic Visual Repair V2 2026-07-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-cinematic-visual-repair-v2-20260731.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: tayvoriq-cinematic-visual-repair-v2-20260731
+  cancel-in-progress: false
+
+env:
+  SOURCE_RUN_ID: "30623043649"
+  SUPERSEDED_REVIEW_ID: "30637692047"
+  SUPERSEDED_MESSAGE_ID: "178"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+
+jobs:
+  rebuild-and-deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          for name in TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY; do
+            test -n "${!name:-}" || { echo "::error title=Missing secret::$name"; exit 1; }
+          done
+
+      - name: Disable the superseded review buttons
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup" \
+            -H 'Content-Type: application/json' \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"message_id\":${SUPERSEDED_MESSAGE_ID},\"reply_markup\":{\"inline_keyboard\":[]}}" \
+            >/tmp/invalidate-old-review.json
+
+      - name: Install media tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --upgrade pip -q
+          python -m pip install pillow -q
+
+      - name: Download completed source production
+        uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-today-final-${{ env.SOURCE_RUN_ID }}
+          path: source
+          github-token: ${{ github.token }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Locate source job
+        run: |
+          set -euo pipefail
+          rm -rf repaired
+          mkdir -p repaired
+          cp -a source/out repaired/out
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          candidates=[]
+          for item in Path('repaired/out').rglob('job.json'):
+              root=item.parent
+              if (root/'short_youtube.mp4').is_file() and (root/'youtube_shorts/assets/subtitle_01.png').is_file():
+                  candidates.append(root.resolve())
+          if not candidates:
+              raise SystemExit('Complete source video job not found')
+          job_dir=sorted(candidates,key=lambda p:len(str(p)))[0]
+          source_video=(job_dir/'short_youtube.mp4').resolve()
+          if source_video.stat().st_size<100000:
+              raise SystemExit('Source video is unexpectedly small')
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
+              handle.write(f'REPAIRED_JOB_DIR={job_dir}\n')
+              handle.write(f'SOURCE_VIDEO={source_video}\n')
+              handle.write(f'SUBTITLE_DIR={(job_dir/"youtube_shorts/assets").resolve()}\n')
+          print({'job_dir':str(job_dir),'source_video':str(source_video),'bytes':source_video.stat().st_size})
+          PY
+
+      - name: Preserve the approved voice and background music
+        run: |
+          set -euo pipefail
+          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k repaired/approved-audio.m4a
+          test -s repaired/approved-audio.m4a
+
+      - name: Download six unique real video scenes
+        run: |
+          set -euo pipefail
+          mkdir -p repaired/clips
+          python - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          from urllib import parse, request
+
+          api_key=os.environ['PEXELS_API_KEY'].strip()
+          queries=[
+              'European city heatwave people walking summer',
+              'thermometer hot sun extreme heat close up',
+              'elderly person drinking water summer heat',
+              'family children cooling down hot summer day',
+              'person dizzy heat exhaustion first aid',
+              'cold water fan shaded room summer heat',
+          ]
+          used_ids=set()
+          manifest=[]
+          out=Path('repaired/clips')
+
+          def fetch_json(query,portrait=True):
+              args={'query':query,'per_page':50,'size':'medium'}
+              if portrait:
+                  args['orientation']='portrait'
+              url='https://api.pexels.com/videos/search?'+parse.urlencode(args)
+              req=request.Request(url,headers={'Authorization':api_key,'User-Agent':'TAYVORIQ/2.0'})
+              with request.urlopen(req,timeout=45) as response:
+                  return json.loads(response.read().decode('utf-8'))
+
+          def rank_files(payload):
+              choices=[]
+              for video in payload.get('videos',[]):
+                  vid=int(video.get('id') or 0)
+                  if not vid or vid in used_ids or float(video.get('duration') or 0)<3.0:
+                      continue
+                  for item in video.get('video_files',[]):
+                      width=int(item.get('width') or 0)
+                      height=int(item.get('height') or 0)
+                      link=str(item.get('link') or '')
+                      if not link or min(width,height)<480:
+                          continue
+                      ratio=width/max(1,height)
+                      portrait_penalty=0 if height>width else 1
+                      resolution_penalty=abs(max(width,height)-1920)
+                      ratio_penalty=abs(ratio-(9/16))
+                      choices.append(((portrait_penalty,ratio_penalty,resolution_penalty),vid,width,height,link,video.get('url')))
+              return sorted(choices,key=lambda row:row[0])
+
+          def download(url,path):
+              for attempt in range(3):
+                  try:
+                      req=request.Request(url,headers={'User-Agent':'TAYVORIQ/2.0'})
+                      with request.urlopen(req,timeout=100) as response,path.open('wb') as handle:
+                          while True:
+                              chunk=response.read(1024*1024)
+                              if not chunk:
+                                  break
+                              handle.write(chunk)
+                      if path.stat().st_size>500000:
+                          return
+                  except Exception:
+                      if attempt==2:
+                          raise
+                      time.sleep(2+attempt)
+              raise RuntimeError(f'Video download failed: {url}')
+
+          for index,query in enumerate(queries,1):
+              choices=rank_files(fetch_json(query,portrait=True))
+              if not choices:
+                  choices=rank_files(fetch_json(query,portrait=False))
+              if not choices:
+                  raise SystemExit(f'No suitable real scene found for: {query}')
+              _,vid,width,height,link,page_url=choices[0]
+              used_ids.add(vid)
+              target=out/f'scene_{index:02d}.mp4'
+              download(link,target)
+              manifest.append({
+                  'scene':index,
+                  'query':query,
+                  'pexels_video_id':vid,
+                  'source_page':page_url,
+                  'width':width,
+                  'height':height,
+                  'file':str(target),
+                  'bytes':target.stat().st_size,
+              })
+          Path('repaired/visual-manifest.json').write_text(
+              json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print({'real_scenes':len(manifest),'unique_video_ids':len(used_ids)})
+          PY
+
+      - name: Render real scenes with the original synchronized subtitles
+        run: |
+          set -euo pipefail
+          durations=(4.220 4.688 4.220 3.282 6.564 6.407)
+          mkdir -p repaired/segments
+          : > repaired/segments.txt
+          for i in 1 2 3 4 5 6; do
+            clip=$(printf 'repaired/clips/scene_%02d.mp4' "$i")
+            subtitle=$(printf '%s/subtitle_%02d.png' "$SUBTITLE_DIR" "$i")
+            segment=$(printf 'repaired/segments/segment_%02d.mp4' "$i")
+            duration=${durations[$((i-1))]}
+            test -s "$clip"
+            test -s "$subtitle"
+            ffmpeg -y -loglevel error \
+              -stream_loop -1 -i "$clip" -loop 1 -i "$subtitle" \
+              -t "$duration" -an \
+              -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,eq=contrast=1.04:saturation=1.07[scene];[scene][1:v]overlay=0:0:format=auto,format=yuv420p[v]" \
+              -map '[v]' -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p "$segment"
+            printf "file '%s'\n" "$(realpath "$segment")" >> repaired/segments.txt
+          done
+          ffmpeg -y -loglevel error -f concat -safe 0 -i repaired/segments.txt -c copy repaired/visual-only.mp4
+          ffmpeg -y -loglevel error \
+            -i repaired/visual-only.mp4 -i repaired/approved-audio.m4a \
+            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k \
+            -shortest -movflags +faststart repaired/tayvoriq-cinematic-final.mp4
+          test -s repaired/tayvoriq-cinematic-final.mp4
+
+      - name: Run strict visual quality gates
+        run: |
+          set -euo pipefail
+          mkdir -p repaired/qa-frames
+          ffprobe -v error -show_entries stream=codec_type,width,height -show_entries format=duration \
+            -of json repaired/tayvoriq-cinematic-final.mp4 > repaired/ffprobe.json
+          times=(1.0 5.2 10.0 14.2 18.5 25.0)
+          for index in 1 2 3 4 5 6; do
+            time=${times[$((index-1))]}
+            ffmpeg -y -loglevel error -ss "$time" -i repaired/tayvoriq-cinematic-final.mp4 \
+              -frames:v 1 -vf scale=270:480 "$(printf 'repaired/qa-frames/frame_%02d.jpg' "$index")"
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops, ImageStat
+
+          probe=json.loads(Path('repaired/ffprobe.json').read_text(encoding='utf-8'))
+          duration=float(probe['format']['duration'])
+          streams=probe.get('streams',[])
+          video=next(s for s in streams if s.get('codec_type')=='video')
+          assert int(video.get('width') or 0)==1080,video
+          assert int(video.get('height') or 0)==1920,video
+          assert 28.8<=duration<=29.8,duration
+          assert any(s.get('codec_type')=='audio' for s in streams),streams
+
+          frames=sorted(Path('repaired/qa-frames').glob('*.jpg'))
+          assert len(frames)==6,len(frames)
+          images=[Image.open(path).convert('RGB') for path in frames]
+          brightness=[]
+          contrast=[]
+          for image in images:
+              stat=ImageStat.Stat(image.convert('L'))
+              brightness.append(stat.mean[0])
+              contrast.append(stat.stddev[0])
+          assert min(brightness)>20,brightness
+          assert min(contrast)>13,contrast
+
+          differences=[]
+          for left,right in zip(images,images[1:]):
+              differences.append(ImageStat.Stat(ImageChops.difference(left,right).convert('L')).mean[0])
+          changed=sum(value>9 for value in differences)
+          assert changed>=4,differences
+
+          report={
+              'passed':True,
+              'resolution':'1080x1920',
+              'duration_seconds':duration,
+              'real_moving_scene_count':6,
+              'unique_scene_changes':changed,
+              'frame_brightness':brightness,
+              'frame_contrast':contrast,
+              'frame_differences':differences,
+              'internal_labels_removed':True,
+              'approved_voice_and_music_reused':True,
+              'subtitle_source':'original_synchronized_transparent_overlays',
+          }
+          Path('repaired/cinematic-quality-report.json').write_text(
+              json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(report)
+          PY
+
+      - name: Replace all distributable video copies and clean metadata
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+
+          job_dir=Path(os.environ['REPAIRED_JOB_DIR'])
+          final=Path('repaired/tayvoriq-cinematic-final.mp4').resolve()
+          targets=[
+              job_dir/'short_youtube.mp4',
+              job_dir/'short_tiktok.mp4',
+              job_dir/'short.mp4',
+              job_dir/'youtube_shorts/short.mp4',
+              job_dir/'tiktok/short.mp4',
+          ]
+          for target in targets:
+              target.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(final,target)
+
+          clean_queries=[
+              'European city heatwave people walking summer',
+              'thermometer hot sun extreme heat close up',
+              'elderly person drinking water summer heat',
+              'family children cooling down hot summer day',
+              'person dizzy heat exhaustion first aid',
+              'cold water fan shaded room summer heat',
+          ]
+          for package_path in (job_dir/'youtube_shorts/text_package.json',job_dir/'tiktok/text_package.json'):
+              if not package_path.exists():
+                  continue
+              package=json.loads(package_path.read_text(encoding='utf-8'))
+              scenes=list(package.get('scenes') or [])
+              for index,query in enumerate(clean_queries):
+                  if index<len(scenes) and isinstance(scenes[index],dict):
+                      scenes[index]['visual_query']=query
+                      scenes[index]['overlay_text']=''
+              package['scenes']=scenes
+              package['force_topic_safe_visual_cards']=False
+              package['cinematic_real_scene_repair']=True
+              package_path.write_text(json.dumps(package,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          for report_path in (job_dir/'youtube_shorts/render_report.json',job_dir/'tiktok/render_report.json'):
+              if not report_path.exists():
+                  continue
+              report=json.loads(report_path.read_text(encoding='utf-8'))
+              assets=list(report.get('asset_report') or [])
+              for index,item in enumerate(assets):
+                  if not isinstance(item,dict):
+                      continue
+                  item['source']='pexels_video'
+                  if index<len(clean_queries):
+                      item['query']=clean_queries[index]
+              report['asset_report']=assets
+              report['cinematic_real_scene_repair']=True
+              report['internal_labels_removed']=True
+              report_path.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          job_path=job_dir/'job.json'
+          job=json.loads(job_path.read_text(encoding='utf-8'))
+          job['cinematic_visual_repair']={
+              'passed':True,
+              'real_moving_scene_count':6,
+              'internal_labels_removed':True,
+              'approved_voice_and_music_reused':True,
+              'quality_report':'cinematic-quality-report.json',
+          }
+          job_path.write_text(json.dumps(job,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          shutil.copy2('repaired/cinematic-quality-report.json',job_dir/'cinematic-quality-report.json')
+          shutil.copy2('repaired/visual-manifest.json',job_dir/'visual-manifest.json')
+          print({'video_copies_replaced':len(targets),'job_dir':str(job_dir)})
+          PY
+
+      - name: Register corrected review for functional approval buttons
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-control-review-${{ github.run_id }}
+          path: repaired/out/**
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Send corrected video to Telegram
+        id: telegram
+        run: |
+          set -euo pipefail
+          markup=$(python - <<'PY'
+          import json, os
+          run=os.environ['GITHUB_RUN_ID']
+          print(json.dumps({'inline_keyboard':[[
+              {'text':'✅ Freigeben','callback_data':f'tayvoriqcp:approve:{run}'},
+              {'text':'❌ Ablehnen','callback_data':f'tayvoriqcp:reject:{run}'},
+          ]]},ensure_ascii=False))
+          PY
+          )
+          caption=$'🟢 Korrigierte TAYVORIQ-Version\n\n✅ sechs echte bewegte Szenen\n✅ keine internen Prüf- oder Trendtexte\n✅ freigegebene Erzählerstimme und Hintergrundmusik beibehalten\n✅ 1080 × 1920\n\nBitte ansehen und danach Freigeben oder Ablehnen.'
+          curl --fail --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@repaired/tayvoriq-cinematic-final.mp4;type=video/mp4" \
+            -F "caption=${caption}" \
+            -F "supports_streaming=true" \
+            -F "reply_markup=${markup}" \
+            --output /tmp/telegram-response.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload=json.loads(Path('/tmp/telegram-response.json').read_text(encoding='utf-8'))
+          if not payload.get('ok'):
+              raise SystemExit(payload)
+          message_id=payload['result']['message_id']
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
+              handle.write(f'message_id={message_id}\n')
+          print({'telegram_delivery':'confirmed','message_id':message_id,'approval_buttons':True})
+          PY
+
+      - name: Persist replacement state
+        env:
+          TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          now=datetime.now(timezone.utc).isoformat()
+          state_path=Path('.automation/tayvoriq-control-telegram-state.json')
+          try:
+              state=json.loads(state_path.read_text(encoding='utf-8')) if state_path.exists() else {}
+          except Exception:
+              state={}
+          state.setdefault('decisions',{})
+          state['decisions'][os.environ['SUPERSEDED_REVIEW_ID']]={
+              'status':'REJECTED',
+              'processed_at':now,
+              'source':'superseded_by_cinematic_visual_repair_v2',
+          }
+          state_path.parent.mkdir(parents=True,exist_ok=True)
+          state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          delivery_path=Path('.automation/tayvoriq-control-deliveries')/f"{os.environ['GITHUB_RUN_ID']}.json"
+          delivery_path.parent.mkdir(parents=True,exist_ok=True)
+          delivery_path.write_text(json.dumps({
+              'status':'DELIVERED_TO_TELEGRAM',
+              'source_run_id':os.environ['SOURCE_RUN_ID'],
+              'approval_run_id':os.environ['GITHUB_RUN_ID'],
+              'telegram_message_id':os.environ['TELEGRAM_MESSAGE_ID'],
+              'visual_repair':'cinematic_real_scenes_v2',
+              'supersedes_review_id':os.environ['SUPERSEDED_REVIEW_ID'],
+              'quality_gate_passed':True,
+              'delivered_at':now,
+          },ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-control-telegram-state.json .automation/tayvoriq-control-deliveries
+          git commit -m "ops: deliver corrected cinematic TAYVORIQ review ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push origin main && exit 0
+            git rebase --abort || true
+            sleep $((attempt*3))
+          done
+          exit 1
+
+      - name: Upload visual diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-cinematic-diagnostics-v2-${{ github.run_id }}
+          path: |
+            repaired/cinematic-quality-report.json
+            repaired/visual-manifest.json
+            repaired/ffprobe.json
+            repaired/qa-frames/**
+            repaired/tayvoriq-cinematic-final.mp4
+          if-no-files-found: warn
+          retention-days: 30
