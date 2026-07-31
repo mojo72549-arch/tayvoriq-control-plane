@@ -1,0 +1,61 @@
+name: TAYVORIQ Patch Semantic V4 Audio Boundary
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-patch-semantic-v4-audio-boundary.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Split audio extraction into the following step
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path=Path('.github/workflows/tayvoriq-semantic-heat-story-v4-20260731.yml')
+          text=path.read_text(encoding='utf-8')
+          old='''          PY
+          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k semantic/approved-audio.m4a
+          test -s semantic/approved-audio.m4a
+
+      - name: Select ten sentence-matched real video clips
+'''
+          new='''          PY
+
+      - name: Preserve approved voice and background music
+        run: |
+          set -euo pipefail
+          ffmpeg -y -loglevel error -i "$SOURCE_VIDEO" -vn -c:a aac -b:a 192k semantic/approved-audio.m4a
+          test -s semantic/approved-audio.m4a
+
+      - name: Select ten sentence-matched real video clips
+'''
+          if old not in text:
+              raise SystemExit('Expected V4 audio boundary block not found')
+          path.write_text(text.replace(old,new,1),encoding='utf-8')
+          print({'patched':True,'file':str(path)})
+          PY
+
+      - name: Commit and trigger corrected semantic build
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/tayvoriq-semantic-heat-story-v4-20260731.yml
+          git commit -m "fix(tayvoriq): separate semantic V4 audio extraction step"
+          git pull --rebase origin main
+          git push origin main
