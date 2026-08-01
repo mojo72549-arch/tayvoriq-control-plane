@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-08-01T18:49:56.961947+00:00",
+  "checked_at": "2026-08-01T18:53:14.296042+00:00",
   "approval": [
     {
       "conclusion": "success",
@@ -24,15 +24,28 @@
   ],
   "publish": [
     {
-      "conclusion": "",
+      "conclusion": "failure",
       "createdAt": "2026-08-01T18:49:34Z",
       "databaseId": 30713407743,
       "displayTitle": "tayvoriq_control_publish_approved",
       "event": "repository_dispatch",
       "headSha": "eba04af83f059d853a23917074ca1379383c0cd6",
-      "status": "in_progress",
-      "updatedAt": "2026-08-01T18:49:39Z",
+      "status": "completed",
+      "updatedAt": "2026-08-01T18:50:12Z",
       "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/30713407743"
+    }
+  ],
+  "human_publish": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-08-01T18:52:31Z",
+      "databaseId": 30713518865,
+      "displayTitle": "fix(tayvoriq): publish human-approved Ceuta review with strict local …",
+      "event": "push",
+      "headSha": "2e919e7e5936a8f99d343432eb466640d2203a8d",
+      "status": "completed",
+      "updatedAt": "2026-08-01T18:53:00Z",
+      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/30713518865"
     }
   ]
 }
