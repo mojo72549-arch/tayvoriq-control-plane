@@ -2,17 +2,29 @@ package com.projectlumen.pilot.robust;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-/** Builds one immutable UI snapshot from the current protected catalog. */
+/** Builds immutable UI snapshots from a reusable, media-type indexed catalog. */
 final class ProviderCatalog {
     static final String ALL_GROUPS = "";
     static final String FAVORITES_GROUP = "★ Favoriten";
     static final String RECENT_GROUP = "↻ Zuletzt angesehen";
     private static final String UNCATEGORIZED = "Ohne Kategorie";
+
+    private static final Object INDEX_LOCK = new Object();
+    private static final ExecutorService PREWARMER = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "lumen-catalog-prewarm");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static volatile CatalogIndex currentIndex;
 
     static final class Snapshot {
         final List<ProviderLanguage.Facet> languages;
@@ -34,6 +46,129 @@ final class ProviderCatalog {
         }
     }
 
+    private static final class IndexedChannel {
+        final Channel channel;
+        final String group;
+
+        IndexedChannel(Channel channel, String group) {
+            this.channel = channel;
+            this.group = group;
+        }
+    }
+
+    private static final class LanguageIndex {
+        final ProviderLanguage.Facet facet;
+        final List<IndexedChannel> rows;
+        final LinkedHashMap<String, String> groupMap;
+        final LinkedHashMap<String, Integer> groupCounts;
+
+        LanguageIndex(ProviderLanguage.Facet facet,
+                      List<IndexedChannel> rows,
+                      LinkedHashMap<String, String> groupMap,
+                      LinkedHashMap<String, Integer> groupCounts) {
+            this.facet = facet;
+            this.rows = Collections.unmodifiableList(rows);
+            this.groupMap = groupMap;
+            this.groupCounts = groupCounts;
+        }
+    }
+
+    private static final class TypeIndex {
+        final Channel.Type type;
+        final List<Channel> rows;
+        private LinkedHashMap<String, ProviderLanguage.Facet> languages;
+        private final Map<String, LanguageIndex> languageIndexes = new HashMap<>();
+
+        TypeIndex(Channel.Type type, List<Channel> rows) {
+            this.type = type;
+            this.rows = Collections.unmodifiableList(rows);
+        }
+
+        synchronized LinkedHashMap<String, ProviderLanguage.Facet> languages() {
+            if (languages != null) return languages;
+            LinkedHashMap<String, ProviderLanguage.Facet> detected = new LinkedHashMap<>();
+            for (Channel channel : rows) {
+                ProviderLanguage.Facet facet = ProviderLanguageCache.detect(channel);
+                if (facet != null && !facet.id.isBlank()) detected.putIfAbsent(facet.id, facet);
+            }
+            languages = detected;
+            return languages;
+        }
+
+        synchronized LanguageIndex languageIndex(String selectedLanguage) {
+            String key = selectedLanguage == null ? ProviderLanguage.ALL : selectedLanguage;
+            LanguageIndex cached = languageIndexes.get(key);
+            if (cached != null) return cached;
+
+            ProviderLanguage.Facet selectedFacet = languages().get(key);
+            ArrayList<IndexedChannel> selectedRows = new ArrayList<>();
+            LinkedHashMap<String, String> groupMap = new LinkedHashMap<>();
+            LinkedHashMap<String, Integer> groupCounts = new LinkedHashMap<>();
+            for (Channel channel : rows) {
+                if (!ProviderLanguageCache.matches(channel, key)) continue;
+                String group = canonicalGroup(channel.group, selectedFacet);
+                String groupKey = group.toLowerCase(Locale.ROOT);
+                groupMap.putIfAbsent(groupKey, group);
+                groupCounts.put(groupKey, groupCounts.getOrDefault(groupKey, 0) + 1);
+                selectedRows.add(new IndexedChannel(channel, group));
+            }
+            LanguageIndex created = new LanguageIndex(
+                    selectedFacet, selectedRows, groupMap, groupCounts);
+            languageIndexes.put(key, created);
+            return created;
+        }
+
+        void prewarm(String wantedLanguage) {
+            LinkedHashMap<String, ProviderLanguage.Facet> map = languages();
+            String selected = resolveLanguage(map, wantedLanguage);
+            languageIndex(selected);
+        }
+    }
+
+    private static final class CatalogIndex {
+        final List<Channel> source;
+        final int sourceSize;
+        final EnumMap<Channel.Type, TypeIndex> byType = new EnumMap<>(Channel.Type.class);
+        private final Map<String, Boolean> scheduledPrewarms = new HashMap<>();
+
+        CatalogIndex(List<Channel> source) {
+            this.source = source;
+            this.sourceSize = source.size();
+            EnumMap<Channel.Type, ArrayList<Channel>> buckets = new EnumMap<>(Channel.Type.class);
+            for (Channel.Type value : Channel.Type.values()) buckets.put(value, new ArrayList<>());
+            for (Channel channel : source) {
+                if (channel == null || channel.type == null) continue;
+                ArrayList<Channel> bucket = buckets.get(channel.type);
+                if (bucket != null) bucket.add(channel);
+            }
+            for (Map.Entry<Channel.Type, ArrayList<Channel>> entry : buckets.entrySet()) {
+                byType.put(entry.getKey(), new TypeIndex(entry.getKey(), entry.getValue()));
+            }
+        }
+
+        boolean represents(List<Channel> candidate) {
+            return source == candidate && sourceSize == candidate.size();
+        }
+
+        TypeIndex type(Channel.Type type) {
+            TypeIndex result = byType.get(type);
+            return result == null ? new TypeIndex(type, Collections.emptyList()) : result;
+        }
+
+        void prewarmOtherTypes(Channel.Type activeType, String wantedLanguage) {
+            for (Map.Entry<Channel.Type, TypeIndex> entry : byType.entrySet()) {
+                if (entry.getKey() == activeType || entry.getValue().rows.isEmpty()) continue;
+                String taskKey = entry.getKey().name() + "|"
+                        + (wantedLanguage == null ? "" : wantedLanguage);
+                synchronized (scheduledPrewarms) {
+                    if (scheduledPrewarms.put(taskKey, Boolean.TRUE) != null) continue;
+                }
+                TypeIndex target = entry.getValue();
+                PREWARMER.execute(() -> target.prewarm(wantedLanguage));
+            }
+        }
+    }
+
     private ProviderCatalog() { }
 
     static Snapshot build(List<Channel> source,
@@ -43,50 +178,37 @@ final class ProviderCatalog {
                           String query) {
         List<Channel> safe = source == null ? Collections.emptyList() : source;
         Channel.Type wantedType = type == null ? Channel.Type.LIVE : type;
-
-        LinkedHashMap<String, ProviderLanguage.Facet> languageMap = new LinkedHashMap<>();
-        for (Channel channel : safe) {
-            if (channel == null || channel.type != wantedType) continue;
-            ProviderLanguage.Facet facet = ProviderLanguageCache.detect(channel);
-            if (facet != null && !facet.id.isBlank()) languageMap.putIfAbsent(facet.id, facet);
-        }
-
-        String selectedLanguage = wantedLanguage == null ? ProviderLanguage.ALL : wantedLanguage;
-        if (ProviderLanguage.ALL.equals(selectedLanguage)
-                || selectedLanguage.isBlank()
-                || !languageMap.containsKey(selectedLanguage)) {
-            selectedLanguage = languageMap.isEmpty()
-                    ? ProviderLanguage.ALL : languageMap.keySet().iterator().next();
-        }
-        ProviderLanguage.Facet selectedFacet = languageMap.get(selectedLanguage);
+        CatalogIndex catalog = indexFor(safe);
+        TypeIndex typeIndex = catalog.type(wantedType);
+        LinkedHashMap<String, ProviderLanguage.Facet> languageMap = typeIndex.languages();
+        String selectedLanguage = resolveLanguage(languageMap, wantedLanguage);
+        LanguageIndex languageIndex = typeIndex.languageIndex(selectedLanguage);
+        catalog.prewarmOtherTypes(wantedType, selectedLanguage);
 
         UserCollectionStore collections = UserCollectionStore.current();
         boolean hasFavorites = false;
         boolean hasRecent = false;
-        int languageRows = 0;
-        LinkedHashMap<String, String> groupMap = new LinkedHashMap<>();
-        LinkedHashMap<String, Integer> groupCounts = new LinkedHashMap<>();
-        for (Channel channel : safe) {
-            if (channel == null || channel.type != wantedType) continue;
-            if (!ProviderLanguageCache.matches(channel, selectedLanguage)) continue;
-            languageRows++;
-            if (collections != null && collections.isFavorite(channel)) hasFavorites = true;
-            if (collections != null && collections.isRecent(channel)) hasRecent = true;
-            String group = canonicalGroup(channel.group, selectedFacet);
-            String key = group.toLowerCase(Locale.ROOT);
-            groupMap.putIfAbsent(key, group);
-            groupCounts.put(key, groupCounts.getOrDefault(key, 0) + 1);
+        for (IndexedChannel indexed : languageIndex.rows) {
+            Channel channel = indexed.channel;
+            if (!hasFavorites && collections != null && collections.isFavorite(channel)) {
+                hasFavorites = true;
+            }
+            if (!hasRecent && collections != null && collections.isRecent(channel)) {
+                hasRecent = true;
+            }
+            if (hasFavorites && hasRecent) break;
         }
 
         LinkedHashMap<String, String> visibleGroups = new LinkedHashMap<>();
         if (hasFavorites) visibleGroups.put(FAVORITES_GROUP.toLowerCase(Locale.ROOT), FAVORITES_GROUP);
         if (hasRecent) visibleGroups.put(RECENT_GROUP.toLowerCase(Locale.ROOT), RECENT_GROUP);
 
-        int providerGroupCount = groupMap.size();
-        for (Map.Entry<String, String> entry : groupMap.entrySet()) {
+        int languageRows = languageIndex.rows.size();
+        int providerGroupCount = languageIndex.groupMap.size();
+        for (Map.Entry<String, String> entry : languageIndex.groupMap.entrySet()) {
             String group = entry.getValue();
-            int count = groupCounts.getOrDefault(entry.getKey(), 0);
-            if (isRedundantLanguageGroup(group, selectedFacet)) continue;
+            int count = languageIndex.groupCounts.getOrDefault(entry.getKey(), 0);
+            if (isRedundantLanguageGroup(group, languageIndex.facet)) continue;
             if (isDominantProviderRoot(group, count, languageRows, providerGroupCount)) continue;
             visibleGroups.put(entry.getKey(), group);
         }
@@ -95,7 +217,7 @@ final class ProviderCatalog {
         if (!selectedGroup.isBlank()
                 && !FAVORITES_GROUP.equals(selectedGroup)
                 && !RECENT_GROUP.equals(selectedGroup)) {
-            selectedGroup = canonicalGroup(selectedGroup, selectedFacet);
+            selectedGroup = canonicalGroup(selectedGroup, languageIndex.facet);
         }
         if (!selectedGroup.isBlank()
                 && !visibleGroups.containsKey(selectedGroup.toLowerCase(Locale.ROOT))) {
@@ -103,24 +225,50 @@ final class ProviderCatalog {
         }
 
         String normalizedQuery = query == null ? "" : query.trim();
-        ArrayList<Channel> rows = new ArrayList<>();
-        for (Channel channel : safe) {
-            if (channel == null || channel.type != wantedType) continue;
-            if (!ProviderLanguageCache.matches(channel, selectedLanguage)) continue;
+        ArrayList<Channel> resultRows = new ArrayList<>();
+        for (IndexedChannel indexed : languageIndex.rows) {
+            Channel channel = indexed.channel;
             if (FAVORITES_GROUP.equals(selectedGroup)) {
                 if (collections == null || !collections.isFavorite(channel)) continue;
             } else if (RECENT_GROUP.equals(selectedGroup)) {
                 if (collections == null || !collections.isRecent(channel)) continue;
             } else if (!selectedGroup.isBlank()
-                    && !canonicalGroup(channel.group, selectedFacet).equalsIgnoreCase(selectedGroup)) {
+                    && !indexed.group.equalsIgnoreCase(selectedGroup)) {
                 continue;
             }
             if (!normalizedQuery.isBlank() && !matchesQuery(channel, normalizedQuery)) continue;
-            rows.add(channel);
+            resultRows.add(channel);
         }
 
         return new Snapshot(new ArrayList<>(languageMap.values()),
-                new ArrayList<>(visibleGroups.values()), rows, selectedLanguage, selectedGroup);
+                new ArrayList<>(visibleGroups.values()), resultRows,
+                selectedLanguage, selectedGroup);
+    }
+
+    private static CatalogIndex indexFor(List<Channel> source) {
+        CatalogIndex existing = currentIndex;
+        if (existing != null && existing.represents(source)) return existing;
+        synchronized (INDEX_LOCK) {
+            existing = currentIndex;
+            if (existing == null || !existing.represents(source)) {
+                existing = new CatalogIndex(source);
+                currentIndex = existing;
+            }
+            return existing;
+        }
+    }
+
+    private static String resolveLanguage(
+            LinkedHashMap<String, ProviderLanguage.Facet> languageMap,
+            String wantedLanguage) {
+        String selected = wantedLanguage == null ? ProviderLanguage.ALL : wantedLanguage;
+        if (ProviderLanguage.ALL.equals(selected)
+                || selected.isBlank()
+                || !languageMap.containsKey(selected)) {
+            selected = languageMap.isEmpty()
+                    ? ProviderLanguage.ALL : languageMap.keySet().iterator().next();
+        }
+        return selected;
     }
 
     private static boolean matchesQuery(Channel channel, String query) {
