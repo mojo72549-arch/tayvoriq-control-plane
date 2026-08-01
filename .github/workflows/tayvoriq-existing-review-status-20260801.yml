@@ -1,4 +1,4 @@
-name: TAYVORIQ Existing Review Status 2026-08-01
+name: TAYVORIQ Minimal Review Status 2026-08-01
 
 on:
   workflow_dispatch:
@@ -20,15 +20,16 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Capture delivery run
+      - name: Capture minimal Telegram delivery run
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p .automation/tayvoriq-existing-review-status
+          echo 'Target minimal delivery commit: 61ca91e97964437e4a3772301c13230bac93b62e'
           gh run list \
             --repo "$GITHUB_REPOSITORY" \
-            --workflow tayvoriq-deliver-existing-review-20260801.yml \
+            --workflow tayvoriq-deliver-minimal-review-now-20260801.yml \
             --limit 5 \
             --json databaseId,createdAt,updatedAt,status,conclusion,event,headSha,url,displayTitle \
             > .automation/tayvoriq-existing-review-status/status.json
