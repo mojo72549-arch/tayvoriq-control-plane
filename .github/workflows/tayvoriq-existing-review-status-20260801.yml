@@ -1,0 +1,44 @@
+name: TAYVORIQ Existing Review Status 2026-08-01
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-existing-review-status-20260801.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Capture delivery run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-existing-review-status
+          gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow tayvoriq-deliver-existing-review-20260801.yml \
+            --limit 5 \
+            --json databaseId,createdAt,updatedAt,status,conclusion,event,headSha,url,displayTitle \
+            > .automation/tayvoriq-existing-review-status/status.json
+          cat .automation/tayvoriq-existing-review-status/status.json
+      - name: Persist status
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-existing-review-status/status.json
+          git commit -m "ops: record existing review delivery status"
+          git pull --rebase origin main
+          git push origin main
