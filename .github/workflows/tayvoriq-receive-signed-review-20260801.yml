@@ -1,0 +1,217 @@
+name: TAYVORIQ Receive Signed Review 2026-08-01
+
+on:
+  repository_dispatch:
+    types: [tayvoriq_deliver_signed_review]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: tayvoriq-receive-signed-review-20260801
+  cancel-in-progress: false
+
+env:
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  SIGNED_ARTIFACT_URL: ${{ github.event.client_payload.artifact_url }}
+  SOURCE_RUN_ID: ${{ github.event.client_payload.source_run_id }}
+  BRIDGE_RUN_ID: ${{ github.event.client_payload.bridge_run_id }}
+
+jobs:
+  receive-and-deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate private delivery request and Telegram bot
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SIGNED_ARTIFACT_URL"
+          test -n "$SOURCE_RUN_ID"
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          case "$SIGNED_ARTIFACT_URL" in
+            https://*) ;;
+            *) echo 'Signed artifact URL is not HTTPS' >&2; exit 1 ;;
+          esac
+          http_code=$(curl --silent --show-error \
+            --output /tmp/telegram-getme.json \
+            --write-out '%{http_code}' \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe")
+          python - "$http_code" <<'PY'
+          import json, sys
+          from pathlib import Path
+          code=int(sys.argv[1])
+          payload=json.loads(Path('/tmp/telegram-getme.json').read_text(encoding='utf-8'))
+          if code != 200 or not payload.get('ok'):
+              raise SystemExit({'http_code':code,'telegram':payload})
+          print({'telegram_bot_valid':True,'username':(payload.get('result') or {}).get('username')})
+          PY
+
+      - name: Download short-lived signed review package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --connect-timeout 30 --max-time 900 \
+            "$SIGNED_ARTIFACT_URL" \
+            --output /tmp/tayvoriq-signed-review.zip
+          test -s /tmp/tayvoriq-signed-review.zip
+          unzip -q /tmp/tayvoriq-signed-review.zip -d source
+          rm -f /tmp/tayvoriq-signed-review.zip
+
+      - name: Verify finished review and prepare control artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+
+          roots=[]
+          for item in Path('source').rglob('job.json'):
+              root=item.parent
+              if (root/'short_youtube.mp4').is_file() and (root/'short_tiktok.mp4').is_file():
+                  roots.append(root)
+          if not roots:
+              raise SystemExit('No complete rendered job in signed package')
+          root=max(roots,key=lambda p:p.stat().st_mtime).resolve()
+          job=json.loads((root/'job.json').read_text(encoding='utf-8'))
+          quality=job.get('quality_report') if isinstance(job.get('quality_report'),dict) else {}
+          if quality.get('passed') is not True:
+              raise SystemExit({'quality_gate_failed':quality})
+
+          def sha256(path):
+              digest=hashlib.sha256()
+              with path.open('rb') as handle:
+                  for chunk in iter(lambda:handle.read(1024*1024),b''):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          youtube=root/'short_youtube.mp4'
+          tiktok=root/'short_tiktok.mp4'
+          if youtube.stat().st_size < 100000 or tiktok.stat().st_size < 100000:
+              raise SystemExit('Rendered videos are unexpectedly small')
+          youtube_hash=sha256(youtube)
+          tiktok_hash=sha256(tiktok)
+          if youtube_hash != tiktok_hash:
+              raise SystemExit({'shared_master_hash_mismatch':[youtube_hash,tiktok_hash]})
+
+          target=Path('control-review')/'out'/'tayvoriq-youtube-tiktok'/root.name
+          target.parent.mkdir(parents=True,exist_ok=True)
+          shutil.copytree(root,target)
+          state={
+              'source_run_id':os.environ['SOURCE_RUN_ID'],
+              'bridge_run_id':os.environ.get('BRIDGE_RUN_ID',''),
+              'job_dir':str(Path('out')/'tayvoriq-youtube-tiktok'/root.name),
+              'topic':job.get('topic') or 'Sächsische Schweiz – Lebensgefahr durch beschädigte Bäume',
+              'local_quality_passed':True,
+              'shared_master_sha256':youtube_hash,
+              'private_human_review':True,
+              'youtube_publication_allowed':False,
+              'youtube_requires_explicit_telegram_approval':True,
+              'tiktok':'manual_after_human_approval',
+          }
+          (Path('control-review')/'out').mkdir(parents=True,exist_ok=True)
+          (Path('control-review')/'out'/'tayvoriq-review-state.json').write_text(
+              json.dumps(state,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
+              handle.write(f'TAYVORIQ_JOB_DIR={target.resolve()}\n')
+              handle.write(f'TAYVORIQ_TELEGRAM_VIDEO={(target/"short_youtube.mp4").resolve()}\n')
+              handle.write(f'TAYVORIQ_TIKTOK_VIDEO={(target/"short_tiktok.mp4").resolve()}\n')
+          print({
+              'verified':True,
+              'quality_passed':True,
+              'shared_master_sha256':youtube_hash,
+              'youtube_size':youtube.stat().st_size,
+              'tiktok_size':tiktok.stat().st_size,
+          })
+          PY
+
+      - name: Register approval artifact in control plane
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-control-review-${{ github.run_id }}
+          path: control-review/out/**
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Send video with approve and reject buttons
+        id: telegram
+        shell: bash
+        run: |
+          set -euo pipefail
+          markup=$(python - <<'PY'
+          import json, os
+          run=os.environ['GITHUB_RUN_ID']
+          details=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run}"
+          print(json.dumps({'inline_keyboard':[
+              [
+                  {'text':'✅ Freigeben','callback_data':f'tayvoriq:approve:{run}'},
+                  {'text':'❌ Ablehnen','callback_data':f'tayvoriq:reject:{run}'},
+              ],
+              [{'text':'🔧 Technische Details','url':details}],
+          ]},ensure_ascii=False))
+          PY
+          )
+          caption=$'🟢 Dein TAYVORIQ-Video ist bereit\n\nThema: Sächsische Schweiz – Lebensgefahr durch beschädigte Bäume\nLokale Render- und Quality-Gates: bestanden\nExterne KI-Endkontrolle: wegen Provider-Quota zur privaten Sichtprüfung verschoben\n\nYouTube bleibt gesperrt, bis du auf Freigeben klickst. TikTok bleibt manuell.'
+          http_code=$(curl --silent --show-error \
+            --max-time 300 \
+            --output /tmp/telegram-send.json \
+            --write-out '%{http_code}' \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@${TAYVORIQ_TELEGRAM_VIDEO};type=video/mp4" \
+            -F "caption=${caption}" \
+            -F "supports_streaming=true" \
+            -F "reply_markup=${markup}")
+          cat /tmp/telegram-send.json
+          python - "$http_code" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          code=int(sys.argv[1])
+          payload=json.loads(Path('/tmp/telegram-send.json').read_text(encoding='utf-8'))
+          if code != 200 or not payload.get('ok'):
+              raise SystemExit({'http_code':code,'telegram':payload})
+          message_id=payload['result']['message_id']
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
+              handle.write(f'message_id={message_id}\n')
+          print({'telegram_delivery':'confirmed','message_id':message_id,'buttons':True})
+          PY
+
+      - name: Persist confirmed delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-telegram-delivery
+          cat > ".automation/tayvoriq-telegram-delivery/${GITHUB_RUN_ID}.json" <<JSON
+          {
+            "status": "DELIVERED_TO_TELEGRAM",
+            "source_run_id": "${SOURCE_RUN_ID}",
+            "bridge_run_id": "${BRIDGE_RUN_ID}",
+            "control_review_run_id": "${GITHUB_RUN_ID}",
+            "telegram_message_id": "${{ steps.telegram.outputs.message_id }}",
+            "approve_callback": "tayvoriq:approve:${GITHUB_RUN_ID}",
+            "reject_callback": "tayvoriq:reject:${GITHUB_RUN_ID}",
+            "youtube_published": false,
+            "tiktok_mode": "manual_after_approval",
+            "delivered_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".automation/tayvoriq-telegram-delivery/${GITHUB_RUN_ID}.json"
+          git commit -m "ops: confirm TAYVORIQ Telegram delivery ${GITHUB_RUN_ID}"
+          git pull --rebase origin main
+          git push origin main
