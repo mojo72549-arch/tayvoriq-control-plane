@@ -1,0 +1,46 @@
+name: TAYVORIQ TikTok Delivery Status Probe 2026-08-01
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-tiktok-delivery-status-probe-20260801.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Capture TikTok delivery status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-tiktok-delivery-status
+          runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-deliver-ceuta-tiktok-review-now-20260801.yml --limit 3 --json databaseId,status,conclusion,createdAt,updatedAt,headSha,displayTitle,url)"
+          RUNS="$runs" python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          payload={'checked_at':datetime.now(timezone.utc).isoformat(),'runs':json.loads(os.environ['RUNS'])}
+          open('.automation/tayvoriq-tiktok-delivery-status/status.json','w',encoding='utf-8').write(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          print(payload)
+          PY
+      - name: Persist status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-tiktok-delivery-status/status.json
+          git commit -m "ops: record TikTok delivery status" || exit 0
+          git pull --rebase origin main
+          git push origin main
