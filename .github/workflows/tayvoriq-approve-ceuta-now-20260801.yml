@@ -26,6 +26,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
       - name: Validate approved review artifact
         env:
           GH_TOKEN: ${{ github.token }}
@@ -47,7 +53,34 @@ jobs:
           print({'approved_artifact':expected,'artifact_id':matches[0]['id']})
           PY
 
+      - name: Dispatch public YouTube publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches" \
+            -d "{\"event_type\":\"tayvoriq_control_publish_approved\",\"client_payload\":{\"review_run_id\":\"${REVIEW_RUN_ID}\",\"youtube_privacy\":\"public\",\"approval_source\":\"explicit_chat_confirmation_after_telegram_click\"}}"
+          echo "Public publish dispatch accepted for review ${REVIEW_RUN_ID}"
+
+      - name: Acknowledge approval in Telegram
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          curl --fail --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=✅ Freigabe erkannt. Das Ceuta-Video wird jetzt öffentlich auf YouTube veröffentlicht. Nach Abschluss folgt der YouTube-Link."
+
       - name: Record explicit approval
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -67,33 +100,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ".automation/tayvoriq-control-reviews/${REVIEW_RUN_ID}.json"
-          git commit -m "Record approved Ceuta review ${REVIEW_RUN_ID}"
+          git commit -m "Record approved Ceuta review ${REVIEW_RUN_ID}" || exit 0
           git pull --rebase origin main
           git push origin main
-
-      - name: Dispatch public YouTube publication
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error \
-            -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches" \
-            -d "{\"event_type\":\"tayvoriq_control_publish_approved\",\"client_payload\":{\"review_run_id\":\"${REVIEW_RUN_ID}\",\"youtube_privacy\":\"public\",\"approval_source\":\"explicit_chat_confirmation_after_telegram_click\"}}"
-          echo "Public publish dispatch accepted for review ${REVIEW_RUN_ID}"
-
-      - name: Acknowledge approval in Telegram
-        if: success()
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
-          curl --fail --silent --show-error \
-            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=✅ Freigabe erkannt. Das Ceuta-Video wird jetzt öffentlich auf YouTube veröffentlicht. Nach Abschluss folgt der YouTube-Link."
