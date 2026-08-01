@@ -1,4 +1,4 @@
-name: TAYVORIQ Unified Telegram Decision Bridge V3
+name: TAYVORIQ Unified Telegram Decision Bridge V4
 
 on:
   push:
@@ -21,6 +21,8 @@ env:
   PYTHONUTF8: "1"
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+  STUDIO_REPOSITORY: "mojo72549-arch/shorts-agent-studio"
 
 jobs:
   process-decisions:
@@ -50,10 +52,12 @@ jobs:
 
           token=os.environ.get('TELEGRAM_BOT_TOKEN','').strip()
           expected_chat=os.environ.get('TELEGRAM_CHAT_ID','').strip()
-          github_token=os.environ.get('GH_TOKEN','').strip()
+          control_token=os.environ.get('GH_TOKEN','').strip()
+          private_token=os.environ.get('PRIVATE_REPO_TOKEN','').strip()
           repository=os.environ['GITHUB_REPOSITORY']
-          if not token or not expected_chat or not github_token:
-              raise SystemExit('Required Telegram/GitHub configuration missing')
+          studio_repository=os.environ.get('STUDIO_REPOSITORY','mojo72549-arch/shorts-agent-studio').strip()
+          if not token or not expected_chat or not control_token or not private_token:
+              raise SystemExit('Required Telegram/GitHub/private-repository configuration missing')
 
           state_path=Path('.automation/tayvoriq-telegram-decision-state.json')
           state={'next_update_id':0,'decisions':{}}
@@ -79,13 +83,13 @@ jobs:
                   raise RuntimeError(value)
               return value.get('result')
 
-          def github(method,url,payload=None):
+          def github(method,url,payload=None,auth_token=None):
               body=None if payload is None else json.dumps(payload).encode('utf-8')
               req=urllib.request.Request(
                   url,
                   data=body,
                   headers={
-                      'Authorization':f'Bearer {github_token}',
+                      'Authorization':f'Bearer {auth_token or control_token}',
                       'Accept':'application/vnd.github+json',
                       'X-GitHub-Api-Version':'2022-11-28',
                       'Content-Type':'application/json',
@@ -96,17 +100,39 @@ jobs:
                   raw=response.read()
               return json.loads(raw.decode('utf-8')) if raw else {}
 
-          def control_artifact_exists(review_id):
+          def artifact_exists(repo,review_id,expected_names,auth_token):
               try:
-                  payload=github('GET',f'https://api.github.com/repos/{repository}/actions/runs/{review_id}/artifacts')
+                  payload=github(
+                      'GET',
+                      f'https://api.github.com/repos/{repo}/actions/runs/{review_id}/artifacts',
+                      auth_token=auth_token,
+                  )
               except (urllib.error.HTTPError,urllib.error.URLError,TimeoutError):
                   return False
-              expected=f'tayvoriq-control-review-{review_id}'
               return any(
                   isinstance(item,dict)
-                  and item.get('name')==expected
+                  and item.get('name') in expected_names
                   and not item.get('expired')
                   for item in payload.get('artifacts',[])
+              )
+
+          def control_artifact_exists(review_id):
+              return artifact_exists(
+                  repository,
+                  review_id,
+                  {f'tayvoriq-control-review-{review_id}'},
+                  control_token,
+              )
+
+          def studio_artifact_exists(review_id):
+              return artifact_exists(
+                  studio_repository,
+                  review_id,
+                  {
+                      f'tayvoriq-review-{review_id}',
+                      f'tayvoriq-production-core-{review_id}',
+                  },
+                  private_token,
               )
 
           pattern=re.compile(r'^(tayvoriq|tayvoriq-direct|tayvoriqcp|tayvoriqtiktok):(approve|reject):(\d{6,})$')
@@ -148,12 +174,22 @@ jobs:
 
                   legacy_tiktok=namespace=='tayvoriqtiktok'
                   is_control=(not legacy_tiktok) and (namespace=='tayvoriqcp' or control_artifact_exists(review_id))
+                  is_studio=(
+                      not legacy_tiktok
+                      and not is_control
+                      and namespace in {'tayvoriq','tayvoriq-direct'}
+                      and studio_artifact_exists(review_id)
+                  )
+
                   if legacy_tiktok:
                       effective_namespace='tayvoriqtiktok'
                       review_path=Path(f'.automation/tayvoriq-tiktok-reviews/{review_id}.json')
                   elif is_control:
                       effective_namespace='tayvoriqcp'
                       review_path=Path(f'.automation/tayvoriq-control-reviews/{review_id}.json')
+                  elif is_studio:
+                      effective_namespace='tayvoriqstudio'
+                      review_path=Path(f'.automation/tayvoriq-studio-reviews/{review_id}.json')
                   elif namespace=='tayvoriq-direct':
                       effective_namespace='tayvoriq-direct'
                       review_path=Path(f'.automation/tayvoriq-direct-reviews/{review_id}.json')
@@ -184,6 +220,9 @@ jobs:
 
                   status='APPROVED' if action=='approve' else 'REJECTED'
                   dispatch_started=False
+                  dispatch_target='none'
+                  publication_capable=is_control or is_studio
+
                   if is_control and status=='APPROVED':
                       github('POST',f'https://api.github.com/repos/{repository}/dispatches',{
                           'event_type':'tayvoriq_control_publish_approved',
@@ -194,8 +233,22 @@ jobs:
                               'telegram_message_id':str(message_id),
                               'deliver_tiktok_package':True,
                           },
-                      })
+                      },auth_token=control_token)
                       dispatch_started=True
+                      dispatch_target=repository
+                  elif is_studio and status=='APPROVED':
+                      github('POST',f'https://api.github.com/repos/{studio_repository}/dispatches',{
+                          'event_type':'tayvoriq_studio_publish_approved',
+                          'client_payload':{
+                              'review_run_id':review_id,
+                              'youtube_privacy':'public',
+                              'approval_source':'telegram_callback',
+                              'telegram_message_id':str(message_id),
+                              'deliver_tiktok_package':True,
+                          },
+                      },auth_token=private_token)
+                      dispatch_started=True
+                      dispatch_target=studio_repository
 
                   review.update({
                       'review_id':review_id,
@@ -205,17 +258,18 @@ jobs:
                       'callback_namespace':namespace,
                       'effective_callback_namespace':effective_namespace,
                       'telegram_message_id':message_id,
-                      'publication_pending':bool(is_control and status=='APPROVED'),
-                      'youtube_privacy':'public' if is_control and status=='APPROVED' else review.get('youtube_privacy'),
+                      'publication_pending':bool(publication_capable and status=='APPROVED'),
+                      'youtube_privacy':'public' if publication_capable and status=='APPROVED' else review.get('youtube_privacy'),
                       'youtube_publish_dispatched':dispatch_started,
-                      'tiktok_package_pending':bool(is_control and status=='APPROVED'),
-                      'tiktok_upload_mode':'manual' if legacy_tiktok else review.get('tiktok_upload_mode','manual'),
+                      'publish_dispatch_target':dispatch_target,
+                      'tiktok_package_pending':bool(publication_capable and status=='APPROVED'),
+                      'tiktok_upload_mode':'manual',
                       'platform_upload_performed':False,
                   })
                   review_path.write_text(json.dumps(review,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
                   state['decisions'][decision_key]=review
 
-                  if is_control and status=='APPROVED':
+                  if publication_capable and status=='APPROVED':
                       callback_text='Freigabe erkannt: YouTube-Upload und TikTok-Paket starten.'
                   elif status=='APPROVED':
                       callback_text='Freigabe gespeichert.'
@@ -235,7 +289,7 @@ jobs:
 
                   if status=='REJECTED':
                       text=f'❌ TAYVORIQ Review {review_id} abgelehnt. Es wird nichts veröffentlicht.'
-                  elif is_control:
+                  elif publication_capable:
                       text=(
                           '✅ Freigabe erkannt.\n\n'
                           f'Review: {review_id}\n'
@@ -251,7 +305,10 @@ jobs:
                           'Caption zum Kopieren:\n'+caption
                       )
                   else:
-                      text=f'✅ TAYVORIQ Review {review_id} freigegeben.'
+                      text=(
+                          f'⚠️ TAYVORIQ Review {review_id} freigegeben, aber das zugehörige '
+                          'veröffentlichbare Artefakt wurde nicht gefunden. Es wurde nichts hochgeladen.'
+                      )
                   telegram('sendMessage',{
                       'chat_id':expected_chat,
                       'text':text,
@@ -262,14 +319,14 @@ jobs:
           state['last_checked_at']=datetime.now(timezone.utc).isoformat()
           state['last_handled_count']=handled
           state['last_inspected_count']=inspected
-          state['consumer']='unified_v3'
+          state['consumer']='unified_v4'
           state_path.parent.mkdir(parents=True,exist_ok=True)
           state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           print({
               'inspected':inspected,
               'handled':handled,
               'next_update_id':state.get('next_update_id'),
-              'consumer':'unified_v3',
+              'consumer':'unified_v4',
           })
           PY
 
@@ -283,6 +340,7 @@ jobs:
                   .automation/tayvoriq-reviews \
                   .automation/tayvoriq-direct-reviews \
                   .automation/tayvoriq-control-reviews \
+                  .automation/tayvoriq-studio-reviews \
                   .automation/tayvoriq-tiktok-reviews 2>/dev/null || true
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Record unified TAYVORIQ Telegram decision"
