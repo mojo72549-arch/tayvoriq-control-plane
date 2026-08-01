@@ -1,4 +1,4 @@
-# refresh: 2026-08-01T18:49Z
+# refresh: 2026-08-01T18:53Z
 name: TAYVORIQ Ceuta Approval Status Probe 2026-08-01
 
 on:
@@ -29,13 +29,15 @@ jobs:
           mkdir -p .automation/tayvoriq-ceuta-approval-status
           approval="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-approve-ceuta-now-20260801.yml --limit 3 --json databaseId,status,conclusion,createdAt,updatedAt,headSha,displayTitle,url)"
           publish="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-control-approved-publish.yml --limit 5 --json databaseId,status,conclusion,createdAt,updatedAt,headSha,displayTitle,url,event)"
-          APPROVAL="$approval" PUBLISH="$publish" python - <<'PY'
+          human_publish="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-publish-ceuta-human-approved-20260801.yml --limit 3 --json databaseId,status,conclusion,createdAt,updatedAt,headSha,displayTitle,url,event)"
+          APPROVAL="$approval" PUBLISH="$publish" HUMAN_PUBLISH="$human_publish" python - <<'PY'
           import json, os
           from datetime import datetime, timezone
           payload={
             'checked_at':datetime.now(timezone.utc).isoformat(),
             'approval':json.loads(os.environ['APPROVAL']),
             'publish':json.loads(os.environ['PUBLISH']),
+            'human_publish':json.loads(os.environ['HUMAN_PUBLISH']),
           }
           open('.automation/tayvoriq-ceuta-approval-status/status.json','w',encoding='utf-8').write(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
           print(payload)
