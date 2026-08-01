@@ -1,0 +1,44 @@
+name: TAYVORIQ Ceuta Telegram Status 2026-08-01
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-ceuta-telegram-status-20260801.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Capture Ceuta Telegram run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-ceuta-telegram-status
+          gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow tayvoriq-deliver-ceuta-review-now-20260801.yml \
+            --limit 5 \
+            --json databaseId,createdAt,updatedAt,status,conclusion,event,headSha,url,displayTitle \
+            > .automation/tayvoriq-ceuta-telegram-status/status.json
+          cat .automation/tayvoriq-ceuta-telegram-status/status.json
+      - name: Persist status
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-ceuta-telegram-status/status.json
+          git commit -m "ops: record Ceuta Telegram status"
+          git pull --rebase origin main
+          git push origin main
