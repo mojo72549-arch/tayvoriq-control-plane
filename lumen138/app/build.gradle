@@ -10,10 +10,10 @@ android {
         targetSdk 35
         versionCode 1320300
         versionName '13.2.0-rc3-stable49'
-        // RC6.2 is intentionally declared a second time. The RC6 build patch rewrites
-        // only the first version assignment; Gradle applies the final assignment below.
-        versionCode 1320620
-        versionName '13.2.0-rc6.2-clean-pip'
+        // The recovery workflow rewrites only the first version assignment.
+        // Gradle applies this final RC6.3 assignment to the generated APK.
+        versionCode 1320630
+        versionName '13.2.0-rc6.3-fast-tabs'
         buildConfigField 'String', 'BUILD_CHANNEL', '"closed-pilot-rc-stable49"'
         buildConfigField 'boolean', 'PARENTAL_PROTECTION_ENABLED', 'false'
     }
