@@ -1,4 +1,4 @@
-name: TAYVORIQ Control Approved Publish
+name: TAYVORIQ Control Approved Publish V2
 
 on:
   repository_dispatch:
@@ -9,13 +9,14 @@ permissions:
   actions: read
 
 concurrency:
-  group: tayvoriq-control-approved-publish
+  group: tayvoriq-control-approved-publish-${{ github.event.client_payload.review_run_id }}
   cancel-in-progress: false
 
 env:
   PYTHONUTF8: "1"
   REVIEW_RUN_ID: ${{ github.event.client_payload.review_run_id }}
   YOUTUBE_PRIVACY: "public"
+  DELIVER_TIKTOK_PACKAGE: ${{ github.event.client_payload.deliver_tiktok_package || 'true' }}
   YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
   YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
   YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
@@ -33,6 +34,8 @@ jobs:
           set -euo pipefail
           test -n "$REVIEW_RUN_ID"
           test "$YOUTUBE_PRIVACY" = "public"
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
 
       - name: Checkout publishing implementation
         uses: actions/checkout@v4
@@ -64,26 +67,66 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ env.REVIEW_RUN_ID }}
 
-      - name: Locate approved video job
+      - name: Locate approved job and prepare TikTok package
+        shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
+          import json
           import os
+          import re
           from pathlib import Path
+
           jobs=[]
           for item in Path('approved-artifact').rglob('job.json'):
               root=item.parent
               if (root/'short_youtube.mp4').is_file() and (root/'short_tiktok.mp4').is_file():
                   jobs.append(root.resolve())
-          if not jobs:
-              raise SystemExit('No complete approved job found')
-          root=sorted(jobs, key=lambda p: len(str(p)))[0]
+          if len(jobs) != 1:
+              raise SystemExit(f'Expected exactly one complete approved job, found={len(jobs)}')
+
+          root=jobs[0]
+          job=json.loads((root/'job.json').read_text(encoding='utf-8'))
+          quality=job.get('quality_report') if isinstance(job.get('quality_report'),dict) else {}
+          if quality.get('passed') is not True:
+              raise SystemExit({'quality_gate_failed':quality})
+
+          topic=' '.join(str(job.get('topic') or 'TAYVORIQ Tech-Trend').split()).strip()
+          variants=job.get('variants') if isinstance(job.get('variants'),dict) else {}
+          variant=variants.get('tiktok') if isinstance(variants.get('tiktok'),dict) else {}
+          package=variant.get('text_package') if isinstance(variant.get('text_package'),dict) else {}
+          metadata=package.get('tiktok_metadata') if isinstance(package.get('tiktok_metadata'),dict) else {}
+
+          caption=' '.join(str(metadata.get('caption') or '').split()).strip()
+          hashtags=metadata.get('hashtags') if isinstance(metadata.get('hashtags'),list) else []
+          hashtag_text=' '.join(str(item).strip() for item in hashtags if str(item).strip())
+          if not caption:
+              caption=f'{topic} – die wichtigsten Hintergründe kurz und verständlich erklärt.'
+          if hashtag_text and hashtag_text not in caption:
+              caption=f'{caption} {hashtag_text}'
+          if '#TAYVORIQ' not in caption:
+              caption=f'{caption} #TAYVORIQ'
+          caption=caption[:900]
+
+          safe=re.sub(r'[^A-Za-z0-9._-]+','_',topic).strip('_')[:70] or 'Tech_Trend'
+          filename=f'TAYVORIQ_{safe}_{os.environ["REVIEW_RUN_ID"]}.mp4'
+          Path('/tmp/tiktok-caption.txt').write_text(caption,encoding='utf-8')
+          Path('/tmp/tiktok-topic.txt').write_text(topic,encoding='utf-8')
+
           with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as handle:
               handle.write(f'TAYVORIQ_APPROVED_JOB_DIR={root}\n')
-          print({'approved_job_dir':str(root)})
+              handle.write(f'TAYVORIQ_TIKTOK_VIDEO={(root/"short_tiktok.mp4").resolve()}\n')
+              handle.write(f'TAYVORIQ_TIKTOK_FILENAME={filename}\n')
+          print({
+              'approved_job_dir':str(root),
+              'topic':topic,
+              'tiktok_filename':filename,
+              'caption_length':len(caption),
+              'tiktok_size':(root/'short_tiktok.mp4').stat().st_size,
+          })
           PY
 
-      - name: Recheck publication quality
+      - name: Recheck YouTube publication quality
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -103,37 +146,88 @@ jobs:
             --tiktok-mode draft_upload \
             --tiktok-privacy SELF_ONLY
 
-      - name: Send publication result to Telegram
+      - name: Deliver YouTube result and downloadable TikTok package
         if: always()
-        continue-on-error: true
+        shell: bash
         run: |
+          set -euo pipefail
           python - <<'PY'
-          import json, os
+          import json
+          import os
           from pathlib import Path
           from urllib import parse, request
 
           token=os.environ.get('TELEGRAM_BOT_TOKEN','').strip()
           chat=os.environ.get('TELEGRAM_CHAT_ID','').strip()
-          result_path=Path(os.environ.get('TAYVORIQ_APPROVED_JOB_DIR','.'))/'publish_result.json'
+          job_dir=Path(os.environ.get('TAYVORIQ_APPROVED_JOB_DIR','.'))
+          result_path=job_dir/'publish_result.json'
           result=json.loads(result_path.read_text(encoding='utf-8')) if result_path.exists() else {}
           youtube=(result.get('results') or {}).get('youtube_shorts') or {}
           errors=result.get('errors') or {}
+          topic=Path('/tmp/tiktok-topic.txt').read_text(encoding='utf-8').strip() if Path('/tmp/tiktok-topic.txt').exists() else 'TAYVORIQ Video'
+
           if youtube.get('url'):
               text=(
-                  '✅ Freigabe erfolgreich ausgeführt\n\n'
-                  f"YouTube: {youtube.get('url')}\n"
+                  '✅ Freigabe vollständig ausgeführt\n\n'
+                  f'Thema: {topic}\n'
+                  f'YouTube: {youtube.get("url")}\n'
                   'Sichtbarkeit: Public\n\n'
-                  'TikTok bleibt manuell: Das zuvor gesendete Telegram-Video speichern und in TikTok hochladen.'
+                  'Das TikTok-Video folgt direkt als herunterladbare MP4-Datei inklusive fertiger Beschreibung.'
               )
           else:
-              text='❌ Veröffentlichung fehlgeschlagen\n\n' + (' | '.join(str(v) for v in errors.values()) or 'Kein Publish-Ergebnis vorhanden.')
-          data=parse.urlencode({'chat_id':chat,'text':text,'disable_web_page_preview':'false'}).encode()
+              reason=' | '.join(str(value) for value in errors.values()) or 'Kein YouTube-Publish-Ergebnis vorhanden.'
+              text=(
+                  '⚠️ Freigabe nur teilweise ausgeführt\n\n'
+                  f'Thema: {topic}\n'
+                  f'YouTube-Upload fehlgeschlagen: {reason}\n\n'
+                  'Das TikTok-Paket wird trotzdem bereitgestellt, damit nichts verloren geht.'
+              )
+
+          data=parse.urlencode({
+              'chat_id':chat,
+              'text':text,
+              'disable_web_page_preview':'false',
+          }).encode()
           with request.urlopen(f'https://api.telegram.org/bot{token}/sendMessage',data=data,timeout=35) as response:
               payload=json.loads(response.read().decode())
           if not payload.get('ok'):
               raise SystemExit(payload)
-          print({'telegram_result_message_id':payload['result']['message_id']})
+          print({'telegram_publish_result_message_id':payload['result']['message_id'],'youtube_url':youtube.get('url')})
           PY
+
+          if [ "${DELIVER_TIKTOK_PACKAGE}" = "true" ] && [ -s "${TAYVORIQ_TIKTOK_VIDEO}" ]; then
+            package_caption=$(python - <<'PY'
+          from pathlib import Path
+          caption=Path('/tmp/tiktok-caption.txt').read_text(encoding='utf-8').strip()
+          print('🎵 TikTok-Uploadpaket\n\nBeschreibung zum Kopieren:\n'+caption)
+          PY
+            )
+            http_code=$(curl --silent --show-error \
+              --max-time 300 \
+              --output /tmp/telegram-tiktok-package.json \
+              --write-out '%{http_code}' \
+              -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+              -F "chat_id=${TELEGRAM_CHAT_ID}" \
+              -F "document=@${TAYVORIQ_TIKTOK_VIDEO};filename=${TAYVORIQ_TIKTOK_FILENAME};type=video/mp4" \
+              -F "caption=${package_caption}" \
+              -F "protect_content=false")
+            python - "$http_code" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          code=int(sys.argv[1])
+          payload=json.loads(Path('/tmp/telegram-tiktok-package.json').read_text(encoding='utf-8'))
+          if code != 200 or not payload.get('ok'):
+              raise SystemExit({'http_code':code,'telegram':payload})
+          document=(payload.get('result') or {}).get('document') or {}
+          print({
+              'telegram_tiktok_package':'confirmed',
+              'message_id':payload['result']['message_id'],
+              'file_name':document.get('file_name'),
+              'downloadable':True,
+          })
+          PY
+          fi
 
       - name: Upload publication report
         if: always()
