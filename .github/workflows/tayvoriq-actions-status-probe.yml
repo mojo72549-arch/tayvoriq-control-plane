@@ -1,0 +1,94 @@
+name: TAYVORIQ Actions Status Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-actions-status-probe.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+env:
+  PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+  STUDIO_REPOSITORY: mojo72549-arch/shorts-agent-studio
+
+jobs:
+  capture-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Capture control-plane and studio workflow status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_REPO_TOKEN"
+          mkdir -p .automation
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          control_repo=os.environ['GITHUB_REPOSITORY']
+          studio_repo=os.environ['STUDIO_REPOSITORY']
+          control_token=os.environ['GH_TOKEN']
+          private_token=os.environ['PRIVATE_REPO_TOKEN']
+
+          def get_runs(repo,token):
+              req=urllib.request.Request(
+                  f'https://api.github.com/repos/{repo}/actions/runs?per_page=30',
+                  headers={
+                      'Authorization':f'Bearer {token}',
+                      'Accept':'application/vnd.github+json',
+                      'X-GitHub-Api-Version':'2022-11-28',
+                  },
+              )
+              with urllib.request.urlopen(req,timeout=35) as response:
+                  payload=json.loads(response.read().decode('utf-8'))
+              rows=[]
+              for run in payload.get('workflow_runs',[]):
+                  rows.append({
+                      'id':run.get('id'),
+                      'name':run.get('name'),
+                      'event':run.get('event'),
+                      'status':run.get('status'),
+                      'conclusion':run.get('conclusion'),
+                      'head_sha':run.get('head_sha'),
+                      'created_at':run.get('created_at'),
+                      'updated_at':run.get('updated_at'),
+                      'run_number':run.get('run_number'),
+                  })
+              return rows
+
+          payload={
+              'captured_at':datetime.now(timezone.utc).isoformat(),
+              'control_plane_runs':get_runs(control_repo,control_token),
+              'studio_runs':get_runs(studio_repo,private_token),
+          }
+          Path('.automation/tayvoriq-actions-status.json').write_text(
+              json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps(payload,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Persist status snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-actions-status.json
+          git commit -m "ops(tayvoriq): capture current workflow status"
+          git pull --rebase origin main
+          git push origin main
