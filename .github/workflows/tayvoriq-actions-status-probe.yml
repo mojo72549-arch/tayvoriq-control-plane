@@ -25,25 +25,25 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Capture control-plane and studio workflow status
+      - name: Capture control-plane and optional studio workflow status
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$PRIVATE_REPO_TOKEN"
           mkdir -p .automation
           python - <<'PY'
           import json
           import os
+          import urllib.error
           import urllib.request
           from datetime import datetime, timezone
           from pathlib import Path
 
           control_repo=os.environ['GITHUB_REPOSITORY']
           studio_repo=os.environ['STUDIO_REPOSITORY']
-          control_token=os.environ['GH_TOKEN']
-          private_token=os.environ['PRIVATE_REPO_TOKEN']
+          control_token=os.environ['GH_TOKEN'].strip()
+          private_token=os.environ.get('PRIVATE_REPO_TOKEN','').strip()
 
           def get_runs(repo,token):
               req=urllib.request.Request(
@@ -71,10 +71,21 @@ jobs:
                   })
               return rows
 
+          studio_runs=[]
+          studio_error=None
+          if private_token:
+              try:
+                  studio_runs=get_runs(studio_repo,private_token)
+              except Exception as exc:
+                  studio_error=f'{type(exc).__name__}: {exc}'
+          else:
+              studio_error='PRIVATE_REPO_TOKEN is empty'
+
           payload={
               'captured_at':datetime.now(timezone.utc).isoformat(),
               'control_plane_runs':get_runs(control_repo,control_token),
-              'studio_runs':get_runs(studio_repo,private_token),
+              'studio_runs':studio_runs,
+              'studio_status_error':studio_error,
           }
           Path('.automation/tayvoriq-actions-status.json').write_text(
               json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
