@@ -1,4 +1,4 @@
-name: TAYVORIQ Receive Signed Review 2026-08-01
+name: TAYVORIQ Receive Signed Review V2
 
 on:
   repository_dispatch:
@@ -10,7 +10,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: tayvoriq-receive-signed-review-20260801
+  group: tayvoriq-receive-signed-review
   cancel-in-progress: false
 
 env:
@@ -75,7 +75,10 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import hashlib, json, os, shutil
+          import hashlib
+          import json
+          import os
+          import shutil
           from pathlib import Path
 
           roots=[]
@@ -107,6 +110,7 @@ jobs:
           if youtube_hash != tiktok_hash:
               raise SystemExit({'shared_master_hash_mismatch':[youtube_hash,tiktok_hash]})
 
+          topic=' '.join(str(job.get('topic') or 'TAYVORIQ Tech-Trend').split()).strip()
           target=Path('control-review')/'out'/'tayvoriq-youtube-tiktok'/root.name
           target.parent.mkdir(parents=True,exist_ok=True)
           shutil.copytree(root,target)
@@ -114,13 +118,13 @@ jobs:
               'source_run_id':os.environ['SOURCE_RUN_ID'],
               'bridge_run_id':os.environ.get('BRIDGE_RUN_ID',''),
               'job_dir':str(Path('out')/'tayvoriq-youtube-tiktok'/root.name),
-              'topic':job.get('topic') or 'Sächsische Schweiz – Lebensgefahr durch beschädigte Bäume',
+              'topic':topic,
               'local_quality_passed':True,
               'shared_master_sha256':youtube_hash,
               'private_human_review':True,
               'youtube_publication_allowed':False,
               'youtube_requires_explicit_telegram_approval':True,
-              'tiktok':'manual_after_human_approval',
+              'tiktok':'downloadable_package_after_same_approval',
           }
           (Path('control-review')/'out').mkdir(parents=True,exist_ok=True)
           (Path('control-review')/'out'/'tayvoriq-review-state.json').write_text(
@@ -129,8 +133,10 @@ jobs:
               handle.write(f'TAYVORIQ_JOB_DIR={target.resolve()}\n')
               handle.write(f'TAYVORIQ_TELEGRAM_VIDEO={(target/"short_youtube.mp4").resolve()}\n')
               handle.write(f'TAYVORIQ_TIKTOK_VIDEO={(target/"short_tiktok.mp4").resolve()}\n')
+              handle.write(f'TAYVORIQ_TOPIC={topic}\n')
           print({
               'verified':True,
+              'topic':topic,
               'quality_passed':True,
               'shared_master_sha256':youtube_hash,
               'youtube_size':youtube.stat().st_size,
@@ -147,7 +153,7 @@ jobs:
           retention-days: 30
           compression-level: 6
 
-      - name: Send video with approve and reject buttons
+      - name: Send unified YouTube and TikTok review
         id: telegram
         shell: bash
         run: |
@@ -158,14 +164,27 @@ jobs:
           details=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run}"
           print(json.dumps({'inline_keyboard':[
               [
-                  {'text':'✅ Freigeben','callback_data':f'tayvoriq:approve:{run}'},
+                  {'text':'✅ YouTube + TikTok freigeben','callback_data':f'tayvoriq:approve:{run}'},
                   {'text':'❌ Ablehnen','callback_data':f'tayvoriq:reject:{run}'},
               ],
               [{'text':'🔧 Technische Details','url':details}],
           ]},ensure_ascii=False))
           PY
           )
-          caption=$'🟢 Dein TAYVORIQ-Video ist bereit\n\nThema: Sächsische Schweiz – Lebensgefahr durch beschädigte Bäume\nLokale Render- und Quality-Gates: bestanden\nExterne KI-Endkontrolle: wegen Provider-Quota zur privaten Sichtprüfung verschoben\n\nYouTube bleibt gesperrt, bis du auf Freigeben klickst. TikTok bleibt manuell.'
+          caption=$(python - <<'PY'
+          import os
+          topic=os.environ.get('TAYVORIQ_TOPIC','TAYVORIQ Video')
+          print(
+              '🟢 Dein TAYVORIQ-Video ist bereit\n\n'
+              f'Thema: {topic}\n'
+              'Render- und Quality-Gates: bestanden\n\n'
+              'Mit einem Klick auf Freigeben passiert beides:\n'
+              '• YouTube wird öffentlich hochgeladen.\n'
+              '• Das TikTok-Video kommt als herunterladbare MP4 inklusive fertiger Caption.\n\n'
+              'Vor deiner Freigabe wird nichts veröffentlicht.'
+          )
+          PY
+          )
           http_code=$(curl --silent --show-error \
             --max-time 300 \
             --output /tmp/telegram-send.json \
@@ -175,8 +194,8 @@ jobs:
             -F "video=@${TAYVORIQ_TELEGRAM_VIDEO};type=video/mp4" \
             -F "caption=${caption}" \
             -F "supports_streaming=true" \
+            -F "protect_content=false" \
             -F "reply_markup=${markup}")
-          cat /tmp/telegram-send.json
           python - "$http_code" <<'PY'
           import json, os, sys
           from pathlib import Path
@@ -187,7 +206,7 @@ jobs:
           message_id=payload['result']['message_id']
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
               handle.write(f'message_id={message_id}\n')
-          print({'telegram_delivery':'confirmed','message_id':message_id,'buttons':True})
+          print({'telegram_delivery':'confirmed','message_id':message_id,'unified_approval_button':True})
           PY
 
       - name: Persist confirmed delivery
@@ -205,13 +224,14 @@ jobs:
             "approve_callback": "tayvoriq:approve:${GITHUB_RUN_ID}",
             "reject_callback": "tayvoriq:reject:${GITHUB_RUN_ID}",
             "youtube_published": false,
-            "tiktok_mode": "manual_after_approval",
+            "youtube_target_privacy": "public",
+            "tiktok_mode": "downloadable_package_after_same_approval",
             "delivered_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           JSON
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ".automation/tayvoriq-telegram-delivery/${GITHUB_RUN_ID}.json"
-          git commit -m "ops: confirm TAYVORIQ Telegram delivery ${GITHUB_RUN_ID}"
+          git commit -m "ops: confirm unified TAYVORIQ Telegram delivery ${GITHUB_RUN_ID}"
           git pull --rebase origin main
           git push origin main
