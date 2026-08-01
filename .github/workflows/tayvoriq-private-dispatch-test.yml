@@ -1,0 +1,94 @@
+name: TAYVORIQ Private Dispatch Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-private-dispatch-test.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+  STUDIO_REPOSITORY: mojo72549-arch/shorts-agent-studio
+
+jobs:
+  dispatch-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Test private repository dispatch permission
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automation
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          token=os.environ.get('PRIVATE_REPO_TOKEN','').strip()
+          repo=os.environ['STUDIO_REPOSITORY']
+          payload={
+              'event_type':'tayvoriq_private_bridge_probe',
+              'client_payload':{
+                  'source':os.environ['GITHUB_REPOSITORY'],
+                  'probe_id':os.environ['GITHUB_RUN_ID'],
+              },
+          }
+          result={
+              'checked_at':datetime.now(timezone.utc).isoformat(),
+              'repository':repo,
+              'token_present':bool(token),
+              'dispatch_ok':False,
+          }
+          if token:
+              req=urllib.request.Request(
+                  f'https://api.github.com/repos/{repo}/dispatches',
+                  data=json.dumps(payload).encode('utf-8'),
+                  headers={
+                      'Authorization':f'Bearer {token}',
+                      'Accept':'application/vnd.github+json',
+                      'X-GitHub-Api-Version':'2022-11-28',
+                      'Content-Type':'application/json',
+                  },
+                  method='POST',
+              )
+              try:
+                  with urllib.request.urlopen(req,timeout=35) as response:
+                      result['http_status']=response.status
+                      result['dispatch_ok']=response.status==204
+              except urllib.error.HTTPError as exc:
+                  result['http_status']=exc.code
+                  result['error_body']=exc.read().decode('utf-8','replace')[:1000]
+              except Exception as exc:
+                  result['error']=f'{type(exc).__name__}: {exc}'
+          else:
+              result['error']='PRIVATE_REPO_TOKEN is empty'
+
+          Path('.automation/private-dispatch-test.json').write_text(
+              json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(result)
+          PY
+
+      - name: Persist dispatch test result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/private-dispatch-test.json
+          git commit -m "ops(tayvoriq): record private dispatch test"
+          git pull --rebase origin main
+          git push origin main
