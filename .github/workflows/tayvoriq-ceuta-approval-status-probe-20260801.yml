@@ -1,0 +1,51 @@
+name: TAYVORIQ Ceuta Approval Status Probe 2026-08-01
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-ceuta-approval-status-probe-20260801.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Capture approval and publish status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-ceuta-approval-status
+          approval="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-approve-ceuta-now-20260801.yml --limit 3 --json databaseId,status,conclusion,createdAt,updatedAt,headSha,displayTitle,url)"
+          publish="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow tayvoriq-control-approved-publish.yml --limit 5 --json databaseId,status,conclusion,createdAt,updatedAt,headSha,displayTitle,url,event)"
+          APPROVAL="$approval" PUBLISH="$publish" python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          payload={
+            'checked_at':datetime.now(timezone.utc).isoformat(),
+            'approval':json.loads(os.environ['APPROVAL']),
+            'publish':json.loads(os.environ['PUBLISH']),
+          }
+          open('.automation/tayvoriq-ceuta-approval-status/status.json','w',encoding='utf-8').write(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          print(payload)
+          PY
+      - name: Persist status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-ceuta-approval-status/status.json
+          git commit -m "ops: record Ceuta approval status" || exit 0
+          git pull --rebase origin main
+          git push origin main
