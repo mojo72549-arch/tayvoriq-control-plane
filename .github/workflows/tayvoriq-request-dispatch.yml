@@ -6,10 +6,13 @@ on:
       - main
     paths:
       - "requests/*.json"
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 concurrency:
   group: tayvoriq-request-dispatch
@@ -24,14 +27,39 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Resolve changed approved request
+      - name: Resolve approved request
         id: request
         shell: bash
         run: |
           set -euo pipefail
-          REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
+          REQUEST_FILE=""
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
+          fi
+
           if [ -z "$REQUEST_FILE" ]; then
+            REQUEST_FILE=$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          candidates = []
+          for path in Path("requests").glob("*.json"):
+              try:
+                  data = json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  continue
+              status = str(data.get("status") or "").upper()
+              if status in {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION"}:
+                  candidates.append((path.stat().st_mtime, str(path)))
+          print(max(candidates)[1] if candidates else "")
+          PY
+            )
+          fi
+
+          if [ -z "$REQUEST_FILE" ] || [ ! -f "$REQUEST_FILE" ]; then
             echo "approved=false" >> "$GITHUB_OUTPUT"
+            echo "No approved request is waiting."
             exit 0
           fi
 
@@ -53,6 +81,7 @@ jobs:
           request_id = str(data.get("request_id") or request_path.stem).strip()
           with output_path.open("a", encoding="utf-8") as handle:
               handle.write(f"approved={'true' if approved else 'false'}\n")
+              handle.write(f"request_file={request_path}\n")
               handle.write(f"topic={topic}\n")
               handle.write(f"trend_scope={scope}\n")
               handle.write(f"request_id={request_id}\n")
@@ -60,6 +89,7 @@ jobs:
           PY
 
       - name: Start TAYVORIQ Golden Path
+        id: dispatch
         if: steps.request.outputs.approved == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -67,71 +97,74 @@ jobs:
           TREND_SCOPE: ${{ steps.request.outputs.trend_scope }}
         run: |
           set -euo pipefail
+          BEFORE=$(gh run list --workflow tayvoriq-golden-path.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
           gh workflow run tayvoriq-golden-path.yml \
             --ref main \
             -f mode=full \
             -f trend_scope="$TREND_SCOPE" \
             -f topic="$TOPIC"
 
-      - name: Verify workflow dispatch accepted
-        id: verify
-        if: steps.request.outputs.approved == 'true'
+          RUN_ID=""
+          for attempt in $(seq 1 12); do
+            sleep 5
+            RUN_ID=$(gh run list \
+              --workflow tayvoriq-golden-path.yml \
+              --branch main \
+              --event workflow_dispatch \
+              --limit 5 \
+              --json databaseId,status,conclusion,url,createdAt \
+              --jq ".[] | select(.databaseId != $BEFORE) | .databaseId" | head -n 1)
+            if [ -n "$RUN_ID" ]; then
+              break
+            fi
+          done
+
+          if [ -z "$RUN_ID" ]; then
+            echo "::error title=Golden Path not started::No new workflow run became visible after dispatch"
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "Golden Path run $RUN_ID accepted."
+
+      - name: Mark request dispatched
+        if: steps.request.outputs.approved == 'true' && steps.dispatch.outcome == 'success'
         env:
-          GH_TOKEN: ${{ github.token }}
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          RUN_ID: ${{ steps.dispatch.outputs.run_id }}
         run: |
           set -euo pipefail
-          sleep 8
-          RUN_JSON=$(gh run list \
-            --workflow tayvoriq-golden-path.yml \
-            --branch main \
-            --event workflow_dispatch \
-            --limit 1 \
-            --json databaseId,status,conclusion,url,createdAt)
-          echo "$RUN_JSON"
-          python - "$RUN_JSON" "$GITHUB_OUTPUT" <<'PY'
+          python - <<'PY'
           import json
-          import sys
-          runs = json.loads(sys.argv[1])
-          if not runs:
-              raise SystemExit("Golden Path dispatch was not visible after acceptance")
-          run = runs[0]
-          if run.get("status") not in {"queued", "in_progress", "completed", "waiting", "pending"}:
-              raise SystemExit(f"Unexpected Golden Path status: {run}")
-          with open(sys.argv[2], "a", encoding="utf-8") as handle:
-              handle.write(f"run_id={run['databaseId']}\n")
-              handle.write(f"run_url={run['url']}\n")
-              handle.write(f"run_status={run['status']}\n")
-          print({"dispatch_verified": True, **run})
-          PY
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
 
-      - name: Send verified Telegram production-start message
-        if: steps.request.outputs.approved == 'true' && steps.verify.outputs.run_id != ''
+          path = Path(os.environ["REQUEST_FILE"])
+          data = json.loads(path.read_text(encoding="utf-8"))
+          data["status"] = "DISPATCHED"
+          data["golden_path_run_id"] = int(os.environ["RUN_ID"])
+          data["dispatched_at"] = datetime.now(timezone.utc).isoformat()
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REQUEST_FILE"
+          git commit -m "ops(tayvoriq): mark request dispatched to run $RUN_ID"
+          git push origin main
+
+      - name: Send dispatch failure to Telegram
+        if: failure() && steps.request.outputs.approved == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TOPIC: ${{ steps.request.outputs.topic }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
-          RUN_ID: ${{ steps.verify.outputs.run_id }}
-          RUN_URL: ${{ steps.verify.outputs.run_url }}
-          RUN_STATUS: ${{ steps.verify.outputs.run_status }}
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
-          RESPONSE=$(curl --fail-with-body --silent --show-error \
-            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=🚀 TAYVORIQ-Produktion gestartet\n\nThema: ${TOPIC}\nAuftrag: ${REQUEST_ID}\nGitHub-Run: ${RUN_ID}\nStatus: ${RUN_STATUS}\n\n${RUN_URL}" \
-            --data-urlencode "disable_web_page_preview=true")
-          echo "$RESPONSE"
-          python - "$RESPONSE" <<'PY'
-          import json
-          import sys
-          response = json.loads(sys.argv[1])
-          if not response.get("ok"):
-              raise SystemExit(f"Telegram send failed: {response}")
-          message_id = response.get("result", {}).get("message_id")
-          if not message_id:
-              raise SystemExit(f"Telegram response has no message_id: {response}")
-          print({"telegram_sent": True, "message_id": message_id})
-          PY
+          TEXT="❌ TAYVORIQ-Produktion konnte nicht gestartet werden.%0AAuftrag: ${REQUEST_ID}%0AFehlerstufe: Request Dispatcher%0ABitte GitHub Actions prüfen."
+          curl --fail --silent --show-error \
+            --request POST \
+            --data "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data "text=${TEXT}" \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
