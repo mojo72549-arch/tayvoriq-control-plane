@@ -1,0 +1,100 @@
+name: TAYVORIQ Request Dispatcher
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "requests/*.json"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: tayvoriq-request-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch-approved-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Resolve changed approved request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
+          if [ -z "$REQUEST_FILE" ]; then
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          python - "$REQUEST_FILE" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          request_path = Path(sys.argv[1])
+          output_path = Path(sys.argv[2])
+          data = json.loads(request_path.read_text(encoding="utf-8"))
+          approved = str(data.get("status", "")).upper() in {
+              "APPROVED",
+              "TREND_APPROVED",
+              "READY_FOR_PRODUCTION",
+          }
+          topic = str(data.get("topic") or "").replace("\n", " ").strip()
+          scope = str(data.get("trend_scope") or "auto_scope").strip()
+          request_id = str(data.get("request_id") or request_path.stem).strip()
+          with output_path.open("a", encoding="utf-8") as handle:
+              handle.write(f"approved={'true' if approved else 'false'}\n")
+              handle.write(f"topic={topic}\n")
+              handle.write(f"trend_scope={scope}\n")
+              handle.write(f"request_id={request_id}\n")
+          print({"request": request_id, "approved": approved, "scope": scope, "topic": topic})
+          PY
+
+      - name: Start TAYVORIQ Golden Path
+        if: steps.request.outputs.approved == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TOPIC: ${{ steps.request.outputs.topic }}
+          TREND_SCOPE: ${{ steps.request.outputs.trend_scope }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-golden-path.yml \
+            --ref main \
+            -f mode=full \
+            -f trend_scope="$TREND_SCOPE" \
+            -f topic="$TOPIC"
+
+      - name: Verify workflow dispatch accepted
+        if: steps.request.outputs.approved == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sleep 8
+          RUN_JSON=$(gh run list \
+            --workflow tayvoriq-golden-path.yml \
+            --branch main \
+            --event workflow_dispatch \
+            --limit 1 \
+            --json databaseId,status,conclusion,url,createdAt)
+          echo "$RUN_JSON"
+          python - <<'PY' "$RUN_JSON"
+          import json
+          import sys
+          runs = json.loads(sys.argv[1])
+          if not runs:
+              raise SystemExit("Golden Path dispatch was not visible after acceptance")
+          run = runs[0]
+          if run.get("status") not in {"queued", "in_progress", "completed", "waiting", "pending"}:
+              raise SystemExit(f"Unexpected Golden Path status: {run}")
+          print({"dispatch_verified": True, **run})
+          PY
