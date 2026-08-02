@@ -45,5 +45,9 @@
     "verify_message_id": true,
     "verify_callback": true
   },
-  "status": "APPROVED"
+  "status": "BLOCKED_CONTENT_GATE",
+  "last_run_id": 30760256768,
+  "last_successful_step": "PREFLIGHT_PASSED",
+  "technical_error": "Providertext unbrauchbar: editorial_answer_too_short:who_is_affected; editorial_body_too_short:23:min=38; sentence_too_short:3; script_too_short:28:min=51; kein quellengebundener Fallback verfügbar",
+  "recovery_action": "Create a source-grounded Gemini Robotics content package with complete editorial answers before rerunning production."
 }
