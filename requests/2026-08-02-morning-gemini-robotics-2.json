@@ -1,6 +1,7 @@
 {
   "request_id": "2026-08-02-morning-gemini-robotics-2",
   "created_at": "2026-08-02T10:35:00+02:00",
+  "approved_at": "2026-08-02T11:23:00+02:00",
   "language": "de",
   "format": "youtube_tiktok_short",
   "aspect_ratio": "9:16",
@@ -37,9 +38,9 @@
   ],
   "telegram": {
     "required": true,
-    "buttons": ["Trend freigeben", "Ablehnen"],
+    "buttons": ["Freigeben", "Ablehnen"],
     "verify_message_id": true,
     "verify_callback": true
   },
-  "status": "QUEUED_BLOCKED_BY_PRIVATE_DISPATCH_PERMISSION"
+  "status": "APPROVED"
 }
