@@ -74,6 +74,7 @@ jobs:
             -f topic="$TOPIC"
 
       - name: Verify workflow dispatch accepted
+        id: verify
         if: steps.request.outputs.approved == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -87,7 +88,7 @@ jobs:
             --limit 1 \
             --json databaseId,status,conclusion,url,createdAt)
           echo "$RUN_JSON"
-          python - <<'PY' "$RUN_JSON"
+          python - "$RUN_JSON" "$GITHUB_OUTPUT" <<'PY'
           import json
           import sys
           runs = json.loads(sys.argv[1])
@@ -96,5 +97,41 @@ jobs:
           run = runs[0]
           if run.get("status") not in {"queued", "in_progress", "completed", "waiting", "pending"}:
               raise SystemExit(f"Unexpected Golden Path status: {run}")
+          with open(sys.argv[2], "a", encoding="utf-8") as handle:
+              handle.write(f"run_id={run['databaseId']}\n")
+              handle.write(f"run_url={run['url']}\n")
+              handle.write(f"run_status={run['status']}\n")
           print({"dispatch_verified": True, **run})
+          PY
+
+      - name: Send verified Telegram production-start message
+        if: steps.request.outputs.approved == 'true' && steps.verify.outputs.run_id != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC: ${{ steps.request.outputs.topic }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          RUN_ID: ${{ steps.verify.outputs.run_id }}
+          RUN_URL: ${{ steps.verify.outputs.run_url }}
+          RUN_STATUS: ${{ steps.verify.outputs.run_status }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          RESPONSE=$(curl --fail-with-body --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=🚀 TAYVORIQ-Produktion gestartet\n\nThema: ${TOPIC}\nAuftrag: ${REQUEST_ID}\nGitHub-Run: ${RUN_ID}\nStatus: ${RUN_STATUS}\n\n${RUN_URL}" \
+            --data-urlencode "disable_web_page_preview=true")
+          echo "$RESPONSE"
+          python - "$RESPONSE" <<'PY'
+          import json
+          import sys
+          response = json.loads(sys.argv[1])
+          if not response.get("ok"):
+              raise SystemExit(f"Telegram send failed: {response}")
+          message_id = response.get("result", {}).get("message_id")
+          if not message_id:
+              raise SystemExit(f"Telegram response has no message_id: {response}")
+          print({"telegram_sent": True, "message_id": message_id})
           PY
