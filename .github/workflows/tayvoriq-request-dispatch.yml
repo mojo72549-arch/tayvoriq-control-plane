@@ -6,11 +6,6 @@ on:
       - main
     paths:
       - "requests/*.json"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "requests/*.json"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -20,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: tayvoriq-request-dispatch-${{ github.event.pull_request.number || github.ref }}
+  group: tayvoriq-request-dispatch-main
   cancel-in-progress: false
 
 jobs:
@@ -40,8 +35,6 @@ jobs:
           REQUEST_FILE=""
           if [ "${{ github.event_name }}" = "push" ]; then
             REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            REQUEST_FILE=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" | grep '^requests/.*\.json$' | tail -n 1 || true)
           fi
           if [ -z "$REQUEST_FILE" ]; then
             REQUEST_FILE=$(python - <<'PY'
@@ -61,6 +54,7 @@ jobs:
           fi
           if [ -z "$REQUEST_FILE" ] || [ ! -f "$REQUEST_FILE" ]; then
             echo "approved=false" >> "$GITHUB_OUTPUT"
+            echo "No approved request is waiting."
             exit 0
           fi
           python - "$REQUEST_FILE" "$GITHUB_OUTPUT" <<'PY'
@@ -74,9 +68,38 @@ jobs:
           print(values)
           PY
 
+      - name: Atomically claim approved request
+        id: claim
+        if: steps.request.outputs.approved == 'true'
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(os.environ['REQUEST_FILE'])
+          data=json.loads(path.read_text(encoding='utf-8'))
+          status=str(data.get('status') or '').upper()
+          if status not in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'}:
+              raise SystemExit(f'Request is no longer claimable: {status}')
+          data['status']='DISPATCHING'
+          data['dispatch_claimed_at']=datetime.now(timezone.utc).isoformat()
+          data['dispatch_claim_run_id']=int(os.environ['GITHUB_RUN_ID'])
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REQUEST_FILE"
+          git commit -m "ops(tayvoriq): claim request for dispatch in run ${GITHUB_RUN_ID}"
+          git push origin main
+          echo "claimed=true" >> "$GITHUB_OUTPUT"
+
       - name: Start TAYVORIQ Golden Path
         id: dispatch
-        if: steps.request.outputs.approved == 'true'
+        if: steps.claim.outputs.claimed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TOPIC: ${{ steps.request.outputs.topic }}
@@ -95,8 +118,33 @@ jobs:
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
           echo "Golden Path run $RUN_ID accepted"
 
+      - name: Mark request dispatched
+        if: steps.dispatch.outcome == 'success'
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          GOLDEN_PATH_RUN_ID: ${{ steps.dispatch.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(os.environ['REQUEST_FILE'])
+          data=json.loads(path.read_text(encoding='utf-8'))
+          data['status']='DISPATCHED'
+          data['golden_path_run_id']=int(os.environ['GOLDEN_PATH_RUN_ID'])
+          data['dispatched_at']=datetime.now(timezone.utc).isoformat()
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REQUEST_FILE"
+          git commit -m "ops(tayvoriq): mark request dispatched to run ${GOLDEN_PATH_RUN_ID}"
+          git push origin main
+
       - name: Send verified production-start Telegram
-        if: steps.request.outputs.approved == 'true' && steps.dispatch.outcome == 'success'
+        if: steps.dispatch.outcome == 'success'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -113,12 +161,36 @@ jobs:
           print({'telegram_message_id':mid})
           PY
 
+      - name: Mark dispatch failure
+        if: failure() && steps.claim.outputs.claimed == 'true'
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(os.environ['REQUEST_FILE'])
+          data=json.loads(path.read_text(encoding='utf-8'))
+          data['status']='DISPATCH_FAILED'
+          data['dispatch_failed_at']=datetime.now(timezone.utc).isoformat()
+          data['dispatch_failure_run_id']=int(os.environ['GITHUB_RUN_ID'])
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REQUEST_FILE"
+          git commit -m "ops(tayvoriq): record dispatch failure in run ${GITHUB_RUN_ID}"
+          git push origin main
+
       - name: Send dispatch failure to Telegram
-        if: failure() && steps.request.outputs.approved == 'true'
+        if: failure() && steps.claim.outputs.claimed == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
         run: |
           test -n "$TELEGRAM_BOT_TOKEN" && test -n "$TELEGRAM_CHAT_ID"
-          curl --fail --silent --show-error --request POST --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=❌ TAYVORIQ-Produktion konnte nicht gestartet werden. Auftrag: ${REQUEST_ID}. Fehlerstufe: Request Dispatcher." "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+          curl --fail --silent --show-error --request POST --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=❌ TAYVORIQ-Produktion konnte nicht gestartet werden. Auftrag: ${REQUEST_ID}. Fehlerstufe: Request Dispatcher. GitHub Run: ${GITHUB_RUN_ID}." "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
