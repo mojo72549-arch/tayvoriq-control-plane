@@ -119,11 +119,16 @@
   },
   "telegram": {
     "required": true,
-    "buttons": ["Trend freigeben", "Ablehnen"],
+    "buttons": [
+      "Trend freigeben",
+      "Ablehnen"
+    ],
     "verify_message_id": true,
     "verify_callback": true,
     "rejection_requires_reason": true
   },
-  "status": "AWAITING_TREND_APPROVAL",
-  "callback_status": "NOT_SENT"
+  "status": "TREND_APPROVAL_SENT",
+  "callback_status": "WAITING",
+  "telegram_message_id": 213,
+  "telegram_sent_at": "2026-08-04T06:46:36.829785+00:00"
 }
