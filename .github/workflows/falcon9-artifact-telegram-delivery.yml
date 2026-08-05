@@ -23,6 +23,9 @@ jobs:
       - name: Checkout control plane
         uses: actions/checkout@v4
 
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Download existing Falcon-9 production artifact
         uses: actions/download-artifact@v4
         with:
@@ -32,20 +35,40 @@ jobs:
           repository: mojo72549-arch/tayvoriq-control-plane
           run-id: 30999526843
 
-      - name: Select rendered Falcon-9 video
+      - name: Build Telegram-ready Falcon-9 video
         id: select
         shell: bash
         run: |
           set -euo pipefail
-          find recovered -type f -name '*.mp4' -printf '%s %p\n' | sort -nr | tee mp4-files.txt
-          VIDEO=$(awk 'NR==1{$1=""; sub(/^ /,""); print}' mp4-files.txt)
+          find recovered -type f -name '*.mp4' ! -path '*/assets/*' -printf '%s %p\n' | sort -nr | tee final-mp4-files.txt
+          VIDEO=$(awk 'NR==1{$1=""; sub(/^ /,""); print}' final-mp4-files.txt)
           test -n "$VIDEO"
           test -f "$VIDEO"
-          SIZE=$(stat -c%s "$VIDEO")
+
+          DELIVERY="$VIDEO"
+          if [[ "$VIDEO" == *"silent"* ]]; then
+            BASEDIR=$(dirname "$VIDEO")
+            AUDIO=$(find "$BASEDIR" -maxdepth 2 -type f \( -name '*.mp3' -o -name '*.m4a' -o -name '*.wav' -o -name '*.aac' \) -printf '%s %p\n' | sort -nr | awk 'NR==1{$1=""; sub(/^ /,""); print}')
+            test -n "$AUDIO"
+            ffmpeg -y -i "$VIDEO" -i "$AUDIO" -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest falcon9-delivery.mp4
+            DELIVERY="falcon9-delivery.mp4"
+          fi
+
+          SIZE=$(stat -c%s "$DELIVERY")
+          if [ "$SIZE" -gt 48000000 ]; then
+            ffmpeg -y -i "$DELIVERY" -c:v libx264 -preset veryfast -crf 27 -maxrate 5M -bufsize 10M -c:a aac -b:a 160k -movflags +faststart falcon9-delivery-compressed.mp4
+            DELIVERY="falcon9-delivery-compressed.mp4"
+            SIZE=$(stat -c%s "$DELIVERY")
+          fi
+
           test "$SIZE" -gt 250000
-          echo "video=$VIDEO" >> "$GITHUB_OUTPUT"
+          test "$SIZE" -lt 50000000
+          ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$DELIVERY" | tee streams.txt
+          grep -q '^video$' streams.txt
+          grep -q '^audio$' streams.txt
+          echo "video=$DELIVERY" >> "$GITHUB_OUTPUT"
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
-          echo "Selected: $VIDEO ($SIZE bytes)"
+          echo "Selected final delivery: $DELIVERY ($SIZE bytes)"
 
       - name: Send video and approval buttons to Telegram
         id: telegram
@@ -67,12 +90,12 @@ jobs:
           ]]}, ensure_ascii=False))
           PY
           )
-          RESPONSE=$(curl --fail-with-body --silent --show-error \
+          RESPONSE=$(curl --silent --show-error \
             -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
             -F "chat_id=${TELEGRAM_CHAT_ID}" \
             -F "video=@${VIDEO}" \
             -F "supports_streaming=true" \
-            -F "caption=🚀 TAYVORIQ Falcon-9 Review\n\nDas bereits gerenderte Falcon-9-Video ist bereit. Bitte direkt freigeben oder ablehnen." \
+            -F "caption=🚀 TAYVORIQ Falcon-9 Review\n\nDas gerenderte Falcon-9-Video ist bereit. Bitte direkt freigeben oder ablehnen." \
             -F "reply_markup=${REPLY_MARKUP}")
           echo "$RESPONSE" | python -m json.tool
           OK=$(echo "$RESPONSE" | python -c 'import json,sys; print(str(bool(json.load(sys.stdin).get("ok"))).lower())')
