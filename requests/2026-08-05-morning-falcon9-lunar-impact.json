@@ -84,7 +84,9 @@
   },
   "visual_rules": {
     "quality": "high",
-    "no_overlay": ["Trendcheck"],
+    "no_overlay": [
+      "Trendcheck"
+    ],
     "subtitles": "clear_burned_in",
     "scene_match_required": true,
     "avoid_fake_impact_footage_presented_as_real": true
@@ -123,11 +125,16 @@
   ],
   "telegram": {
     "required": true,
-    "buttons": ["Trend freigeben", "Ablehnen"],
+    "buttons": [
+      "Trend freigeben",
+      "Ablehnen"
+    ],
     "verify_message_id": true,
     "verify_callback": true,
     "rejection_requires_reason": true
   },
-  "status": "AWAITING_TREND_APPROVAL",
-  "callback_status": "NOT_SENT"
+  "status": "TREND_APPROVAL_SENT",
+  "callback_status": "WAITING",
+  "telegram_message_id": 344,
+  "telegram_sent_at": "2026-08-05T07:00:06.670003+00:00"
 }
