@@ -8,12 +8,16 @@
   "target_duration_seconds": 35,
   "trend_scope": "science_future",
   "topic": "Falcon-9-Weltraumschrott trifft den Mond: Was genau passieren sollte und warum Forschende den Einschlag beobachten wollten",
-  "status": "TREND_APPROVED",
+  "status": "DISPATCHING",
   "approved_by": "human_chat_instruction",
   "replaces_review_id": "falcon9-30999526843",
   "rejection": {
     "state": "REJECTED",
-    "reason_codes": ["CONTENT_UNCLEAR", "VOICE_UNNATURAL", "VISUAL_QUALITY_LOW"],
+    "reason_codes": [
+      "CONTENT_UNCLEAR",
+      "VOICE_UNNATURAL",
+      "VISUAL_QUALITY_LOW"
+    ],
     "reason_text": "Der Vorgang und wissenschaftliche Zweck werden nicht verständlich erklärt; Sprache und Bildqualität reichen nicht für TAYVORIQ. Keine Veröffentlichung."
   },
   "editorial_contract": {
@@ -50,7 +54,9 @@
     "reject_generic_space_montage": true,
     "reject_single_raw_scene": true,
     "reject_corrupt_or_silent_final_mp4": true,
-    "no_overlay": ["Trendcheck"],
+    "no_overlay": [
+      "Trendcheck"
+    ],
     "required_sequence": [
       "ausgediente Falcon-9-Oberstufe im Erde-Mond-Raum",
       "Flugbahn zum Mond als klare Animation",
@@ -67,11 +73,25 @@
     "final_mp4_playable": true,
     "visual_semantic_match": true,
     "human_review_required": true,
-    "telegram_buttons": ["Freigeben", "Ablehnen"]
+    "telegram_buttons": [
+      "Freigeben",
+      "Ablehnen"
+    ]
   },
   "sources": [
-    {"url": "https://arxiv.org/abs/2607.14625", "role": "scientific_primary"},
-    {"url": "https://arxiv.org/abs/2607.23904", "role": "scientific_primary"},
-    {"url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision", "role": "current_reporting"}
-  ]
+    {
+      "url": "https://arxiv.org/abs/2607.14625",
+      "role": "scientific_primary"
+    },
+    {
+      "url": "https://arxiv.org/abs/2607.23904",
+      "role": "scientific_primary"
+    },
+    {
+      "url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision",
+      "role": "current_reporting"
+    }
+  ],
+  "dispatch_claimed_at": "2026-08-05T14:32:41.461212+00:00",
+  "dispatch_claim_run_id": 31015726205
 }
