@@ -35,40 +35,52 @@ jobs:
           repository: mojo72549-arch/tayvoriq-control-plane
           run-id: 30999526843
 
-      - name: Build Telegram-ready Falcon-9 video
+      - name: Rebuild Telegram-ready Falcon-9 video from valid assets
         id: select
         shell: bash
         run: |
           set -euo pipefail
-          find recovered -type f -name '*.mp4' ! -path '*/assets/*' -printf '%s %p\n' | sort -nr | tee final-mp4-files.txt
-          VIDEO=$(awk 'NR==1{$1=""; sub(/^ /,""); print}' final-mp4-files.txt)
-          test -n "$VIDEO"
-          test -f "$VIDEO"
+          JOB_ROOT=$(find recovered -type d -path '*/youtube_shorts' | head -n1)
+          test -n "$JOB_ROOT"
+          test -d "$JOB_ROOT/assets"
 
-          DELIVERY="$VIDEO"
-          if [[ "$VIDEO" == *"silent"* ]]; then
-            BASEDIR=$(dirname "$VIDEO")
-            AUDIO=$(find "$BASEDIR" -maxdepth 2 -type f \( -name '*.mp3' -o -name '*.m4a' -o -name '*.wav' -o -name '*.aac' \) -printf '%s %p\n' | sort -nr | awk 'NR==1{$1=""; sub(/^ /,""); print}')
-            test -n "$AUDIO"
-            ffmpeg -y -i "$VIDEO" -i "$AUDIO" -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest falcon9-delivery.mp4
-            DELIVERY="falcon9-delivery.mp4"
-          fi
+          : > scenes.txt
+          COUNT=0
+          while IFS= read -r SCENE; do
+            if ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$SCENE" | grep -q '^video$'; then
+              printf "file '%s'\n" "$(realpath "$SCENE")" >> scenes.txt
+              COUNT=$((COUNT+1))
+            fi
+          done < <(find "$JOB_ROOT/assets" -maxdepth 1 -type f -name 'scene_*.mp4' | sort)
+          test "$COUNT" -ge 4
 
-          SIZE=$(stat -c%s "$DELIVERY")
+          ffmpeg -y -f concat -safe 0 -i scenes.txt \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30" \
+            -c:v libx264 -preset veryfast -crf 24 -pix_fmt yuv420p -movflags +faststart falcon9-scenes.mp4
+
+          AUDIO=$(find "$(dirname "$JOB_ROOT")" -type f \( -name '*.mp3' -o -name '*.m4a' -o -name '*.wav' -o -name '*.aac' \) -printf '%s %p\n' | sort -nr | awk 'NR==1{$1=""; sub(/^ /,""); print}')
+          test -n "$AUDIO"
+          test -f "$AUDIO"
+
+          ffmpeg -y -i falcon9-scenes.mp4 -i "$AUDIO" \
+            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 160k -shortest -movflags +faststart falcon9-delivery.mp4
+
+          SIZE=$(stat -c%s falcon9-delivery.mp4)
           if [ "$SIZE" -gt 48000000 ]; then
-            ffmpeg -y -i "$DELIVERY" -c:v libx264 -preset veryfast -crf 27 -maxrate 5M -bufsize 10M -c:a aac -b:a 160k -movflags +faststart falcon9-delivery-compressed.mp4
-            DELIVERY="falcon9-delivery-compressed.mp4"
-            SIZE=$(stat -c%s "$DELIVERY")
+            ffmpeg -y -i falcon9-delivery.mp4 -c:v libx264 -preset veryfast -crf 28 -maxrate 4M -bufsize 8M -c:a aac -b:a 128k -movflags +faststart falcon9-delivery-compressed.mp4
+            mv falcon9-delivery-compressed.mp4 falcon9-delivery.mp4
+            SIZE=$(stat -c%s falcon9-delivery.mp4)
           fi
 
           test "$SIZE" -gt 250000
           test "$SIZE" -lt 50000000
-          ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$DELIVERY" | tee streams.txt
+          ffprobe -v error -show_entries stream=codec_type -of csv=p=0 falcon9-delivery.mp4 | tee streams.txt
           grep -q '^video$' streams.txt
           grep -q '^audio$' streams.txt
-          echo "video=$DELIVERY" >> "$GITHUB_OUTPUT"
+          echo "video=falcon9-delivery.mp4" >> "$GITHUB_OUTPUT"
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
-          echo "Selected final delivery: $DELIVERY ($SIZE bytes)"
+          echo "scene_count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Rebuilt final delivery: falcon9-delivery.mp4 ($SIZE bytes, $COUNT scenes)"
 
       - name: Send video and approval buttons to Telegram
         id: telegram
@@ -95,7 +107,7 @@ jobs:
             -F "chat_id=${TELEGRAM_CHAT_ID}" \
             -F "video=@${VIDEO}" \
             -F "supports_streaming=true" \
-            -F "caption=🚀 TAYVORIQ Falcon-9 Review\n\nDas gerenderte Falcon-9-Video ist bereit. Bitte direkt freigeben oder ablehnen." \
+            -F "caption=🚀 TAYVORIQ Falcon-9 Review\n\nDas Falcon-9-Video ist bereit. Bitte direkt freigeben oder ablehnen." \
             -F "reply_markup=${REPLY_MARKUP}")
           echo "$RESPONSE" | python -m json.tool
           OK=$(echo "$RESPONSE" | python -c 'import json,sys; print(str(bool(json.load(sys.stdin).get("ok"))).lower())')
@@ -107,8 +119,8 @@ jobs:
 
       - name: Persist delivery evidence
         run: |
-          printf '{"source_run_id":%s,"artifact_id":%s,"review_id":"%s","telegram_message_id":%s,"callback_status":"WAITING","video_bytes":%s}\n' \
-            "$SOURCE_RUN_ID" "8931630007" "$REVIEW_ID" "${{ steps.telegram.outputs.message_id }}" "${{ steps.select.outputs.size }}" \
+          printf '{"source_run_id":%s,"artifact_id":%s,"review_id":"%s","telegram_message_id":%s,"callback_status":"WAITING","video_bytes":%s,"scene_count":%s}\n' \
+            "$SOURCE_RUN_ID" "8931630007" "$REVIEW_ID" "${{ steps.telegram.outputs.message_id }}" "${{ steps.select.outputs.size }}" "${{ steps.select.outputs.scene_count }}" \
             > telegram-delivery-evidence.json
           cat telegram-delivery-evidence.json
 
