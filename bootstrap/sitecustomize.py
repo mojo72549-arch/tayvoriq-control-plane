@@ -28,16 +28,19 @@ def _falcon9_validated_fallback(topic: str):
     package = dict(package)
     package.update(
         {
-            "what_happened": "Eine ausgediente Falcon-9-Oberstufe sollte nahe dem Einstein-Krater auf dem Mond einschlagen.",
-            "why_happening": "Durch den Einschlag wollten Forschende Lichtblitz, Staubwolke und Mondmaterial untersuchen.",
-            "who_is_affected": "Betroffen sind Mondforscher, Missionsbetreiber und Raumfahrtfirmen im Erde-Mond-Raum.",
-            "personal_impact": "Für dich zeigt der Fall Chancen und Risiken von Weltraumschrott.",
-            "action_now": "Prüfe, ob Beobachtungen bestätigt sind, und trenne Prognosen von Ereignissen.",
+            "what_happened": "Eine vier Tonnen schwere, ausgediente Falcon-9-Oberstufe sollte unkontrolliert nahe dem Einstein-Krater auf dem Mond einschlagen.",
+            "why_happening": "Teleskope sollten Lichtblitz und Staubwolke messen, um Einschlagsphysik und Mondmaterial zu untersuchen.",
+            "who_is_affected": "Das betrifft Mondforscher, Missionsplaner und Raumfahrtfirmen.",
+            "personal_impact": "Der Fall zeigt: Weltraumschrott erreicht auch den Mondraum.",
+            "action_now": "Entscheidend sind bestätigte Beobachtungen, nicht nur die Prognose.",
+            "hook": "Vier Tonnen Raketenschrott auf Kollisionskurs mit dem Mond – aber warum warten Forschende genau auf diesen Einschlag?",
+            "cta": "Sollten Raumfahrtfirmen für Weltraumschrott im Mondraum haften?",
         }
     )
     print(
         {
             "falcon9_fallback_contract": "49_words",
+            "narrative": "clear_explainer",
             "quality_gates_changed": False,
         },
         flush=True,
