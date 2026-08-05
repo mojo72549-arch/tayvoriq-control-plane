@@ -24,11 +24,19 @@
   "visual_rules": {
     "quality": "premium",
     "resolution": "1080x1920",
-    "no_overlay": ["Trendcheck"],
+    "no_overlay": [
+      "Trendcheck"
+    ],
     "subtitles": "clear_burned_in",
     "scene_match_required": true,
     "no_fake_explosion_presented_as_real": true,
-    "preferred_visuals": ["Danube aerials", "controlled blast context", "Cernavoda exterior", "low water level", "European power grid"]
+    "preferred_visuals": [
+      "Danube aerials",
+      "controlled blast context",
+      "Cernavoda exterior",
+      "low water level",
+      "European power grid"
+    ]
   },
   "sources": [
     {
@@ -52,9 +60,14 @@
   ],
   "review": {
     "telegram_required": true,
-    "buttons": ["Freigeben", "Ablehnen"],
+    "buttons": [
+      "Freigeben",
+      "Ablehnen"
+    ],
     "verify_message_id": true,
     "verify_callback": true
   },
-  "status": "APPROVED"
+  "status": "DISPATCHING",
+  "dispatch_claimed_at": "2026-08-05T07:20:50.244130+00:00",
+  "dispatch_claim_run_id": 30984648509
 }
