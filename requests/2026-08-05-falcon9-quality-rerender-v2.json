@@ -1,0 +1,77 @@
+{
+  "request_id": "2026-08-05-falcon9-quality-rerender-v2",
+  "created_at": "2026-08-05T16:30:00+02:00",
+  "language": "de",
+  "target_platform": "youtube_tiktok",
+  "format": "short_vertical",
+  "aspect_ratio": "9:16",
+  "target_duration_seconds": 35,
+  "trend_scope": "science_future",
+  "topic": "Falcon-9-Weltraumschrott trifft den Mond: Was genau passieren sollte und warum Forschende den Einschlag beobachten wollten",
+  "status": "TREND_APPROVED",
+  "approved_by": "human_chat_instruction",
+  "replaces_review_id": "falcon9-30999526843",
+  "rejection": {
+    "state": "REJECTED",
+    "reason_codes": ["CONTENT_UNCLEAR", "VOICE_UNNATURAL", "VISUAL_QUALITY_LOW"],
+    "reason_text": "Der Vorgang und wissenschaftliche Zweck werden nicht verständlich erklärt; Sprache und Bildqualität reichen nicht für TAYVORIQ. Keine Veröffentlichung."
+  },
+  "editorial_contract": {
+    "hook": "Vier Tonnen Raketenschrott auf Kollisionskurs mit dem Mond – aber warum warten Forschende genau auf diesen Einschlag?",
+    "what_happened": "Eine vier Tonnen schwere, ausgediente Falcon-9-Oberstufe sollte unkontrolliert nahe dem Einstein-Krater auf dem Mond einschlagen.",
+    "why_happening": "Teleskope sollten Lichtblitz und Staubwolke messen, um Einschlagsphysik und Mondmaterial zu untersuchen.",
+    "who_is_affected": "Das betrifft Mondforscher, Missionsplaner und Raumfahrtfirmen.",
+    "personal_impact": "Der Fall zeigt: Weltraumschrott erreicht auch den Mondraum.",
+    "action_now": "Entscheidend sind bestätigte Beobachtungen, nicht nur die Prognose.",
+    "cta": "Sollten Raumfahrtfirmen für Weltraumschrott im Mondraum haften?",
+    "must_explain": [
+      "Es handelt sich um eine ausgediente Oberstufe, nicht um eine aktive Falcon-9-Mission.",
+      "Der Einschlag war prognostiziert und nicht als wissenschaftliches Experiment gestartet worden.",
+      "Forschende wollten das unvermeidbare Ereignis beobachten, um Daten über Blitz, Staubwolke und Mondmaterial zu gewinnen.",
+      "Eine Prognose darf nicht als bestätigte Beobachtung dargestellt werden."
+    ]
+  },
+  "voice": {
+    "provider_required": "chatterbox_multilingual_v3",
+    "fallback_allowed": false,
+    "style": "natural_documentary_storyteller",
+    "pitch": "medium_low",
+    "pace": "calm_dynamic",
+    "pronunciation": {
+      "Falcon 9": "Falcon Nine",
+      "Einstein-Krater": "Einstein Krater"
+    }
+  },
+  "visual_contract": {
+    "quality": "premium",
+    "resolution": "1080x1920",
+    "minimum_unique_scenes": 6,
+    "scene_match_required": true,
+    "reject_generic_space_montage": true,
+    "reject_single_raw_scene": true,
+    "reject_corrupt_or_silent_final_mp4": true,
+    "no_overlay": ["Trendcheck"],
+    "required_sequence": [
+      "ausgediente Falcon-9-Oberstufe im Erde-Mond-Raum",
+      "Flugbahn zum Mond als klare Animation",
+      "Einstein-Krater auf realistischer Mondkarte",
+      "Teleskopbeobachtung des erwarteten Lichtblitzes",
+      "physikalisch plausible Staubwolke und ausgeworfenes Material",
+      "Einordnung Weltraumschrott und künftige Mondmissionen"
+    ]
+  },
+  "quality_gates": {
+    "script_contract_before_render": true,
+    "voice_provider_must_match": true,
+    "audio_present": true,
+    "final_mp4_playable": true,
+    "visual_semantic_match": true,
+    "human_review_required": true,
+    "telegram_buttons": ["Freigeben", "Ablehnen"]
+  },
+  "sources": [
+    {"url": "https://arxiv.org/abs/2607.14625", "role": "scientific_primary"},
+    {"url": "https://arxiv.org/abs/2607.23904", "role": "scientific_primary"},
+    {"url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision", "role": "current_reporting"}
+  ]
+}
