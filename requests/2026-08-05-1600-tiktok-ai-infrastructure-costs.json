@@ -1,0 +1,60 @@
+{
+  "request_id": "2026-08-05-1600-tiktok-ai-infrastructure-costs",
+  "created_at": "2026-08-05T09:16:00+02:00",
+  "approved_at": "2026-08-05T09:16:00+02:00",
+  "approved_by": "human_chat_instruction",
+  "language": "de",
+  "target_platform": "tiktok",
+  "format": "tiktok_short",
+  "aspect_ratio": "9:16",
+  "target_duration_seconds": 30,
+  "scheduled_release_at": "2026-08-05T16:00:00+02:00",
+  "trend_scope": "business_economy",
+  "topic": "Warum KI-Aktien trotz KI-Boom unter Druck geraten: Erkläre verständlich, dass Big Tech enorme Summen in Rechenzentren, Chips, Strom und langfristige Leasingverträge steckt, während Anleger sich fragen, ob Umsatz und Cashflow schnell genug nachziehen. Keine Anlageberatung und keine Kursprognosen.",
+  "hook": "KI boomt – aber genau dieser Boom setzt viele KI-Aktien plötzlich unter Druck.",
+  "core_value": "Microsoft, Meta, Amazon, Alphabet und Oracle investieren massiv in KI-Infrastruktur. Die langfristigen Verpflichtungen für Rechenzentren und Leasing steigen stark, während freie Cashflows belastet werden. Anleger zweifeln deshalb nicht zwingend an KI, sondern an Tempo, Kosten und Rendite des Ausbaus.",
+  "cta": "Ist das nur eine gesunde Pause oder schon ein Warnsignal? Schreib deine Meinung und folge TAYVORIQ.",
+  "voice": {
+    "provider_primary": "chatterbox_multilingual_v3",
+    "provider_fallback": "edge_neural_tts",
+    "style": "dynamic_explainer",
+    "pitch": "medium_low",
+    "pace": "fast_clear"
+  },
+  "visual_rules": {
+    "quality": "premium",
+    "resolution": "1080x1920",
+    "no_overlay": ["Trendcheck"],
+    "subtitles": "clear_burned_in",
+    "scene_match_required": true,
+    "preferred_visuals": ["AI data centers", "server racks", "semiconductor closeups", "market charts", "Big Tech campuses"],
+    "no_misleading_live_chart": true
+  },
+  "sources": [
+    {
+      "title": "AI data-centre race builds $1 trillion lease burden for Big Tech",
+      "url": "https://www.reuters.com/business/retail-consumer/ai-data-centre-race-builds-1-trillion-lease-burden-big-tech-2026-08-04/",
+      "published": "2026-08-04",
+      "role": "current_reporting"
+    },
+    {
+      "title": "AI investment boom puts Big Tech's free cash flow under pressure",
+      "url": "https://ca.marketscreener.com/news/ai-investment-boom-puts-big-tech-s-free-cash-flow-under-pressure-ce7f51d8d18ff322",
+      "published": "2026-07-22",
+      "role": "reuters_analysis_republication"
+    },
+    {
+      "title": "Among AI crowd, some investors position for slower hyperscaler spending growth",
+      "url": "https://www.investing.com/news/stock-market-news/analysisamong-ai-crowd-some-investors-position-for-slower-hyperscaler-spending-growth-4797378",
+      "published": "2026-07-17",
+      "role": "reuters_analysis_republication"
+    }
+  ],
+  "review": {
+    "telegram_required": true,
+    "buttons": ["Freigeben", "Ablehnen"],
+    "verify_message_id": true,
+    "verify_callback": true
+  },
+  "status": "APPROVED"
+}
