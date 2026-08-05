@@ -1,0 +1,210 @@
+name: TAYVORIQ Falcon-9 Locked Quality V3
+
+on:
+  push:
+    paths:
+      - .github/workflows/tayvoriq-falcon9-locked-quality-v3.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-falcon9-locked-quality-v3
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  TAYVORIQ_CLOUD_MODE: "true"
+  TAYVORIQ_RENDER_SIZE: "1080x1920"
+  TAYVORIQ_TTS_PROVIDER: "chatterbox"
+  TAYVORIQ_CHATTERBOX_ENABLED: "true"
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: "v3"
+  TAYVORIQ_CHATTERBOX_LANGUAGE: "de"
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "480"
+  TAYVORIQ_CHATTERBOX_CPU_THREADS: "4"
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.42"
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.36"
+  TAYVORIQ_CHATTERBOX_PAUSE_MS: "250"
+  TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  locked-quality-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Checkout private implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: implementation/requirements.txt
+
+      - name: Install production dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r implementation/requirements.txt pytest
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"
+
+      - name: Validate Chatterbox V3 and pipeline
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import inspect
+          from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+          signature = inspect.signature(ChatterboxMultilingualTTS.from_pretrained)
+          assert "t3_model" in signature.parameters, signature
+          print("CHATTERBOX_V3_READY")
+          PY
+          python -m pytest -q tests/test_tayvoriq_chatterbox_router.py
+          python tools/tayvoriq_preflight_check.py --report-out out-preflight.json
+
+      - name: Build locked editorial input
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = """Falcon-9-Oberstufe auf dem Weg zum Mond. Verwende ausschließlich den folgenden gesperrten deutschen Sprechertext und seine kausal zusammenhängende Bildlogik. Nichts umschreiben, nichts erfinden, keine Tiere, Wälder, Landschaften oder beliebige Weltraum-Montagen.
+
+          SPRECHERTEXT:
+          1. Diese Falcon-9-Oberstufe wurde nicht absichtlich zum Mond geschickt.
+          2. Sie hatte zuvor einen Satelliten in eine sehr hohe Umlaufbahn gebracht. Danach reichte ihr Treibstoff nicht mehr für eine kontrollierte Rückkehr zur Erde.
+          3. Darum blieb die ausgediente Stufe jahrelang im Raum zwischen Erde und Mond. Die Schwerkraft von Erde, Mond und Sonne veränderte ihre Bahn immer weiter.
+          4. Berechnungen zeigten schließlich einen möglichen Einschlag auf der Mondrückseite nahe dem Einstein-Krater.
+          5. Forschende wollten das ohnehin erwartete Ereignis mit Teleskopen beobachten. Lichtblitz und Staubwolke könnten zeigen, wie Material bei einem Einschlag ausgeworfen wird.
+          6. Wichtig ist: Das war kein geplantes SpaceX-Experiment, sondern die Beobachtung eines alten Stücks Weltraumschrott.
+          7. Der Fall zeigt, warum Raketenstufen künftig kontrolliert entsorgt und dauerhaft verfolgt werden müssen.
+
+          STORYBOARD:
+          Szene 1: realistische Falcon-9-Trennung im Erdorbit, Oberstufe klar markiert.
+          Szene 2: Satellit wird aus der Oberstufe ausgesetzt, verständliche Treibstoffanzeige.
+          Szene 3: klare Erde-Mond-Sonne-Animation mit markierter Oberstufe und veränderter Flugbahn.
+          Szene 4: physikalisch plausible Bahn zur Mondrückseite, beschriftete Karte nahe Einstein-Krater.
+          Szene 5: Teleskopobservatorium, danach sachliche Simulation von Lichtblitz und Staubauswurf auf dem Mond.
+          Szene 6: erklärende Split-Grafik: kein Missionsplan versus ausgediente Raketenstufe.
+          Szene 7: kontrollierter Deorbit und Tracking-Netzwerk als Schlussgrafik.
+
+          Qualitätsvertrag: 1080x1920, mindestens sieben eigenständige Szenen, jede Szene muss exakt zum gesprochenen Satz passen, natürliche tiefe Dokumentationsstimme, keine generischen Stockbilder, keine Tiere, keine unverbundenen Landschaften, kein stilles oder beschädigtes MP4. Abschlussfrage: Sollten Raumfahrtfirmen alte Raketenstufen vollständig zurückholen müssen?"""
+          Path("locked-topic.txt").write_text("\n".join(line.strip() for line in text.splitlines()), encoding="utf-8")
+          PY
+
+      - name: Render locked Falcon-9 production
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOPIC=$(cat ../locked-topic.txt)
+          mkdir -p out/falcon9-locked
+          python tools/tayvoriq_autonomous_entrypoint.py \
+            --trend-mode manual_topic \
+            --trend-scope science_future \
+            --topic "$TOPIC" \
+            --language Deutsch \
+            --platform youtube_tiktok \
+            --target-duration 40 \
+            --llm-provider auto \
+            --outdir out/falcon9-locked \
+            --site-root site/tayvoriq \
+            --run-id "${GITHUB_RUN_ID}" \
+            --state-out out/falcon9-review-state.json \
+            --report-out out/falcon9-report.json \
+            --request-out out/falcon9-runtime-request.json \
+            --self-heal-depth 0 \
+            --target-branch feature/multi-platform-distribution-package
+
+      - name: Validate rendered MP4 and audio
+        id: media
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          VIDEO=$(find out/falcon9-locked -type f -name '*.mp4' -printf '%s %p\n' | sort -nr | awk 'NR==1{$1=""; sub(/^ /,""); print}')
+          test -n "$VIDEO"
+          test -f "$VIDEO"
+          test $(stat -c%s "$VIDEO") -gt 250000
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$VIDEO" | grep -q '^1080x1920$'
+          ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$VIDEO" | grep -q '^audio$'
+          cp "$VIDEO" ../falcon9-quality-v3.mp4
+          echo "video=../falcon9-quality-v3.mp4" >> "$GITHUB_OUTPUT"
+          echo "bytes=$(stat -c%s ../falcon9-quality-v3.mp4)" >> "$GITHUB_OUTPUT"
+
+      - name: Send verified Telegram review
+        id: telegram
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          MARKUP=$(python -c 'import json,os; rid=os.environ["GITHUB_RUN_ID"]; print(json.dumps({"inline_keyboard":[[{"text":"✅ Freigeben","callback_data":f"approve:{rid}"},{"text":"❌ Ablehnen","callback_data":f"reject:{rid}"}]]},ensure_ascii=False))')
+          RESPONSE=$(curl --silent --show-error --fail-with-body \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@falcon9-quality-v3.mp4" \
+            -F "supports_streaming=true" \
+            -F $'caption=🚀 TAYVORIQ Falcon-9 Qualitätsreview\n\nWarum die Oberstufe jahrelang zwischen Erde und Mond blieb, weshalb Forschende einen möglichen Einschlag beobachten wollten und was das mit Weltraumschrott zu tun hat.\n\nYouTube + TikTok · 9:16 · Chatterbox V3' \
+            -F "reply_markup=${MARKUP}")
+          printf '%s' "$RESPONSE" > telegram-response.json
+          python - <<'PY'
+          import json
+          d=json.load(open('telegram-response.json',encoding='utf-8'))
+          assert d.get('ok') is True, d
+          result=d['result']
+          assert result.get('video'), result
+          mid=result['message_id']
+          open('telegram-message-id.txt','w',encoding='utf-8').write(str(mid))
+          print(f'TELEGRAM_DELIVERED message_id={mid} callback_status=WAITING')
+          PY
+          echo "message_id=$(cat telegram-message-id.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Persist delivery evidence
+        run: |
+          python - <<'PY'
+          import json, os
+          evidence={
+            'run_id': int(os.environ['GITHUB_RUN_ID']),
+            'topic': 'Falcon-9-Oberstufe Erde-Mond',
+            'locked_script': True,
+            'minimum_scenes': 7,
+            'voice_provider': 'chatterbox_multilingual_v3',
+            'video_bytes': int('${{ steps.media.outputs.bytes }}'),
+            'telegram_message_id': int('${{ steps.telegram.outputs.message_id }}'),
+            'callback_status': 'WAITING'
+          }
+          open('delivery-evidence.json','w',encoding='utf-8').write(json.dumps(evidence,ensure_ascii=False,indent=2))
+          print(json.dumps(evidence,ensure_ascii=False))
+          PY
+
+      - name: Upload verified production package
+        uses: actions/upload-artifact@v4
+        with:
+          name: falcon9-locked-quality-v3-${{ github.run_id }}
+          path: |
+            falcon9-quality-v3.mp4
+            telegram-response.json
+            delivery-evidence.json
+            implementation/out/falcon9-report.json
+            implementation/out/falcon9-review-state.json
+          retention-days: 30
