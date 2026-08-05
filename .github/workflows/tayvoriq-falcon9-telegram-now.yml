@@ -1,0 +1,137 @@
+name: TAYVORIQ Falcon-9 Telegram Now
+
+on:
+  push:
+    paths:
+      - .github/workflows/tayvoriq-falcon9-telegram-now.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  SOURCE_RUN_ID: "31024022990"
+  SOURCE_ARTIFACT: "falcon9-recovery-v2-31024022990"
+  REVIEW_ID: "31024022990"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  telegram-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Download completed render
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SOURCE_ARTIFACT }}
+          path: recovered
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: mojo72549-arch/tayvoriq-control-plane
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Prepare Telegram videos
+        id: media
+        shell: bash
+        run: |
+          set -euo pipefail
+          YT=$(find recovered -type f -name 'youtube_shorts.mp4' | head -n1 || true)
+          TT=$(find recovered -type f -name 'tiktok.mp4' | head -n1 || true)
+          test -n "$YT"
+          test -f "$YT"
+          [ -n "$TT" ] || TT="$YT"
+
+          for SPEC in "youtube:$YT" "tiktok:$TT"; do
+            NAME=${SPEC%%:*}
+            SRC=${SPEC#*:}
+            ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$SRC" | grep -q '^video$'
+            ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$SRC" | grep -q '^audio$'
+            ffmpeg -y -i "$SRC" -map 0:v:0 -map 0:a:0 -c:v libx264 -preset fast -crf 25 -maxrate 3500k -bufsize 7M -c:a aac -b:a 160k -movflags +faststart "${NAME}.mp4"
+            if [ $(stat -c%s "${NAME}.mp4") -ge 49000000 ]; then
+              ffmpeg -y -i "${NAME}.mp4" -c:v libx264 -preset fast -crf 29 -maxrate 2200k -bufsize 4400k -c:a aac -b:a 128k -movflags +faststart "${NAME}-small.mp4"
+              mv "${NAME}-small.mp4" "${NAME}.mp4"
+            fi
+            test $(stat -c%s "${NAME}.mp4") -gt 250000
+            test $(stat -c%s "${NAME}.mp4") -lt 50000000
+          done
+          echo "youtube_bytes=$(stat -c%s youtube.mp4)" >> "$GITHUB_OUTPUT"
+          echo "tiktok_bytes=$(stat -c%s tiktok.mp4)" >> "$GITHUB_OUTPUT"
+
+      - name: Send Telegram review with callbacks
+        id: review
+        shell: bash
+        run: |
+          set -euo pipefail
+          MARKUP=$(python - <<'PY'
+          import json, os
+          rid=os.environ['REVIEW_ID']
+          print(json.dumps({'inline_keyboard':[[
+            {'text':'✅ Freigeben','callback_data':f'approve:{rid}'},
+            {'text':'❌ Ablehnen','callback_data':f'reject:{rid}'}
+          ],[
+            {'text':'🔎 Review öffnen','url':f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{rid}/'}
+          ]]}, ensure_ascii=False))
+          PY
+          )
+          RESPONSE=$(curl --silent --show-error --fail-with-body \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@youtube.mp4" \
+            -F "supports_streaming=true" \
+            -F $'caption=🚀 TAYVORIQ Falcon-9 Review\n\nDie ausgediente Oberstufe traf den Mond. Das Video erklärt, warum Forschende den Einschlag beobachteten und was Weltraumschrott für kommende Mondmissionen bedeutet.\n\nBitte freigeben oder ablehnen.' \
+            -F "reply_markup=${MARKUP}")
+          echo "$RESPONSE" > telegram-review.json
+          MID=$(python - <<'PY'
+          import json
+          d=json.load(open('telegram-review.json',encoding='utf-8'))
+          assert d.get('ok') is True, d
+          print(d['result']['message_id'])
+          PY
+          )
+          echo "message_id=$MID" >> "$GITHUB_OUTPUT"
+          echo "TELEGRAM_DELIVERED message_id=$MID callback_status=WAITING"
+
+      - name: Send TikTok file and caption
+        id: tiktok
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl --silent --show-error --fail-with-body \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@tiktok.mp4" \
+            -F "supports_streaming=true" \
+            -F $'caption=📱 TikTok-Datei\n\nEine ausgediente Falcon-9-Oberstufe traf den Mond. Warum Forschende den Einschlag beobachteten – und was Weltraumschrott für kommende Mondmissionen bedeutet.\n\n#Falcon9 #SpaceX #Mond #Weltraum #TAYVORIQ')
+          echo "$RESPONSE" > telegram-tiktok.json
+          MID=$(python - <<'PY'
+          import json
+          d=json.load(open('telegram-tiktok.json',encoding='utf-8'))
+          assert d.get('ok') is True, d
+          print(d['result']['message_id'])
+          PY
+          )
+          echo "message_id=$MID" >> "$GITHUB_OUTPUT"
+          echo "TIKTOK_DELIVERED message_id=$MID"
+
+      - name: Save delivery evidence
+        run: |
+          printf '{"source_run_id":%s,"review_id":"%s","telegram_review_message_id":%s,"telegram_tiktok_message_id":%s,"callback_status":"WAITING","youtube_bytes":%s,"tiktok_bytes":%s}\n' \
+            "$SOURCE_RUN_ID" "$REVIEW_ID" "${{ steps.review.outputs.message_id }}" "${{ steps.tiktok.outputs.message_id }}" "${{ steps.media.outputs.youtube_bytes }}" "${{ steps.media.outputs.tiktok_bytes }}" > delivery-evidence.json
+          cat delivery-evidence.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: falcon9-telegram-evidence-${{ github.run_id }}
+          path: |
+            delivery-evidence.json
+            telegram-review.json
+            telegram-tiktok.json
+          retention-days: 14
