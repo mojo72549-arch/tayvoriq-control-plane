@@ -1,0 +1,133 @@
+{
+  "request_id": "2026-08-05-morning-falcon9-lunar-impact",
+  "created_at": "2026-08-05T09:02:00+02:00",
+  "language": "de",
+  "format": "youtube_tiktok_short",
+  "aspect_ratio": "9:16",
+  "target_duration_seconds": 35,
+  "trend_scope": "science_future",
+  "topic": "Falcon-9-Weltraumschrott trifft den Mond: Was der Einschlag über die neue Raumfahrt-Ära zeigt",
+  "selection_score": 96,
+  "score_breakdown": {
+    "recency": 100,
+    "viral_potential": 95,
+    "tayvoriq_fit": 94,
+    "source_quality": 97,
+    "visual_potential": 96
+  },
+  "ranking": [
+    {
+      "rank": 1,
+      "category": "science_future",
+      "topic": "Falcon-9-Oberstufe sollte am 5. August 2026 auf dem Mond einschlagen",
+      "recency": 100,
+      "viral_potential": 95,
+      "tayvoriq_fit": 94,
+      "source_quality": 97,
+      "visual_potential": 96,
+      "total_score": 96
+    },
+    {
+      "rank": 2,
+      "category": "world_society",
+      "topic": "USA und Iran melden Fortschritte bei Gesprächen über die Straße von Hormus",
+      "recency": 99,
+      "viral_potential": 94,
+      "tayvoriq_fit": 96,
+      "source_quality": 98,
+      "visual_potential": 87,
+      "total_score": 95
+    },
+    {
+      "rank": 3,
+      "category": "business_economy",
+      "topic": "Asiens Tech-Börsen steigen stark trotz Sorge vor explodierenden KI-Investitionen",
+      "recency": 98,
+      "viral_potential": 88,
+      "tayvoriq_fit": 93,
+      "source_quality": 97,
+      "visual_potential": 88,
+      "total_score": 93
+    },
+    {
+      "rank": 4,
+      "category": "sports",
+      "topic": "Katie Taylor kündigt historischen Abschiedskampf vor 82.000 Fans an",
+      "recency": 95,
+      "viral_potential": 87,
+      "tayvoriq_fit": 78,
+      "source_quality": 80,
+      "visual_potential": 94,
+      "total_score": 87
+    },
+    {
+      "rank": 5,
+      "category": "sports",
+      "topic": "Community Shield erstmals seit 20 Jahren außerhalb Englands",
+      "recency": 94,
+      "viral_potential": 82,
+      "tayvoriq_fit": 79,
+      "source_quality": 78,
+      "visual_potential": 91,
+      "total_score": 85
+    }
+  ],
+  "hook": "Heute Morgen sollte ein vier Tonnen schweres Stück SpaceX-Schrott auf dem Mond einschlagen – und genau das könnte für künftige Mondmissionen wichtig werden.",
+  "core_value": "Erkläre, dass die ausgediente Falcon-9-Oberstufe nahe dem Einstein-Krater einschlagen sollte, warum Forscher Blitz und Staubwolke beobachten wollten und weshalb das Ereignis zugleich wissenschaftliche Chance und Warnsignal für wachsenden Weltraumschrott im Erde-Mond-Raum ist. Behaupte keine bestätigte Beobachtung, solange sie nicht verifiziert ist.",
+  "cta": "Sollten Raumfahrtfirmen für ihren Weltraumschrott im Mondraum haften? Schreib deine Meinung und folge TAYVORIQ für verständlich erklärte Zukunftsthemen.",
+  "voice": {
+    "provider_primary": "chatterbox_multilingual_v3",
+    "provider_fallback": "edge_neural_tts",
+    "style": "warm_natural_documentary",
+    "pitch": "medium_low",
+    "pace": "calm_dynamic"
+  },
+  "visual_rules": {
+    "quality": "high",
+    "no_overlay": ["Trendcheck"],
+    "subtitles": "clear_burned_in",
+    "scene_match_required": true,
+    "avoid_fake_impact_footage_presented_as_real": true
+  },
+  "sources": [
+    {
+      "title": "Observational planning for the 2026 August 5 Falcon 9 Upper Stage lunar impact",
+      "url": "https://arxiv.org/abs/2607.14625",
+      "published": "2026-07-16",
+      "role": "scientific_primary"
+    },
+    {
+      "title": "Predicted Ejecta Dynamics and Observability of the 2026 Falcon 9 Upper Stage Lunar Impact",
+      "url": "https://arxiv.org/abs/2607.23904",
+      "published": "2026-07-27",
+      "role": "scientific_primary"
+    },
+    {
+      "title": "SpaceX rocket debris will hit the Moon tomorrow",
+      "url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision",
+      "published": "2026-08-04",
+      "role": "current_reporting"
+    },
+    {
+      "title": "US and Iran having very good discussions, Trump says",
+      "url": "https://www.reuters.com/world/middle-east/us-iran-having-very-good-discussions-trump-says-2026-08-05/",
+      "published": "2026-08-05",
+      "role": "ranking_context"
+    },
+    {
+      "title": "Stocks up in Asia as tech mood shifts, oil slides",
+      "url": "https://www.reuters.com/world/china/global-markets-global-markets-2026-08-05/",
+      "published": "2026-08-05",
+      "role": "ranking_context"
+    }
+  ],
+  "telegram": {
+    "required": true,
+    "buttons": ["Trend freigeben", "Ablehnen"],
+    "verify_message_id": true,
+    "verify_callback": true,
+    "rejection_requires_reason": true
+  },
+  "status": "AWAITING_TREND_APPROVAL",
+  "callback_status": "NOT_SENT"
+}
