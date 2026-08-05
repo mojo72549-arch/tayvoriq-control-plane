@@ -1,0 +1,206 @@
+name: TAYVORIQ Falcon-9 Direct Locked V4
+
+on:
+  push:
+    paths:
+      - .github/workflows/tayvoriq-falcon9-direct-locked-v4.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-falcon9-direct-locked-v4
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  TAYVORIQ_TTS_PROVIDER: "chatterbox"
+  TAYVORIQ_CHATTERBOX_ENABLED: "true"
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: "v3"
+  TAYVORIQ_CHATTERBOX_LANGUAGE: "de"
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "600"
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.42"
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.36"
+  TAYVORIQ_CHATTERBOX_PAUSE_MS: "250"
+  TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  render-and-deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: implementation/requirements.txt
+
+      - name: Install media and voice dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install --upgrade pip
+          python -m pip install -r implementation/requirements.txt pillow
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"
+
+      - name: Build direct locked narration and seven matched scenes
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          mkdir -p out/falcon9-v4/scenes out/falcon9-v4/audio
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          from PIL import Image, ImageDraw, ImageFont
+          import tayvoriq_tts_router_v24 as tts
+
+          out = Path('out/falcon9-v4')
+          script = (
+              'Diese Falcon-9-Oberstufe wurde nicht absichtlich zum Mond geschickt. '
+              'Sie brachte zuvor einen Satelliten in eine sehr hohe Umlaufbahn. Danach reichte ihr Treibstoff nicht mehr für eine kontrollierte Rückkehr zur Erde. '
+              'Darum blieb die ausgediente Stufe jahrelang zwischen Erde und Mond. Die Schwerkraft von Erde, Mond und Sonne veränderte ihre Bahn immer weiter. '
+              'Berechnungen zeigten schließlich einen möglichen Einschlag auf der Mondrückseite nahe dem Einstein-Krater. '
+              'Forschende wollten das ohnehin erwartete Ereignis beobachten. Lichtblitz und Staubwolke könnten zeigen, wie Material bei einem Einschlag ausgeworfen wird. '
+              'Wichtig ist: Das war kein geplantes SpaceX-Experiment, sondern die Beobachtung eines alten Stücks Weltraumschrott. '
+              'Der Fall zeigt, warum Raketenstufen künftig kontrolliert entsorgt und dauerhaft verfolgt werden müssen.'
+          )
+          voice = tts.synthesize_voice(script, 40, out / 'audio')
+          if voice.get('provider') != 'chatterbox_multilingual_v3':
+              raise SystemExit(f'VOICE_GATE_FAILED:{voice}')
+          (out / 'voice-report.json').write_text(json.dumps(voice, ensure_ascii=False, indent=2), encoding='utf-8')
+
+          W,H=1080,1920
+          font_b='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+          font_r='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+          title=ImageFont.truetype(font_b,72)
+          sub=ImageFont.truetype(font_b,44)
+          body=ImageFont.truetype(font_r,38)
+          small=ImageFont.truetype(font_r,30)
+          scenes=[
+            ('NICHT ZUM MOND GESCHICKT','Die Oberstufe blieb nach der Mission unkontrolliert im All.','rocket'),
+            ('SATELLIT AUSGESETZT','Die Nutzlast war abgesetzt – für eine Rückkehr fehlte Treibstoff.','satellite'),
+            ('JAHRELANG ZWISCHEN ERDE UND MOND','Erde, Mond und Sonne veränderten die Flugbahn immer weiter.','orbit'),
+            ('MÖGLICHER EINSCHLAG','Berechnungen führten zur Mondrückseite nahe dem Einstein-Krater.','moon'),
+            ('FORSCHENDE BEOBACHTEN','Lichtblitz und Staubwolke liefern Daten über Einschläge.','scope'),
+            ('KEIN SPACEX-EXPERIMENT','Es ging um die Beobachtung eines alten Stücks Weltraumschrott.','split'),
+            ('LEHRE FÜR KÜNFTIGE MISSIONEN','Raketenstufen müssen kontrolliert entsorgt und verfolgt werden.','deorbit'),
+          ]
+          def wrap(draw,text,font,maxw):
+              words=text.split(); lines=[]; line=''
+              for w in words:
+                  test=(line+' '+w).strip()
+                  if draw.textbbox((0,0),test,font=font)[2] <= maxw: line=test
+                  else:
+                      if line: lines.append(line)
+                      line=w
+              if line: lines.append(line)
+              return lines
+          for i,(head,desc,kind) in enumerate(scenes,1):
+              im=Image.new('RGB',(W,H),(7,13,28)); d=ImageDraw.Draw(im)
+              d.rounded_rectangle((55,70,1025,1850),radius=42,fill=(14,24,48),outline=(70,120,210),width=4)
+              d.text((90,110),f'{i}/7',font=sub,fill=(120,180,255))
+              y=230
+              for line in wrap(d,head,title,880):
+                  d.text((90,y),line,font=title,fill='white'); y+=88
+              y+=25
+              for line in wrap(d,desc,body,880):
+                  d.text((90,y),line,font=body,fill=(210,220,238)); y+=52
+              cy=1180
+              if kind=='rocket':
+                  d.rectangle((470,700,610,1320),fill=(220,225,235)); d.polygon([(470,700),(610,700),(540,570)],fill=(240,245,255)); d.rectangle((500,1320,540,1450),fill=(255,130,40)); d.rectangle((550,1320,590,1450),fill=(255,200,60)); d.ellipse((120,1210,960,2050),fill=(40,90,160),outline=(120,190,255),width=8)
+              elif kind=='satellite':
+                  d.rectangle((440,900,640,1080),fill=(220,220,225)); d.rectangle((180,880,420,1100),fill=(40,100,180)); d.rectangle((660,880,900,1100),fill=(40,100,180)); d.line((540,1080,540,1380),fill=(255,170,60),width=14); d.text((320,1420),'TREIBSTOFF: ZU WENIG',font=sub,fill=(255,180,90))
+              elif kind=='orbit':
+                  d.ellipse((100,930,430,1260),fill=(40,95,170)); d.ellipse((720,980,900,1160),fill=(190,190,195)); d.ellipse((360,780,940,1420),outline=(120,190,255),width=8); d.ellipse((520,920,570,970),fill=(255,170,60)); d.text((410,1460),'Bahn verändert sich',font=sub,fill=(120,190,255))
+              elif kind=='moon':
+                  d.ellipse((270,760,810,1300),fill=(190,190,195),outline=(240,240,245),width=5); d.ellipse((520,980,590,1050),fill=(120,120,125)); d.line((130,650,550,1010),fill=(255,120,70),width=10); d.ellipse((520,980,590,1050),outline=(255,200,80),width=8); d.text((305,1370),'Mondrückseite · Einstein-Krater',font=small,fill=(220,225,235))
+              elif kind=='scope':
+                  d.polygon([(250,1320),(500,760),(650,860),(400,1420)],fill=(190,195,205)); d.ellipse((470,720,700,950),outline=(120,190,255),width=16); d.line((610,835,850,680),fill=(255,220,120),width=10); d.ellipse((810,610,920,720),fill=(255,230,170)); d.text((315,1480),'Lichtblitz + Staubwolke',font=sub,fill=(255,210,110))
+              elif kind=='split':
+                  d.line((540,700,540,1500),fill=(120,160,220),width=6); d.text((130,760),'MISSIONSPLAN',font=sub,fill=(150,180,230)); d.text((665,760),'WELTRAUMSCHROTT',font=sub,fill=(255,170,100)); d.line((160,950,430,1220),fill=(255,90,90),width=18); d.line((430,950,160,1220),fill=(255,90,90),width=18); d.rectangle((680,930,820,1320),fill=(210,215,225)); d.polygon([(680,930),(820,930),(750,820)],fill=(235,240,245))
+              else:
+                  d.ellipse((140,980,430,1270),fill=(40,95,170)); d.path if False else None
+                  d.arc((300,760,900,1420),start=200,end=345,fill=(120,200,255),width=14); d.polygon([(820,1220),(910,1270),(830,1320)],fill=(120,200,255)); d.text((300,1450),'Kontrollierter Deorbit',font=sub,fill=(120,200,255))
+              d.text((90,1760),'TAYVORIQ · FALCON 9 OBERSTUFE',font=small,fill=(130,150,190))
+              im.save(out/'scenes'/f'scene-{i}.png',quality=95)
+          PY
+
+      - name: Render final 1080x1920 video
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          AUDIO=$(find out/falcon9-v4/audio -type f -name 'voice.mp3' | head -n1)
+          test -f "$AUDIO"
+          DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$AUDIO")
+          SCENE=$(python -c "print(float('$DURATION')/7.0)")
+          : > out/falcon9-v4/concat.txt
+          for f in out/falcon9-v4/scenes/scene-*.png; do
+            printf "file '%s'\nduration %s\n" "$(realpath "$f")" "$SCENE" >> out/falcon9-v4/concat.txt
+          done
+          printf "file '%s'\n" "$(realpath out/falcon9-v4/scenes/scene-7.png)" >> out/falcon9-v4/concat.txt
+          ffmpeg -y -f concat -safe 0 -i out/falcon9-v4/concat.txt -i "$AUDIO" \
+            -vf "fps=30,format=yuv420p" -c:v libx264 -preset medium -crf 20 \
+            -c:a aac -b:a 192k -shortest -movflags +faststart out/falcon9-v4/falcon9-quality-v4.mp4
+
+      - name: Hard quality gate
+        working-directory: implementation
+        id: gate
+        run: |
+          set -euo pipefail
+          V=out/falcon9-v4/falcon9-quality-v4.mp4
+          test -s "$V"
+          test $(stat -c%s "$V") -gt 1000000
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$V" | grep -q '^1080x1920$'
+          ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$V" | grep -q '^audio$'
+          test $(find out/falcon9-v4/scenes -name 'scene-*.png' | wc -l) -eq 7
+          cp "$V" ../falcon9-quality-v4.mp4
+          echo "bytes=$(stat -c%s ../falcon9-quality-v4.mp4)" >> "$GITHUB_OUTPUT"
+
+      - name: Send Telegram review
+        id: telegram
+        run: |
+          set -euo pipefail
+          MARKUP=$(python -c 'import json,os; r=os.environ["GITHUB_RUN_ID"]; print(json.dumps({"inline_keyboard":[[{"text":"✅ Freigeben","callback_data":f"approve:{r}"},{"text":"❌ Ablehnen","callback_data":f"reject:{r}"}]]},ensure_ascii=False))')
+          RESPONSE=$(curl --silent --show-error --fail-with-body -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" -F "video=@falcon9-quality-v4.mp4" -F "supports_streaming=true" \
+            -F $'caption=🚀 TAYVORIQ Falcon-9 Oberstufe · Qualitätsreview V4\n\nKlarer roter Faden: Satellit ausgesetzt → Treibstoff reichte nicht → jahrelange Bahn zwischen Erde und Mond → möglicher Einschlag → wissenschaftliche Beobachtung → kein geplantes SpaceX-Experiment.\n\n7 exakt passende Szenen · Chatterbox V3 · 1080×1920' \
+            -F "reply_markup=${MARKUP}")
+          printf '%s' "$RESPONSE" > telegram-response.json
+          python - <<'PY'
+          import json
+          d=json.load(open('telegram-response.json',encoding='utf-8'))
+          assert d.get('ok') is True, d
+          mid=d['result']['message_id']
+          open('telegram-message-id.txt','w').write(str(mid))
+          print(f'TELEGRAM_DELIVERED message_id={mid} callback_status=WAITING')
+          PY
+          echo "message_id=$(cat telegram-message-id.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: falcon9-direct-locked-v4-${{ github.run_id }}
+          path: |
+            falcon9-quality-v4.mp4
+            telegram-response.json
+            telegram-message-id.txt
+            implementation/out/falcon9-v4/voice-report.json
+            implementation/out/falcon9-v4/scenes/*.png
+          retention-days: 30
