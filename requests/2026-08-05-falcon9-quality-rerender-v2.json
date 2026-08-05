@@ -8,12 +8,16 @@
   "target_duration_seconds": 40,
   "trend_scope": "science_future",
   "topic": "Falcon-9-Oberstufe auf dem Weg zum Mond: Warum sie dort war und was Forschende beobachten wollten",
-  "status": "READY_FOR_PRODUCTION",
+  "status": "DISPATCHING",
   "approved_by": "human_chat_instruction",
   "replaces_review_id": "31024022990",
   "rejection": {
     "state": "REJECTED",
-    "reason_codes": ["STORY_LOGIC_BROKEN", "VISUAL_SEMANTIC_MISMATCH", "VOICE_UNNATURAL"],
+    "reason_codes": [
+      "STORY_LOGIC_BROKEN",
+      "VISUAL_SEMANTIC_MISMATCH",
+      "VOICE_UNNATURAL"
+    ],
     "reason_text": "Das bisherige Video erklärt den Ursprung und die Flugbahn der Oberstufe nicht verständlich. Zufällige Tier- und Landschaftsszenen sind verboten."
   },
   "editorial_contract": {
@@ -36,13 +40,74 @@
     "cta": "Sollten Raumfahrtfirmen alte Raketenstufen vollständig zurückholen müssen?"
   },
   "storyboard_contract": [
-    {"scene": 1, "speech": "Diese Falcon-9-Oberstufe wurde nicht absichtlich zum Mond geschickt.", "visual": "realistische Falcon-9-Trennung im Erdorbit; Oberstufe klar markiert", "forbidden": ["Tiere", "Landschaft", "beliebige Raketen"]},
-    {"scene": 2, "speech": "Sie brachte einen Satelliten in eine hohe Umlaufbahn und hatte danach zu wenig Treibstoff für die Rückkehr.", "visual": "Satellit wird aus Oberstufe ausgesetzt; verständliche Treibstoffanzeige", "forbidden": ["Mars", "Astronauten", "Startaufnahme ohne Zusammenhang"]},
-    {"scene": 3, "speech": "Darum blieb die Stufe jahrelang zwischen Erde und Mond.", "visual": "klare Erde-Mond-Animation mit markierter Oberstufe und wechselnder Flugbahn", "forbidden": ["generische Sternfelder", "Tiere", "Wälder"]},
-    {"scene": 4, "speech": "Die Schwerkraft veränderte ihre Bahn bis zu einem möglichen Einschlag nahe dem Einstein-Krater.", "visual": "physikalisch plausible Flugbahn zur Mondrückseite und beschriftete Mondkarte", "forbidden": ["falscher Krater", "Erdeinschlag", "Atmosphären-Wiedereintritt"]},
-    {"scene": 5, "speech": "Forschende wollten Lichtblitz und Staubwolke beobachten.", "visual": "Teleskopobservatorium, danach plausible Mondoberflächen-Simulation von Blitz und Ejekta", "forbidden": ["Explosion in Erdatmosphäre", "Actionfilm-Effekt"]},
-    {"scene": 6, "speech": "Es war kein geplantes Experiment, sondern beobachteter Weltraumschrott.", "visual": "Split-Grafik: kein Missionsplan versus ausgediente Stufe; eindeutige Erklärung", "forbidden": ["SpaceX-Logo als Schuldbehauptung", "beliebige Stockbilder"]},
-    {"scene": 7, "speech": "Künftige Raketenstufen müssen kontrolliert entsorgt und verfolgt werden.", "visual": "kontrollierter Deorbit und Tracking-Netzwerk als verständliche Schlussgrafik", "forbidden": ["Tiere", "Naturaufnahmen", "unverbundene Montage"]}
+    {
+      "scene": 1,
+      "speech": "Diese Falcon-9-Oberstufe wurde nicht absichtlich zum Mond geschickt.",
+      "visual": "realistische Falcon-9-Trennung im Erdorbit; Oberstufe klar markiert",
+      "forbidden": [
+        "Tiere",
+        "Landschaft",
+        "beliebige Raketen"
+      ]
+    },
+    {
+      "scene": 2,
+      "speech": "Sie brachte einen Satelliten in eine hohe Umlaufbahn und hatte danach zu wenig Treibstoff für die Rückkehr.",
+      "visual": "Satellit wird aus Oberstufe ausgesetzt; verständliche Treibstoffanzeige",
+      "forbidden": [
+        "Mars",
+        "Astronauten",
+        "Startaufnahme ohne Zusammenhang"
+      ]
+    },
+    {
+      "scene": 3,
+      "speech": "Darum blieb die Stufe jahrelang zwischen Erde und Mond.",
+      "visual": "klare Erde-Mond-Animation mit markierter Oberstufe und wechselnder Flugbahn",
+      "forbidden": [
+        "generische Sternfelder",
+        "Tiere",
+        "Wälder"
+      ]
+    },
+    {
+      "scene": 4,
+      "speech": "Die Schwerkraft veränderte ihre Bahn bis zu einem möglichen Einschlag nahe dem Einstein-Krater.",
+      "visual": "physikalisch plausible Flugbahn zur Mondrückseite und beschriftete Mondkarte",
+      "forbidden": [
+        "falscher Krater",
+        "Erdeinschlag",
+        "Atmosphären-Wiedereintritt"
+      ]
+    },
+    {
+      "scene": 5,
+      "speech": "Forschende wollten Lichtblitz und Staubwolke beobachten.",
+      "visual": "Teleskopobservatorium, danach plausible Mondoberflächen-Simulation von Blitz und Ejekta",
+      "forbidden": [
+        "Explosion in Erdatmosphäre",
+        "Actionfilm-Effekt"
+      ]
+    },
+    {
+      "scene": 6,
+      "speech": "Es war kein geplantes Experiment, sondern beobachteter Weltraumschrott.",
+      "visual": "Split-Grafik: kein Missionsplan versus ausgediente Stufe; eindeutige Erklärung",
+      "forbidden": [
+        "SpaceX-Logo als Schuldbehauptung",
+        "beliebige Stockbilder"
+      ]
+    },
+    {
+      "scene": 7,
+      "speech": "Künftige Raketenstufen müssen kontrolliert entsorgt und verfolgt werden.",
+      "visual": "kontrollierter Deorbit und Tracking-Netzwerk als verständliche Schlussgrafik",
+      "forbidden": [
+        "Tiere",
+        "Naturaufnahmen",
+        "unverbundene Montage"
+      ]
+    }
   ],
   "voice": {
     "provider_required": "chatterbox_multilingual_v3",
@@ -51,7 +116,10 @@
     "pitch": "medium_low",
     "pace": "calm_dynamic",
     "pause_after_each_scene_ms": 250,
-    "pronunciation": {"Falcon 9": "Falcon Nine", "Einstein-Krater": "Einstein Krater"}
+    "pronunciation": {
+      "Falcon 9": "Falcon Nine",
+      "Einstein-Krater": "Einstein Krater"
+    }
   },
   "visual_contract": {
     "quality": "premium",
@@ -74,11 +142,25 @@
     "audio_present": true,
     "final_mp4_playable": true,
     "human_review_required": true,
-    "telegram_buttons": ["Freigeben", "Ablehnen"]
+    "telegram_buttons": [
+      "Freigeben",
+      "Ablehnen"
+    ]
   },
   "sources": [
-    {"url": "https://arxiv.org/abs/2607.14625", "role": "scientific_primary"},
-    {"url": "https://arxiv.org/abs/2607.23904", "role": "scientific_primary"},
-    {"url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision", "role": "current_reporting"}
-  ]
+    {
+      "url": "https://arxiv.org/abs/2607.14625",
+      "role": "scientific_primary"
+    },
+    {
+      "url": "https://arxiv.org/abs/2607.23904",
+      "role": "scientific_primary"
+    },
+    {
+      "url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision",
+      "role": "current_reporting"
+    }
+  ],
+  "dispatch_claimed_at": "2026-08-05T18:24:33.104364+00:00",
+  "dispatch_claim_run_id": 31034573545
 }
