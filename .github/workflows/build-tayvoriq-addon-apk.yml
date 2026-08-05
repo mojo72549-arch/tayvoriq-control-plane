@@ -1,0 +1,66 @@
+name: Build TAYVORIQ Android APK
+
+on:
+  push:
+    branches:
+      - minecraft-addon-apk-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+
+      - name: Unpack Android project
+        run: |
+          rm -rf build-work
+          mkdir build-work
+          unzip -q build-input/TAYVORIQ_Android_Build_Input.zip -d build-work
+          find build-work -maxdepth 3 -type f | sort
+
+      - name: Build free debug APK
+        working-directory: build-work/tayvoriq-build-input
+        run: gradle --no-daemon --stacktrace :app:assembleFreeDebug
+
+      - name: Verify and prepare APK
+        run: |
+          APK="build-work/tayvoriq-build-input/app/build/outputs/apk/free/debug/app-free-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p delivery
+          cp "$APK" delivery/TAYVORIQ_Addon_Manager_Free_Test_v1.1.apk
+          sha256sum delivery/TAYVORIQ_Addon_Manager_Free_Test_v1.1.apk > delivery/SHA256SUMS.txt
+          ls -lh delivery/
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TAYVORIQ-Addon-Manager-Free-Test-APK
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 7
