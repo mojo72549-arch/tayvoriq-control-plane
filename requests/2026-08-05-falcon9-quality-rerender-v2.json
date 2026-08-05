@@ -1,99 +1,84 @@
 {
-  "request_id": "2026-08-05-falcon9-quality-rerender-v2",
-  "created_at": "2026-08-05T16:30:00+02:00",
+  "request_id": "2026-08-05-falcon9-quality-rerender-v3",
+  "created_at": "2026-08-05T19:10:00+02:00",
   "language": "de",
   "target_platform": "youtube_tiktok",
   "format": "short_vertical",
   "aspect_ratio": "9:16",
-  "target_duration_seconds": 35,
+  "target_duration_seconds": 40,
   "trend_scope": "science_future",
-  "topic": "Falcon-9-Weltraumschrott trifft den Mond: Was genau passieren sollte und warum Forschende den Einschlag beobachten wollten",
-  "status": "DISPATCHED",
+  "topic": "Falcon-9-Oberstufe auf dem Weg zum Mond: Warum sie dort war und was Forschende beobachten wollten",
+  "status": "PENDING",
   "approved_by": "human_chat_instruction",
-  "replaces_review_id": "falcon9-30999526843",
+  "replaces_review_id": "31024022990",
   "rejection": {
     "state": "REJECTED",
-    "reason_codes": [
-      "CONTENT_UNCLEAR",
-      "VOICE_UNNATURAL",
-      "VISUAL_QUALITY_LOW"
-    ],
-    "reason_text": "Der Vorgang und wissenschaftliche Zweck werden nicht verständlich erklärt; Sprache und Bildqualität reichen nicht für TAYVORIQ. Keine Veröffentlichung."
+    "reason_codes": ["STORY_LOGIC_BROKEN", "VISUAL_SEMANTIC_MISMATCH", "VOICE_UNNATURAL"],
+    "reason_text": "Das bisherige Video erklärt den Ursprung und die Flugbahn der Oberstufe nicht verständlich. Zufällige Tier- und Landschaftsszenen sind verboten."
   },
   "editorial_contract": {
-    "hook": "Vier Tonnen Raketenschrott auf Kollisionskurs mit dem Mond – aber warum warten Forschende genau auf diesen Einschlag?",
-    "what_happened": "Eine vier Tonnen schwere, ausgediente Falcon-9-Oberstufe sollte unkontrolliert nahe dem Einstein-Krater auf dem Mond einschlagen.",
-    "why_happening": "Teleskope sollten Lichtblitz und Staubwolke messen, um Einschlagsphysik und Mondmaterial zu untersuchen.",
-    "who_is_affected": "Das betrifft Mondforscher, Missionsplaner und Raumfahrtfirmen.",
-    "personal_impact": "Der Fall zeigt: Weltraumschrott erreicht auch den Mondraum.",
-    "action_now": "Entscheidend sind bestätigte Beobachtungen, nicht nur die Prognose.",
-    "cta": "Sollten Raumfahrtfirmen für Weltraumschrott im Mondraum haften?",
+    "locked_script": [
+      "Diese Falcon-9-Oberstufe wurde nicht absichtlich zum Mond geschickt.",
+      "Sie hatte zuvor einen Satelliten in eine sehr hohe Umlaufbahn gebracht. Danach reichte ihr Treibstoff nicht mehr für eine kontrollierte Rückkehr zur Erde.",
+      "Darum blieb die ausgediente Stufe jahrelang im Raum zwischen Erde und Mond. Die Schwerkraft beider Himmelskörper veränderte ihre Bahn immer weiter.",
+      "Berechnungen zeigten schließlich einen möglichen Einschlag auf der Mondrückseite nahe dem Einstein-Krater.",
+      "Forschende wollten das unvermeidbare Ereignis mit Teleskopen beobachten. Lichtblitz und Staubwolke könnten zeigen, wie Material bei einem Einschlag ausgeworfen wird.",
+      "Wichtig ist: Das war kein geplantes SpaceX-Experiment, sondern die Beobachtung eines alten Stücks Weltraumschrott.",
+      "Der Fall zeigt, warum Raketenstufen künftig kontrolliert entsorgt und dauerhaft verfolgt werden müssen."
+    ],
     "must_explain": [
-      "Es handelt sich um eine ausgediente Oberstufe, nicht um eine aktive Falcon-9-Mission.",
-      "Der Einschlag war prognostiziert und nicht als wissenschaftliches Experiment gestartet worden.",
-      "Forschende wollten das unvermeidbare Ereignis beobachten, um Daten über Blitz, Staubwolke und Mondmaterial zu gewinnen.",
-      "Eine Prognose darf nicht als bestätigte Beobachtung dargestellt werden."
-    ]
+      "Die Oberstufe transportierte ursprünglich einen Satelliten und hatte danach zu wenig Treibstoff für einen kontrollierten Deorbit.",
+      "Sie wurde nicht absichtlich zum Mond geschickt.",
+      "Ihre Bahn wurde durch die Gravitation von Erde, Mond und Sonne verändert.",
+      "Forschende wollten einen ohnehin erwarteten Einschlag beobachten, nicht ihn auslösen.",
+      "Prognose und bestätigte Beobachtung müssen sprachlich getrennt bleiben."
+    ],
+    "cta": "Sollten Raumfahrtfirmen alte Raketenstufen vollständig zurückholen müssen?"
   },
+  "storyboard_contract": [
+    {"scene": 1, "speech": "Diese Falcon-9-Oberstufe wurde nicht absichtlich zum Mond geschickt.", "visual": "realistische Falcon-9-Trennung im Erdorbit; Oberstufe klar markiert", "forbidden": ["Tiere", "Landschaft", "beliebige Raketen"]},
+    {"scene": 2, "speech": "Sie brachte einen Satelliten in eine hohe Umlaufbahn und hatte danach zu wenig Treibstoff für die Rückkehr.", "visual": "Satellit wird aus Oberstufe ausgesetzt; verständliche Treibstoffanzeige", "forbidden": ["Mars", "Astronauten", "Startaufnahme ohne Zusammenhang"]},
+    {"scene": 3, "speech": "Darum blieb die Stufe jahrelang zwischen Erde und Mond.", "visual": "klare Erde-Mond-Animation mit markierter Oberstufe und wechselnder Flugbahn", "forbidden": ["generische Sternfelder", "Tiere", "Wälder"]},
+    {"scene": 4, "speech": "Die Schwerkraft veränderte ihre Bahn bis zu einem möglichen Einschlag nahe dem Einstein-Krater.", "visual": "physikalisch plausible Flugbahn zur Mondrückseite und beschriftete Mondkarte", "forbidden": ["falscher Krater", "Erdeinschlag", "Atmosphären-Wiedereintritt"]},
+    {"scene": 5, "speech": "Forschende wollten Lichtblitz und Staubwolke beobachten.", "visual": "Teleskopobservatorium, danach plausible Mondoberflächen-Simulation von Blitz und Ejekta", "forbidden": ["Explosion in Erdatmosphäre", "Actionfilm-Effekt"]},
+    {"scene": 6, "speech": "Es war kein geplantes Experiment, sondern beobachteter Weltraumschrott.", "visual": "Split-Grafik: kein Missionsplan versus ausgediente Stufe; eindeutige Erklärung", "forbidden": ["SpaceX-Logo als Schuldbehauptung", "beliebige Stockbilder"]},
+    {"scene": 7, "speech": "Künftige Raketenstufen müssen kontrolliert entsorgt und verfolgt werden.", "visual": "kontrollierter Deorbit und Tracking-Netzwerk als verständliche Schlussgrafik", "forbidden": ["Tiere", "Naturaufnahmen", "unverbundene Montage"]}
+  ],
   "voice": {
     "provider_required": "chatterbox_multilingual_v3",
     "fallback_allowed": false,
     "style": "natural_documentary_storyteller",
     "pitch": "medium_low",
     "pace": "calm_dynamic",
-    "pronunciation": {
-      "Falcon 9": "Falcon Nine",
-      "Einstein-Krater": "Einstein Krater"
-    }
+    "pause_after_each_scene_ms": 250,
+    "pronunciation": {"Falcon 9": "Falcon Nine", "Einstein-Krater": "Einstein Krater"}
   },
   "visual_contract": {
     "quality": "premium",
     "resolution": "1080x1920",
-    "minimum_unique_scenes": 6,
+    "minimum_unique_scenes": 7,
     "scene_match_required": true,
+    "semantic_similarity_minimum": 0.9,
     "reject_generic_space_montage": true,
+    "reject_animals": true,
+    "reject_unrelated_landscapes": true,
     "reject_single_raw_scene": true,
-    "reject_corrupt_or_silent_final_mp4": true,
-    "no_overlay": [
-      "Trendcheck"
-    ],
-    "required_sequence": [
-      "ausgediente Falcon-9-Oberstufe im Erde-Mond-Raum",
-      "Flugbahn zum Mond als klare Animation",
-      "Einstein-Krater auf realistischer Mondkarte",
-      "Teleskopbeobachtung des erwarteten Lichtblitzes",
-      "physikalisch plausible Staubwolke und ausgeworfenes Material",
-      "Einordnung Weltraumschrott und künftige Mondmissionen"
-    ]
+    "reject_corrupt_or_silent_final_mp4": true
   },
   "quality_gates": {
-    "script_contract_before_render": true,
+    "story_logic_pass_required": true,
+    "script_locked": true,
+    "storyboard_complete_before_render": true,
+    "every_scene_matches_spoken_sentence": true,
     "voice_provider_must_match": true,
     "audio_present": true,
     "final_mp4_playable": true,
-    "visual_semantic_match": true,
     "human_review_required": true,
-    "telegram_buttons": [
-      "Freigeben",
-      "Ablehnen"
-    ]
+    "telegram_buttons": ["Freigeben", "Ablehnen"]
   },
   "sources": [
-    {
-      "url": "https://arxiv.org/abs/2607.14625",
-      "role": "scientific_primary"
-    },
-    {
-      "url": "https://arxiv.org/abs/2607.23904",
-      "role": "scientific_primary"
-    },
-    {
-      "url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision",
-      "role": "current_reporting"
-    }
-  ],
-  "dispatch_claimed_at": "2026-08-05T14:32:41.461212+00:00",
-  "dispatch_claim_run_id": 31015726205,
-  "golden_path_run_id": 31015741380,
-  "dispatched_at": "2026-08-05T14:32:51.236927+00:00"
+    {"url": "https://arxiv.org/abs/2607.14625", "role": "scientific_primary"},
+    {"url": "https://arxiv.org/abs/2607.23904", "role": "scientific_primary"},
+    {"url": "https://www.axios.com/2026/08/04/spacex-rocket-moon-collision", "role": "current_reporting"}
+  ]
 }
