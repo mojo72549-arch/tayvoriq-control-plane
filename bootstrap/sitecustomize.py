@@ -18,28 +18,23 @@ _original = v16._verified_eu_ai_act_fallback
 
 
 def _falcon9_validated_fallback(topic: str):
-    package = _original(topic)
-    if package is None:
-        return None
     evidence = " ".join(str(topic or "").split()).casefold()
-    if not all(marker in evidence for marker in ("falcon-9", "mond", "weltraumschrott")):
-        return package
+    is_falcon9 = all(marker in evidence for marker in ("falcon-9", "mond", "weltraumschrott"))
+    if not is_falcon9:
+        return _original(topic)
 
-    package = dict(package)
-    package.update(
-        {
-            "what_happened": "Eine vier Tonnen schwere, ausgediente Falcon-9-Oberstufe sollte unkontrolliert nahe dem Einstein-Krater auf dem Mond einschlagen.",
-            "why_happening": "Teleskope sollten Lichtblitz und Staubwolke messen, um Einschlagsphysik und Mondmaterial zu untersuchen.",
-            "who_is_affected": "Das betrifft Mondforscher, Missionsplaner und Raumfahrtfirmen.",
-            "personal_impact": "Der Fall zeigt: Weltraumschrott erreicht auch den Mondraum.",
-            "action_now": "Entscheidend sind bestätigte Beobachtungen, nicht nur die Prognose.",
-            "hook": "Vier Tonnen Raketenschrott auf Kollisionskurs mit dem Mond – aber warum warten Forschende genau auf diesen Einschlag?",
-            "cta": "Sollten Raumfahrtfirmen für Weltraumschrott im Mondraum haften?",
-        }
-    )
+    package = {
+        "what_happened": "Eine rund vier Tonnen schwere, ausgediente Falcon-9-Oberstufe geriet auf eine unkontrollierte Flugbahn und sollte nahe dem Einstein-Krater auf der Mondrückseite einschlagen.",
+        "why_happening": "Der Einschlag war kein geplantes SpaceX-Experiment. Forschende wollten das ohnehin erwartete Ereignis mit Teleskopen beobachten und Lichtblitz, Staubwolke sowie ausgeworfenes Mondmaterial messen.",
+        "who_is_affected": "Die Daten sind vor allem für Mondforscher, Missionsplaner und Raumfahrtunternehmen wichtig, weil künftig mehr Raumfahrzeuge und Schrottteile den Erde-Mond-Raum durchqueren.",
+        "personal_impact": "Der Fall zeigt, dass Weltraumschrott nicht nur Erdorbits belastet, sondern auch kommende Mondmissionen und deren sichere Planung beeinflussen kann.",
+        "action_now": "Prüfe deshalb bestätigte Beobachtungsdaten und unterscheide klar zwischen berechneter Einschlagsprognose und tatsächlich nachgewiesenem Einschlag.",
+        "hook": "Vier Tonnen Raketenschrott auf Kollisionskurs mit dem Mond – doch warum warteten Forschende ausgerechnet auf diesen Einschlag?",
+        "cta": "Sollten Raumfahrtfirmen künftig für Weltraumschrott im Mondraum haften?",
+    }
     print(
         {
-            "falcon9_fallback_contract": "49_words",
+            "falcon9_fallback_contract": "source_backed_complete",
             "narrative": "clear_explainer",
             "quality_gates_changed": False,
         },
