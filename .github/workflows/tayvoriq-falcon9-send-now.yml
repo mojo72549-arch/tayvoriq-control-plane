@@ -1,0 +1,151 @@
+name: TAYVORIQ Falcon-9 Send Now
+
+on:
+  push:
+    paths:
+      - .github/workflows/tayvoriq-falcon9-send-now.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: tayvoriq-falcon9-send-now
+  cancel-in-progress: true
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE_RUN_ID: "31024022990"
+      SOURCE_ARTIFACT: "falcon9-recovery-v2-31024022990"
+      REVIEW_ID: "31024022990"
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download completed render
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SOURCE_ARTIFACT }}
+          path: recovered
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: mojo72549-arch/tayvoriq-control-plane
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Select validated final video
+        id: media
+        shell: bash
+        run: |
+          set -euo pipefail
+          VIDEO=$(find recovered -type f -path '*/youtube_shorts/short.mp4' -size +250k | head -n1)
+          test -n "$VIDEO"
+          test -f "$VIDEO"
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_type -of csv=p=0 "$VIDEO" | grep -qx video
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "$VIDEO" | grep -qx audio
+          WIDTH=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$VIDEO")
+          HEIGHT=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$VIDEO")
+          DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$VIDEO")
+          SIZE=$(stat -c%s "$VIDEO")
+          test "$WIDTH" = "1080"
+          test "$HEIGHT" = "1920"
+          test "$SIZE" -lt 50000000
+          python - "$DURATION" <<'PY'
+          import sys
+          d=float(sys.argv[1])
+          assert 25 <= d <= 65, d
+          PY
+          cp "$VIDEO" falcon9-final.mp4
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "duration=$DURATION" >> "$GITHUB_OUTPUT"
+          echo "Validated: ${WIDTH}x${HEIGHT}, ${DURATION}s, ${SIZE} bytes"
+
+      - name: Send Telegram review with callbacks
+        id: review
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          MARKUP=$(python - <<'PY'
+          import json, os
+          rid=os.environ['REVIEW_ID']
+          print(json.dumps({'inline_keyboard':[[
+            {'text':'✅ Trend freigeben','callback_data':f'approve:{rid}'},
+            {'text':'❌ Ablehnen','callback_data':f'reject:{rid}'}
+          ],[
+            {'text':'🔎 Review öffnen','url':f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{rid}/'}
+          ]]}, ensure_ascii=False))
+          PY
+          )
+          RESPONSE=$(curl --silent --show-error --fail-with-body \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@falcon9-final.mp4" \
+            -F "supports_streaming=true" \
+            -F $'caption=🚀 TAYVORIQ Falcon-9 Review\n\nDas neue Qualitätsvideo ist fertig. Es erklärt verständlich, was mit der ausgedienten Oberstufe geschah, warum Forschende den Mondeinschlag beobachteten und was Weltraumschrott für künftige Mondmissionen bedeutet.\n\nBitte freigeben oder ablehnen.' \
+            -F "reply_markup=${MARKUP}")
+          echo "$RESPONSE" > telegram-review-response.json
+          MESSAGE_ID=$(python - <<'PY'
+          import json
+          d=json.load(open('telegram-review-response.json',encoding='utf-8'))
+          assert d.get('ok') is True, d
+          print(d['result']['message_id'])
+          PY
+          )
+          test -n "$MESSAGE_ID"
+          echo "message_id=$MESSAGE_ID" >> "$GITHUB_OUTPUT"
+          echo "TELEGRAM_REVIEW_DELIVERED message_id=$MESSAGE_ID callback_status=WAITING"
+
+      - name: Send TikTok copy and caption
+        id: tiktok
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl --silent --show-error --fail-with-body \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@falcon9-final.mp4" \
+            -F "supports_streaming=true" \
+            -F $'caption=📱 TikTok-Datei\n\nEine ausgediente Falcon-9-Oberstufe traf den Mond. Warum Forschende den Einschlag beobachteten – und was Weltraumschrott für kommende Mondmissionen bedeutet.\n\n#Falcon9 #SpaceX #Mond #Weltraum #TAYVORIQ')
+          echo "$RESPONSE" > telegram-tiktok-response.json
+          MESSAGE_ID=$(python - <<'PY'
+          import json
+          d=json.load(open('telegram-tiktok-response.json',encoding='utf-8'))
+          assert d.get('ok') is True, d
+          print(d['result']['message_id'])
+          PY
+          )
+          echo "message_id=$MESSAGE_ID" >> "$GITHUB_OUTPUT"
+          echo "TELEGRAM_TIKTOK_DELIVERED message_id=$MESSAGE_ID"
+
+      - name: Persist delivery proof
+        run: |
+          python - <<'PY'
+          import json
+          data={
+            'source_run_id': 31024022990,
+            'source_artifact_id': 8938576705,
+            'telegram_review_message_id': int('${{ steps.review.outputs.message_id }}'),
+            'telegram_tiktok_message_id': int('${{ steps.tiktok.outputs.message_id }}'),
+            'callback_status': 'WAITING',
+            'video_bytes': int('${{ steps.media.outputs.size }}'),
+            'duration_seconds': float('${{ steps.media.outputs.duration }}')
+          }
+          open('delivery-proof.json','w',encoding='utf-8').write(json.dumps(data,ensure_ascii=False,indent=2))
+          print(json.dumps(data,ensure_ascii=False))
+          PY
+
+      - name: Upload delivery proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: falcon9-send-now-${{ github.run_id }}
+          path: |
+            delivery-proof.json
+            telegram-review-response.json
+            telegram-tiktok-response.json
+          retention-days: 14
