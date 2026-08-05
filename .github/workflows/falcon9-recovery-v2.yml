@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - .github/workflows/falcon9-recovery-v2.yml
+      - bootstrap/sitecustomize.py
   workflow_dispatch:
 
 permissions:
@@ -19,12 +20,22 @@ env:
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
   TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
-  TAYVORIQ_TTS_PROVIDER: "edge_tts"
-  TAYVORIQ_CHATTERBOX_ENABLED: "false"
+  TAYVORIQ_TTS_PROVIDER: "auto"
+  TAYVORIQ_CHATTERBOX_ENABLED: "true"
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: "v3"
+  TAYVORIQ_CHATTERBOX_LANGUAGE: "de"
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: "300"
+  TAYVORIQ_CHATTERBOX_CPU_THREADS: "4"
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.46"
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.34"
+  TAYVORIQ_CHATTERBOX_PAUSE_MS: "220"
   TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1200"
   TAYVORIQ_TELEGRAM_PROGRESS: "false"
+  HF_HOME: ${{ github.workspace }}/.cache/huggingface
+  TORCH_HOME: ${{ github.workspace }}/.cache/torch
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
   PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -32,7 +43,7 @@ env:
 jobs:
   recover-render-deliver:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -62,27 +73,33 @@ jobs:
           cache: pip
           cache-dependency-path: implementation/requirements.txt
 
-      - name: Install production dependencies
+      - name: Install production dependencies and Chatterbox V3
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y ffmpeg rsync git
           python -m pip install --upgrade pip
           python -m pip install -r implementation/requirements.txt pytest
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0"
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"
 
-      - name: Verify Falcon-9 runtime route
+      - name: Verify Falcon-9 editorial and voice routes
         working-directory: implementation
         run: |
           set -euo pipefail
           python - <<'PY'
+          import inspect
           import sitecustomize
           import tayvoriq_dual_platform_render_v16 as v16
-          topic = "Falcon-9-Weltraumschrott trifft den Mond: Was der Einschlag über die neue Raumfahrt-Ära zeigt"
+          from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+          topic = "Falcon-9-Weltraumschrott trifft den Mond: Was genau passieren sollte und warum Forschende den Einschlag beobachten wollten"
           package = v16._verified_eu_ai_act_fallback(topic)
           assert package is not None, "Falcon-9 fallback route was not installed"
           issues, normalized = v16.v11.validate_rewrite_v11(package, 35, "youtube_tiktok")
           assert not issues, issues
-          print({"falcon9_route": "passed", "body_words": normalized.get("editorial_body_words")})
+          signature = inspect.signature(ChatterboxMultilingualTTS.from_pretrained)
+          assert "t3_model" in signature.parameters, signature
+          print({"falcon9_route": "passed", "body_words": normalized.get("editorial_body_words"), "voice": "chatterbox_multilingual_v3"})
           PY
 
       - name: Render Falcon-9 video
@@ -93,7 +110,7 @@ jobs:
           python tools/tayvoriq_autonomous_entrypoint.py \
             --trend-mode manual_topic \
             --trend-scope science_future \
-            --topic "Falcon-9-Weltraumschrott trifft den Mond: Was der Einschlag über die neue Raumfahrt-Ära zeigt" \
+            --topic "Falcon-9-Weltraumschrott trifft den Mond: Was genau passieren sollte und warum Forschende den Einschlag beobachten wollten" \
             --language Deutsch \
             --platform youtube_tiktok \
             --target-duration 35 \
