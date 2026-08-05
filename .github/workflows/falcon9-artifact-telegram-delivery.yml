@@ -1,0 +1,97 @@
+name: TAYVORIQ Falcon-9 Artifact Telegram Delivery
+
+on:
+  push:
+    paths:
+      - .github/workflows/falcon9-artifact-telegram-delivery.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deliver-existing-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      SOURCE_RUN_ID: "30999526843"
+      REVIEW_ID: "falcon9-30999526843"
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Download existing Falcon-9 production artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: falcon9-recovery-v2-30999526843
+          path: recovered
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: mojo72549-arch/tayvoriq-control-plane
+          run-id: 30999526843
+
+      - name: Select rendered Falcon-9 video
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+          find recovered -type f -name '*.mp4' -printf '%s %p\n' | sort -nr | tee mp4-files.txt
+          VIDEO=$(awk 'NR==1{$1=""; sub(/^ /,""); print}' mp4-files.txt)
+          test -n "$VIDEO"
+          test -f "$VIDEO"
+          SIZE=$(stat -c%s "$VIDEO")
+          test "$SIZE" -gt 250000
+          echo "video=$VIDEO" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "Selected: $VIDEO ($SIZE bytes)"
+
+      - name: Send video and approval buttons to Telegram
+        id: telegram
+        shell: bash
+        env:
+          VIDEO: ${{ steps.select.outputs.video }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          REPLY_MARKUP=$(python - <<'PY'
+          import json, os
+          rid=os.environ['REVIEW_ID']
+          print(json.dumps({"inline_keyboard":[[
+            {"text":"✅ Freigeben","callback_data":f"tayvoriq:approve:{rid}"},
+            {"text":"❌ Ablehnen","callback_data":f"tayvoriq:reject:{rid}"}
+          ],[
+            {"text":"🔧 Technische Details","url":f"https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/{os.environ['SOURCE_RUN_ID']}"}
+          ]]}, ensure_ascii=False))
+          PY
+          )
+          RESPONSE=$(curl --fail-with-body --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@${VIDEO}" \
+            -F "supports_streaming=true" \
+            -F "caption=🚀 TAYVORIQ Falcon-9 Review\n\nDas bereits gerenderte Falcon-9-Video ist bereit. Bitte direkt freigeben oder ablehnen." \
+            -F "reply_markup=${REPLY_MARKUP}")
+          echo "$RESPONSE" | python -m json.tool
+          OK=$(echo "$RESPONSE" | python -c 'import json,sys; print(str(bool(json.load(sys.stdin).get("ok"))).lower())')
+          test "$OK" = "true"
+          MESSAGE_ID=$(echo "$RESPONSE" | python -c 'import json,sys; print(json.load(sys.stdin)["result"]["message_id"])')
+          test -n "$MESSAGE_ID"
+          echo "message_id=$MESSAGE_ID" >> "$GITHUB_OUTPUT"
+          echo "Telegram-Zustellung bestätigt: message_id=$MESSAGE_ID callback_status=WAITING"
+
+      - name: Persist delivery evidence
+        run: |
+          printf '{"source_run_id":%s,"artifact_id":%s,"review_id":"%s","telegram_message_id":%s,"callback_status":"WAITING","video_bytes":%s}\n' \
+            "$SOURCE_RUN_ID" "8931630007" "$REVIEW_ID" "${{ steps.telegram.outputs.message_id }}" "${{ steps.select.outputs.size }}" \
+            > telegram-delivery-evidence.json
+          cat telegram-delivery-evidence.json
+
+      - name: Upload delivery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: falcon9-telegram-delivery-${{ github.run_id }}
+          path: telegram-delivery-evidence.json
+          retention-days: 7
