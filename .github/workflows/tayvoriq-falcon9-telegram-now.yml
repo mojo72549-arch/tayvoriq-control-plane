@@ -43,24 +43,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          YT=$(find recovered -type f -name 'youtube_shorts.mp4' | head -n1 || true)
-          TT=$(find recovered -type f -name 'tiktok.mp4' | head -n1 || true)
-          test -n "$YT"
-          test -f "$YT"
-          [ -n "$TT" ] || TT="$YT"
+          find recovered -type f -name '*.mp4' -printf '%s %p\n' | sort -nr | tee mp4-candidates.txt
+          SRC=''
+          while IFS= read -r LINE; do
+            CANDIDATE=${LINE#* }
+            case "$CANDIDATE" in */assets/*|*/short_silent.mp4) continue ;; esac
+            if ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$CANDIDATE" | grep -q '^video$' \
+              && ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$CANDIDATE" | grep -q '^audio$'; then
+              SRC="$CANDIDATE"
+              break
+            fi
+          done < mp4-candidates.txt
+          test -n "$SRC"
+          test -f "$SRC"
+          echo "Selected final source: $SRC"
 
-          for SPEC in "youtube:$YT" "tiktok:$TT"; do
-            NAME=${SPEC%%:*}
-            SRC=${SPEC#*:}
-            ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$SRC" | grep -q '^video$'
-            ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$SRC" | grep -q '^audio$'
-            ffmpeg -y -i "$SRC" -map 0:v:0 -map 0:a:0 -c:v libx264 -preset fast -crf 25 -maxrate 3500k -bufsize 7M -c:a aac -b:a 160k -movflags +faststart "${NAME}.mp4"
+          ffmpeg -y -i "$SRC" -map 0:v:0 -map 0:a:0 -c:v libx264 -preset fast -crf 25 -maxrate 3500k -bufsize 7M -c:a aac -b:a 160k -movflags +faststart youtube.mp4
+          cp youtube.mp4 tiktok.mp4
+
+          for NAME in youtube tiktok; do
             if [ $(stat -c%s "${NAME}.mp4") -ge 49000000 ]; then
               ffmpeg -y -i "${NAME}.mp4" -c:v libx264 -preset fast -crf 29 -maxrate 2200k -bufsize 4400k -c:a aac -b:a 128k -movflags +faststart "${NAME}-small.mp4"
               mv "${NAME}-small.mp4" "${NAME}.mp4"
             fi
             test $(stat -c%s "${NAME}.mp4") -gt 250000
             test $(stat -c%s "${NAME}.mp4") -lt 50000000
+            ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "${NAME}.mp4" | grep -q '^video$'
+            ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "${NAME}.mp4" | grep -q '^audio$'
           done
           echo "youtube_bytes=$(stat -c%s youtube.mp4)" >> "$GITHUB_OUTPUT"
           echo "tiktok_bytes=$(stat -c%s tiktok.mp4)" >> "$GITHUB_OUTPUT"
