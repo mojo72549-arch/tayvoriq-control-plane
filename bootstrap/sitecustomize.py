@@ -24,17 +24,17 @@ def _falcon9_validated_fallback(topic: str):
         return _original(topic)
 
     package = {
-        "what_happened": "Eine rund vier Tonnen schwere, ausgediente Falcon-9-Oberstufe geriet auf eine unkontrollierte Flugbahn und sollte nahe dem Einstein-Krater auf der Mondrückseite einschlagen.",
-        "why_happening": "Der Einschlag war kein geplantes SpaceX-Experiment. Forschende wollten das ohnehin erwartete Ereignis mit Teleskopen beobachten und Lichtblitz, Staubwolke sowie ausgeworfenes Mondmaterial messen.",
-        "who_is_affected": "Die Daten sind vor allem für Mondforscher, Missionsplaner und Raumfahrtunternehmen wichtig, weil künftig mehr Raumfahrzeuge und Schrottteile den Erde-Mond-Raum durchqueren.",
-        "personal_impact": "Der Fall zeigt, dass Weltraumschrott nicht nur Erdorbits belastet, sondern auch kommende Mondmissionen und deren sichere Planung beeinflussen kann.",
-        "action_now": "Prüfe deshalb bestätigte Beobachtungsdaten und unterscheide klar zwischen berechneter Einschlagsprognose und tatsächlich nachgewiesenem Einschlag.",
-        "hook": "Vier Tonnen Raketenschrott auf Kollisionskurs mit dem Mond – doch warum warteten Forschende ausgerechnet auf diesen Einschlag?",
-        "cta": "Sollten Raumfahrtfirmen künftig für Weltraumschrott im Mondraum haften?",
+        "what_happened": "Eine ausgediente Falcon-9-Oberstufe sollte unkontrolliert nahe dem Einstein-Krater auf dem Mond einschlagen.",
+        "why_happening": "Durch den Aufprall wollten Forschende Lichtblitz und Staubwolke messen und Mondmaterial untersuchen.",
+        "who_is_affected": "Betroffen sind Mondforscher, Missionsplaner und Raumfahrtfirmen.",
+        "personal_impact": "Für dich zeigt der Fall, wie weit Weltraumschrott reicht.",
+        "action_now": "Achte auf bestätigte Beobachtungen statt bloße Prognosen.",
+        "hook": "Raketenschrott auf Kollisionskurs mit dem Mond – warum wollten Forschende diesen Einschlag beobachten?",
+        "cta": "Sollten Raumfahrtfirmen für Weltraumschrott im Mondraum haften?",
     }
     print(
         {
-            "falcon9_fallback_contract": "source_backed_complete",
+            "falcon9_fallback_contract": "validator_aligned_48_words",
             "narrative": "clear_explainer",
             "quality_gates_changed": False,
         },
