@@ -1,0 +1,60 @@
+{
+  "request_id": "2026-08-05-1600-youtube-romania-danube-nuclear",
+  "created_at": "2026-08-05T09:15:00+02:00",
+  "approved_at": "2026-08-05T09:15:00+02:00",
+  "approved_by": "human_chat_instruction",
+  "language": "de",
+  "target_platform": "youtube",
+  "format": "youtube_short",
+  "aspect_ratio": "9:16",
+  "target_duration_seconds": 38,
+  "scheduled_release_at": "2026-08-05T16:00:00+02:00",
+  "trend_scope": "world_society",
+  "topic": "Rumänien sprengt einen Felsen in der Donau, um Kühlwasser zum Atomkraftwerk Cernavoda umzuleiten: Erkläre die extreme Dürre, den niedrigen Wasserstand, die kontrollierte Sprengung durch die Marine, die Bedeutung für die Reaktorkühlung und die europäische Energieversorgung. Keine Panikmache und nicht behaupten, dass nukleare Sicherheit verletzt wurde.",
+  "hook": "Rumänien hat einen Felsen in der Donau gesprengt – damit ein Atomkraftwerk weiter gekühlt werden kann.",
+  "core_value": "Die Donau führte wegen extremer Dürre historisch wenig Wasser. Rumänien entfernte kontrolliert einen Felsvorsprung und leitete zusätzlich Wasser Richtung Cernavoda, um die Kühlwasserversorgung des verbliebenen Reaktors zu verlängern. Das zeigt, wie Hitze und Dürre inzwischen direkt Energieversorgung und Industrie treffen.",
+  "cta": "Werden solche Notmaßnahmen durch den Klimawandel häufiger? Schreib deine Meinung und folge TAYVORIQ.",
+  "voice": {
+    "provider_primary": "chatterbox_multilingual_v3",
+    "provider_fallback": "edge_neural_tts",
+    "style": "warm_natural_documentary",
+    "pitch": "medium_low",
+    "pace": "calm_dynamic"
+  },
+  "visual_rules": {
+    "quality": "premium",
+    "resolution": "1080x1920",
+    "no_overlay": ["Trendcheck"],
+    "subtitles": "clear_burned_in",
+    "scene_match_required": true,
+    "no_fake_explosion_presented_as_real": true,
+    "preferred_visuals": ["Danube aerials", "controlled blast context", "Cernavoda exterior", "low water level", "European power grid"]
+  },
+  "sources": [
+    {
+      "title": "Romania races to divert Danube water as Hungary's Paks runs on last turbine",
+      "url": "https://www.reuters.com/business/energy/hungary-pm-says-last-turbine-paks-nuclear-plant-operating-safely-2026-08-04/",
+      "published": "2026-08-04",
+      "role": "current_reporting"
+    },
+    {
+      "title": "Low Danube river levels force Romania to shut down both of its nuclear power reactors",
+      "url": "https://www.reuters.com/business/energy/low-danube-river-levels-force-romania-shut-down-both-its-nuclear-power-reactors-2026-07-29/",
+      "published": "2026-07-29",
+      "role": "background"
+    },
+    {
+      "title": "Nuclearelectrica controlled shutdown notice for Unit 1",
+      "url": "https://m.bvb.ro/FinancialInstruments/SelectedData/NewsItem/SNN-Oprirea-controlata-a-Unitatii-1-CNE-Cernavoda/5327A",
+      "published": "2026-07-27",
+      "role": "official_primary"
+    }
+  ],
+  "review": {
+    "telegram_required": true,
+    "buttons": ["Freigeben", "Ablehnen"],
+    "verify_message_id": true,
+    "verify_callback": true
+  },
+  "status": "APPROVED"
+}
