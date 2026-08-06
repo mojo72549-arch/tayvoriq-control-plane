@@ -13,6 +13,11 @@ on:
         type: string
   repository_dispatch:
     types: [tayvoriq_trend_approved]
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-deliver-video-now.yml
+      - .github/run-now/tayvoriq-x-request.json
 
 permissions:
   contents: write
@@ -53,8 +58,8 @@ env:
   PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
-  TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
+  TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || 'KI-Boom kippt – warum Tech-Aktien plötzlich abstürzen' }}
+  TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '1' }}
 
 jobs:
   orchestrate:
@@ -73,15 +78,10 @@ jobs:
           for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY GROQ_API_KEY GEMINI_API_KEY; do
             test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
           done
-          send() {
-            local text="$1"
-            response=$(curl -fsS --retry 3 --retry-all-errors \
-              -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-              --data-urlencode "text=${text}")
-            python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print(d["result"]["message_id"])' "$response"
-          }
-          send "🚀 TAYVORIQ 10 %\nTrendfreigabe empfangen.\nThema: ${TOPIC:-Trend ${TREND_ID:-unbekannt}}\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Repository und Abhängigkeiten"
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=🚀 TAYVORIQ 10 %\nThema übernommen: ${TOPIC}\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Produktionsumgebung vorbereiten")
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print(d["result"]["message_id"])' "$response"
 
       - name: Checkout implementation
         uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
           python -m pip install -r implementation/requirements.txt pytest -q
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
           python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=⚙️ TAYVORIQ 20 %\nAbhängigkeiten installiert.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Preflight")
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=⚙️ TAYVORIQ 20 %\nProduktionsumgebung ist bereit.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Skript, Quellen und Preflight")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Preflight and notify 30 percent
@@ -126,7 +126,7 @@ jobs:
           set -euo pipefail
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=✅ TAYVORIQ 30 %\nPreflight erfolgreich.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Produktion mit Self-Heal")
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=📝 TAYVORIQ 30 %\nPreflight erfolgreich; Inhalt wird produziert.\nThema: ${TOPIC}\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Skript, Stimme, Szenen und Render")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Produce with automatic self-heal
@@ -140,9 +140,10 @@ jobs:
           final_exit=1
           for attempt in 1 2 3; do
             progress=$((35 + attempt * 10))
-            curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-              --data-urlencode "text=🛠 TAYVORIQ ${progress} %\nProduktionsversuch ${attempt}/3 gestartet.\nRun: ${GITHUB_RUN_ID}\nSelf-Heal-Tiefe: $((attempt-1))" >/dev/null
+              --data-urlencode "text=🎬 TAYVORIQ ${progress} %\nProduktionsversuch ${attempt}/3 läuft.\nAktuell: Skript, Chatterbox-Stimme, Szenen und Render.\nRun: ${GITHUB_RUN_ID}")
+            python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
             set +e
             python tools/tayvoriq_autonomous_entrypoint.py \
               --trend-mode approved_trend \
@@ -178,7 +179,7 @@ jobs:
             )
             curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-              --data-urlencode "text=⚠️ TAYVORIQ ${progress} %\nVersuch ${attempt}/3 fehlgeschlagen.\nFehler: ${reason}\nSelf-Heal wird automatisch fortgesetzt.\nRun: ${GITHUB_RUN_ID}" >/dev/null
+              --data-urlencode "text=⚠️ TAYVORIQ ${progress} %\nProduktionsversuch ${attempt}/3 fehlgeschlagen.\nFehler: ${reason}\nSelf-Heal startet automatisch den nächsten Versuch.\nRun: ${GITHUB_RUN_ID}" >/dev/null
           done
           echo "state=$final_state" >> "$GITHUB_OUTPUT"
           echo "process_exit=$final_exit" >> "$GITHUB_OUTPUT"
@@ -187,7 +188,7 @@ jobs:
       - name: Notify 75 percent
         if: steps.production.outcome == 'success'
         run: |
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=🎬 TAYVORIQ 75 %\nSkript, Voice und Szenen erzeugt.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Qualitätsprüfung")
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=🎞️ TAYVORIQ 75 %\nSkript, Stimme, Szenen und Video sind erzeugt.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Qualitätsprüfung")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Validate publication quality
@@ -203,7 +204,7 @@ jobs:
       - name: Notify 90 percent
         if: steps.publication_gate.outcome == 'success'
         run: |
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=🔍 TAYVORIQ 90 %\nQualitätsprüfung bestanden.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Review veröffentlichen")
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=🔍 TAYVORIQ 90 %\nQualitätsprüfung bestanden.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: YouTube/TikTok-Review veröffentlichen")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Publish review page
@@ -237,7 +238,7 @@ jobs:
             --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --review-id "${GITHUB_RUN_ID}" \
             --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=✅ TAYVORIQ 100 %\nVideo-Review erfolgreich ausgeliefert.\nRun: ${GITHUB_RUN_ID}")
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=✅ TAYVORIQ 100 %\nYouTube- und TikTok-Review wurden in Telegram ausgeliefert.\nRun: ${GITHUB_RUN_ID}")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print("telegram_message_id",d["result"]["message_id"])' "$response"
 
       - name: Notify final failure
@@ -254,7 +255,7 @@ jobs:
           )
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=❌ TAYVORIQ FEHLER\nAlle automatischen Reparaturversuche ausgeschöpft.\nFehler: ${reason}\nLetzter erfolgreicher Schritt: siehe vorherigen Prozentstand.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
+            --data-urlencode "text=❌ TAYVORIQ PRODUKTION FEHLGESCHLAGEN\nFehler: ${reason}\nAlle automatischen Reparaturversuche wurden ausgeführt.\nLetzter erfolgreicher Schritt: siehe vorherigen Prozentstand.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
 
       - name: Upload diagnostics
         if: always()
