@@ -35,14 +35,11 @@ jobs:
           TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN"
-          test -n "$CLOUDFLARE_ACCOUNT_ID"
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
-          test -n "$APPROVAL_GITHUB_TOKEN"
-          test -n "$TELEGRAM_WEBHOOK_SECRET"
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID APPROVAL_GITHUB_TOKEN TELEGRAM_WEBHOOK_SECRET; do
+            test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
+          done
 
-      - name: Notify Telegram 10 percent
+      - name: Notify repair started
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -50,7 +47,7 @@ jobs:
           set -euo pipefail
           response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=🛠 TAYVORIQ ORCHESTRATOR 10 %\nTelegram-Worker-Reparatur gestartet.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Worker bauen und deployen")
+            --data-urlencode "text=🔧 TAYVORIQ SYSTEMREPARATUR\nDer Telegram-Freigabepfad wird repariert.\nBedeutung für dein Video: Die Produktion ist noch nicht gestartet.\nZiel: Dein Freigabe-Klick muss anschließend automatisch den Video-X-Workflow starten.\nRun: ${GITHUB_RUN_ID}")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Install Wrangler
@@ -67,17 +64,6 @@ jobs:
           URL=$(grep -Eo 'https://[^ ]+\.workers\.dev' deploy.log | tail -1)
           test -n "$URL"
           echo "worker_url=$URL" >> "$GITHUB_OUTPUT"
-
-      - name: Notify Telegram 60 percent
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          set -euo pipefail
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=⚙️ TAYVORIQ ORCHESTRATOR 60 %\nTelegram-Worker erfolgreich deployed.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Secrets und Webhook verifizieren")
-          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Configure Worker secrets
         env:
@@ -127,7 +113,7 @@ jobs:
           print('Webhook active:', actual)
           PY
 
-      - name: Notify Telegram 100 percent
+      - name: Notify repair completed
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -135,10 +121,10 @@ jobs:
           set -euo pipefail
           response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=✅ TAYVORIQ ORCHESTRATOR 100 %\nTelegram-Worker und Webhook erfolgreich verifiziert.\nRun: ${GITHUB_RUN_ID}\nTrendfreigaben starten jetzt den X-Workflow mit automatischen Prozentständen.")
+            --data-urlencode "text=✅ TAYVORIQ SYSTEMREPARATUR ABGESCHLOSSEN\nDer Telegram-Freigabepfad ist wieder erreichbar.\nBedeutung für dein Video: Noch kein Video produziert. Der nächste gültige Freigabe-Klick startet den Video-X-Workflow.\nDanach erhältst du ausschließlich relevante Produktionsstände von 10 % bis 100 %.\nRun: ${GITHUB_RUN_ID}")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print("telegram_message_id",d["result"]["message_id"])' "$response"
 
-      - name: Notify Telegram failure
+      - name: Notify repair failure
         if: failure()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -146,9 +132,10 @@ jobs:
         run: |
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=❌ TAYVORIQ ORCHESTRATOR FEHLER\nTelegram-Worker-Reparatur fehlgeschlagen.\nRun: ${GITHUB_RUN_ID}\nLetzter erfolgreicher Schritt: siehe vorherigen Prozentstand.\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
+            --data-urlencode "text=❌ TAYVORIQ PRODUKTION BLOCKIERT\nDer Telegram-Freigabepfad konnte nicht repariert werden.\nBedeutung für dein Video: Die Produktion kann aktuell nicht automatisch starten.\nDer Self-Heal ist fehlgeschlagen.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: telegram-worker-deployment-${{ github.run_id }}
           path: |
