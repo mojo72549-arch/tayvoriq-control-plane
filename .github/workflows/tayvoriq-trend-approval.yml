@@ -1,128 +1,15 @@
-name: TAYVORIQ Trend Approval
+name: TAYVORIQ Trend Approval · Legacy deaktiviert
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "requests/*.json"
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: write
-
-concurrency:
-  group: tayvoriq-trend-approval
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  trend-approval:
+  legacy-disabled:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Process pending trend approval and Telegram callbacks
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
-          python - <<'PY'
-          import json, os, subprocess, urllib.parse, urllib.request
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          token=os.environ['TELEGRAM_BOT_TOKEN']; chat_id=str(os.environ['TELEGRAM_CHAT_ID'])
-          api=f'https://api.telegram.org/bot{token}'
-          state_path=Path('state/telegram-trend-approval.json')
-          state=json.loads(state_path.read_text(encoding='utf-8')) if state_path.exists() else {'offset':0}
-          changed=[]
-
-          def call(method, payload=None):
-              data=urllib.parse.urlencode(payload or {}).encode()
-              req=urllib.request.Request(f'{api}/{method}', data=data)
-              with urllib.request.urlopen(req, timeout=30) as r:
-                  out=json.loads(r.read().decode())
-              if not out.get('ok'): raise RuntimeError(f'{method} failed: {out}')
-              return out
-
-          def save_request(path, data):
-              path.write_text(json.dumps(data, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
-              changed.append(str(path))
-
-          # Send one pending approval request, verifying Telegram message_id.
-          pending=[]
-          for p in Path('requests').glob('*.json'):
-              try: d=json.loads(p.read_text(encoding='utf-8'))
-              except Exception: continue
-              if str(d.get('status','')).upper()=='AWAITING_TREND_APPROVAL': pending.append((p.stat().st_mtime,p,d))
-          if pending:
-              _,p,d=max(pending)
-              scores=d.get('score_breakdown') or {}
-              ranking=d.get('ranking') or []
-              rank_lines='\n'.join(f"{i+1}. {x.get('topic')} — {x.get('total_score')}%" for i,x in enumerate(ranking[:5]))
-              text=(f"🧠 TAYVORIQ Trendfreigabe\n\nGewählter Trend: {d.get('topic')}\nGesamtscore: {d.get('selection_score')}%\n"
-                    f"Aktualität {scores.get('recency')}% · Viralität {scores.get('viral_potential')}% · TAYVORIQ {scores.get('tayvoriq_fit')}% · Quellen {scores.get('source_quality')}% · Visuals {scores.get('visual_potential')}%\n\n"
-                    f"Rangliste:\n{rank_lines}\n\nHook: {d.get('hook')}\nCTA: {d.get('cta')}")
-              rid=str(d.get('request_id') or p.stem)
-              keyboard=json.dumps({'inline_keyboard':[[
-                  {'text':'✅ Trend freigeben','callback_data':f'trend_approve:{rid}'},
-                  {'text':'❌ Ablehnen','callback_data':f'trend_reject:{rid}'}
-              ]]}, ensure_ascii=False)
-              res=call('sendMessage', {'chat_id':chat_id,'text':text,'reply_markup':keyboard,'disable_web_page_preview':'true'})
-              mid=(res.get('result') or {}).get('message_id')
-              if not mid: raise RuntimeError(f'Telegram response without message_id: {res}')
-              d['status']='TREND_APPROVAL_SENT'; d['telegram_message_id']=mid; d['telegram_sent_at']=datetime.now(timezone.utc).isoformat(); d['callback_status']='WAITING'
-              save_request(p,d)
-
-          # Poll callback/text updates. Works only when no Telegram webhook is active.
-          updates=call('getUpdates', {'offset':int(state.get('offset',0)),'timeout':0,'allowed_updates':json.dumps(['callback_query','message'])}).get('result',[])
-          for u in updates:
-              state['offset']=max(int(state.get('offset',0)), int(u['update_id'])+1)
-              cq=u.get('callback_query')
-              if cq:
-                  data=str(cq.get('data') or ''); cbid=cq.get('id')
-                  if cbid: call('answerCallbackQuery', {'callback_query_id':cbid,'text':'Auswahl übernommen'})
-                  action,_,rid=data.partition(':')
-                  matches=list(Path('requests').glob(f'{rid}.json'))
-                  if not matches: continue
-                  p=matches[0]; d=json.loads(p.read_text(encoding='utf-8'))
-                  if action=='trend_approve':
-                      d['status']='TREND_APPROVED'; d['callback_status']='APPROVED'; d['approved_at']=datetime.now(timezone.utc).isoformat(); save_request(p,d)
-                      call('sendMessage', {'chat_id':chat_id,'text':f'✅ Trend freigegeben: {d.get("topic")}\nDie Produktion wird automatisch gestartet.'})
-                  elif action=='trend_reject':
-                      d['status']='AWAITING_REJECTION_REASON'; d['callback_status']='REJECTED_WAITING_REASON'; d['rejected_at']=datetime.now(timezone.utc).isoformat(); save_request(p,d)
-                      state['awaiting_reason_for']=rid
-                      call('sendMessage', {'chat_id':chat_id,'text':'Warum lehnst du den Trend ab? Bitte antworte mit dem Grund. Beispiel: Thema unpassend, Hook schwach, Format ändern.'})
-              msg=u.get('message') or {}
-              text=str(msg.get('text') or '').strip()
-              if text and str((msg.get('chat') or {}).get('id'))==chat_id and state.get('awaiting_reason_for'):
-                  rid=state.pop('awaiting_reason_for'); p=Path('requests')/f'{rid}.json'
-                  if p.exists():
-                      d=json.loads(p.read_text(encoding='utf-8')); d['rejection_reason']=text; d['reason_received_at']=datetime.now(timezone.utc).isoformat()
-                      low=text.casefold()
-                      if any(k in low for k in ['format','hook','stil','voice','stimme','schnitt','visual']):
-                          d['status']='FORMAT_REGENERATION_REQUIRED'; d['next_action']='regenerate_format_same_trend'
-                      else:
-                          d['status']='NEW_TREND_REQUIRED'; d['next_action']='select_new_trend'
-                      save_request(p,d)
-                      call('sendMessage', {'chat_id':chat_id,'text':f'📝 Ablehnungsgrund gespeichert. Nächster Schritt: {d["next_action"]}.'})
-
-          state_path.parent.mkdir(parents=True, exist_ok=True)
-          state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          changed.append(str(state_path))
-          if changed:
-              subprocess.run(['git','config','user.name','github-actions[bot]'],check=True)
-              subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
-              subprocess.run(['git','add',*sorted(set(changed))],check=True)
-              diff=subprocess.run(['git','diff','--cached','--quiet'])
-              if diff.returncode!=0:
-                  subprocess.run(['git','commit','-m','ops(tayvoriq): persist Telegram trend approval state'],check=True)
-                  subprocess.run(['git','push','origin','main'],check=True)
-          PY
+      - run: |
+          echo "Legacy-getUpdates-Poller deaktiviert."
+          echo "Telegram-Callbacks werden ausschließlich durch den zentralen Studio-Poller verarbeitet."
