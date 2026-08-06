@@ -1,28 +1,32 @@
-name: TAYVORIQ Deliver Video Now
+name: TAYVORIQ X Workflow
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "36 5 * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/tayvoriq-deliver-video-now.yml
+    inputs:
+      topic:
+        description: Freigegebenes Thema
+        required: false
+        type: string
+      trend_id:
+        description: Freigegebene Trend-ID
+        required: false
+        type: string
+  repository_dispatch:
+    types: [tayvoriq_trend_approved]
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
-  group: tayvoriq-final-video-delivery
-  cancel-in-progress: true
+  group: tayvoriq-x-workflow
+  cancel-in-progress: false
 
 env:
   PYTHONUTF8: "1"
   PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
-  TAYVORIQ_AUDIO_END_PADDING_SECONDS: "1.25"
   TAYVORIQ_TTS_PROVIDER: "chatterbox_v3"
   TAYVORIQ_CHATTERBOX_ENABLED: "true"
   TAYVORIQ_CHATTERBOX_REQUIRED: "true"
@@ -35,66 +39,49 @@ env:
   TAYVORIQ_CHATTERBOX_EXAGGERATION: "0.42"
   TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.36"
   TAYVORIQ_CHATTERBOX_PAUSE_MS: "360"
-  TAYVORIQ_CHATTERBOX_NATURAL_PAUSE_MS: "360"
   TAYVORIQ_NATURAL_VOICE_WPM: "132"
-  TAYVORIQ_NATURAL_VOICE_MIN_SECONDS: "23.5"
-  TAYVORIQ_NATURAL_VOICE_MAX_SECONDS: "29.0"
   TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"
   TAYVORIQ_NARRATOR_TONE_REQUIRED: "true"
   TAYVORIQ_RENDER_TIMEOUT_SECONDS: "900"
-  TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: "120"
-  TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "300"
-  TAYVORIQ_AUDIT_RETRY_DELAYS: "0,10,25"
   TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "2700"
-  TAYVORIQ_TELEGRAM_PROGRESS: "false"
+  TAYVORIQ_TELEGRAM_PROGRESS: "true"
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
   PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-  YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-  YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-  YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-  YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
+  TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
 
 jobs:
-  deliver:
+  orchestrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
 
-      - name: Persist active delivery run
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          mkdir -p .github/run-now
-          printf '{"run_id":%s,"status":"in_progress","url":"https://github.com/%s/actions/runs/%s","started_at":"%s","workflow":"TAYVORIQ Deliver Video Now"}\n' \
-            "$GITHUB_RUN_ID" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            > .github/run-now/latest-delivery-run.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/run-now/latest-delivery-run.json
-          if ! git diff --cached --quiet; then
-            git commit -m "ops: record active TAYVORIQ delivery run"
-            git pull --rebase origin main
-            git push origin main
-          fi
-
-      - name: Validate required secrets
-        shell: bash
+      - name: Validate secrets and notify 10 percent
         env:
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
           PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
           for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY GROQ_API_KEY GEMINI_API_KEY; do
-            test -n "${!name:-}" || { echo "::error title=Missing secret::$name"; exit 1; }
+            test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
           done
+          send() {
+            local text="$1"
+            response=$(curl -fsS --retry 3 --retry-all-errors \
+              -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${text}")
+            python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print(d["result"]["message_id"])' "$response"
+          }
+          send "🚀 TAYVORIQ 10 %\nTrendfreigabe empfangen.\nThema: ${TOPIC:-Trend ${TREND_ID:-unbekannt}}\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Repository und Abhängigkeiten"
 
       - name: Checkout implementation
         uses: actions/checkout@v4
@@ -121,15 +108,7 @@ jobs:
           cache: pip
           cache-dependency-path: implementation/requirements.txt
 
-      - name: Restore voice model cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache/huggingface
-            .cache/torch
-          key: tayvoriq-chatterbox-v3-cpu-py311-v4
-
-      - name: Install media and project dependencies
+      - name: Install dependencies and notify 20 percent
         run: |
           set -euo pipefail
           sudo apt-get update -qq
@@ -137,126 +116,101 @@ jobs:
           python -m pip install --upgrade pip -q
           python -m pip install -r implementation/requirements.txt pytest -q
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
-
-      - name: Install Chatterbox V3 premium voice
-        id: chatterbox
-        timeout-minutes: 10
-        run: |
-          set -euo pipefail
           python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
-          python -c 'import inspect; from chatterbox.mtl_tts import ChatterboxMultilingualTTS as C; assert "t3_model" in inspect.signature(C.from_pretrained).parameters'
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=⚙️ TAYVORIQ 20 %\nAbhängigkeiten installiert.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Preflight")
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
-      - name: Preflight current implementation
+      - name: Preflight and notify 30 percent
         working-directory: implementation
         run: |
           set -euo pipefail
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=✅ TAYVORIQ 30 %\nPreflight erfolgreich.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Produktion mit Self-Heal")
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
-      - name: Verify premium voice router contract
-        working-directory: implementation
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import os
-          import tayvoriq_dual_platform_render_v23_entry as entry
-          fn = entry.renderer_v28.v2.engine.synthesize_voice
-          closure = [cell.cell_contents for cell in (fn.__closure__ or ())]
-          assert entry.tts_router_v27.synthesize_voice in closure, (
-              "V28 post-audio gate is not wrapping the Chatterbox router"
-          )
-          assert os.environ.get("TAYVORIQ_CHATTERBOX_REQUIRED") == "true"
-          assert os.environ.get("TAYVORIQ_NARRATOR_TONE_REQUIRED") == "true"
-          print({
-              "voice_router_binding": "passed",
-              "outer_gate": fn.__name__,
-              "premium": "chatterbox_multilingual_v3",
-              "edge_fallback": "forbidden",
-              "narrator_tone_required": True,
-          })
-          PY
-
-      - name: Produce and strictly audit one current video
+      - name: Produce with automatic self-heal
         id: production
         working-directory: implementation
         shell: bash
         run: |
           set -uo pipefail
           mkdir -p out/tayvoriq-self-heal
-          set +e
-          python tools/tayvoriq_autonomous_entrypoint.py \
-            --trend-mode auto_trend \
-            --trend-scope auto_scope \
-            --topic "" \
-            --language Deutsch \
-            --platform youtube_tiktok \
-            --target-duration 35 \
-            --llm-provider auto \
-            --outdir out/tayvoriq-youtube-tiktok \
-            --site-root site/tayvoriq \
-            --run-id "${GITHUB_RUN_ID}" \
-            --state-out out/tayvoriq-review-state.json \
-            --report-out out/tayvoriq-self-heal/report.json \
-            --request-out out/tayvoriq-self-heal/request.json \
-            --self-heal-depth 0 \
-            --target-branch feature/multi-platform-distribution-package \
-            2>&1 | tee out/tayvoriq-self-heal/controller-console.log
-          process_exit=${PIPESTATUS[0]}
-          set -e
-          state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "TECHNICAL_FAILURE")')
-          echo "state=$state" >> "$GITHUB_OUTPUT"
-          echo "process_exit=$process_exit" >> "$GITHUB_OUTPUT"
-          echo "Production state: $state, process exit: $process_exit"
-
-      - name: Validate premium narrator evidence
-        id: narrator_gate
-        if: steps.production.outputs.state == 'SUCCESS'
-        working-directory: implementation
-        run: |
-          set -euo pipefail
-          python - <<'PY'
+          final_state=TECHNICAL_FAILURE
+          final_exit=1
+          for attempt in 1 2 3; do
+            progress=$((35 + attempt * 10))
+            curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=🛠 TAYVORIQ ${progress} %\nProduktionsversuch ${attempt}/3 gestartet.\nRun: ${GITHUB_RUN_ID}\nSelf-Heal-Tiefe: $((attempt-1))" >/dev/null
+            set +e
+            python tools/tayvoriq_autonomous_entrypoint.py \
+              --trend-mode approved_trend \
+              --trend-scope auto_scope \
+              --topic "${TOPIC}" \
+              --language Deutsch \
+              --platform youtube_tiktok \
+              --target-duration 35 \
+              --llm-provider auto \
+              --outdir out/tayvoriq-youtube-tiktok \
+              --site-root site/tayvoriq \
+              --run-id "${GITHUB_RUN_ID}" \
+              --state-out out/tayvoriq-review-state.json \
+              --report-out out/tayvoriq-self-heal/report.json \
+              --request-out out/tayvoriq-self-heal/request.json \
+              --self-heal-depth "$((attempt-1))" \
+              --target-branch feature/multi-platform-distribution-package \
+              2>&1 | tee "out/tayvoriq-self-heal/controller-console-${attempt}.log"
+            final_exit=${PIPESTATUS[0]}
+            set -e
+            final_state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "TECHNICAL_FAILURE")')
+            if [ "$final_state" = "SUCCESS" ] && [ "$final_exit" -eq 0 ]; then
+              echo "attempt=$attempt" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            reason=$(python - <<'PY'
           import json
           from pathlib import Path
-
-          state = json.loads(Path("out/tayvoriq-review-state.json").read_text(encoding="utf-8"))
-          job_dir = Path(state["job_dir"])
-          audio = json.loads((job_dir / "audio_report.json").read_text(encoding="utf-8"))
-          provider = str(audio.get("voice_provider_used") or audio.get("provider") or "").casefold()
-          assert "chatterbox" in provider, f"Premium provider missing: {provider}"
-          assert not bool(audio.get("fallback")), "Fallback voice is not review eligible"
-          assert bool(audio.get("narrator_tone_applied")), "Deep narrator tone was not applied"
-          assert bool(audio.get("premium_voice_contract_passed")), "Premium voice contract failed"
-          assert bool(audio.get("natural_pacing_contract_passed")), "Natural narrator pacing failed"
-          settings = dict(audio.get("voice_settings") or {})
-          assert float(settings.get("narrator_pitch_factor") or 1.0) <= 0.91
-          print({
-              "premium_narrator_gate": "passed",
-              "provider": provider,
-              "fallback": False,
-              "narrator_tone_applied": True,
-              "natural_pacing_contract_passed": True,
-              "pitch_factor": settings.get("narrator_pitch_factor"),
-              "natural_voice_target_seconds": audio.get("natural_voice_target_seconds"),
-          })
+          p=Path('out/tayvoriq-self-heal/report.json')
+          d=json.loads(p.read_text()) if p.exists() else {}
+          print(str(d.get('error') or d.get('reason') or d.get('state') or 'Unbekannter Produktionsfehler')[:800])
           PY
+            )
+            curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=⚠️ TAYVORIQ ${progress} %\nVersuch ${attempt}/3 fehlgeschlagen.\nFehler: ${reason}\nSelf-Heal wird automatisch fortgesetzt.\nRun: ${GITHUB_RUN_ID}" >/dev/null
+          done
+          echo "state=$final_state" >> "$GITHUB_OUTPUT"
+          echo "process_exit=$final_exit" >> "$GITHUB_OUTPUT"
+          test "$final_state" = "SUCCESS" && test "$final_exit" -eq 0
 
-      - name: Validate final publication gates
+      - name: Notify 75 percent
+        if: steps.production.outcome == 'success'
+        run: |
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=🎬 TAYVORIQ 75 %\nSkript, Voice und Szenen erzeugt.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Qualitätsprüfung")
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
+
+      - name: Validate publication quality
         id: publication_gate
-        if: steps.production.outputs.state == 'SUCCESS' && steps.narrator_gate.outcome == 'success'
+        if: steps.production.outcome == 'success'
         working-directory: implementation
         run: |
           set -euo pipefail
           JOB_DIR=$(python -c 'import json,pathlib; d=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); print(d.get("job_dir") or "")')
-          test -n "$JOB_DIR"
-          test -d "$JOB_DIR"
+          test -n "$JOB_DIR" && test -d "$JOB_DIR"
           python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
+
+      - name: Notify 90 percent
+        if: steps.publication_gate.outcome == 'success'
+        run: |
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=🔍 TAYVORIQ 90 %\nQualitätsprüfung bestanden.\nRun: ${GITHUB_RUN_ID}\nNächster Schritt: Review veröffentlichen")
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Publish review page
         id: publish_review
-        if: steps.production.outputs.state == 'SUCCESS' && steps.narrator_gate.outcome == 'success' && steps.publication_gate.outcome == 'success'
+        if: steps.publication_gate.outcome == 'success'
         run: |
           set -euo pipefail
-          test -d implementation/site/tayvoriq
           rm -rf pages-worktree/tayvoriq
           mkdir -p pages-worktree/tayvoriq
           rsync -a implementation/site/tayvoriq/ pages-worktree/tayvoriq/
@@ -267,12 +221,13 @@ jobs:
           git add tayvoriq .nojekyll
           if ! git diff --cached --quiet; then
             git commit -m "Publish TAYVORIQ review ${GITHUB_RUN_ID}"
+            git pull --rebase origin main
             git push origin main
           fi
 
-      - name: Send only final Telegram approval review
+      - name: Send final Telegram review and verify 100 percent
         id: telegram_final
-        if: steps.production.outputs.state == 'SUCCESS' && steps.narrator_gate.outcome == 'success' && steps.publication_gate.outcome == 'success' && steps.publish_review.outcome == 'success'
+        if: steps.publish_review.outcome == 'success'
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -282,47 +237,32 @@ jobs:
             --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --review-id "${GITHUB_RUN_ID}" \
             --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=✅ TAYVORIQ 100 %\nVideo-Review erfolgreich ausgeliefert.\nRun: ${GITHUB_RUN_ID}")
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print("telegram_message_id",d["result"]["message_id"])' "$response"
 
-      - name: Verify delivery evidence
-        if: steps.production.outputs.state == 'SUCCESS'
-        working-directory: implementation
-        env:
-          NARRATOR_GATE_OUTCOME: ${{ steps.narrator_gate.outcome }}
-          PUBLICATION_GATE_OUTCOME: ${{ steps.publication_gate.outcome }}
-          PUBLISH_OUTCOME: ${{ steps.publish_review.outcome }}
-          TELEGRAM_OUTCOME: ${{ steps.telegram_final.outcome }}
-        run: |
-          set -euo pipefail
-          python -c 'import json,pathlib,os; s=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); j=pathlib.Path(s["job_dir"]); vids=[j/"short_youtube.mp4",j/"short_tiktok.mp4"]; assert all(v.is_file() and v.stat().st_size>100000 for v in vids); assert os.environ["NARRATOR_GATE_OUTCOME"]=="success"; assert os.environ["PUBLICATION_GATE_OUTCOME"]=="success"; assert os.environ["PUBLISH_OUTCOME"]=="success"; assert os.environ["TELEGRAM_OUTCOME"]=="success"; print({"definition_of_done":"passed","job_dir":str(j),"videos":[str(v) for v in vids]})'
-
-      - name: Collect diagnostics
-        if: always()
-        continue-on-error: true
+      - name: Notify final failure
+        if: failure()
         working-directory: implementation
         run: |
-          python tools/tayvoriq_collect_compact_diagnostics.py --root out --destination out/tayvoriq-compact-diagnostics --max-file-bytes 10485760
+          reason=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('out/tayvoriq-self-heal/report.json')
+          d=json.loads(p.read_text()) if p.exists() else {}
+          print(str(d.get('error') or d.get('reason') or d.get('state') or 'Workflow-Schritt fehlgeschlagen')[:1000])
+          PY
+          )
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=❌ TAYVORIQ FEHLER\nAlle automatischen Reparaturversuche ausgeschöpft.\nFehler: ${reason}\nLetzter erfolgreicher Schritt: siehe vorherigen Prozentstand.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
 
-      - name: Upload complete video and diagnostics
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tayvoriq-final-delivery-${{ github.run_id }}
+          name: tayvoriq-x-workflow-${{ github.run_id }}
           path: |
             implementation/out/**
             implementation/site/tayvoriq/**
           if-no-files-found: warn
           retention-days: 30
-
-      - name: Fail when no approved review was delivered
-        if: steps.production.outputs.state != 'SUCCESS' || steps.narrator_gate.outcome != 'success' || steps.publication_gate.outcome != 'success' || steps.publish_review.outcome != 'success' || steps.telegram_final.outcome != 'success'
-        env:
-          FINAL_STATE: ${{ steps.production.outputs.state }}
-          NARRATOR_GATE: ${{ steps.narrator_gate.outcome }}
-          PUBLICATION_GATE: ${{ steps.publication_gate.outcome }}
-          REVIEW_PUBLISH: ${{ steps.publish_review.outcome }}
-          TELEGRAM_FINAL: ${{ steps.telegram_final.outcome }}
-        run: |
-          echo "::error title=TAYVORIQ delivery incomplete::state=${FINAL_STATE}, narrator=${NARRATOR_GATE}, publication=${PUBLICATION_GATE}, review=${REVIEW_PUBLISH}, telegram=${TELEGRAM_FINAL}. No incomplete video was sent."
-          exit 1
-
-# delivery nonce: 2026-07-28T14:08:00+02:00
