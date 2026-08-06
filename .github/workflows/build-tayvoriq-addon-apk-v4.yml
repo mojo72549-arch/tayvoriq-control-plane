@@ -45,14 +45,17 @@ jobs:
           APK="android-test-app/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee manifest-tree.txt
           grep -q "application-icon-640" badging.txt
-          grep -q "android.intent.action.VIEW" badging.txt
-          grep -q "FileImportActivity" badging.txt
+          grep -q "FileImportActivity" manifest-tree.txt
+          grep -q "android.intent.action.VIEW" manifest-tree.txt
+          grep -q "application/mcaddon" manifest-tree.txt
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           mkdir -p delivery
           cp "$APK" delivery/TAYVORIQ_Addon_Manager_Auto_Import_Test_v1.4.apk
           sha256sum delivery/TAYVORIQ_Addon_Manager_Auto_Import_Test_v1.4.apk > delivery/SHA256SUMS.txt
           cp badging.txt delivery/APK_BADGING.txt
+          cp manifest-tree.txt delivery/APK_MANIFEST_TREE.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
