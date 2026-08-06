@@ -6,9 +6,9 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@drawable/app_icon"
-        android:roundIcon="@drawable/app_icon"
-        android:label="TAYVORIQ Add-on Manager"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="TAYVORIQ Add-ons"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
@@ -24,6 +24,45 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".FileImportActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="Mit TAYVORIQ importieren"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+
+            <intent-filter android:priority="100">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/mcaddon" />
+                <data android:mimeType="application/mcpack" />
+                <data android:mimeType="application/mcworld" />
+            </intent-filter>
+
+            <intent-filter android:priority="100">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" android:pathPattern=".*\.mcaddon" />
+                <data android:scheme="file" android:pathPattern=".*\.mcpack" />
+                <data android:scheme="file" android:pathPattern=".*\.mcworld" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/zip" />
             </intent-filter>
         </activity>
     </application>
