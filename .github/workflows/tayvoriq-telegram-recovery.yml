@@ -1,0 +1,86 @@
+name: TAYVORIQ Telegram Recovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-telegram-recovery.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deliver-recovered-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download recovered production artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: "8974157168"
+        run: |
+          set -euo pipefail
+          mkdir -p recovery
+          curl -fL --retry 3 --retry-all-errors \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            -o recovery/artifact.zip
+          unzip -q recovery/artifact.zip -d recovery/unpacked
+          VIDEO=$(find recovery/unpacked -type f -iname '*.mp4' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          test -n "$VIDEO" && test -s "$VIDEO"
+          echo "VIDEO=$VIDEO" >> "$GITHUB_ENV"
+
+      - name: Verify recovered video
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          WIDTH=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$VIDEO")
+          HEIGHT=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$VIDEO")
+          DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$VIDEO")
+          AUDIO_STREAMS=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$VIDEO" | wc -l)
+          python - "$WIDTH" "$HEIGHT" "$DURATION" "$AUDIO_STREAMS" <<'PY'
+          import sys
+          width, height = map(int, sys.argv[1:3])
+          duration = float(sys.argv[3])
+          audio = int(sys.argv[4])
+          assert (width, height) == (1080, 1920), (width, height)
+          assert 25 <= duration <= 60, duration
+          assert audio >= 1, audio
+          print({'video_verified': True, 'width': width, 'height': height, 'duration': duration, 'audio_streams': audio})
+          PY
+
+      - name: Send Telegram video review and verify callback buttons
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          KEYBOARD='{"inline_keyboard":[[{"text":"✅ Freigeben","callback_data":"tayvoriq:approve:31105414108"},{"text":"❌ Ablehnen","callback_data":"tayvoriq:reject:31105414108"}],[{"text":"🔧 Technische Details","url":"https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/31105414108"}]]}'
+          RESPONSE=$(curl -fsS --retry 3 --retry-all-errors \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@${VIDEO};type=video/mp4" \
+            -F 'supports_streaming=true' \
+            -F 'caption=🟢 Dein TAYVORIQ-Video ist bereit\n\nKI-Boom kippt – warum Tech-Aktien plötzlich abstürzen\n\nYouTube/TikTok-Review · 1080×1920 · Chatterbox-Stimme · Untertitel' \
+            -F "reply_markup=${KEYBOARD}")
+          python - "$RESPONSE" <<'PY'
+          import json, sys
+          data = json.loads(sys.argv[1])
+          assert data.get('ok') is True, data
+          result = data.get('result') or {}
+          assert result.get('message_id'), result
+          assert result.get('video'), result
+          markup = result.get('reply_markup') or {}
+          buttons = [b for row in markup.get('inline_keyboard', []) for b in row]
+          callbacks = {b.get('callback_data') for b in buttons if b.get('callback_data')}
+          assert 'tayvoriq:approve:31105414108' in callbacks, callbacks
+          assert 'tayvoriq:reject:31105414108' in callbacks, callbacks
+          print({'telegram_delivery_verified': True, 'message_id': result['message_id'], 'callbacks': sorted(callbacks)})
+          PY
