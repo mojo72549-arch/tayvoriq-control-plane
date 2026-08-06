@@ -84,3 +84,5 @@ jobs:
           assert 'tayvoriq:reject:31105414108' in callbacks, callbacks
           print({'telegram_delivery_verified': True, 'message_id': result['message_id'], 'callbacks': sorted(callbacks)})
           PY
+
+# trigger: 2026-08-06T21:30:00+02:00
