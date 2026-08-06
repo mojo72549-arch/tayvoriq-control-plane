@@ -39,17 +39,6 @@ jobs:
             test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
           done
 
-      - name: Notify repair started
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          set -euo pipefail
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=🔧 TAYVORIQ SYSTEMREPARATUR\nDer Telegram-Freigabepfad wird repariert.\nBedeutung für dein Video: Die Produktion ist noch nicht gestartet.\nZiel: Dein Freigabe-Klick muss anschließend automatisch den Video-X-Workflow starten.\nRun: ${GITHUB_RUN_ID}")
-          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
-
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
 
@@ -113,7 +102,7 @@ jobs:
           print('Webhook active:', actual)
           PY
 
-      - name: Notify repair completed
+      - name: Notify system ready
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -121,7 +110,7 @@ jobs:
           set -euo pipefail
           response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=✅ TAYVORIQ SYSTEMREPARATUR ABGESCHLOSSEN\nDer Telegram-Freigabepfad ist wieder erreichbar.\nBedeutung für dein Video: Noch kein Video produziert. Der nächste gültige Freigabe-Klick startet den Video-X-Workflow.\nDanach erhältst du ausschließlich relevante Produktionsstände von 10 % bis 100 %.\nRun: ${GITHUB_RUN_ID}")
+            --data-urlencode "text=✅ TAYVORIQ bereit\nDer Telegram-Freigabepfad funktioniert wieder.\nBedeutung: Dein nächster gültiger Trend-Freigabe-Klick startet direkt die Videoproduktion.\nAb dann erhältst du nur noch Fortschritt zu deinem Video: Thema → Skript → Stimme → Szenen → Render → Qualitätsprüfung → YouTube/TikTok-Review.")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print("telegram_message_id",d["result"]["message_id"])' "$response"
 
       - name: Notify repair failure
@@ -132,7 +121,7 @@ jobs:
         run: |
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=❌ TAYVORIQ PRODUKTION BLOCKIERT\nDer Telegram-Freigabepfad konnte nicht repariert werden.\nBedeutung für dein Video: Die Produktion kann aktuell nicht automatisch starten.\nDer Self-Heal ist fehlgeschlagen.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
+            --data-urlencode "text=❌ TAYVORIQ Produktion blockiert\nDer Telegram-Freigabepfad konnte nicht repariert werden.\nBedeutung: Deine Videoproduktion kann aktuell nicht automatisch starten.\nSelf-Heal fehlgeschlagen.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
 
       - uses: actions/upload-artifact@v4
         if: always()
