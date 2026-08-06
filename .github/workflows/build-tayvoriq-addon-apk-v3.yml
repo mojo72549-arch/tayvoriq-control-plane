@@ -19,7 +19,9 @@ jobs:
 
       - name: Restore neon UI source
         run: |
-          gzip -dc android-test-app/app/src/main/java/com/tayvoriq/addonmanager/MainActivity.java.gz > android-test-app/app/src/main/java/com/tayvoriq/addonmanager/MainActivity.java
+          cat android-test-app/app/src/main/java/com/tayvoriq/addonmanager/source-parts/*.b64 | base64 -d > /tmp/MainActivity.java.gz
+          gzip -t /tmp/MainActivity.java.gz
+          gzip -dc /tmp/MainActivity.java.gz > android-test-app/app/src/main/java/com/tayvoriq/addonmanager/MainActivity.java
           test -s android-test-app/app/src/main/java/com/tayvoriq/addonmanager/MainActivity.java
 
       - name: Set up Java 17
