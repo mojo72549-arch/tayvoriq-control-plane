@@ -1,0 +1,63 @@
+name: Build TAYVORIQ Add-on APK v1.4
+
+on:
+  push:
+    branches:
+      - minecraft-addon-auto-import-v1.4
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+
+      - name: Compile automatic import APK
+        working-directory: android-test-app
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Verify launcher icon, file handler and signature
+        run: |
+          APK="android-test-app/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee badging.txt
+          grep -q "application-icon-640" badging.txt
+          grep -q "android.intent.action.VIEW" badging.txt
+          grep -q "FileImportActivity" badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p delivery
+          cp "$APK" delivery/TAYVORIQ_Addon_Manager_Auto_Import_Test_v1.4.apk
+          sha256sum delivery/TAYVORIQ_Addon_Manager_Auto_Import_Test_v1.4.apk > delivery/SHA256SUMS.txt
+          cp badging.txt delivery/APK_BADGING.txt
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TAYVORIQ-Addon-Manager-Auto-Import-v1.4
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 7
