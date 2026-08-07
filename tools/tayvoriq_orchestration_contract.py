@@ -25,6 +25,7 @@ SCOPES = {
     "mobility_energy",
     "science_future",
 }
+EXECUTION_MODES = {"full", "quality_gate_only"}
 TRANSITIONS = {
     "APPROVED": {"DISPATCHING"},
     "TREND_APPROVED": {"DISPATCHING"},
@@ -43,6 +44,7 @@ IMMUTABLE_FIELDS = (
     "target_duration",
     "approval_required_before_youtube_publish",
     "approval_key",
+    "mode",
 )
 
 
@@ -70,6 +72,7 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
     language = str(data.get("language") or "").strip()
     platform = str(data.get("platform") or "").strip()
     approval_key = str(data.get("approval_key") or "").strip()
+    mode = str(data.get("mode") or "").strip()
 
     if not request_id:
         errors.append("missing request_id")
@@ -87,6 +90,8 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
         errors.append(f"invalid language={language!r}")
     if platform != "youtube_tiktok":
         errors.append(f"invalid platform={platform!r}")
+    if mode not in EXECUTION_MODES:
+        errors.append(f"invalid mode={mode!r}")
     if data.get("approval_required_before_youtube_publish") is not True:
         errors.append("youtube approval gate must be true")
     try:
@@ -185,6 +190,7 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "approved_at": approved_at,
         "telegram_message_id": int(message_id),
         "approval_key": f"telegram:{message_id}:trend:{trend_id}",
+        "mode": "full",
         "state_history": [
             {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"}
         ],
@@ -202,6 +208,7 @@ def validate_file(args: argparse.Namespace) -> None:
         "contract": "passed",
         "request_id": data["request_id"],
         "status": data["status"],
+        "mode": data["mode"],
         "contract_sha256": data["contract_sha256"],
     }))
 
@@ -233,7 +240,6 @@ def transition(args: argparse.Namespace) -> None:
             data[key] = int(value)
         else:
             data[key] = value
-    # Immutable fields must never change during transitions.
     if data.get("contract_sha256") != contract_hash(data):
         raise SystemExit("immutable request fields changed during transition")
     validate(data)
@@ -258,6 +264,7 @@ def self_test(_: argparse.Namespace) -> None:
             "approval_required_before_youtube_publish": True,
             "approved_at": now,
             "approval_key": "selftest:1",
+            "mode": "quality_gate_only",
             "state_history": [{"state": "APPROVED", "at": now, "actor": "self_test"}],
         }
         good["contract_sha256"] = contract_hash(good)
@@ -273,13 +280,23 @@ def self_test(_: argparse.Namespace) -> None:
         else:
             raise SystemExit("self-test failed: tamper was not detected")
 
+        wrong_mode = dict(good)
+        wrong_mode["mode"] = "full"
         try:
-            if "DISPATCHED" not in TRANSITIONS["DISPATCHING"]:
-                raise AssertionError
-            if TRANSITIONS["DISPATCHED"]:
-                raise AssertionError
-        except AssertionError:
-            raise SystemExit("self-test failed: transition map")
+            validate(wrong_mode)
+        except SystemExit:
+            pass
+        else:
+            raise SystemExit("self-test failed: execution-mode tamper was not detected")
+
+        if "DISPATCHING" not in TRANSITIONS["APPROVED"]:
+            raise SystemExit("self-test failed: APPROVED cannot enter DISPATCHING")
+        if "DISPATCHED" not in TRANSITIONS["DISPATCHING"]:
+            raise SystemExit("self-test failed: DISPATCHING cannot enter DISPATCHED")
+        if TRANSITIONS["DISPATCHED"]:
+            raise SystemExit("self-test failed: DISPATCHED must be terminal")
+        if "DISPATCHED" in TRANSITIONS["APPROVED"]:
+            raise SystemExit("self-test failed: direct APPROVED->DISPATCHED must be forbidden")
 
     print("ORCHESTRATION_SELF_TEST_PASSED")
 
