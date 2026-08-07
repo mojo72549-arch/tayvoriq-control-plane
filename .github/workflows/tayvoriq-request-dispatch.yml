@@ -9,6 +9,8 @@ on:
       - main
     paths:
       - "requests/*.json"
+      - "tools/tayvoriq_orchestration_contract.py"
+      - ".github/workflows/tayvoriq-request-dispatch.yml"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -24,11 +26,17 @@ concurrency:
 jobs:
   dispatch-approved-request:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
+
+      - name: Verify orchestration contract implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_orchestration_contract.py self-test
 
       - name: Resolve approved request
         id: request
@@ -44,54 +52,38 @@ jobs:
           REQUEST_FILE=""
 
           if [ "$EVENT_NAME" = "repository_dispatch" ]; then
-            REQUEST_FILE="requests/telegram-${GITHUB_RUN_ID}-trend-${TREND_ID:-unknown}.json"
-            export REQUEST_FILE
-            python - <<'PY'
-          import json, os
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          trend_id = str(os.environ.get('TREND_ID') or '').strip()
-          if trend_id not in {'1','2','3','4','5'}:
-              raise SystemExit(f'Invalid trend id from Telegram dispatch: {trend_id!r}')
-          topic = str(os.environ.get('DISPATCH_TOPIC') or '').strip()
-          if not topic:
-              raise SystemExit('Telegram dispatch did not include a topic')
-          approved_at = str(os.environ.get('APPROVED_AT') or '').strip() or datetime.now(timezone.utc).isoformat()
-          message_id = str(os.environ.get('TELEGRAM_MESSAGE_ID') or '').strip()
-          path = Path(os.environ['REQUEST_FILE'])
-          data = {
-              'request_id': path.stem,
-              'status': 'APPROVED',
-              'source': 'telegram_trend_approval',
-              'trend_id': trend_id,
-              'topic': topic,
-              'trend_scope': 'technology_ai' if trend_id == '1' else 'auto_scope',
-              'language': 'Deutsch',
-              'platform': 'youtube_tiktok',
-              'approved_at': approved_at,
-              'telegram_message_id': message_id or None,
-          }
-          path.parent.mkdir(parents=True, exist_ok=True)
-          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print(f'Created approved request from Telegram event: {path}')
-          PY
+            test -n "${TELEGRAM_MESSAGE_ID:-}" || { echo "::error title=Missing Telegram message id::Cannot create an idempotent production request"; exit 1; }
+            REQUEST_FILE=$(python tools/tayvoriq_orchestration_contract.py create-from-telegram \
+              --trend-request .github/run-now/tayvoriq-trend-request.json \
+              --trend-id "${TREND_ID:-}" \
+              --message-id "$TELEGRAM_MESSAGE_ID" \
+              --payload-topic "${DISPATCH_TOPIC:-}" \
+              --approved-at "${APPROVED_AT:-}" \
+              --out-dir requests)
           elif [ "$EVENT_NAME" = "push" ]; then
+            # A push may be only a control-plane hardening change. Never scan and
+            # start production in that case; only a pushed request file is eligible.
             REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
-          fi
-
-          if [ -z "$REQUEST_FILE" ]; then
+          else
+            # Schedule/manual recovery only considers requests that already pass
+            # the new cryptographic/state-machine contract.
             REQUEST_FILE=$(python - <<'PY'
           import json
+          import sys
           from pathlib import Path
+          sys.path.insert(0, 'tools')
+          import tayvoriq_orchestration_contract as contract
+
           candidates=[]
           for path in Path('requests').glob('*.json'):
               try:
                   data=json.loads(path.read_text(encoding='utf-8'))
-              except Exception:
+                  if str(data.get('status') or '').upper() not in contract.CLAIMABLE:
+                      continue
+                  contract.validate(data, require_claimable=True)
+              except BaseException:
                   continue
-              if str(data.get('status') or '').upper() in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'}:
-                  candidates.append((path.stat().st_mtime,str(path)))
+              candidates.append((path.stat().st_mtime, str(path)))
           print(max(candidates)[1] if candidates else '')
           PY
             )
@@ -99,21 +91,47 @@ jobs:
 
           if [ -z "$REQUEST_FILE" ] || [ ! -f "$REQUEST_FILE" ]; then
             echo "approved=false" >> "$GITHUB_OUTPUT"
-            echo "No approved request is waiting."
+            echo "No contract-valid approved request is waiting."
             exit 0
           fi
+
+          STATUS=$(python - "$REQUEST_FILE" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          print(str(d.get('status') or '').upper())
+          PY
+          )
+
+          case "$STATUS" in
+            APPROVED|TREND_APPROVED|READY_FOR_PRODUCTION)
+              python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+              ;;
+            DISPATCHING|DISPATCHED)
+              # Duplicate Telegram callback or a push caused by our own state
+              # update: acknowledge idempotently, but never start another run.
+              python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+              echo "approved=false" >> "$GITHUB_OUTPUT"
+              echo "Idempotent no-op for already claimed request: $REQUEST_FILE ($STATUS)"
+              exit 0
+              ;;
+            *)
+              echo "approved=false" >> "$GITHUB_OUTPUT"
+              echo "Request is not eligible for production: $REQUEST_FILE ($STATUS)"
+              exit 0
+              ;;
+          esac
 
           python - "$REQUEST_FILE" "$GITHUB_OUTPUT" <<'PY'
           import json,sys
           from pathlib import Path
           p=Path(sys.argv[1]); out=Path(sys.argv[2]); d=json.loads(p.read_text(encoding='utf-8'))
-          approved=str(d.get('status') or '').upper() in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'}
           values={
-              'approved':'true' if approved else 'false',
+              'approved':'true',
               'request_file':str(p),
-              'topic':str(d.get('topic') or '').replace('\n',' ').strip(),
-              'trend_scope':str(d.get('trend_scope') or 'auto_scope').strip(),
-              'request_id':str(d.get('request_id') or p.stem).strip(),
+              'topic':str(d['topic']).strip(),
+              'trend_scope':str(d['trend_scope']).strip(),
+              'request_id':str(d['request_id']).strip(),
+              'contract_sha256':str(d['contract_sha256']).strip(),
           }
           with out.open('a',encoding='utf-8') as h:
               for k,v in values.items(): h.write(f'{k}={v}\n')
@@ -125,28 +143,34 @@ jobs:
         if: steps.request.outputs.approved == 'true'
         env:
           REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          CONTRACT_SHA256: ${{ steps.request.outputs.contract_sha256 }}
         run: |
           set -euo pipefail
           git pull --rebase origin main
-          python - <<'PY'
-          import json, os
-          from datetime import datetime, timezone
-          from pathlib import Path
-          path=Path(os.environ['REQUEST_FILE'])
-          data=json.loads(path.read_text(encoding='utf-8'))
-          status=str(data.get('status') or '').upper()
-          if status not in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'}:
-              raise SystemExit(f'Request is no longer claimable: {status}')
-          data['status']='DISPATCHING'
-          data['dispatch_claimed_at']=datetime.now(timezone.utc).isoformat()
-          data['dispatch_claim_run_id']=int(os.environ['GITHUB_RUN_ID'])
-          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          PY
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+          python tools/tayvoriq_orchestration_contract.py transition "$REQUEST_FILE" \
+            --to DISPATCHING \
+            --actor "request-dispatcher:${GITHUB_RUN_ID}" \
+            --meta "dispatch_claim_run_id=${GITHUB_RUN_ID}" \
+            --meta "dispatch_contract_sha256=${CONTRACT_SHA256}"
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$REQUEST_FILE"
-          git commit -m "ops(tayvoriq): claim request for dispatch in run ${GITHUB_RUN_ID}"
-          git push origin main
+          git commit -m "ops(tayvoriq): claim ${GITHUB_RUN_ID} under orchestration contract"
+
+          pushed=false
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              pushed=true
+              break
+            fi
+            echo "Push race on attempt $attempt; rebasing before retry"
+            sleep $((attempt * 2))
+            git pull --rebase origin main
+          done
+          [ "$pushed" = "true" ] || { echo "::error title=Atomic claim failed::Could not persist DISPATCHING state"; exit 1; }
           echo "claimed=true" >> "$GITHUB_OUTPUT"
 
       - name: Start TAYVORIQ Golden Path
@@ -156,21 +180,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TOPIC: ${{ steps.request.outputs.topic }}
           TREND_SCOPE: ${{ steps.request.outputs.trend_scope }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
         run: |
           set -euo pipefail
           BEFORE=$(gh run list --workflow tayvoriq-golden-path.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
           gh workflow run tayvoriq-golden-path.yml --ref main -f mode=full -f trend_scope="$TREND_SCOPE" -f topic="$TOPIC"
+
           RUN_ID=""
           for attempt in $(seq 1 12); do
             sleep 5
-            RUN_ID=$(gh run list --workflow tayvoriq-golden-path.yml --branch main --event workflow_dispatch --limit 5 --json databaseId --jq ".[] | select(.databaseId != $BEFORE) | .databaseId" | head -n 1)
+            RUN_ID=$(gh run list --workflow tayvoriq-golden-path.yml --branch main --event workflow_dispatch --limit 10 --json databaseId --jq ".[] | select(.databaseId > $BEFORE) | .databaseId" | head -n 1)
             [ -n "$RUN_ID" ] && break
           done
-          [ -n "$RUN_ID" ] || { echo "::error title=Golden Path not started::No new run visible"; exit 1; }
+          [ -n "$RUN_ID" ] || { echo "::error title=Golden Path not started::No new workflow_dispatch run became visible"; exit 1; }
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "Golden Path run $RUN_ID accepted"
+          echo "Golden Path accepted request ${REQUEST_ID} as run ${RUN_ID}"
 
-      - name: Mark request dispatched
+      - name: Persist dispatched state
+        id: persist_dispatch
         if: steps.dispatch.outcome == 'success'
         env:
           REQUEST_FILE: ${{ steps.request.outputs.request_file }}
@@ -178,25 +205,32 @@ jobs:
         run: |
           set -euo pipefail
           git pull --rebase origin main
-          python - <<'PY'
-          import json, os
-          from datetime import datetime, timezone
-          from pathlib import Path
-          path=Path(os.environ['REQUEST_FILE'])
-          data=json.loads(path.read_text(encoding='utf-8'))
-          data['status']='DISPATCHED'
-          data['golden_path_run_id']=int(os.environ['GOLDEN_PATH_RUN_ID'])
-          data['dispatched_at']=datetime.now(timezone.utc).isoformat()
-          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          PY
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          python tools/tayvoriq_orchestration_contract.py transition "$REQUEST_FILE" \
+            --to DISPATCHED \
+            --actor "request-dispatcher:${GITHUB_RUN_ID}" \
+            --meta "golden_path_run_id=${GOLDEN_PATH_RUN_ID}"
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$REQUEST_FILE"
-          git commit -m "ops(tayvoriq): mark request dispatched to run ${GOLDEN_PATH_RUN_ID}"
-          git push origin main
+          git commit -m "ops(tayvoriq): bind request to Golden Path ${GOLDEN_PATH_RUN_ID}"
+
+          pushed=false
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              pushed=true
+              break
+            fi
+            echo "Push race on attempt $attempt; rebasing before retry"
+            sleep $((attempt * 2))
+            git pull --rebase origin main
+          done
+          [ "$pushed" = "true" ] || { echo "::error title=Dispatch persistence failed::Golden Path started but request binding could not be persisted"; exit 1; }
 
       - name: Send verified production-start Telegram
-        if: steps.dispatch.outcome == 'success'
+        if: steps.persist_dispatch.outcome == 'success'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -205,7 +239,10 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN" && test -n "$TELEGRAM_CHAT_ID"
-          RESPONSE=$(curl --fail --silent --show-error --request POST --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=🎬 TAYVORIQ-Produktion gestartet. Auftrag: ${REQUEST_ID}. GitHub Run: ${RUN_ID}. Die nächste Nachricht enthält das fertige Video mit Freigeben/Ablehnen." "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage")
+          RESPONSE=$(curl --fail --silent --show-error --request POST \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=🎬 TAYVORIQ-Produktion verifiziert gestartet. Auftrag: ${REQUEST_ID}. Golden-Path-Run: ${RUN_ID}. Nächste relevante Nachricht: fertiges Video mit Freigeben/Ablehnen." \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage")
           python - "$RESPONSE" <<'PY'
           import json,sys
           d=json.loads(sys.argv[1]); mid=((d.get('result') or {}).get('message_id'))
@@ -213,36 +250,33 @@ jobs:
           print({'telegram_message_id':mid})
           PY
 
-      - name: Mark dispatch failure
-        if: failure() && steps.claim.outputs.claimed == 'true'
+      - name: Persist dispatch failure
+        if: failure() && steps.claim.outputs.claimed == 'true' && steps.dispatch.outcome != 'success'
         env:
           REQUEST_FILE: ${{ steps.request.outputs.request_file }}
         run: |
           set -euo pipefail
           git pull --rebase origin main
-          python - <<'PY'
-          import json, os
-          from datetime import datetime, timezone
-          from pathlib import Path
-          path=Path(os.environ['REQUEST_FILE'])
-          data=json.loads(path.read_text(encoding='utf-8'))
-          data['status']='DISPATCH_FAILED'
-          data['dispatch_failed_at']=datetime.now(timezone.utc).isoformat()
-          data['dispatch_failure_run_id']=int(os.environ['GITHUB_RUN_ID'])
-          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          PY
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          python tools/tayvoriq_orchestration_contract.py transition "$REQUEST_FILE" \
+            --to DISPATCH_FAILED \
+            --actor "request-dispatcher:${GITHUB_RUN_ID}" \
+            --meta "dispatch_failure_run_id=${GITHUB_RUN_ID}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$REQUEST_FILE"
-          git commit -m "ops(tayvoriq): record dispatch failure in run ${GITHUB_RUN_ID}"
-          git push origin main
+          git commit -m "ops(tayvoriq): record dispatch failure ${GITHUB_RUN_ID}"
+          git push origin HEAD:main
 
       - name: Send dispatch failure to Telegram
-        if: failure() && steps.claim.outputs.claimed == 'true'
+        if: failure() && steps.claim.outputs.claimed == 'true' && steps.dispatch.outcome != 'success'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
         run: |
           test -n "$TELEGRAM_BOT_TOKEN" && test -n "$TELEGRAM_CHAT_ID"
-          curl --fail --silent --show-error --request POST --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=❌ TAYVORIQ-Produktion konnte nicht gestartet werden. Auftrag: ${REQUEST_ID}. Fehlerstufe: Request Dispatcher. GitHub Run: ${GITHUB_RUN_ID}." "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+          curl --fail --silent --show-error --request POST \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=❌ TAYVORIQ-Produktion wurde nicht gestartet. Auftrag: ${REQUEST_ID}. Fehlerstufe: verifizierter Request-Dispatcher. Run: ${GITHUB_RUN_ID}." \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
