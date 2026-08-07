@@ -1,6 +1,6 @@
 {
   "request_id": "2026-08-07-orchestration-quality-gate-trend-1-v4",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "orchestration_e2e_test",
   "trend_id": "1",
   "topic": "KI-Aktien unter Druck: starke Zahlen reichen plötzlich nicht mehr",
@@ -18,7 +18,14 @@
       "state": "APPROVED",
       "at": "2026-08-07T16:55:00+00:00",
       "actor": "chatgpt_orchestration_test"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-07T17:02:07.370443+00:00",
+      "actor": "request-dispatcher:31200395587"
     }
   ],
-  "contract_sha256": "2802af7b777c326ac6481b1e3b3900eaebf16baf8ce8fe1a513d8b177632b682"
+  "contract_sha256": "2802af7b777c326ac6481b1e3b3900eaebf16baf8ce8fe1a513d8b177632b682",
+  "dispatch_claim_run_id": 31200395587,
+  "dispatch_contract_sha256": "2802af7b777c326ac6481b1e3b3900eaebf16baf8ce8fe1a513d8b177632b682"
 }
