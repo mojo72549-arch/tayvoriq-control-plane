@@ -54,6 +54,7 @@ env:
   TAYVORIQ_CHATTERBOX_PAUSE_MS: "220"
   TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1200"
   TAYVORIQ_TELEGRAM_PROGRESS: "false"
+  TAYVORIQ_SOURCE_CONTEXT_FILE: ${{ github.workspace }}/tayvoriq-source-context.json
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -78,6 +79,75 @@ jobs:
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+
+      - name: Materialize verified request source context
+        if: inputs.mode == 'full'
+        shell: bash
+        env:
+          TOPIC: ${{ inputs.topic }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime
+          from pathlib import Path
+
+          topic = str(os.environ.get('TOPIC') or '').strip()
+          candidates = []
+          for path in Path('requests').glob('*.json'):
+              try:
+                  data = json.loads(path.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              if str(data.get('mode') or '') != 'full':
+                  continue
+              if str(data.get('topic') or '').strip() != topic:
+                  continue
+              if str(data.get('status') or '').upper() not in {'DISPATCHING', 'DISPATCHED'}:
+                  continue
+              source = data.get('source_context')
+              if not isinstance(source, dict) or not source:
+                  continue
+              approved = str(data.get('approved_at') or '')
+              try:
+                  stamp = datetime.fromisoformat(approved.replace('Z', '+00:00')).timestamp()
+              except Exception:
+                  stamp = 0
+              candidates.append((stamp, path, data, source))
+
+          if not candidates:
+              raise SystemExit('SOURCE_CONTEXT_MISSING: no source-bound full request matches this Golden Path topic')
+
+          _, path, data, source = max(candidates, key=lambda item: item[0])
+          raw = json.dumps(source, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')
+          digest = hashlib.sha256(raw).hexdigest()
+          expected = str(data.get('source_context_sha256') or '').strip()
+          if not expected or digest != expected:
+              raise SystemExit(f'SOURCE_CONTEXT_INTEGRITY_FAILED: expected={expected!r} actual={digest}')
+
+          sources = source.get('sources')
+          answers = source.get('fallback_editorial_answers')
+          if not isinstance(sources, list) or len(sources) < 2:
+              raise SystemExit('SOURCE_CONTEXT_QUALITY_FAILED: at least two sources are required')
+          if int(source.get('independent_news_count') or 0) < 2:
+              raise SystemExit('SOURCE_CONTEXT_QUALITY_FAILED: independent_news_count must be >= 2')
+          required = ('what_happened','why_happening','who_is_affected','personal_impact','action_now')
+          if not isinstance(answers, dict) or any(not str(answers.get(k) or '').strip() for k in required):
+              raise SystemExit('SOURCE_CONTEXT_QUALITY_FAILED: complete five-answer fallback is required')
+
+          Path('tayvoriq-source-context.json').write_text(
+              json.dumps(source, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+          print(json.dumps({
+              'source_context': 'verified',
+              'request_id': data.get('request_id'),
+              'request_file': str(path),
+              'source_count': len(sources),
+              'sha256': digest,
+          }, ensure_ascii=False))
+          PY
 
       - name: Validate required control-plane secrets
         shell: bash
