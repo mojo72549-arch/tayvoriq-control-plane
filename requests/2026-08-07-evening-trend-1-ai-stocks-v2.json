@@ -1,0 +1,35 @@
+{
+  "request_id": "2026-08-07-evening-trend-1-ai-stocks-v2",
+  "status": "APPROVED",
+  "source": "post_quality_gate_production",
+  "trend_id": "1",
+  "topic": "KI-Aktien unter Druck: starke Zahlen reichen plötzlich nicht mehr",
+  "trend_scope": "technology_ai",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-07T17:06:00+00:00",
+  "approval_key": "production:2026-08-07:trend:1:post-quality-gate-v1",
+  "mode": "full",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-07T17:06:00+00:00",
+      "actor": "post_quality_gate_release"
+    }
+  ],
+  "sources": [
+    "https://www.reuters.com/business/sandisk-western-digital-drag-chip-stocks-lofty-expectations-eclipse-strong-2026-08-06/",
+    "https://www.reuters.com/world/china/global-markets-global-markets-2026-08-07/",
+    "https://www.investors.com/market-trend/stock-market-today/dow-jones-futures-jobs-report-cloudflare-sezzle-earnings-movers/"
+  ],
+  "quality_intent": {
+    "hook": "Starke Zahlen – und die Aktie fällt trotzdem. Bei KI-Werten reicht gut plötzlich nicht mehr.",
+    "core_value": "Erkläre verständlich, warum extrem hohe Erwartungen dazu führen können, dass selbst starke Geschäftszahlen KI- und Chip-Aktien unter Druck setzen, und was das für normale Anleger und die KI-Investitionswelle bedeutet.",
+    "visual_rule": "Nur zur Aussage passende Börsen-, Chip-, Rechenzentrum- und KI-Infrastruktur-Szenen; keine generischen unpassenden Stockbilder.",
+    "voice": "tiefe natürliche deutsche Dokumentarstimme"
+  },
+  "contract_sha256": "bdd8ce4ba9a54e5dc0e0e9c530846d354930bd7ebc3b52f483d70f68ff2cc187"
+}
