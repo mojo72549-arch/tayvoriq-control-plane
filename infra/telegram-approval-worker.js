@@ -127,7 +127,9 @@ export default {
       return new Response('ok');
     }
 
-    const rejectMatch = text.match(/^ablehnen\s+(\d+)$/i) || text.match(/^reject:(\d+)$/i);
+    const rejectMatch = callbackData.match(/^tayvoriq:reject:(\d+)$/i)
+      || text.match(/^ablehnen\s+(\d+)$/i)
+      || text.match(/^reject:(\d+)$/i);
     if (rejectMatch) {
       const runId = rejectMatch[1];
       if (callback?.id) await answerCallback(env, callback.id, `Run ${runId} wurde abgelehnt.`);
@@ -136,10 +138,12 @@ export default {
       return new Response('ok');
     }
 
-    const approveMatch = text.match(/^freigeben\s+(\d+)$/i) || text.match(/^approve:(\d+)$/i);
+    const approveMatch = callbackData.match(/^tayvoriq:approve:(\d+)$/i)
+      || text.match(/^freigeben\s+(\d+)$/i)
+      || text.match(/^approve:(\d+)$/i);
     if (!approveMatch) {
       if (callback?.id) await answerCallback(env, callback.id, 'Unbekannte Aktion.');
-      await requireTelegramMessage(await telegram(env, chatId, 'Aktion konnte nicht zugeordnet werden. Bitte nutze den aktuellen Trend-freigeben-Button.'));
+      await requireTelegramMessage(await telegram(env, chatId, 'Aktion konnte nicht zugeordnet werden. Bitte nutze den aktuellen Freigeben-Button.'));
       return new Response('ok');
     }
 
@@ -153,24 +157,23 @@ export default {
       return new Response('video unavailable', { status: 409 });
     }
 
-    const dispatch = await githubDispatch(env, 'telegram_approve_youtube', {
-      run_id: runId,
-      video_url: videoUrl,
-      review_url: reviewUrl,
-      privacy: env.YOUTUBE_PRIVACY || 'public',
+    const approval = await upsertApprovalRecord(env, {
+      runId,
+      videoUrl,
+      reviewUrl,
+      telegramMessageId: callback?.message?.message_id || null,
     });
-
-    if (!dispatch.ok) {
-      const detail = await dispatch.text();
-      if (callback?.id) await answerCallback(env, callback.id, 'YouTube-Workflow konnte nicht gestartet werden.');
-      await requireTelegramMessage(await telegram(env, chatId, `❌ YouTube-Workflow konnte nicht gestartet werden: ${dispatch.status}`));
-      console.error('youtube repository_dispatch failed', dispatch.status, detail);
-      return new Response('dispatch failed', { status: 502 });
+    if (!approval.ok) {
+      const detail = await approval.text();
+      if (callback?.id) await answerCallback(env, callback.id, 'Freigabe konnte nicht gespeichert werden.');
+      await requireTelegramMessage(await telegram(env, chatId, `❌ Freigabe für Run ${runId} konnte nicht gespeichert werden: ${approval.status}`));
+      console.error('approval record write failed', approval.status, detail);
+      return new Response('approval write failed', { status: 502 });
     }
 
     if (callback?.id) await answerCallback(env, callback.id, `Run ${runId} freigegeben.`);
     if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
-    await requireTelegramMessage(await telegram(env, chatId, `✅ Freigabe für Run ${runId} angenommen. Der YouTube-Upload wurde gestartet.`));
+    await requireTelegramMessage(await telegram(env, chatId, `✅ Freigabe für Run ${runId} gespeichert. Der automatische YouTube-Upload startet jetzt. TikTok bleibt manuell.`));
     return new Response('ok');
   },
 };
@@ -217,6 +220,66 @@ async function loadTrendRequest(env) {
   });
   if (!response.ok) throw new Error(`Trend request HTTP ${response.status}`);
   return response.json();
+}
+
+async function upsertApprovalRecord(env, { runId, videoUrl, reviewUrl, telegramMessageId }) {
+  const repository = env.GITHUB_REPOSITORY || 'mojo72549-arch/tayvoriq-control-plane';
+  const path = `.automation/tayvoriq-reviews/${runId}.json`;
+  const apiUrl = `https://api.github.com/repos/${repository}/contents/${path}`;
+  const headers = {
+    Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'tayvoriq-telegram-approval',
+    'Content-Type': 'application/json',
+  };
+
+  let existing = {};
+  let sha = '';
+  const current = await fetch(`${apiUrl}?ref=main`, { headers });
+  if (current.ok) {
+    const data = await current.json();
+    sha = String(data?.sha || '');
+    try {
+      const raw = atob(String(data?.content || '').replace(/\n/g, ''));
+      const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+      existing = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      existing = {};
+    }
+  } else if (current.status !== 404) {
+    return current;
+  }
+
+  const record = {
+    ...existing,
+    review_id: String(runId),
+    status: 'APPROVED',
+    platform_upload_performed: Boolean(existing.platform_upload_performed),
+    publication_pending: true,
+    approved_at: new Date().toISOString(),
+    approved_via: 'telegram_callback',
+    telegram_message_id: telegramMessageId,
+    video_url: videoUrl,
+    review_url: reviewUrl,
+  };
+  const text = JSON.stringify(record, null, 2) + '\n';
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+
+  const payload = {
+    message: `Approve TAYVORIQ review ${runId} from Telegram`,
+    content: btoa(binary),
+    branch: 'main',
+  };
+  if (sha) payload.sha = sha;
+
+  return fetch(apiUrl, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(payload),
+  });
 }
 
 async function githubDispatch(env, eventType, clientPayload) {
