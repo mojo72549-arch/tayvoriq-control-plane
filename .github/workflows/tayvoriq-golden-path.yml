@@ -34,7 +34,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: tayvoriq-golden-path-v2
+  group: tayvoriq-golden-path-v3
   cancel-in-progress: false
 
 env:
@@ -113,6 +113,7 @@ jobs:
           fetch-depth: 1
 
       - name: Checkout Pages repository
+        if: inputs.mode == 'full'
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/mind-reset-daily
@@ -120,6 +121,11 @@ jobs:
           token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
           path: pages-worktree
           fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            tayvoriq
+            .nojekyll
+          sparse-checkout-cone-mode: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -424,16 +430,17 @@ jobs:
             --max-file-bytes 10485760
 
       - name: Upload compact diagnostics
-        if: always()
+        if: always() && inputs.mode == 'full'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: tayvoriq-compact-diagnostics-${{ github.run_id }}
           path: implementation/out/tayvoriq-compact-diagnostics/**
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 1
 
       - name: Upload complete review artifacts
-        if: always()
+        if: ${{ false }}
         uses: actions/upload-artifact@v4
         with:
           name: tayvoriq-review-${{ github.run_id }}
@@ -441,12 +448,12 @@ jobs:
             implementation/out/**
             implementation/site/tayvoriq/**
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 1
 
       - name: Fail incomplete production after diagnostics
         if: inputs.mode == 'full' && steps.result.outputs.success != 'true'
         env:
           FINAL_STATE: ${{ steps.result.outputs.state }}
         run: |
-          echo "::error title=TAYVORIQ production incomplete::Bounded production ended with state ${FINAL_STATE}. Diagnostics were uploaded; no incomplete video was published."
+          echo "::error title=TAYVORIQ production incomplete::Bounded production ended with state ${FINAL_STATE}. Compact diagnostics were collected; no incomplete video was published."
           exit 1
