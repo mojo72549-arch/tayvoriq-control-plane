@@ -1,6 +1,9 @@
 name: TAYVORIQ Request Dispatcher
 
 on:
+  repository_dispatch:
+    types:
+      - tayvoriq_trend_approved
   push:
     branches:
       - main
@@ -30,12 +33,53 @@ jobs:
       - name: Resolve approved request
         id: request
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TREND_ID: ${{ github.event.client_payload.trend_id }}
+          DISPATCH_TOPIC: ${{ github.event.client_payload.topic }}
+          APPROVED_AT: ${{ github.event.client_payload.approved_at }}
+          TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id }}
         run: |
           set -euo pipefail
           REQUEST_FILE=""
-          if [ "${{ github.event_name }}" = "push" ]; then
+
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            REQUEST_FILE="requests/telegram-${GITHUB_RUN_ID}-trend-${TREND_ID:-unknown}.json"
+            export REQUEST_FILE
+            python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          trend_id = str(os.environ.get('TREND_ID') or '').strip()
+          if trend_id not in {'1','2','3','4','5'}:
+              raise SystemExit(f'Invalid trend id from Telegram dispatch: {trend_id!r}')
+          topic = str(os.environ.get('DISPATCH_TOPIC') or '').strip()
+          if not topic:
+              raise SystemExit('Telegram dispatch did not include a topic')
+          approved_at = str(os.environ.get('APPROVED_AT') or '').strip() or datetime.now(timezone.utc).isoformat()
+          message_id = str(os.environ.get('TELEGRAM_MESSAGE_ID') or '').strip()
+          path = Path(os.environ['REQUEST_FILE'])
+          data = {
+              'request_id': path.stem,
+              'status': 'APPROVED',
+              'source': 'telegram_trend_approval',
+              'trend_id': trend_id,
+              'topic': topic,
+              'trend_scope': 'technology_ai' if trend_id == '1' else 'auto_scope',
+              'language': 'Deutsch',
+              'platform': 'youtube_tiktok',
+              'approved_at': approved_at,
+              'telegram_message_id': message_id or None,
+          }
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'Created approved request from Telegram event: {path}')
+          PY
+          elif [ "$EVENT_NAME" = "push" ]; then
             REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
           fi
+
           if [ -z "$REQUEST_FILE" ]; then
             REQUEST_FILE=$(python - <<'PY'
           import json
@@ -52,17 +96,25 @@ jobs:
           PY
             )
           fi
+
           if [ -z "$REQUEST_FILE" ] || [ ! -f "$REQUEST_FILE" ]; then
             echo "approved=false" >> "$GITHUB_OUTPUT"
             echo "No approved request is waiting."
             exit 0
           fi
+
           python - "$REQUEST_FILE" "$GITHUB_OUTPUT" <<'PY'
           import json,sys
           from pathlib import Path
           p=Path(sys.argv[1]); out=Path(sys.argv[2]); d=json.loads(p.read_text(encoding='utf-8'))
           approved=str(d.get('status') or '').upper() in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'}
-          values={'approved':'true' if approved else 'false','request_file':str(p),'topic':str(d.get('topic') or '').replace('\n',' ').strip(),'trend_scope':str(d.get('trend_scope') or 'auto_scope').strip(),'request_id':str(d.get('request_id') or p.stem).strip()}
+          values={
+              'approved':'true' if approved else 'false',
+              'request_file':str(p),
+              'topic':str(d.get('topic') or '').replace('\n',' ').strip(),
+              'trend_scope':str(d.get('trend_scope') or 'auto_scope').strip(),
+              'request_id':str(d.get('request_id') or p.stem).strip(),
+          }
           with out.open('a',encoding='utf-8') as h:
               for k,v in values.items(): h.write(f'{k}={v}\n')
           print(values)
