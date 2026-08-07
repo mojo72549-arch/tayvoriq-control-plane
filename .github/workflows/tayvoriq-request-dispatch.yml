@@ -225,26 +225,87 @@ jobs:
           done
           [ "$pushed" = "true" ] || { echo "::error title=Dispatch persistence failed::Golden Path started but request binding could not be persisted"; exit 1; }
 
-      - name: Send verified production-start Telegram
+      - name: Resolve production-start notification
+        id: start_notice
         if: steps.persist_dispatch.outcome == 'success' && steps.request.outputs.mode == 'full'
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          python - "$REQUEST_FILE" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          from pathlib import Path
+          data=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          notice=data.get('notification_contract') if isinstance(data.get('notification_contract'),dict) else {}
+          already=bool(notice.get('start_message_already_emitted'))
+          with open(sys.argv[2],'a',encoding='utf-8') as h:
+              h.write(f"send={'false' if already else 'true'}\n")
+          print({'start_message_already_emitted':already})
+          PY
+
+      - name: Send verified production-start Telegram once
+        id: telegram_start
+        if: steps.start_notice.outputs.send == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
           RUN_ID: ${{ steps.dispatch.outputs.run_id }}
+          TOPIC: ${{ steps.request.outputs.topic }}
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN" && test -n "$TELEGRAM_CHAT_ID"
           RESPONSE=$(curl --fail --silent --show-error --request POST \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=🎬 TAYVORIQ-Produktion verifiziert gestartet. Auftrag: ${REQUEST_ID}. Golden-Path-Run: ${RUN_ID}. Nächste relevante Nachricht: fertiges Video mit Freigeben/Ablehnen." \
+            --data-urlencode "text=🟣 TAYVORIQ Produktion gestartet\n\nThema: ${TOPIC}\n\nFür dich: ✅ Keine Aktion nötig.\n\nNächste Nachricht erst beim fertigen Video-Review oder bei einer echten externen Blockade." \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage")
-          python - "$RESPONSE" <<'PY'
+          MID=$(python - "$RESPONSE" <<'PY'
           import json,sys
           d=json.loads(sys.argv[1]); mid=((d.get('result') or {}).get('message_id'))
           assert d.get('ok') is True and mid, d
-          print({'telegram_message_id':mid})
+          print(mid)
           PY
+          )
+          echo "message_id=$MID" >> "$GITHUB_OUTPUT"
+
+      - name: Persist production-start notification evidence
+        if: steps.telegram_start.outcome == 'success'
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          RUN_ID: ${{ steps.dispatch.outputs.run_id }}
+          TELEGRAM_MESSAGE_ID: ${{ steps.telegram_start.outputs.message_id }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python - "$REQUEST_FILE" <<'PY'
+          import json, os, sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(sys.argv[1]); data=json.loads(path.read_text(encoding='utf-8'))
+          data['notification_contract']={
+              'logical_request_id': os.environ['REQUEST_ID'],
+              'start_message_already_emitted': True,
+              'start_message_run_id': int(os.environ['RUN_ID']),
+              'start_telegram_message_id': int(os.environ['TELEGRAM_MESSAGE_ID']),
+              'start_message_sent_at': datetime.now(timezone.utc).isoformat(),
+              'retry_and_repair_messages_suppressed': True,
+              'final_failure_allowed_only_for_terminal_external_blocker': True,
+              'final_review_allowed_only_after_publication_gate': True,
+          }
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REQUEST_FILE"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "ops(tayvoriq): record one-time start notification ${REQUEST_ID}"
+          git push origin HEAD:main
 
       - name: Persist dispatch failure
         if: failure() && steps.claim.outputs.claimed == 'true' && steps.dispatch.outcome != 'success'
