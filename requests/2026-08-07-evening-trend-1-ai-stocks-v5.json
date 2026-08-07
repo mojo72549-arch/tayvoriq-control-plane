@@ -1,6 +1,6 @@
 {
   "request_id": "2026-08-07-evening-trend-1-ai-stocks-v5",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "preserved_source_context_production",
   "trend_id": "1",
   "topic": "KI-Aktien unter Druck: starke Zahlen reichen plötzlich nicht mehr",
@@ -22,6 +22,11 @@
     {
       "state": "DISPATCHING",
       "at": "2026-08-07T17:35:38.721393+00:00",
+      "actor": "request-dispatcher:31203013062"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-07T17:35:48.961730+00:00",
       "actor": "request-dispatcher:31203013062"
     }
   ],
@@ -66,5 +71,6 @@
   },
   "contract_sha256": "9b1e305cc614fa7a962c81476bcac396c2da6a6d72140f3ff652b4ca63b1c4f7",
   "dispatch_claim_run_id": 31203013062,
-  "dispatch_contract_sha256": "9b1e305cc614fa7a962c81476bcac396c2da6a6d72140f3ff652b4ca63b1c4f7"
+  "dispatch_contract_sha256": "9b1e305cc614fa7a962c81476bcac396c2da6a6d72140f3ff652b4ca63b1c4f7",
+  "golden_path_run_id": 31203026678
 }
