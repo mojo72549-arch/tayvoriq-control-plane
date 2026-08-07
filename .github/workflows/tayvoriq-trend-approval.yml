@@ -1,15 +1,107 @@
-name: TAYVORIQ Trend Approval · Legacy deaktiviert
+name: TAYVORIQ Trend Approval
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-now/tayvoriq-trend-request.json
+      - .github/workflows/tayvoriq-trend-approval.yml
 
 permissions:
   contents: read
 
+concurrency:
+  group: tayvoriq-trend-approval
+  cancel-in-progress: true
+
 jobs:
-  legacy-disabled:
+  deliver-trend-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - run: |
-          echo "Legacy-getUpdates-Poller deaktiviert."
-          echo "Telegram-Callbacks werden ausschließlich durch den zentralen Studio-Poller verarbeitet."
+      - uses: actions/checkout@v4
+
+      - name: Validate request and Telegram secrets
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          test -s .github/run-now/tayvoriq-trend-request.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text())
+          assert len(d.get('trends', [])) == 5, d
+          assert d.get('selected_trend_id') in {'1','2','3','4','5'}, d
+          print('request_valid', d['selected_trend_id'])
+          PY
+
+      - name: Send Telegram trend review and verify delivery
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          python - <<'PY' > /tmp/message.txt
+          import json
+          from pathlib import Path
+          d=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text())
+          lines=['🔥 TAYVORIQ Morgen-Trends', '', 'Rangliste:']
+          for t in d['trends']:
+              lines.append(f"{t['id']}. {t['title']} — {t['score']} %")
+          selected=d['selected_trend_id']
+          t=next(x for x in d['trends'] if x['id']==selected)
+          lines += ['', f"Ausgewählt: {selected}", f"Thema: {t['title']}", f"Score: {t['score']} %", '', 'Bewertung: Aktualität · Viralität · TAYVORIQ-Passung · Quellenqualität · visuelle Umsetzbarkeit', '', 'Quellen:']
+          for s in t.get('sources', [])[:3]:
+              lines.append(s)
+          lines += ['', 'Erst mit „Trend freigeben“ startet die Produktion.']
+          print('\n'.join(lines))
+          PY
+          SELECTED=$(python -c "import json;print(json.load(open('.github/run-now/tayvoriq-trend-request.json'))['selected_trend_id'])")
+          KEYBOARD=$(python - "$SELECTED" <<'PY'
+          import json,sys
+          i=sys.argv[1]
+          print(json.dumps({'inline_keyboard': [[
+            {'text':'✅ Trend freigeben','callback_data':f'approve_trend:{i}'},
+            {'text':'❌ Ablehnen','callback_data':f'reject_trend:{i}'}
+          ]]}, ensure_ascii=False))
+          PY
+          )
+          RESPONSE=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text@/tmp/message.txt" \
+            --data-urlencode "reply_markup=${KEYBOARD}")
+          python - "$RESPONSE" <<'PY'
+          import json,sys
+          d=json.loads(sys.argv[1])
+          assert d.get('ok') is True, d
+          r=d.get('result') or {}
+          assert r.get('message_id'), r
+          markup=r.get('reply_markup') or {}
+          callbacks={b.get('callback_data') for row in markup.get('inline_keyboard',[]) for b in row}
+          assert any(str(x).startswith('approve_trend:') for x in callbacks), callbacks
+          assert any(str(x).startswith('reject_trend:') for x in callbacks), callbacks
+          print('telegram_message_id', r['message_id'])
+          print('callback_buttons_verified', sorted(callbacks))
+          PY
+
+      - name: Verify Telegram webhook status
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl -fsS --retry 3 --retry-all-errors "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo")
+          python - "$RESPONSE" <<'PY'
+          import json,sys
+          d=json.loads(sys.argv[1]); assert d.get('ok') is True, d
+          r=d.get('result') or {}
+          assert r.get('url'), r
+          assert r.get('pending_update_count',0) >= 0
+          print('webhook_active', r.get('url'))
+          print('pending_update_count', r.get('pending_update_count'))
+          print('last_error_message', r.get('last_error_message',''))
+          PY
