@@ -61,12 +61,8 @@ jobs:
               --approved-at "${APPROVED_AT:-}" \
               --out-dir requests)
           elif [ "$EVENT_NAME" = "push" ]; then
-            # A push may be only a control-plane hardening change. Never scan and
-            # start production in that case; only a pushed request file is eligible.
             REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
           else
-            # Schedule/manual recovery only considers requests that already pass
-            # the new cryptographic/state-machine contract.
             REQUEST_FILE=$(python - <<'PY'
           import json
           import sys
@@ -107,8 +103,6 @@ jobs:
               python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
               ;;
             DISPATCHING|DISPATCHED)
-              # Duplicate Telegram callback or a push caused by our own state
-              # update: acknowledge idempotently, but never start another run.
               python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
               echo "approved=false" >> "$GITHUB_OUTPUT"
               echo "Idempotent no-op for already claimed request: $REQUEST_FILE ($STATUS)"
@@ -132,6 +126,7 @@ jobs:
               'trend_scope':str(d['trend_scope']).strip(),
               'request_id':str(d['request_id']).strip(),
               'contract_sha256':str(d['contract_sha256']).strip(),
+              'mode':str(d['mode']).strip(),
           }
           with out.open('a',encoding='utf-8') as h:
               for k,v in values.items(): h.write(f'{k}={v}\n')
@@ -181,10 +176,11 @@ jobs:
           TOPIC: ${{ steps.request.outputs.topic }}
           TREND_SCOPE: ${{ steps.request.outputs.trend_scope }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          MODE: ${{ steps.request.outputs.mode }}
         run: |
           set -euo pipefail
           BEFORE=$(gh run list --workflow tayvoriq-golden-path.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-          gh workflow run tayvoriq-golden-path.yml --ref main -f mode=full -f trend_scope="$TREND_SCOPE" -f topic="$TOPIC"
+          gh workflow run tayvoriq-golden-path.yml --ref main -f mode="$MODE" -f trend_scope="$TREND_SCOPE" -f topic="$TOPIC"
 
           RUN_ID=""
           for attempt in $(seq 1 12); do
@@ -194,7 +190,7 @@ jobs:
           done
           [ -n "$RUN_ID" ] || { echo "::error title=Golden Path not started::No new workflow_dispatch run became visible"; exit 1; }
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "Golden Path accepted request ${REQUEST_ID} as run ${RUN_ID}"
+          echo "Golden Path accepted request ${REQUEST_ID} as run ${RUN_ID} mode=${MODE}"
 
       - name: Persist dispatched state
         id: persist_dispatch
@@ -230,7 +226,7 @@ jobs:
           [ "$pushed" = "true" ] || { echo "::error title=Dispatch persistence failed::Golden Path started but request binding could not be persisted"; exit 1; }
 
       - name: Send verified production-start Telegram
-        if: steps.persist_dispatch.outcome == 'success'
+        if: steps.persist_dispatch.outcome == 'success' && steps.request.outputs.mode == 'full'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
