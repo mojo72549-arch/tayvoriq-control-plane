@@ -26,6 +26,61 @@ export default {
       return new Response('ignored');
     }
 
+    const reasonMatch = callbackData.match(/^trend_reason:(newtrend|newformat):(\d+)$/i);
+    if (reasonMatch) {
+      const action = reasonMatch[1].toLowerCase();
+      const trendId = reasonMatch[2];
+      if (callback?.id) await answerCallback(env, callback.id, action === 'newtrend' ? 'Neuer Trend wird vorgeschlagen.' : 'Neues Format wird vorgeschlagen.');
+      if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
+
+      let requestData;
+      try {
+        requestData = await loadTrendRequest(env);
+      } catch (error) {
+        await requireTelegramMessage(await telegram(env, chatId, `❌ Trend-Neuvorschlag fehlgeschlagen.\nGrund: ${String(error).slice(0, 350)}`));
+        return new Response('trend request unavailable', { status: 502 });
+      }
+
+      const trends = Array.isArray(requestData?.trends) ? requestData.trends : [];
+      const currentIndex = trends.findIndex(t => String(t.id) === trendId);
+      if (currentIndex < 0 || trends.length === 0) {
+        await requireTelegramMessage(await telegram(env, chatId, `❌ Trend ${trendId} ist in der aktuellen Rangliste nicht mehr vorhanden.`));
+        return new Response('trend not found', { status: 404 });
+      }
+
+      if (action === 'newtrend') {
+        const next = trends[(currentIndex + 1) % trends.length];
+        const body = [
+          '🔄 TAYVORIQ Alternativ-Trend',
+          '',
+          `Ausgewählt: ${next.id}`,
+          `Thema: ${next.title}`,
+          `Score: ${next.score} %`,
+          '',
+          'Grund berücksichtigt: bisheriges Thema abgelehnt.',
+          'Erst mit „Trend freigeben“ startet die Produktion.'
+        ].join('\n');
+        const sent = await telegramWithMarkup(env, chatId, body, trendKeyboard(String(next.id)));
+        await requireTelegramMessage(sent);
+        return new Response('ok');
+      }
+
+      const current = trends[currentIndex];
+      const formatTopic = `${current.title} — als kompakter Erklär-Short mit Kontrast-Hook, 3 klaren Fakten und visueller Vorher/Nachher-Dramaturgie`;
+      const body = [
+        '🎬 TAYVORIQ Format-Alternative',
+        '',
+        `Ausgewählt: ${current.id}`,
+        `Thema: ${formatTopic}`,
+        '',
+        'Grund berücksichtigt: Thema bleibt, Format wird neu aufgesetzt.',
+        'Erst mit „Trend freigeben“ startet die Produktion.'
+      ].join('\n');
+      const sent = await telegramWithMarkup(env, chatId, body, trendKeyboard(String(current.id)));
+      await requireTelegramMessage(sent);
+      return new Response('ok');
+    }
+
     const trendApproval = parseTrendApproval(callbackData, text, messageText);
     if (trendApproval) {
       const { trendId, topic } = trendApproval;
@@ -41,14 +96,12 @@ export default {
 
       if (!dispatch.ok) {
         const detail = await dispatch.text();
-        await telegram(env, chatId, `❌ TAYVORIQ 0 %\nTrendfreigabe konnte den X-Workflow nicht starten.\nGitHub-Fehler: ${dispatch.status}`);
+        await requireTelegramMessage(await telegram(env, chatId, `❌ TAYVORIQ 0 %\nTrendfreigabe konnte den X-Workflow nicht starten.\nGitHub-Fehler: ${dispatch.status}`));
         console.error('trend repository_dispatch failed', dispatch.status, detail);
         return new Response('dispatch failed', { status: 502 });
       }
 
-      if (callback?.message?.message_id) {
-        await clearKeyboard(env, chatId, callback.message.message_id);
-      }
+      if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
       const sent = await telegram(env, chatId, `✅ TAYVORIQ 5 %\nTrend ${trendId} freigegeben.\nThema: ${topic || 'wird aus Trenddaten geladen'}\nX-Workflow wurde angefordert.\nNächster Schritt: Startbestätigung bei 10 %`);
       await requireTelegramMessage(sent);
       return new Response('ok');
@@ -56,8 +109,21 @@ export default {
 
     const rejectTrend = callbackData.match(/^(?:reject_trend|trend_reject|reject:trend)[:_](\d+)$/i);
     if (rejectTrend) {
-      if (callback?.id) await answerCallback(env, callback.id, `Trend ${rejectTrend[1]} abgelehnt.`);
-      await telegram(env, chatId, `❌ Trend ${rejectTrend[1]} abgelehnt. Bitte antworte mit dem Ablehnungsgrund.`);
+      const trendId = rejectTrend[1];
+      if (callback?.id) await answerCallback(env, callback.id, `Trend ${trendId} abgelehnt.`);
+      if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
+      const sent = await telegramWithMarkup(
+        env,
+        chatId,
+        `❌ Trend ${trendId} abgelehnt.\n\nWas ist der Hauptgrund?`,
+        {
+          inline_keyboard: [
+            [{ text: '📰 Thema/Trend passt nicht', callback_data: `trend_reason:newtrend:${trendId}` }],
+            [{ text: '🎬 Format passt nicht', callback_data: `trend_reason:newformat:${trendId}` }]
+          ]
+        }
+      );
+      await requireTelegramMessage(sent);
       return new Response('ok');
     }
 
@@ -66,14 +132,14 @@ export default {
       const runId = rejectMatch[1];
       if (callback?.id) await answerCallback(env, callback.id, `Run ${runId} wurde abgelehnt.`);
       if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
-      await telegram(env, chatId, `❌ Run ${runId} wurde abgelehnt. Es erfolgt kein YouTube-Upload.`);
+      await requireTelegramMessage(await telegram(env, chatId, `❌ Run ${runId} wurde abgelehnt. Es erfolgt kein YouTube-Upload.`));
       return new Response('ok');
     }
 
     const approveMatch = text.match(/^freigeben\s+(\d+)$/i) || text.match(/^approve:(\d+)$/i);
     if (!approveMatch) {
       if (callback?.id) await answerCallback(env, callback.id, 'Unbekannte Aktion.');
-      await telegram(env, chatId, 'Aktion konnte nicht zugeordnet werden. Bitte nutze den aktuellen Trend-freigeben-Button.');
+      await requireTelegramMessage(await telegram(env, chatId, 'Aktion konnte nicht zugeordnet werden. Bitte nutze den aktuellen Trend-freigeben-Button.'));
       return new Response('ok');
     }
 
@@ -83,7 +149,7 @@ export default {
     const head = await fetch(videoUrl, { method: 'HEAD', redirect: 'follow' });
     if (!head.ok) {
       if (callback?.id) await answerCallback(env, callback.id, 'Video ist noch nicht erreichbar.');
-      await telegram(env, chatId, `❌ Video für Run ${runId} ist nicht öffentlich erreichbar.`);
+      await requireTelegramMessage(await telegram(env, chatId, `❌ Video für Run ${runId} ist nicht öffentlich erreichbar.`));
       return new Response('video unavailable', { status: 409 });
     }
 
@@ -97,17 +163,26 @@ export default {
     if (!dispatch.ok) {
       const detail = await dispatch.text();
       if (callback?.id) await answerCallback(env, callback.id, 'YouTube-Workflow konnte nicht gestartet werden.');
-      await telegram(env, chatId, `❌ YouTube-Workflow konnte nicht gestartet werden: ${dispatch.status}`);
+      await requireTelegramMessage(await telegram(env, chatId, `❌ YouTube-Workflow konnte nicht gestartet werden: ${dispatch.status}`));
       console.error('youtube repository_dispatch failed', dispatch.status, detail);
       return new Response('dispatch failed', { status: 502 });
     }
 
     if (callback?.id) await answerCallback(env, callback.id, `Run ${runId} freigegeben.`);
     if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
-    await telegram(env, chatId, `✅ Freigabe für Run ${runId} angenommen. Der YouTube-Upload wurde gestartet.`);
+    await requireTelegramMessage(await telegram(env, chatId, `✅ Freigabe für Run ${runId} angenommen. Der YouTube-Upload wurde gestartet.`));
     return new Response('ok');
   },
 };
+
+function trendKeyboard(trendId) {
+  return {
+    inline_keyboard: [[
+      { text: '✅ Trend freigeben', callback_data: `approve_trend:${trendId}` },
+      { text: '❌ Ablehnen', callback_data: `reject_trend:${trendId}` }
+    ]]
+  };
+}
 
 function parseTrendApproval(callbackData, text, messageText) {
   const explicit = callbackData.match(/^(?:approve_trend|trend_approve|trend:approve|approve:trend)[:_](\d+)$/i)
@@ -135,6 +210,15 @@ function parseTrendApproval(callbackData, text, messageText) {
   return { trendId, topic };
 }
 
+async function loadTrendRequest(env) {
+  const repository = env.GITHUB_REPOSITORY || 'mojo72549-arch/tayvoriq-control-plane';
+  const response = await fetch(`https://raw.githubusercontent.com/${repository}/main/.github/run-now/tayvoriq-trend-request.json`, {
+    headers: { 'User-Agent': 'tayvoriq-telegram-approval' }
+  });
+  if (!response.ok) throw new Error(`Trend request HTTP ${response.status}`);
+  return response.json();
+}
+
 async function githubDispatch(env, eventType, clientPayload) {
   return fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/dispatches`, {
     method: 'POST',
@@ -154,6 +238,15 @@ async function telegram(env, chatId, text) {
     chat_id: chatId,
     text,
     disable_web_page_preview: false,
+  });
+}
+
+async function telegramWithMarkup(env, chatId, text, replyMarkup) {
+  return telegramMethod(env, 'sendMessage', {
+    chat_id: chatId,
+    text,
+    disable_web_page_preview: false,
+    reply_markup: replyMarkup,
   });
 }
 
