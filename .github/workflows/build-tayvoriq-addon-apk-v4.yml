@@ -43,16 +43,18 @@ jobs:
       - name: Verify icon, Minecraft visibility, direct handoff and signature
         run: |
           APK="android-test-app/app/build/outputs/apk/debug/app-debug.apk"
+          SRC="android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee badging.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee manifest-tree.txt
-          unzip -p "$APK" classes.dex | strings | tee dex-strings.txt >/dev/null
           grep -q "application-icon-640" badging.txt
           grep -q "FileImportActivity" manifest-tree.txt
           grep -q "android.intent.action.VIEW" manifest-tree.txt
           grep -q "application/mcaddon" manifest-tree.txt
           grep -q "com.mojang.minecraftpe" manifest-tree.txt
-          grep -q "com.mojang.minecraftpe.MainActivity" dex-strings.txt
+          grep -Fq 'MINECRAFT_MAIN_ACTIVITY = "com.mojang.minecraftpe.MainActivity"' "$SRC"
+          grep -Fq 'setComponent(new ComponentName(MINECRAFT_PACKAGE, MINECRAFT_MAIN_ACTIVITY))' "$SRC"
+          grep -Fq 'legacyPackageIntent.setPackage(MINECRAFT_PACKAGE)' "$SRC"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           mkdir -p delivery
           cp "$APK" delivery/TAYVORIQ_Addon_Manager_Minecraft_Import_Fix_v1.4.1.apk
