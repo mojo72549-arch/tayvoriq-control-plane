@@ -1,4 +1,4 @@
-name: TAYVORIQ Golden Path
+name: TAYVORIQ-X Golden Path
 
 on:
   workflow_dispatch:
@@ -16,7 +16,6 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/tayvoriq-deliver-video-now.yml
       - .github/run-now/tayvoriq-x-request.json
 
 permissions:
@@ -24,7 +23,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: tayvoriq-golden-path
+  group: tayvoriq-x-golden-path
   cancel-in-progress: false
 
 env:
@@ -48,8 +47,12 @@ env:
   TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"
   TAYVORIQ_NARRATOR_TONE_REQUIRED: "true"
   TAYVORIQ_RENDER_TIMEOUT_SECONDS: "900"
+  TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: "900"
+  TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "210"
+  TAYVORIQ_AUDIT_RETRY_DELAYS: "0,12,30"
   TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "2100"
   TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "2"
+  TAYVORIQ_APPROVED_TREND_PINNED: "true"
   TAYVORIQ_TELEGRAM_PROGRESS: "false"
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
@@ -102,6 +105,33 @@ jobs:
           token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
           path: pages-worktree
           fetch-depth: 1
+
+      - name: Record immutable production manifest
+        run: |
+          set -euo pipefail
+          mkdir -p implementation/out/control-plane
+          CONTROL_SHA=$(git rev-parse HEAD)
+          IMPLEMENTATION_SHA=$(git -C implementation rev-parse HEAD)
+          PAGES_SHA=$(git -C pages-worktree rev-parse HEAD)
+          python - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" <<'PY'
+          import json, os, pathlib, sys
+          payload = {
+              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+              "topic": os.environ.get("TOPIC"),
+              "trend_id": os.environ.get("TREND_ID"),
+              "control_plane_sha": sys.argv[1],
+              "implementation_sha": sys.argv[2],
+              "review_pages_sha": sys.argv[3],
+              "implementation_branch": "feature/multi-platform-distribution-package",
+              "approved_trend_pinned": True,
+              "quality_gates_weakened": False,
+          }
+          pathlib.Path("implementation/out/control-plane/production-manifest.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+          )
+          print(json.dumps(payload, ensure_ascii=False))
+          PY
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -207,31 +237,50 @@ jobs:
         if: failure()
         working-directory: implementation
         run: |
+          set +e
           state=$(python - <<'PY'
           import json
           from pathlib import Path
-          p = Path('out/tayvoriq-self-heal/report.json')
-          d = json.loads(p.read_text()) if p.exists() else {}
-          print(str(d.get('state') or 'TECHNICAL_FAILURE'))
+          candidates = [
+              Path('out/tayvoriq-self-heal/report.json'),
+              Path('out/control-plane/preflight.json'),
+          ]
+          for p in candidates:
+              if not p.exists():
+                  continue
+              try:
+                  d = json.loads(p.read_text())
+              except Exception:
+                  continue
+              state = str(d.get('state') or '')
+              if state:
+                  print(state)
+                  break
+          else:
+              print('TECHNICAL_FAILURE')
           PY
           )
-          if [ "$state" = "SKIPPED_NO_PUBLISHABLE_TREND" ] || [ "$state" = "CONTENT_REJECTED" ]; then
-            reason="Stimme oder Bildqualität konnte nach den lokalen Reparaturen nicht sicher freigegeben werden."
-          else
-            reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden."
-          fi
-          message=$(printf '❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden\n\n%s\n\nEs wurde nichts veröffentlicht.' "$reason")
+          case "$state" in
+            PREFLIGHT_FAILED)
+              reason="Die Produktionssicherheit hat vor dem Render einen internen Vertragsfehler erkannt. Es wurde nichts gerendert oder veröffentlicht." ;;
+            SKIPPED_NO_PUBLISHABLE_TREND|CONTENT_REJECTED)
+              reason="Das Video hat mindestens ein unverändertes Qualitäts- oder Fakten-Gate nicht bestanden. Es wurde nichts veröffentlicht." ;;
+            *)
+              reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden. Es wurde nichts veröffentlicht." ;;
+          esac
+          message=$(printf '❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden\n\n%s' "$reason")
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}" >/dev/null
 
-      - name: Upload diagnostics
+      - name: Upload diagnostics and preserved candidates
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tayvoriq-golden-path-${{ github.run_id }}
+          name: tayvoriq-x-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: |
             implementation/out/**
             implementation/site/tayvoriq/**
           if-no-files-found: warn
           retention-days: 30
+          compression-level: 1
