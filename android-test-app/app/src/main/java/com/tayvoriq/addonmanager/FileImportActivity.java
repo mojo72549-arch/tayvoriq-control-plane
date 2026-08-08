@@ -2,8 +2,10 @@ package com.tayvoriq.addonmanager;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
-import android.content.ClipData;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -25,6 +27,9 @@ import java.util.Locale;
 
 /** Receives a supported add-on from Downloads/My Files and immediately opens Minecraft. */
 public final class FileImportActivity extends Activity {
+    private static final String MINECRAFT_PACKAGE = "com.mojang.minecraftpe";
+    private static final String MINECRAFT_MAIN_ACTIVITY = "com.mojang.minecraftpe.MainActivity";
+
     private static final int BG = Color.rgb(5, 8, 18);
     private static final int SURFACE = Color.rgb(13, 19, 33);
     private static final int TEXT = Color.rgb(245, 248, 255);
@@ -127,67 +132,119 @@ public final class FileImportActivity extends Activity {
             return;
         }
 
-        status.setText(name + "\n\nMinecraft wird geöffnet …");
-        new Handler(Looper.getMainLooper()).postDelayed(() -> openMinecraft(name), 450);
+        status.setText(name + "\n\nMinecraft wird geöffnet und der Import gestartet …");
+        new Handler(Looper.getMainLooper()).postDelayed(() -> openMinecraft(name), 250);
     }
 
     private void openMinecraft(String fileName) {
+        if (!isMinecraftInstalled()) {
+            fail("Minecraft Bedrock ist auf diesem Gerät nicht installiert oder für Android nicht sichtbar.");
+            return;
+        }
+
         try {
             grantUriPermission(
-                    "com.mojang.minecraftpe",
+                    MINECRAFT_PACKAGE,
                     fileUri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION);
         } catch (Exception ignored) { }
 
-        for (String mime : preferredMimes(fileName)) {
-            Intent view = buildMinecraftIntent(Intent.ACTION_VIEW, mime);
-            try {
-                startActivity(view);
-                finish();
-                return;
-            } catch (ActivityNotFoundException ignored) { }
+        // 1) Strongest path: explicit MainActivity launch. This bypasses Minecraft's
+        // MIME intent-filter matching while still delivering ACTION_VIEW + the file URI.
+        Intent explicit = legacyViewIntent();
+        explicit.setComponent(new ComponentName(MINECRAFT_PACKAGE, MINECRAFT_MAIN_ACTIVITY));
+        if (tryStart(explicit)) {
+            finish();
+            return;
         }
 
-        Intent send = buildMinecraftIntent(Intent.ACTION_SEND, "application/octet-stream");
-        send.putExtra(Intent.EXTRA_STREAM, fileUri);
-        try {
-            startActivity(send);
+        // 2) Restore the exact hand-off style used by the first working app version.
+        Intent legacyPackageIntent = legacyViewIntent();
+        legacyPackageIntent.setPackage(MINECRAFT_PACKAGE);
+        if (tryStart(legacyPackageIntent)) {
             finish();
-        } catch (ActivityNotFoundException error) {
-            fail("Minecraft Bedrock wurde nicht gefunden oder akzeptiert die Datei nicht.");
+            return;
+        }
+
+        // 3) Fallback MIME variants for Minecraft builds that publish a stricter filter.
+        for (String mime : preferredMimes(fileName)) {
+            if ("application/octet-stream".equals(mime)) continue;
+            Intent alternate = new Intent(Intent.ACTION_VIEW);
+            alternate.setDataAndType(fileUri, mime);
+            alternate.setPackage(MINECRAFT_PACKAGE);
+            alternate.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NO_HISTORY);
+            if (tryStart(alternate)) {
+                finish();
+                return;
+            }
+        }
+
+        // 4) Last-resort: open Minecraft itself. This confirms the app is installed,
+        // while avoiding the false "Minecraft not found" message from v1.4.
+        Intent launch = getPackageManager().getLaunchIntentForPackage(MINECRAFT_PACKAGE);
+        if (launch != null && tryStart(launch)) {
+            fail("Minecraft wurde geöffnet, aber diese Minecraft-Version hat den Datei-Import-Intent nicht angenommen. Bitte die Add-on-Datei erneut antippen.");
+            return;
+        }
+
+        fail("Minecraft wurde gefunden, konnte die Add-on-Datei aber nicht übernehmen.");
+    }
+
+    private Intent legacyViewIntent() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(fileUri, "application/octet-stream");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NO_HISTORY);
+        return intent;
+    }
+
+    private boolean tryStart(Intent intent) {
+        try {
+            startActivity(intent);
+            return true;
+        } catch (ActivityNotFoundException | SecurityException ignored) {
+            return false;
+        } catch (RuntimeException ignored) {
+            return false;
         }
     }
 
-    private Intent buildMinecraftIntent(String action, String mime) {
-        Intent intent = new Intent(action);
-        intent.setPackage("com.mojang.minecraftpe");
-        intent.setDataAndType(fileUri, mime);
-        intent.setClipData(ClipData.newRawUri("TAYVORIQ Add-on", fileUri));
-        intent.addFlags(
-                Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                Intent.FLAG_ACTIVITY_NEW_TASK);
-        return intent;
+    private boolean isMinecraftInstalled() {
+        try {
+            ApplicationInfo info;
+            if (Build.VERSION.SDK_INT >= 33) {
+                info = getPackageManager().getApplicationInfo(
+                        MINECRAFT_PACKAGE,
+                        PackageManager.ApplicationInfoFlags.of(0));
+            } else {
+                @SuppressWarnings("deprecation")
+                ApplicationInfo legacy = getPackageManager().getApplicationInfo(MINECRAFT_PACKAGE, 0);
+                info = legacy;
+            }
+            return info.enabled;
+        } catch (PackageManager.NameNotFoundException error) {
+            return false;
+        }
     }
 
     private static String[] preferredMimes(String fileName) {
         String lower = fileName.toLowerCase(Locale.ROOT);
         if (lower.endsWith(".mcaddon")) {
             return new String[] {
-                    "application/mcaddon",
                     "application/octet-stream",
+                    "application/mcaddon",
                     "application/zip"
             };
         }
         if (lower.endsWith(".mcpack")) {
             return new String[] {
-                    "application/mcpack",
                     "application/octet-stream",
+                    "application/mcpack",
                     "application/zip"
             };
         }
         return new String[] {
-                "application/mcworld",
                 "application/octet-stream",
+                "application/mcworld",
                 "application/zip"
         };
     }
