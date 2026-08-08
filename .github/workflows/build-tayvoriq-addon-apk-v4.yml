@@ -1,9 +1,9 @@
-name: Build TAYVORIQ Add-on APK v1.4
+name: Build TAYVORIQ Add-on APK v1.4.1
 
 on:
   push:
     branches:
-      - minecraft-addon-auto-import-v1.4
+      - minecraft-addon-import-fix-v1.4.1
   workflow_dispatch:
 
 permissions:
@@ -36,31 +36,34 @@ jobs:
         with:
           gradle-version: '9.5.1'
 
-      - name: Compile automatic import APK
+      - name: Compile Minecraft import fix APK
         working-directory: android-test-app
         run: gradle --no-daemon --stacktrace :app:assembleDebug
 
-      - name: Verify launcher icon, file handler and signature
+      - name: Verify icon, Minecraft visibility, direct handoff and signature
         run: |
           APK="android-test-app/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee badging.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee manifest-tree.txt
+          unzip -p "$APK" classes.dex | strings | tee dex-strings.txt >/dev/null
           grep -q "application-icon-640" badging.txt
           grep -q "FileImportActivity" manifest-tree.txt
           grep -q "android.intent.action.VIEW" manifest-tree.txt
           grep -q "application/mcaddon" manifest-tree.txt
+          grep -q "com.mojang.minecraftpe" manifest-tree.txt
+          grep -q "com.mojang.minecraftpe.MainActivity" dex-strings.txt
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           mkdir -p delivery
-          cp "$APK" delivery/TAYVORIQ_Addon_Manager_Auto_Import_Test_v1.4.apk
-          sha256sum delivery/TAYVORIQ_Addon_Manager_Auto_Import_Test_v1.4.apk > delivery/SHA256SUMS.txt
+          cp "$APK" delivery/TAYVORIQ_Addon_Manager_Minecraft_Import_Fix_v1.4.1.apk
+          sha256sum delivery/TAYVORIQ_Addon_Manager_Minecraft_Import_Fix_v1.4.1.apk > delivery/SHA256SUMS.txt
           cp badging.txt delivery/APK_BADGING.txt
           cp manifest-tree.txt delivery/APK_MANIFEST_TREE.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TAYVORIQ-Addon-Manager-Auto-Import-v1.4
+          name: TAYVORIQ-Addon-Manager-Minecraft-Import-Fix-v1.4.1
           path: delivery/*
           if-no-files-found: error
           retention-days: 7
