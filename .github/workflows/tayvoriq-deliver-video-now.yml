@@ -29,6 +29,7 @@ concurrency:
 env:
   PYTHONUTF8: "1"
   PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  TAYVORIQ_EXECUTION_BACKEND: "self_hosted"
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
   TAYVORIQ_TTS_PROVIDER: "chatterbox_v3"
@@ -68,11 +69,38 @@ env:
 
 jobs:
   orchestrate:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, tayvoriq-x]
     timeout-minutes: 70
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate dedicated self-hosted runner contract
+        shell: bash
+        env:
+          RUNNER_ENVIRONMENT_VALUE: ${{ runner.environment }}
+          RUNNER_OS_VALUE: ${{ runner.os }}
+          RUNNER_ARCH_VALUE: ${{ runner.arch }}
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ENVIRONMENT_VALUE" = "self-hosted" || { echo "RUNNER_CONTRACT_FAILED: dedicated self-hosted runner required"; exit 1; }
+          test "$RUNNER_OS_VALUE" = "Linux" || { echo "RUNNER_CONTRACT_FAILED: Linux required"; exit 1; }
+          test "$RUNNER_ARCH_VALUE" = "X64" || { echo "RUNNER_CONTRACT_FAILED: X64 required"; exit 1; }
+          for command in python git curl; do
+            command -v "$command" >/dev/null || { echo "RUNNER_CONTRACT_FAILED: missing $command"; exit 1; }
+          done
+          python - <<'PY'
+          import sys
+          if sys.version_info[:2] != (3, 11):
+              raise SystemExit(f"RUNNER_CONTRACT_FAILED: Python 3.11 required, got {sys.version}")
+          PY
+          mkdir -p "$HF_HOME" "$TORCH_HOME"
+          df -Pk "$GITHUB_WORKSPACE" | awk 'NR==2 { if ($4 < 12582912) { print "RUNNER_CONTRACT_FAILED: less than 12 GiB free"; exit 1 } }'
 
       - name: Materialize immutable verified source context
         shell: bash
@@ -221,6 +249,7 @@ jobs:
               "review_pages_sha": sys.argv[3],
               "source_context_sha256": sys.argv[4],
               "implementation_branch": "feature/multi-platform-distribution-package",
+              "execution_backend": os.environ.get("TAYVORIQ_EXECUTION_BACKEND"),
               "approved_trend_pinned": True,
               "source_context_bound": True,
               "quality_gates_weakened": False,
@@ -231,18 +260,22 @@ jobs:
           print(json.dumps(payload, ensure_ascii=False))
           PY
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: implementation/requirements.txt
-
       - name: Install production dependencies
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg rsync git
+          missing=()
+          for command in ffmpeg ffprobe rsync git; do
+            command -v "$command" >/dev/null || missing+=("$command")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            if command -v apt-get >/dev/null && sudo -n true 2>/dev/null; then
+              sudo apt-get update -qq
+              sudo apt-get install -y -qq ffmpeg rsync git
+            else
+              printf 'RUNNER_PREREQUISITE_MISSING: %s\n' "${missing[*]}" >&2
+              exit 1
+            fi
+          fi
           python -m pip install --upgrade pip -q
           python -m pip install -r implementation/requirements.txt pytest -q
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
@@ -408,6 +441,7 @@ jobs:
 
       - name: Upload diagnostics and preserved candidates
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: tayvoriq-x-${{ github.run_id }}-attempt-${{ github.run_attempt }}
