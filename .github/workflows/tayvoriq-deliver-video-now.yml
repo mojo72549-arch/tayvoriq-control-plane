@@ -50,10 +50,11 @@ env:
   TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: "900"
   TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "210"
   TAYVORIQ_AUDIT_RETRY_DELAYS: "0,12,30"
-  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "2100"
+  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "2700"
   TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "2"
   TAYVORIQ_APPROVED_TREND_PINNED: "true"
   TAYVORIQ_TELEGRAM_PROGRESS: "false"
+  TAYVORIQ_SOURCE_CONTEXT_FILE: ${{ github.workspace }}/tayvoriq-source-context.json
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -72,6 +73,100 @@ jobs:
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+
+      - name: Materialize immutable verified source context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime
+          from pathlib import Path
+
+          trend_id = str(os.environ.get("TREND_ID") or "").strip()
+          if not trend_id:
+              raise SystemExit("SOURCE_CONTEXT_MISSING: approved trend id is empty")
+
+          candidates = []
+          for path in Path("requests").glob("*.json"):
+              try:
+                  data = json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  continue
+              if str(data.get("trend_id") or "").strip() != trend_id:
+                  continue
+              if str(data.get("mode") or "").strip() != "full":
+                  continue
+              if str(data.get("status") or "").upper() not in {"DISPATCHING", "DISPATCHED"}:
+                  continue
+              source = data.get("source_context")
+              if not isinstance(source, dict) or not source:
+                  continue
+              approved = str(data.get("approved_at") or "")
+              try:
+                  stamp = datetime.fromisoformat(approved.replace("Z", "+00:00")).timestamp()
+              except Exception:
+                  stamp = 0.0
+              candidates.append((stamp, path, data, source))
+
+          if not candidates:
+              raise SystemExit(
+                  f"SOURCE_CONTEXT_MISSING: no verified full request exists for trend_id={trend_id}"
+              )
+
+          _, request_path, data, source = max(candidates, key=lambda item: item[0])
+          raw = json.dumps(
+              source, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+          ).encode("utf-8")
+          digest = hashlib.sha256(raw).hexdigest()
+          expected = str(data.get("source_context_sha256") or "").strip()
+          if not expected or digest != expected:
+              raise SystemExit(
+                  f"SOURCE_CONTEXT_INTEGRITY_FAILED: expected={expected!r} actual={digest}"
+              )
+
+          sources = source.get("sources")
+          answers = source.get("fallback_editorial_answers")
+          required_answers = (
+              "what_happened",
+              "why_happening",
+              "who_is_affected",
+              "personal_impact",
+              "action_now",
+          )
+          if not isinstance(sources, list) or len(sources) < 2:
+              raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: at least two sources are required")
+          if int(source.get("independent_news_count") or 0) < 2:
+              raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: independent_news_count must be >= 2")
+          if not isinstance(answers, dict) or any(
+              not str(answers.get(key) or "").strip() for key in required_answers
+          ):
+              raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: complete five-answer evidence is required")
+          for index, item in enumerate(sources, start=1):
+              if not isinstance(item, dict):
+                  raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} is not structured")
+              if not str(item.get("publisher") or "").strip():
+                  raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no publisher")
+              if not str(item.get("url") or "").strip().startswith(("https://", "http://")):
+                  raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no valid URL")
+              if not str(item.get("supports") or "").strip():
+                  raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no claim support")
+
+          target = Path(os.environ["TAYVORIQ_SOURCE_CONTEXT_FILE"])
+          target.write_text(json.dumps(source, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps({
+              "source_context": "verified-and-materialized",
+              "request_id": data.get("request_id"),
+              "request_file": str(request_path),
+              "trend_id": trend_id,
+              "source_count": len(sources),
+              "independent_news_count": source.get("independent_news_count"),
+              "sha256": digest,
+              "quality_gates_weakened": False,
+          }, ensure_ascii=False))
+          PY
 
       - name: Validate secrets and notify production start
         env:
@@ -113,7 +208,8 @@ jobs:
           CONTROL_SHA=$(git rev-parse HEAD)
           IMPLEMENTATION_SHA=$(git -C implementation rev-parse HEAD)
           PAGES_SHA=$(git -C pages-worktree rev-parse HEAD)
-          python - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" <<'PY'
+          SOURCE_SHA=$(sha256sum "$TAYVORIQ_SOURCE_CONTEXT_FILE" | awk '{print $1}')
+          python - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" <<'PY'
           import json, os, pathlib, sys
           payload = {
               "run_id": os.environ.get("GITHUB_RUN_ID"),
@@ -123,8 +219,10 @@ jobs:
               "control_plane_sha": sys.argv[1],
               "implementation_sha": sys.argv[2],
               "review_pages_sha": sys.argv[3],
+              "source_context_sha256": sys.argv[4],
               "implementation_branch": "feature/multi-platform-distribution-package",
               "approved_trend_pinned": True,
+              "source_context_bound": True,
               "quality_gates_weakened": False,
           }
           pathlib.Path("implementation/out/control-plane/production-manifest.json").write_text(
@@ -157,7 +255,7 @@ jobs:
           python -m compileall -q tools src runtime_patches
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
-      - name: Produce approved video with local repair only
+      - name: Produce approved video with bounded checkpoint recovery
         id: production
         working-directory: implementation
         shell: bash
@@ -186,6 +284,27 @@ jobs:
           process_exit=${PIPESTATUS[0]}
           set -e
           state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "TECHNICAL_FAILURE")')
+
+          if [ "$state" != "SUCCESS" ]; then
+            echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
+            set +e
+            python tools/tayvoriq_resume_existing_render_v2.py \
+              --outdir out/tayvoriq-youtube-tiktok \
+              --site-root site/tayvoriq \
+              --run-id "${GITHUB_RUN_ID}" \
+              --state-out out/tayvoriq-review-state.json \
+              --report-out out/tayvoriq-self-heal/report.json \
+              2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
+            resume_exit=${PIPESTATUS[0]}
+            set -e
+            state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED")')
+            if [ "$resume_exit" -eq 0 ] && [ "$state" = "SUCCESS" ]; then
+              process_exit=0
+            else
+              process_exit="$resume_exit"
+            fi
+          fi
+
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "process_exit=$process_exit" >> "$GITHUB_OUTPUT"
           test "$state" = "SUCCESS" && test "$process_exit" -eq 0
@@ -233,42 +352,56 @@ jobs:
             --review-id "${GITHUB_RUN_ID}" \
             --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
 
-      - name: Notify final failure only
+      - name: Notify final failure with concrete state
         if: failure()
         working-directory: implementation
         run: |
           set +e
-          state=$(python - <<'PY'
+          readarray -t failure_info < <(python - <<'PY'
           import json
           from pathlib import Path
-          candidates = [
-              Path('out/tayvoriq-self-heal/report.json'),
-              Path('out/control-plane/preflight.json'),
-          ]
-          for p in candidates:
-              if not p.exists():
-                  continue
+
+          report_path = Path("out/tayvoriq-self-heal/report.json")
+          preflight_path = Path("out/control-plane/preflight.json")
+          report = {}
+          if report_path.exists():
               try:
-                  d = json.loads(p.read_text())
+                  report = json.loads(report_path.read_text(encoding="utf-8"))
               except Exception:
-                  continue
-              state = str(d.get('state') or '')
-              if state:
-                  print(state)
-                  break
-          else:
-              print('TECHNICAL_FAILURE')
+                  report = {}
+          state = str(report.get("state") or "")
+          reason = " ".join(str(report.get("reason") or "").split())[:900]
+          scopes = report.get("repair_target_stages")
+          if not state and preflight_path.exists():
+              try:
+                  preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+              except Exception:
+                  preflight = {}
+              state = str(preflight.get("state") or "")
+              issues = preflight.get("issues") or []
+              if issues:
+                  reason = "; ".join(str(item) for item in issues[:3])
+          print(state or "TECHNICAL_FAILURE")
+          print(reason)
+          print(", ".join(str(item) for item in scopes) if isinstance(scopes, list) else "")
           PY
           )
+          state="${failure_info[0]:-TECHNICAL_FAILURE}"
+          detail="${failure_info[1]:-}"
+          scopes="${failure_info[2]:-}"
+          headline="❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden"
           case "$state" in
             PREFLIGHT_FAILED)
-              reason="Die Produktionssicherheit hat vor dem Render einen internen Vertragsfehler erkannt. Es wurde nichts gerendert oder veröffentlicht." ;;
+              reason="Die Produktionssicherheit hat vor dem Render einen internen Vertragsfehler erkannt. ${detail} Es wurde nichts veröffentlicht." ;;
             SKIPPED_NO_PUBLISHABLE_TREND|CONTENT_REJECTED)
-              reason="Das Video hat mindestens ein unverändertes Qualitäts- oder Fakten-Gate nicht bestanden. Es wurde nichts veröffentlicht." ;;
+              reason="Das Video hat ein unverändertes Qualitäts- oder Fakten-Gate nicht bestanden. ${detail} Es wurde nichts veröffentlicht." ;;
+            PUBLISHABLE_OUTPUT_RETRY_REQUIRED)
+              headline="🔧 TAYVORIQ Reparaturmodus"
+              reason="Der vorhandene Master bleibt erhalten, hat aber noch nicht alle strengen Gates bestanden. Reparaturziel: ${scopes:-unbekannt}. ${detail} Es wurde nichts veröffentlicht." ;;
             *)
-              reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden. Es wurde nichts veröffentlicht." ;;
+              reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden. ${detail} Es wurde nichts veröffentlicht." ;;
           esac
-          message=$(printf '❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden\n\n%s' "$reason")
+          message=$(printf '%s\n\n%s' "$headline" "$reason")
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}" >/dev/null
