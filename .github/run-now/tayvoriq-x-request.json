@@ -2,7 +2,7 @@
   "request": "tayvoriq-x-production",
   "topic": "KI-Boom kippt – warum Tech-Aktien plötzlich abstürzen",
   "trend_id": "1",
-  "requested_at": "2026-08-09T19:50:00+02:00",
+  "requested_at": "2026-08-09T20:11:00+02:00",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
@@ -14,5 +14,6 @@
     "premium_voice_required": true,
     "concrete_failure_state_required": true,
     "quality_gates_weakened": false
-  }
+  },
+  "reason": "rerun-after-factual-context-regression-test-fix"
 }
