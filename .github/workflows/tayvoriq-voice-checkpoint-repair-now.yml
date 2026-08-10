@@ -96,26 +96,48 @@ jobs:
           python -m py_compile \
             tools/tayvoriq_voice_only_repair_v3.py \
             tools/tayvoriq_voice_only_repair_v4.py \
+            tools/tayvoriq_voice_only_repair_v5.py \
             tools/tayvoriq_voice_only_repair_v3_retry.py \
+            tools/tayvoriq_tts_router_v28.py \
             tools/tayvoriq_preapproval_ai_audit_v4.py \
             tools/tayvoriq_preapproval_ai_audit_v5.py
           python -m pytest -q \
             tests/test_tayvoriq_voice_checkpoint_v3.py \
             tests/test_tayvoriq_voice_v4_postmux.py \
+            tests/test_tayvoriq_voice_v5_human_narrator.py \
             tests/test_tayvoriq_preapproval_audio_quorum_v5.py
           python - <<'PY'
+          from pathlib import Path
           import tools.tayvoriq_voice_only_repair_v3_retry as retry
           import tools.tayvoriq_voice_only_repair_v4 as v4
+          import tools.tayvoriq_voice_only_repair_v5 as v5
           import tools.tayvoriq_preapproval_ai_audit_v4 as audit_v4
           import tools.tayvoriq_preapproval_ai_audit_v5 as audit_v5
 
           assert retry._retry_count() == 3
+          wrapper_source = Path(retry.__file__).read_text(encoding='utf-8')
+          assert 'raise SystemExit(v4.main())' in wrapper_source
           assert v4.POSTMUX_MIN_SIMILARITY == 0.95
           assert v4.SHARED_PREFIX_MAX_SPEEDUP == 1.01
           assert v4.SHARED_PREFIX_REPAIR_ATTEMPTS == 2
+          assert v5.FULL_TAKE_ATTEMPTS == 2
+          assert v5.NATURAL_WPM_MIN >= 108.0
+          assert v5.NATURAL_WPM_MAX <= 150.0
           assert audit_v5.AUDIT_QUORUM_MIN_SIMILARITY == 0.95
           assert audit_v5.AUDIT_QUORUM_REQUIRED_PASSES == 2
           assert audit_v5.AUDIT_QUORUM_TOTAL_VOTES == 3
+
+          human_script = (
+              'Sandisk und Western Digital fielen trotz starker Zahlen deutlich. '
+              'Die Aktien fielen, weil hohe KI-Erwartungen starke Zahlen überschatteten. '
+              'Betroffen sind Anleger und Unternehmen im KI- und Chipsektor. '
+              'Für dich zeigt das, wie schnell KI-Hype Aktienkurse verzerren kann. '
+              'Abonniere TAYVORIQ für verifizierte Einordnung und konkrete Schritte.'
+          )
+          spoken, replacement = v5._natural_spoken_contract(human_script, 'youtube_shorts')
+          assert 'KI-Erwartungen' in spoken and 'KI-Hype' in spoken and 'Chipsektor' in spoken
+          assert all(token not in spoken for token in ('K I', 'Ka I', 'Chip Sektor', 'Tai wo rik'))
+          assert 'Abonniere den Kanal' in spoken and replacement == 'den Kanal'
 
           timing = v4._duration_fit_plan(29.62, 29.58)
           assert timing['required'] is True
@@ -162,15 +184,32 @@ jobs:
           assert audit_v4._safe_speech_contract_normalize('Sandisk KI Chipsektor') == 'San Disk KI Chip Sektor'
           assert audit_v4._safe_speech_contract_normalize('Sundisk Chantandy') == 'Sundisk Chantandy'
 
-          print('VOICE_V4_AND_FINAL_AUDIT_V5_ROBUSTNESS_GUARDS_VALIDATED')
+          print('VOICE_V4_STANDARD_AND_V5_HUMAN_NARRATOR_GUARDS_VALIDATED')
           PY
 
       - name: Restore preserved master from failed run
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_ARTIFACT_ID: '9081839496'
         run: |
           set -euo pipefail
+          SOURCE_ARTIFACT_ID=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('.github/run-now/tayvoriq-voice-checkpoint-repair.json').read_text(encoding='utf-8'))
+          artifact_id = str(data.get('source_artifact_id') or '').strip()
+          if not artifact_id.isdigit():
+              raise SystemExit('Invalid source_artifact_id in checkpoint request')
+          print(artifact_id)
+          PY
+          )
+          SOURCE_RUN_ID=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('.github/run-now/tayvoriq-voice-checkpoint-repair.json').read_text(encoding='utf-8'))
+          print(str(data.get('source_run_id') or '').strip())
+          PY
+          )
+          echo "Restoring preserved master: run=${SOURCE_RUN_ID} artifact=${SOURCE_ARTIFACT_ID}"
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-preserved.zip
           unzip -q /tmp/tayvoriq-preserved.zip -d implementation
           test -d implementation/out/tayvoriq-youtube-tiktok
@@ -187,7 +226,7 @@ jobs:
           from pathlib import Path
           path = Path('../.github/run-now/tayvoriq-voice-checkpoint-repair.json')
           data = json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
-          print(str(data.get('repair_stage') or 'VOICE_POSTMUX').strip())
+          print(str(data.get('repair_stage') or 'VOICE_POSTMUX').strip().upper())
           PY
           )
           if [ "$REPAIR_STAGE" = "FINAL_PREAPPROVAL_AUDIT" ]; then
@@ -197,13 +236,25 @@ jobs:
             echo "VOICE_ALREADY_PASSED_REUSED"
             exit 0
           fi
-          python tools/tayvoriq_voice_only_repair_v3_retry.py \
-            --outdir out/tayvoriq-youtube-tiktok/candidate-01 \
-            2>&1 | tee out/voice-checkpoint-repair.log
+          if [ "$REPAIR_STAGE" = "VOICE_HUMAN_NARRATOR" ]; then
+            export TAYVORIQ_NARRATOR_PITCH_FACTOR='1.0'
+            export TAYVORIQ_NARRATOR_TONE_REQUIRED='false'
+            export TAYVORIQ_CHATTERBOX_LANGUAGE='de'
+            export TAYVORIQ_CHATTERBOX_MAX_CHUNKS='1'
+            export TAYVORIQ_CHATTERBOX_MAX_CHARS='520'
+            echo "HUMAN_NARRATOR_V5: continuous natural German Chatterbox take; no artificial pitch shift"
+            python tools/tayvoriq_voice_only_repair_v5.py \
+              --outdir out/tayvoriq-youtube-tiktok/candidate-01 \
+              2>&1 | tee out/voice-checkpoint-repair.log
+          else
+            python tools/tayvoriq_voice_only_repair_v3_retry.py \
+              --outdir out/tayvoriq-youtube-tiktok/candidate-01 \
+              2>&1 | tee out/voice-checkpoint-repair.log
+          fi
           JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
           test -n "$JOB_DIR" && test -f "$JOB_DIR/job.json"
           echo "job_dir=$JOB_DIR" >> "$GITHUB_OUTPUT"
-          echo "VOICE_CHECKPOINT_REPAIRED"
+          echo "VOICE_CHECKPOINT_REPAIRED stage=$REPAIR_STAGE"
 
       - name: Final preapproval audit
         id: final_audit
@@ -286,14 +337,29 @@ jobs:
           TELEGRAM_REVIEW_OUTCOME: ${{ steps.telegram_review.outcome }}
         run: |
           set +e
+          requested_stage=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              data = json.loads(Path('.github/run-now/tayvoriq-voice-checkpoint-repair.json').read_text(encoding='utf-8'))
+          except Exception:
+              data = {}
+          print(str(data.get('repair_stage') or '').strip().upper())
+          PY
+          )
           stage="UNKNOWN"
           detail="Checkpoint nicht freigabefähig."
           if [ "$GUARD_OUTCOME" != "success" ]; then
             stage="ROBUSTNESS_GUARD"
             detail="Die internen Robustheits-/Regressionstests haben vor VOICE gestoppt; Audio wurde nicht neu verarbeitet."
           elif [ "$VOICE_OUTCOME" != "success" ]; then
-            stage="VOICE_POSTMUX"
-            detail="Die unabhängige Sprach-/Post-Mux-Prüfung ist noch nicht sauber."
+            if [ "$requested_stage" = "VOICE_HUMAN_NARRATOR" ]; then
+              stage="VOICE_HUMAN_NARRATOR"
+              detail="Der neue natürliche deutsche Erzähler-Take hat die strenge Sprach-/Post-Mux-Prüfung noch nicht bestanden."
+            else
+              stage="VOICE_POSTMUX"
+              detail="Die unabhängige Sprach-/Post-Mux-Prüfung ist noch nicht sauber."
+            fi
           elif [ "$AUDIT_OUTCOME" != "success" ]; then
             stage="FINAL_PREAPPROVAL_AUDIT"
             detail="VOICE ist bestanden; der unabhängige Final-Audit blockiert noch."
