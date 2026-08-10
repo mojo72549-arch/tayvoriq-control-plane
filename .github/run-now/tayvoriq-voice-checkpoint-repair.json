@@ -1,14 +1,15 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31430646936,
-  "source_artifact_id": 9079594552,
-  "repair_stage": "VOICE",
+  "source_run_id": 31432702046,
+  "source_artifact_id": 9080596608,
+  "repair_stage": "VOICE_POSTMUX",
   "reuse": {
     "trend": true,
     "sources": true,
     "script": true,
     "visuals": true,
-    "rendered_master": true
+    "rendered_master": true,
+    "validated_platform_voice": true
   },
   "permanent_robustness": {
     "safe_asr_orthographic_equivalence": true,
@@ -16,12 +17,18 @@
     "provider_aware_duration_window": true,
     "candidate_specific_spoken_contract": true,
     "brand_safe_platform_cta_fallback": true,
+    "strict_postmux_audio_validation": true,
+    "postmux_similarity_floor_095": true,
+    "existing_platform_voice_reuse": true,
+    "shared_intro_body_prefix_reuse": true,
+    "platform_specific_cta_semantic_consistency": true,
+    "truthful_checkpoint_failure_stage": true,
     "final_total_duration_gate_unchanged": true,
     "visible_script_unchanged": true,
     "single_voice_repair_concurrency": true
   },
   "full_pipeline_restart": false,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-10T23:10:00+02:00",
-  "trigger_nonce": "voice-v3-brand-safe-20260810-231000"
+  "requested_at": "2026-08-10T23:45:00+02:00",
+  "trigger_nonce": "voice-v4-postmux-audit-20260810-234500"
 }
