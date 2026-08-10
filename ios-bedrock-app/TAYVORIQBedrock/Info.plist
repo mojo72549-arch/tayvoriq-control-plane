@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>TAYVORIQ Bedrock Add-ons</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(MARKETING_VERSION)</string>
+    <key>CFBundleVersion</key>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Minecraft Bedrock Add-on</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.tayvoriq.minecraft.mcaddon</string>
+                <string>com.tayvoriq.minecraft.mcpack</string>
+                <string>com.tayvoriq.minecraft.mcworld</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTImportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.tayvoriq.minecraft.mcaddon</string>
+            <key>UTTypeDescription</key>
+            <string>Minecraft Bedrock Add-on</string>
+            <key>UTTypeConformsTo</key>
+            <array><string>public.data</string></array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array><string>mcaddon</string></array>
+                <key>public.mime-type</key>
+                <array><string>application/mcaddon</string></array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.tayvoriq.minecraft.mcpack</string>
+            <key>UTTypeDescription</key>
+            <string>Minecraft Bedrock Pack</string>
+            <key>UTTypeConformsTo</key>
+            <array><string>public.data</string></array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array><string>mcpack</string></array>
+                <key>public.mime-type</key>
+                <array><string>application/mcpack</string></array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.tayvoriq.minecraft.mcworld</string>
+            <key>UTTypeDescription</key>
+            <string>Minecraft Bedrock World</string>
+            <key>UTTypeConformsTo</key>
+            <array><string>public.data</string></array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array><string>mcworld</string></array>
+                <key>public.mime-type</key>
+                <array><string>application/mcworld</string></array>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>
