@@ -1,0 +1,195 @@
+name: TAYVORIQ Voice Checkpoint Repair NOW
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/run-now/tayvoriq-voice-checkpoint-repair.json'
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  TAYVORIQ_RENDER_SIZE: 1080x1920
+  TAYVORIQ_TTS_PROVIDER: chatterbox_v3
+  TAYVORIQ_CHATTERBOX_ENABLED: 'true'
+  TAYVORIQ_CHATTERBOX_REQUIRED: 'true'
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: v3
+  TAYVORIQ_CHATTERBOX_LANGUAGE: de
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: '300'
+  TAYVORIQ_CHATTERBOX_MAX_CHUNKS: '2'
+  TAYVORIQ_CHATTERBOX_MAX_CHARS: '520'
+  TAYVORIQ_CHATTERBOX_CPU_THREADS: '4'
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: '0.42'
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: '0.36'
+  TAYVORIQ_CHATTERBOX_PAUSE_MS: '360'
+  TAYVORIQ_NATURAL_VOICE_WPM: '132'
+  TAYVORIQ_NARRATOR_PITCH_FACTOR: '0.90'
+  TAYVORIQ_NARRATOR_TONE_REQUIRED: 'true'
+  TAYVORIQ_V3_SEGMENT_RETRIES: '3'
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  repair-voice-checkpoint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Checkout review pages
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Install voice checkpoint dependencies
+        run: |
+          set -euo pipefail
+          missing=()
+          for command in ffmpeg ffprobe unzip rsync; do
+            command -v "$command" >/dev/null || missing+=("$command")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg unzip rsync
+          fi
+          python -m pip install --upgrade pip -q
+          python -m pip install -r implementation/requirements.txt pytest -q
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+
+      - name: Validate voice-only repair patch
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/tayvoriq_voice_only_repair_v3.py tools/tayvoriq_voice_only_repair_v3_retry.py
+          python -m pytest -q tests/test_tayvoriq_voice_checkpoint_v3.py
+          python - <<'PY'
+          import tools.tayvoriq_voice_only_repair_v3_retry as retry
+          assert retry._retry_count() == 3
+          candidates = retry._ordered_candidates('Sandisk und Western Digital fallen deutlich.', 'intro')
+          assert candidates[0]['label'] == 'sandisk:San Disk'
+          print('VOICE_CHECKPOINT_RETRY_PATCH_VALIDATED')
+          PY
+
+      - name: Restore preserved master from failed run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_ARTIFACT_ID: '9074005878'
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-preserved.zip
+          unzip -q /tmp/tayvoriq-preserved.zip -d implementation
+          test -d implementation/out/tayvoriq-youtube-tiktok
+          echo "PRESERVED_MASTER_RESTORED"
+
+      - name: Repair VOICE checkpoint only
+        id: voice_repair
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          test -d out/tayvoriq-youtube-tiktok/candidate-01
+          python tools/tayvoriq_voice_only_repair_v3_retry.py \
+            --outdir out/tayvoriq-youtube-tiktok/candidate-01 \
+            2>&1 | tee out/voice-checkpoint-repair.log
+          JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          test -n "$JOB_DIR" && test -f "$JOB_DIR/job.json"
+          echo "job_dir=$JOB_DIR" >> "$GITHUB_OUTPUT"
+          echo "VOICE_CHECKPOINT_REPAIRED"
+
+      - name: Final preapproval audit
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_preapproval_ai_audit_v4.py --job-dir "${{ steps.voice_repair.outputs.job_dir }}"
+
+      - name: Final publication quality gate
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_publication_quality_gate_v2.py \
+            --job-dir "${{ steps.voice_repair.outputs.job_dir }}" \
+            --targets youtube_tiktok
+
+      - name: Build repaired review page
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_build_dual_review_site.py \
+            --job-dir "${{ steps.voice_repair.outputs.job_dir }}" \
+            --site-root site/tayvoriq \
+            --run-id "${GITHUB_RUN_ID}"
+
+      - name: Publish repaired review page
+        run: |
+          set -euo pipefail
+          rm -rf pages-worktree/tayvoriq
+          mkdir -p pages-worktree/tayvoriq
+          rsync -a implementation/site/tayvoriq/ pages-worktree/tayvoriq/
+          touch pages-worktree/.nojekyll
+          cd pages-worktree
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tayvoriq .nojekyll
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish repaired TAYVORIQ review ${GITHUB_RUN_ID}"
+            git pull --rebase origin main
+            git push origin main
+          fi
+
+      - name: Send Telegram approval review
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_send_telegram.py \
+            --state SUCCESS \
+            --conclusion success \
+            --run-url "" \
+            --dashboard-url "" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Upload repaired checkpoint artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-voice-checkpoint-${{ github.run_id }}
+          path: |
+            implementation/out/**
+            implementation/site/tayvoriq/**
+          retention-days: 30
+          compression-level: 1
+
+      - name: Telegram checkpoint failure
+        if: failure()
+        run: |
+          set +e
+          message='❌ TAYVORIQ VOICE-Checkpoint noch nicht freigabefähig. Der vorhandene Master bleibt erhalten; Trend, Quellen, Skript und Visuals wurden nicht neu erzeugt. Es wurde nichts veröffentlicht.'
+          curl -fsS --retry 2 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${message}" >/dev/null
