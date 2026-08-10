@@ -1,13 +1,13 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
   "review_rejected_run_id": 31438680757,
-  "source_run_id": 31437713652,
-  "source_artifact_id": 9081839496,
+  "source_run_id": 31438680757,
+  "source_artifact_id": 9082418951,
   "repair_stage": "VOICE_HUMAN_NARRATOR",
   "human_review": {
     "rejected": true,
     "reason": "pronunciation_not_natural",
-    "comment": "Aussprache des Redners ist nicht gut"
+    "comment": "Stimme muss menschlich, natürlich und deutsch klingen"
   },
   "reuse": {
     "trend": true,
@@ -19,6 +19,7 @@
   },
   "voice_strategy": {
     "provider": "chatterbox_v3",
+    "language": "de",
     "continuous_full_take_per_platform": true,
     "segmented_intro_body_cta": false,
     "native_german_text_preserved": true,
@@ -26,9 +27,13 @@
     "artificial_compound_splitting": false,
     "rubberband_pitch_shift": false,
     "narrator_pitch_factor": 1.0,
-    "bounded_full_take_attempts": 2
+    "natural_german_wpm_window": "108-150",
+    "bounded_full_take_attempts": 2,
+    "human_review_required": true
   },
   "permanent_robustness": {
+    "v4_remains_permanent_technical_entrypoint": true,
+    "v5_only_for_explicit_human_narrator_rejection": true,
     "strict_postmux_audio_validation": true,
     "postmux_similarity_floor_095": true,
     "final_audit_asr_quorum": true,
@@ -43,6 +48,6 @@
   "full_pipeline_restart": false,
   "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-11T01:03:00+02:00",
-  "trigger_nonce": "human-narrator-v5-natural-full-take-31438680757"
+  "requested_at": "2026-08-11T01:16:00+02:00",
+  "trigger_nonce": "human-narrator-v5-architecture-fixed-review-master-20260811-011600"
 }
