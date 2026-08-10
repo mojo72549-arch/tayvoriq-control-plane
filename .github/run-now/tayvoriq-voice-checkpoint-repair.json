@@ -1,7 +1,7 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31426163821,
-  "source_artifact_id": 9077599377,
+  "source_run_id": 31428088408,
+  "source_artifact_id": 9078720272,
   "repair_stage": "VOICE",
   "reuse": {
     "trend": true,
@@ -10,8 +10,15 @@
     "visuals": true,
     "rendered_master": true
   },
+  "permanent_robustness": {
+    "safe_asr_orthographic_equivalence": true,
+    "bounded_segment_retries": true,
+    "provider_aware_duration_window": true,
+    "final_total_duration_gate_unchanged": true,
+    "single_voice_repair_concurrency": true
+  },
   "full_pipeline_restart": false,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-10T22:12:00+02:00",
-  "trigger_nonce": "voice-checkpoint-safe-alias-20260810-221200"
+  "requested_at": "2026-08-10T22:41:00+02:00",
+  "trigger_nonce": "voice-v3-permanent-guards-20260810-224100"
 }
