@@ -1,0 +1,27 @@
+name: TAYVORIQBedrock
+options:
+  bundleIdPrefix: com.tayvoriq
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.5.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  TAYVORIQBedrock:
+    type: application
+    platform: iOS
+    sources:
+      - TAYVORIQBedrock
+    info:
+      path: TAYVORIQBedrock/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tayvoriq.addonmanager.ios
+        PRODUCT_NAME: TAYVORIQBedrock
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_STYLE: Automatic
+    scheme:
+      gatherCoverageData: false
