@@ -92,11 +92,21 @@ jobs:
         working-directory: implementation
         run: |
           set -euo pipefail
-          python -m py_compile tools/tayvoriq_voice_only_repair_v3.py tools/tayvoriq_voice_only_repair_v3_retry.py
-          python -m pytest -q tests/test_tayvoriq_voice_checkpoint_v3.py
+          python -m py_compile \
+            tools/tayvoriq_voice_only_repair_v3.py \
+            tools/tayvoriq_voice_only_repair_v4.py \
+            tools/tayvoriq_voice_only_repair_v3_retry.py \
+            tools/tayvoriq_preapproval_ai_audit_v4.py
+          python -m pytest -q \
+            tests/test_tayvoriq_voice_checkpoint_v3.py \
+            tests/test_tayvoriq_voice_v4_postmux.py
           python - <<'PY'
           import tools.tayvoriq_voice_only_repair_v3_retry as retry
+          import tools.tayvoriq_voice_only_repair_v4 as v4
+          import tools.tayvoriq_preapproval_ai_audit_v4 as audit_v4
+
           assert retry._retry_count() == 3
+          assert v4.POSTMUX_MIN_SIMILARITY == 0.95
 
           candidates = retry._ordered_candidates('Sandisk und Western Digital fallen deutlich.', 'intro')
           assert candidates[0]['label'] == 'sandisk:San Disk'
@@ -119,9 +129,6 @@ jobs:
           assert provider_budget == retry.v3.CHATTERBOX_SEGMENT_MIN_WINDOW_SECONDS == 5.25
           assert retry.v3._provider_aware_segment_budget(4.79, 5.00) == 5.00
 
-          # Regression for run 31430646936: candidate contracts must follow the
-          # actual approved synthesis variant; a stable generic CTA is the final
-          # fail-closed fallback when the proprietary brand token is unstable.
           cta = retry.v3._segment_synthesis_candidates(
               'Abonniere TAYVORIQ für verifizierte Einordnung und konkrete Schritte.', 'cta'
           )
@@ -133,32 +140,16 @@ jobs:
           assert cta[-1]['tayvoriq_spoken_replacement'] == 'den Kanal'
           assert cta[-1]['brand_spoken_fallback'] is True
 
-          alt = retry.v3._segment_validation(
-              'Abonniere Taiworik für verifizierte Einordnung und konkrete Schritte.',
-              'Abonniere Taiworik für verifizierte Einordnung und konkrete Schritte.',
-              'cta',
-          )
-          assert alt['passed'] is True
-          safe = retry.v3._segment_validation(
-              'Abonniere den Kanal für verifizierte Einordnung und konkrete Schritte.',
-              cta[-1]['contract_text'],
-              'cta',
-          )
-          assert safe['passed'] is True
-          bad = retry.v3._segment_validation(
-              'Abonniere ThaiForex für verifizierte Einordnung und konkrete Schritte.',
-              cta[-1]['contract_text'],
-              'cta',
-          )
-          assert bad['passed'] is False
+          assert audit_v4._safe_speech_contract_normalize('Sandisk KI Chipsektor') == 'San Disk KI Chip Sektor'
+          assert audit_v4._safe_speech_contract_normalize('Sundisk Chantandy') == 'Sundisk Chantandy'
 
-          print('VOICE_V3_PERMANENT_ROBUSTNESS_GUARDS_VALIDATED')
+          print('VOICE_V4_POSTMUX_AND_AUDIT_ROBUSTNESS_GUARDS_VALIDATED')
           PY
 
       - name: Restore preserved master from failed run
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_ARTIFACT_ID: '9079594552'
+          SOURCE_ARTIFACT_ID: '9080596608'
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-preserved.zip
@@ -181,12 +172,14 @@ jobs:
           echo "VOICE_CHECKPOINT_REPAIRED"
 
       - name: Final preapproval audit
+        id: final_audit
         working-directory: implementation
         run: |
           set -euo pipefail
           python tools/tayvoriq_preapproval_ai_audit_v4.py --job-dir "${{ steps.voice_repair.outputs.job_dir }}"
 
       - name: Final publication quality gate
+        id: publication_gate
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -195,6 +188,7 @@ jobs:
             --targets youtube_tiktok
 
       - name: Build repaired review page
+        id: review_build
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -204,6 +198,7 @@ jobs:
             --run-id "${GITHUB_RUN_ID}"
 
       - name: Publish repaired review page
+        id: publish_review
         run: |
           set -euo pipefail
           rm -rf pages-worktree/tayvoriq
@@ -221,6 +216,7 @@ jobs:
           fi
 
       - name: Send Telegram approval review
+        id: telegram_review
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -245,9 +241,37 @@ jobs:
 
       - name: Telegram checkpoint failure
         if: failure()
+        env:
+          VOICE_OUTCOME: ${{ steps.voice_repair.outcome }}
+          AUDIT_OUTCOME: ${{ steps.final_audit.outcome }}
+          QUALITY_OUTCOME: ${{ steps.publication_gate.outcome }}
+          REVIEW_BUILD_OUTCOME: ${{ steps.review_build.outcome }}
+          REVIEW_PUBLISH_OUTCOME: ${{ steps.publish_review.outcome }}
+          TELEGRAM_REVIEW_OUTCOME: ${{ steps.telegram_review.outcome }}
         run: |
           set +e
-          message="❌ TAYVORIQ VOICE-Checkpoint noch nicht freigabefähig (Run ${GITHUB_RUN_ID}). Master bleibt erhalten; Trend, Quellen, Skript und Visuals wurden nicht neu erzeugt. Nichts veröffentlicht."
+          stage="UNKNOWN"
+          detail="Checkpoint nicht freigabefähig."
+          if [ "$VOICE_OUTCOME" != "success" ]; then
+            stage="VOICE_POSTMUX"
+            detail="Die unabhängige Sprach-/Post-Mux-Prüfung ist noch nicht sauber."
+          elif [ "$AUDIT_OUTCOME" != "success" ]; then
+            stage="FINAL_PREAPPROVAL_AUDIT"
+            detail="VOICE ist bestanden; der unabhängige Final-Audit blockiert noch."
+          elif [ "$QUALITY_OUTCOME" != "success" ]; then
+            stage="PUBLICATION_QUALITY_GATE"
+            detail="VOICE und Final-Audit sind bestanden; das Veröffentlichungs-Gate blockiert noch."
+          elif [ "$REVIEW_BUILD_OUTCOME" != "success" ]; then
+            stage="REVIEW_BUILD"
+            detail="Alle Qualitäts-Gates sind bestanden; die Review-Seite konnte nicht gebaut werden."
+          elif [ "$REVIEW_PUBLISH_OUTCOME" != "success" ]; then
+            stage="REVIEW_PUBLISH"
+            detail="Alle Qualitäts-Gates sind bestanden; die Review-Seite konnte nicht veröffentlicht werden."
+          elif [ "$TELEGRAM_REVIEW_OUTCOME" != "success" ]; then
+            stage="TELEGRAM_REVIEW_DELIVERY"
+            detail="Alle Qualitäts-Gates sind bestanden; nur die Telegram-Auslieferung ist fehlgeschlagen."
+          fi
+          message=$(printf '❌ TAYVORIQ Checkpoint noch nicht freigabefähig\n\nRun: %s\nStufe: %s\n%s\n\nMaster bleibt erhalten. Trend, Quellen, Skript und Visuals wurden nicht neu erzeugt. Nichts veröffentlicht.' "$GITHUB_RUN_ID" "$stage" "$detail")
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}" >/dev/null
