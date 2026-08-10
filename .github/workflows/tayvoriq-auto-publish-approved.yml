@@ -6,8 +6,6 @@ on:
     paths:
       - ".automation/tayvoriq-reviews/**"
       - ".automation/tayvoriq-direct-reviews/**"
-      - ".github/workflows/tayvoriq-auto-publish-approved.yml"
-      - "tools/youtube_publish_approved.py"
   workflow_dispatch:
     inputs:
       review_id:
@@ -34,7 +32,6 @@ jobs:
   publish-approved:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -49,121 +46,135 @@ jobs:
             test -n "${!name:-}" || { echo "::error title=Missing secret::$name"; exit 2; }
           done
 
-      - name: Select latest approved unpublished review
+      - name: Select approved unpublished review
         id: select
         env:
           REQUESTED_REVIEW_ID: ${{ inputs.review_id || '' }}
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json
-          import os
+          import json, os
           from pathlib import Path
 
           requested = os.environ.get("REQUESTED_REVIEW_ID", "").strip()
-          roots = [
-              Path(".automation/tayvoriq-reviews"),
-              Path(".automation/tayvoriq-direct-reviews"),
-          ]
           candidates = []
-          for root in roots:
+          for root in [Path('.automation/tayvoriq-reviews'), Path('.automation/tayvoriq-direct-reviews')]:
               if not root.exists():
                   continue
-              for path in root.glob("*.json"):
+              for path in root.glob('*.json'):
                   try:
-                      data = json.loads(path.read_text(encoding="utf-8"))
+                      data = json.loads(path.read_text(encoding='utf-8'))
                   except Exception:
                       continue
-                  review_id = str(data.get("review_id") or path.stem)
+                  review_id = str(data.get('review_id') or path.stem)
                   if requested and review_id != requested:
                       continue
-                  approved = str(data.get("status") or "") == "APPROVED"
-                  uploaded = bool(data.get("platform_upload_performed"))
-                  if approved and not uploaded:
+                  if str(data.get('status') or '') == 'APPROVED' and not bool(data.get('platform_upload_performed')):
                       candidates.append((int(review_id) if review_id.isdigit() else 0, path, data))
 
           if not candidates:
-              print("No approved unpublished review found.")
-              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-                  out.write("found=false\n")
+              print('No approved unpublished review found.')
+              with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+                  out.write('found=false\n')
               raise SystemExit(0)
 
           _, path, data = max(candidates, key=lambda item: item[0])
-          review_id = str(data.get("review_id") or path.stem)
-          Path("selected-review.json").write_text(
-              json.dumps({"path": str(path), "review": data}, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
+          review_id = str(data.get('review_id') or path.stem)
+          Path('selected-review.json').write_text(
+              json.dumps({'path': str(path), 'review': data}, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
           )
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-              out.write("found=true\n")
-              out.write(f"review_id={review_id}\n")
-              out.write(f"review_path={path}\n")
-          print(f"Selected approved review {review_id} from {path}")
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write('found=true\n')
+              out.write(f'review_id={review_id}\n')
+              out.write(f'review_path={path}\n')
+          print(f'Selected approved review {review_id} from {path}')
           PY
 
-      - name: Resolve verified video and publication metadata
+      - name: Resolve verified platform package and metadata
         if: steps.select.outputs.found == 'true'
         env:
           REVIEW_ID: ${{ steps.select.outputs.review_id }}
         run: |
           set -euo pipefail
-          BASE="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${REVIEW_ID}"
-          VIDEO_URL=""
-          for candidate in "${BASE}/tayvoriq-review.mp4" "${BASE}/video.mp4"; do
-            code=$(curl -L -s -o /dev/null -w '%{http_code}' "$candidate" || true)
-            if [ "$code" = "200" ]; then
-              VIDEO_URL="$candidate"
-              break
-            fi
-          done
-          test -n "$VIDEO_URL" || { echo "::error title=Approved MP4 unavailable::${BASE}"; exit 1; }
-
-          curl --fail --location --retry 3 "${BASE}/text_package.json" --output text-package.json
-
-          QUALITY_PASSED="false"
-          for report in final_evidence.json quality_report.json; do
-            if curl --fail --location --silent "${BASE}/${report}" --output "$report"; then
-              if python - "$report" <<'PY'
-          import json, sys
-          data = json.load(open(sys.argv[1], encoding="utf-8"))
-          raise SystemExit(0 if data.get("passed") is True else 1)
-          PY
-              then
-                QUALITY_PASSED="true"
-              fi
-            fi
-          done
-          test "$QUALITY_PASSED" = "true" || { echo "::error title=Publication gate failed::No passed quality evidence for ${REVIEW_ID}"; exit 1; }
-
-          export VIDEO_URL REVIEW_ID
           python - <<'PY'
-          import json
-          import os
+          import json, os
           from pathlib import Path
 
-          package = json.loads(Path("text-package.json").read_text(encoding="utf-8"))
-          title = str(package.get("title") or package.get("topic") or "TAYVORIQ Short").strip()
-          topic = str(package.get("topic") or title).strip()
-          cta = str(package.get("cta") or "Teile dieses Video, damit andere richtig reagieren.").strip()
-          description = (
-              f"{topic}\n\n{cta}\n\n"
-              "Geprüfte Kurz-Dokumentation von TAYVORIQ.\n"
-              "#Shorts #TAYVORIQ #Waldbrand #Brandschutz #Sicherheit"
-          )
-          tags = "Waldbrand,Brandschutz,Sicherheit,Notruf112,Feuerwehr,TAYVORIQ,Shorts"
+          selected = json.loads(Path('selected-review.json').read_text(encoding='utf-8'))
+          review = selected.get('review') or {}
+          review_id = os.environ['REVIEW_ID']
+          base = f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{review_id}'
           payload = {
-              "review_id": os.environ["REVIEW_ID"],
-              "video_url": os.environ["VIDEO_URL"],
-              "title": title,
-              "description": description,
-              "tags": tags,
-              "privacy": "public",
-              "tiktok_caption": f"{title}\n\n{cta}\n\n#Waldbrand #Brandschutz #Sicherheit #TAYVORIQ",
+              'base': base,
+              'youtube_video_url': str(review.get('youtube_video_url') or review.get('video_url') or f'{base}/short_youtube.mp4'),
+              'tiktok_video_url': str(review.get('tiktok_video_url') or f'{base}/short_tiktok.mp4'),
           }
-          Path("publish-payload.json").write_text(
-              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
-          )
+          Path('platform-urls.json').write_text(json.dumps(payload, indent=2) + '\n', encoding='utf-8')
+          PY
+
+          YOUTUBE_URL=$(python -c "import json; print(json.load(open('platform-urls.json'))['youtube_video_url'])")
+          TIKTOK_URL=$(python -c "import json; print(json.load(open('platform-urls.json'))['tiktok_video_url'])")
+          BASE=$(python -c "import json; print(json.load(open('platform-urls.json'))['base'])")
+          for url in "$YOUTUBE_URL" "$TIKTOK_URL"; do
+            code=$(curl -L -s -o /dev/null -w '%{http_code}' "$url" || true)
+            test "$code" = "200" || { echo "::error title=Platform MP4 unavailable::$url HTTP $code"; exit 1; }
+          done
+
+          curl --fail --location --retry 3 "${BASE}/job.json" --output review-job.json
+          curl --fail --location --retry 3 "${BASE}/preapproval_ai_audit.json" --output preapproval-ai-audit.json
+
+          export YOUTUBE_URL TIKTOK_URL REVIEW_ID
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          job = json.loads(Path('review-job.json').read_text(encoding='utf-8'))
+          audit = json.loads(Path('preapproval-ai-audit.json').read_text(encoding='utf-8'))
+
+          quality = job.get('quality_report') if isinstance(job.get('quality_report'), dict) else {}
+          if quality.get('passed') is not True:
+              raise SystemExit('Publication blocked: job quality_report did not pass')
+          if audit.get('passed') is not True:
+              raise SystemExit('Publication blocked: preapproval audit did not pass')
+          if audit.get('human_review_allowed') is not True:
+              raise SystemExit('Publication blocked: human review was not allowed')
+          if audit.get('quality_gates_weakened') is not False:
+              raise SystemExit('Publication blocked: quality gate integrity invalid')
+          if audit.get('blockers'):
+              raise SystemExit(f"Publication blocked: audit blockers={audit.get('blockers')}")
+
+          variants = job.get('variants') if isinstance(job.get('variants'), dict) else {}
+          yt_variant = variants.get('youtube_shorts') if isinstance(variants.get('youtube_shorts'), dict) else {}
+          tt_variant = variants.get('tiktok') if isinstance(variants.get('tiktok'), dict) else {}
+          yt_package = yt_variant.get('text_package') if isinstance(yt_variant.get('text_package'), dict) else {}
+          tt_package = tt_variant.get('text_package') if isinstance(tt_variant.get('text_package'), dict) else {}
+          yt_meta = yt_package.get('youtube_metadata') if isinstance(yt_package.get('youtube_metadata'), dict) else {}
+          tt_meta = tt_package.get('tiktok_metadata') if isinstance(tt_package.get('tiktok_metadata'), dict) else {}
+
+          title = str(yt_meta.get('title') or '').strip()
+          description = str(yt_meta.get('description') or '').strip()
+          caption = str(tt_meta.get('caption') or '').strip()
+          hashtags = yt_meta.get('hashtags') if isinstance(yt_meta.get('hashtags'), list) else []
+          tags = ','.join(str(tag).strip().lstrip('#') for tag in hashtags if str(tag).strip())
+          if not title or not description:
+              raise SystemExit('Publication blocked: approved YouTube metadata missing')
+          if not caption:
+              raise SystemExit('Publication blocked: approved TikTok caption missing')
+
+          payload = {
+              'review_id': os.environ['REVIEW_ID'],
+              'video_url': os.environ['YOUTUBE_URL'],
+              'youtube_video_url': os.environ['YOUTUBE_URL'],
+              'tiktok_video_url': os.environ['TIKTOK_URL'],
+              'title': title,
+              'description': description,
+              'tags': tags,
+              'privacy': 'public',
+              'tiktok_caption': caption,
+              'quality_gates_weakened': False,
+          }
+          Path('publish-payload.json').write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           print(json.dumps(payload, ensure_ascii=False, indent=2))
           PY
 
@@ -177,11 +188,11 @@ jobs:
         if: steps.select.outputs.found == 'true'
         run: python -m pip install requests google-api-python-client google-auth google-auth-httplib2
 
-      - name: Upload approved video publicly to YouTube
+      - name: Upload approved YouTube master publicly
         if: steps.select.outputs.found == 'true'
         run: |
           set -euo pipefail
-          VIDEO_URL=$(python -c "import json; print(json.load(open('publish-payload.json'))['video_url'])")
+          VIDEO_URL=$(python -c "import json; print(json.load(open('publish-payload.json'))['youtube_video_url'])")
           TITLE=$(python -c "import json; print(json.load(open('publish-payload.json'))['title'])")
           DESCRIPTION=$(python -c "import json; print(json.load(open('publish-payload.json'))['description'])")
           TAGS=$(python -c "import json; print(json.load(open('publish-payload.json'))['tags'])")
@@ -201,27 +212,27 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json
-          import os
+          import json, os
           from datetime import datetime, timezone
           from pathlib import Path
 
-          path = Path(os.environ["REVIEW_PATH"])
-          review = json.loads(path.read_text(encoding="utf-8"))
-          result = json.loads(Path("youtube-result.json").read_text(encoding="utf-8"))
-          payload = json.loads(Path("publish-payload.json").read_text(encoding="utf-8"))
+          path = Path(os.environ['REVIEW_PATH'])
+          review = json.loads(path.read_text(encoding='utf-8'))
+          result = json.loads(Path('youtube-result.json').read_text(encoding='utf-8'))
+          payload = json.loads(Path('publish-payload.json').read_text(encoding='utf-8'))
           review.update({
-              "platform_upload_performed": True,
-              "publication_pending": False,
-              "publication_pending_capacity": False,
-              "upload_status": "PUBLISHED_YOUTUBE",
-              "youtube": result,
-              "published_at": datetime.now(timezone.utc).isoformat(),
-              "youtube_privacy": "public",
-              "tiktok_status": "MANUAL_UPLOAD_REQUIRED",
-              "published_payload": payload,
+              'platform_upload_performed': True,
+              'publication_pending': False,
+              'upload_status': 'PUBLISHED_YOUTUBE',
+              'youtube': result,
+              'published_at': datetime.now(timezone.utc).isoformat(),
+              'youtube_privacy': 'public',
+              'tiktok_status': 'MANUAL_UPLOAD_REQUIRED',
+              'tiktok_video_url': payload['tiktok_video_url'],
+              'tiktok_caption': payload['tiktok_caption'],
+              'published_payload': payload,
           })
-          path.write_text(json.dumps(review, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          path.write_text(json.dumps(review, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -230,40 +241,29 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-      - name: Send YouTube result and TikTok how-to to Telegram
+      - name: Send YouTube result and TikTok package to Telegram
         if: steps.select.outputs.found == 'true'
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json
-          import os
-          import urllib.parse
-          import urllib.request
-
-          result = json.load(open("youtube-result.json", encoding="utf-8"))
-          payload = json.load(open("publish-payload.json", encoding="utf-8"))
+          import json, os, urllib.parse, urllib.request
+          result = json.load(open('youtube-result.json', encoding='utf-8'))
+          payload = json.load(open('publish-payload.json', encoding='utf-8'))
           text = (
-              "✅ YouTube-Upload fertig und öffentlich\n\n"
+              '✅ YouTube-Upload fertig und öffentlich\n\n'
               f"🎬 YouTube: {result['url']}\n\n"
-              "📱 TikTok – kurz erledigen:\n"
-              f"1. MP4 öffnen: {payload['video_url']}\n"
-              "2. Im Video-Menü herunterladen.\n"
-              "3. TikTok öffnen → + → Hochladen → MP4 auswählen.\n"
-              "4. Cover prüfen, folgenden Text einfügen und auf Posten tippen:\n\n"
+              '📱 TikTok – manuell hochladen:\n'
+              f"MP4: {payload['tiktok_video_url']}\n\n"
+              'Caption:\n'
               f"{payload['tiktok_caption']}"
           )
-          data = urllib.parse.urlencode({
-              "chat_id": os.environ["TELEGRAM_CHAT_ID"],
-              "text": text,
-              "disable_web_page_preview": "false",
-          }).encode("utf-8")
-          request = urllib.request.Request(
-              f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage",
-              data=data,
-              method="POST",
-          )
+          data = urllib.parse.urlencode({'chat_id': os.environ['TELEGRAM_CHAT_ID'], 'text': text, 'disable_web_page_preview': 'false'}).encode('utf-8')
+          request = urllib.request.Request(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", data=data, method='POST')
           with urllib.request.urlopen(request, timeout=30) as response:
-              print(response.read().decode("utf-8"))
+              body = response.read().decode('utf-8')
+              print(body)
+              parsed = json.loads(body)
+              assert parsed.get('ok') is True and parsed.get('result', {}).get('message_id'), parsed
           PY
 
       - name: Upload publication evidence
@@ -273,6 +273,9 @@ jobs:
           name: tayvoriq-youtube-publication-${{ steps.select.outputs.review_id }}
           path: |
             selected-review.json
+            platform-urls.json
+            review-job.json
+            preapproval-ai-audit.json
             publish-payload.json
             youtube-result.json
           retention-days: 30
@@ -282,9 +285,7 @@ jobs:
         run: |
           set +e
           if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
-            curl --silent --show-error \
-              --request POST \
-              --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-              --data-urlencode $'text=🔴 YouTube-Upload fehlgeschlagen\n\nDie Freigabe bleibt gespeichert. Es wird nichts doppelt hochgeladen. Der technische Lauf muss repariert und erneut gestartet werden.'
+              --data-urlencode $'text=🔴 YouTube-Upload fehlgeschlagen\n\nDie Freigabe bleibt gespeichert. Es wird nichts doppelt hochgeladen. Der bestehende Review und das TikTok-Paket bleiben erhalten.' >/dev/null
           fi
