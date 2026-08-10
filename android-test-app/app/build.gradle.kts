@@ -10,8 +10,8 @@ android {
         applicationId = "com.tayvoriq.addonmanager.test"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.4.1-minecraft-import-fix-test"
+        versionCode = 7
+        versionName = "1.5.0-bedrock"
         manifestPlaceholders["admobAppId"] =
             "ca-app-pub-3940256099942544~3347511713"
     }
