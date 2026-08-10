@@ -29,7 +29,7 @@ concurrency:
 env:
   PYTHONUTF8: "1"
   PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
-  TAYVORIQ_EXECUTION_BACKEND: "self_hosted"
+  TAYVORIQ_EXECUTION_BACKEND: "github_hosted_public"
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
   TAYVORIQ_TTS_PROVIDER: "chatterbox_v3"
@@ -69,7 +69,7 @@ env:
 
 jobs:
   orchestrate:
-    runs-on: [self-hosted, linux, x64, tayvoriq-x]
+    runs-on: ubuntu-latest
     timeout-minutes: 70
     steps:
       - name: Checkout control plane
@@ -80,7 +80,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Validate dedicated self-hosted runner contract
+      - name: Validate hosted execution contract
         shell: bash
         env:
           RUNNER_ENVIRONMENT_VALUE: ${{ runner.environment }}
@@ -88,7 +88,7 @@ jobs:
           RUNNER_ARCH_VALUE: ${{ runner.arch }}
         run: |
           set -euo pipefail
-          test "$RUNNER_ENVIRONMENT_VALUE" = "self-hosted" || { echo "RUNNER_CONTRACT_FAILED: dedicated self-hosted runner required"; exit 1; }
+          test "$RUNNER_ENVIRONMENT_VALUE" = "github-hosted" || { echo "RUNNER_CONTRACT_FAILED: GitHub-hosted runner required"; exit 1; }
           test "$RUNNER_OS_VALUE" = "Linux" || { echo "RUNNER_CONTRACT_FAILED: Linux required"; exit 1; }
           test "$RUNNER_ARCH_VALUE" = "X64" || { echo "RUNNER_CONTRACT_FAILED: X64 required"; exit 1; }
           for command in python git curl; do
