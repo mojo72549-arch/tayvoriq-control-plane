@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <queries>
+        <!-- Minecraft Bedrock on Android -->
         <package android:name="com.mojang.minecraftpe" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -16,7 +17,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="TAYVORIQ Add-ons"
+        android:label="TAYVORIQ Bedrock Add-ons"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
@@ -39,7 +40,7 @@
             android:name=".FileImportActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="Mit TAYVORIQ importieren"
+            android:label="In Minecraft Bedrock importieren"
             android:launchMode="singleTop"
             android:noHistory="true"
             android:theme="@android:style/Theme.Material.NoActionBar">
