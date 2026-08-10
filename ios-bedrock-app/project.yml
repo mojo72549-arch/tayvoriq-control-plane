@@ -14,8 +14,6 @@ targets:
     platform: iOS
     sources:
       - TAYVORIQBedrock
-    info:
-      path: TAYVORIQBedrock/Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tayvoriq.addonmanager.ios
@@ -23,5 +21,6 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: TAYVORIQBedrock/Info.plist
     scheme:
       gatherCoverageData: false
