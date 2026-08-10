@@ -1,7 +1,7 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31432702046,
-  "source_artifact_id": 9080596608,
+  "source_run_id": 31435663838,
+  "source_artifact_id": 9081478076,
   "repair_stage": "VOICE_POSTMUX",
   "reuse": {
     "trend": true,
@@ -9,7 +9,8 @@
     "script": true,
     "visuals": true,
     "rendered_master": true,
-    "validated_platform_voice": true
+    "validated_platform_voice": true,
+    "validated_youtube_prefix": true
   },
   "permanent_robustness": {
     "safe_asr_orthographic_equivalence": true,
@@ -21,14 +22,23 @@
     "postmux_similarity_floor_095": true,
     "existing_platform_voice_reuse": true,
     "shared_intro_body_prefix_reuse": true,
+    "shared_prefix_no_full_regeneration_when_available": true,
+    "bounded_duration_fit_max_speedup_1_percent": true,
+    "post_duration_fit_asr_revalidation": true,
+    "durable_validated_tiktok_cta_cache": true,
     "platform_specific_cta_semantic_consistency": true,
     "truthful_checkpoint_failure_stage": true,
     "final_total_duration_gate_unchanged": true,
     "visible_script_unchanged": true,
     "single_voice_repair_concurrency": true
   },
+  "regressions": {
+    "run_31435663838_40ms_duration_overrun": true,
+    "reject_sandiskonvesten_digital": true,
+    "western_digital_critical_term_required": true
+  },
   "full_pipeline_restart": false,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-10T23:45:00+02:00",
-  "trigger_nonce": "voice-v4-postmux-audit-20260810-234500"
+  "requested_at": "2026-08-11T00:14:00+02:00",
+  "trigger_nonce": "voice-v4-duration-fit-cache-20260811-001400"
 }
