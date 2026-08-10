@@ -89,6 +89,7 @@ jobs:
           python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
 
       - name: Validate permanent voice robustness guards
+        id: robustness_guard
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -276,6 +277,7 @@ jobs:
       - name: Telegram checkpoint failure
         if: failure()
         env:
+          GUARD_OUTCOME: ${{ steps.robustness_guard.outcome }}
           VOICE_OUTCOME: ${{ steps.voice_repair.outcome }}
           AUDIT_OUTCOME: ${{ steps.final_audit.outcome }}
           QUALITY_OUTCOME: ${{ steps.publication_gate.outcome }}
@@ -286,7 +288,10 @@ jobs:
           set +e
           stage="UNKNOWN"
           detail="Checkpoint nicht freigabefähig."
-          if [ "$VOICE_OUTCOME" != "success" ]; then
+          if [ "$GUARD_OUTCOME" != "success" ]; then
+            stage="ROBUSTNESS_GUARD"
+            detail="Die internen Robustheits-/Regressionstests haben vor VOICE gestoppt; Audio wurde nicht neu verarbeitet."
+          elif [ "$VOICE_OUTCOME" != "success" ]; then
             stage="VOICE_POSTMUX"
             detail="Die unabhängige Sprach-/Post-Mux-Prüfung ist noch nicht sauber."
           elif [ "$AUDIT_OUTCOME" != "success" ]; then
