@@ -6,6 +6,10 @@ on:
     paths:
       - '.github/run-now/tayvoriq-voice-checkpoint-repair.json'
 
+concurrency:
+  group: tayvoriq-voice-checkpoint-repair
+  cancel-in-progress: true
+
 permissions:
   contents: read
   actions: read
@@ -79,11 +83,12 @@ jobs:
             sudo apt-get install -y -qq ffmpeg unzip rsync
           fi
           python -m pip install --upgrade pip -q
+          python -m pip install requests -q
           python -m pip install -r implementation/requirements.txt pytest -q
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
           python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
 
-      - name: Validate voice-only repair patch
+      - name: Validate permanent voice robustness guards
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -92,6 +97,7 @@ jobs:
           python - <<'PY'
           import tools.tayvoriq_voice_only_repair_v3_retry as retry
           assert retry._retry_count() == 3
+
           candidates = retry._ordered_candidates('Sandisk und Western Digital fallen deutlich.', 'intro')
           assert candidates[0]['label'] == 'sandisk:San Disk'
 
@@ -108,13 +114,22 @@ jobs:
           )
           assert wrong['passed'] is False
           assert 'Sandisk=>San Disk' in wrong['missing_critical_terms']
-          print('VOICE_CHECKPOINT_SAFE_ALIAS_PATCH_VALIDATED')
+
+          # Regression for run 31428088408: CTA budget 4.79 s while Chatterbox
+          # quantized valid audio to ~5.02-5.04 s. The provider generation window
+          # may expand, but the final combined narration duration remains a hard gate.
+          provider_budget = retry.v3._provider_aware_segment_budget(4.79, 34.65)
+          assert provider_budget == retry.v3.CHATTERBOX_SEGMENT_MIN_WINDOW_SECONDS
+          assert provider_budget == 5.25
+          assert retry.v3._provider_aware_segment_budget(4.79, 5.00) == 5.00
+
+          print('VOICE_V3_PERMANENT_ROBUSTNESS_GUARDS_VALIDATED')
           PY
 
       - name: Restore preserved master from failed run
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_ARTIFACT_ID: '9077599377'
+          SOURCE_ARTIFACT_ID: '9078720272'
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-preserved.zip
