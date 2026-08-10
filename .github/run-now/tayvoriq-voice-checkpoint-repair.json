@@ -1,8 +1,8 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31435663838,
-  "source_artifact_id": 9081478076,
-  "repair_stage": "VOICE_POSTMUX",
+  "source_run_id": 31437713652,
+  "source_artifact_id": 9081839496,
+  "repair_stage": "FINAL_PREAPPROVAL_AUDIT",
   "reuse": {
     "trend": true,
     "sources": true,
@@ -10,35 +10,34 @@
     "visuals": true,
     "rendered_master": true,
     "validated_platform_voice": true,
-    "validated_youtube_prefix": true
+    "validated_youtube_prefix": true,
+    "validated_tiktok_postmux": true
   },
   "permanent_robustness": {
-    "safe_asr_orthographic_equivalence": true,
-    "bounded_segment_retries": true,
-    "provider_aware_duration_window": true,
-    "candidate_specific_spoken_contract": true,
-    "brand_safe_platform_cta_fallback": true,
     "strict_postmux_audio_validation": true,
     "postmux_similarity_floor_095": true,
-    "existing_platform_voice_reuse": true,
-    "shared_intro_body_prefix_reuse": true,
-    "shared_prefix_no_full_regeneration_when_available": true,
-    "bounded_duration_fit_max_speedup_1_percent": true,
-    "post_duration_fit_asr_revalidation": true,
-    "durable_validated_tiktok_cta_cache": true,
+    "final_audit_asr_quorum": true,
+    "asr_quorum_required_passes_2_of_3": true,
+    "prompted_final_audit_vote": true,
+    "independent_unprompted_tiebreaker_vote": true,
+    "critical_terms_remain_fail_closed": true,
+    "confidence_floor_unchanged": true,
+    "hallucinated_tail_rejected": true,
+    "terminal_token_required": true,
+    "skip_voice_when_voice_already_passed": true,
     "platform_specific_cta_semantic_consistency": true,
     "truthful_checkpoint_failure_stage": true,
-    "final_total_duration_gate_unchanged": true,
     "visible_script_unchanged": true,
     "single_voice_repair_concurrency": true
   },
   "regressions": {
-    "run_31435663838_40ms_duration_overrun": true,
-    "reject_sandiskonvesten_digital": true,
-    "western_digital_critical_term_required": true
+    "run_31437713652_postmux_sandisk_vs_final_sandys_conflict": true,
+    "never_accept_single_asr_vote": true,
+    "never_lower_similarity_below_095": true
   },
   "full_pipeline_restart": false,
+  "voice_regeneration": false,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-11T00:14:00+02:00",
-  "trigger_nonce": "voice-v4-duration-fit-cache-20260811-001400"
+  "requested_at": "2026-08-11T00:27:00+02:00",
+  "trigger_nonce": "audit-v5-asr-quorum-20260811-002700"
 }
