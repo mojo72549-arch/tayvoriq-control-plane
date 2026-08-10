@@ -94,13 +94,27 @@ jobs:
           assert retry._retry_count() == 3
           candidates = retry._ordered_candidates('Sandisk und Western Digital fallen deutlich.', 'intro')
           assert candidates[0]['label'] == 'sandisk:San Disk'
-          print('VOICE_CHECKPOINT_RETRY_PATCH_VALIDATED')
+
+          expected = 'San Disk und Western Digital fielen trotz starker Zahlen deutlich.'
+          exact_joined = retry.v3._segment_validation(
+              'SanDisk und Western Digital fielen trotz starker Zahlen deutlich.', expected, 'intro'
+          )
+          assert exact_joined['passed'] is True
+          assert exact_joined['similarity'] >= 0.90
+          assert exact_joined['missing_critical_terms'] == []
+
+          wrong = retry.v3._segment_validation(
+              'Sundisk und Western Digital fielen trotz starker Zahlen deutlich.', expected, 'intro'
+          )
+          assert wrong['passed'] is False
+          assert 'Sandisk=>San Disk' in wrong['missing_critical_terms']
+          print('VOICE_CHECKPOINT_SAFE_ALIAS_PATCH_VALIDATED')
           PY
 
       - name: Restore preserved master from failed run
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_ARTIFACT_ID: '9074005878'
+          SOURCE_ARTIFACT_ID: '9077599377'
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-preserved.zip
@@ -189,7 +203,7 @@ jobs:
         if: failure()
         run: |
           set +e
-          message='❌ TAYVORIQ VOICE-Checkpoint noch nicht freigabefähig. Der vorhandene Master bleibt erhalten; Trend, Quellen, Skript und Visuals wurden nicht neu erzeugt. Es wurde nichts veröffentlicht.'
-          curl -fsS --retry 2 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          message="❌ TAYVORIQ VOICE-Checkpoint noch nicht freigabefähig (Run ${GITHUB_RUN_ID}). Master bleibt erhalten; Trend, Quellen, Skript und Visuals wurden nicht neu erzeugt. Nichts veröffentlicht."
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}" >/dev/null
