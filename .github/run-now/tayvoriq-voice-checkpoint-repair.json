@@ -1,43 +1,48 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
+  "review_rejected_run_id": 31438680757,
   "source_run_id": 31437713652,
   "source_artifact_id": 9081839496,
-  "repair_stage": "FINAL_PREAPPROVAL_AUDIT",
+  "repair_stage": "VOICE_HUMAN_NARRATOR",
+  "human_review": {
+    "rejected": true,
+    "reason": "pronunciation_not_natural",
+    "comment": "Aussprache des Redners ist nicht gut"
+  },
   "reuse": {
     "trend": true,
     "sources": true,
     "script": true,
     "visuals": true,
     "rendered_master": true,
-    "validated_platform_voice": true,
-    "validated_youtube_prefix": true,
-    "validated_tiktok_postmux": true
+    "previous_voice": false
+  },
+  "voice_strategy": {
+    "provider": "chatterbox_v3",
+    "continuous_full_take_per_platform": true,
+    "segmented_intro_body_cta": false,
+    "native_german_text_preserved": true,
+    "artificial_K_I_spelling": false,
+    "artificial_compound_splitting": false,
+    "rubberband_pitch_shift": false,
+    "narrator_pitch_factor": 1.0,
+    "bounded_full_take_attempts": 2
   },
   "permanent_robustness": {
     "strict_postmux_audio_validation": true,
     "postmux_similarity_floor_095": true,
     "final_audit_asr_quorum": true,
-    "asr_quorum_required_passes_2_of_3": true,
-    "prompted_final_audit_vote": true,
-    "independent_unprompted_tiebreaker_vote": true,
     "critical_terms_remain_fail_closed": true,
-    "confidence_floor_unchanged": true,
     "hallucinated_tail_rejected": true,
     "terminal_token_required": true,
-    "skip_voice_when_voice_already_passed": true,
     "platform_specific_cta_semantic_consistency": true,
-    "truthful_checkpoint_failure_stage": true,
+    "human_narrator_rejection_is_separate_checkpoint": true,
     "visible_script_unchanged": true,
     "single_voice_repair_concurrency": true
   },
-  "regressions": {
-    "run_31437713652_postmux_sandisk_vs_final_sandys_conflict": true,
-    "never_accept_single_asr_vote": true,
-    "never_lower_similarity_below_095": true
-  },
   "full_pipeline_restart": false,
-  "voice_regeneration": false,
+  "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-11T00:27:00+02:00",
-  "trigger_nonce": "audit-v5-asr-quorum-20260811-002700"
+  "requested_at": "2026-08-11T01:03:00+02:00",
+  "trigger_nonce": "human-narrator-v5-natural-full-take-31438680757"
 }
