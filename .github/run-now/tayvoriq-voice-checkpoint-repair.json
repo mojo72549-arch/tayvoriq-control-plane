@@ -7,7 +7,7 @@
   "human_review": {
     "rejected": true,
     "reason": "pronunciation_not_natural",
-    "comment": "Stimme muss menschlich, natürlich und deutsch klingen"
+    "comment": "Sprache und Aussprache müssen menschlich, natürlich und deutsch sowie freigabereif sein"
   },
   "reuse": {
     "trend": true,
@@ -20,9 +20,13 @@
   "voice_strategy": {
     "provider": "chatterbox_v3",
     "language": "de",
+    "exact_multilingual_model": "v3",
+    "v2_model_fallback_forbidden": true,
     "continuous_full_take_per_platform": true,
     "segmented_intro_body_cta": false,
     "native_german_text_preserved": true,
+    "internal_german_hyphens_preserved": true,
+    "sandisk_spoken_form": "San Disk",
     "artificial_K_I_spelling": false,
     "artificial_compound_splitting": false,
     "rubberband_pitch_shift": false,
@@ -32,6 +36,8 @@
     "human_review_required": true
   },
   "permanent_robustness": {
+    "real_chatterbox_multilingual_v3_required": true,
+    "v2_model_fallback_forbidden": true,
     "v4_remains_permanent_technical_entrypoint": true,
     "v5_only_for_explicit_human_narrator_rejection": true,
     "strict_postmux_audio_validation": true,
@@ -48,6 +54,6 @@
   "full_pipeline_restart": false,
   "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-11T01:16:00+02:00",
-  "trigger_nonce": "human-narrator-v5-architecture-fixed-review-master-20260811-011600"
+  "requested_at": "2026-08-11T01:32:00+02:00",
+  "trigger_nonce": "human-narrator-real-v3-german-pronunciation-31438680757-20260811-013200"
 }
