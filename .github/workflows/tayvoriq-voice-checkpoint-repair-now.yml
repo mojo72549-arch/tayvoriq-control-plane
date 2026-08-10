@@ -107,6 +107,20 @@ jobs:
 
           assert retry._retry_count() == 3
           assert v4.POSTMUX_MIN_SIMILARITY == 0.95
+          assert v4.SHARED_PREFIX_MAX_SPEEDUP == 1.01
+          assert v4.SHARED_PREFIX_REPAIR_ATTEMPTS == 2
+
+          # Run 31435663838: only 40 ms overrun. This must use bounded timing fit,
+          # never full TikTok voice regeneration.
+          timing = v4._duration_fit_plan(29.62, 29.58)
+          assert timing['required'] is True
+          assert 1.0 < timing['speed_factor'] <= 1.01
+          try:
+              v4._duration_fit_plan(30.50, 29.58)
+          except RuntimeError as exc:
+              assert 'VOICE_V4_SHARED_PREFIX_DURATION_EXCEEDED' in str(exc)
+          else:
+              raise AssertionError('material speed change must remain blocked')
 
           candidates = retry._ordered_candidates('Sandisk und Western Digital fallen deutlich.', 'intro')
           assert candidates[0]['label'] == 'sandisk:San Disk'
@@ -143,13 +157,13 @@ jobs:
           assert audit_v4._safe_speech_contract_normalize('Sandisk KI Chipsektor') == 'San Disk KI Chip Sektor'
           assert audit_v4._safe_speech_contract_normalize('Sundisk Chantandy') == 'Sundisk Chantandy'
 
-          print('VOICE_V4_POSTMUX_AND_AUDIT_ROBUSTNESS_GUARDS_VALIDATED')
+          print('VOICE_V4_POSTMUX_DURATION_FIT_AND_AUDIT_GUARDS_VALIDATED')
           PY
 
       - name: Restore preserved master from failed run
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_ARTIFACT_ID: '9080596608'
+          SOURCE_ARTIFACT_ID: '9081478076'
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-preserved.zip
