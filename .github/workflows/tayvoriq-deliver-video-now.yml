@@ -24,11 +24,12 @@ permissions:
 
 concurrency:
   group: tayvoriq-x-golden-path
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   PYTHONUTF8: "1"
   PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  TAYVORIQ_CONTROL_PLANE_SCHEMA: "x-v3"
   TAYVORIQ_EXECUTION_BACKEND: "github_hosted_public"
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
@@ -102,6 +103,60 @@ jobs:
           mkdir -p "$HF_HOME" "$TORCH_HOME"
           df -Pk "$GITHUB_WORKSPACE" | awk 'NR==2 { if ($4 < 12582912) { print "RUNNER_CONTRACT_FAILED: less than 12 GiB free"; exit 1 } }'
 
+      - name: Validate single X control-plane request contract
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          workflow = ".github/workflows/tayvoriq-deliver-video-now.yml"
+          workflow_files = list(Path('.github/workflows').glob('*.yml')) + list(Path('.github/workflows').glob('*.yaml'))
+          x_owners = []
+          for path in workflow_files:
+              text = path.read_text(encoding='utf-8', errors='replace')
+              if 'name: TAYVORIQ-X Golden Path' in text:
+                  x_owners.append(str(path))
+          if x_owners != [workflow]:
+              raise SystemExit(f"CONTROL_PLANE_SINGLE_OWNER_FAILED: expected={[workflow]!r} actual={x_owners!r}")
+
+          if os.environ.get('EVENT_NAME') == 'push':
+              path = Path('.github/run-now/tayvoriq-x-request.json')
+              if not path.is_file():
+                  raise SystemExit('CONTROL_PLANE_REQUEST_MISSING')
+              data = json.loads(path.read_text(encoding='utf-8'))
+              if data.get('request') != 'tayvoriq-x-production':
+                  raise SystemExit('CONTROL_PLANE_REQUEST_TYPE_FAILED')
+              if data.get('workflow') != workflow:
+                  raise SystemExit('CONTROL_PLANE_WORKFLOW_BINDING_FAILED')
+              if data.get('approved_trend_pinned') is not True:
+                  raise SystemExit('CONTROL_PLANE_APPROVAL_PIN_FAILED')
+              if str(data.get('topic') or '').strip() != str(os.environ.get('TOPIC') or '').strip():
+                  raise SystemExit('CONTROL_PLANE_TOPIC_BINDING_FAILED')
+              if str(data.get('trend_id') or '').strip() != str(os.environ.get('TREND_ID') or '').strip():
+                  raise SystemExit('CONTROL_PLANE_TREND_BINDING_FAILED')
+              hardening = data.get('hardening')
+              required = (
+                  'checkpoint_source_context_required',
+                  'platform_specific_cta_required',
+                  'platform_specific_voice_repair_required',
+                  'validated_voice_candidate_required',
+                  'premium_voice_required',
+                  'concrete_failure_state_required',
+              )
+              if not isinstance(hardening, dict) or any(hardening.get(key) is not True for key in required):
+                  raise SystemExit('CONTROL_PLANE_HARDENING_CONTRACT_FAILED')
+              if hardening.get('quality_gates_weakened') is not False:
+                  raise SystemExit('CONTROL_PLANE_QUALITY_GATE_INTEGRITY_FAILED')
+              nonce = str(data.get('request_nonce') or '').strip()
+              if len(nonce) < 12:
+                  raise SystemExit('CONTROL_PLANE_REQUEST_NONCE_FAILED')
+          print('TAYVORIQ_X_CONTROL_PLANE_CONTRACT_PASSED')
+          PY
+
       - name: Materialize immutable verified source context
         shell: bash
         run: |
@@ -140,37 +195,23 @@ jobs:
               candidates.append((stamp, path, data, source))
 
           if not candidates:
-              raise SystemExit(
-                  f"SOURCE_CONTEXT_MISSING: no verified full request exists for trend_id={trend_id}"
-              )
+              raise SystemExit(f"SOURCE_CONTEXT_MISSING: no verified full request exists for trend_id={trend_id}")
 
           _, request_path, data, source = max(candidates, key=lambda item: item[0])
-          raw = json.dumps(
-              source, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-          ).encode("utf-8")
+          raw = json.dumps(source, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
           digest = hashlib.sha256(raw).hexdigest()
           expected = str(data.get("source_context_sha256") or "").strip()
           if not expected or digest != expected:
-              raise SystemExit(
-                  f"SOURCE_CONTEXT_INTEGRITY_FAILED: expected={expected!r} actual={digest}"
-              )
+              raise SystemExit(f"SOURCE_CONTEXT_INTEGRITY_FAILED: expected={expected!r} actual={digest}")
 
           sources = source.get("sources")
           answers = source.get("fallback_editorial_answers")
-          required_answers = (
-              "what_happened",
-              "why_happening",
-              "who_is_affected",
-              "personal_impact",
-              "action_now",
-          )
+          required_answers = ("what_happened","why_happening","who_is_affected","personal_impact","action_now")
           if not isinstance(sources, list) or len(sources) < 2:
               raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: at least two sources are required")
           if int(source.get("independent_news_count") or 0) < 2:
               raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: independent_news_count must be >= 2")
-          if not isinstance(answers, dict) or any(
-              not str(answers.get(key) or "").strip() for key in required_answers
-          ):
+          if not isinstance(answers, dict) or any(not str(answers.get(key) or "").strip() for key in required_answers):
               raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: complete five-answer evidence is required")
           for index, item in enumerate(sources, start=1):
               if not isinstance(item, dict):
@@ -184,16 +225,7 @@ jobs:
 
           target = Path(os.environ["TAYVORIQ_SOURCE_CONTEXT_FILE"])
           target.write_text(json.dumps(source, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-          print(json.dumps({
-              "source_context": "verified-and-materialized",
-              "request_id": data.get("request_id"),
-              "request_file": str(request_path),
-              "trend_id": trend_id,
-              "source_count": len(sources),
-              "independent_news_count": source.get("independent_news_count"),
-              "sha256": digest,
-              "quality_gates_weakened": False,
-          }, ensure_ascii=False))
+          print(json.dumps({"source_context":"verified-and-materialized","request_id":data.get("request_id"),"request_file":str(request_path),"trend_id":trend_id,"source_count":len(sources),"independent_news_count":source.get("independent_news_count"),"sha256":digest,"quality_gates_weakened":False}, ensure_ascii=False))
           PY
 
       - name: Validate secrets and notify production start
@@ -206,9 +238,7 @@ jobs:
             test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
           done
           message=$(printf '🟣 TAYVORIQ Produktion gestartet\n\nThema: %s\n\nFür dich: ✅ Keine Aktion nötig.' "$TOPIC")
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}")
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
       - name: Checkout implementation
@@ -237,26 +267,28 @@ jobs:
           IMPLEMENTATION_SHA=$(git -C implementation rev-parse HEAD)
           PAGES_SHA=$(git -C pages-worktree rev-parse HEAD)
           SOURCE_SHA=$(sha256sum "$TAYVORIQ_SOURCE_CONTEXT_FILE" | awk '{print $1}')
-          python - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" <<'PY'
+          REQUEST_NONCE=$(python -c 'import json,pathlib; p=pathlib.Path(".github/run-now/tayvoriq-x-request.json"); print((json.loads(p.read_text()).get("request_nonce") if p.exists() else "") or "")')
+          python - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" "$REQUEST_NONCE" <<'PY'
           import json, os, pathlib, sys
           payload = {
               "run_id": os.environ.get("GITHUB_RUN_ID"),
               "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
               "topic": os.environ.get("TOPIC"),
               "trend_id": os.environ.get("TREND_ID"),
+              "control_plane_schema": os.environ.get("TAYVORIQ_CONTROL_PLANE_SCHEMA"),
               "control_plane_sha": sys.argv[1],
               "implementation_sha": sys.argv[2],
               "review_pages_sha": sys.argv[3],
               "source_context_sha256": sys.argv[4],
+              "request_nonce": sys.argv[5],
               "implementation_branch": "feature/multi-platform-distribution-package",
               "execution_backend": os.environ.get("TAYVORIQ_EXECUTION_BACKEND"),
               "approved_trend_pinned": True,
               "source_context_bound": True,
+              "single_x_owner": True,
               "quality_gates_weakened": False,
           }
-          pathlib.Path("implementation/out/control-plane/production-manifest.json").write_text(
-              json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-          )
+          pathlib.Path("implementation/out/control-plane/production-manifest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print(json.dumps(payload, ensure_ascii=False))
           PY
 
@@ -268,13 +300,8 @@ jobs:
             command -v "$command" >/dev/null || missing+=("$command")
           done
           if [ "${#missing[@]}" -gt 0 ]; then
-            if command -v apt-get >/dev/null && sudo -n true 2>/dev/null; then
-              sudo apt-get update -qq
-              sudo apt-get install -y -qq ffmpeg rsync git
-            else
-              printf 'RUNNER_PREREQUISITE_MISSING: %s\n' "${missing[*]}" >&2
-              exit 1
-            fi
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg rsync git
           fi
           python -m pip install --upgrade pip -q
           python -m pip install -r implementation/requirements.txt pytest -q
@@ -393,27 +420,21 @@ jobs:
           readarray -t failure_info < <(python - <<'PY'
           import json
           from pathlib import Path
-
           report_path = Path("out/tayvoriq-self-heal/report.json")
           preflight_path = Path("out/control-plane/preflight.json")
           report = {}
           if report_path.exists():
-              try:
-                  report = json.loads(report_path.read_text(encoding="utf-8"))
-              except Exception:
-                  report = {}
+              try: report = json.loads(report_path.read_text(encoding="utf-8"))
+              except Exception: report = {}
           state = str(report.get("state") or "")
           reason = " ".join(str(report.get("reason") or "").split())[:900]
           scopes = report.get("repair_target_stages")
           if not state and preflight_path.exists():
-              try:
-                  preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
-              except Exception:
-                  preflight = {}
+              try: preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+              except Exception: preflight = {}
               state = str(preflight.get("state") or "")
               issues = preflight.get("issues") or []
-              if issues:
-                  reason = "; ".join(str(item) for item in issues[:3])
+              if issues: reason = "; ".join(str(item) for item in issues[:3])
           print(state or "TECHNICAL_FAILURE")
           print(reason)
           print(", ".join(str(item) for item in scopes) if isinstance(scopes, list) else "")
@@ -424,20 +445,13 @@ jobs:
           scopes="${failure_info[2]:-}"
           headline="❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden"
           case "$state" in
-            PREFLIGHT_FAILED)
-              reason="Die Produktionssicherheit hat vor dem Render einen internen Vertragsfehler erkannt. ${detail} Es wurde nichts veröffentlicht." ;;
-            SKIPPED_NO_PUBLISHABLE_TREND|CONTENT_REJECTED)
-              reason="Das Video hat ein unverändertes Qualitäts- oder Fakten-Gate nicht bestanden. ${detail} Es wurde nichts veröffentlicht." ;;
-            PUBLISHABLE_OUTPUT_RETRY_REQUIRED)
-              headline="🔧 TAYVORIQ Reparaturmodus"
-              reason="Der vorhandene Master bleibt erhalten, hat aber noch nicht alle strengen Gates bestanden. Reparaturziel: ${scopes:-unbekannt}. ${detail} Es wurde nichts veröffentlicht." ;;
-            *)
-              reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden. ${detail} Es wurde nichts veröffentlicht." ;;
+            PREFLIGHT_FAILED) reason="Die Produktionssicherheit hat vor dem Render einen internen Vertragsfehler erkannt. ${detail} Es wurde nichts veröffentlicht." ;;
+            SKIPPED_NO_PUBLISHABLE_TREND|CONTENT_REJECTED) reason="Das Video hat ein unverändertes Qualitäts- oder Fakten-Gate nicht bestanden. ${detail} Es wurde nichts veröffentlicht." ;;
+            PUBLISHABLE_OUTPUT_RETRY_REQUIRED) headline="🔧 TAYVORIQ Reparaturmodus"; reason="Der vorhandene Master bleibt erhalten, hat aber noch nicht alle strengen Gates bestanden. Reparaturziel: ${scopes:-unbekannt}. ${detail} Es wurde nichts veröffentlicht." ;;
+            *) reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden. ${detail} Es wurde nichts veröffentlicht." ;;
           esac
           message=$(printf '%s\n\n%s' "$headline" "$reason")
-          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}" >/dev/null
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null
 
       - name: Upload diagnostics and preserved candidates
         if: always()
