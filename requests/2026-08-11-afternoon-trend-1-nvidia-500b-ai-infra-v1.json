@@ -1,6 +1,6 @@
 {
   "request_id": "2026-08-11-afternoon-trend-1-nvidia-500b-ai-infra-v1",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "chat_trend_approval",
   "trend_id": "1",
   "topic": "Nvidia und Wall Street: über 500 Milliarden Dollar für die KI-Infrastruktur",
@@ -37,6 +37,11 @@
     {
       "state": "DISPATCHING",
       "at": "2026-08-11T19:58:00.615579+00:00",
+      "actor": "request-dispatcher:31530507705"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-11T19:58:10.330494+00:00",
       "actor": "request-dispatcher:31530507705"
     }
   ],
@@ -113,5 +118,5 @@
   "contract_sha256": "174d03fa2596729a004c7ea5e31e663ec0b9b1eda82b9d012b32467b02e35cb9",
   "dispatch_claim_run_id": 31530507705,
   "dispatch_contract_sha256": "174d03fa2596729a004c7ea5e31e663ec0b9b1eda82b9d012b32467b02e35cb9",
-  "golden_path_run_id": 31479470579
+  "golden_path_run_id": 31530520892
 }
