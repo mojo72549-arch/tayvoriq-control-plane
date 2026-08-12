@@ -56,6 +56,10 @@ jobs:
       - name: Install fast-final dependencies
         run: |
           set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
           python -m pip install --upgrade pip -q
           python -m pip install requests pillow pydub python-dotenv certifi -q
 
@@ -76,8 +80,8 @@ jobs:
 
           request = json.loads(Path('../.github/run-now/tayvoriq-youtube-fast-final.json').read_text(encoding='utf-8'))
           assert request['release_scope'] == 'youtube'
-          assert request['source_run_id'] == 31617916476
-          assert request['source_artifact_id'] == 9150581936
+          assert request['source_run_id'] == 31620810946
+          assert request['source_artifact_id'] == 9151189463
           assert request['preserve']['youtube_voice'] is True
           assert request['replace']['youtube_visual_layer'] is True
           assert request['defer']['tiktok'] is True
@@ -92,7 +96,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          SOURCE_ARTIFACT_ID=9150581936
+          SOURCE_ARTIFACT_ID=9151189463
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-youtube-source.zip
           unzip -q /tmp/tayvoriq-youtube-source.zip -d implementation
           JOB_DIR=$(find implementation/out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\n' | sort | tail -1)
