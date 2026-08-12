@@ -1,32 +1,21 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31581741434,
-  "source_artifact_id": 9136027679,
-  "original_master_run_id": 31577596411,
-  "repair_stage": "VOICE_HUMAN_NARRATOR",
-  "repair_reason": "strict-number-contract-and-postmux-trust-metadata-handoff",
+  "source_run_id": 31600355626,
+  "source_artifact_id": 9145118643,
+  "original_master_run_id": 31600355626,
+  "repair_stage": "VOICE_POSTMUX",
+  "repair_reason": "strict-eclipse-place-causality-and-safety-term-repair-after-0.9487-segment",
   "checkpoint_truth": {
-    "prior_voice_take_passed": true,
-    "youtube_shorts": {
-      "provider": "chatterbox_multilingual_v3",
-      "voice_duration_seconds": 26.016,
-      "video_duration_seconds": 27.633,
-      "natural_wpm": 140.68,
-      "pre_mux_similarity": 1,
-      "postmux_similarity": 1,
-      "selected_full_take_attempt": 1
-    },
-    "tiktok": {
-      "provider": "chatterbox_multilingual_v3",
-      "voice_duration_seconds": 26.016,
-      "video_duration_seconds": 27.633,
-      "natural_wpm": 140.68,
-      "pre_mux_similarity": 1,
-      "postmux_similarity": 1,
-      "selected_full_take_attempt": 2
-    },
-    "continuous_narrator_take": true,
-    "narrator_pitch_shift_applied": false,
+    "preserved_master_exists": true,
+    "visual_checkpoint_passed": true,
+    "prior_voice_take_passed_historical_gate": true,
+    "prior_voice_take_passes_current_gate": false,
+    "known_bad_asr_terms": [
+      "Bei statt Weil",
+      "Thailand statt Island"
+    ],
+    "segment_similarity_observed": 0.9487,
+    "required_segment_similarity": 0.95,
     "quality_gates_weakened": false
   },
   "reuse": {
@@ -35,10 +24,10 @@
     "script": true,
     "visuals": true,
     "rendered_master": true,
-    "repaired_voice": true
+    "repaired_voice": false
   },
   "next_required_gates": [
-    "VOICE_HUMAN_NARRATOR_REVALIDATION",
+    "VOICE_POSTMUX_REPAIR",
     "FINAL_PREAPPROVAL_AUDIT",
     "PUBLICATION_QUALITY_GATE",
     "REVIEW_BUILD",
@@ -46,9 +35,9 @@
     "TELEGRAM_REVIEW_DELIVERY"
   ],
   "full_pipeline_restart": false,
-  "voice_regeneration": false,
-  "regenerate_only_if_revalidation_fails": true,
+  "suppress_start_notification": true,
+  "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T09:52:13Z",
-  "trigger_nonce": "nvidia-v5-contract-proof-reuse-31581741434-v3"
+  "requested_at": "2026-08-12T14:24:35Z",
+  "trigger_nonce": "eclipse-voice-strict-1786544675180"
 }
