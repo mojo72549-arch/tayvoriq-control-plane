@@ -30,12 +30,15 @@ env:
   TAYVORIQ_CHATTERBOX_CPU_THREADS: '4'
   TAYVORIQ_DOCUMENTARY_TIMEOUT_SECONDS: '1200'
   TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: '1200'
-  TAYVORIQ_CHATTERBOX_MAX_CHUNKS: '2'
-  TAYVORIQ_CHATTERBOX_MAX_CHARS: '720'
+  TAYVORIQ_CHATTERBOX_MAX_CHUNKS: '4'
+  TAYVORIQ_CHATTERBOX_MAX_CHARS: '300'
+  TAYVORIQ_CHATTERBOX_VERIFY_CHUNKS: 'true'
+  TAYVORIQ_CHATTERBOX_CHUNK_VERIFY_ATTEMPTS: '3'
+  TAYVORIQ_CHATTERBOX_VERIFY_MIN_SIMILARITY: '0.90'
   TAYVORIQ_NATURAL_DOCUMENTARY_TARGET_WPM: '140'
   TAYVORIQ_NATURAL_CHATTERBOX_EXAGGERATION: '0.50'
   TAYVORIQ_NATURAL_CHATTERBOX_CFG_WEIGHT: '0.30'
-  TAYVORIQ_NATURAL_CHATTERBOX_PAUSE_MS: '360'
+  TAYVORIQ_NATURAL_CHATTERBOX_PAUSE_MS: '320'
   TAYVORIQ_AUDIO_END_PADDING_SECONDS: '1.25'
   TAYVORIQ_NATURAL_VOICE_MIN_SECONDS: '48'
   TAYVORIQ_NATURAL_VOICE_MAX_SECONDS: '58'
@@ -126,68 +129,69 @@ jobs:
           echo "TAYVORIQ_CHATTERBOX_REFERENCE_AUDIO=$GITHUB_WORKSPACE/natural_reference.wav" >> "$GITHUB_ENV"
           echo "NARRATOR_REFERENCE_READY"
 
-      - name: Validate afterglow repair contract
+      - name: Validate V5 audit repair contract
         id: guard
         run: |
           set -euo pipefail
+          python -m py_compile implementation/tools/tayvoriq_chatterbox_worker.py
           python -m py_compile implementation/tools/tayvoriq_tts_router_v31_natural.py
-          python -m py_compile implementation/tools/tayvoriq_eclipse_afterglow_v4.py
+          python -m py_compile implementation/tools/tayvoriq_eclipse_afterglow_v5.py
           python - <<'PY'
           import json
           from pathlib import Path
           request = json.loads(Path('.github/run-now/tayvoriq-eclipse-afterglow.json').read_text(encoding='utf-8'))
           assert request['release_scope'] == 'youtube'
           assert request['rejected_review_id'] == 31638457966
-          assert request['failed_afterglow_run'] == 31639345305
-          assert request['human_rejection']['voice_anonymous_like'] is True
-          assert request['human_rejection']['glasses_scene_quality'] is True
-          assert request['requirements']['post_event_recap'] is True
-          assert request['requirements']['beautiful_moments'] is True
-          assert request['requirements']['next_total_eclipse_2027_focus'] is True
+          assert request['failed_v4_run'] == 31642009713
           assert request['voice']['pitch_shift_allowed'] is False
-          assert request['voice']['max_chunks'] == 2
-          assert request['audit_repair']['remove_spoken_island'] is True
-          assert request['audit_repair']['verbalize_all_tts_numbers'] is True
+          assert request['voice']['max_chunks'] == 4
+          assert request['voice']['chunk_whisper_verification'] is True
+          assert request['voice']['retry_on_anchor_loss'] is True
+          assert request['voice']['trim_unscripted_tail'] is True
+          assert request['audit_repair']['remove_low_resolution_2027_gif'] is True
+          assert request['audit_repair']['high_resolution_corona_replacement'] is True
           assert request['audit_repair']['forbid_generic_stock'] is True
-          assert request['audit_repair']['forbid_wrong_geography_maps'] is True
-          assert request['visuals']['official_nasa_eclipse_viewers'] is True
-          assert request['visuals']['official_nasa_glasses_photo'] is True
-          assert request['visuals']['official_nasa_2026_visual'] is True
-          assert request['visuals']['official_nasa_2027_map'] is True
+          assert request['audit_repair']['verify_critical_anchors'] == ['2027', 'südspanien', 'nordafrika', 'saudi', 'jemen']
           assert request['platform_upload'] is False
           assert request['quality_gates_weakened'] is False
-          print('AFTERGLOW_V4_REPAIR_GUARD_VALID')
+          print('AFTERGLOW_V5_REPAIR_GUARD_VALID')
           PY
 
-      - name: Render audit-repaired natural-voice afterglow Short
+      - name: Render verified-voice high-resolution V5 Short
         id: render
         env:
           PYTHONPATH: ${{ github.workspace }}/implementation/tools
         run: |
           set -euo pipefail
           rm -rf out/eclipsereview
-          python implementation/tools/tayvoriq_eclipse_afterglow_v4.py --out-dir out/eclipsereview
+          python implementation/tools/tayvoriq_eclipse_afterglow_v5.py --out-dir out/eclipsereview
           test -s out/eclipsereview/job.json
           test -s out/eclipsereview/short_youtube.mp4
           python - <<'PY'
           import json, re
           from pathlib import Path
           job=json.loads(Path('out/eclipsereview/job.json').read_text(encoding='utf-8'))
-          gate=job['variants']['youtube_shorts']['audio']['documentary_voice_gate']
           audio=job['variants']['youtube_shorts']['audio']
-          script=job['variants']['youtube_shorts']['text_package']['script']
+          gate=audio['documentary_voice_gate']
+          worker=audio['worker_report']
+          quality=job['quality_report']
           assert gate['passed'] is True
           assert gate['pitch_shift_applied'] is False
           assert gate['anonymous_voice_effect_forbidden'] is True
+          assert worker['chunk_verification_enabled'] is True
+          assert worker['chunk_verification_all_passed'] is True
+          assert 1 <= worker['chunk_count'] <= 4
+          assert all(item['passed'] is True for item in worker['chunk_verification'])
           assert not re.search(r'\d', audio['tts_text'])
           assert 'Island' not in audio['tts_text']
-          assert job['quality_report']['generic_stock_used'] is False
-          assert job['quality_report']['real_nasa_glasses_visual'] is True
-          assert job['quality_report']['nasa_2026_vertical_visual'] is True
-          assert job['quality_report']['nasa_2027_animated_map'] is True
-          report=json.loads(Path('out/eclipsereview/voice_chatterbox_report.json').read_text(encoding='utf-8'))
-          assert report['chunk_count'] <= 2
-          print('NEW_AFTERGLOW_V4_MASTER_RENDERED')
+          assert 'vielen dank' not in ' '.join(str(item.get('transcript','')) for item in worker['chunk_verification']).casefold()
+          assert {'2027','südspanien','nordafrika','saudi','jemen'}.issubset(set(quality['verified_critical_anchors']))
+          assert quality['generic_stock_used'] is False
+          assert quality['low_resolution_map_used'] is False
+          assert quality['rejected_nasa_2027_gif_used'] is False
+          assert quality['high_resolution_corona_scenes'] >= 2
+          assert quality['platform_upload_performed'] is False
+          print('NEW_AFTERGLOW_V5_MASTER_RENDERED')
           PY
 
       - name: Run independent YouTube final audit
@@ -230,7 +234,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tayvoriq .nojekyll
           if ! git diff --cached --quiet; then
-            git commit -m "Publish TAYVORIQ eclipse afterglow V4 review ${GITHUB_RUN_ID}"
+            git commit -m "Publish TAYVORIQ eclipse afterglow V5 review ${GITHUB_RUN_ID}"
             git pull --rebase origin main
             git push origin main
           fi
@@ -253,7 +257,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tayvoriq-eclipse-afterglow-v4-${{ github.run_id }}
+          name: tayvoriq-eclipse-afterglow-v5-${{ github.run_id }}
           path: |
             out/eclipsereview/**
             site/tayvoriq/**
@@ -275,15 +279,15 @@ jobs:
         run: |
           set +e
           stage="UNKNOWN"
-          detail="Der Sonnenfinsternis-Afterglow V4 ist noch nicht freigabefähig."
+          detail="Der Sonnenfinsternis-Afterglow V5 ist noch nicht freigabefähig."
           if [ "$DEPS" != "success" ]; then stage="DEPENDENCIES"; detail="Abhängigkeiten konnten nicht sauber aufgebaut werden.";
           elif [ "$REFERENCE" != "success" ]; then stage="VOICE_REFERENCE"; detail="Die Sprecherreferenz konnte nicht geladen werden.";
-          elif [ "$GUARD" != "success" ]; then stage="AFTERGLOW_V4_GUARD"; detail="Der Audit-Repair-Vertrag hat blockiert.";
-          elif [ "$RENDER" != "success" ]; then stage="NATURAL_VOICE_OR_VISUAL_RENDER"; detail="Natürliche Stimme oder offizielle Eclipse-Visuals konnten nicht sauber gerendert werden.";
-          elif [ "$AUDIT" != "success" ]; then stage="YOUTUBE_FINAL_AUDIT"; detail="Der unabhängige Audit blockiert die neue V4-Fassung.";
-          elif [ "$QUALITY" != "success" ]; then stage="YOUTUBE_PUBLICATION_GATE"; detail="Audit bestanden; Publication Gate blockiert noch.";
-          elif [ "$REVIEW" != "success" ]; then stage="YOUTUBE_REVIEW_BUILD"; detail="Alle Gates bestanden; Review-Seite konnte nicht gebaut werden.";
-          elif [ "$REVIEW_PUBLISH" != "success" ]; then stage="YOUTUBE_REVIEW_PUBLISH"; detail="Alle Gates bestanden; Review-Seite konnte nicht bereitgestellt werden.";
-          elif [ "$TELEGRAM" != "success" ]; then stage="TELEGRAM_REVIEW_DELIVERY"; detail="Alle Gates bestanden; nur Telegram ist fehlgeschlagen."; fi
-          message=$(printf '❌ TAYVORIQ Sonnenfinsternis-Afterglow V4 noch nicht freigabefähig\n\nRun: %s\nStufe: %s\n%s\n\nKeine generischen Stock-Szenen. Kein Upload vor deiner Freigabe.' "$GITHUB_RUN_ID" "$stage" "$detail")
+          elif [ "$GUARD" != "success" ]; then stage="AFTERGLOW_V5_GUARD"; detail="Der V5 Audit-Repair-Vertrag hat blockiert.";
+          elif [ "$RENDER" != "success" ]; then stage="VERIFIED_VOICE_OR_HIGHRES_RENDER"; detail="Whisper-verifizierte Stimme oder hochauflösende Eclipse-Visuals konnten nicht sauber erzeugt werden.";
+          elif [ "$AUDIT" != "success" ]; then stage="YOUTUBE_FINAL_AUDIT"; detail="Der unabhängige Audit blockiert die V5-Fassung.";
+          elif [ "$QUALITY" != "success" ]; then stage="YOUTUBE_PUBLICATION_GATE"; detail="Final-Audit bestanden; Publication Gate blockiert noch.";
+          elif [ "$REVIEW" != "success" ]; then stage="YOUTUBE_REVIEW_BUILD"; detail="Alle Quality-Gates bestanden; Review-Seite konnte nicht gebaut werden.";
+          elif [ "$REVIEW_PUBLISH" != "success" ]; then stage="YOUTUBE_REVIEW_PUBLISH"; detail="Alle Quality-Gates bestanden; Review-Seite konnte nicht bereitgestellt werden.";
+          elif [ "$TELEGRAM" != "success" ]; then stage="TELEGRAM_REVIEW_DELIVERY"; detail="Alle Quality-Gates bestanden; nur Telegram ist fehlgeschlagen."; fi
+          message=$(printf '❌ TAYVORIQ Sonnenfinsternis-Afterglow V5 noch nicht freigabefähig\n\nRun: %s\nStufe: %s\n%s\n\nV5 prüft jeden Sprachblock mit Whisper und verwendet keine niedrigauflösende 2027-GIF. Kein Upload vor deiner Freigabe.' "$GITHUB_RUN_ID" "$stage" "$detail")
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null
