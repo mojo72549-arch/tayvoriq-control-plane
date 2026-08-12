@@ -1,0 +1,33 @@
+{
+  "request": "tayvoriq-youtube-fast-final",
+  "source_run_id": 31617916476,
+  "source_artifact_id": 9150581936,
+  "original_master_run_id": 31600355626,
+  "release_scope": "youtube",
+  "repair_stage": "FINAL_PREAPPROVAL_AUDIT",
+  "repair_reason": "preserve exact passed YouTube voice, replace rejected eclipse visuals with sharp topic-safe editorial graphics, and defer TikTok",
+  "preserve": {
+    "trend": true,
+    "sources": true,
+    "script": true,
+    "youtube_voice": true
+  },
+  "replace": {
+    "youtube_visual_layer": true
+  },
+  "defer": {
+    "tiktok": true,
+    "reason": "independent final audit rejected TikTok pronunciation"
+  },
+  "required_gates": [
+    "YOUTUBE_TOPIC_SAFE_VISUAL_RENDER",
+    "YOUTUBE_TARGETED_FINAL_PREAPPROVAL_AUDIT",
+    "YOUTUBE_PUBLICATION_QUALITY_GATE",
+    "YOUTUBE_REVIEW_BUILD",
+    "TELEGRAM_APPROVAL_DELIVERY"
+  ],
+  "platform_upload": false,
+  "quality_gates_weakened": false,
+  "requested_at": "2026-08-12T18:55:00Z",
+  "trigger_nonce": "eclipse-youtube-fast-final-31617916476-v1"
+}
