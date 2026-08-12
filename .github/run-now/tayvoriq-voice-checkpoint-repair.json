@@ -4,18 +4,14 @@
   "source_artifact_id": 9145118643,
   "original_master_run_id": 31600355626,
   "repair_stage": "VOICE_POSTMUX",
-  "repair_reason": "strict-eclipse-place-causality-and-safety-term-repair-after-0.9487-segment",
+  "repair_reason": "sentence-scoped-eclipse-voice-repair-for-independent-weil-and-island-validation",
   "checkpoint_truth": {
     "preserved_master_exists": true,
     "visual_checkpoint_passed": true,
-    "prior_voice_take_passed_historical_gate": true,
-    "prior_voice_take_passes_current_gate": false,
-    "known_bad_asr_terms": [
-      "Bei statt Weil",
-      "Thailand statt Island",
-      "Finsternisgrillen statt Finsternisbrillen"
-    ],
-    "segment_similarity_observed": 0.9487,
+    "long_body_attempts_observed": 3,
+    "best_long_body_similarity": 0.9744,
+    "blocking_terms_were_separately_correct_across_takes": true,
+    "sentence_scoped_validation": true,
     "required_segment_similarity": 0.95,
     "exact_critical_term_gate": true,
     "quality_gates_weakened": false
@@ -29,7 +25,8 @@
     "repaired_voice": false
   },
   "next_required_gates": [
-    "VOICE_POSTMUX_REPAIR",
+    "VOICE_SENTENCE_SCOPED_REPAIR",
+    "VOICE_POSTMUX_REVALIDATION",
     "FINAL_PREAPPROVAL_AUDIT",
     "PUBLICATION_QUALITY_GATE",
     "REVIEW_BUILD",
@@ -40,6 +37,6 @@
   "suppress_start_notification": true,
   "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T14:29:04Z",
-  "trigger_nonce": "eclipse-voice-exact-terms-1786544944236"
+  "requested_at": "2026-08-12T14:43:30Z",
+  "trigger_nonce": "eclipse-voice-sentence-scoped-1786545810112"
 }
