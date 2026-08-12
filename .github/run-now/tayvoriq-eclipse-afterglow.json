@@ -1,7 +1,8 @@
 {
-  "request": "tayvoriq-eclipse-afterglow-repair",
+  "request": "tayvoriq-eclipse-afterglow-repair-v4",
   "release_scope": "youtube",
   "rejected_review_id": 31638457966,
+  "failed_afterglow_run": 31639345305,
   "human_rejection": {
     "voice_anonymous_like": true,
     "glasses_scene_quality": true
@@ -19,18 +20,28 @@
     "pitch_shift_allowed": false,
     "formant_shift_allowed": false,
     "natural_human_pitch_variation_required": true,
+    "max_chunks": 2,
     "exaggeration": 0.5,
     "cfg_weight": 0.3
   },
+  "audit_repair": {
+    "remove_spoken_island": true,
+    "verbalize_all_tts_numbers": true,
+    "remove_short_final_tts_chunk": true,
+    "forbid_generic_stock": true,
+    "forbid_football_crowds": true,
+    "forbid_wrong_geography_maps": true,
+    "official_eclipse_assets_only": true
+  },
   "visuals": {
-    "real_glasses_footage_required": true,
-    "controlled_icon_glasses_scene_forbidden": true,
+    "official_nasa_eclipse_viewers": true,
+    "official_nasa_glasses_photo": true,
+    "official_nasa_totality_photo": true,
     "official_nasa_2026_visual": true,
     "official_nasa_2027_map": true,
-    "crowd_reaction_scene": true,
-    "cinematic_eclipse_moments": true
+    "generic_stock_forbidden": true
   },
   "platform_upload": false,
   "quality_gates_weakened": false,
-  "trigger_nonce": "afterglow-natural-human-2027-focus-20260812-2245"
+  "trigger_nonce": "afterglow-v4-exact-audit-repair-20260812-2315"
 }
