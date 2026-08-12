@@ -57,7 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip -q
-          python -m pip install -r implementation/requirements.txt requests pillow -q
+          python -m pip install requests pillow pydub python-dotenv certifi -q
 
       - name: Validate YouTube fast-final guards
         id: guard
