@@ -124,7 +124,7 @@ jobs:
           assert v4.SHARED_PREFIX_MAX_SPEEDUP == 1.01
           assert v4.SHARED_PLATFORM_FINAL_MAX_SPEEDUP == 1.10
           assert v4.SHARED_PREFIX_REPAIR_ATTEMPTS == 2
-          assert v4.CTA_CACHE_SCHEMA == 2
+          assert v4.CTA_CACHE_SCHEMA == 3
           assert v4.SHARED_CTA_BOUNDARY_SILENCE_SECONDS == 0.16
           assert v5.FULL_TAKE_ATTEMPTS == 2
           assert v5.NATURAL_WPM_MIN >= 108.0
@@ -217,7 +217,7 @@ jobs:
               'Betroffen sind Beobachter, Reisende und Behörden in Spanien und Island. '
               'Für dich kann ungeschütztes Hineinschauen die Augen dauerhaft schädigen. '
               'Nutze ausschließlich zertifizierte Finsternisbrillen; normale Sonnenbrillen reichen nicht. '
-              'Folge jetzt dem Kanal für verifizierte Einordnung und konkrete Schritte.'
+              'Für verifizierte Einordnung und konkrete Schritte jetzt folgen.'
           )
           final_fit = retry.v3._segmented_final_fit_plan(29.98, 27.75, final_contract)
           assert final_fit['required'] is True
@@ -248,12 +248,12 @@ jobs:
           assert '_strict_postmux_validation(master, final_contract' in tiktok_shared_source
 
           wrong_tiktok_action = retry.v3._segment_validation(
-              'Abfolge jetzt dem Kanal für verifizierte Einordnung und konkrete Schritte.',
-              'Folge jetzt dem Kanal für verifizierte Einordnung und konkrete Schritte.',
+              'Für verifizierte Einordnung und konkrete Schritte jetzt abfolgen.',
+              'Für verifizierte Einordnung und konkrete Schritte jetzt folgen.',
               'final',
           )
           assert wrong_tiktok_action['passed'] is False
-          assert 'CTA=>Folge' in wrong_tiktok_action['missing_critical_terms']
+          assert 'CTA=>folgen' in wrong_tiktok_action['missing_critical_terms']
 
           eclipse_package = {
               'topic': 'Heute wird Europa dunkel: erste totale Sonnenfinsternis seit 27 Jahren',
