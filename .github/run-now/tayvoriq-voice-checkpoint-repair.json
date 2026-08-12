@@ -4,12 +4,12 @@
   "source_artifact_id": 9148925157,
   "original_master_run_id": 31600355626,
   "repair_stage": "VOICE_POSTMUX",
-  "repair_reason": "repair-exact-tiktok-cta-and-replace-stale-finance-visuals-with-topic-safe-eclipse-footage",
+  "repair_reason": "use-boundary-safe-tiktok-cta-and-replace-stale-finance-visuals-with-topic-safe-eclipse-footage",
   "checkpoint_truth": {
     "preserved_master_exists": true,
     "visual_checkpoint_passed": false,
-    "failed_checkpoint_run_id": 31614839644,
-    "failed_checkpoint_artifact_id": 9148925157,
+    "failed_checkpoint_run_id": 31616361551,
+    "failed_checkpoint_artifact_id": 9149898421,
     "blocking_sentence": "Weil der Mond die Sonne verdeckt, wird es entlang seines Kernschattens dunkel.",
     "old_target_seconds": 7.005,
     "observed_good_raw_take_seconds": [3.56, 3.72],
@@ -29,8 +29,9 @@
     "tiktok_available_voice_window_seconds": 27.75,
     "tiktok_required_speed_factor": 1.018182,
     "tiktok_postmux_similarity": 0.9828,
-    "tiktok_wrong_action_transcript": "Abfolge dem Kanal",
-    "tiktok_required_action_transcript": "Folge jetzt dem Kanal",
+    "tiktok_wrong_action_transcript": "Abfolge jetzt den Kanal",
+    "tiktok_isolated_case_error": "Folge jetzt den Kanal",
+    "tiktok_required_action_transcript": "Für verifizierte Einordnung und konkrete Schritte jetzt folgen",
     "exact_cta_action_term_required": true,
     "cta_boundary_silence_seconds": 0.16,
     "stale_visual_queries": [
@@ -72,6 +73,6 @@
   "repair_visuals": true,
   "visual_only_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T16:10:00Z",
-  "trigger_nonce": "eclipse-exact-cta-topic-safe-visual-repair-31614839644-v1"
+  "requested_at": "2026-08-12T16:30:00Z",
+  "trigger_nonce": "eclipse-boundary-safe-cta-topic-safe-visual-repair-31616361551-v2"
 }
