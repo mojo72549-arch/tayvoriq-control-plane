@@ -11,8 +11,6 @@ on:
         description: Freigegebene Trend-ID
         required: false
         type: string
-  repository_dispatch:
-    types: [tayvoriq_trend_approved]
   push:
     branches: [main]
     paths:

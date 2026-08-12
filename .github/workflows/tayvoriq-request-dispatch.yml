@@ -44,6 +44,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           TREND_ID: ${{ github.event.client_payload.trend_id }}
+          SELECTION_ID: ${{ github.event.client_payload.selection_id }}
           DISPATCH_TOPIC: ${{ github.event.client_payload.topic }}
           APPROVED_AT: ${{ github.event.client_payload.approved_at }}
           TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id }}
@@ -56,6 +57,7 @@ jobs:
             REQUEST_FILE=$(python tools/tayvoriq_orchestration_contract.py create-from-telegram \
               --trend-request .github/run-now/tayvoriq-trend-request.json \
               --trend-id "${TREND_ID:-}" \
+              --selection-id "${SELECTION_ID:-}" \
               --message-id "$TELEGRAM_MESSAGE_ID" \
               --payload-topic "${DISPATCH_TOPIC:-}" \
               --approved-at "${APPROVED_AT:-}" \
@@ -123,6 +125,7 @@ jobs:
               'approved':'true',
               'request_file':str(p),
               'topic':str(d['topic']).strip(),
+              'trend_id':str(d['trend_id']).strip(),
               'trend_scope':str(d['trend_scope']).strip(),
               'request_id':str(d['request_id']).strip(),
               'contract_sha256':str(d['contract_sha256']).strip(),
@@ -168,24 +171,24 @@ jobs:
           [ "$pushed" = "true" ] || { echo "::error title=Atomic claim failed::Could not persist DISPATCHING state"; exit 1; }
           echo "claimed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Start TAYVORIQ Golden Path
+      - name: Start single-owner TAYVORIQ-X Golden Path
         id: dispatch
         if: steps.claim.outputs.claimed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TOPIC: ${{ steps.request.outputs.topic }}
-          TREND_SCOPE: ${{ steps.request.outputs.trend_scope }}
+          TREND_ID: ${{ steps.request.outputs.trend_id }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
           MODE: ${{ steps.request.outputs.mode }}
         run: |
           set -euo pipefail
-          BEFORE=$(gh run list --workflow tayvoriq-golden-path.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-          gh workflow run tayvoriq-golden-path.yml --ref main -f mode="$MODE" -f trend_scope="$TREND_SCOPE" -f topic="$TOPIC"
+          BEFORE=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main -f topic="$TOPIC" -f trend_id="$TREND_ID"
 
           RUN_ID=""
           for attempt in $(seq 1 12); do
             sleep 5
-            RUN_ID=$(gh run list --workflow tayvoriq-golden-path.yml --branch main --event workflow_dispatch --limit 10 --json databaseId --jq ".[] | select(.databaseId > $BEFORE) | .databaseId" | head -n 1)
+            RUN_ID=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event workflow_dispatch --limit 10 --json databaseId --jq ".[] | select(.databaseId > $BEFORE) | .databaseId" | head -n 1)
             [ -n "$RUN_ID" ] && break
           done
           [ -n "$RUN_ID" ] || { echo "::error title=Golden Path not started::No new workflow_dispatch run became visible"; exit 1; }
@@ -227,7 +230,7 @@ jobs:
 
       - name: Resolve production-start notification
         id: start_notice
-        if: steps.persist_dispatch.outcome == 'success' && steps.request.outputs.mode == 'full'
+        if: ${{ false }}
         env:
           REQUEST_FILE: ${{ steps.request.outputs.request_file }}
         run: |

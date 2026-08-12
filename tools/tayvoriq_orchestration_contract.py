@@ -57,7 +57,10 @@ def parse_iso(value: str) -> None:
 
 
 def contract_hash(data: dict) -> str:
-    payload = {k: data.get(k) for k in IMMUTABLE_FIELDS}
+    fields = IMMUTABLE_FIELDS
+    if data.get("source_context_sha256"):
+        fields = IMMUTABLE_FIELDS + ("source_context_sha256",)
+    payload = {k: data.get(k) for k in fields}
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -117,6 +120,23 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
     if actual != expected:
         errors.append("contract_sha256 mismatch")
 
+    source_context = data.get("source_context")
+    source_sha256 = str(data.get("source_context_sha256") or "").strip()
+    if source_context is not None or source_sha256:
+        if not isinstance(source_context, dict) or not source_context:
+            errors.append("source_context must be a non-empty object")
+        elif not source_sha256:
+            errors.append("missing source_context_sha256")
+        else:
+            raw = json.dumps(
+                source_context,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            if hashlib.sha256(raw).hexdigest() != source_sha256:
+                errors.append("source_context_sha256 mismatch")
+
     history = data.get("state_history")
     if not isinstance(history, list) or not history:
         errors.append("missing state_history")
@@ -138,6 +158,7 @@ def write_json(path: Path, data: dict) -> None:
 
 def create_from_telegram(args: argparse.Namespace) -> None:
     trend_id = str(args.trend_id).strip()
+    selection_id = str(args.selection_id).strip()
     message_id = str(args.message_id).strip()
     if trend_id not in {"1", "2", "3", "4", "5"}:
         raise SystemExit(f"invalid trend id: {trend_id!r}")
@@ -145,8 +166,14 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         raise SystemExit("telegram message_id is required for idempotency")
 
     trend_request = read_json(Path(args.trend_request))
+    canonical_selection_id = str(trend_request.get("selection_id") or "").strip()
+    if not canonical_selection_id or selection_id != canonical_selection_id:
+        raise SystemExit(
+            f"STALE_OR_WRONG_APPROVAL: callback selection {selection_id!r} "
+            f"!= current selection {canonical_selection_id!r}"
+        )
     selected = str(trend_request.get("selected_trend_id") or "").strip()
-    if selected != trend_id:
+    if selected and selected != trend_id:
         raise SystemExit(
             f"STALE_OR_WRONG_APPROVAL: callback trend {trend_id} != current selected trend {selected}"
         )
@@ -162,19 +189,58 @@ def create_from_telegram(args: argparse.Namespace) -> None:
     if payload_topic and canonical_topic not in payload_topic and payload_topic not in canonical_topic:
         raise SystemExit("STALE_OR_WRONG_APPROVAL: Telegram topic does not match canonical selected trend")
 
+    source_context = trend.get("source_context")
+    if not isinstance(source_context, dict):
+        raise SystemExit("SOURCE_CONTEXT_MISSING: selected trend has no structured source context")
+    sources = source_context.get("sources")
+    answers = source_context.get("fallback_editorial_answers")
+    required_answers = (
+        "what_happened",
+        "why_happening",
+        "who_is_affected",
+        "personal_impact",
+        "action_now",
+    )
+    if not isinstance(sources, list) or len(sources) < 2:
+        raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: at least two sources are required")
+    if int(source_context.get("independent_news_count") or 0) < 2:
+        raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: independent_news_count must be >= 2")
+    if not isinstance(answers, dict) or any(
+        not str(answers.get(key) or "").strip() for key in required_answers
+    ):
+        raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: complete five-answer evidence is required")
+    for index, item in enumerate(sources, start=1):
+        if not isinstance(item, dict):
+            raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} is not structured")
+        if not str(item.get("publisher") or "").strip():
+            raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no publisher")
+        if not str(item.get("url") or "").strip().startswith(("https://", "http://")):
+            raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no valid URL")
+        if not str(item.get("supports") or "").strip():
+            raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no claim support")
+    source_raw = json.dumps(
+        source_context,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    source_sha256 = hashlib.sha256(source_raw).hexdigest()
+
     request_id = f"telegram-{message_id}-trend-{trend_id}"
     path = Path(args.out_dir) / f"{request_id}.json"
     if path.exists():
         existing = read_json(path)
         validate(existing)
-        if str(existing.get("approval_key")) != f"telegram:{message_id}:trend:{trend_id}":
+        if str(existing.get("approval_key")) != f"telegram:{selection_id}:{message_id}:trend:{trend_id}":
             raise SystemExit("idempotency collision for existing request")
         print(path)
         return
 
     approved_at = str(args.approved_at or "").strip() or utc_now()
     parse_iso(approved_at)
-    scope = "technology_ai" if trend_id == "1" else "auto_scope"
+    scope = str(trend.get("trend_scope") or "auto_scope").strip()
+    if scope not in SCOPES:
+        raise SystemExit(f"invalid trend scope in canonical request: {scope!r}")
     data = {
         "request_id": request_id,
         "status": "APPROVED",
@@ -189,8 +255,11 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "tiktok_delivery": "telegram_manual",
         "approved_at": approved_at,
         "telegram_message_id": int(message_id),
-        "approval_key": f"telegram:{message_id}:trend:{trend_id}",
+        "approval_key": f"telegram:{selection_id}:{message_id}:trend:{trend_id}",
         "mode": "full",
+        "selection_id": selection_id,
+        "source_context": source_context,
+        "source_context_sha256": source_sha256,
         "state_history": [
             {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"}
         ],
@@ -316,6 +385,7 @@ def parser() -> argparse.ArgumentParser:
     c = sub.add_parser("create-from-telegram")
     c.add_argument("--trend-request", required=True)
     c.add_argument("--trend-id", required=True)
+    c.add_argument("--selection-id", required=True)
     c.add_argument("--message-id", required=True)
     c.add_argument("--payload-topic", default="")
     c.add_argument("--approved-at", default="")

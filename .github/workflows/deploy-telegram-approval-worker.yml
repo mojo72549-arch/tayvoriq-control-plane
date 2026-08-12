@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - infra/telegram-approval-worker.js
+      - infra/telegram-approval-worker-v2.js
       - infra/wrangler.toml
       - .github/workflows/deploy-telegram-approval-worker.yml
 
@@ -102,16 +103,8 @@ jobs:
           print('Webhook active:', actual)
           PY
 
-      - name: Notify system ready
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          set -euo pipefail
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=✅ TAYVORIQ bereit\nDer Telegram-Freigabepfad funktioniert wieder.\nBedeutung: Dein nächster gültiger Trend-Freigabe-Klick startet direkt die Videoproduktion.\nAb dann erhältst du nur noch Fortschritt zu deinem Video: Thema → Skript → Stimme → Szenen → Render → Qualitätsprüfung → YouTube/TikTok-Review.")
-          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d; print("telegram_message_id",d["result"]["message_id"])' "$response"
+      - name: Record worker readiness
+        run: echo "Telegram approval worker deployed and webhook verified."
 
       - name: Notify repair failure
         if: failure()
