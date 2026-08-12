@@ -1,4 +1,4 @@
-name: TAYVORIQ Trend Approval
+name: TAYVORIQ Trend Selection
 
 on:
   workflow_dispatch:
@@ -12,17 +12,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: tayvoriq-trend-approval
+  group: tayvoriq-trend-selection
   cancel-in-progress: true
 
 jobs:
-  deliver-trend-review:
+  deliver-trend-selection:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate request and Telegram secrets
+      - name: Validate two-step selection request and Telegram secrets
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -33,14 +33,31 @@ jobs:
           test -s .github/run-now/tayvoriq-trend-request.json
           python - <<'PY'
           import json
+          import re
           from pathlib import Path
-          d=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text())
-          assert len(d.get('trends', [])) == 5, d
-          assert d.get('selected_trend_id') in {'1','2','3','4','5'}, d
-          print('request_valid', d['selected_trend_id'])
+
+          data=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text(encoding='utf-8'))
+          selection_id=str(data.get('selection_id') or '')
+          assert re.fullmatch(r'[A-Za-z0-9_-]{4,40}', selection_id), selection_id
+          assert data.get('selected_trend_id') in {None, ''}, data.get('selected_trend_id')
+          trends=data.get('trends') or []
+          assert len(trends) == 5, len(trends)
+          assert [str(item.get('id')) for item in trends] == ['1','2','3','4','5'], trends
+          required_criteria={'aktualitaet','viralitaet','tayvoriq_passung','quellenqualitaet','visuell'}
+          required_answers={'what_happened','why_happening','who_is_affected','personal_impact','action_now'}
+          for item in trends:
+              assert str(item.get('title') or '').strip(), item
+              assert 0 <= int(item.get('score')) <= 100, item
+              assert required_criteria <= set((item.get('criteria') or {}).keys()), item
+              assert len(item.get('sources') or []) >= 2, item
+              context=item.get('source_context') or {}
+              assert int(context.get('independent_news_count') or 0) >= 2, item
+              assert len(context.get('sources') or []) >= 2, item
+              assert required_answers <= set((context.get('fallback_editorial_answers') or {}).keys()), item
+          print('two_step_request_valid', selection_id)
           PY
 
-      - name: Send Telegram trend review and verify delivery
+      - name: Send Telegram evening ranking with selection buttons
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -49,44 +66,60 @@ jobs:
           python - <<'PY' > /tmp/message.txt
           import json
           from pathlib import Path
-          d=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text())
-          lines=['🔥 TAYVORIQ Morgen-Trends', '', 'Rangliste:']
-          for t in d['trends']:
-              lines.append(f"{t['id']}. {t['title']} — {t['score']} %")
-          selected=d['selected_trend_id']
-          t=next(x for x in d['trends'] if x['id']==selected)
-          lines += ['', f"Ausgewählt: {selected}", f"Thema: {t['title']}", f"Score: {t['score']} %", '', 'Bewertung: Aktualität · Viralität · TAYVORIQ-Passung · Quellenqualität · visuelle Umsetzbarkeit', '', 'Quellen:']
-          for s in t.get('sources', [])[:3]:
-              lines.append(s)
-          lines += ['', 'Erst mit „Trend freigeben“ startet die Produktion.']
+
+          data=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text(encoding='utf-8'))
+          lines=['🌙 TAYVORIQ Abend-Trends', '', 'Rangliste:']
+          for trend in data['trends']:
+              lines.append(f"{trend['id']}. {trend['title']} — {trend['score']} %")
+          lines += [
+              '',
+              'Bewertet nach Aktualität · Viralität · TAYVORIQ-Passung · Quellenqualität · visueller Umsetzbarkeit.',
+              '',
+              'Schritt 1: Tippe auf eine Nummer.',
+              'Schritt 2: Prüfe Details und Quellen und tippe separat auf „Trend freigeben“.',
+              '',
+              'Vor dem zweiten Klick startet keine Produktion.'
+          ]
           print('\n'.join(lines))
           PY
-          SELECTED=$(python -c "import json;print(json.load(open('.github/run-now/tayvoriq-trend-request.json'))['selected_trend_id'])")
-          KEYBOARD=$(python - "$SELECTED" <<'PY'
-          import json,sys
-          i=sys.argv[1]
-          print(json.dumps({'inline_keyboard': [[
-            {'text':'✅ Trend freigeben','callback_data':f'approve_trend:{i}'},
-            {'text':'❌ Ablehnen','callback_data':f'reject_trend:{i}'}
-          ]]}, ensure_ascii=False))
+          KEYBOARD=$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text(encoding='utf-8'))
+          selection_id=data['selection_id']
+          keyboard={'inline_keyboard': [
+            [
+              {'text':'1️⃣ Trend 1','callback_data':f'select_trend:{selection_id}:1'},
+              {'text':'2️⃣ Trend 2','callback_data':f'select_trend:{selection_id}:2'},
+            ],
+            [
+              {'text':'3️⃣ Trend 3','callback_data':f'select_trend:{selection_id}:3'},
+              {'text':'4️⃣ Trend 4','callback_data':f'select_trend:{selection_id}:4'},
+            ],
+            [{'text':'5️⃣ Trend 5','callback_data':f'select_trend:{selection_id}:5'}],
+          ]}
+          print(json.dumps(keyboard, ensure_ascii=False))
           PY
           )
           RESPONSE=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text@/tmp/message.txt" \
+            --data-urlencode "disable_web_page_preview=true" \
             --data-urlencode "reply_markup=${KEYBOARD}")
           python - "$RESPONSE" <<'PY'
           import json,sys
-          d=json.loads(sys.argv[1])
-          assert d.get('ok') is True, d
-          r=d.get('result') or {}
-          assert r.get('message_id'), r
-          markup=r.get('reply_markup') or {}
-          callbacks={b.get('callback_data') for row in markup.get('inline_keyboard',[]) for b in row}
-          assert any(str(x).startswith('approve_trend:') for x in callbacks), callbacks
-          assert any(str(x).startswith('reject_trend:') for x in callbacks), callbacks
-          print('telegram_message_id', r['message_id'])
-          print('callback_buttons_verified', sorted(callbacks))
+          data=json.loads(sys.argv[1])
+          assert data.get('ok') is True, data
+          result=data.get('result') or {}
+          assert result.get('message_id'), result
+          markup=result.get('reply_markup') or {}
+          callbacks=[button.get('callback_data') for row in markup.get('inline_keyboard',[]) for button in row]
+          assert len(callbacks) == 5, callbacks
+          assert all(str(value).startswith('select_trend:') for value in callbacks), callbacks
+          assert not any(str(value).startswith('approve_trend:') for value in callbacks), callbacks
+          print('telegram_message_id', result['message_id'])
+          print('selection_callbacks_verified', callbacks)
           PY
 
       - name: Verify Telegram webhook status
@@ -97,11 +130,11 @@ jobs:
           RESPONSE=$(curl -fsS --retry 3 --retry-all-errors "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo")
           python - "$RESPONSE" <<'PY'
           import json,sys
-          d=json.loads(sys.argv[1]); assert d.get('ok') is True, d
-          r=d.get('result') or {}
-          assert r.get('url'), r
-          assert r.get('pending_update_count',0) >= 0
-          print('webhook_active', r.get('url'))
-          print('pending_update_count', r.get('pending_update_count'))
-          print('last_error_message', r.get('last_error_message',''))
+          data=json.loads(sys.argv[1]); assert data.get('ok') is True, data
+          result=data.get('result') or {}
+          assert result.get('url'), result
+          assert result.get('pending_update_count',0) >= 0
+          print('webhook_active', result.get('url'))
+          print('pending_update_count', result.get('pending_update_count'))
+          print('last_error_message', result.get('last_error_message',''))
           PY

@@ -1,60 +1,244 @@
 {
-  "date": "2026-08-07",
-  "selected_trend_id": "1",
+  "date": "2026-08-12",
+  "slot": "evening",
+  "created_at": "2026-08-12T12:22:18Z",
+  "selection_id": "20260812-evening-v1",
+  "selected_trend_id": null,
   "trends": [
     {
       "id": "1",
-      "category": "Technologie/Business",
-      "title": "KI-Aktien unter Druck: starke Zahlen reichen plötzlich nicht mehr",
-      "score": 94,
-      "criteria": {"aktualitaet": 98, "viralitaet": 95, "tayvoriq_passung": 98, "quellenqualitaet": 96, "visuell": 85},
+      "category": "Wissenschaft/World Events",
+      "trend_scope": "science_future",
+      "title": "Heute wird Europa dunkel: erste totale Sonnenfinsternis seit 27 Jahren",
+      "score": 99,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 100,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 100,
+        "visuell": 99
+      },
       "sources": [
-        "https://www.reuters.com/business/sandisk-western-digital-drag-chip-stocks-lofty-expectations-eclipse-strong-2026-08-06/",
-        "https://www.reuters.com/world/china/global-markets-global-markets-2026-08-07/",
-        "https://www.investors.com/market-trend/stock-market-today/dow-jones-futures-jobs-report-cloudflare-sezzle-earnings-movers/"
-      ]
+        "https://www.reuters.com/science/eclipse-craze-grips-spain-iceland-millions-get-set-event-century-2026-08-12/",
+        "https://apnews.com/article/4748323b3df8272d546683cc1dbc1d15",
+        "https://science.nasa.gov/eclipses/future-eclipses/total-solar-eclipse-on-august-12-2026/"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-12T12:22:18Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/science/eclipse-craze-grips-spain-iceland-millions-get-set-event-century-2026-08-12/",
+            "supports": "Europa erlebt am 12. August die erste totale Sonnenfinsternis seit 27 Jahren; Millionen werden in Island und Nordspanien erwartet."
+          },
+          {
+            "publisher": "Associated Press",
+            "url": "https://apnews.com/article/4748323b3df8272d546683cc1dbc1d15",
+            "supports": "Spanien bereitet sich auf Millionen Besucher, offizielle Beobachtungsorte sowie Hitze- und Waldbrandrisiken vor."
+          },
+          {
+            "publisher": "NASA",
+            "url": "https://science.nasa.gov/eclipses/future-eclipses/total-solar-eclipse-on-august-12-2026/",
+            "supports": "NASA bestätigt Verlauf und Sicherheitsregel: normale Sonnenbrillen schützen die Augen nicht."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Am 12. August zieht der Kernschatten des Mondes über Grönland, Island und Nordspanien; Europa erlebt seine erste totale Sonnenfinsternis seit 27 Jahren.",
+          "why_happening": "Der Mond schiebt sich auf seiner Bahn exakt zwischen Erde und Sonne und verdeckt die Sonnenscheibe entlang eines schmalen Totalitätskorridors.",
+          "who_is_affected": "Betroffen sind Millionen Beobachter und Reisende sowie Behörden in Spanien und Island, die Verkehr, Hitze und extreme Waldbrandgefahr absichern.",
+          "personal_impact": "Auch außerhalb der Totalitätszone ist die Finsternis teilweise sichtbar; ungeschütztes Hineinschauen kann die Augen dauerhaft schädigen.",
+          "action_now": "Sobald noch ein Teil der Sonne sichtbar ist, ausschließlich zertifizierte Sonnenfinsternisbrillen nach ISO 12312-2 nutzen; normale Sonnenbrillen reichen nicht."
+        }
+      }
     },
     {
       "id": "2",
-      "category": "World Events/Business",
-      "title": "Straße von Hormus: weniger Schiffe, Öl steigt wieder",
-      "score": 92,
-      "criteria": {"aktualitaet": 100, "viralitaet": 92, "tayvoriq_passung": 92, "quellenqualitaet": 98, "visuell": 78},
+      "category": "Technologie/Datenschutz",
+      "trend_scope": "technology_ai",
+      "title": "Strafanzeige gegen Meta-KI-Brille: Streit um heimliches Filmen in Deutschland",
+      "score": 97,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 97,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 98,
+        "visuell": 94
+      },
       "sources": [
-        "https://www.reuters.com/business/energy/vessel-traffic-through-hormuz-dwindles-this-week-markets-watch-iran-oman-talks-2026-08-07/",
-        "https://www.reuters.com/business/energy/oil-rises-concerns-over-strait-hormuz-reopening-plans-2026-08-07/"
-      ]
+        "https://www.reuters.com/legal/government/german-advocacy-group-lodges-criminal-complaint-over-meta-ai-glasses-2026-08-12/",
+        "https://www.tagesschau.de/inland/gesellschaft/smart-glasses-102.html",
+        "https://hateaid.org/hateaid-stellt-strafanzeige-gegen-meta-wegen-smart-glasses/"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-12T12:22:18Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/legal/government/german-advocacy-group-lodges-criminal-complaint-over-meta-ai-glasses-2026-08-12/",
+            "supports": "HateAid hat in Deutschland Strafanzeige gegen Meta und weitere beteiligte Unternehmen gestellt; der Vorwurf betrifft mögliche heimliche Aufnahmen und Datenschutzverstöße."
+          },
+          {
+            "publisher": "Tagesschau",
+            "url": "https://www.tagesschau.de/inland/gesellschaft/smart-glasses-102.html",
+            "supports": "Datenschützer und Behörden diskutieren bereits, ob Aufnahme- und KI-Funktionen der Smart Glasses rechtlich eingeschränkt werden müssen."
+          },
+          {
+            "publisher": "HateAid",
+            "url": "https://hateaid.org/hateaid-stellt-strafanzeige-gegen-meta-wegen-smart-glasses/",
+            "supports": "Die anzeigende Organisation erläutert ihre Vorwürfe, fordert manipulationssichere Erkennbarkeit und weist auf die geltende Unschuldsvermutung hin."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "HateAid hat Strafanzeige gegen Meta, EssilorLuxottica und Händler der Ray-Ban Meta AI Glasses gestellt und verlangt eine Grundsatzprüfung in Deutschland.",
+          "why_happening": "Aus Sicht der Organisation können unauffällige Kameras und Mikrofone Menschen aufnehmen, ohne dass diese den Aufnahmehinweis zuverlässig erkennen.",
+          "who_is_affected": "Betroffen sind mögliche Aufgenommene im öffentlichen und privaten Raum, Nutzer der Brille, Händler und die Hersteller; über eine Strafbarkeit ist noch nicht entschieden.",
+          "personal_impact": "Eine wie eine normale Brille wirkende Kamera macht es im Alltag schwerer zu erkennen, ob gerade Bild oder Ton aufgezeichnet wird.",
+          "action_now": "Auf den Aufnahmeindikator achten, einer unerwünschten Aufnahme klar widersprechen und unzulässig veröffentlichte Aufnahmen bei Plattform oder Beratungsstellen melden."
+        }
+      }
     },
     {
       "id": "3",
-      "category": "Business/Makro",
-      "title": "US-Jobs entscheiden über den nächsten Zinsschritt",
-      "score": 88,
-      "criteria": {"aktualitaet": 100, "viralitaet": 86, "tayvoriq_passung": 86, "quellenqualitaet": 98, "visuell": 70},
+      "category": "Deutschland/Business/Klima",
+      "trend_scope": "business_economy",
+      "title": "Rhein-Rekordtief: Die 12-Zentimeter-Engstelle stoppt Frachter und verteuert Transporte",
+      "score": 96,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 94,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 99,
+        "visuell": 92
+      },
       "sources": [
-        "https://www.reuters.com/business/us-job-growth-likely-picked-up-july-unemployment-rate-forecast-unchanged-42-2026-08-07/",
-        "https://www.reuters.com/world/china/global-markets-view-europe-2026-08-07/"
-      ]
+        "https://www.reuters.com/business/environment/rhine-water-level-falls-new-lows-halting-sailings-chokepoint-2026-08-12/",
+        "https://www.dw.com/en/rhine-river-drought-germany-economy-recovery-shipping-climate-change/a-78300076",
+        "https://www.elwis.de/DE/dynamisch/Wasserstaende/Pegelvorhersage%3AKAUB"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-12T12:22:18Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/environment/rhine-water-level-falls-new-lows-halting-sailings-chokepoint-2026-08-12/",
+            "supports": "Die verfügbare Fahrrinnentiefe am Engpass Kaub sank auf 12 Zentimeter; viele Frachter können die Stelle nicht mehr passieren und andere fahren nur teilbeladen."
+          },
+          {
+            "publisher": "Deutsche Welle",
+            "url": "https://www.dw.com/en/rhine-river-drought-germany-economy-recovery-shipping-climate-change/a-78300076",
+            "supports": "Anhaltende Dürre belastet Deutschlands wichtigste Binnenwasserstraße, treibt Frachtkosten und gefährdet die schwache Konjunktur."
+          },
+          {
+            "publisher": "ELWIS / Wasserstraßen- und Schifffahrtsverwaltung des Bundes",
+            "url": "https://www.elwis.de/DE/dynamisch/Wasserstaende/Pegelvorhersage%3AKAUB",
+            "supports": "Die Bundesverwaltung veröffentlicht die aktuellen Mess- und Vorhersagedaten für den schifffahrtsrelevanten Pegel Kaub."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Am Rhein-Engpass bei Kaub ist die verfügbare Fahrrinnentiefe auf 12 Zentimeter gefallen; der Nord-Süd-Güterverkehr kommt dort weitgehend zum Stillstand.",
+          "why_happening": "Lange Trockenheit und eine weitere europäische Hitzewelle lassen den Wasserstand auf historische Tiefstwerte sinken.",
+          "who_is_affected": "Chemie-, Stahl-, Energie- und Agrarbetriebe sowie Reedereien müssen Ladungen reduzieren oder auf knappere Bahn- und Lkw-Kapazitäten ausweichen.",
+          "personal_impact": "Höhere Frachtkosten und Engpässe können sich zeitversetzt auf Energie, Rohstoffe, Lebensmittel und andere Verbraucherpreise auswirken.",
+          "action_now": "Nicht von der Zahl täuschen lassen: 12 Zentimeter bezeichnet die zusätzlich nutzbare Fahrrinnentiefe am Referenzpegel, nicht die gesamte Tiefe des Rheins; Entwicklung und Lieferpreise sachlich beobachten."
+        }
+      }
     },
     {
       "id": "4",
-      "category": "Sport",
-      "title": "Tour de France Femmes vor dem Mont-Ventoux-Showdown",
-      "score": 82,
-      "criteria": {"aktualitaet": 95, "viralitaet": 84, "tayvoriq_passung": 72, "quellenqualitaet": 96, "visuell": 90},
+      "category": "World Events/Reise/Natur",
+      "trend_scope": "world_society",
+      "title": "Ätna-Asche legt Catania lahm: Flugchaos erreicht Malta",
+      "score": 95,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 96,
+        "tayvoriq_passung": 94,
+        "quellenqualitaet": 98,
+        "visuell": 99
+      },
       "sources": [
-        "https://www.reuters.com/sports/le-court-wins-tour-de-france-femmes-stage-six-reusser-remains-yellow-2026-08-06/"
-      ]
+        "https://www.reuters.com/business/environment/etna-ash-prompts-extended-closure-catania-airport-disrupting-peak-season-travel-2026-08-12/",
+        "https://www.euronews.com/my-europe/2026/08/10/etna-eruption-arrivals-halted-at-catania-airport",
+        "https://www.aeroporto.catania.it/en"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-12T12:22:18Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/environment/etna-ash-prompts-extended-closure-catania-airport-disrupting-peak-season-travel-2026-08-12/",
+            "supports": "Frische Ascheemissionen des Ätna führten am 12. August erneut zur Sperrung von Ankünften und Abflügen in Catania; auch Malta meldete Störungen."
+          },
+          {
+            "publisher": "Euronews",
+            "url": "https://www.euronews.com/my-europe/2026/08/10/etna-eruption-arrivals-halted-at-catania-airport",
+            "supports": "Die Vulkanasche verursacht seit mehreren Tagen wiederholte Einschränkungen; Reisende sollen ihren Flugstatus vor der Anfahrt prüfen."
+          },
+          {
+            "publisher": "Aeroporto di Catania / SAC",
+            "url": "https://www.aeroporto.catania.it/en",
+            "supports": "Der Flughafenbetreiber stellt die aktuellen offiziellen Ankunfts-, Abflug- und Betriebsinformationen bereit."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Neue Aschewolken des Ätna haben den Flughafen Catania erneut zeitweise geschlossen und in der Hochsaison zahlreiche Flüge umgeleitet oder verspätet.",
+          "why_happening": "Erneute vulkanische Aktivität und wechselnde Winde tragen feine Asche in den kontrollierten Luftraum über Ostsizilien und bis Richtung Malta.",
+          "who_is_affected": "Betroffen sind Reisende nach Sizilien und Malta, Airlines sowie die Ausweichflughäfen Palermo und Comiso, die zusätzliche Flüge aufnehmen.",
+          "personal_impact": "Ein gebuchter Flug kann kurzfristig verspätet, umgeleitet oder gestrichen werden; eine Fahrt zum Flughafen ohne Statusprüfung kann unnötig Zeit und Geld kosten.",
+          "action_now": "Vor der Abfahrt den Flug direkt bei Airline und Flughafen prüfen und bei einer Änderung die offizielle Umbuchungs- oder Erstattungsoption nutzen."
+        }
+      }
     },
     {
       "id": "5",
-      "category": "World Events",
-      "title": "Gaza: neue regionale Verurteilung trifft auf israelische Gegenposition",
-      "score": 78,
-      "criteria": {"aktualitaet": 94, "viralitaet": 82, "tayvoriq_passung": 72, "quellenqualitaet": 96, "visuell": 46},
+      "category": "Technologie/Creator Economy",
+      "trend_scope": "creator_media",
+      "title": "Spotify kennzeichnet KI-Künstler – und nimmt sie aus Empfehlungen",
+      "score": 94,
+      "criteria": {
+        "aktualitaet": 98,
+        "viralitaet": 95,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 99,
+        "visuell": 90
+      },
       "sources": [
-        "https://www.reuters.com/world/asia-pacific/regional-states-condemn-israeli-strikes-gaza-israel-blames-hamas-2026-08-06/"
-      ]
+        "https://newsroom.spotify.com/2026-08-11/spotify-fuhrt-eine-neue-kennzeichnung-fur-ki-generierte-kunstlerinnen-identitaten-ein/",
+        "https://www.reuters.com/business/spotify-slap-ai-persona-badges-ai-generated-artist-profiles-2026-08-11/",
+        "https://www.theverge.com/entertainment/977815/spotify-ai-persona-label-recommendations"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-12T12:22:18Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Spotify Newsroom",
+            "url": "https://newsroom.spotify.com/2026-08-11/spotify-fuhrt-eine-neue-kennzeichnung-fur-ki-generierte-kunstlerinnen-identitaten-ein/",
+            "supports": "Spotify führt ab Mitte September das AI-Persona-Badge ein und schließt solche Profile standardmäßig aus redaktionellen und algorithmischen Empfehlungen aus."
+          },
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/spotify-slap-ai-persona-badges-ai-generated-artist-profiles-2026-08-11/",
+            "supports": "Die Kennzeichnung reagiert auf Beschwerden über Profile, die menschlich wirken, aber eine KI-generierte Identität darstellen."
+          },
+          {
+            "publisher": "The Verge",
+            "url": "https://www.theverge.com/entertainment/977815/spotify-ai-persona-label-recommendations",
+            "supports": "Spotify kombiniert Selbstangaben, menschliche Prüfung und technische Signale; markierte Künstler können Einspruch einlegen."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Spotify führt ab Mitte September ein sichtbares AI-Persona-Badge für Künstlerprofile ein, deren öffentliche Identität keinen realen Menschen darstellt.",
+          "why_happening": "Hörer fühlten sich getäuscht, wenn fotorealistische Profile wie echte Musiker wirkten, tatsächlich aber KI-Personas waren.",
+          "who_is_affected": "Betroffen sind Hörer, echte Künstler und Betreiber synthetischer Profile; markierte Profile können ihre Einstufung offenlegen oder anfechten.",
+          "personal_impact": "AI-Personas erscheinen standardmäßig nicht mehr in redaktionellen oder personalisierten Empfehlungen, außer Nutzer folgen ihnen bewusst oder speichern ihre Musik.",
+          "action_now": "Ab Mitte September auf das Badge in Profil, Suche und Playlists tippen; dort zeigt Spotify, ob die Persona selbst offengelegt oder durch Spotify geprüft wurde."
+        }
+      }
     }
   ]
 }
