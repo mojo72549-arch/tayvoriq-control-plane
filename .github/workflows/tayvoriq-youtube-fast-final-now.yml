@@ -92,13 +92,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          SOURCE_ARTIFACT_ID=$(python - <<'PY'
-          import json
-          from pathlib import Path
-          request = json.loads(Path('.github/run-now/tayvoriq-youtube-fast-final.json').read_text(encoding='utf-8'))
-          print(request['source_artifact_id'])
-          PY
-          )
+          SOURCE_ARTIFACT_ID=9150581936
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-youtube-source.zip
           unzip -q /tmp/tayvoriq-youtube-source.zip -d implementation
           JOB_DIR=$(find implementation/out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\n' | sort | tail -1)
