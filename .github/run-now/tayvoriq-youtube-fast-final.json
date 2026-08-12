@@ -1,7 +1,7 @@
 {
   "request": "tayvoriq-youtube-fast-final",
-  "source_run_id": 31621245701,
-  "source_artifact_id": 9151361117,
+  "source_run_id": 31621543095,
+  "source_artifact_id": 9151478876,
   "original_master_run_id": 31600355626,
   "release_scope": "youtube",
   "repair_stage": "FINAL_PREAPPROVAL_AUDIT",
@@ -19,6 +19,11 @@
     "tiktok": true,
     "reason": "independent final audit rejected TikTok pronunciation"
   },
+  "reuse_passed_audit": {
+    "run_id": 31621543095,
+    "targets": ["youtube_shorts"],
+    "media_unchanged": true
+  },
   "required_gates": [
     "YOUTUBE_TOPIC_SAFE_VISUAL_RENDER",
     "YOUTUBE_TARGETED_FINAL_PREAPPROVAL_AUDIT",
@@ -28,6 +33,6 @@
   ],
   "platform_upload": false,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T19:15:00Z",
-  "trigger_nonce": "eclipse-youtube-fast-final-31621245701-v6-correct-umbra"
+  "requested_at": "2026-08-12T19:18:00Z",
+  "trigger_nonce": "eclipse-youtube-fast-final-31621543095-v7-number-proof-metadata"
 }
