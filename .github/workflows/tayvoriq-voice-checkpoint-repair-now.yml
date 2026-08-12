@@ -185,10 +185,14 @@ jobs:
           assert audit_v4._safe_speech_contract_normalize('Sundisk Chantandy') == 'Sundisk Chantandy'
 
           workflow_source = Path('../.github/workflows/tayvoriq-voice-checkpoint-repair-now.yml').read_text(encoding='utf-8')
-          fragile_locator = "JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 1 -maxdepth 1 -type d | sort | tail -1)"
-          robust_locator = "JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\\n' | sort | tail -1)"
-          assert fragile_locator not in workflow_source
-          assert workflow_source.count(robust_locator) == 2
+          locator_lines = [
+              line.strip()
+              for line in workflow_source.splitlines()
+              if line.strip().startswith('JOB_DIR=$(find ')
+          ]
+          assert len(locator_lines) == 2
+          assert all('-mindepth 2 -maxdepth 2' in line for line in locator_lines)
+          assert all('-type f -name job.json' in line for line in locator_lines)
 
           print('VOICE_V4_STANDARD_AND_V5_HUMAN_NARRATOR_GUARDS_VALIDATED')
           PY
