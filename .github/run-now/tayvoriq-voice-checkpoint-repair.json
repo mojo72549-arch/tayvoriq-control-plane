@@ -1,16 +1,22 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31600355626,
-  "source_artifact_id": 9145118643,
+  "source_run_id": 31608369622,
+  "source_artifact_id": 9146436931,
   "original_master_run_id": 31600355626,
   "repair_stage": "VOICE_POSTMUX",
-  "repair_reason": "sentence-scoped-eclipse-voice-repair-for-independent-weil-and-island-validation",
+  "repair_reason": "separate-eclipse-sentence-target-from-provider-ceiling-and-audit-causal-reading-variant",
   "checkpoint_truth": {
     "preserved_master_exists": true,
     "visual_checkpoint_passed": true,
-    "long_body_attempts_observed": 3,
-    "best_long_body_similarity": 0.9744,
-    "blocking_terms_were_separately_correct_across_takes": true,
+    "failed_checkpoint_run_id": 31608369622,
+    "failed_checkpoint_artifact_id": 9146436931,
+    "blocking_sentence": "Weil der Mond die Sonne verdeckt, wird es entlang seines Kernschattens dunkel.",
+    "old_target_seconds": 7.005,
+    "observed_good_raw_take_seconds": [3.56, 3.72],
+    "new_target_seconds": 5.07,
+    "provider_output_ceiling_seconds": 5.25,
+    "atempo_quality_floor_unchanged": 0.7,
+    "audited_german_causal_reading_variant": true,
     "sentence_scoped_validation": true,
     "required_segment_similarity": 0.95,
     "exact_critical_term_gate": true,
@@ -25,7 +31,7 @@
     "repaired_voice": false
   },
   "next_required_gates": [
-    "VOICE_SENTENCE_SCOPED_REPAIR",
+    "VOICE_SENTENCE_TARGETED_REPAIR",
     "VOICE_POSTMUX_REVALIDATION",
     "FINAL_PREAPPROVAL_AUDIT",
     "PUBLICATION_QUALITY_GATE",
@@ -37,6 +43,6 @@
   "suppress_start_notification": true,
   "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T14:43:30Z",
-  "trigger_nonce": "eclipse-voice-sentence-scoped-1786545810112"
+  "requested_at": "2026-08-12T15:12:51Z",
+  "trigger_nonce": "eclipse-voice-target-ceiling-split-31608369622-v1"
 }

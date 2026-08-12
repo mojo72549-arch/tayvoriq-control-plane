@@ -170,6 +170,41 @@ jobs:
           assert provider_budget == retry.v3.CHATTERBOX_SEGMENT_MIN_WINDOW_SECONDS == 5.25
           assert retry.v3._provider_aware_segment_budget(4.79, 5.00) == 5.00
 
+          eclipse_sentence = retry.v3.ECLIPSE_CAUSAL_SENTENCE
+          eclipse_script = (
+              'Heute erlebt Europa seine erste totale Sonnenfinsternis seit 27 Jahren. '
+              f'{eclipse_sentence} '
+              'Betroffen sind Beobachter, Reisende und Behörden in Spanien und Island. '
+              'Für dich kann ungeschütztes Hineinschauen die Augen dauerhaft schädigen. '
+              'Nutze ausschließlich zertifizierte Finsternisbrillen; normale Sonnenbrillen reichen nicht. '
+              'Folge TAYVORIQ für verifizierte Einordnung und konkrete Schritte.'
+          )
+          eclipse_target = retry.v3._segment_duration_budget(
+              eclipse_sentence, eclipse_script, 34.65
+          )
+          eclipse_ceiling = retry.v3._provider_aware_segment_budget(eclipse_target, 34.65)
+          assert retry.v3.SENTENCE_SCOPED_TARGET_WPM == 142.0
+          assert 5.0 <= eclipse_target <= 5.1
+          assert 3.56 / eclipse_target >= 0.70
+          assert eclipse_ceiling == 5.25
+
+          eclipse_candidates = retry.v3._segment_synthesis_candidates(eclipse_sentence, 'body')
+          assert [item['label'] for item in eclipse_candidates] == [
+              'natural', 'eclipse-causal:deshalb'
+          ]
+          eclipse_variant = eclipse_candidates[1]
+          assert eclipse_variant['contract_text'] == retry.v3.ECLIPSE_CAUSAL_SPOKEN_VARIANT
+          assert retry.v3._segment_validation(
+              eclipse_variant['text'], eclipse_variant['contract_text'], 'body'
+          )['passed'] is True
+          wrong_causal_variant = retry.v3._segment_validation(
+              eclipse_variant['text'].replace('Deshalb', 'Danach'),
+              eclipse_variant['contract_text'],
+              'body',
+          )
+          assert wrong_causal_variant['passed'] is False
+          assert 'Kausalität=>Deshalb' in wrong_causal_variant['missing_critical_terms']
+
           cta = retry.v3._segment_synthesis_candidates(
               'Abonniere TAYVORIQ für verifizierte Einordnung und konkrete Schritte.', 'cta'
           )
