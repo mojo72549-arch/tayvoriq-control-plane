@@ -3,9 +3,10 @@
   "source_run_id": 31581741434,
   "source_artifact_id": 9136027679,
   "original_master_run_id": 31577596411,
-  "repair_stage": "FINAL_PREAPPROVAL_AUDIT",
+  "repair_stage": "VOICE_HUMAN_NARRATOR",
+  "repair_reason": "strict-number-contract-and-postmux-trust-metadata-handoff",
   "checkpoint_truth": {
-    "voice_passed": true,
+    "prior_voice_take_passed": true,
     "youtube_shorts": {
       "provider": "chatterbox_multilingual_v3",
       "voice_duration_seconds": 26.016,
@@ -37,6 +38,7 @@
     "repaired_voice": true
   },
   "next_required_gates": [
+    "VOICE_HUMAN_NARRATOR_REVALIDATION",
     "FINAL_PREAPPROVAL_AUDIT",
     "PUBLICATION_QUALITY_GATE",
     "REVIEW_BUILD",
@@ -45,7 +47,8 @@
   ],
   "full_pipeline_restart": false,
   "voice_regeneration": false,
+  "regenerate_only_if_revalidation_fails": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T11:40:00+02:00",
-  "trigger_nonce": "nvidia-final-audit-locator-fixed-31581741434-v2"
+  "requested_at": "2026-08-12T09:52:13Z",
+  "trigger_nonce": "nvidia-v5-contract-proof-reuse-31581741434-v3"
 }
