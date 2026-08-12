@@ -1,13 +1,13 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "review_rejected_run_id": 31438680757,
-  "source_run_id": 31438680757,
-  "source_artifact_id": 9082418951,
+  "review_rejected_run_id": 31577596411,
+  "source_run_id": 31577596411,
+  "source_artifact_id": 9135196665,
   "repair_stage": "VOICE_HUMAN_NARRATOR",
   "human_review": {
     "rejected": true,
-    "reason": "pronunciation_not_natural",
-    "comment": "Sprache und Aussprache müssen perfekt, menschlich, natürlich und deutsch klingen"
+    "reason": "objective_pronunciation_and_duration_gate",
+    "comment": "Der erhaltene Nvidia-Master bleibt bestehen. Die segmentierte Reparatur war 30,43 s lang bei maximal 27,28 s; KI wurde als Key, Nvidia teils als Insidia und TAYVORIQ instabil ausgesprochen. Erforderlich ist ein zusammenhängender, natürlicher deutscher Erzähler-Take."
   },
   "reuse": {
     "trend": true,
@@ -32,10 +32,10 @@
       "de-critical-saen-disk-ka-i-v1"
     ],
     "english_key_pronunciation_for_KI_forbidden": true,
-    "sundisk_sandisco_pronunciation_forbidden": true,
+    "nvidia_insidia_pronunciation_forbidden": true,
     "artificial_compound_splitting": false,
     "rubberband_pitch_shift": false,
-    "narrator_pitch_factor": 1.0,
+    "narrator_pitch_factor": 1,
     "natural_german_wpm_window": "108-150",
     "bounded_full_take_attempts": 2,
     "human_review_required": true
@@ -50,8 +50,7 @@
     "final_audit_asr_quorum": true,
     "critical_terms_remain_fail_closed": true,
     "key_remains_hard_failure": true,
-    "sundisk_remains_hard_failure": true,
-    "sandisco_remains_hard_failure": true,
+    "nvidia_insidia_remains_hard_failure": true,
     "hallucinated_tail_rejected": true,
     "terminal_token_required": true,
     "platform_specific_cta_semantic_consistency": true,
@@ -62,6 +61,6 @@
   "full_pipeline_restart": false,
   "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-11T08:41:30+02:00",
-  "trigger_nonce": "human-narrator-bounded-german-pronunciation-20260811-084130"
+  "requested_at": "2026-08-12T11:10:17+02:00",
+  "trigger_nonce": "nvidia-human-narrator-checkpoint-31577596411-20260812-111017"
 }
