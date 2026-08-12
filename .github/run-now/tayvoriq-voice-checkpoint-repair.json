@@ -1,13 +1,32 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "review_rejected_run_id": 31577596411,
-  "source_run_id": 31577596411,
-  "source_artifact_id": 9135196665,
-  "repair_stage": "VOICE_HUMAN_NARRATOR",
-  "human_review": {
-    "rejected": true,
-    "reason": "objective_pronunciation_and_duration_gate",
-    "comment": "Der erhaltene Nvidia-Master bleibt bestehen. Die segmentierte Reparatur war 30,43 s lang bei maximal 27,28 s; KI wurde als Key, Nvidia teils als Insidia und TAYVORIQ instabil ausgesprochen. Erforderlich ist ein zusammenhängender, natürlicher deutscher Erzähler-Take."
+  "source_run_id": 31581741434,
+  "source_artifact_id": 9136027679,
+  "original_master_run_id": 31577596411,
+  "repair_stage": "FINAL_PREAPPROVAL_AUDIT",
+  "checkpoint_truth": {
+    "voice_passed": true,
+    "youtube_shorts": {
+      "provider": "chatterbox_multilingual_v3",
+      "voice_duration_seconds": 26.016,
+      "video_duration_seconds": 27.633,
+      "natural_wpm": 140.68,
+      "pre_mux_similarity": 1,
+      "postmux_similarity": 1,
+      "selected_full_take_attempt": 1
+    },
+    "tiktok": {
+      "provider": "chatterbox_multilingual_v3",
+      "voice_duration_seconds": 26.016,
+      "video_duration_seconds": 27.633,
+      "natural_wpm": 140.68,
+      "pre_mux_similarity": 1,
+      "postmux_similarity": 1,
+      "selected_full_take_attempt": 2
+    },
+    "continuous_narrator_take": true,
+    "narrator_pitch_shift_applied": false,
+    "quality_gates_weakened": false
   },
   "reuse": {
     "trend": true,
@@ -15,52 +34,18 @@
     "script": true,
     "visuals": true,
     "rendered_master": true,
-    "previous_voice": false
+    "repaired_voice": true
   },
-  "voice_strategy": {
-    "provider": "chatterbox_v3",
-    "language": "de",
-    "exact_multilingual_model": "v3",
-    "v2_model_fallback_forbidden": true,
-    "continuous_full_take_per_platform": true,
-    "segmented_intro_body_cta": false,
-    "canonical_review_text_unchanged": true,
-    "native_german_compounds_preserved": true,
-    "internal_german_hyphens_preserved": true,
-    "hidden_targeted_pronunciation_profiles": [
-      "de-critical-san-disk-ka-i-v1",
-      "de-critical-saen-disk-ka-i-v1"
-    ],
-    "english_key_pronunciation_for_KI_forbidden": true,
-    "nvidia_insidia_pronunciation_forbidden": true,
-    "artificial_compound_splitting": false,
-    "rubberband_pitch_shift": false,
-    "narrator_pitch_factor": 1,
-    "natural_german_wpm_window": "108-150",
-    "bounded_full_take_attempts": 2,
-    "human_review_required": true
-  },
-  "permanent_robustness": {
-    "real_chatterbox_multilingual_v3_required": true,
-    "v2_model_fallback_forbidden": true,
-    "v4_remains_permanent_technical_entrypoint": true,
-    "v5_only_for_explicit_human_narrator_rejection": true,
-    "strict_postmux_audio_validation": true,
-    "postmux_similarity_floor_095": true,
-    "final_audit_asr_quorum": true,
-    "critical_terms_remain_fail_closed": true,
-    "key_remains_hard_failure": true,
-    "nvidia_insidia_remains_hard_failure": true,
-    "hallucinated_tail_rejected": true,
-    "terminal_token_required": true,
-    "platform_specific_cta_semantic_consistency": true,
-    "human_narrator_rejection_is_separate_checkpoint": true,
-    "visible_script_unchanged": true,
-    "single_voice_repair_concurrency": true
-  },
+  "next_required_gates": [
+    "FINAL_PREAPPROVAL_AUDIT",
+    "PUBLICATION_QUALITY_GATE",
+    "REVIEW_BUILD",
+    "REVIEW_PUBLISH",
+    "TELEGRAM_REVIEW_DELIVERY"
+  ],
   "full_pipeline_restart": false,
-  "voice_regeneration": true,
+  "voice_regeneration": false,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T11:10:17+02:00",
-  "trigger_nonce": "nvidia-human-narrator-checkpoint-31577596411-20260812-111017"
+  "requested_at": "2026-08-12T11:34:00+02:00",
+  "trigger_nonce": "nvidia-final-audit-from-passed-voice-31581741434"
 }
