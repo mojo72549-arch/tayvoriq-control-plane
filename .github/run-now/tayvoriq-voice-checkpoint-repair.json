@@ -1,15 +1,15 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31611199103,
-  "source_artifact_id": 9147853346,
+  "source_run_id": 31613099463,
+  "source_artifact_id": 9148563515,
   "original_master_run_id": 31600355626,
   "repair_stage": "VOICE_POSTMUX",
-  "repair_reason": "bounded-final-fit-after-all-sentence-voice-contracts-passed",
+  "repair_reason": "reuse-passed-youtube-and-finish-tiktok-with-natural-full-track-fit",
   "checkpoint_truth": {
     "preserved_master_exists": true,
     "visual_checkpoint_passed": true,
-    "failed_checkpoint_run_id": 31611199103,
-    "failed_checkpoint_artifact_id": 9147853346,
+    "failed_checkpoint_run_id": 31613099463,
+    "failed_checkpoint_artifact_id": 9148563515,
     "blocking_sentence": "Weil der Mond die Sonne verdeckt, wird es entlang seines Kernschattens dunkel.",
     "old_target_seconds": 7.005,
     "observed_good_raw_take_seconds": [3.56, 3.72],
@@ -23,6 +23,12 @@
     "required_final_speed_factor": 1.0835,
     "maximum_final_speed_factor": 1.1,
     "final_fit_followed_by_full_asr": true,
+    "youtube_voice_postmux_passed": true,
+    "youtube_voice_reuse_required": true,
+    "tiktok_shared_raw_duration_seconds": 28.224,
+    "tiktok_available_voice_window_seconds": 27.75,
+    "tiktok_required_speed_factor": 1.018182,
+    "legacy_tiktok_one_percent_limit_replaced_for_full_track_contract": true,
     "sentence_scoped_validation": true,
     "required_segment_similarity": 0.95,
     "exact_critical_term_gate": true,
@@ -37,7 +43,8 @@
     "repaired_voice": false
   },
   "next_required_gates": [
-    "VOICE_BOUNDED_FINAL_DURATION_FIT",
+    "VOICE_YOUTUBE_POSTMUX_REUSE",
+    "VOICE_TIKTOK_SHARED_NATURAL_FINAL_FIT",
     "VOICE_POSTMUX_REVALIDATION",
     "FINAL_PREAPPROVAL_AUDIT",
     "PUBLICATION_QUALITY_GATE",
@@ -49,6 +56,6 @@
   "suppress_start_notification": true,
   "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T15:34:05Z",
-  "trigger_nonce": "eclipse-voice-bounded-final-fit-31611199103-v1"
+  "requested_at": "2026-08-12T15:53:29Z",
+  "trigger_nonce": "eclipse-voice-tiktok-natural-fit-31613099463-v1"
 }

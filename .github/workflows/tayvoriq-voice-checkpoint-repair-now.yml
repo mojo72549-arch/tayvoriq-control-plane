@@ -119,6 +119,7 @@ jobs:
           assert 'raise SystemExit(v4.main())' in wrapper_source
           assert v4.POSTMUX_MIN_SIMILARITY == 0.95
           assert v4.SHARED_PREFIX_MAX_SPEEDUP == 1.01
+          assert v4.SHARED_PLATFORM_FINAL_MAX_SPEEDUP == 1.10
           assert v4.SHARED_PREFIX_REPAIR_ATTEMPTS == 2
           assert v5.FULL_TAKE_ATTEMPTS == 2
           assert v5.NATURAL_WPM_MIN >= 108.0
@@ -220,6 +221,25 @@ jobs:
           assert final_fit['effective_wpm'] <= retry.v3.SEGMENTED_FINAL_WPM_MAX == 150.0
           assert retry.v3.SEGMENTED_FINAL_MAX_SPEEDUP == 1.10
           assert final_fit['quality_gates_weakened'] is False
+
+          tiktok_shared_fit = v4._shared_platform_fit_plan(
+              28.224, 27.750, final_contract
+          )
+          assert tiktok_shared_fit['required'] is True
+          assert 1.018 < tiktok_shared_fit['speed_factor'] < 1.021
+          assert tiktok_shared_fit['speed_factor'] <= v4.SHARED_PLATFORM_FINAL_MAX_SPEEDUP
+          assert tiktok_shared_fit['effective_wpm'] <= 150.0
+          assert tiktok_shared_fit['post_fit_full_asr_required'] is True
+          assert tiktok_shared_fit['post_fit_postmux_required'] is True
+          assert tiktok_shared_fit['quality_gates_weakened'] is False
+
+          tiktok_shared_source = __import__('inspect').getsource(
+              v4._repair_tiktok_from_youtube_prefix
+          )
+          assert '_fit_shared_platform_duration(' in tiktok_shared_source
+          assert '_fit_audio_duration(' not in tiktok_shared_source
+          assert '_strict_audio_validation(combined, final_contract, "final")' in tiktok_shared_source
+          assert '_strict_postmux_validation(master, final_contract' in tiktok_shared_source
 
           try:
               retry.v3._segmented_final_fit_plan(31.0, 27.75, final_contract)
