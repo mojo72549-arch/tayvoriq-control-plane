@@ -94,14 +94,14 @@ jobs:
           request = json.loads(request_path.read_text(encoding="utf-8"))
           topic = str(os.environ.get("EVENT_TOPIC") or request.get("topic") or "").strip()
           trend_id = str(os.environ.get("EVENT_TREND_ID") or request.get("trend_id") or "").strip()
-          if not topic or any(char in topic for char in "\\r\\n"):
+          if not topic or any(char in topic for char in "\r\n"):
               raise SystemExit("CONTROL_PLANE_TOPIC_RESOLUTION_FAILED")
-          if not trend_id or any(char in trend_id for char in "\\r\\n"):
+          if not trend_id or any(char in trend_id for char in "\r\n"):
               raise SystemExit("CONTROL_PLANE_TREND_RESOLUTION_FAILED")
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
-              handle.write(f"TOPIC={topic}\\n")
-              handle.write(f"TREND_ID={trend_id}\\n")
+              handle.write(f"TOPIC={topic}\n")
+              handle.write(f"TREND_ID={trend_id}\n")
           print(json.dumps({
               "request_resolution": "approved-x-request",
               "topic": topic,
@@ -457,14 +457,13 @@ jobs:
 
       - name: Notify final failure with concrete state
         if: failure()
-        working-directory: implementation
         run: |
           set +e
           readarray -t failure_info < <(python - <<'PY'
           import json
           from pathlib import Path
-          report_path = Path("out/tayvoriq-self-heal/report.json")
-          preflight_path = Path("out/control-plane/preflight.json")
+          report_path = Path("implementation/out/tayvoriq-self-heal/report.json")
+          preflight_path = Path("implementation/out/control-plane/preflight.json")
           report = {}
           if report_path.exists():
               try: report = json.loads(report_path.read_text(encoding="utf-8"))
