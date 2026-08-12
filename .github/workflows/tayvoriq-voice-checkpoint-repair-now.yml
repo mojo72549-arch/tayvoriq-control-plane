@@ -205,6 +205,29 @@ jobs:
           assert wrong_causal_variant['passed'] is False
           assert 'Kausalität=>Deshalb' in wrong_causal_variant['missing_critical_terms']
 
+          final_contract = (
+              'Heute erlebt Europa seine erste totale Sonnenfinsternis seit 27 Jahren. '
+              'Weil der Mond die Sonne verdeckt, wird es entlang seines Kernschattens dunkel. '
+              'Betroffen sind Beobachter, Reisende und Behörden in Spanien und Island. '
+              'Für dich kann ungeschütztes Hineinschauen die Augen dauerhaft schädigen. '
+              'Nutze ausschließlich zertifizierte Finsternisbrillen; normale Sonnenbrillen reichen nicht. '
+              'Folge dem Kanal für verifizierte Einordnung und konkrete Schritte.'
+          )
+          final_fit = retry.v3._segmented_final_fit_plan(29.98, 27.75, final_contract)
+          assert final_fit['required'] is True
+          assert 1.08 < final_fit['speed_factor'] < 1.09
+          assert final_fit['target_duration_seconds'] == 27.67
+          assert final_fit['effective_wpm'] <= retry.v3.SEGMENTED_FINAL_WPM_MAX == 150.0
+          assert retry.v3.SEGMENTED_FINAL_MAX_SPEEDUP == 1.10
+          assert final_fit['quality_gates_weakened'] is False
+
+          try:
+              retry.v3._segmented_final_fit_plan(31.0, 27.75, final_contract)
+          except RuntimeError as exc:
+              assert 'VOICE_V3_SEGMENTED_DURATION_EXCEEDED' in str(exc)
+          else:
+              raise AssertionError('material final narration speedup must remain blocked')
+
           cta = retry.v3._segment_synthesis_candidates(
               'Abonniere TAYVORIQ für verifizierte Einordnung und konkrete Schritte.', 'cta'
           )

@@ -1,15 +1,15 @@
 {
   "request": "tayvoriq-voice-checkpoint-repair",
-  "source_run_id": 31608369622,
-  "source_artifact_id": 9146436931,
+  "source_run_id": 31611199103,
+  "source_artifact_id": 9147853346,
   "original_master_run_id": 31600355626,
   "repair_stage": "VOICE_POSTMUX",
-  "repair_reason": "separate-eclipse-sentence-target-from-provider-ceiling-and-audit-causal-reading-variant",
+  "repair_reason": "bounded-final-fit-after-all-sentence-voice-contracts-passed",
   "checkpoint_truth": {
     "preserved_master_exists": true,
     "visual_checkpoint_passed": true,
-    "failed_checkpoint_run_id": 31608369622,
-    "failed_checkpoint_artifact_id": 9146436931,
+    "failed_checkpoint_run_id": 31611199103,
+    "failed_checkpoint_artifact_id": 9147853346,
     "blocking_sentence": "Weil der Mond die Sonne verdeckt, wird es entlang seines Kernschattens dunkel.",
     "old_target_seconds": 7.005,
     "observed_good_raw_take_seconds": [3.56, 3.72],
@@ -17,6 +17,12 @@
     "provider_output_ceiling_seconds": 5.25,
     "atempo_quality_floor_unchanged": 0.7,
     "audited_german_causal_reading_variant": true,
+    "all_sentence_voice_contracts_passed": true,
+    "combined_voice_duration_seconds": 29.98,
+    "available_voice_window_seconds": 27.75,
+    "required_final_speed_factor": 1.0835,
+    "maximum_final_speed_factor": 1.1,
+    "final_fit_followed_by_full_asr": true,
     "sentence_scoped_validation": true,
     "required_segment_similarity": 0.95,
     "exact_critical_term_gate": true,
@@ -31,7 +37,7 @@
     "repaired_voice": false
   },
   "next_required_gates": [
-    "VOICE_SENTENCE_TARGETED_REPAIR",
+    "VOICE_BOUNDED_FINAL_DURATION_FIT",
     "VOICE_POSTMUX_REVALIDATION",
     "FINAL_PREAPPROVAL_AUDIT",
     "PUBLICATION_QUALITY_GATE",
@@ -43,6 +49,6 @@
   "suppress_start_notification": true,
   "voice_regeneration": true,
   "quality_gates_weakened": false,
-  "requested_at": "2026-08-12T15:12:51Z",
-  "trigger_nonce": "eclipse-voice-target-ceiling-split-31608369622-v1"
+  "requested_at": "2026-08-12T15:34:05Z",
+  "trigger_nonce": "eclipse-voice-bounded-final-fit-31611199103-v1"
 }
