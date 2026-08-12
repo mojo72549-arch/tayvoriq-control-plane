@@ -1,0 +1,235 @@
+name: TAYVORIQ Eclipse Rebuild After Rejection
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/run-now/tayvoriq-eclipse-rebuild.json'
+
+concurrency:
+  group: tayvoriq-eclipse-rebuild-after-rejection
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUTF8: '1'
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  TAYVORIQ_CLOUD_MODE: 'true'
+  TAYVORIQ_RENDER_SIZE: '1080x1920'
+  TAYVORIQ_TTS_PROVIDER: 'chatterbox'
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: 'v3'
+  TAYVORIQ_DOCUMENTARY_TIMEOUT_SECONDS: '1200'
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: '1200'
+  TAYVORIQ_DOCUMENTARY_TARGET_WPM: '126'
+  TAYVORIQ_DOCUMENTARY_TARGET_F0_HZ: '104'
+  TAYVORIQ_AUDIO_END_PADDING_SECONDS: '1.25'
+  TAYVORIQ_NATURAL_VOICE_MIN_SECONDS: '50'
+  TAYVORIQ_NATURAL_VOICE_MAX_SECONDS: '58'
+
+jobs:
+  rebuild-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Checkout deep-voice implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: fix/deep-documentary-fire-safety-v29
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Checkout current audit implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: audit-implementation
+          fetch-depth: 1
+
+      - name: Checkout review pages
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Install rebuild dependencies
+        id: deps
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg rsync libsndfile1
+          python -m pip install --upgrade pip -q
+          pip install -r implementation/requirements.txt -q
+          python -m pip install \
+            requests python-dotenv python-slugify pillow 'moviepy==1.0.3' \
+            imageio-ffmpeg numpy flask google-api-python-client \
+            google-auth-oauthlib google-auth-httplib2 certifi 'edge-tts==7.2.8' pydub -q
+
+      - name: Prepare validated deep narrator reference
+        id: reference
+        run: |
+          set -euo pipefail
+          SOURCE="pages-worktree/tayvoriq/runs/30277119576/tayvoriq-review.mp4"
+          test -s "$SOURCE"
+          ffmpeg -y -loglevel error -i "$SOURCE" -vn -ac 1 -ar 24000 -t 24 -c:a pcm_s16le deep_reference.wav
+          test -s deep_reference.wav
+          echo "TAYVORIQ_CHATTERBOX_REFERENCE_AUDIO=$GITHUB_WORKSPACE/deep_reference.wav" >> "$GITHUB_ENV"
+          echo "DEEP_REFERENCE_READY"
+
+      - name: Validate rejection rebuild contract
+        id: guard
+        run: |
+          set -euo pipefail
+          python -m py_compile implementation/tools/tayvoriq_eclipse_documentary_v2.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          request = json.loads(Path('.github/run-now/tayvoriq-eclipse-rebuild.json').read_text(encoding='utf-8'))
+          assert request['release_scope'] == 'youtube'
+          assert request['human_rejection']['voice'] is True
+          assert request['human_rejection']['scene_match'] is True
+          assert request['requirements']['next_total_eclipse'] is True
+          assert request['requirements']['preparation_guidance'] is True
+          assert request['voice']['provider'] == 'chatterbox_multilingual_v3'
+          assert request['voice']['fallback_allowed'] is False
+          assert request['platform_upload'] is False
+          assert request['quality_gates_weakened'] is False
+          print('ECLIPSE_REJECTION_REBUILD_GUARD_VALID')
+          PY
+
+      - name: Render new deep-voice eclipse Short
+        id: render
+        env:
+          PYTHONPATH: ${{ github.workspace }}/implementation/tools
+        run: |
+          set -euo pipefail
+          rm -rf out/eclipsereview
+          python implementation/tools/tayvoriq_eclipse_documentary_v2.py --out-dir out/eclipsereview
+          test -s out/eclipsereview/job.json
+          test -s out/eclipsereview/short_youtube.mp4
+          echo "NEW_DEEP_VOICE_AND_ECLIPSE_SCENES_RENDERED"
+
+      - name: Run independent YouTube final audit
+        id: audit
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          rm -f out/eclipsereview/preapproval_ai_audit.json
+          python audit-implementation/tools/tayvoriq_preapproval_ai_audit_v6.py \
+            --job-dir out/eclipsereview \
+            --targets youtube
+
+      - name: Run YouTube publication quality gate
+        id: quality
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          python audit-implementation/tools/tayvoriq_publication_quality_gate_v2.py \
+            --job-dir out/eclipsereview \
+            --targets youtube
+
+      - name: Build YouTube approval review
+        id: review
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          python audit-implementation/tools/tayvoriq_build_youtube_review_site.py \
+            --job-dir out/eclipsereview \
+            --site-root site/tayvoriq \
+            --run-id "${GITHUB_RUN_ID}"
+
+      - name: Publish approval review page
+        id: review_publish
+        run: |
+          set -euo pipefail
+          mkdir -p pages-worktree/tayvoriq/latest pages-worktree/tayvoriq/runs/${GITHUB_RUN_ID}
+          rsync -a --delete site/tayvoriq/latest/ pages-worktree/tayvoriq/latest/
+          rsync -a site/tayvoriq/runs/${GITHUB_RUN_ID}/ pages-worktree/tayvoriq/runs/${GITHUB_RUN_ID}/
+          cp site/tayvoriq/index.html pages-worktree/tayvoriq/index.html
+          touch pages-worktree/.nojekyll
+          cd pages-worktree
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tayvoriq .nojekyll
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish TAYVORIQ eclipse rejection rebuild ${GITHUB_RUN_ID}"
+            git pull --rebase origin main
+            git push origin main
+          fi
+
+      - name: Send Telegram approval review
+        id: telegram
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          python audit-implementation/tools/tayvoriq_send_telegram.py \
+            --state SUCCESS \
+            --conclusion success \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --dashboard-url "" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Upload rejection-rebuild artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-eclipse-rebuild-${{ github.run_id }}
+          path: |
+            out/eclipsereview/**
+            site/tayvoriq/**
+          retention-days: 30
+          compression-level: 1
+
+      - name: Telegram precise failure
+        if: failure()
+        env:
+          DEPS: ${{ steps.deps.outcome }}
+          REFERENCE: ${{ steps.reference.outcome }}
+          GUARD: ${{ steps.guard.outcome }}
+          RENDER: ${{ steps.render.outcome }}
+          AUDIT: ${{ steps.audit.outcome }}
+          QUALITY: ${{ steps.quality.outcome }}
+          REVIEW: ${{ steps.review.outcome }}
+          REVIEW_PUBLISH: ${{ steps.review_publish.outcome }}
+          TELEGRAM: ${{ steps.telegram.outcome }}
+        run: |
+          set +e
+          stage="UNKNOWN"
+          detail="Der neue Sonnenfinsternis-Repair ist noch nicht freigabefähig."
+          if [ "$DEPS" != "success" ]; then stage="DEPENDENCIES"; detail="Die Deep-Voice-Abhängigkeiten konnten nicht sauber aufgebaut werden.";
+          elif [ "$REFERENCE" != "success" ]; then stage="VOICE_REFERENCE"; detail="Die validierte tiefe Erzähler-Referenz konnte nicht geladen werden.";
+          elif [ "$GUARD" != "success" ]; then stage="REJECTION_GUARD"; detail="Der Ablehnungs-Repair-Vertrag hat blockiert.";
+          elif [ "$RENDER" != "success" ]; then stage="VOICE_OR_SCENE_RENDER"; detail="Neue Chatterbox-Stimme oder die Sonnenfinsternis-Szenen konnten nicht sauber gerendert werden.";
+          elif [ "$AUDIT" != "success" ]; then stage="YOUTUBE_FINAL_AUDIT"; detail="Der unabhängige Audit blockiert die neue Fassung.";
+          elif [ "$QUALITY" != "success" ]; then stage="YOUTUBE_PUBLICATION_GATE"; detail="Der Audit ist bestanden; das technische Publication Gate blockiert noch.";
+          elif [ "$REVIEW" != "success" ]; then stage="YOUTUBE_REVIEW_BUILD"; detail="Alle Gates sind bestanden; die Review-Seite konnte nicht gebaut werden.";
+          elif [ "$REVIEW_PUBLISH" != "success" ]; then stage="YOUTUBE_REVIEW_PUBLISH"; detail="Alle Gates sind bestanden; die Review-Seite konnte nicht bereitgestellt werden.";
+          elif [ "$TELEGRAM" != "success" ]; then stage="TELEGRAM_REVIEW_DELIVERY"; detail="Alle Gates sind bestanden; nur Telegram ist fehlgeschlagen."; fi
+          message=$(printf '❌ TAYVORIQ Sonnenfinsternis-Repair noch nicht freigabefähig\n\nRun: %s\nStufe: %s\n%s\n\nNeue Stimme/Szenen wurden nur bei bestandenen Gates übernommen. Nichts veröffentlicht.' "$GITHUB_RUN_ID" "$stage" "$detail")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null
