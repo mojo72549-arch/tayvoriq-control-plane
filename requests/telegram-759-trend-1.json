@@ -1,0 +1,62 @@
+{
+  "request_id": "telegram-759-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Heute wird Europa dunkel: erste totale Sonnenfinsternis seit 27 Jahren",
+  "trend_scope": "science_future",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-12T12:30:29.913Z",
+  "telegram_message_id": 759,
+  "approval_key": "telegram:20260812-evening-v1:759:trend:1",
+  "mode": "full",
+  "selection_id": "20260812-evening-v1",
+  "source_context": {
+    "verified_at": "2026-08-12T12:22:18Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/science/eclipse-craze-grips-spain-iceland-millions-get-set-event-century-2026-08-12/",
+        "supports": "Europa erlebt am 12. August die erste totale Sonnenfinsternis seit 27 Jahren; Millionen werden in Island und Nordspanien erwartet."
+      },
+      {
+        "publisher": "Associated Press",
+        "url": "https://apnews.com/article/4748323b3df8272d546683cc1dbc1d15",
+        "supports": "Spanien bereitet sich auf Millionen Besucher, offizielle Beobachtungsorte sowie Hitze- und Waldbrandrisiken vor."
+      },
+      {
+        "publisher": "NASA",
+        "url": "https://science.nasa.gov/eclipses/future-eclipses/total-solar-eclipse-on-august-12-2026/",
+        "supports": "NASA bestätigt Verlauf und Sicherheitsregel: normale Sonnenbrillen schützen die Augen nicht."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Am 12. August zieht der Kernschatten des Mondes über Grönland, Island und Nordspanien; Europa erlebt seine erste totale Sonnenfinsternis seit 27 Jahren.",
+      "why_happening": "Der Mond schiebt sich auf seiner Bahn exakt zwischen Erde und Sonne und verdeckt die Sonnenscheibe entlang eines schmalen Totalitätskorridors.",
+      "who_is_affected": "Betroffen sind Millionen Beobachter und Reisende sowie Behörden in Spanien und Island, die Verkehr, Hitze und extreme Waldbrandgefahr absichern.",
+      "personal_impact": "Auch außerhalb der Totalitätszone ist die Finsternis teilweise sichtbar; ungeschütztes Hineinschauen kann die Augen dauerhaft schädigen.",
+      "action_now": "Sobald noch ein Teil der Sonne sichtbar ist, ausschließlich zertifizierte Sonnenfinsternisbrillen nach ISO 12312-2 nutzen; normale Sonnenbrillen reichen nicht."
+    }
+  },
+  "source_context_sha256": "dd4d047debfe55730c89b494d73611e5937ff305f4733c555b299df74e97721e",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-12T12:30:29.913Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-12T12:30:41.442268+00:00",
+      "actor": "request-dispatcher:31596773737"
+    }
+  ],
+  "contract_sha256": "2a06d44464bcd20a0fa61ac467f9b84e7c94d4cf23298bc20b4bb7dfba700841",
+  "dispatch_claim_run_id": 31596773737,
+  "dispatch_contract_sha256": "2a06d44464bcd20a0fa61ac467f9b84e7c94d4cf23298bc20b4bb7dfba700841"
+}
