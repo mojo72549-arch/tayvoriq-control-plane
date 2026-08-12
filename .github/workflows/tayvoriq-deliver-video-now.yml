@@ -65,8 +65,8 @@ env:
   PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || 'KI-Boom kippt – warum Tech-Aktien plötzlich abstürzen' }}
-  TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '1' }}
+  TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
+  TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
 
 jobs:
   orchestrate:
@@ -75,6 +75,41 @@ jobs:
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+
+      - name: Resolve approved X request
+        shell: bash
+        env:
+          EVENT_TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
+          EVENT_TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          request_path = Path(".github/run-now/tayvoriq-x-request.json")
+          if not request_path.is_file():
+              raise SystemExit("CONTROL_PLANE_REQUEST_MISSING")
+          request = json.loads(request_path.read_text(encoding="utf-8"))
+          topic = str(os.environ.get("EVENT_TOPIC") or request.get("topic") or "").strip()
+          trend_id = str(os.environ.get("EVENT_TREND_ID") or request.get("trend_id") or "").strip()
+          if not topic or any(char in topic for char in "\\r\\n"):
+              raise SystemExit("CONTROL_PLANE_TOPIC_RESOLUTION_FAILED")
+          if not trend_id or any(char in trend_id for char in "\\r\\n"):
+              raise SystemExit("CONTROL_PLANE_TREND_RESOLUTION_FAILED")
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"TOPIC={topic}\\n")
+              handle.write(f"TREND_ID={trend_id}\\n")
+          print(json.dumps({
+              "request_resolution": "approved-x-request",
+              "topic": topic,
+              "trend_id": trend_id,
+              "event_topic_override": bool(os.environ.get("EVENT_TOPIC")),
+              "quality_gates_weakened": False,
+          }, ensure_ascii=False))
+          PY
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -169,8 +204,11 @@ jobs:
           from pathlib import Path
 
           trend_id = str(os.environ.get("TREND_ID") or "").strip()
+          topic = str(os.environ.get("TOPIC") or "").strip()
           if not trend_id:
               raise SystemExit("SOURCE_CONTEXT_MISSING: approved trend id is empty")
+          if not topic:
+              raise SystemExit("SOURCE_CONTEXT_MISSING: approved topic is empty")
 
           candidates = []
           for path in Path("requests").glob("*.json"):
@@ -179,6 +217,8 @@ jobs:
               except Exception:
                   continue
               if str(data.get("trend_id") or "").strip() != trend_id:
+                  continue
+              if str(data.get("topic") or "").strip() != topic:
                   continue
               if str(data.get("mode") or "").strip() != "full":
                   continue
@@ -195,7 +235,10 @@ jobs:
               candidates.append((stamp, path, data, source))
 
           if not candidates:
-              raise SystemExit(f"SOURCE_CONTEXT_MISSING: no verified full request exists for trend_id={trend_id}")
+              raise SystemExit(
+                  "SOURCE_CONTEXT_MISSING: no verified full request exists for "
+                  f"trend_id={trend_id} topic={topic!r}"
+              )
 
           _, request_path, data, source = max(candidates, key=lambda item: item[0])
           raw = json.dumps(source, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
