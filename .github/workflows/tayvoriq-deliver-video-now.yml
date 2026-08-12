@@ -278,6 +278,21 @@ jobs:
           for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY GROQ_API_KEY GEMINI_API_KEY; do
             test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
           done
+          suppress_start=false
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            suppress_start=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('.github/run-now/tayvoriq-x-request.json')
+          data = json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
+          print('true' if data.get('suppress_start_notification') is True else 'false')
+          PY
+            )
+          fi
+          if [ "$suppress_start" = "true" ]; then
+            echo "Production-start Telegram suppressed for an already announced approved request."
+            exit 0
+          fi
           message=$(printf '🟣 TAYVORIQ Produktion gestartet\n\nThema: %s\n\nFür dich: ✅ Keine Aktion nötig.' "$TOPIC")
           response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
@@ -387,22 +402,32 @@ jobs:
           state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "TECHNICAL_FAILURE")')
 
           if [ "$state" != "SUCCESS" ]; then
-            echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
-            set +e
-            python tools/tayvoriq_resume_existing_render_v2.py \
-              --outdir out/tayvoriq-youtube-tiktok \
-              --site-root site/tayvoriq \
-              --run-id "${GITHUB_RUN_ID}" \
-              --state-out out/tayvoriq-review-state.json \
-              --report-out out/tayvoriq-self-heal/report.json \
-              2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
-            resume_exit=${PIPESTATUS[0]}
-            set -e
-            state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED")')
-            if [ "$resume_exit" -eq 0 ] && [ "$state" = "SUCCESS" ]; then
-              process_exit=0
+            reusable_master=$(python - <<'PY'
+          from pathlib import Path
+          import tayvoriq_resume_existing_render as resume
+          print('true' if resume.rendered_candidates(Path('out/tayvoriq-youtube-tiktok')) else 'false')
+          PY
+            )
+            if [ "$reusable_master" = "true" ]; then
+              echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
+              set +e
+              python tools/tayvoriq_resume_existing_render_v2.py \
+                --outdir out/tayvoriq-youtube-tiktok \
+                --site-root site/tayvoriq \
+                --run-id "${GITHUB_RUN_ID}" \
+                --state-out out/tayvoriq-review-state.json \
+                --report-out out/tayvoriq-self-heal/report.json \
+                2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
+              resume_exit=${PIPESTATUS[0]}
+              set -e
+              state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED")')
+              if [ "$resume_exit" -eq 0 ] && [ "$state" = "SUCCESS" ]; then
+                process_exit=0
+              else
+                process_exit="$resume_exit"
+              fi
             else
-              process_exit="$resume_exit"
+              echo "Checkpoint recovery skipped: no completed reusable master exists."
             fi
           fi
 
@@ -478,16 +503,32 @@ jobs:
           print(state or "TECHNICAL_FAILURE")
           print(reason)
           print(", ".join(str(item) for item in scopes) if isinstance(scopes, list) else "")
+          try:
+              import sys
+              sys.path.insert(0, str(Path("implementation/tools").resolve()))
+              import tayvoriq_resume_existing_render as resume
+              master_exists = bool(resume.rendered_candidates(Path("implementation/out/tayvoriq-youtube-tiktok")))
+          except Exception:
+              master_exists = False
+          print("true" if master_exists else "false")
           PY
           )
           state="${failure_info[0]:-TECHNICAL_FAILURE}"
           detail="${failure_info[1]:-}"
           scopes="${failure_info[2]:-}"
+          master_exists="${failure_info[3]:-false}"
           headline="❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden"
           case "$state" in
             PREFLIGHT_FAILED) reason="Die Produktionssicherheit hat vor dem Render einen internen Vertragsfehler erkannt. ${detail} Es wurde nichts veröffentlicht." ;;
             SKIPPED_NO_PUBLISHABLE_TREND|CONTENT_REJECTED) reason="Das Video hat ein unverändertes Qualitäts- oder Fakten-Gate nicht bestanden. ${detail} Es wurde nichts veröffentlicht." ;;
-            PUBLISHABLE_OUTPUT_RETRY_REQUIRED) headline="🔧 TAYVORIQ Reparaturmodus"; reason="Der vorhandene Master bleibt erhalten, hat aber noch nicht alle strengen Gates bestanden. Reparaturziel: ${scopes:-unbekannt}. ${detail} Es wurde nichts veröffentlicht." ;;
+            PUBLISHABLE_OUTPUT_RETRY_REQUIRED)
+              if [ "$master_exists" = "true" ]; then
+                headline="🔧 TAYVORIQ Reparaturmodus"
+                reason="Der vorhandene Master bleibt erhalten, hat aber noch nicht alle strengen Gates bestanden. Reparaturziel: ${scopes:-unbekannt}. ${detail} Es wurde nichts veröffentlicht."
+              else
+                reason="Die Produktion wurde vor Erstellung eines wiederverwendbaren Masters gestoppt. ${detail} Es wurde nichts veröffentlicht."
+              fi
+              ;;
             *) reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden. ${detail} Es wurde nichts veröffentlicht." ;;
           esac
           message=$(printf '%s\n\n%s' "$headline" "$reason")
