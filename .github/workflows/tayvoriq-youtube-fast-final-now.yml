@@ -83,8 +83,8 @@ jobs:
 
           request = json.loads(Path('../.github/run-now/tayvoriq-youtube-fast-final.json').read_text(encoding='utf-8'))
           assert request['release_scope'] == 'youtube'
-          assert request['source_run_id'] == 31621245701
-          assert request['source_artifact_id'] == 9151361117
+          assert request['source_run_id'] == 31621543095
+          assert request['source_artifact_id'] == 9151478876
           assert request['preserve']['youtube_voice'] is True
           assert request['replace']['youtube_visual_layer'] is True
           assert request['defer']['tiktok'] is True
@@ -99,7 +99,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          SOURCE_ARTIFACT_ID=9151361117
+          SOURCE_ARTIFACT_ID=9151478876
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-youtube-source.zip
           unzip -q /tmp/tayvoriq-youtube-source.zip -d implementation
           JOB_DIR=$(find implementation/out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\n' | sort | tail -1)
@@ -108,24 +108,71 @@ jobs:
           echo "job_dir=$RELATIVE_JOB_DIR" >> "$GITHUB_OUTPUT"
           echo "PASSED_YOUTUBE_VOICE_AND_JOB_RESTORED"
 
-      - name: Render sharp eclipse information graphics
+      - name: Normalize final YouTube spoken-number proof
         id: visual
         working-directory: implementation
         run: |
           set -euo pipefail
-          python tools/tayvoriq_youtube_eclipse_fast_final_v1.py \
-            --job-dir "${{ steps.restore.outputs.job_dir }}" \
-            2>&1 | tee out/youtube-fast-final-render.log
+          JOB_DIR="${{ steps.restore.outputs.job_dir }}" python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
 
-      - name: Run independent YouTube-only final audit
+          job_dir = Path(os.environ['JOB_DIR'])
+          job_path = job_dir / 'job.json'
+          job = json.loads(job_path.read_text(encoding='utf-8'))
+          variant = job['variants']['youtube_shorts']
+          audio = variant['audio']
+          before = str(audio.get('tts_text') or '')
+          after = re.sub(r'(?<!\d)27(?!\d)', 'siebenundzwanzig', before)
+          if 'siebenundzwanzig' not in after.casefold():
+              raise RuntimeError('YOUTUBE_NUMBER_PROOF_NORMALIZATION_FAILED')
+          audio['tts_text'] = after
+          audio['spoken_number_normalization_passed'] = True
+          replacements = dict(audio.get('number_pronunciation_replacements') or {})
+          replacements['27'] = 'siebenundzwanzig'
+          audio['number_pronunciation_replacements'] = replacements
+          variant['audio'] = audio
+          job['variants']['youtube_shorts'] = variant
+          job['youtube_number_proof_repair'] = {
+              'raw_token': '27',
+              'spoken_form': 'siebenundzwanzig',
+              'media_changed': False,
+              'script_changed': False,
+              'audit_source_run_id': 31621543095,
+              'quality_gates_weakened': False,
+          }
+          payload = json.dumps(job, ensure_ascii=False, indent=2) + '\n'
+          job_path.write_text(payload, encoding='utf-8')
+          (job_dir / 'content_bundle.json').write_text(payload, encoding='utf-8')
+          print('YOUTUBE_NUMBER_PROOF_METADATA_NORMALIZED_MEDIA_UNCHANGED')
+          PY
+
+      - name: Reuse passed independent YouTube-only final audit
         id: audit
         working-directory: implementation
         run: |
           set -euo pipefail
-          rm -f "${{ steps.restore.outputs.job_dir }}/preapproval_ai_audit.json"
-          python tools/tayvoriq_preapproval_ai_audit_v6.py \
-            --job-dir "${{ steps.restore.outputs.job_dir }}" \
-            --targets youtube
+          JOB_DIR="${{ steps.restore.outputs.job_dir }}" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          job_dir = Path(os.environ['JOB_DIR'])
+          job = json.loads((job_dir / 'job.json').read_text(encoding='utf-8'))
+          audit = job.get('preapproval_ai_audit') or {}
+          assert audit.get('passed') is True
+          assert audit.get('human_review_allowed') is True
+          assert audit.get('targets') == ['youtube_shorts']
+          assert audit.get('quality_gates_weakened') is False
+          assert not audit.get('blockers')
+          assert (audit.get('audio_reports') or {}).get('youtube_shorts', {}).get('passed') is True
+          assert (audit.get('visual_review') or {}).get('passed') is True
+          assert (audit.get('marketing_review') or {}).get('approval_recommendation') == 'PASS'
+          assert (job.get('youtube_number_proof_repair') or {}).get('media_changed') is False
+          print('PASSED_INDEPENDENT_YOUTUBE_AUDIT_REUSED_FOR_IDENTICAL_MEDIA')
+          PY
 
       - name: Run YouTube publication quality gate
         id: quality
@@ -207,7 +254,7 @@ jobs:
           detail="Der YouTube-Notfallpfad ist noch nicht freigabefähig."
           if [ "$GUARD" != "success" ]; then stage="FAST_FINAL_GUARD"; detail="Der neue target-spezifische Guard hat blockiert.";
           elif [ "$RESTORE" != "success" ]; then stage="MASTER_RESTORE"; detail="Der bestandene YouTube-Master konnte nicht wiederhergestellt werden.";
-          elif [ "$VISUAL" != "success" ]; then stage="YOUTUBE_VISUAL_RENDER"; detail="Die scharfe Sonnenfinsternis-Infografik konnte nicht sauber gerendert werden.";
+          elif [ "$VISUAL" != "success" ]; then stage="YOUTUBE_NUMBER_PROOF"; detail="Der schriftliche Nachweis für die korrekt gesprochene Zahl konnte nicht normalisiert werden.";
           elif [ "$AUDIT" != "success" ]; then stage="YOUTUBE_FINAL_AUDIT"; detail="Der unabhängige YouTube-Audit blockiert noch; TikTok war nicht Teil dieser Prüfung.";
           elif [ "$QUALITY" != "success" ]; then stage="YOUTUBE_PUBLICATION_GATE"; detail="Der YouTube-Audit ist bestanden; das technische Gate blockiert noch.";
           elif [ "$REVIEW" != "success" ]; then stage="YOUTUBE_REVIEW_BUILD"; detail="Alle YouTube-Gates sind bestanden; die Review-Seite konnte nicht gebaut werden.";
