@@ -184,6 +184,12 @@ jobs:
           assert audit_v4._safe_speech_contract_normalize('Sandisk KI Chipsektor') == 'San Disk KI Chip Sektor'
           assert audit_v4._safe_speech_contract_normalize('Sundisk Chantandy') == 'Sundisk Chantandy'
 
+          workflow_source = Path('../.github/workflows/tayvoriq-voice-checkpoint-repair-now.yml').read_text(encoding='utf-8')
+          fragile_locator = "JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 1 -maxdepth 1 -type d | sort | tail -1)"
+          robust_locator = "JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\\n' | sort | tail -1)"
+          assert fragile_locator not in workflow_source
+          assert workflow_source.count(robust_locator) == 2
+
           print('VOICE_V4_STANDARD_AND_V5_HUMAN_NARRATOR_GUARDS_VALIDATED')
           PY
 
@@ -230,7 +236,7 @@ jobs:
           PY
           )
           if [ "$REPAIR_STAGE" = "FINAL_PREAPPROVAL_AUDIT" ]; then
-            JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+            JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\n' | sort | tail -1)
             test -n "$JOB_DIR" && test -f "$JOB_DIR/job.json"
             echo "job_dir=$JOB_DIR" >> "$GITHUB_OUTPUT"
             echo "VOICE_ALREADY_PASSED_REUSED"
@@ -251,7 +257,7 @@ jobs:
               --outdir out/tayvoriq-youtube-tiktok/candidate-01 \
               2>&1 | tee out/voice-checkpoint-repair.log
           fi
-          JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          JOB_DIR=$(find out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\n' | sort | tail -1)
           test -n "$JOB_DIR" && test -f "$JOB_DIR/job.json"
           echo "job_dir=$JOB_DIR" >> "$GITHUB_OUTPUT"
           echo "VOICE_CHECKPOINT_REPAIRED stage=$REPAIR_STAGE"
