@@ -476,7 +476,7 @@ jobs:
               except Exception: preflight = {}
               state = str(preflight.get("state") or "")
               issues = preflight.get("issues") or []
-              if issues: reason = "; ".join(str(item) for item in issues[:3])
+              if issues: reason = " ".join("; ".join(str(item) for item in issues[:3]).split())[:900]
           print(state or "TECHNICAL_FAILURE")
           print(reason)
           print(", ".join(str(item) for item in scopes) if isinstance(scopes, list) else "")
