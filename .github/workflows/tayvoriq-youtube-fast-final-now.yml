@@ -1,0 +1,216 @@
+name: TAYVORIQ YouTube Fast Final NOW
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/run-now/tayvoriq-youtube-fast-final.json'
+
+concurrency:
+  group: tayvoriq-youtube-fast-final
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  youtube-fast-final:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Checkout review pages
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Install fast-final dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip -q
+          python -m pip install -r implementation/requirements.txt requests pillow -q
+
+      - name: Validate YouTube fast-final guards
+        id: guard
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            tools/tayvoriq_youtube_eclipse_fast_final_v1.py \
+            tools/tayvoriq_preapproval_ai_audit_v6.py \
+            tools/tayvoriq_build_youtube_review_site.py \
+            tools/tayvoriq_preapproval_ai_audit_v5.py \
+            tools/tayvoriq_publication_quality_gate_v2.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          request = json.loads(Path('../.github/run-now/tayvoriq-youtube-fast-final.json').read_text(encoding='utf-8'))
+          assert request['release_scope'] == 'youtube'
+          assert request['source_run_id'] == 31617916476
+          assert request['source_artifact_id'] == 9150581936
+          assert request['preserve']['youtube_voice'] is True
+          assert request['replace']['youtube_visual_layer'] is True
+          assert request['defer']['tiktok'] is True
+          assert request['platform_upload'] is False
+          assert request['quality_gates_weakened'] is False
+          print('YOUTUBE_FAST_FINAL_GUARDS_VALIDATED')
+          PY
+
+      - name: Restore passed YouTube voice and preserved job
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SOURCE_ARTIFACT_ID=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          request = json.loads(Path('.github/run-now/tayvoriq-youtube-fast-final.json').read_text(encoding='utf-8'))
+          print(request['source_artifact_id'])
+          PY
+          )
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${SOURCE_ARTIFACT_ID}/zip" > /tmp/tayvoriq-youtube-source.zip
+          unzip -q /tmp/tayvoriq-youtube-source.zip -d implementation
+          JOB_DIR=$(find implementation/out/tayvoriq-youtube-tiktok/candidate-01 -mindepth 2 -maxdepth 2 -type f -name job.json -printf '%h\n' | sort | tail -1)
+          test -n "$JOB_DIR" && test -f "$JOB_DIR/job.json" && test -f "$JOB_DIR/short_youtube.mp4"
+          RELATIVE_JOB_DIR=${JOB_DIR#implementation/}
+          echo "job_dir=$RELATIVE_JOB_DIR" >> "$GITHUB_OUTPUT"
+          echo "PASSED_YOUTUBE_VOICE_AND_JOB_RESTORED"
+
+      - name: Render sharp eclipse information graphics
+        id: visual
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_youtube_eclipse_fast_final_v1.py \
+            --job-dir "${{ steps.restore.outputs.job_dir }}" \
+            2>&1 | tee out/youtube-fast-final-render.log
+
+      - name: Run independent YouTube-only final audit
+        id: audit
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          rm -f "${{ steps.restore.outputs.job_dir }}/preapproval_ai_audit.json"
+          python tools/tayvoriq_preapproval_ai_audit_v6.py \
+            --job-dir "${{ steps.restore.outputs.job_dir }}" \
+            --targets youtube
+
+      - name: Run YouTube publication quality gate
+        id: quality
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_publication_quality_gate_v2.py \
+            --job-dir "${{ steps.restore.outputs.job_dir }}" \
+            --targets youtube
+
+      - name: Build YouTube-only approval review
+        id: review
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_build_youtube_review_site.py \
+            --job-dir "${{ steps.restore.outputs.job_dir }}" \
+            --site-root site/tayvoriq \
+            --run-id "${GITHUB_RUN_ID}"
+
+      - name: Publish approval review page
+        id: review_publish
+        run: |
+          set -euo pipefail
+          mkdir -p pages-worktree/tayvoriq/latest pages-worktree/tayvoriq/runs/${GITHUB_RUN_ID}
+          rsync -a --delete implementation/site/tayvoriq/latest/ pages-worktree/tayvoriq/latest/
+          rsync -a implementation/site/tayvoriq/runs/${GITHUB_RUN_ID}/ pages-worktree/tayvoriq/runs/${GITHUB_RUN_ID}/
+          cp implementation/site/tayvoriq/index.html pages-worktree/tayvoriq/index.html
+          touch pages-worktree/.nojekyll
+          cd pages-worktree
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tayvoriq .nojekyll
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish TAYVORIQ YouTube fast-final review ${GITHUB_RUN_ID}"
+            git pull --rebase origin main
+            git push origin main
+          fi
+
+      - name: Send Telegram approval review
+        id: telegram
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_send_telegram.py \
+            --state SUCCESS \
+            --conclusion success \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --dashboard-url "" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Upload fast-final checkpoint artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-youtube-fast-final-${{ github.run_id }}
+          path: |
+            implementation/${{ steps.restore.outputs.job_dir }}/**
+            implementation/site/tayvoriq/**
+            implementation/out/youtube-fast-final-render.log
+          retention-days: 30
+          compression-level: 1
+
+      - name: Telegram precise checkpoint failure
+        if: failure()
+        env:
+          GUARD: ${{ steps.guard.outcome }}
+          RESTORE: ${{ steps.restore.outcome }}
+          VISUAL: ${{ steps.visual.outcome }}
+          AUDIT: ${{ steps.audit.outcome }}
+          QUALITY: ${{ steps.quality.outcome }}
+          REVIEW: ${{ steps.review.outcome }}
+          REVIEW_PUBLISH: ${{ steps.review_publish.outcome }}
+          TELEGRAM: ${{ steps.telegram.outcome }}
+        run: |
+          set +e
+          stage="UNKNOWN"
+          detail="Der YouTube-Notfallpfad ist noch nicht freigabefähig."
+          if [ "$GUARD" != "success" ]; then stage="FAST_FINAL_GUARD"; detail="Der neue target-spezifische Guard hat blockiert.";
+          elif [ "$RESTORE" != "success" ]; then stage="MASTER_RESTORE"; detail="Der bestandene YouTube-Master konnte nicht wiederhergestellt werden.";
+          elif [ "$VISUAL" != "success" ]; then stage="YOUTUBE_VISUAL_RENDER"; detail="Die scharfe Sonnenfinsternis-Infografik konnte nicht sauber gerendert werden.";
+          elif [ "$AUDIT" != "success" ]; then stage="YOUTUBE_FINAL_AUDIT"; detail="Der unabhängige YouTube-Audit blockiert noch; TikTok war nicht Teil dieser Prüfung.";
+          elif [ "$QUALITY" != "success" ]; then stage="YOUTUBE_PUBLICATION_GATE"; detail="Der YouTube-Audit ist bestanden; das technische Gate blockiert noch.";
+          elif [ "$REVIEW" != "success" ]; then stage="YOUTUBE_REVIEW_BUILD"; detail="Alle YouTube-Gates sind bestanden; die Review-Seite konnte nicht gebaut werden.";
+          elif [ "$REVIEW_PUBLISH" != "success" ]; then stage="YOUTUBE_REVIEW_PUBLISH"; detail="Alle YouTube-Gates sind bestanden; die Review-Seite konnte nicht bereitgestellt werden.";
+          elif [ "$TELEGRAM" != "success" ]; then stage="TELEGRAM_REVIEW_DELIVERY"; detail="Alle YouTube-Gates sind bestanden; nur die Telegram-Zustellung ist fehlgeschlagen."; fi
+          message=$(printf '❌ TAYVORIQ YouTube-Checkpoint noch nicht freigabefähig\n\nRun: %s\nStufe: %s\n%s\n\nYouTube-Stimme, Trend, Quellen und Skript blieben erhalten. TikTok ist zurückgestellt. Nichts auf YouTube oder TikTok veröffentlicht.' "$GITHUB_RUN_ID" "$stage" "$detail")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null
