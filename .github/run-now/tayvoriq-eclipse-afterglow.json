@@ -1,0 +1,36 @@
+{
+  "request": "tayvoriq-eclipse-afterglow-repair",
+  "release_scope": "youtube",
+  "rejected_review_id": 31638457966,
+  "human_rejection": {
+    "voice_anonymous_like": true,
+    "glasses_scene_quality": true
+  },
+  "requirements": {
+    "post_event_recap": true,
+    "beautiful_moments": true,
+    "next_total_eclipse_2027_focus": true,
+    "max_totality_2027_seconds": 383.2,
+    "early_travel_planning": true
+  },
+  "voice": {
+    "provider": "chatterbox_multilingual_v3",
+    "fallback_allowed": false,
+    "pitch_shift_allowed": false,
+    "formant_shift_allowed": false,
+    "natural_human_pitch_variation_required": true,
+    "exaggeration": 0.5,
+    "cfg_weight": 0.3
+  },
+  "visuals": {
+    "real_glasses_footage_required": true,
+    "controlled_icon_glasses_scene_forbidden": true,
+    "official_nasa_2026_visual": true,
+    "official_nasa_2027_map": true,
+    "crowd_reaction_scene": true,
+    "cinematic_eclipse_moments": true
+  },
+  "platform_upload": false,
+  "quality_gates_weakened": false,
+  "trigger_nonce": "afterglow-natural-human-2027-focus-20260812-2245"
+}
