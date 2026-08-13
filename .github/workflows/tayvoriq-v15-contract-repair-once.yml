@@ -1,0 +1,58 @@
+name: TAYVORIQ V15 Contract Repair Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-v15-contract-repair-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Apply exact contract repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd implementation
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/tayvoriq_dual_platform_render_v15.py')
+          s = p.read_text(encoding='utf-8')
+          if s.count('result["series_next"] = ""') != 2:
+              raise SystemExit('V15_CONTRACT_REPAIR_REFUSED: series_next shape changed')
+          old = '''result["viewer_payoff"] = v2.ensure_sentence(\n        result.get("viewer_payoff") or "Das Video erklärt den Trend vollständig."\n    )'''
+          if s.count(old) != 1:
+              raise SystemExit('V15_CONTRACT_REPAIR_REFUSED: payoff shape changed')
+          s = s.replace('result["series_next"] = ""', 'result["series_next"] = "Im nächsten Teil: die wichtigsten Folgen."')
+          s = s.replace(old, 'result["viewer_payoff"] = "So weißt du, was zählt."')
+          s = s.replace('"series_next": "",\n            "viewer_payoff": "Das Video erklärt den Trend vollständig.",', '"series_next": normalized["series_next"],\n            "viewer_payoff": normalized["viewer_payoff"],')
+          p.write_text(s, encoding='utf-8')
+          PY
+          python -m py_compile tools/tayvoriq_dual_platform_render_v15.py
+          git diff --check
+          git diff --exit-code -- tools/tayvoriq_dual_platform_render_v15.py && { echo 'V15_CONTRACT_REPAIR_REFUSED: no change'; exit 1; } || true
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd implementation
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/tayvoriq_dual_platform_render_v15.py
+          git commit -m 'fix(tayvoriq): satisfy unchanged fallback CTA gates'
+          git push origin HEAD:feature/multi-platform-distribution-package
