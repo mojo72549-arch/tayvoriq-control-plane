@@ -1,0 +1,45 @@
+{
+  "request_id": "chatgpt-20260813-heat-consequences-semantic-recovery-3",
+  "status": "APPROVED",
+  "source": "chatgpt_localized_editorial_recovery",
+  "trend_id": "1",
+  "topic": "Die konkreten Folgen der aktuellen Hitzewelle für Europa: Gesundheit, Wasser, Landwirtschaft, Brände und Infrastruktur",
+  "trend_scope": "world_society",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 40,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-13T21:35:00Z",
+  "approval_key": "chatgpt:20260813:heat-semantic-recovery-3",
+  "mode": "full",
+  "selection_id": "chatgpt-20260813-heat-consequences-semantic-rebuild",
+  "source_context": {
+    "verified_at": "2026-08-13T21:35:00Z",
+    "independent_news_count": 2,
+    "sources": [
+      {"publisher":"Reuters","url":"https://www.reuters.com/business/energy/french-power-prices-jump-over-20-heatwave-tightens-supply-2026-08-11/","supports":"Die aktuelle Hitzewelle belastet Europas Energieversorgung: In Frankreich können hohe Flusstemperaturen die Leistung von Kernkraftwerken begrenzen; zugleich verschärfen Hitze und schwache Windstromproduktion die Strommarktlage."},
+      {"publisher":"Associated Press","url":"https://apnews.com/article/f4f6ecf0953d423e0a70b74cd477c81a","supports":"Westeuropa erlebt eine intensive Hitzewelle mit Temperaturen um 40 Grad, Dürre, Waldbrandgefahr und hoher gesundheitlicher Belastung."},
+      {"publisher":"Deutscher Wetterdienst","url":"https://www.dwd.de/DE/leistungen/hitzewarnung/hitzewarnung.html","supports":"Starke Wärmebelastung und ausbleibende nächtliche Abkühlung können gesundheitlich gefährlich werden."},
+      {"publisher":"WHO Europe","url":"https://www.who.int/europe/news-room/fact-sheets/item/keepcool-in-the-heat","supports":"Extreme Hitze erhöht Risiken für Hitzeschlag und kann Herz-Kreislauf-, Atemwegs- und Nierenerkrankungen verschlimmern."}
+    ],
+    "fallback_editorial_answers": {
+      "what_happened":"Europas Hitzewelle belastet Gesundheit, Böden, Vegetation, Energie und Infrastruktur.",
+      "why_happening":"Weil anhaltende Hitze und Trockenheit mehrere Systeme gleichzeitig belasten.",
+      "who_is_affected":"Betroffen sind Ältere, Kinder, chronisch Kranke, Außenarbeiter und Dürregebiete.",
+      "personal_impact":"Für dich steigen Gesundheitsrisiken; Wasser, Verkehr oder Energie können ausfallen.",
+      "action_now":"Prüfe Hitzewarnungen, meide Mittagshitze, trinke regelmäßig und beachte Einschränkungen."
+    },
+    "editorial_direction": {
+      "hook":"Europas Hitzewelle wird jetzt zum echten Belastungstest – für Menschen, Wasser und Infrastruktur.",
+      "story_order":["Gesundheit und fehlende nächtliche Erholung","Trockenheit, Wasserstress und Waldbrandgefahr","Landwirtschaft und Vegetation","Energie- und Infrastrukturfolgen","konkreter Zuschauer-Nutzen"],
+      "visual_style":"hochwertig dokumentarisch realistisch; jede Szene muss die gesprochene Behauptung direkt unterstützen; keine generischen Strand- oder Thermometer-Füllbilder",
+      "target_duration_seconds":40,
+      "semantic_gate":"Der Short muss konkret beantworten, welche aktuellen Folgen die Hitzewelle für Europa hat. Allgemeine Hitze-Erklärungen reichen nicht.",
+      "rejection_repair":"Vorherige Fassung wurde wegen Themenverfehlung abgelehnt. Skript und Storyboard neu aufbauen; keine Wiederverwendung des abgelehnten Scripts."
+    }
+  },
+  "source_context_sha256":"830fb882b25e272afd2b468b563d70deb790365cc265a79c6fd58466c659b8a4",
+  "state_history":[{"state":"APPROVED","at":"2026-08-13T21:35:00Z","actor":"chatgpt_localized_editorial_recovery","detail":"Localized recovery after run 31745156975: preserve verified sources and semantic direction; compact only fallback editorial answers to existing gate contract."}],
+  "contract_sha256":"af3eaf8bacce8db286c554081925fd3e696ffed67e3c4c02016811a1e44a2c62"
+}
