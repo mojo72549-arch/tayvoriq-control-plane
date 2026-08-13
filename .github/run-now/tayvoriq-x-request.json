@@ -1,15 +1,14 @@
 {
   "request": "tayvoriq-x-production",
-  "topic": "Heute wird Europa dunkel: erste totale Sonnenfinsternis seit 27 Jahren",
-  "trend_id": "1",
-  "requested_at": "2026-08-12T13:11:43Z",
-  "request_nonce": "tayvoriq-x-20260812131143-eclipse-source-compiler-retry-1",
+  "topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
+  "trend_id": "heat-consequences-europe-20260813",
+  "requested_at": "2026-08-13T07:43:00Z",
+  "request_nonce": "tayvoriq-x-20260813-heat-consequences-premium-1",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
-  "source_request_id": "telegram-759-trend-1",
-  "retry_of_run_id": 31596812230,
-  "suppress_start_notification": true,
+  "source_request_id": "chatgpt-20260813-heat-consequences-1",
+  "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
   "hardening": {
     "checkpoint_source_context_required": true,
@@ -20,5 +19,5 @@
     "concrete_failure_state_required": true,
     "quality_gates_weakened": false
   },
-  "reason": "resume-approved-telegram-759-trend-1-after-source-bound-eclipse-compiler"
+  "reason": "new-user-approved-heat-consequences-story-with-premium-eclipse-quality-reference"
 }
