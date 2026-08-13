@@ -1,0 +1,48 @@
+name: TAYVORIQ V15 Guarded Repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-v15-contract-repair-trigger.yml
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+      - name: Patch only V15 fallback CTA contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd implementation
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/tayvoriq_dual_platform_render_v15.py')
+          s = p.read_text(encoding='utf-8')
+          blank = 'result["series_next"] = ""'
+          payoff = '''result["viewer_payoff"] = v2.ensure_sentence(\n        result.get("viewer_payoff") or "Das Video erklärt den Trend vollständig."\n    )'''
+          if s.count(blank) != 2 or s.count(payoff) != 1:
+              raise SystemExit('V15_GUARDED_REPAIR_REFUSED')
+          s = s.replace(blank, 'result["series_next"] = "Im nächsten Teil: die wichtigsten Folgen."')
+          s = s.replace(payoff, 'result["viewer_payoff"] = "So weißt du, was zählt."')
+          s = s.replace('"series_next": "",\n            "viewer_payoff": "Das Video erklärt den Trend vollständig.",', '"series_next": normalized["series_next"],\n            "viewer_payoff": normalized["viewer_payoff"],')
+          p.write_text(s, encoding='utf-8')
+          PY
+          python -m py_compile tools/tayvoriq_dual_platform_render_v15.py
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/tayvoriq_dual_platform_render_v15.py
+          git commit -m 'fix(tayvoriq): satisfy unchanged V15 fallback CTA gates'
+          git push origin HEAD:feature/multi-platform-distribution-package
