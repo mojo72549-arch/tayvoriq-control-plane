@@ -2,13 +2,13 @@
   "request": "tayvoriq-x-production",
   "topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
   "trend_id": "heat-consequences-europe-20260813",
-  "requested_at": "2026-08-13T08:09:00Z",
-  "request_nonce": "tayvoriq-x-20260813-heat-consequences-v34-causal-repair-3",
+  "requested_at": "2026-08-13T10:42:30Z",
+  "request_nonce": "tayvoriq-x-20260813-heat-performance-hardening-1",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
   "source_request_id": "chatgpt-20260813-heat-consequences-1",
-  "retry_of_run_id": 31679932934,
+  "retry_of_run_id": 31681004687,
   "suppress_start_notification": true,
   "execution_backend": "github_hosted_public",
   "hardening": {
@@ -18,7 +18,11 @@
     "validated_voice_candidate_required": true,
     "premium_voice_required": true,
     "concrete_failure_state_required": true,
+    "persistent_recovery_checkpoint_required": true,
+    "topic_aware_visual_repair_required": true,
+    "cardinal_speech_normalization_required": true,
+    "dependency_cache_enabled": true,
     "quality_gates_weakened": false
   },
-  "reason": "retry-same-approved-heat-story-after-v34-causal-marker-mismatch-repair"
+  "reason": "retry-same-approved-heat-story-on-performance-and-durable-checkpoint-hardened-golden-path"
 }
