@@ -1,0 +1,289 @@
+name: TAYVORIQ Eclipse Afterglow V6
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/run-now/tayvoriq-eclipse-afterglow-v6.json'
+
+concurrency:
+  group: tayvoriq-eclipse-afterglow-v6
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  PYTHONUTF8: '1'
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  TAYVORIQ_CLOUD_MODE: 'true'
+  TAYVORIQ_RENDER_SIZE: '1080x1920'
+  TAYVORIQ_TTS_PROVIDER: 'chatterbox'
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: 'v3'
+  TAYVORIQ_CHATTERBOX_LANGUAGE: 'de'
+  TAYVORIQ_CHATTERBOX_ENABLED: 'true'
+  TAYVORIQ_CHATTERBOX_CPU_THREADS: '4'
+  TAYVORIQ_DOCUMENTARY_TIMEOUT_SECONDS: '1200'
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: '1200'
+  TAYVORIQ_CHATTERBOX_MAX_CHUNKS: '4'
+  TAYVORIQ_CHATTERBOX_MAX_CHARS: '300'
+  TAYVORIQ_CHATTERBOX_VERIFY_CHUNKS: 'true'
+  TAYVORIQ_CHATTERBOX_CHUNK_VERIFY_ATTEMPTS: '3'
+  TAYVORIQ_CHATTERBOX_VERIFY_MIN_SIMILARITY: '0.90'
+  TAYVORIQ_NATURAL_DOCUMENTARY_TARGET_WPM: '142'
+  TAYVORIQ_NATURAL_CHATTERBOX_EXAGGERATION: '0.50'
+  TAYVORIQ_NATURAL_CHATTERBOX_CFG_WEIGHT: '0.30'
+  TAYVORIQ_NATURAL_CHATTERBOX_PAUSE_MS: '240'
+  TAYVORIQ_AUDIO_END_PADDING_SECONDS: '1.25'
+  TAYVORIQ_NATURAL_VOICE_MIN_SECONDS: '47'
+  TAYVORIQ_NATURAL_VOICE_MAX_SECONDS: '58'
+  HF_HOME: ${{ github.workspace }}/.cache/huggingface
+  TORCH_HOME: ${{ github.workspace }}/.cache/torch
+
+jobs:
+  render-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore Chatterbox model cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/huggingface
+            .cache/torch
+          key: tayvoriq-chatterbox-v3-cpu-py311-v3
+
+      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: fix/deep-documentary-fire-safety-v29
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Checkout audit implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: audit-implementation
+          fetch-depth: 1
+
+      - name: Checkout review pages
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Checkout narrator reference snapshot
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: 4b97b081a5f974b9d74f1bc957f5e81080759402
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: voice-reference-pages
+          fetch-depth: 1
+
+      - name: Install dependencies
+        id: deps
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg rsync libsndfile1 rubberband-cli
+          python -m pip install --upgrade pip -q
+          pip install -r implementation/requirements.txt -q
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch==2.6.0' 'torchaudio==2.6.0' -q
+          python -m pip install 'git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948' -q
+          python -m pip install requests python-dotenv python-slugify pillow 'moviepy==1.0.3' imageio-ffmpeg numpy flask google-api-python-client google-auth-oauthlib google-auth-httplib2 certifi 'edge-tts==7.2.8' pydub -q
+
+      - name: Prepare narrator reference
+        id: reference
+        run: |
+          set -euo pipefail
+          SOURCE="voice-reference-pages/tayvoriq/runs/30277119576/tayvoriq-review.mp4"
+          test -s "$SOURCE"
+          ffmpeg -y -loglevel error -i "$SOURCE" -vn -ac 1 -ar 24000 -t 24 -c:a pcm_s16le natural_reference.wav
+          echo "TAYVORIQ_CHATTERBOX_REFERENCE_AUDIO=$GITHUB_WORKSPACE/natural_reference.wav" >> "$GITHUB_ENV"
+
+      - name: Validate V6 full-caption contract
+        id: guard
+        env:
+          PYTHONPATH: ${{ github.workspace }}/implementation/tools
+        run: |
+          set -euo pipefail
+          python -m py_compile implementation/tools/tayvoriq_eclipse_afterglow_v6.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import tayvoriq_eclipse_afterglow_v6 as v6
+          request=json.loads(Path('.github/run-now/tayvoriq-eclipse-afterglow-v6.json').read_text(encoding='utf-8'))
+          assert request['release_scope'] == 'youtube_tiktok'
+          assert request['source_review_run'] == 31643775793
+          assert request['caption_policy'] == 'complete_spoken_chunk_only'
+          assert request['scenes_locked'] is True
+          assert request['spoken_story_locked'] is True
+          assert request['voice']['target_wpm'] == 142
+          assert request['voice']['pause_ms'] == 240
+          assert request['platform_upload'] is False
+          v6._validate_contract()
+          assert all(scene['display_chunk'] == scene['spoken_chunk'] for scene in v6.v5.SCENES)
+          print('AFTERGLOW_V6_FULL_CAPTION_GUARD_VALID')
+          PY
+
+      - name: Render V6 full captions and fluid voice
+        id: render
+        env:
+          PYTHONPATH: ${{ github.workspace }}/implementation/tools
+        run: |
+          set -euo pipefail
+          rm -rf out/eclipsereview
+          python implementation/tools/tayvoriq_eclipse_afterglow_v6.py --out-dir out/eclipsereview
+          test -s out/eclipsereview/job.json
+          test -s out/eclipsereview/short_youtube.mp4
+          test -s out/eclipsereview/short_tiktok.mp4
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          job=json.loads(Path('out/eclipsereview/job.json').read_text(encoding='utf-8'))
+          assert set(job['variants']) == {'youtube_shorts','tiktok'}
+          assert job['quality_report']['full_spoken_captions'] is True
+          assert job['quality_report']['editorial_summary_overlays_used'] is False
+          assert job['quality_report']['youtube_tiktok_platform_mix_ready'] is True
+          scenes=job['variants']['youtube_shorts']['text_package']['scenes']
+          assert all(s['display_chunk'] == s['spoken_chunk'] for s in scenes)
+          y=Path('out/eclipsereview/short_youtube.mp4').read_bytes()
+          t=Path('out/eclipsereview/short_tiktok.mp4').read_bytes()
+          assert hashlib.sha256(y).digest() != hashlib.sha256(t).digest()
+          print('V6_MASTER_RENDERED_FULL_CAPTIONS_YOUTUBE_TIKTOK')
+          PY
+
+      - name: Run independent YouTube TikTok final audit
+        id: audit
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          rm -f out/eclipsereview/preapproval_ai_audit.json
+          python audit-implementation/tools/tayvoriq_preapproval_ai_audit_v6.py --job-dir out/eclipsereview --targets youtube_tiktok
+
+      - name: Run YouTube TikTok publication quality gate
+        id: quality
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          python audit-implementation/tools/tayvoriq_publication_quality_gate_v2.py --job-dir out/eclipsereview --targets youtube_tiktok
+
+      - name: Build approval review
+        id: review
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          rm -rf site/tayvoriq
+          python audit-implementation/tools/tayvoriq_build_youtube_review_site.py --job-dir out/eclipsereview --site-root site/tayvoriq --run-id "${GITHUB_RUN_ID}"
+          cp out/eclipsereview/short_tiktok.mp4 site/tayvoriq/runs/${GITHUB_RUN_ID}/short_tiktok.mp4
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          run=os.environ['GITHUB_RUN_ID']
+          p=Path(f'site/tayvoriq/runs/{run}/index.html')
+          text=p.read_text(encoding='utf-8')
+          marker='</section>'
+          addition='<a class="download" href="./short_tiktok.mp4" download>⬇️ TikTok-MP4 herunterladen</a>'
+          if addition not in text:
+              text=text.replace(marker, addition+marker, 1)
+          text=text.replace('Nur YouTube. TikTok wurde wegen der fehlerhaften Aussprache nicht in diese Freigabe aufgenommen.', 'YouTube + TikTok geprüft. Beide Fassungen nutzen dieselben Szenen und vollständige Sprecher-Captions.')
+          p.write_text(text,encoding='utf-8')
+          latest=Path('site/tayvoriq/latest')
+          latest.mkdir(parents=True,exist_ok=True)
+          (latest/'short_tiktok.mp4').write_bytes(Path('out/eclipsereview/short_tiktok.mp4').read_bytes())
+          PY
+
+      - name: Publish approval review page
+        id: review_publish
+        run: |
+          set -euo pipefail
+          mkdir -p pages-worktree/tayvoriq/latest pages-worktree/tayvoriq/runs/${GITHUB_RUN_ID}
+          rsync -a --delete site/tayvoriq/latest/ pages-worktree/tayvoriq/latest/
+          rsync -a site/tayvoriq/runs/${GITHUB_RUN_ID}/ pages-worktree/tayvoriq/runs/${GITHUB_RUN_ID}/
+          cp site/tayvoriq/index.html pages-worktree/tayvoriq/index.html
+          touch pages-worktree/.nojekyll
+          cd pages-worktree
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tayvoriq .nojekyll
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish TAYVORIQ eclipse afterglow V6 review ${GITHUB_RUN_ID}"
+            git pull --rebase origin main
+            git push origin main
+          fi
+
+      - name: Send Telegram approval review
+        id: telegram
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          python audit-implementation/tools/tayvoriq_send_telegram.py \
+            --state SUCCESS \
+            --conclusion success \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --dashboard-url "" \
+            --review-id "${GITHUB_RUN_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+
+      - name: Upload V6 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-eclipse-afterglow-v6-${{ github.run_id }}
+          path: |
+            out/eclipsereview/**
+            site/tayvoriq/**
+          retention-days: 30
+          compression-level: 1
+
+      - name: Telegram precise failure
+        if: failure()
+        env:
+          DEPS: ${{ steps.deps.outcome }}
+          REFERENCE: ${{ steps.reference.outcome }}
+          GUARD: ${{ steps.guard.outcome }}
+          RENDER: ${{ steps.render.outcome }}
+          AUDIT: ${{ steps.audit.outcome }}
+          QUALITY: ${{ steps.quality.outcome }}
+          REVIEW: ${{ steps.review.outcome }}
+          REVIEW_PUBLISH: ${{ steps.review_publish.outcome }}
+          TELEGRAM: ${{ steps.telegram.outcome }}
+        run: |
+          set +e
+          stage="UNKNOWN"
+          if [ "$DEPS" != "success" ]; then stage="DEPENDENCIES";
+          elif [ "$REFERENCE" != "success" ]; then stage="VOICE_REFERENCE";
+          elif [ "$GUARD" != "success" ]; then stage="V6_FULL_CAPTION_GUARD";
+          elif [ "$RENDER" != "success" ]; then stage="V6_RENDER";
+          elif [ "$AUDIT" != "success" ]; then stage="YOUTUBE_TIKTOK_FINAL_AUDIT";
+          elif [ "$QUALITY" != "success" ]; then stage="YOUTUBE_TIKTOK_PUBLICATION_GATE";
+          elif [ "$REVIEW" != "success" ]; then stage="REVIEW_BUILD";
+          elif [ "$REVIEW_PUBLISH" != "success" ]; then stage="REVIEW_PUBLISH";
+          elif [ "$TELEGRAM" != "success" ]; then stage="TELEGRAM_REVIEW_DELIVERY"; fi
+          message=$(printf '❌ TAYVORIQ Sonnenfinsternis V6 noch nicht freigabefähig\n\nRun: %s\nStufe: %s\n\nSzenen und Story bleiben gesperrt. V6 ändert nur vollständige Sprecher-Captions, flüssigeres Voice-Pacing und den TikTok-Mix. Nichts veröffentlicht.' "$GITHUB_RUN_ID" "$stage")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null
