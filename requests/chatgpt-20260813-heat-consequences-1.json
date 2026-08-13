@@ -40,7 +40,7 @@
     ],
     "fallback_editorial_answers": {
       "what_happened": "In Deutschland drohen 38 Grad, Teile Europas nahe oder über 40.",
-      "why_happening": "Durch anhaltende Hochdrucklagen staut sich heiße Luft über Europa.",
+      "why_happening": "Weil anhaltende Hochdrucklagen heiße Luft über Europa stauen.",
       "who_is_affected": "Besonders betroffen sind Ältere, Kinder, chronisch Kranke und Außenarbeiter.",
       "personal_impact": "Für dich steigen Kreislaufstress, Schlafprobleme und Risiken durch Trockenheit und Brände.",
       "action_now": "Prüfe Hitzewarnungen, trinke regelmäßig, verschatte Räume und meide Mittagshitze."
@@ -57,10 +57,10 @@
       "visual_style": "hochwertig, dokumentarisch, realistisch, schnelle aber saubere Szenenwechsel, keine generischen Strandbilder",
       "target_duration_seconds": 35,
       "quality_reference": "Sonnenfinsternis-Short: hochwertige 9:16-Bildauswahl, klare Dramaturgie, natürliche tiefe Erzählerstimme",
-      "repair_note": "Quellengebundener Fallback exakt auf bestehende Editorial-Gates verdichtet: fünf Ein-Satz-Antworten, 38–49 Wörter, kausales Warum, direkte Zuschaueransprache und konkrete Verb-Handlung."
+      "repair_note": "Quellengebundener Fallback exakt auf bestehende Editorial-Gates verdichtet: fünf Ein-Satz-Antworten, 38–49 Wörter, expliziter kausaler Marker „Weil“, direkte Zuschaueransprache und konkrete Verb-Handlung. Repariert nach Run 31679932934; v34 akzeptiert „Weil“ als Ursachenmarker."
     }
   },
-  "source_context_sha256": "c903cda8e65c12c083cf7b73a3473dc50b6f9dfc5693882f44466cef89ba2997",
+  "source_context_sha256": "947b390e5935479c81b3e99f95ca5f6c680d8c39f71f2e2e53a5a303e2afd676",
   "state_history": [
     {
       "state": "APPROVED",
@@ -77,6 +77,12 @@
       "at": "2026-08-13T07:54:00Z",
       "actor": "chatgpt_control_plane",
       "detail": "Preserved verified sources; condensed source-bound editorial fallback to existing 38–49 word contract after run 31678843376."
+    },
+    {
+      "state": "V34_CAUSAL_MARKER_REPAIRED",
+      "at": "2026-08-13T08:09:00Z",
+      "actor": "chatgpt_control_plane",
+      "detail": "Run 31679932934 proved the source fallback was accepted at 49 words but v34 rejected why_happening because 'Durch' is not in its causal marker set. Rephrased the same verified cause with 'Weil' and kept all quality gates unchanged."
     }
   ]
 }
