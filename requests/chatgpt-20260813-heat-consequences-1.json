@@ -39,11 +39,11 @@
       }
     ],
     "fallback_editorial_answers": {
-      "what_happened": "Deutschland und große Teile Europas erleben erneut extreme Hitze. In Deutschland werden regional bis etwa 38 Grad erwartet, in Teilen Europas liegen die Werte nahe oder über 40 Grad.",
-      "why_happening": "Anhaltende Hochdrucklagen halten heiße Luft fest; zugleich verstärken trockene Böden und sehr warme Ausgangstemperaturen die Belastung.",
-      "who_is_affected": "Betroffen sind alle, besonders aber ältere Menschen, kleine Kinder, chronisch Kranke und Menschen, die draußen arbeiten. Gleichzeitig geraten Wälder, Landwirtschaft, Verkehr und Energieversorgung unter Druck.",
-      "personal_impact": "Die Folgen reichen von Kreislaufproblemen, Erschöpfung und Hitzschlag bis zu schlechter nächtlicher Erholung. Trockenheit erhöht die Waldbrandgefahr, und Hitze kann Stromerzeugung, Transportwege und Infrastruktur beeinträchtigen.",
-      "action_now": "Die heißesten Stunden möglichst meiden, regelmäßig trinken, Räume tagsüber verschatten und nachts kühlen sowie gefährdete Angehörige und Nachbarn aktiv im Blick behalten."
+      "what_happened": "In Deutschland drohen 38 Grad, Teile Europas nahe oder über 40.",
+      "why_happening": "Durch anhaltende Hochdrucklagen staut sich heiße Luft über Europa.",
+      "who_is_affected": "Besonders betroffen sind Ältere, Kinder, chronisch Kranke und Außenarbeiter.",
+      "personal_impact": "Für dich steigen Kreislaufstress, Schlafprobleme und Risiken durch Trockenheit und Brände.",
+      "action_now": "Prüfe Hitzewarnungen, trinke regelmäßig, verschatte Räume und meide Mittagshitze."
     },
     "editorial_direction": {
       "hook": "38 Grad in Deutschland, über 40 in Europa – und die Folgen treffen längst nicht nur unseren Körper.",
@@ -56,10 +56,11 @@
       ],
       "visual_style": "hochwertig, dokumentarisch, realistisch, schnelle aber saubere Szenenwechsel, keine generischen Strandbilder",
       "target_duration_seconds": 35,
-      "quality_reference": "Sonnenfinsternis-Short: hochwertige 9:16-Bildauswahl, klare Dramaturgie, natürliche tiefe Erzählerstimme"
+      "quality_reference": "Sonnenfinsternis-Short: hochwertige 9:16-Bildauswahl, klare Dramaturgie, natürliche tiefe Erzählerstimme",
+      "repair_note": "Quellengebundener Fallback exakt auf bestehende Editorial-Gates verdichtet: fünf Ein-Satz-Antworten, 38–49 Wörter, kausales Warum, direkte Zuschaueransprache und konkrete Verb-Handlung."
     }
   },
-  "source_context_sha256": "ad7794b7aef04880220a9cd9997454d3ff4c5596229a6a5bcee41bf09d173758",
+  "source_context_sha256": "c903cda8e65c12c083cf7b73a3473dc50b6f9dfc5693882f44466cef89ba2997",
   "state_history": [
     {
       "state": "APPROVED",
@@ -70,6 +71,12 @@
       "state": "DISPATCHED",
       "at": "2026-08-13T07:42:00Z",
       "actor": "chatgpt_control_plane"
+    },
+    {
+      "state": "EDITORIAL_FALLBACK_REPAIRED",
+      "at": "2026-08-13T07:54:00Z",
+      "actor": "chatgpt_control_plane",
+      "detail": "Preserved verified sources; condensed source-bound editorial fallback to existing 38–49 word contract after run 31678843376."
     }
   ]
 }
