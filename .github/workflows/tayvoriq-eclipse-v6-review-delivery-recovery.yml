@@ -1,0 +1,97 @@
+name: TAYVORIQ Eclipse V6 Review Delivery Recovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/run-now/tayvoriq-eclipse-v6-review-delivery-recovery.json'
+
+permissions:
+  contents: read
+
+env:
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  REVIEW_ID: '31672311139'
+
+jobs:
+  deliver-existing-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Checkout Telegram sender
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: audit-implementation
+          fetch-depth: 1
+
+      - name: Verify existing public V6 review package
+        id: verify
+        run: |
+          set -euo pipefail
+          BASE="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${REVIEW_ID}"
+          mkdir -p /tmp/v6-public
+          for path in index.html short_youtube.mp4 short_tiktok.mp4 job.json preapproval_ai_audit.json publication_quality_gate.json; do
+            echo "Checking ${BASE}/${path}"
+            success=false
+            for attempt in $(seq 1 40); do
+              if curl -fsSL --connect-timeout 10 --max-time 90 "${BASE}/${path}" -o "/tmp/v6-public/${path}"; then
+                if [ -s "/tmp/v6-public/${path}" ]; then success=true; break; fi
+              fi
+              sleep 3
+            done
+            [ "$success" = true ] || { echo "::error title=Public Pages propagation incomplete::${path}"; exit 1; }
+          done
+          echo '77d312fe8f1445d3e0a1cfc86c4ef35a155ec94a1844c787357583268c692059  /tmp/v6-public/short_youtube.mp4' | sha256sum -c -
+          echo '4794ab3d3f2c93a5c994448d52ff0da827c5f837d4e06b4bec162ae8377c7771  /tmp/v6-public/short_tiktok.mp4' | sha256sum -c -
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('/tmp/v6-public')
+          job=json.loads((root/'job.json').read_text(encoding='utf-8'))
+          audit=json.loads((root/'preapproval_ai_audit.json').read_text(encoding='utf-8'))
+          gate=json.loads((root/'publication_quality_gate.json').read_text(encoding='utf-8'))
+          assert job['quality_report']['passed'] is True
+          assert job['quality_report']['full_spoken_captions'] is True
+          assert job['quality_report']['editorial_summary_overlays_used'] is False
+          assert all(s['display_chunk'] == s['spoken_chunk'] for s in job['variants']['youtube_shorts']['text_package']['scenes'])
+          assert audit['passed'] is True and audit['human_review_allowed'] is True
+          assert audit['quality_gates_weakened'] is False and not audit.get('blockers')
+          assert set(audit['targets']) == {'youtube_shorts','tiktok'}
+          assert gate['passed'] is True and gate['quality_gates_weakened'] is False
+          assert set(gate['targets']) == {'youtube_shorts','tiktok'}
+          print('PUBLIC_V6_REVIEW_PACKAGE_READY')
+          PY
+
+      - name: Send existing Telegram approval review
+        id: telegram
+        env:
+          PYTHONPATH: ${{ github.workspace }}/audit-implementation:${{ github.workspace }}/audit-implementation/tools
+        run: |
+          set -euo pipefail
+          python audit-implementation/tools/tayvoriq_send_telegram.py \
+            --state SUCCESS \
+            --conclusion success \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --dashboard-url "" \
+            --review-id "${REVIEW_ID}" \
+            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${REVIEW_ID}/" \
+            --approval-mode manual
+
+      - name: Telegram precise delivery failure
+        if: failure()
+        env:
+          VERIFY: ${{ steps.verify.outcome }}
+          TELEGRAM: ${{ steps.telegram.outcome }}
+        run: |
+          set +e
+          stage="PUBLIC_PACKAGE_VERIFY"
+          if [ "$VERIFY" = "success" ] && [ "$TELEGRAM" != "success" ]; then stage="TELEGRAM_REVIEW_DELIVERY"; fi
+          message=$(printf '❌ TAYVORIQ V6 Review-Zustellung blockiert\n\nReview: %s\nStufe: %s\n\nDas bestandene Video wurde nicht verändert. Nichts veröffentlicht.' "$REVIEW_ID" "$stage")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null || true
