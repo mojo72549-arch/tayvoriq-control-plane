@@ -22,7 +22,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-x-golden-path
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   PYTHONUTF8: "1"
@@ -50,7 +50,9 @@ env:
   TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: "900"
   TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "210"
   TAYVORIQ_AUDIT_RETRY_DELAYS: "0,12,30"
-  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "2700"
+  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1800"
+  TAYVORIQ_VISUAL_REPAIR_TIMEOUT_SECONDS: "900"
+  TAYVORIQ_VOICE_REPAIR_TIMEOUT_SECONDS: "1200"
   TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "2"
   TAYVORIQ_APPROVED_TREND_PINNED: "true"
   TAYVORIQ_TELEGRAM_PROGRESS: "false"
@@ -69,12 +71,13 @@ env:
 jobs:
   orchestrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 80
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
 
       - name: Resolve approved X request
+        id: resolve_request
         shell: bash
         env:
           EVENT_TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
@@ -100,6 +103,8 @@ jobs:
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
               handle.write(f"TOPIC={topic}\n")
               handle.write(f"TREND_ID={trend_id}\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"trend_id={trend_id}\n")
           print(json.dumps({
               "request_resolution": "approved-x-request",
               "topic": topic,
@@ -191,6 +196,7 @@ jobs:
           PY
 
       - name: Materialize immutable verified source context
+        id: source_context
         shell: bash
         run: |
           set -euo pipefail
@@ -266,7 +272,21 @@ jobs:
 
           target = Path(os.environ["TAYVORIQ_SOURCE_CONTEXT_FILE"])
           target.write_text(json.dumps(source, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-          print(json.dumps({"source_context":"verified-and-materialized","request_id":data.get("request_id"),"request_file":str(request_path),"trend_id":trend_id,"source_count":len(sources),"independent_news_count":source.get("independent_news_count"),"sha256":digest,"quality_gates_weakened":False}, ensure_ascii=False))
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"SOURCE_CONTEXT_SHA256={digest}\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"sha256={digest}\n")
+              handle.write(f"trend_id={trend_id}\n")
+          print(json.dumps({
+              "source_context": "verified-and-materialized",
+              "request_id": data.get("request_id"),
+              "request_file": str(request_path),
+              "trend_id": trend_id,
+              "source_count": len(sources),
+              "independent_news_count": source.get("independent_news_count"),
+              "sha256": digest,
+              "quality_gates_weakened": False,
+          }, ensure_ascii=False))
           PY
 
       - name: Validate secrets and notify production start
@@ -315,6 +335,47 @@ jobs:
           path: pages-worktree
           fetch-depth: 1
 
+      - name: Restore dependency and model cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ${{ env.HF_HOME }}
+            ${{ env.TORCH_HOME }}
+          key: tayvoriq-deps-v2-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
+          restore-keys: |
+            tayvoriq-deps-v2-${{ runner.os }}-py311-
+
+      - name: Restore lean production checkpoint
+        id: restore_recovery_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: implementation/out/recovery-checkpoint
+          key: tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-
+
+      - name: Hydrate previous verified checkpoint
+        id: hydrate_recovery
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          restored=false
+          if [ -f out/recovery-checkpoint/meta.json ]; then
+            if python tools/tayvoriq_recovery_checkpoint_v1.py hydrate \
+              --checkpoint out/recovery-checkpoint \
+              --output-root out \
+              --trend-id "$TREND_ID" \
+              --source-sha256 "$SOURCE_CONTEXT_SHA256"; then
+              restored=true
+              echo "Lean production checkpoint restored; full trend/script/render restart will be skipped."
+            else
+              echo "Restored cache failed identity/integrity checks; discard and produce fresh."
+              rm -rf out/recovery-checkpoint
+            fi
+          fi
+          echo "restored=$restored" >> "$GITHUB_OUTPUT"
+
       - name: Record immutable production manifest
         run: |
           set -euo pipefail
@@ -322,9 +383,9 @@ jobs:
           CONTROL_SHA=$(git rev-parse HEAD)
           IMPLEMENTATION_SHA=$(git -C implementation rev-parse HEAD)
           PAGES_SHA=$(git -C pages-worktree rev-parse HEAD)
-          SOURCE_SHA=$(sha256sum "$TAYVORIQ_SOURCE_CONTEXT_FILE" | awk '{print $1}')
-          REQUEST_NONCE=$(python -c 'import json,pathlib; p=pathlib.Path(".github/run-now/tayvoriq-x-request.json"); print((json.loads(p.read_text()).get("request_nonce") if p.exists() else "") or "")')
-          python - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" "$REQUEST_NONCE" <<'PY'
+          SOURCE_SHA="${SOURCE_CONTEXT_SHA256:?canonical source context hash missing}"
+          REQUEST_NONCE=$(env -u PYTHONPATH python -I -c 'import json,pathlib; p=pathlib.Path(".github/run-now/tayvoriq-x-request.json"); print((json.loads(p.read_text()).get("request_nonce") if p.exists() else "") or "")')
+          env -u PYTHONPATH python -I - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" "$REQUEST_NONCE" <<'PY'
           import json, os, pathlib, sys
           payload = {
               "run_id": os.environ.get("GITHUB_RUN_ID"),
@@ -342,11 +403,14 @@ jobs:
               "approved_trend_pinned": True,
               "source_context_bound": True,
               "single_x_owner": True,
+              "restored_recovery_checkpoint": os.environ.get("RESTORED_CHECKPOINT") == "true",
               "quality_gates_weakened": False,
           }
           pathlib.Path("implementation/out/control-plane/production-manifest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print(json.dumps(payload, ensure_ascii=False))
           PY
+        env:
+          RESTORED_CHECKPOINT: ${{ steps.hydrate_recovery.outputs.restored }}
 
       - name: Install production dependencies
         run: |
@@ -359,25 +423,38 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq ffmpeg rsync git
           fi
-          python -m pip install --upgrade pip -q
+          export PIP_DISABLE_PIP_VERSION_CHECK=1
           python -m pip install -r implementation/requirements.txt pytest -q
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
           python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
 
       - name: Preflight
+        id: preflight
         working-directory: implementation
         run: |
           set -euo pipefail
           python -m compileall -q tools src runtime_patches
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
-      - name: Produce approved video with bounded checkpoint recovery
-        id: production
+      - name: Produce approved master or reuse checkpoint
+        id: controller
+        if: steps.preflight.outcome == 'success'
         working-directory: implementation
         shell: bash
+        env:
+          RESTORED_CHECKPOINT: ${{ steps.hydrate_recovery.outputs.restored }}
         run: |
           set -uo pipefail
           mkdir -p out/tayvoriq-self-heal
+
+          if [ "$RESTORED_CHECKPOINT" = "true" ]; then
+            echo "Controller bypassed: verified lean checkpoint is already hydrated."
+            echo "state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED" >> "$GITHUB_OUTPUT"
+            echo "process_exit=1" >> "$GITHUB_OUTPUT"
+            echo "reusable_master=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           set +e
           python tools/tayvoriq_autonomous_entrypoint.py \
             --trend-mode approved_trend \
@@ -400,40 +477,90 @@ jobs:
           process_exit=${PIPESTATUS[0]}
           set -e
           state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "TECHNICAL_FAILURE")')
-
-          if [ "$state" != "SUCCESS" ]; then
-            reusable_master=$(python - <<'PY'
+          reusable_master=$(python - <<'PY'
           from pathlib import Path
           import tayvoriq_resume_existing_render as resume
           print('true' if resume.rendered_candidates(Path('out/tayvoriq-youtube-tiktok')) else 'false')
           PY
-            )
-            if [ "$reusable_master" = "true" ]; then
-              echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
-              set +e
-              python tools/tayvoriq_resume_existing_render_v2.py \
-                --outdir out/tayvoriq-youtube-tiktok \
-                --site-root site/tayvoriq \
-                --run-id "${GITHUB_RUN_ID}" \
-                --state-out out/tayvoriq-review-state.json \
-                --report-out out/tayvoriq-self-heal/report.json \
-                2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
-              resume_exit=${PIPESTATUS[0]}
-              set -e
-              state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED")')
-              if [ "$resume_exit" -eq 0 ] && [ "$state" = "SUCCESS" ]; then
-                process_exit=0
-              else
-                process_exit="$resume_exit"
-              fi
-            else
-              echo "Checkpoint recovery skipped: no completed reusable master exists."
-            fi
-          fi
-
+          )
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "process_exit=$process_exit" >> "$GITHUB_OUTPUT"
-          test "$state" = "SUCCESS" && test "$process_exit" -eq 0
+          echo "reusable_master=$reusable_master" >> "$GITHUB_OUTPUT"
+          echo "Controller handoff: state=$state reusable_master=$reusable_master process_exit=$process_exit"
+          exit 0
+
+      - name: Prepare lean durable recovery checkpoint
+        id: prepare_checkpoint
+        if: steps.controller.outputs.reusable_master == 'true'
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_recovery_checkpoint_v1.py prepare \
+            --outdir out/tayvoriq-youtube-tiktok \
+            --checkpoint out/recovery-checkpoint \
+            --trend-id "$TREND_ID" \
+            --source-sha256 "$SOURCE_CONTEXT_SHA256" \
+            --controller-state "${{ steps.controller.outputs.state }}" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Persist lean recovery checkpoint immediately
+        if: steps.prepare_checkpoint.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: implementation/out/recovery-checkpoint
+          key: tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Repair only failed local checkpoints
+        id: checkpoint_recovery
+        if: steps.controller.outputs.state != 'SUCCESS' && steps.controller.outputs.reusable_master == 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
+          set +e
+          python tools/tayvoriq_resume_existing_render_v2.py \
+            --outdir out/tayvoriq-youtube-tiktok \
+            --site-root site/tayvoriq \
+            --run-id "${GITHUB_RUN_ID}" \
+            --state-out out/tayvoriq-review-state.json \
+            --report-out out/tayvoriq-self-heal/report.json \
+            2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
+          resume_exit=${PIPESTATUS[0]}
+          set -e
+          state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED")')
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "process_exit=$resume_exit" >> "$GITHUB_OUTPUT"
+          echo "Checkpoint handoff: state=$state process_exit=$resume_exit"
+          exit 0
+
+      - name: Assert publishable production output
+        id: production
+        if: always()
+        shell: bash
+        env:
+          PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
+          CONTROLLER_STATE: ${{ steps.controller.outputs.state }}
+          CONTROLLER_EXIT: ${{ steps.controller.outputs.process_exit }}
+          RECOVERY_STATE: ${{ steps.checkpoint_recovery.outputs.state }}
+          RECOVERY_EXIT: ${{ steps.checkpoint_recovery.outputs.process_exit }}
+        run: |
+          set -euo pipefail
+          if [ "$PREFLIGHT_OUTCOME" != "success" ]; then
+            echo "Production blocked before render: preflight outcome=$PREFLIGHT_OUTCOME"
+            exit 1
+          fi
+          if [ "$CONTROLLER_STATE" = "SUCCESS" ] && [ "${CONTROLLER_EXIT:-1}" = "0" ]; then
+            echo "Production completed directly by controller."
+            exit 0
+          fi
+          if [ "$RECOVERY_STATE" = "SUCCESS" ] && [ "${RECOVERY_EXIT:-1}" = "0" ]; then
+            echo "Production completed through localized checkpoint recovery."
+            exit 0
+          fi
+          echo "Production is not publishable: controller=$CONTROLLER_STATE/$CONTROLLER_EXIT recovery=$RECOVERY_STATE/$RECOVERY_EXIT"
+          exit 1
 
       - name: Validate publication quality
         id: publication_gate
@@ -534,15 +661,50 @@ jobs:
           message=$(printf '%s\n\n%s' "$headline" "$reason")
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null
 
-      - name: Upload diagnostics and preserved candidates
+      - name: Build lean diagnostics bundle
+        if: always()
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          set +e
+          rm -rf out/diagnostics-bundle
+          mkdir -p out/diagnostics-bundle/control-plane out/diagnostics-bundle/self-heal out/diagnostics-bundle/job
+          cp -f out/control-plane/*.json out/diagnostics-bundle/control-plane/ 2>/dev/null || true
+          cp -f out/tayvoriq-self-heal/*.json out/tayvoriq-self-heal/*.log out/diagnostics-bundle/self-heal/ 2>/dev/null || true
+          cp -f out/tayvoriq-review-state.json out/diagnostics-bundle/ 2>/dev/null || true
+          cp -f out/recovery-checkpoint/meta.json out/diagnostics-bundle/recovery-checkpoint-meta.json 2>/dev/null || true
+          python - <<'PY'
+          import shutil
+          from pathlib import Path
+          try:
+              import tayvoriq_resume_existing_render as resume
+              candidates = resume.rendered_candidates(Path('out/tayvoriq-youtube-tiktok'))
+          except Exception:
+              candidates = []
+          if candidates:
+              job_dir, _ = candidates[0]
+              target = Path('out/diagnostics-bundle/job')
+              for path in job_dir.iterdir():
+                  if path.is_file() and path.suffix.casefold() == '.json':
+                      shutil.copy2(path, target / path.name)
+              for platform in ('youtube_shorts', 'tiktok'):
+                  source = job_dir / platform
+                  if not source.is_dir():
+                      continue
+                  platform_target = target / platform
+                  platform_target.mkdir(parents=True, exist_ok=True)
+                  for path in source.iterdir():
+                      if path.is_file() and path.suffix.casefold() == '.json':
+                          shutil.copy2(path, platform_target / path.name)
+          PY
+
+      - name: Upload lean diagnostics
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: tayvoriq-x-${{ github.run_id }}-attempt-${{ github.run_attempt }}
-          path: |
-            implementation/out/**
-            implementation/site/tayvoriq/**
+          name: tayvoriq-x-diagnostics-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: implementation/out/diagnostics-bundle/**
           if-no-files-found: warn
-          retention-days: 30
-          compression-level: 1
+          retention-days: 14
+          compression-level: 6
