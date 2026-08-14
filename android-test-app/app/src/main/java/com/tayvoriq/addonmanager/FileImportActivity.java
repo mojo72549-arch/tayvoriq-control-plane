@@ -159,7 +159,9 @@ public final class FileImportActivity extends Activity {
 
         if (lower.endsWith(".zip")) {
             status.setText(fileName + "\n\nZIP wird lokal geprüft und dem passenden Spiel zugeordnet …");
-            new Thread(() -> analyzeZip(uri, fileName), "universal-zip-analysis").start();
+            final Uri zipUri = uri;
+            final String zipName = fileName;
+            new Thread(() -> analyzeZip(zipUri, zipName), "universal-zip-analysis").start();
             return;
         }
 
