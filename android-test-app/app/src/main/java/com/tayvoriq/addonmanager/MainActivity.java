@@ -72,13 +72,13 @@ public final class MainActivity extends Activity {
         hero.addView(product, matchWrap());
 
         TextView intro = text(
-                "Minecraft Bedrock + Spaceflight Simulator. Dateien lokal prüfen, ZIP-Inhalte erkennen und an das passende Spiel übergeben.",
+                "Minecraft Bedrock + Spaceflight Simulator. Dateien lokal prüfen, Pakete erkennen und sicher an das passende Spiel übergeben.",
                 15, MUTED, false);
         intro.setGravity(Gravity.CENTER);
         hero.addView(intro, matchWrap());
 
         TextView formats = text(
-                ".mcaddon   •   .mcpack   •   .mcworld   •   .zip",
+                ".mcaddon   •   .mcpack   •   .mcworld   •   .pack   •   .zip",
                 13, TEXT, true);
         formats.setGravity(Gravity.CENTER);
         formats.setPadding(0, dp(16), 0, 0);
@@ -94,7 +94,9 @@ public final class MainActivity extends Activity {
 
         games.addView(text("Automatische Erkennung", 18, TEXT, true), matchWrap());
         TextView gameInfo = text(
-                "Minecraft: Bedrock-Packs/Welten werden direkt an Minecraft übergeben.\n\nSpaceflight Simulator: ZIPs mit Blueprint.txt/Version.txt werden erkannt. Beim ersten Import wählst du einmal den Blueprints-Ordner; danach kann TAYVORIQ dort automatisch ablegen und Spaceflight Simulator starten.",
+                "Minecraft Bedrock: .mcaddon, .mcpack und .mcworld bleiben im bisherigen direkten Importpfad.\n\n"
+                        + "Spaceflight Simulator: .pack-Dateien werden als Custom Parts erkannt. ZIPs werden zuerst geprüft; enthaltene .pack-Dateien werden temporär extrahiert, verifiziert und gemeinsam installiert. Blueprints bleiben ebenfalls unterstützt.\n\n"
+                        + "Beim ersten SFS-Import bestätigst du einmal den passenden Ordner unter Android/media. TAYVORIQ merkt sich die Freigabe.",
                 14, MUTED, false);
         gameInfo.setPadding(0, dp(10), 0, 0);
         games.addView(gameInfo, matchWrap());
@@ -156,9 +158,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != PICK_FILE || resultCode != RESULT_OK || data == null || data.getData() == null) {
-            return;
-        }
+        if (requestCode != PICK_FILE || resultCode != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
         Intent handoff = new Intent(this, FileImportActivity.class);
         handoff.setAction(Intent.ACTION_VIEW);
@@ -194,14 +194,10 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams matchWrap() {
-        return new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
+        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
     }
 
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
+    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 
     @Override
     protected void onDestroy() {
