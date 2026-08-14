@@ -47,6 +47,20 @@
         </activity>
 
         <activity
+            android:name=".SfsPackImportActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="Spaceflight Mod mit TAYVORIQ installieren"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter android:priority="200">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" android:pathPattern=".*\.pack" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".FileImportActivity"
             android:excludeFromRecents="true"
             android:exported="true"
@@ -75,6 +89,7 @@
                 <data android:scheme="file" android:pathPattern=".*\.mcpack" />
                 <data android:scheme="file" android:pathPattern=".*\.mcworld" />
                 <data android:scheme="file" android:pathPattern=".*\.zip" />
+                <data android:scheme="file" android:pathPattern=".*\.pack" />
             </intent-filter>
 
             <intent-filter>
