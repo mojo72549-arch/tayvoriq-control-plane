@@ -6,14 +6,20 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.5.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.6.0"
+    CURRENT_PROJECT_VERSION: "2"
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    from: 0.9.20
 targets:
   TAYVORIQBedrock:
     type: application
     platform: iOS
     sources:
       - TAYVORIQBedrock
+    dependencies:
+      - package: ZIPFoundation
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.tayvoriq.addonmanager.ios
