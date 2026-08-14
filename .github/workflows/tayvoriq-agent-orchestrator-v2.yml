@@ -1,0 +1,161 @@
+name: TAYVORIQ Agent Orchestrator V2
+
+on:
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: Trend-Slot
+        required: true
+        default: morning
+        type: choice
+        options: [morning, afternoon]
+  schedule:
+    - cron: "30 4 * * *"
+    - cron: "30 5 * * *"
+    - cron: "30 12 * * *"
+    - cron: "30 13 * * *"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: tayvoriq-agent-orchestrator-v2
+  cancel-in-progress: false
+
+env:
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  trend-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      should_run: ${{ steps.slot.outputs.should_run }}
+      slot: ${{ steps.slot.outputs.slot }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Resolve Berlin slot and activation date
+        id: slot
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          INPUT_SLOT: ${{ inputs.slot || '' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          now = datetime.now(ZoneInfo('Europe/Berlin'))
+          event = os.environ.get('EVENT_NAME','')
+          schedule = os.environ.get('EVENT_SCHEDULE','')
+          requested = os.environ.get('INPUT_SLOT','')
+          slot = requested if event == 'workflow_dispatch' else ''
+          should = now.date().isoformat() >= '2026-08-15'
+          if event == 'schedule':
+              offset = int(now.utcoffset().total_seconds() // 3600)
+              expected = {
+                  'morning': '30 4 * * *' if offset == 2 else '30 5 * * *',
+                  'afternoon': '30 12 * * *' if offset == 2 else '30 13 * * *',
+              }
+              slot = next((name for name, cron in expected.items() if cron == schedule), '')
+              should = should and bool(slot)
+          if slot not in {'morning','afternoon'}:
+              should = False
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+              h.write(f"should_run={'true' if should else 'false'}\n")
+              h.write(f"slot={slot}\n")
+          print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
+          PY
+
+      - name: Generate grounded 5-trend ranking
+        if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_agent_trend_radar_v2.py \
+            --slot "${{ steps.slot.outputs.slot }}" \
+            --output /tmp/tayvoriq-trend-request.json \
+            --audit-output /tmp/tayvoriq-trend-audit.json
+
+      - name: Validate existing two-step contract
+        if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
+          assert d.get('agent_orchestrator') == 'v2'
+          assert len(d.get('trends') or []) == 5
+          assert [x.get('id') for x in d['trends']] == ['1','2','3','4','5']
+          for t in d['trends']:
+              assert len(t.get('sources') or []) >= 2
+              sc=t.get('source_context') or {}
+              assert sc.get('independent_news_count',0) >= 2
+              assert len(sc.get('sources') or []) >= 2
+              assert all((sc.get('fallback_editorial_answers') or {}).get(k) for k in ['what_happened','why_happening','who_is_affected','personal_impact','action_now'])
+          print('V2 trend request contract passed')
+          PY
+
+      - name: Persist canonical request without triggering legacy push workflows
+        if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          cp /tmp/tayvoriq-trend-request.json .github/run-now/tayvoriq-trend-request.json
+          selection_id=$(python -c "import json; print(json.load(open('/tmp/tayvoriq-trend-request.json'))['selection_id'])")
+          mkdir -p .automation/tayvoriq-agent-v2/sessions
+          cp /tmp/tayvoriq-trend-audit.json ".automation/tayvoriq-agent-v2/sessions/${selection_id}.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/run-now/tayvoriq-trend-request.json .automation/tayvoriq-agent-v2/sessions/
+          git commit -m "agent(v2): stage ${selection_id} trend ranking"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Send correct slot ranking to Telegram
+        if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          python - <<'PY' >/tmp/message.json
+          import json, os
+          d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
+          morning=d['slot']=='morning'
+          lines=[('🌅 TAYVORIQ Morgen-Trends' if morning else '🌆 TAYVORIQ Nachmittags-Trends'),'', 'Rangliste:']
+          for t in d['trends']:
+              lines.append(f"{t['id']}. {t['title']} — {t['score']} %")
+          lines += ['', 'Aktuell geprüft · mindestens 2 Quellen je Trend · Qualität vor Geschwindigkeit.', '', 'Schritt 1: Trendnummer wählen.', 'Schritt 2: Details prüfen und separat „Trend freigeben“ tippen.', '', 'Erst danach übernimmt Agent V2 Produktion, Reparaturen, Quality-Gates und Veröffentlichung selbstständig.']
+          sid=d['selection_id']
+          kb={'inline_keyboard':[[
+              {'text':'1️⃣ Trend 1','callback_data':f'select_trend:{sid}:1'},
+              {'text':'2️⃣ Trend 2','callback_data':f'select_trend:{sid}:2'}],[
+              {'text':'3️⃣ Trend 3','callback_data':f'select_trend:{sid}:3'},
+              {'text':'4️⃣ Trend 4','callback_data':f'select_trend:{sid}:4'}],[
+              {'text':'5️⃣ Trend 5','callback_data':f'select_trend:{sid}:5'}]]}
+          print(json.dumps({'chat_id':os.environ['TELEGRAM_CHAT_ID'],'text':'\n'.join(lines),'disable_web_page_preview':True,'reply_markup':kb}, ensure_ascii=False))
+          PY
+          curl --fail --silent --show-error --retry 3 --retry-all-errors \
+            -H 'Content-Type: application/json' \
+            -d @/tmp/message.json \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" > /tmp/telegram.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/telegram.json'))
+          assert d.get('ok') and (d.get('result') or {}).get('message_id'), d
+          print({'telegram_message_id':d['result']['message_id']})
+          PY
+
+      - name: Notify radar failure only
+        if: failure() && steps.slot.outputs.should_run == 'true'
+        continue-on-error: true
+        run: |
+          text="❌ TAYVORIQ Agent V2 konnte die aktuelle Trend-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet und kein bestehender Workflow verändert."
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
