@@ -1,0 +1,210 @@
+name: TAYVORIQ Agent AutoRelease V2
+
+on:
+  workflow_run:
+    workflows: ["TAYVORIQ-X Golden Path"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Golden-Path-Run-ID
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: tayvoriq-agent-autorelease-v2-${{ github.event.workflow_run.id || inputs.run_id }}
+  cancel-in-progress: false
+
+env:
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  autorelease:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Resolve V2 ownership
+        id: owner
+        env:
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+          EVENT_CONCLUSION: ${{ github.event.workflow_run.conclusion || '' }}
+          INPUT_RUN_ID: ${{ inputs.run_id || '' }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          run_id=str(os.environ.get('EVENT_RUN_ID') or os.environ.get('INPUT_RUN_ID') or '').strip()
+          if not run_id.isdigit(): raise SystemExit('invalid run id')
+          conclusion=str(os.environ.get('EVENT_CONCLUSION') or '').strip()
+          if not conclusion:
+              conclusion=subprocess.check_output(['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}','--jq','.conclusion // ""'],text=True).strip()
+          source=None; retry_count=0
+          for path in Path('requests').glob('*.json'):
+              try: d=json.loads(path.read_text(encoding='utf-8'))
+              except Exception: continue
+              if str(d.get('golden_path_run_id') or '') == run_id and '-agentv2' in str(d.get('selection_id') or ''):
+                  source={'request_path':str(path),'request':d}; break
+          if source is None:
+              map_path=Path(f'.automation/tayvoriq-agent-v2/run-map/{run_id}.json')
+              if map_path.is_file():
+                  m=json.loads(map_path.read_text(encoding='utf-8'))
+                  source={'request_path':str(map_path),'request':m}; retry_count=int(m.get('retry_count') or 0)
+          owned=source is not None
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+              h.write(f"owned={'true' if owned else 'false'}\nrun_id={run_id}\nconclusion={conclusion}\nretry_count={retry_count}\n")
+              if owned:
+                  d=source['request']
+                  h.write(f"topic={str(d.get('topic') or '').replace(chr(10),' ')}\ntrend_id={str(d.get('trend_id') or '')}\nselection_id={str(d.get('selection_id') or '')}\nrequest_path={source['request_path']}\n")
+          print({'run_id':run_id,'owned_by_v2':owned,'conclusion':conclusion,'retry_count':retry_count})
+          PY
+
+      - name: Ignore all non-V2 runs
+        if: steps.owner.outputs.owned != 'true'
+        run: echo "Run is not owned by Agent V2. Existing/manual behavior remains untouched."
+
+      - name: Bounded autonomous retry after failed V2 production
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion != 'success' && steps.owner.outputs.retry_count == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TOPIC: ${{ steps.owner.outputs.topic }}
+          TREND_ID: ${{ steps.owner.outputs.trend_id }}
+          SELECTION_ID: ${{ steps.owner.outputs.selection_id }}
+          ROOT_RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          before=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main -f topic="$TOPIC" -f trend_id="$TREND_ID"
+          new=""
+          for attempt in $(seq 1 18); do
+            sleep 5
+            new=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event workflow_dispatch --limit 10 --json databaseId --jq ".[] | select(.databaseId > $before) | .databaseId" | head -n 1)
+            [ -n "$new" ] && break
+          done
+          [ -n "$new" ] || { echo "retry run not found"; exit 1; }
+          mkdir -p .automation/tayvoriq-agent-v2/run-map
+          python - "$new" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          run=sys.argv[1]
+          payload={'run_id':run,'root_run_id':os.environ['ROOT_RUN_ID'],'retry_count':1,'selection_id':os.environ['SELECTION_ID'],'topic':os.environ['TOPIC'],'trend_id':os.environ['TREND_ID'],'agent_orchestrator':'v2'}
+          Path(f'.automation/tayvoriq-agent-v2/run-map/{run}.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .automation/tayvoriq-agent-v2/run-map/
+          git commit -m "agent(v2): map bounded retry ${new}"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          text="🔧 TAYVORIQ Agent V2 repariert autonom weiter. Der erste Produktionslauf ist fehlgeschlagen; genau ein begrenzter Wiederholungsversuch wurde gestartet. Für dich: ✅ Keine Aktion nötig."
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
+
+      - name: Stop after bounded retry failure
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion != 'success' && steps.owner.outputs.retry_count != '0'
+        run: |
+          text="❌ TAYVORIQ Agent V2 hat den begrenzten Self-Heal-Pfad ausgeschöpft. Es wurde nichts veröffentlicht. Bestehende Workflows wurden nicht verändert."
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
+
+      - name: Wait for verified review assets
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
+        env:
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          base="https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${RUN_ID}"
+          ready=false
+          for attempt in $(seq 1 15); do
+            ok=true
+            for file in job.json preapproval_ai_audit.json short_youtube.mp4 short_tiktok.mp4; do
+              code=$(curl -L -s -o /dev/null -w '%{http_code}' "${base}/${file}" || true)
+              [ "$code" = "200" ] || ok=false
+            done
+            if [ "$ok" = "true" ]; then ready=true; break; fi
+            sleep 8
+          done
+          [ "$ready" = "true" ] || { echo "verified review assets unavailable"; exit 1; }
+          curl -fsSL "${base}/job.json" -o /tmp/job.json
+          curl -fsSL "${base}/preapproval_ai_audit.json" -o /tmp/audit.json
+
+      - name: Independent V2 release gate
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
+        env:
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          python - <<'PY'
+          import json, os
+          job=json.load(open('/tmp/job.json',encoding='utf-8')); audit=json.load(open('/tmp/audit.json',encoding='utf-8'))
+          quality=job.get('quality_report') if isinstance(job.get('quality_report'),dict) else {}
+          assert quality.get('passed') is True, 'quality_report failed'
+          assert audit.get('passed') is True, 'preapproval audit failed'
+          assert audit.get('human_review_allowed') is True, 'review gate not passed'
+          assert audit.get('quality_gates_weakened') is False, 'quality gate integrity invalid'
+          assert not audit.get('blockers'), f"blockers={audit.get('blockers')}"
+          print({'run_id':os.environ['RUN_ID'],'agent_v2_release_gate':'passed','quality_gates_weakened':False})
+          PY
+
+      - name: Remove redundant manual review buttons from V2 message
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          set +e
+          gh run view "$RUN_ID" --log > /tmp/golden.log 2>/dev/null
+          message_id=$(grep -oE 'message_id=[0-9]+ state=SUCCESS' /tmp/golden.log | tail -n1 | grep -oE '[0-9]+' || true)
+          if [ -n "$message_id" ]; then
+            curl -fsS -H 'Content-Type: application/json' -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"message_id\":${message_id},\"reply_markup\":{\"inline_keyboard\":[]}}" "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup" >/dev/null
+          fi
+
+      - name: Create automatic approval record
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
+        env:
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-reviews
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          run=os.environ['RUN_ID']; path=Path(f'.automation/tayvoriq-reviews/{run}.json'); existing={}
+          if path.is_file():
+              try: existing=json.loads(path.read_text(encoding='utf-8'))
+              except Exception: existing={}
+          if not existing.get('platform_upload_performed'):
+              base=f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{run}'
+              record={**existing,'review_id':run,'status':'APPROVED','platform_upload_performed':False,'publication_pending':True,'approved_at':datetime.now(timezone.utc).isoformat(),'approved_via':'agent_orchestrator_v2_quality_gate','video_url':f'{base}/short_youtube.mp4','youtube_video_url':f'{base}/short_youtube.mp4','tiktok_video_url':f'{base}/short_tiktok.mp4','review_url':f'{base}/','tiktok_status':'MANUAL_UPLOAD_REQUIRED','quality_gates_weakened':False}
+              path.write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".automation/tayvoriq-reviews/${RUN_ID}.json"
+          if ! git diff --cached --quiet; then
+            git commit -m "agent(v2): auto-approve review ${RUN_ID} after strict gates"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Explicitly start existing YouTube publisher
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-auto-publish-approved.yml --ref main -f review_id="$RUN_ID"
+          text="✅ TAYVORIQ Agent V2: Alle unabhängigen Quality-Gates sind bestanden. YouTube-Veröffentlichung wurde automatisch gestartet; TikTok-Paket bleibt wie vereinbart zur manuellen Veröffentlichung. Für dich: ✅ Keine weitere Freigabe nötig."
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
