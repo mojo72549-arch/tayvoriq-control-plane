@@ -10,8 +10,8 @@ android {
         applicationId = "com.tayvoriq.addonmanager.test"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.6.1-universal-import"
+        versionCode = 11
+        versionName = "1.7.0-universal-import"
         manifestPlaceholders["admobAppId"] =
             "ca-app-pub-3940256099942544~3347511713"
     }
