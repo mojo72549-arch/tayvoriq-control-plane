@@ -1,0 +1,149 @@
+name: Build TAYVORIQ Universal Import v1.6.0
+
+on:
+  push:
+    branches:
+      - universal-import-v1.6.0
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+
+      - name: Build Universal APK
+        working-directory: android-test-app
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Verify ZIP and game routing
+        run: |
+          APK="android-test-app/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee android-badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee android-manifest.txt
+          grep -q "versionName='1.6.0-universal-import-debug'" android-badging.txt
+          grep -q "TAYVORIQ Universal Import" android-badging.txt
+          grep -q "com.mojang.minecraftpe" android-manifest.txt
+          grep -q "com.StefMorojna.SpaceflightSimulator" android-manifest.txt
+          grep -q "application/zip" android-manifest.txt
+          grep -q "FileProvider" android-manifest.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p delivery-android
+          cp "$APK" delivery-android/TAYVORIQ_Universal_Import_Android_v1.6.0.apk
+          sha256sum delivery-android/TAYVORIQ_Universal_Import_Android_v1.6.0.apk > delivery-android/SHA256SUMS.txt
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TAYVORIQ-Universal-Android-v1.6.0
+          path: delivery-android/*
+          if-no-files-found: error
+          retention-days: 14
+
+  ios-native:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios-bedrock-app
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        working-directory: ios-bedrock-app
+        run: xcodebuild -resolvePackageDependencies -project TAYVORIQBedrock.xcodeproj -scheme TAYVORIQBedrock
+
+      - name: Validate Universal document types
+        run: |
+          plutil -lint ios-bedrock-app/TAYVORIQBedrock/Info.plist
+          grep -q "mcaddon" ios-bedrock-app/TAYVORIQBedrock/Info.plist
+          grep -q "mcpack" ios-bedrock-app/TAYVORIQBedrock/Info.plist
+          grep -q "mcworld" ios-bedrock-app/TAYVORIQBedrock/Info.plist
+          grep -q "public.zip-archive" ios-bedrock-app/TAYVORIQBedrock/Info.plist
+          grep -q "ZIPFoundation" ios-bedrock-app/TAYVORIQBedrock/BedrockImportCoordinator.swift
+          grep -q "Spaceflight Simulator" ios-bedrock-app/TAYVORIQBedrock/BedrockImportCoordinator.swift
+          grep -q "Blueprint.txt" ios-bedrock-app/TAYVORIQBedrock/BedrockImportCoordinator.swift
+
+      - name: Build iOS Simulator app
+        working-directory: ios-bedrock-app
+        run: |
+          xcodebuild \
+            -project TAYVORIQBedrock.xcodeproj \
+            -scheme TAYVORIQBedrock \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-simulator \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build unsigned iPhone/iPad device app
+        working-directory: ios-bedrock-app
+        run: |
+          xcodebuild \
+            -project TAYVORIQBedrock.xcodeproj \
+            -scheme TAYVORIQBedrock \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Package iOS builds and source
+        run: |
+          mkdir -p delivery-ios
+          ditto -c -k --sequesterRsrc --keepParent \
+            ios-bedrock-app/build-simulator/Build/Products/Release-iphonesimulator/TAYVORIQBedrock.app \
+            delivery-ios/TAYVORIQ_Universal_iOS_Simulator_v1.6.0.app.zip
+          ditto -c -k --sequesterRsrc --keepParent \
+            ios-bedrock-app/build-device/Build/Products/Release-iphoneos/TAYVORIQBedrock.app \
+            delivery-ios/TAYVORIQ_Universal_iPhone_iPad_UNSIGNED_v1.6.0.app.zip
+          ditto -c -k --sequesterRsrc --keepParent \
+            ios-bedrock-app \
+            delivery-ios/TAYVORIQ_Universal_iOS_Source_v1.6.0.zip
+          cat > delivery-ios/IOS_DEVICE_INSTALLATION.txt <<'TXT'
+          TAYVORIQ Universal Import iOS v1.6.0 compiled for real iPhone/iPad hardware.
+          The device app is unsigned and needs Apple code signing/provisioning before installation on physical devices.
+          Minecraft Bedrock imports use the iOS document hand-off. Spaceflight Simulator ZIP blueprints are prepared from Blueprint.txt/Version.txt and installed into a user-selected accessible Blueprints folder.
+          TXT
+          shasum -a 256 delivery-ios/*.zip > delivery-ios/SHA256SUMS.txt
+
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TAYVORIQ-Universal-iOS-v1.6.0
+          path: delivery-ios/*
+          if-no-files-found: error
+          retention-days: 14
