@@ -1,10 +1,10 @@
 package com.tayvoriq.addonmanager;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -36,15 +36,15 @@ import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-/** Receives Minecraft Bedrock files and ZIP-based Spaceflight Simulator blueprints. */
+/** Receives Minecraft Bedrock files and safe ZIP packages for Spaceflight Simulator. */
 public final class FileImportActivity extends Activity {
     private static final String MINECRAFT_PACKAGE = "com.mojang.minecraftpe";
     private static final String MINECRAFT_MAIN_ACTIVITY = "com.mojang.minecraftpe.MainActivity";
     private static final String SPACEFLIGHT_PACKAGE = "com.StefMorojna.SpaceflightSimulator";
 
-    private static final int PICK_SPACEFLIGHT_BLUEPRINTS_FOLDER = 1601;
+    private static final int PICK_SPACEFLIGHT_TARGET_FOLDER = 1601;
     private static final String PREFS = "universal_import";
-    private static final String PREF_SFS_TREE = "spaceflight_blueprints_tree";
+    private static final String PREF_SFS_BLUEPRINT_TREE = "spaceflight_blueprints_tree";
 
     private static final long MAX_UNPACKED_BYTES = 750L * 1024L * 1024L;
     private static final long MAX_STAGED_FILE_BYTES = 300L * 1024L * 1024L;
@@ -62,6 +62,8 @@ public final class FileImportActivity extends Activity {
     private String fileName;
     private TextView status;
     private SpaceflightPayload pendingSpaceflight;
+    private Uri pendingGenericSpaceflightZipUri;
+    private String pendingGenericSpaceflightZipName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,7 +117,7 @@ public final class FileImportActivity extends Activity {
         card.addView(status, matchWrap());
 
         TextView info = text(
-                "Alles bleibt lokal. ZIPs werden zuerst geprüft und automatisch Minecraft Bedrock oder Spaceflight Simulator zugeordnet.",
+                "Alles bleibt lokal. ZIPs werden sicher geprüft. Eindeutige Pakete werden automatisch erkannt; bei anderen ZIPs wählst du das Zielspiel selbst.",
                 13, MUTED, false);
         info.setGravity(Gravity.CENTER);
         info.setPadding(dp(8), dp(8), dp(8), 0);
@@ -150,6 +152,7 @@ public final class FileImportActivity extends Activity {
         fileUri = uri;
         fileName = queryDisplayName(uri);
         String lower = fileName.toLowerCase(Locale.ROOT);
+        status.setTextColor(TEXT);
 
         if (isMinecraftExtension(lower)) {
             status.setText(fileName + "\n\nMinecraft Bedrock wird geöffnet …");
@@ -158,7 +161,7 @@ public final class FileImportActivity extends Activity {
         }
 
         if (lower.endsWith(".zip")) {
-            status.setText(fileName + "\n\nZIP wird lokal geprüft und dem passenden Spiel zugeordnet …");
+            status.setText(fileName + "\n\nZIP wird lokal geprüft …");
             final Uri zipUri = uri;
             final String zipName = fileName;
             new Thread(() -> analyzeZip(zipUri, zipName), "universal-zip-analysis").start();
@@ -175,6 +178,7 @@ public final class FileImportActivity extends Activity {
                 File staged = extractEntryToCache(source, inspection.nestedMinecraftEntry);
                 Uri stagedUri = shareUri(staged);
                 runOnUiThread(() -> {
+                    status.setTextColor(TEXT);
                     fileUri = stagedUri;
                     fileName = staged.getName();
                     status.setText("Minecraft Bedrock erkannt\n\n" + staged.getName() + " wird importiert …");
@@ -190,6 +194,7 @@ public final class FileImportActivity extends Activity {
                 File staged = copyUriToCache(source, stripExtension(originalName) + extension);
                 Uri stagedUri = shareUri(staged);
                 runOnUiThread(() -> {
+                    status.setTextColor(TEXT);
                     fileUri = stagedUri;
                     fileName = staged.getName();
                     status.setText("Minecraft Bedrock ZIP erkannt\n\nPaket wird als " + extension + " übergeben …");
@@ -200,16 +205,64 @@ public final class FileImportActivity extends Activity {
 
             if (inspection.spaceflightBlueprintEntry != null) {
                 SpaceflightPayload payload = extractSpaceflightPayload(source, inspection, originalName);
-                runOnUiThread(() -> prepareSpaceflightImport(payload));
+                runOnUiThread(() -> prepareSpaceflightBlueprintImport(payload));
                 return;
             }
 
-            runOnUiThread(() -> fail(
-                    "ZIP-Inhalt nicht erkannt. Erwartet wird ein Minecraft-Bedrock-Paket oder ein Spaceflight-Simulator-Blueprint mit Blueprint.txt."));
+            runOnUiThread(() -> showUnknownZipOptions(source, originalName, inspection.entries, inspection.unpackedBytes));
         } catch (Exception error) {
             String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
             runOnUiThread(() -> fail("ZIP-Prüfung fehlgeschlagen: " + message));
         }
+    }
+
+    private void showUnknownZipOptions(Uri source, String originalName, int entries, long unpackedBytes) {
+        status.setTextColor(CYAN);
+        status.setText(
+                "ZIP sicher geprüft\n\n" + originalName
+                        + "\n" + entries + " Einträge · " + readableBytes(unpackedBytes)
+                        + "\n\nDer Inhalt ist sicher lesbar, aber nicht eindeutig einem bekannten Pakettyp zuzuordnen.");
+
+        new AlertDialog.Builder(this)
+                .setTitle("ZIP-Ziel auswählen")
+                .setMessage("Die Datei wird nicht mehr pauschal abgelehnt. Wähle, wofür du dieses ZIP verwenden möchtest.")
+                .setPositiveButton("SPACEFLIGHT SIMULATOR", (dialog, which) -> prepareGenericSpaceflightZipImport(source, originalName))
+                .setNeutralButton("MINECRAFT VERSUCHEN", (dialog, which) -> stageUnknownZipAsMinecraft(source, originalName))
+                .setNegativeButton("ABBRECHEN", null)
+                .show();
+    }
+
+    private void stageUnknownZipAsMinecraft(Uri source, String originalName) {
+        status.setTextColor(TEXT);
+        status.setText("Minecraft-Versuch wird vorbereitet …");
+        new Thread(() -> {
+            try {
+                File staged = copyUriToCache(source, stripExtension(originalName) + ".mcpack");
+                Uri stagedUri = shareUri(staged);
+                runOnUiThread(() -> {
+                    fileUri = stagedUri;
+                    fileName = staged.getName();
+                    status.setText("ZIP wird testweise als Minecraft-Pack übergeben …");
+                    openMinecraft(fileName);
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> fail("Minecraft-Versuch fehlgeschlagen: " + error.getMessage()));
+            }
+        }, "minecraft-zip-fallback").start();
+    }
+
+    private void prepareGenericSpaceflightZipImport(Uri source, String originalName) {
+        if (!isAppInstalled(SPACEFLIGHT_PACKAGE)) {
+            fail("Spaceflight Simulator ist auf diesem Android-Gerät nicht installiert.");
+            return;
+        }
+        pendingSpaceflight = null;
+        pendingGenericSpaceflightZipUri = source;
+        pendingGenericSpaceflightZipName = originalName;
+        status.setTextColor(TEXT);
+        status.setText(
+                "Spaceflight Simulator gewählt.\n\nWähle jetzt den Zielordner innerhalb von Spaceflight Simulator aus. TAYVORIQ entpackt das ZIP dort sicher und behält die enthaltene Ordnerstruktur bei.");
+        openSpaceflightFolderPicker();
     }
 
     private ZipInspection inspectZip(Uri source) throws Exception {
@@ -264,7 +317,7 @@ public final class FileImportActivity extends Activity {
         }
 
         if (entries == 0) throw new IllegalStateException("Leeres oder ungültiges ZIP.");
-        return new ZipInspection(nestedMinecraft, manifests, levelDat, blueprint, version);
+        return new ZipInspection(nestedMinecraft, manifests, levelDat, blueprint, version, entries, unpacked);
     }
 
     private File extractEntryToCache(Uri source, String wantedEntry) throws Exception {
@@ -345,87 +398,181 @@ public final class FileImportActivity extends Activity {
         return out.toByteArray();
     }
 
-    private void prepareSpaceflightImport(SpaceflightPayload payload) {
+    private void prepareSpaceflightBlueprintImport(SpaceflightPayload payload) {
+        pendingGenericSpaceflightZipUri = null;
+        pendingGenericSpaceflightZipName = null;
         pendingSpaceflight = payload;
         if (!isAppInstalled(SPACEFLIGHT_PACKAGE)) {
             fail("Spaceflight Simulator ist auf diesem Android-Gerät nicht installiert.");
             return;
         }
 
-        String saved = getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_SFS_TREE, null);
+        String saved = getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_SFS_BLUEPRINT_TREE, null);
         if (saved != null) {
             try {
                 Uri treeUri = Uri.parse(saved);
                 DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
                 if (root != null && root.canWrite()) {
-                    importSpaceflightInto(root);
+                    importSpaceflightBlueprintInto(root);
                     return;
                 }
             } catch (Exception ignored) { }
         }
 
+        status.setTextColor(TEXT);
         status.setText(
-                "Spaceflight Simulator Blueprint erkannt.\n\nEinmalige Einrichtung: Wähle jetzt in Android den Blueprints-Ordner von Spaceflight Simulator. Danach kann TAYVORIQ weitere ZIP-Blueprints automatisch dort ablegen.");
+                "Spaceflight Simulator Blueprint erkannt.\n\nEinmalige Einrichtung: Wähle jetzt den Blueprints-Ordner von Spaceflight Simulator.");
+        openSpaceflightFolderPicker();
+    }
+
+    private void openSpaceflightFolderPicker() {
         Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                 | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
                 | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-        startActivityForResult(picker, PICK_SPACEFLIGHT_BLUEPRINTS_FOLDER);
+        startActivityForResult(picker, PICK_SPACEFLIGHT_TARGET_FOLDER);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != PICK_SPACEFLIGHT_BLUEPRINTS_FOLDER) return;
+        if (requestCode != PICK_SPACEFLIGHT_TARGET_FOLDER) return;
         if (resultCode != RESULT_OK || data == null || data.getData() == null) {
-            fail("Spaceflight-Ordner wurde nicht ausgewählt.");
+            fail("Spaceflight-Zielordner wurde nicht ausgewählt.");
             return;
         }
         Uri treeUri = data.getData();
         try {
             int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             getContentResolver().takePersistableUriPermission(treeUri, flags);
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(PREF_SFS_TREE, treeUri.toString()).apply();
             DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
             if (root == null || !root.canWrite()) throw new IllegalStateException("Ordner ist nicht beschreibbar.");
-            importSpaceflightInto(root);
+
+            if (pendingGenericSpaceflightZipUri != null) {
+                importGenericSpaceflightZipInto(root);
+            } else if (pendingSpaceflight != null) {
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(PREF_SFS_BLUEPRINT_TREE, treeUri.toString()).apply();
+                importSpaceflightBlueprintInto(root);
+            } else {
+                throw new IllegalStateException("Kein Spaceflight-Import vorbereitet.");
+            }
         } catch (Exception error) {
             fail("Spaceflight-Ordner konnte nicht verwendet werden: " + error.getMessage());
         }
     }
 
-    private void importSpaceflightInto(DocumentFile blueprintsRoot) throws Exception {
+    private void importSpaceflightBlueprintInto(DocumentFile blueprintsRoot) throws Exception {
         if (pendingSpaceflight == null) throw new IllegalStateException("Kein Blueprint vorbereitet.");
         String folderName = sanitizeFolderName(pendingSpaceflight.name);
         DocumentFile target = blueprintsRoot.findFile(folderName);
         if (target == null || !target.isDirectory()) target = blueprintsRoot.createDirectory(folderName);
         if (target == null) throw new IllegalStateException("Blueprint-Unterordner konnte nicht erstellt werden.");
 
-        writeDocument(target, "Blueprint.txt", pendingSpaceflight.blueprint);
+        writeDocument(target, "Blueprint.txt", pendingSpaceflight.blueprint, "text/plain");
         if (pendingSpaceflight.version != null) {
-            writeDocument(target, "Version.txt", pendingSpaceflight.version);
+            writeDocument(target, "Version.txt", pendingSpaceflight.version, "text/plain");
         }
 
+        status.setTextColor(TEXT);
         status.setText(
                 "Spaceflight Blueprint installiert\n\n" + folderName + " wurde im gewählten Blueprints-Ordner abgelegt. Spaceflight Simulator wird geöffnet …");
-        Intent launch = getPackageManager().getLaunchIntentForPackage(SPACEFLIGHT_PACKAGE);
-        if (launch != null && tryStart(launch)) {
-            pendingSpaceflight = null;
-            return;
-        }
-        fail("Blueprint wurde abgelegt, Spaceflight Simulator konnte aber nicht automatisch gestartet werden.");
+        pendingSpaceflight = null;
+        launchSpaceflight();
     }
 
-    private void writeDocument(DocumentFile folder, String name, byte[] data) throws Exception {
+    private void importGenericSpaceflightZipInto(DocumentFile targetRoot) throws Exception {
+        Uri source = pendingGenericSpaceflightZipUri;
+        String originalName = pendingGenericSpaceflightZipName;
+        if (source == null) throw new IllegalStateException("Kein Spaceflight-ZIP vorbereitet.");
+
+        InputStream raw = getContentResolver().openInputStream(source);
+        if (raw == null) throw new IllegalStateException("ZIP konnte nicht geöffnet werden.");
+        byte[] buffer = new byte[32 * 1024];
+        long unpacked = 0;
+        int entries = 0;
+
+        try (raw; ZipInputStream zip = new ZipInputStream(raw)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                entries++;
+                if (entries > MAX_ENTRIES) throw new IllegalStateException("Zu viele Dateien im ZIP.");
+                String name = safeEntryName(entry.getName());
+                String lower = name.toLowerCase(Locale.ROOT);
+                if (isBlockedExecutable(lower)) {
+                    throw new IllegalStateException("Ausführbare Datei im ZIP blockiert: " + name);
+                }
+
+                if (entry.isDirectory() || name.endsWith("/")) {
+                    ensureDirectory(targetRoot, trimTrailingSlash(name));
+                    zip.closeEntry();
+                    continue;
+                }
+
+                int slash = name.lastIndexOf('/');
+                String parentPath = slash >= 0 ? name.substring(0, slash) : "";
+                String leaf = slash >= 0 ? name.substring(slash + 1) : name;
+                DocumentFile parent = ensureDirectory(targetRoot, parentPath);
+                DocumentFile existing = parent.findFile(leaf);
+                if (existing != null) existing.delete();
+                DocumentFile output = parent.createFile("application/octet-stream", leaf);
+                if (output == null) throw new IllegalStateException("Datei konnte nicht erstellt werden: " + name);
+
+                try (OutputStream out = getContentResolver().openOutputStream(output.getUri(), "w")) {
+                    if (out == null) throw new IllegalStateException("Datei konnte nicht geschrieben werden: " + name);
+                    int read;
+                    while ((read = zip.read(buffer)) != -1) {
+                        unpacked += read;
+                        if (unpacked > MAX_UNPACKED_BYTES) {
+                            throw new IllegalStateException("ZIP ist entpackt größer als 750 MB.");
+                        }
+                        out.write(buffer, 0, read);
+                    }
+                }
+                zip.closeEntry();
+            }
+        }
+
+        pendingGenericSpaceflightZipUri = null;
+        pendingGenericSpaceflightZipName = null;
+        status.setTextColor(TEXT);
+        status.setText(
+                "Spaceflight ZIP importiert\n\n" + originalName + " wurde mit " + entries + " Einträgen in den gewählten Zielordner entpackt. Spaceflight Simulator wird geöffnet …");
+        launchSpaceflight();
+    }
+
+    private DocumentFile ensureDirectory(DocumentFile root, String path) {
+        if (path == null || path.isBlank()) return root;
+        DocumentFile current = root;
+        String[] parts = path.split("/");
+        for (String part : parts) {
+            if (part == null || part.isBlank()) continue;
+            String safe = sanitizeFolderName(part);
+            DocumentFile next = current.findFile(safe);
+            if (next == null || !next.isDirectory()) {
+                next = current.createDirectory(safe);
+            }
+            if (next == null) throw new IllegalStateException("Ordner konnte nicht erstellt werden: " + safe);
+            current = next;
+        }
+        return current;
+    }
+
+    private void writeDocument(DocumentFile folder, String name, byte[] data, String mime) throws Exception {
         DocumentFile existing = folder.findFile(name);
         if (existing != null) existing.delete();
-        DocumentFile file = folder.createFile("text/plain", name);
+        DocumentFile file = folder.createFile(mime, name);
         if (file == null) throw new IllegalStateException(name + " konnte nicht erstellt werden.");
         try (OutputStream out = getContentResolver().openOutputStream(file.getUri(), "w")) {
             if (out == null) throw new IllegalStateException(name + " konnte nicht beschrieben werden.");
             out.write(data);
         }
+    }
+
+    private void launchSpaceflight() {
+        Intent launch = getPackageManager().getLaunchIntentForPackage(SPACEFLIGHT_PACKAGE);
+        if (launch != null && tryStart(launch)) return;
+        fail("Dateien wurden abgelegt, Spaceflight Simulator konnte aber nicht automatisch gestartet werden.");
     }
 
     private void openMinecraft(String currentFileName) {
@@ -522,14 +669,14 @@ public final class FileImportActivity extends Activity {
 
     private static String safeEntryName(String raw) {
         String name = raw == null ? "" : raw.replace('\\', '/');
-        if (name.startsWith("/") || name.contains("../") || name.equals("..")) {
+        if (name.startsWith("/") || name.contains("../") || name.equals("..") || name.matches("^[A-Za-z]:.*")) {
             throw new IllegalStateException("Unsicherer ZIP-Pfad blockiert: " + name);
         }
         return name;
     }
 
     private static boolean isBlockedExecutable(String lower) {
-        String[] blocked = {".apk", ".exe", ".dex", ".so", ".jar", ".msi", ".bat", ".cmd", ".ps1", ".sh"};
+        String[] blocked = {".apk", ".aab", ".exe", ".dll", ".dex", ".so", ".jar", ".class", ".msi", ".bat", ".cmd", ".ps1", ".sh", ".scr", ".com"};
         for (String ext : blocked) if (lower.endsWith(ext)) return true;
         return false;
     }
@@ -570,6 +717,12 @@ public final class FileImportActivity extends Activity {
         return sanitizeFileName(slash >= 0 ? path.substring(slash + 1) : path);
     }
 
+    private static String trimTrailingSlash(String value) {
+        String result = value;
+        while (result.endsWith("/")) result = result.substring(0, result.length() - 1);
+        return result;
+    }
+
     private static String sanitizeFileName(String value) {
         String safe = value.replaceAll("[^A-Za-z0-9._ -]", "_").trim();
         return safe.isEmpty() ? "import.bin" : safe;
@@ -577,7 +730,15 @@ public final class FileImportActivity extends Activity {
 
     private static String sanitizeFolderName(String value) {
         String safe = stripExtension(value).replaceAll("[^A-Za-z0-9._ -]", "_").trim();
-        return safe.isEmpty() ? "TAYVORIQ Blueprint" : safe;
+        return safe.isEmpty() ? "TAYVORIQ Import" : safe;
+    }
+
+    private static String readableBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        double kb = bytes / 1024.0;
+        if (kb < 1024) return String.format(Locale.GERMANY, "%.1f KB", kb);
+        double mb = kb / 1024.0;
+        return String.format(Locale.GERMANY, "%.1f MB", mb);
     }
 
     private void fail(String message) {
@@ -619,7 +780,9 @@ public final class FileImportActivity extends Activity {
             int minecraftManifestCount,
             boolean minecraftLevelDat,
             String spaceflightBlueprintEntry,
-            String spaceflightVersionEntry) { }
+            String spaceflightVersionEntry,
+            int entries,
+            long unpackedBytes) { }
 
     private record SpaceflightPayload(String name, byte[] blueprint, byte[] version) { }
 }
