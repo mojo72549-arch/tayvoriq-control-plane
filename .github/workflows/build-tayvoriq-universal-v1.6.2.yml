@@ -17,54 +17,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch Spaceflight folder picker and version
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          java = Path('android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java')
-          text = java.read_text()
-          old = '''    private void openSpaceflightFolderPicker() {
-        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-        startActivityForResult(picker, PICK_SPACEFLIGHT_TARGET_FOLDER);
-    }
-'''
-          new = '''    private void openSpaceflightFolderPicker() {
-        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-
-        // SFS 1.6 keeps user-accessible content below Android/media instead of Android/data.
-        // Start the system picker inside the Spaceflight Simulator tree so the user is not
-        // left at the storage root, which Android intentionally refuses as a selectable tree.
-        String documentId = pendingSpaceflight != null
-                ? "primary:Android/media/com.StefMorojna.SpaceflightSimulator/files/Saving/Blueprints"
-                : "primary:Android/media/com.StefMorojna.SpaceflightSimulator";
-        try {
-            Uri initialUri = android.provider.DocumentsContract.buildDocumentUri(
-                    "com.android.externalstorage.documents", documentId);
-            picker.putExtra("android.provider.extra.INITIAL_URI", initialUri);
-        } catch (RuntimeException ignored) {
-            // Vendor file pickers may ignore the initial location; the normal picker still works.
-        }
-        startActivityForResult(picker, PICK_SPACEFLIGHT_TARGET_FOLDER);
-    }
-'''
-          if old not in text:
-              raise SystemExit('openSpaceflightFolderPicker block not found')
-          java.write_text(text.replace(old, new))
-
-          gradle = Path('android-test-app/app/build.gradle.kts')
-          g = gradle.read_text()
-          g = g.replace('versionCode = 9', 'versionCode = 10')
-          g = g.replace('versionName = "1.6.1-universal-import"', 'versionName = "1.6.2-universal-import"')
-          gradle.write_text(g)
-          PY
+      - name: Patch Spaceflight picker and version
+        run: python3 scripts/patch_sfs_picker_v162.py
 
       - name: Verify source patch
         run: |
