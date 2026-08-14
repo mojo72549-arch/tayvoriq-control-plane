@@ -1,0 +1,200 @@
+name: Build TAYVORIQ Universal Import v1.7.0
+
+on:
+  push:
+    branches:
+      - universal-import-v1.7.0
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Minecraft source untouched in branch
+        run: |
+          git fetch origin universal-import-v1.6.2:refs/remotes/origin/universal-import-v1.6.2
+          git diff --exit-code origin/universal-import-v1.6.2 -- \
+            android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java
+
+      - name: Add isolated SFS routing to stable importer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          p = Path('android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java')
+          text = p.read_text()
+
+          def minecraft_block(value: str) -> str:
+              start = value.index('    private void openMinecraft(String currentFileName) {')
+              end = value.index('    private Intent legacyViewIntent() {', start)
+              return value[start:end]
+
+          minecraft_before = hashlib.sha256(minecraft_block(text).encode()).hexdigest()
+
+          direct_needle = '''        if (lower.endsWith(".zip")) {
+            status.setText(fileName + "\\n\\nZIP wird lokal geprüft …");'''
+          direct_replacement = '''        if (lower.endsWith(".pack")) {
+            status.setText("🚀 Spaceflight Simulator Mod erkannt\\n\\n" + fileName + " wird vorbereitet …");
+            Intent sfsPack = new Intent(this, SfsPackImportActivity.class);
+            sfsPack.setAction(Intent.ACTION_VIEW);
+            sfsPack.setData(uri);
+            sfsPack.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(sfsPack);
+            finish();
+            return;
+        }
+
+        if (lower.endsWith(".zip")) {
+            status.setText(fileName + "\\n\\nZIP wird lokal geprüft …");'''
+          if direct_needle not in text:
+              raise SystemExit('direct .pack insertion point not found')
+          text = text.replace(direct_needle, direct_replacement, 1)
+
+          decl_needle = '''        String blueprintParent = null;
+        byte[] buffer = new byte[32 * 1024];'''
+          decl_replacement = '''        String blueprintParent = null;
+        int sfsPackCount = 0;
+        byte[] buffer = new byte[32 * 1024];'''
+          if decl_needle not in text:
+              raise SystemExit('SFS pack counter declaration point not found')
+          text = text.replace(decl_needle, decl_replacement, 1)
+
+          scan_needle = '''                if (isMinecraftExtension(lower) && nestedMinecraft == null) {
+                    nestedMinecraft = name;
+                }
+                if (lower.equals("manifest.json") || lower.endsWith("/manifest.json")) manifests++;'''
+          scan_replacement = '''                if (isMinecraftExtension(lower) && nestedMinecraft == null) {
+                    nestedMinecraft = name;
+                }
+                if (lower.endsWith(".pack")) sfsPackCount++;
+                if (lower.equals("manifest.json") || lower.endsWith("/manifest.json")) manifests++;'''
+          if scan_needle not in text:
+              raise SystemExit('ZIP scan insertion point not found')
+          text = text.replace(scan_needle, scan_replacement, 1)
+
+          route_needle = '''            if (inspection.spaceflightBlueprintEntry != null) {
+                SpaceflightPayload payload = extractSpaceflightPayload(source, inspection, originalName);
+                runOnUiThread(() -> prepareSpaceflightBlueprintImport(payload));
+                return;
+            }
+
+            runOnUiThread(() -> showUnknownZipOptions(source, originalName, inspection.entries, inspection.unpackedBytes));'''
+          route_replacement = '''            if (inspection.sfsPackCount > 0) {
+                runOnUiThread(() -> {
+                    status.setTextColor(TEXT);
+                    status.setText("Spaceflight Custom Parts erkannt\\n\\n" + inspection.sfsPackCount + " .pack-Datei(en) werden vorbereitet …");
+                    Intent sfsPack = new Intent(this, SfsPackImportActivity.class);
+                    sfsPack.setAction(Intent.ACTION_VIEW);
+                    sfsPack.setData(source);
+                    sfsPack.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(sfsPack);
+                    finish();
+                });
+                return;
+            }
+
+            if (inspection.spaceflightBlueprintEntry != null) {
+                SpaceflightPayload payload = extractSpaceflightPayload(source, inspection, originalName);
+                runOnUiThread(() -> prepareSpaceflightBlueprintImport(payload));
+                return;
+            }
+
+            runOnUiThread(() -> showUnknownZipOptions(source, originalName, inspection.entries, inspection.unpackedBytes));'''
+          if route_needle not in text:
+              raise SystemExit('ZIP SFS routing insertion point not found')
+          text = text.replace(route_needle, route_replacement, 1)
+
+          return_needle = 'return new ZipInspection(nestedMinecraft, manifests, levelDat, blueprint, version, entries, unpacked);'
+          if return_needle not in text:
+              raise SystemExit('ZipInspection constructor not found')
+          text = text.replace(return_needle,
+              'return new ZipInspection(nestedMinecraft, manifests, levelDat, blueprint, version, sfsPackCount, entries, unpacked);', 1)
+
+          record_needle = '''            String spaceflightBlueprintEntry,
+            String spaceflightVersionEntry,
+            int entries,'''
+          record_replacement = '''            String spaceflightBlueprintEntry,
+            String spaceflightVersionEntry,
+            int sfsPackCount,
+            int entries,'''
+          if record_needle not in text:
+              raise SystemExit('ZipInspection record point not found')
+          text = text.replace(record_needle, record_replacement, 1)
+
+          minecraft_after = hashlib.sha256(minecraft_block(text).encode()).hexdigest()
+          if minecraft_before != minecraft_after:
+              raise SystemExit('Minecraft openMinecraft block changed unexpectedly')
+
+          p.write_text(text)
+          print('Minecraft openMinecraft SHA-256 unchanged:', minecraft_after)
+          PY
+
+      - name: Verify SFS source safeguards
+        run: |
+          grep -q 'lower.endsWith(".pack")' android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java
+          grep -q 'inspection.sfsPackCount > 0' android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java
+          grep -q 'MessageDigest.getInstance("SHA-256")' android-test-app/app/src/main/java/com/tayvoriq/addonmanager/SfsPackImportActivity.java
+          grep -q 'renameTo(backupName)' android-test-app/app/src/main/java/com/tayvoriq/addonmanager/SfsPackImportActivity.java
+          grep -q 'PREF_SFS_PARTS_TREE' android-test-app/app/src/main/java/com/tayvoriq/addonmanager/SfsPackImportActivity.java
+          grep -q 'PC-/ausführbarer Mod-Bestandteil' android-test-app/app/src/main/java/com/tayvoriq/addonmanager/SfsPackImportActivity.java
+          grep -q 'Custom_Assets/Parts' android-test-app/app/src/main/java/com/tayvoriq/addonmanager/SfsPackImportActivity.java
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+
+      - name: Build APK
+        working-directory: android-test-app
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Verify APK and legacy Minecraft handlers
+        run: |
+          APK="android-test-app/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee android-badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee android-manifest.txt
+          grep -q "versionName='1.7.0-universal-import-debug'" android-badging.txt
+          grep -q 'SfsPackImportActivity' android-manifest.txt
+          grep -q 'com.StefMorojna.SpaceflightSimulator' android-manifest.txt
+          grep -q '\\.pack' android-manifest.txt
+          grep -q '\\.mcaddon' android-manifest.txt
+          grep -q '\\.mcpack' android-manifest.txt
+          grep -q '\\.mcworld' android-manifest.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p delivery
+          cp "$APK" delivery/TAYVORIQ_Universal_Import_Android_v1.7.0.apk
+          sha256sum delivery/TAYVORIQ_Universal_Import_Android_v1.7.0.apk > delivery/SHA256SUMS.txt
+          ls -lh delivery
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TAYVORIQ-Universal-Android-v1.7.0
+          path: delivery/*
+          if-no-files-found: error
+          retention-days: 14
