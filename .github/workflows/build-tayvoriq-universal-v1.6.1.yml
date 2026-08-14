@@ -1,0 +1,72 @@
+name: Build TAYVORIQ Universal Import v1.6.1
+
+on:
+  push:
+    branches:
+      - universal-import-v1.6.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+
+      - name: Verify hotfix source
+        run: |
+          grep -q "ZIP-Ziel auswählen" android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java
+          grep -q "SPACEFLIGHT SIMULATOR" android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java
+          grep -q "MINECRAFT VERSUCHEN" android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java
+          grep -q "importGenericSpaceflightZipInto" android-test-app/app/src/main/java/com/tayvoriq/addonmanager/FileImportActivity.java
+
+      - name: Build Universal APK
+        working-directory: android-test-app
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Verify APK
+        run: |
+          APK="android-test-app/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | tee android-badging.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee android-manifest.txt
+          grep -q "versionName='1.6.1-universal-import-debug'" android-badging.txt
+          grep -q "TAYVORIQ Universal Import" android-badging.txt
+          grep -q "com.mojang.minecraftpe" android-manifest.txt
+          grep -q "com.StefMorojna.SpaceflightSimulator" android-manifest.txt
+          grep -q "application/zip" android-manifest.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p delivery-android
+          cp "$APK" delivery-android/TAYVORIQ_Universal_Import_Android_v1.6.1.apk
+          sha256sum delivery-android/TAYVORIQ_Universal_Import_Android_v1.6.1.apk > delivery-android/SHA256SUMS.txt
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TAYVORIQ-Universal-Android-v1.6.1
+          path: delivery-android/*
+          if-no-files-found: error
+          retention-days: 14
