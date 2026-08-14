@@ -1,0 +1,86 @@
+{
+  "request_id": "chatgpt-20260814-heat-economy-human-climate-v7-editorial-contract",
+  "status": "APPROVED",
+  "source": "chatgpt_localized_recovery",
+  "trend_id": "1",
+  "topic": "Die Folgen der aktuellen Hitzewelle für Europa – klar getrennt nach Wirtschaft, Mensch sowie Klima und Natur",
+  "trend_scope": "world_society",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 45,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-14T12:36:00Z",
+  "approval_key": "chatgpt:20260814:heat-economy-human-climate-v7-editorial-contract",
+  "mode": "full",
+  "selection_id": "chatgpt-20260814-heat-economy-human-climate",
+  "recovery_from_golden_path_run_id": 31800911258,
+  "recovery_scope": [
+    "EDITORIAL_FALLBACK"
+  ],
+  "preserve_sources": true,
+  "preserve_semantic_structure": true,
+  "quality_gates_weakened": false,
+  "source_context": {
+    "verified_at": "2026-08-13T22:05:00Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/business/energy/heatwave-expected-limit-15-frances-nuclear-fleet-friday-2026-08-13/",
+        "supports": "Die aktuelle Hitzewelle begrenzt in Frankreich die Kernkraftproduktion; für Freitag werden rund 15 Prozent weniger verfügbare Nuklearkapazität erwartet. Strompreise stiegen deutlich, weil Hitze und warme Flüsse die Kühlung einschränken."
+      },
+      {
+        "publisher": "Associated Press",
+        "url": "https://apnews.com/article/b44ab4a0d37c1ef7c4f66de8effe567b",
+        "supports": "Die europäische Dürre und wiederholte Hitzeperioden drücken Ernten, belasten Landwirtschaft und Wasserreserven und stören über niedrige Flusspegel auch Transporte."
+      },
+      {
+        "publisher": "WHO Europe",
+        "url": "https://www.who.int/europe/news/item/11-06-2026-statement---europe-lost-200-000-people-to-heat-in-4-years-yet-nearly-all-of-them-were-preventable",
+        "supports": "Extreme Hitze ist in Europa ein Gesundheitsrisiko. WHO Europe berichtet von mehr als 200.000 hitzebedingten Todesfällen in EU und assoziierten Ländern über die vergangenen vier Jahre."
+      },
+      {
+        "publisher": "Copernicus Climate Change Service",
+        "url": "https://climate.copernicus.eu/copernicus-record-heatwave-brings-hottest-june-western-europe-during-second-warmest-june-globally",
+        "supports": "Westliches Europa hatte im Juni 2026 den wärmsten Juni der Messreihe. Trockenheit, niedrige Bodenfeuchte und unterdurchschnittliche Flussabflüsse verstärkten Dürre- und Waldbrandrisiken."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Wirtschaft: Hitze drosselt Frankreichs Atomstrom und belastet Ernten und Flusstransporte.",
+      "why_happening": "Weil warme Flüsse und trockene Böden Energieversorgung und Wälder belasten.",
+      "who_is_affected": "Mensch: Gefährdet sind Ältere, Kranke und Menschen im Freien.",
+      "personal_impact": "Für dich sichtbar: Klima und Natur leiden; Trockenheit erhöht Waldbrandrisiken.",
+      "action_now": "Prüfe heute Warnungen, schütze gefährdete Menschen."
+    },
+    "editorial_direction": {
+      "hook": "Diese Hitzewelle kostet Europa längst mehr als Schweiß.",
+      "story_order": [
+        "WIRTSCHAFT: Energie, Landwirtschaft und Transport mit mindestens einem konkreten aktuellen Beispiel",
+        "MENSCH: Gesundheitsbelastung und gefährdete Gruppen, klar getrennt vom Wirtschaftsblock",
+        "KLIMA_NATUR: Dürre, Bodenfeuchte, Flüsse und Waldbrandrisiko; nicht fälschlich behaupten, die Hitzewelle verursache den Klimawandel",
+        "kurze persönliche Einordnung und CTA"
+      ],
+      "mandatory_spoken_labels": [
+        "Wirtschaft",
+        "Mensch",
+        "Klima und Natur"
+      ],
+      "mandatory_distinctness": "Die drei Wirkungsebenen müssen akustisch klar getrennt und in dieser Reihenfolge genannt werden.",
+      "visual_style": "dokumentarisch-realistisch; Wirtschaft mit Energie/Landwirtschaft/Flusslogistik, Mensch mit Stadt/Arbeit/gefährdeten Personen, Klima-Natur mit trockenen Böden/Flüssen/Waldbrand. Keine generischen Thermometer- oder Strand-Füllbilder.",
+      "semantic_gate": "FAIL, wenn der Short wie ein allgemeines Hitzewarnungs- oder Gesundheitsvideo wirkt. PASS nur wenn Wirtschaft, Mensch und Klima/Natur jeweils eine eigene konkrete, quellengebundene Folge erhalten.",
+      "voice_pacing_repair": "Keep the unchanged natural narrator gate of 108-150 WPM. Keep the verified body compact while satisfying the causal and minimum-length editorial contract. Do not weaken ASR, pronunciation, postmux, factual, visual or publication gates.",
+      "target_duration_seconds": 45
+    }
+  },
+  "source_context_sha256": "da137079a64b66be48eb0c17fce75b4378b9205eff40e861f6ebaaa6901e3f1e",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-14T12:36:00Z",
+      "actor": "chatgpt_localized_recovery",
+      "detail": "Repair only the accepted verified editorial fallback after run 31800911258 failed before render: make why_happening start with Weil, keep 45-word body, retain Wirtschaft/Mensch/Klima und Natur spoken labels, sources and all unchanged gates."
+    }
+  ],
+  "contract_sha256": "f85a6319af46406c29714a2cc34b72872a5c9bb819d2692a94cbb929bc863137"
+}
