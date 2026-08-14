@@ -1,0 +1,52 @@
+{
+  "request_id": "chatgpt-20260814-heat-economy-human-climate-v5-voice-pacing",
+  "status": "APPROVED",
+  "source": "chatgpt_localized_recovery",
+  "trend_id": "1",
+  "topic": "Die Folgen der aktuellen Hitzewelle für Europa – klar getrennt nach Wirtschaft, Mensch sowie Klima und Natur",
+  "trend_scope": "world_society",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 45,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-14T11:20:00Z",
+  "approval_key": "chatgpt:20260814:heat-economy-human-climate-v5-voice-pacing",
+  "mode": "full",
+  "selection_id": "chatgpt-20260814-heat-economy-human-climate",
+  "recovery_from_golden_path_run_id": 31751857309,
+  "recovery_scope": ["VOICE", "VISUALS"],
+  "preserve_sources": true,
+  "preserve_semantic_structure": true,
+  "quality_gates_weakened": false,
+  "source_context": {
+    "verified_at": "2026-08-13T22:05:00Z",
+    "independent_news_count": 2,
+    "sources": [
+      {"publisher":"Reuters","url":"https://www.reuters.com/business/energy/heatwave-expected-limit-15-frances-nuclear-fleet-friday-2026-08-13/","supports":"Die aktuelle Hitzewelle begrenzt in Frankreich die Kernkraftproduktion; für Freitag werden rund 15 Prozent weniger verfügbare Nuklearkapazität erwartet. Strompreise stiegen deutlich, weil Hitze und warme Flüsse die Kühlung einschränken."},
+      {"publisher":"Associated Press","url":"https://apnews.com/article/b44ab4a0d37c1ef7c4f66de8effe567b","supports":"Die europäische Dürre und wiederholte Hitzeperioden drücken Ernten, belasten Landwirtschaft und Wasserreserven und stören über niedrige Flusspegel auch Transporte."},
+      {"publisher":"WHO Europe","url":"https://www.who.int/europe/news/item/11-06-2026-statement---europe-lost-200-000-people-to-heat-in-4-years-yet-nearly-all-of-them-were-preventable","supports":"Extreme Hitze ist in Europa ein Gesundheitsrisiko. WHO Europe berichtet von mehr als 200.000 hitzebedingten Todesfällen in EU und assoziierten Ländern über die vergangenen vier Jahre."},
+      {"publisher":"Copernicus Climate Change Service","url":"https://climate.copernicus.eu/copernicus-record-heatwave-brings-hottest-june-western-europe-during-second-warmest-june-globally","supports":"Westliches Europa hatte im Juni 2026 den wärmsten Juni der Messreihe. Trockenheit, niedrige Bodenfeuchte und unterdurchschnittliche Flussabflüsse verstärkten Dürre- und Waldbrandrisiken."}
+    ],
+    "fallback_editorial_answers": {
+      "what_happened":"Wirtschaft: Hitze drosselt Frankreichs Atomstrom und belastet Ernten sowie Flusstransporte.",
+      "why_happening":"Klima und Natur: Weil warme Flüsse und trockene Böden Energie und Wälder belasten.",
+      "who_is_affected":"Mensch: Gefährdet sind ältere, kranke und draußen arbeitende Menschen.",
+      "personal_impact":"Für dich können Strom und Lebensmittel teurer werden.",
+      "action_now":"Prüfe Warnungen, schütze gefährdete Menschen."
+    },
+    "editorial_direction": {
+      "hook":"Diese Hitzewelle kostet Europa längst mehr als Schweiß.",
+      "story_order":["WIRTSCHAFT: Energie, Landwirtschaft und Transport mit mindestens einem konkreten aktuellen Beispiel","MENSCH: Gesundheitsbelastung und gefährdete Gruppen, klar getrennt vom Wirtschaftsblock","KLIMA_NATUR: Dürre, Bodenfeuchte, Flüsse und Waldbrandrisiko; nicht fälschlich behaupten, die Hitzewelle verursache den Klimawandel","kurze persönliche Einordnung und CTA"],
+      "mandatory_spoken_labels":["Wirtschaft","Mensch","Klima und Natur"],
+      "mandatory_distinctness":"Die drei Wirkungsebenen müssen akustisch klar getrennt und in dieser Reihenfolge genannt werden.",
+      "visual_style":"dokumentarisch-realistisch; Wirtschaft mit Energie/Landwirtschaft/Flusslogistik, Mensch mit Stadt/Arbeit/gefährdeten Personen, Klima-Natur mit trockenen Böden/Flüssen/Waldbrand. Keine generischen Thermometer- oder Strand-Füllbilder.",
+      "semantic_gate":"FAIL, wenn der Short wie ein allgemeines Hitzewarnungs- oder Gesundheitsvideo wirkt. PASS nur wenn Wirtschaft, Mensch und Klima/Natur jeweils eine eigene konkrete, quellengebundene Folge erhalten.",
+      "voice_pacing_repair":"Keep the unchanged natural narrator gate of 108-150 WPM. Use the compact 45-word verified body so the continuous Chatterbox take fits naturally without speeding above 150 WPM. Do not weaken ASR, pronunciation, postmux, factual, visual or publication gates.",
+      "target_duration_seconds":45
+    }
+  },
+  "source_context_sha256": "f4e899f9c24f2eca779adc0b769595bd01405ecabadd8eb1ce5ecf69a554aad9",
+  "state_history": [{"state":"APPROVED","at":"2026-08-14T11:20:00Z","actor":"chatgpt_localized_recovery","detail":"Localized voice pacing repair after Chatterbox take passed ASR and tail checks but measured 159.13 WPM against unchanged 150 WPM maximum. Preserve verified sources and three-pillar semantics; compact only nonessential wording."}],
+  "contract_sha256": "f4f1b8200c3bfa75ac1c3492f167d18d4b77fd6557737ac6fb22e107a189b0d1"
+}
