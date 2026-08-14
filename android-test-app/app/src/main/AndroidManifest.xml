@@ -5,8 +5,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <queries>
-        <!-- Minecraft Bedrock on Android -->
         <package android:name="com.mojang.minecraftpe" />
+        <package android:name="com.StefMorojna.SpaceflightSimulator" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="minecraft" />
@@ -17,7 +17,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="TAYVORIQ Bedrock Add-ons"
+        android:label="TAYVORIQ Universal Import"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
@@ -25,6 +25,16 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="${admobAppId}" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <activity
             android:name=".MainActivity"
@@ -40,9 +50,8 @@
             android:name=".FileImportActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="In Minecraft Bedrock importieren"
+            android:label="Mit TAYVORIQ importieren"
             android:launchMode="singleTop"
-            android:noHistory="true"
             android:theme="@android:style/Theme.Material.NoActionBar">
 
             <intent-filter android:priority="100">
@@ -65,6 +74,7 @@
                 <data android:scheme="file" android:pathPattern=".*\.mcaddon" />
                 <data android:scheme="file" android:pathPattern=".*\.mcpack" />
                 <data android:scheme="file" android:pathPattern=".*\.mcworld" />
+                <data android:scheme="file" android:pathPattern=".*\.zip" />
             </intent-filter>
 
             <intent-filter>
@@ -72,6 +82,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/octet-stream" />
                 <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
             </intent-filter>
         </activity>
     </application>
