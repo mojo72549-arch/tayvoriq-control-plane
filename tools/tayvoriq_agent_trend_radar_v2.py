@@ -84,6 +84,39 @@ def gemini_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[st
     raise RuntimeError(f"Gemini grounded trend scan failed: {last_error}")
 
 
+def groq_repair_json(text: str, api_key: str) -> dict[str, Any]:
+    payload = {
+        "model": "openai/gpt-oss-20b",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You repair JSON syntax only. Preserve every factual claim, publisher, URL, number, key and value. Do not add facts. Return one valid JSON object only."
+            },
+            {
+                "role": "user",
+                "content": "Repair this malformed JSON without changing its factual content:\n\n" + text[:24000]
+            },
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0,
+        "max_completion_tokens": 9000,
+    }
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "tayvoriq-agent-v2-json-repair",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=120) as response:
+        raw = json.loads(response.read().decode("utf-8"))
+    text_out = str(((((raw.get("choices") or [{}])[0]).get("message") or {}).get("content")) or "")
+    return extract_json(text_out)
+
+
 def groq_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str, str]], str]:
     if not api_key:
         raise RuntimeError("GROQ_API_KEY missing")
@@ -91,14 +124,10 @@ def groq_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str,
         "model": "groq/compound-mini",
         "messages": [{
             "role": "user",
-            "content": prompt + "\n\nUse web search. Return ONLY the requested JSON object, with direct source URLs in every source entry."
+            "content": prompt + "\n\nUse web search. Return ONLY the requested JSON object, with direct source URLs in every source entry. Keep every answer concise."
         }],
         "citation_options": "disabled",
-        "compound_custom": {
-            "tools": {
-                "enabled_tools": ["web_search"]
-            }
-        },
+        "compound_custom": {"tools": {"enabled_tools": ["web_search"]}},
         "search_settings": {
             "exclude_domains": [
                 "tiktok.com", "instagram.com", "facebook.com",
@@ -121,7 +150,11 @@ def groq_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str,
         with urllib.request.urlopen(req, timeout=180) as response:
             raw = json.loads(response.read().decode("utf-8"))
         message = (((raw.get("choices") or [{}])[0]).get("message") or {})
-        data = extract_json(str(message.get("content") or ""))
+        raw_text = str(message.get("content") or "")
+        try:
+            data = extract_json(raw_text)
+        except json.JSONDecodeError:
+            data = groq_repair_json(raw_text, api_key)
         chunks: list[dict[str, str]] = []
         for tool in message.get("executed_tools") or []:
             if not isinstance(tool, dict):
@@ -148,7 +181,7 @@ def groq_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str,
                             "title": clean(source.get("publisher") or source.get("url"), 500),
                             "uri": clean(source.get("url"), 2000),
                         })
-        return data, chunks, "groq/compound-mini"
+        return data, chunks, "groq/compound-mini+json-repair"
     except Exception as exc:
         raise RuntimeError(f"Groq grounded trend scan failed: {type(exc).__name__}: {exc}") from exc
 
@@ -181,7 +214,7 @@ You are the TrendSourceAgent for the German short-video brand TAYVORIQ.
 Current local time: {now.isoformat()} (Europe/Berlin). Slot: {slot.upper()}.
 {slot_rules}
 
-Use web search grounding and identify 8 CURRENT candidate stories from roughly the last 24 hours (48 hours only if still actively unfolding). Return ONLY one JSON object with key "candidates".
+Use web search grounding and identify 6 CURRENT candidate stories from roughly the last 24 hours (48 hours only if still actively unfolding). Return ONLY one JSON object with key "candidates".
 
 Editorial goals:
 - Audience: broad 16-44, especially 18-34, understandable without prior knowledge.
@@ -190,8 +223,9 @@ Editorial goals:
 - Natural events (earthquake, volcano, eclipse, storm, wildfire, flood etc.) must include the deeper WHY/HOW explanation, not only the event.
 - For local/regional stories, prioritize direct personal relevance: weather, transport, safety, prices, events, unusual incidents and changes that affect daily life.
 - Avoid party-political advocacy, celebrity gossip, graphic violence, rumors, clickbait without evidence, and duplicate versions of the same story.
-- Every candidate MUST have at least two independent, credible sources. Prefer primary/official sources plus established news outlets. Do not use social media as a source.
+- Every candidate MUST have exactly two independent, credible sources. Prefer primary/official sources plus established news outlets. Do not use social media as a source.
 - Do not invent URLs, publishers, dates, numbers, or quotes.
+- Keep the five editorial answers to one concise sentence each.
 
 For each candidate return:
 {{
@@ -200,7 +234,10 @@ For each candidate return:
   "trend_scope": "technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy",
   "regional_relevance": "local|germany|europe|global",
   "criteria": {{"aktualitaet":0-100,"viralitaet":0-100,"tayvoriq_passung":0-100,"quellenqualitaet":0-100,"visuell":0-100}},
-  "sources": [{{"publisher":"...","url":"https://...","supports":"specific fact supported by this source"}}, ...],
+  "sources": [
+    {{"publisher":"...","url":"https://...","supports":"specific fact supported by this source"}},
+    {{"publisher":"...","url":"https://...","supports":"specific fact supported by this source"}}
+  ],
   "fallback_editorial_answers": {{
     "what_happened": "...",
     "why_happening": "...",
