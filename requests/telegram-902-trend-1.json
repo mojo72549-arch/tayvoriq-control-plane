@@ -1,0 +1,69 @@
+{
+  "request_id": "telegram-902-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Unter uns bewegt sich etwas: Warum die Erde niemals stillsteht",
+  "trend_scope": "science_future",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-15T06:47:35.698Z",
+  "telegram_message_id": 902,
+  "approval_key": "telegram:20260815-morning-agentv2-series:902:trend:1",
+  "mode": "full",
+  "selection_id": "20260815-morning-agentv2-series",
+  "source_context": {
+    "verified_at": "2026-08-15T06:47:16.577653Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "U.S. Geological Survey",
+        "url": "https://www.usgs.gov/faqs/how-fast-do-tectonic-plates-move?items_per_page=6&page=1",
+        "supports": "Tektonische Platten bewegen sich fortlaufend mit unterschiedlichen Geschwindigkeiten und Richtungen; satellitengestützte GPS-Messungen können diese Krustenbewegungen sehr präzise erfassen."
+      },
+      {
+        "publisher": "GFZ Helmholtz-Zentrum für Geoforschung",
+        "url": "https://www.gfz.de/presse/gfz-schuelerlabor/unterrichtsergaenzende-materialien/abbildungen-animationen",
+        "supports": "Das GFZ beschreibt die Hitze im Erdinnern als Motor für die Plattentektonik und zeigt die Bewegungsrichtungen der großen Lithosphärenplatten auf Basis langjähriger GPS-Messungen."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Nichts an der Erdoberfläche ist geologisch wirklich still: Die feste äußere Hülle ist in große Lithosphärenplatten gegliedert, die sich über sehr lange Zeiträume fortlaufend gegeneinander bewegen.",
+      "why_happening": "Die Erde besitzt ein heißes, dynamisches Inneres. Prozesse im Erdmantel und Kräfte an den Plattenrändern treiben die Plattenbewegung an; an der Oberfläche messen Forschende diese langsame Drift mit geodätischen Verfahren wie GPS.",
+      "who_is_affected": "Die Bewegung betrifft den gesamten Planeten. Besonders sichtbar werden ihre Folgen an Plattengrenzen, an denen Kontinente auseinanderdriften, Platten aneinander vorbeigleiten oder eine Platte unter eine andere abtaucht.",
+      "personal_impact": "Im Alltag sind Bewegungen von Millimetern bis Zentimetern pro Jahr nicht spürbar. Wo Platten oder Störungen jedoch durch Reibung blockiert werden, kann sich über lange Zeit Spannung aufbauen – die Grundlage für die nächste Folge über Erdbeben.",
+      "action_now": "Das ist keine akute Warnung und Erdbeben lassen sich daraus nicht auf einen konkreten Zeitpunkt vorhersagen. Die Folge soll das Grundprinzip erklären; Teil 2 setzt bei der Frage an, was passiert, wenn eine verhakte Grenze plötzlich nachgibt."
+    },
+    "series_context": {
+      "series_id": "world-forces-v1",
+      "series_title": "Die Kräfte, die unsere Welt bewegen",
+      "episode": 1,
+      "episode_title": "Unter uns bewegt sich etwas",
+      "cover_text": "UNTER UNS BEWEGT SICH ETWAS",
+      "hook": "Der Boden unter dir sieht vollkommen ruhig aus. Aber in Wirklichkeit bewegt er sich gerade.",
+      "bridge_out": "Und wenn sich zwei dieser gigantischen Platten verhaken, beginnt ein unsichtbarer Countdown.",
+      "visual_continuity": "Wiederkehrende Erde als Serienanker. Folge 1 startet an der ruhigen Erdoberfläche, fährt als Kameraflug durch Kruste und Lithosphäre in die Tiefe, zeigt langsam driftende Platten und endet an einer verhakten Plattengrenze. Folge 2 setzt exakt an dieser Grenze fort; die Gesamtserie bewegt sich Erdinneres -> Kruste -> Ozean -> Magma/Oberfläche -> Weltraum.",
+      "red_thread": "Eine zusammenhängende Reise von den unsichtbaren Kräften im Erdinneren bis zu den sichtbaren Folgen an Oberfläche, Ozean und Himmel. Jede Folge beantwortet die Frage der vorherigen und endet mit dem Auslöser der nächsten.",
+      "approval_required": true
+    }
+  },
+  "source_context_sha256": "9f7952c061615cf172de038eb4e05716c432c14ed8a99cdf1a580a29347abf98",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-15T06:47:35.698Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-15T06:47:44.326368+00:00",
+      "actor": "request-dispatcher:31870323551"
+    }
+  ],
+  "contract_sha256": "d526250b7032f644323923854fd0977e43e559e93ff3d757dcb1834c2755f820",
+  "dispatch_claim_run_id": 31870323551,
+  "dispatch_contract_sha256": "d526250b7032f644323923854fd0977e43e559e93ff3d757dcb1834c2755f820"
+}
