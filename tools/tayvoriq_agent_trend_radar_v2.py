@@ -88,15 +88,15 @@ def groq_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str,
     if not api_key:
         raise RuntimeError("GROQ_API_KEY missing")
     payload = {
-        "model": "groq/compound",
+        "model": "groq/compound-mini",
         "messages": [{
             "role": "user",
-            "content": prompt + "\n\nUse web search and website visits. Return ONLY the requested JSON object, with direct source URLs in every source entry."
+            "content": prompt + "\n\nUse web search. Return ONLY the requested JSON object, with direct source URLs in every source entry."
         }],
         "citation_options": "disabled",
         "compound_custom": {
             "tools": {
-                "enabled_tools": ["web_search", "visit_website"]
+                "enabled_tools": ["web_search"]
             }
         },
         "search_settings": {
@@ -148,7 +148,7 @@ def groq_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str,
                             "title": clean(source.get("publisher") or source.get("url"), 500),
                             "uri": clean(source.get("url"), 2000),
                         })
-        return data, chunks, "groq/compound"
+        return data, chunks, "groq/compound-mini"
     except Exception as exc:
         raise RuntimeError(f"Groq grounded trend scan failed: {type(exc).__name__}: {exc}") from exc
 
