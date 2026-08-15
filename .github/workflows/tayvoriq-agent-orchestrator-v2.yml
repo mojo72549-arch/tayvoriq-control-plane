@@ -41,6 +41,7 @@ jobs:
       should_run: ${{ steps.slot.outputs.should_run }}
       slot: ${{ steps.slot.outputs.slot }}
       active_series: ${{ steps.mode.outputs.active_series }}
+      series_in_flight: ${{ steps.mode.outputs.series_in_flight }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,7 +85,7 @@ jobs:
           print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
           PY
 
-      - name: Detect active editorial series
+      - name: Detect active editorial series and in-flight episode
         id: mode
         if: steps.slot.outputs.should_run == 'true'
         run: |
@@ -92,20 +93,53 @@ jobs:
           python - <<'PY'
           import json, os
           from pathlib import Path
+
           path=Path('state/tayvoriq-active-series.json')
           active=False
+          in_flight=False
           info={}
+          state={}
           if path.is_file():
               state=json.loads(path.read_text(encoding='utf-8'))
               active=str(state.get('status') or '').strip().lower() in {'active','ready_for_selection'}
-              info={'series_id':state.get('series_id'),'episode':state.get('episode'),'title':state.get('episode_title')}
+              series_id=str(state.get('series_id') or '').strip()
+              try:
+                  episode=int(state.get('episode') or 0)
+              except Exception:
+                  episode=0
+              info={'series_id':series_id,'episode':episode,'title':state.get('episode_title')}
+              if active and series_id and episode > 0:
+                  for request_path in Path('requests').glob('*.json'):
+                      try:
+                          request=json.loads(request_path.read_text(encoding='utf-8'))
+                      except Exception:
+                          continue
+                      if str(request.get('status') or '').strip().upper() not in {'APPROVED','DISPATCHING','DISPATCHED'}:
+                          continue
+                      source=request.get('source_context') if isinstance(request.get('source_context'),dict) else {}
+                      series=source.get('series_context') if isinstance(source.get('series_context'),dict) else {}
+                      try:
+                          request_episode=int(series.get('episode') or 0)
+                      except Exception:
+                          request_episode=0
+                      if str(series.get('series_id') or '').strip() == series_id and request_episode == episode:
+                          in_flight=True
+                          info['in_flight_request']=request.get('request_id') or request_path.stem
+                          info['in_flight_status']=request.get('status')
+                          break
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
               h.write(f"active_series={'true' if active else 'false'}\n")
-          print({'active_series':active, **info})
+              h.write(f"series_in_flight={'true' if in_flight else 'false'}\n")
+          print({'active_series':active,'series_in_flight':in_flight, **info})
           PY
 
+      - name: Hold duplicate series proposal while approved episode is in flight
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true' && steps.mode.outputs.series_in_flight == 'true'
+        run: |
+          echo "Active series episode already approved/dispatched; no duplicate Telegram approval and no new trend scan."
+
       - name: Build active series episode request
-        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true' && steps.mode.outputs.series_in_flight != 'true'
         run: |
           set -euo pipefail
           python tools/tayvoriq_agent_series_request_v2.py \
@@ -123,7 +157,7 @@ jobs:
             --audit-output /tmp/tayvoriq-trend-audit.json
 
       - name: Validate approval contract
-        if: steps.slot.outputs.should_run == 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.series_in_flight != 'true'
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -151,7 +185,7 @@ jobs:
           PY
 
       - name: Persist canonical request without triggering legacy push workflows
-        if: steps.slot.outputs.should_run == 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.series_in_flight != 'true'
         run: |
           set -euo pipefail
           cp /tmp/tayvoriq-trend-request.json .github/run-now/tayvoriq-trend-request.json
@@ -166,7 +200,7 @@ jobs:
           git push origin HEAD:main
 
       - name: Send approval request to Telegram
-        if: steps.slot.outputs.should_run == 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.series_in_flight != 'true'
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
