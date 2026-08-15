@@ -1,15 +1,15 @@
 {
   "request": "tayvoriq-x-production",
-  "topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
-  "trend_id": "heat-consequences-europe-20260813",
-  "requested_at": "2026-08-13T12:18:00Z",
-  "request_nonce": "tayvoriq-x-20260813-heat-v5-retry-floor-fixed-1",
+  "topic": "Unter uns bewegt sich etwas: Warum die Erde niemals stillsteht",
+  "trend_id": "1",
+  "requested_at": "2026-08-15T17:54:00Z",
+  "request_nonce": "tayvoriq-x-20260815-series-ep1-selfheal-current-main-1954",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
-  "source_request_id": "chatgpt-20260813-heat-consequences-1",
-  "retry_of_run_id": 31697297936,
-  "suppress_start_notification": true,
+  "source_request_id": "telegram-902-trend-1",
+  "retry_of_run_id": 31870328659,
+  "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
   "hardening": {
     "checkpoint_source_context_required": true,
@@ -24,5 +24,5 @@
     "dependency_cache_enabled": true,
     "quality_gates_weakened": false
   },
-  "reason": "retry-same-approved-heat-story-after-v5-compatibility-retry-floor-fix"
+  "reason": "autonomous-resume-same-approved-series-episode-after-source-fallback-self-heal-on-current-main"
 }
