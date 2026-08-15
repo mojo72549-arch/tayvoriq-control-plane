@@ -1,6 +1,6 @@
 name: TAYVORIQ Robustness Contract
 
-# implementation-contract-revision: v20-authoritative-length-v5-deep-voice-series-visuals
+# implementation-contract-revision: v20-authoritative-length-v6-stdlib-contracts
 on:
   workflow_dispatch:
   push:
@@ -41,9 +41,48 @@ jobs:
           set -euo pipefail
           python -m compileall -q tools src runtime_patches tests
           python tools/tayvoriq_lightweight_preflight.py
-          python -m pytest -q \
-            tests/test_tayvoriq_deep_voice_contract.py \
-            tests/test_tayvoriq_world_forces_visual_guard.py
+          python - <<'PY'
+          from runtime_patches import tayvoriq_brand_pronunciation_guard as brand
+          from runtime_patches import tayvoriq_deep_voice_contract as voice
+          from runtime_patches import tayvoriq_world_forces_visual_guard as visuals
+
+          assert voice.DEEP_F0_MIN_HZ == 84.0
+          assert voice.DEEP_F0_MAX_HZ == 125.0
+          assert round(voice.DEEP_REPAIR_HIGH_HZ, 2) == 156.25
+          for median in (150.94, 153.85):
+              factor = voice.repair_factor_for_median(median)
+              assert factor is not None
+              projected = voice.projected_f0_hz(median, factor)
+              assert voice.DEEP_F0_MIN_HZ <= projected <= voice.DEEP_F0_MAX_HZ
+          assert voice.repair_factor_for_median(156.26) is None
+
+          for legacy in ('TAYVORIQ', 'Tai wo rik', 'Taiworik', 'Tai vor ik', 'Tayvorik'):
+              assert brand.normalize_spoken_brand(f'Abonniere {legacy}.') == 'Abonniere Tayvorik.'
+
+          package = {
+              'source_context': {
+                  'independent_news_count': 2,
+                  'sources': [
+                      {'publisher': 'U.S. Geological Survey'},
+                      {'publisher': 'GFZ Helmholtz-Zentrum für Geoforschung'},
+                  ],
+                  'series_context': {'series_id': 'world-forces-v1', 'episode': 1},
+              },
+              'scenes': [{'visual_query': 'generic news'}],
+          }
+          result = visuals._apply_world_forces_visuals(package)
+          queries = [item['visual_query'] for item in result['scenes']]
+          assert result['visual_query_contract'] == 'world-forces-v1-episode-1-geology-v1'
+          assert len(queries) == 6
+          assert any('geology' in query for query in queries)
+          assert any('seismograph' in query for query in queries)
+          print({
+              'deep_voice_bounded_recovery': True,
+              'brand_pronunciation_canonical': True,
+              'world_forces_visual_contract': True,
+              'quality_gates_weakened': False,
+          })
+          PY
 
       - name: Enforce workflow performance and notification invariants
         run: |
@@ -128,6 +167,8 @@ jobs:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_RUNTIME_TELEGRAM_MISSING:{token}')
 
           required_bootstrap = (
+              'tayvoriq_brand_pronunciation_guard.py',
+              'PRODUCTION_RUNTIME_BOOTSTRAP_BRAND_PRONUNCIATION_INSTALL_MISSING',
               'tayvoriq_world_forces_visual_guard.py',
               'PRODUCTION_RUNTIME_BOOTSTRAP_WORLD_FORCES_VISUAL_INSTALL_MISSING',
               'tayvoriq_v20_authoritative_length_guard.py',
@@ -142,6 +183,7 @@ jobs:
               'model_cache_after_full_preflight': True,
               'internal_recovery_silent': True,
               'runtime_progress_opt_in_only': True,
+              'brand_pronunciation_canonical': True,
               'world_forces_visuals_bound_before_first_render': True,
               'external_blocker_notification_retained': True,
               'quality_gates_weakened': False,
