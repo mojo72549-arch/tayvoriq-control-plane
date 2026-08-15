@@ -1,6 +1,6 @@
 name: TAYVORIQ Robustness Contract
 
-# implementation-contract-revision: v20-authoritative-length-v2
+# implementation-contract-revision: v20-authoritative-length-v3-silent-runtime
 on:
   workflow_dispatch:
   push:
@@ -50,6 +50,7 @@ jobs:
 
           golden_path = Path('.github/workflows/tayvoriq-deliver-video-now.yml').read_text(encoding='utf-8')
           watcher = Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8')
+          entrypoint = Path('implementation/tools/tayvoriq_autonomous_entrypoint.py').read_text(encoding='utf-8')
 
           def position(text: str, token: str) -> int:
               value = text.find(token)
@@ -111,11 +112,23 @@ jobs:
               if token not in watcher:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_WATCHER_MISSING:{token}')
 
+          required_entrypoint = (
+              'def _runtime_progress_enabled()',
+              'if not _runtime_progress_enabled():',
+              'TAYVORIQ_TELEGRAM_PROGRESS_SUPPRESSED',
+              'os.environ["TAYVORIQ_TELEGRAM_PROGRESS"] = "false"',
+              '"telegram_progress_suppressed": True',
+          )
+          for token in required_entrypoint:
+              if token not in entrypoint:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_RUNTIME_TELEGRAM_MISSING:{token}')
+
           print({
               'state': 'TAYVORIQ_ROBUSTNESS_CONTRACT_PASSED',
               'lightweight_before_heavy_runtime': True,
               'model_cache_after_full_preflight': True,
               'internal_recovery_silent': True,
+              'runtime_progress_opt_in_only': True,
               'external_blocker_notification_retained': True,
               'quality_gates_weakened': False,
           })
