@@ -18,7 +18,7 @@ concurrency:
 jobs:
   recover-or-finalize:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       RUN_ID: ${{ github.event.workflow_run.id }}
       RUN_URL: ${{ github.event.workflow_run.html_url }}
@@ -72,7 +72,7 @@ jobs:
           echo "Automatic recovery: rerunning failed jobs for run $RUN_ID after attempt $RUN_ATTEMPT."
           gh run rerun "$RUN_ID" --failed
 
-      - name: Start fresh recovery generation on current main
+      - name: Start and verify fresh recovery generation on current main
         id: fresh
         if: steps.classify.outputs.needs_fresh_generation == 'true'
         run: |
@@ -80,9 +80,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          prepared=false
           started=false
           generation=0
           state=AUTONOMOUS_TECHNICAL_ESCALATION
+          topic=""
+          trend_id=""
+          new_run_id=""
 
           for attempt in 1 2 3 4 5; do
             git fetch origin main
@@ -96,26 +100,22 @@ jobs:
 
           path = Path('.github/run-now/tayvoriq-x-request.json')
           if not path.is_file():
-              print('false')
-              print('0')
-              print('AUTONOMOUS_TECHNICAL_ESCALATION')
+              print('false'); print('0'); print('AUTONOMOUS_TECHNICAL_ESCALATION'); print(''); print('')
               raise SystemExit(0)
 
           data = json.loads(path.read_text(encoding='utf-8'))
           approved = data.get('approved_trend_pinned') is True
           source_request_id = str(data.get('source_request_id') or '').strip()
-          if not approved or not source_request_id:
-              print('false')
-              print(str(int(data.get('recovery_generation') or 0)))
-              print('AUTONOMOUS_TECHNICAL_ESCALATION')
+          topic = str(data.get('topic') or '').strip()
+          trend_id = str(data.get('trend_id') or '').strip()
+          if not approved or not source_request_id or not topic or not trend_id:
+              print('false'); print(str(int(data.get('recovery_generation') or 0))); print('AUTONOMOUS_TECHNICAL_ESCALATION'); print(topic); print(trend_id)
               raise SystemExit(0)
 
           current = int(data.get('recovery_generation') or 0)
           maximum = int(os.environ.get('MAX_RECOVERY_GENERATIONS') or 4)
           if current >= maximum:
-              print('false')
-              print(str(current))
-              print('AUTONOMOUS_TECHNICAL_ESCALATION')
+              print('false'); print(str(current)); print('AUTONOMOUS_TECHNICAL_ESCALATION'); print(topic); print(trend_id)
               raise SystemExit(0)
 
           generation = current + 1
@@ -127,46 +127,65 @@ jobs:
               f"tayvoriq-recovery-{source_request_id}-g{generation}-"
               f"{os.environ['RUN_ID']}-{int(now.timestamp())}"
           )
-          data['reason'] = (
-              'autonomous-fresh-recovery-generation-on-current-main-after-same-run-budget'
-          )
-          path.write_text(
-              json.dumps(data, ensure_ascii=False, indent=2) + '\n',
-              encoding='utf-8',
-          )
-          print('true')
-          print(str(generation))
-          print('FRESH_RECOVERY_GENERATION_QUEUED')
+          data['reason'] = 'autonomous-fresh-recovery-generation-on-current-main-after-same-run-budget'
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print('true'); print(str(generation)); print('FRESH_RECOVERY_GENERATION_PREPARED'); print(topic); print(trend_id)
           PY
           )
 
-            started="${decision[0]:-false}"
+            prepared="${decision[0]:-false}"
             generation="${decision[1]:-0}"
             state="${decision[2]:-AUTONOMOUS_TECHNICAL_ESCALATION}"
+            topic="${decision[3]:-}"
+            trend_id="${decision[4]:-}"
 
-            if [ "$started" != "true" ]; then
+            if [ "$prepared" != "true" ]; then
               break
             fi
 
             git add .github/run-now/tayvoriq-x-request.json
-            git commit -m "agent(v2): start recovery generation ${generation} for ${RUN_ID}"
+            git commit -m "agent(v2): prepare recovery generation ${generation} for ${RUN_ID}"
             if git push origin HEAD:main; then
               break
             fi
             sleep $((attempt * 2))
-            started=false
+            prepared=false
             state=AUTONOMOUS_TECHNICAL_ESCALATION
           done
+
+          if [ "$prepared" = "true" ]; then
+            for dispatch_attempt in 1 2 3; do
+              before=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+              if gh workflow run tayvoriq-deliver-video-now.yml --repo "$GITHUB_REPOSITORY" --ref main -f topic="$topic" -f trend_id="$trend_id"; then
+                for poll in $(seq 1 24); do
+                  sleep 5
+                  latest=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+                  if [ -n "$latest" ] && [ "$latest" != "0" ] && [ "$latest" != "$before" ]; then
+                    new_run_id="$latest"
+                    started=true
+                    state=FRESH_RECOVERY_GENERATION_RUNNING
+                    break
+                  fi
+                done
+              fi
+              [ "$started" = "true" ] && break
+              sleep $((dispatch_attempt * 5))
+            done
+          fi
 
           echo "started=$started" >> "$GITHUB_OUTPUT"
           echo "generation=$generation" >> "$GITHUB_OUTPUT"
           echo "state=$state" >> "$GITHUB_OUTPUT"
-          echo "TAYVORIQ fresh recovery: started=$started generation=$generation state=$state"
+          echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
+          echo "topic=$topic" >> "$GITHUB_OUTPUT"
+          echo "trend_id=$trend_id" >> "$GITHUB_OUTPUT"
+          echo "TAYVORIQ fresh recovery: prepared=$prepared started=$started generation=$generation new_run_id=$new_run_id state=$state"
 
       - name: Persist delivery and recovery state
         env:
           CLASSIFIED_STATE: ${{ steps.classify.outputs.recovery_state }}
           FRESH_STATE: ${{ steps.fresh.outputs.state }}
+          FRESH_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -190,6 +209,7 @@ jobs:
               "conclusion": os.environ["RUN_CONCLUSION"],
               "run_attempt": int(os.environ.get("RUN_ATTEMPT") or 1),
               "recovery_state": state,
+              "recovery_run_id": int(os.environ['FRESH_RUN_ID']) if str(os.environ.get('FRESH_RUN_ID') or '').isdigit() else None,
               "url": os.environ["RUN_URL"],
               "completed_at": datetime.now(timezone.utc).isoformat(),
               "workflow": "TAYVORIQ-X Golden Path",
@@ -227,15 +247,17 @@ jobs:
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}" >/dev/null
 
-      - name: Telegram fresh recovery generation status
+      - name: Telegram verified fresh recovery generation status
         if: steps.fresh.outputs.started == 'true'
         env:
           GENERATION: ${{ steps.fresh.outputs.generation }}
+          NEW_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
-          message=$(printf '🛠️ TAYVORIQ technische Recovery wird fortgesetzt\n\nDie drei Same-Run-Versuche sind beendet. Der identische freigegebene Auftrag wurde jetzt auf dem aktuellen Code-Stand als Recovery-Generation %s/%s fortgesetzt.\n\n✅ Thema, Quellen und Freigabe bleiben erhalten.\n✅ Kein neues Go nötig.\n✅ Keine Aktion für dich.' "$GENERATION" "$MAX_RECOVERY_GENERATIONS")
+          test -n "$NEW_RUN_ID"
+          message=$(printf '🛠️ TAYVORIQ technische Recovery läuft wirklich weiter\n\nDie drei Same-Run-Versuche sind beendet. Der identische freigegebene Auftrag wurde auf dem aktuellen Code-Stand als Recovery-Generation %s/%s neu gestartet.\nRun: %s\n\n✅ Neue Run-ID wurde verifiziert.\n✅ Thema, Quellen und Freigabe bleiben erhalten.\n✅ Kein neues Go nötig.\n✅ Keine Aktion für dich.' "$GENERATION" "$MAX_RECOVERY_GENERATIONS" "$NEW_RUN_ID")
           curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
@@ -267,12 +289,12 @@ jobs:
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
           message=$(cat <<'EOF'
-          🟣 TAYVORIQ technische Eskalation aktiv
+          🟣 TAYVORIQ interne Recovery-Eskalation
 
-          Die automatischen Recovery-Generationen haben ihren Sicherheitsrahmen erreicht. Der Auftrag und die Diagnosen bleiben vollständig erhalten; es wird nichts ungeprüft veröffentlicht.
+          Eine neue Recovery-Generation konnte technisch noch nicht mit einer echten Run-ID verifiziert werden. Deshalb wird bewusst NICHT behauptet, dass die Produktion läuft.
 
           ✅ Deine Trendfreigabe bleibt gültig.
-          ✅ Du musst den Fehler nicht analysieren oder GitHub bedienen.
+          ✅ Du musst GitHub oder den Fehler nicht bedienen.
           ✅ Keine neue Themenfreigabe nötig.
           EOF
           )
