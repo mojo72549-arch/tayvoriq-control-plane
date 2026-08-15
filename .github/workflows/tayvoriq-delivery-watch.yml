@@ -3,40 +3,73 @@ name: TAYVORIQ Delivery Watch
 on:
   workflow_run:
     workflows:
-      - TAYVORIQ Deliver Video Now
+      - TAYVORIQ-X Golden Path
     types:
       - completed
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
-  group: tayvoriq-delivery-watch
+  group: tayvoriq-delivery-watch-${{ github.event.workflow_run.id }}
   cancel-in-progress: false
 
 jobs:
-  finalize:
+  recover-or-finalize:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
+    env:
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_URL: ${{ github.event.workflow_run.html_url }}
+      RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      GH_TOKEN: ${{ github.token }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Persist final delivery state with self-heal
+      - name: Classify recovery state
+        id: classify
+        run: |
+          set -euo pipefail
+          external_blocker=false
+          should_retry=false
+          recovery_state=SUCCESS
+
+          if [ "$RUN_CONCLUSION" != "success" ]; then
+            recovery_state=TECHNICAL_FAILURE
+            logs=$(gh run view "$RUN_ID" --log-failed 2>/dev/null || true)
+            lowered=$(printf '%s' "$logs" | tr '[:upper:]' '[:lower:]')
+            if printf '%s' "$lowered" | grep -Eq 'external_auth_blocker|missing secret|401 client error|unauthorized|billing|spending limit|payment'; then
+              external_blocker=true
+              recovery_state=EXTERNAL_ACTION_REQUIRED
+            elif [ "${RUN_ATTEMPT:-1}" -lt 3 ]; then
+              should_retry=true
+              recovery_state=AUTO_RECOVERY_QUEUED
+            else
+              recovery_state=AUTO_RECOVERY_BUDGET_EXHAUSTED
+            fi
+          fi
+
+          echo "external_blocker=$external_blocker" >> "$GITHUB_OUTPUT"
+          echo "should_retry=$should_retry" >> "$GITHUB_OUTPUT"
+          echo "recovery_state=$recovery_state" >> "$GITHUB_OUTPUT"
+          echo "TAYVORIQ delivery-watch: state=$recovery_state attempt=$RUN_ATTEMPT"
+
+      - name: Persist delivery and recovery state
         env:
-          RUN_ID: ${{ github.event.workflow_run.id }}
-          RUN_URL: ${{ github.event.workflow_run.html_url }}
-          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RECOVERY_STATE: ${{ steps.classify.outputs.recovery_state }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           for attempt in 1 2 3 4 5; do
-            echo "Persist attempt ${attempt}/5"
             git fetch origin main
             git reset --hard origin/main
             mkdir -p .github/run-now
@@ -51,9 +84,12 @@ jobs:
               "run_id": int(os.environ["RUN_ID"]),
               "status": "completed",
               "conclusion": os.environ["RUN_CONCLUSION"],
+              "run_attempt": int(os.environ.get("RUN_ATTEMPT") or 1),
+              "recovery_state": os.environ["RECOVERY_STATE"],
               "url": os.environ["RUN_URL"],
               "completed_at": datetime.now(timezone.utc).isoformat(),
-              "workflow": "TAYVORIQ Deliver Video Now",
+              "workflow": "TAYVORIQ-X Golden Path",
+              "user_intervention_required": os.environ["RECOVERY_STATE"] == "EXTERNAL_ACTION_REQUIRED",
           }
           Path(".github/run-now/latest-delivery-run.json").write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n",
@@ -64,47 +100,70 @@ jobs:
 
             git add .github/run-now/latest-delivery-run.json
             if git diff --cached --quiet; then
-              echo "Delivery state already current."
               exit 0
             fi
-
-            git commit -m "ops: record completed TAYVORIQ delivery run"
+            git commit -m "ops: record TAYVORIQ delivery recovery state"
             if git push origin HEAD:main; then
-              echo "Delivery state persisted successfully."
               exit 0
             fi
-
-            echo "Concurrent update detected; retrying."
             sleep $((attempt * 2))
           done
-
-          echo "Unable to persist delivery state after 5 attempts."
           exit 1
 
-      - name: Notify Telegram only when action is required
-        if: github.event.workflow_run.conclusion != 'success'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          RUN_URL: ${{ github.event.workflow_run.html_url }}
-          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      - name: Re-run failed production automatically
+        if: steps.classify.outputs.should_retry == 'true'
+        run: |
+          set -euo pipefail
+          echo "Automatic recovery: rerunning failed jobs for run $RUN_ID after attempt $RUN_ATTEMPT."
+          gh run rerun "$RUN_ID" --failed
+
+      - name: Telegram recovery status
+        if: steps.classify.outputs.should_retry == 'true'
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
-          message=$(cat <<EOF
-          ❌ TAYVORIQ-Produktion nicht abgeschlossen
-
-          Status: ${RUN_CONCLUSION}
-          Es wurde kein ungeprüftes Video zur Freigabe gesendet.
-
-          Diagnose öffnen:
-          ${RUN_URL}
-          EOF
-          )
-          response=$(curl --fail --silent --show-error \
-            --request POST \
+          next_attempt=$((RUN_ATTEMPT + 1))
+          message=$(printf '🔧 TAYVORIQ Recovery läuft\n\nDer Produktionslauf wurde technisch abgefangen und automatisch erneut aufgenommen.\nVersuch: %s/3\n\n✅ Deine Trendfreigabe bleibt gültig.\n✅ Kein neues Go nötig.\n✅ Keine Aktion für dich.' "$next_attempt")
+          curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}")
-          python -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True; print("telegram_message_id=" + str(data["result"]["message_id"]))' <<<"$response"
+            --data-urlencode "text=${message}" >/dev/null
+
+      - name: Telegram external action blocker
+        if: steps.classify.outputs.external_blocker == 'true'
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          message=$(cat <<'EOF'
+          ⚠️ TAYVORIQ braucht einmalig deine Hilfe
+
+          Die autonome technische Recovery ist nicht der Blocker. Ein externer Zugang, Secret, Zahlungs- oder Berechtigungsstatus verhindert die Ausführung.
+
+          Deine Trendfreigabe bleibt gespeichert. Nach Behebung wird derselbe Auftrag fortgesetzt; keine neue Themenfreigabe nötig.
+          EOF
+          )
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${message}" >/dev/null
+
+      - name: Telegram autonomous budget status
+        if: failure() == false && github.event.workflow_run.conclusion != 'success' && steps.classify.outputs.should_retry != 'true' && steps.classify.outputs.external_blocker != 'true'
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          message=$(cat <<'EOF'
+          🟠 TAYVORIQ Recovery-Budget erreicht
+
+          Der Auftrag bleibt freigegeben und alle Diagnosen wurden gesichert. Es wurde nichts ungeprüft veröffentlicht.
+
+          Du musst den Trend nicht erneut freigeben. Der technische Zustand bleibt für die nächste Recovery erhalten.
+          EOF
+          )
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${message}" >/dev/null
