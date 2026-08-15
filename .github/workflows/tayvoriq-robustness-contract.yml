@@ -1,6 +1,6 @@
 name: TAYVORIQ Robustness Contract
 
-# implementation-contract-revision: v20-authoritative-length-v4-deep-voice-recovery
+# implementation-contract-revision: v20-authoritative-length-v5-deep-voice-series-visuals
 on:
   workflow_dispatch:
   push:
@@ -41,7 +41,9 @@ jobs:
           set -euo pipefail
           python -m compileall -q tools src runtime_patches tests
           python tools/tayvoriq_lightweight_preflight.py
-          python -m pytest -q tests/test_tayvoriq_deep_voice_contract.py
+          python -m pytest -q \
+            tests/test_tayvoriq_deep_voice_contract.py \
+            tests/test_tayvoriq_world_forces_visual_guard.py
 
       - name: Enforce workflow performance and notification invariants
         run: |
@@ -52,6 +54,7 @@ jobs:
           golden_path = Path('.github/workflows/tayvoriq-deliver-video-now.yml').read_text(encoding='utf-8')
           watcher = Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8')
           entrypoint = Path('implementation/tools/tayvoriq_autonomous_entrypoint.py').read_text(encoding='utf-8')
+          bootstrap = Path('implementation/tools/tayvoriq_production_render_bootstrap.py').read_text(encoding='utf-8')
 
           def position(text: str, token: str) -> int:
               value = text.find(token)
@@ -124,12 +127,22 @@ jobs:
               if token not in entrypoint:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_RUNTIME_TELEGRAM_MISSING:{token}')
 
+          required_bootstrap = (
+              'tayvoriq_world_forces_visual_guard.py',
+              'PRODUCTION_RUNTIME_BOOTSTRAP_WORLD_FORCES_VISUAL_INSTALL_MISSING',
+              'tayvoriq_v20_authoritative_length_guard.py',
+          )
+          for token in required_bootstrap:
+              if token not in bootstrap:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_BOOTSTRAP_MISSING:{token}')
+
           print({
               'state': 'TAYVORIQ_ROBUSTNESS_CONTRACT_PASSED',
               'lightweight_before_heavy_runtime': True,
               'model_cache_after_full_preflight': True,
               'internal_recovery_silent': True,
               'runtime_progress_opt_in_only': True,
+              'world_forces_visuals_bound_before_first_render': True,
               'external_blocker_notification_retained': True,
               'quality_gates_weakened': False,
           })
