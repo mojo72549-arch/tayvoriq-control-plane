@@ -298,6 +298,10 @@ jobs:
           for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY GROQ_API_KEY GEMINI_API_KEY; do
             test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
           done
+          if [ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]; then
+            echo "Production-start Telegram suppressed for same-run recovery attempt ${GITHUB_RUN_ATTEMPT}."
+            exit 0
+          fi
           suppress_start=false
           if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
             suppress_start=$(python - <<'PY'
@@ -326,6 +330,14 @@ jobs:
           path: implementation
           fetch-depth: 1
 
+      - name: Lightweight contract preflight
+        id: lightweight_preflight
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools src runtime_patches tests
+          python tools/tayvoriq_lightweight_preflight.py
+
       - name: Checkout review pages
         uses: actions/checkout@v4
         with:
@@ -335,16 +347,13 @@ jobs:
           path: pages-worktree
           fetch-depth: 1
 
-      - name: Restore dependency and model cache
+      - name: Restore pip dependency cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/pip
-            ${{ env.HF_HOME }}
-            ${{ env.TORCH_HOME }}
-          key: tayvoriq-deps-v2-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
+          path: ~/.cache/pip
+          key: tayvoriq-pip-v3-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
           restore-keys: |
-            tayvoriq-deps-v2-${{ runner.os }}-py311-
+            tayvoriq-pip-v3-${{ runner.os }}-py311-
 
       - name: Restore lean production checkpoint
         id: restore_recovery_cache
@@ -404,6 +413,7 @@ jobs:
               "source_context_bound": True,
               "single_x_owner": True,
               "restored_recovery_checkpoint": os.environ.get("RESTORED_CHECKPOINT") == "true",
+              "lightweight_preflight_passed": True,
               "quality_gates_weakened": False,
           }
           pathlib.Path("implementation/out/control-plane/production-manifest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -435,6 +445,17 @@ jobs:
           set -euo pipefail
           python -m compileall -q tools src runtime_patches
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+
+      - name: Restore production model cache
+        if: steps.preflight.outcome == 'success'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.HF_HOME }}
+            ${{ env.TORCH_HOME }}
+          key: tayvoriq-models-v3-${{ runner.os }}-py311-torch260-chatterbox-65b18437
+          restore-keys: |
+            tayvoriq-models-v3-${{ runner.os }}-py311-
 
       - name: Produce approved master or reuse checkpoint
         id: controller
@@ -605,61 +626,41 @@ jobs:
             --review-id "${GITHUB_RUN_ID}" \
             --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
 
-      - name: Notify final failure with concrete state
+      - name: Record internal failure for Delivery Watch
         if: failure()
+        continue-on-error: true
+        working-directory: implementation
         run: |
           set +e
-          readarray -t failure_info < <(python - <<'PY'
+          mkdir -p out/control-plane
+          python - <<'PY'
           import json
           from pathlib import Path
-          report_path = Path("implementation/out/tayvoriq-self-heal/report.json")
-          preflight_path = Path("implementation/out/control-plane/preflight.json")
+          report_path = Path("out/tayvoriq-self-heal/report.json")
+          preflight_path = Path("out/control-plane/preflight.json")
           report = {}
+          preflight = {}
           if report_path.exists():
               try: report = json.loads(report_path.read_text(encoding="utf-8"))
               except Exception: report = {}
-          state = str(report.get("state") or "")
-          reason = " ".join(str(report.get("reason") or "").split())[:900]
-          scopes = report.get("repair_target_stages")
-          if not state and preflight_path.exists():
+          if preflight_path.exists():
               try: preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
               except Exception: preflight = {}
-              state = str(preflight.get("state") or "")
-              issues = preflight.get("issues") or []
-              if issues: reason = " ".join("; ".join(str(item) for item in issues[:3]).split())[:900]
-          print(state or "TECHNICAL_FAILURE")
-          print(reason)
-          print(", ".join(str(item) for item in scopes) if isinstance(scopes, list) else "")
-          try:
-              import sys
-              sys.path.insert(0, str(Path("implementation/tools").resolve()))
-              import tayvoriq_resume_existing_render as resume
-              master_exists = bool(resume.rendered_candidates(Path("implementation/out/tayvoriq-youtube-tiktok")))
-          except Exception:
-              master_exists = False
-          print("true" if master_exists else "false")
-          PY
+          state = str(report.get("state") or preflight.get("state") or "TECHNICAL_FAILURE")
+          payload = {
+              "state": state,
+              "notification_owner": "tayvoriq-delivery-watch",
+              "telegram_technical_failure_emitted": False,
+              "internal_recovery_expected": state != "EXTERNAL_ACTION_REQUIRED",
+              "quality_gates_weakened": False,
+          }
+          Path("out/control-plane/failure-notification-policy.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
           )
-          state="${failure_info[0]:-TECHNICAL_FAILURE}"
-          detail="${failure_info[1]:-}"
-          scopes="${failure_info[2]:-}"
-          master_exists="${failure_info[3]:-false}"
-          headline="❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden"
-          case "$state" in
-            PREFLIGHT_FAILED) reason="Die Produktionssicherheit hat vor dem Render einen internen Vertragsfehler erkannt. ${detail} Es wurde nichts veröffentlicht." ;;
-            SKIPPED_NO_PUBLISHABLE_TREND|CONTENT_REJECTED) reason="Das Video hat ein unverändertes Qualitäts- oder Fakten-Gate nicht bestanden. ${detail} Es wurde nichts veröffentlicht." ;;
-            PUBLISHABLE_OUTPUT_RETRY_REQUIRED)
-              if [ "$master_exists" = "true" ]; then
-                headline="🔧 TAYVORIQ Reparaturmodus"
-                reason="Der vorhandene Master bleibt erhalten, hat aber noch nicht alle strengen Gates bestanden. Reparaturziel: ${scopes:-unbekannt}. ${detail} Es wurde nichts veröffentlicht."
-              else
-                reason="Die Produktion wurde vor Erstellung eines wiederverwendbaren Masters gestoppt. ${detail} Es wurde nichts veröffentlicht."
-              fi
-              ;;
-            *) reason="Die Produktion konnte technisch nicht sicher abgeschlossen werden. ${detail} Es wurde nichts veröffentlicht." ;;
-          esac
-          message=$(printf '%s\n\n%s' "$headline" "$reason")
-          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}" >/dev/null
+          print(payload)
+          PY
+          echo "Recoverable technical failure retained for Delivery Watch; no Telegram technical-error message emitted."
 
       - name: Build lean diagnostics bundle
         if: always()
