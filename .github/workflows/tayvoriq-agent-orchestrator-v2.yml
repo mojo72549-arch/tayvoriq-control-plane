@@ -87,7 +87,7 @@ jobs:
         if: steps.slot.outputs.should_run == 'true'
         run: |
           set -euo pipefail
-          python tools/tayvoriq_agent_trend_radar_v2.py \
+          python tools/tayvoriq_agent_trend_radar_v3.py \
             --slot "${{ steps.slot.outputs.slot }}" \
             --output /tmp/tayvoriq-trend-request.json \
             --audit-output /tmp/tayvoriq-trend-audit.json
