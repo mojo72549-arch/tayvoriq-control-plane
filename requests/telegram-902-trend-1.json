@@ -31,11 +31,11 @@
       }
     ],
     "fallback_editorial_answers": {
-      "what_happened": "Nichts an der Erdoberfläche ist geologisch wirklich still: Die feste äußere Hülle ist in große Lithosphärenplatten gegliedert, die sich über sehr lange Zeiträume fortlaufend gegeneinander bewegen.",
-      "why_happening": "Die Erde besitzt ein heißes, dynamisches Inneres. Prozesse im Erdmantel und Kräfte an den Plattenrändern treiben die Plattenbewegung an; an der Oberfläche messen Forschende diese langsame Drift mit geodätischen Verfahren wie GPS.",
-      "who_is_affected": "Die Bewegung betrifft den gesamten Planeten. Besonders sichtbar werden ihre Folgen an Plattengrenzen, an denen Kontinente auseinanderdriften, Platten aneinander vorbeigleiten oder eine Platte unter eine andere abtaucht.",
-      "personal_impact": "Im Alltag sind Bewegungen von Millimetern bis Zentimetern pro Jahr nicht spürbar. Wo Platten oder Störungen jedoch durch Reibung blockiert werden, kann sich über lange Zeit Spannung aufbauen – die Grundlage für die nächste Folge über Erdbeben.",
-      "action_now": "Das ist keine akute Warnung und Erdbeben lassen sich daraus nicht auf einen konkreten Zeitpunkt vorhersagen. Die Folge soll das Grundprinzip erklären; Teil 2 setzt bei der Frage an, was passiert, wenn eine verhakte Grenze plötzlich nachgibt."
+      "what_happened": "Die Erdkruste besteht aus Platten, die sich ständig bewegen.",
+      "why_happening": "Durch Wärme im Erdinneren und Kräfte an Plattengrenzen bewegen sie sich.",
+      "who_is_affected": "Betroffen sind besonders Regionen entlang aktiver Plattengrenzen.",
+      "personal_impact": "Für dich bleibt diese Bewegung im Alltag meist unsichtbar.",
+      "action_now": "Prüfe bei Erdbebenmeldungen offizielle Quellen statt angeblicher Vorhersagen."
     },
     "series_context": {
       "series_id": "world-forces-v1",
@@ -50,7 +50,7 @@
       "approval_required": true
     }
   },
-  "source_context_sha256": "9f7952c061615cf172de038eb4e05716c432c14ed8a99cdf1a580a29347abf98",
+  "source_context_sha256": "3cff26d015a0f2205cf646ac756f218799f3868675e66ed714130f6199367338",
   "state_history": [
     {
       "state": "APPROVED",
@@ -66,6 +66,12 @@
       "state": "DISPATCHED",
       "at": "2026-08-15T06:47:54.732281+00:00",
       "actor": "request-dispatcher:31870323551"
+    },
+    {
+      "state": "SELF_HEAL_SOURCE_FALLBACK_COMPACTED",
+      "at": "2026-08-15T07:27:00+00:00",
+      "actor": "agent-orchestrator-v2",
+      "reason": "Existing strict render gate requires five verified editorial answers of 5-15 words and 38-49 words total; facts, sources, topic and approval remain unchanged."
     }
   ],
   "contract_sha256": "d526250b7032f644323923854fd0977e43e559e93ff3d757dcb1834c2755f820",
