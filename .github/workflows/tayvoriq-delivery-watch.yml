@@ -69,7 +69,7 @@ jobs:
         if: steps.classify.outputs.should_retry == 'true'
         run: |
           set -euo pipefail
-          echo "Automatic recovery: rerunning failed jobs for run $RUN_ID after attempt $RUN_ATTEMPT."
+          echo "Automatic silent recovery: rerunning failed jobs for run $RUN_ID after attempt $RUN_ATTEMPT."
           gh run rerun "$RUN_ID" --failed
 
       - name: Start and verify fresh recovery generation on current main
@@ -128,6 +128,9 @@ jobs:
               f"{os.environ['RUN_ID']}-{int(now.timestamp())}"
           )
           data['reason'] = 'autonomous-fresh-recovery-generation-on-current-main-after-same-run-budget'
+          # Internal recovery is intentionally silent. A recovered request must
+          # not emit a second "production started" message either.
+          data['suppress_start_notification'] = True
           path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           print('true'); print(str(generation)); print('FRESH_RECOVERY_GENERATION_PREPARED'); print(topic); print(trend_id)
           PY
@@ -144,7 +147,7 @@ jobs:
             fi
 
             git add .github/run-now/tayvoriq-x-request.json
-            git commit -m "agent(v2): prepare recovery generation ${generation} for ${RUN_ID}"
+            git commit -m "agent(v2): prepare silent recovery generation ${generation} for ${RUN_ID}"
             if git push origin HEAD:main; then
               break
             fi
@@ -214,6 +217,13 @@ jobs:
               "completed_at": datetime.now(timezone.utc).isoformat(),
               "workflow": "TAYVORIQ-X Golden Path",
               "user_intervention_required": state == "EXTERNAL_ACTION_REQUIRED",
+              "internal_recovery_silent": state in {
+                  "AUTO_RECOVERY_QUEUED",
+                  "FRESH_RECOVERY_GENERATION_REQUIRED",
+                  "FRESH_RECOVERY_GENERATION_RUNNING",
+                  "AUTONOMOUS_TECHNICAL_ESCALATION",
+                  "TECHNICAL_FAILURE",
+              },
           }
           Path(".github/run-now/latest-delivery-run.json").write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n",
@@ -234,34 +244,21 @@ jobs:
           done
           exit 1
 
-      - name: Telegram same-run recovery status
+      - name: Record silent same-run recovery
         if: steps.classify.outputs.should_retry == 'true'
         run: |
           set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
-          next_attempt=$((RUN_ATTEMPT + 1))
-          message=$(printf '🔧 TAYVORIQ Recovery läuft\n\nDer technische Fehler wurde automatisch übernommen.\nRecovery-Ebene: gleicher Lauf\nVersuch: %s/3\n\n✅ Deine Trendfreigabe bleibt gültig.\n✅ Kein neues Go nötig.\n✅ Keine Aktion für dich.' "$next_attempt")
-          curl -fsS --retry 3 --retry-all-errors -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}" >/dev/null
+          echo "Internal recovery queued silently for run $RUN_ID; no user notification emitted."
 
-      - name: Telegram verified fresh recovery generation status
+      - name: Record verified silent fresh recovery generation
         if: steps.fresh.outputs.started == 'true'
         env:
           GENERATION: ${{ steps.fresh.outputs.generation }}
           NEW_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
         run: |
           set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
           test -n "$NEW_RUN_ID"
-          message=$(printf '🛠️ TAYVORIQ technische Recovery läuft wirklich weiter\n\nDie drei Same-Run-Versuche sind beendet. Der identische freigegebene Auftrag wurde auf dem aktuellen Code-Stand als Recovery-Generation %s/%s neu gestartet.\nRun: %s\n\n✅ Neue Run-ID wurde verifiziert.\n✅ Thema, Quellen und Freigabe bleiben erhalten.\n✅ Kein neues Go nötig.\n✅ Keine Aktion für dich.' "$GENERATION" "$MAX_RECOVERY_GENERATIONS" "$NEW_RUN_ID")
-          curl -fsS --retry 3 --retry-all-errors -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}" >/dev/null
+          echo "Internal recovery generation $GENERATION/$MAX_RECOVERY_GENERATIONS verified as run $NEW_RUN_ID; no user notification emitted."
 
       - name: Telegram external action blocker
         if: steps.classify.outputs.external_blocker == 'true'
@@ -282,23 +279,8 @@ jobs:
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${message}" >/dev/null
 
-      - name: Telegram internal technical escalation
+      - name: Record internal technical escalation without user noise
         if: steps.classify.outputs.needs_fresh_generation == 'true' && steps.fresh.outputs.started != 'true'
         run: |
           set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
-          message=$(cat <<'EOF'
-          🟣 TAYVORIQ interne Recovery-Eskalation
-
-          Eine neue Recovery-Generation konnte technisch noch nicht mit einer echten Run-ID verifiziert werden. Deshalb wird bewusst NICHT behauptet, dass die Produktion läuft.
-
-          ✅ Deine Trendfreigabe bleibt gültig.
-          ✅ Du musst GitHub oder den Fehler nicht bedienen.
-          ✅ Keine neue Themenfreigabe nötig.
-          EOF
-          )
-          curl -fsS --retry 3 --retry-all-errors -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}" >/dev/null
+          echo "Internal recovery escalation remains active. Approval is retained; no user action requested and no Telegram technical-error message emitted."
