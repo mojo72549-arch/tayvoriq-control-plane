@@ -16,6 +16,7 @@ VALID_SCOPES = {
     "science_future", "creator_media", "mobility_energy", "auto_scope",
 }
 BLOCKED_SOURCE_MARKERS = ("tiktok.com", "instagram.com", "facebook.com", "x.com", "twitter.com", "youtube.com")
+ACTIVE_SERIES_PATH = Path("state/tayvoriq-active-series.json")
 
 
 def clamp(value: Any) -> int:
@@ -47,17 +48,17 @@ def extract_json(text: str) -> dict[str, Any]:
 
 
 def gemini_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str, str]], str]:
-    configured = clean(os.getenv("TAYVORIQ_TREND_MODEL"), 100) or "gemini-3.5-flash"
+    configured = clean(os.getenv("TAYVORIQ_TREND_MODEL"), 100) or "gemini-3.6-flash"
     models = []
-    for model in (configured, "gemini-2.5-flash"):
+    for model in (configured, "gemini-3.6-flash", "gemini-3.5-flash"):
         if model not in models:
             models.append(model)
     last_error = ""
     for model in models:
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "tools": [{"googleSearch": {}}],
-            "generationConfig": {"temperature": 0.15, "maxOutputTokens": 12000},
+            "tools": [{"google_search": {}}],
+            "generationConfig": {"maxOutputTokens": 12000},
         }
         req = urllib.request.Request(
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
@@ -94,31 +95,32 @@ You are the TrendSourceAgent for the German short-video brand TAYVORIQ.
 Current local time: {now.isoformat()} (Europe/Berlin). Slot: {slot.upper()}.
 {slot_rules}
 
-Use Google Search grounding and identify 8 CURRENT candidate stories from roughly the last 24 hours (48 hours only if still actively unfolding). Return ONLY one JSON object with key \"candidates\".
+Use Google Search grounding and identify 8 CURRENT candidate stories from roughly the last 24 hours (48 hours only if still actively unfolding). Return ONLY one JSON object with key "candidates".
 
 Editorial goals:
-- Audience: broad 16-39, especially 18-34, understandable without prior knowledge.
+- Audience: broad 16-44, especially 18-34, understandable without prior knowledge.
 - Strong hook within 1.5 seconds; 35-60 second vertical short potential.
 - Prefer technology/AI, world events, business/economy, science/future, mobility/energy, creator/media, sports, and useful local/regional developments.
-- Natural events (earthquake, volcano, eclipse, storm, wildfire, flood etc.) should include the deeper WHY/HOW explanation, not only the event.
+- Natural events (earthquake, volcano, eclipse, storm, wildfire, flood etc.) must include the deeper WHY/HOW explanation, not only the event.
+- For local/regional stories, prioritize direct personal relevance: weather, transport, safety, prices, events, unusual incidents and changes that affect daily life.
 - Avoid party-political advocacy, celebrity gossip, graphic violence, rumors, clickbait without evidence, and duplicate versions of the same story.
 - Every candidate MUST have at least two independent, credible sources. Prefer primary/official sources plus established news outlets. Do not use social media as a source.
 - Do not invent URLs, publishers, dates, numbers, or quotes.
 
 For each candidate return:
 {{
-  \"title\": \"short German headline\",
-  \"category\": \"...\",
-  \"trend_scope\": \"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy\",
-  \"regional_relevance\": \"local|germany|europe|global\",
-  \"criteria\": {{\"aktualitaet\":0-100,\"viralitaet\":0-100,\"tayvoriq_passung\":0-100,\"quellenqualitaet\":0-100,\"visuell\":0-100}},
-  \"sources\": [{{\"publisher\":\"...\",\"url\":\"https://...\",\"supports\":\"specific fact supported by this source\"}}, ...],
-  \"fallback_editorial_answers\": {{
-    \"what_happened\": \"...\",
-    \"why_happening\": \"...\",
-    \"who_is_affected\": \"...\",
-    \"personal_impact\": \"...\",
-    \"action_now\": \"...\"
+  "title": "short German headline",
+  "category": "...",
+  "trend_scope": "technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy",
+  "regional_relevance": "local|germany|europe|global",
+  "criteria": {{"aktualitaet":0-100,"viralitaet":0-100,"tayvoriq_passung":0-100,"quellenqualitaet":0-100,"visuell":0-100}},
+  "sources": [{{"publisher":"...","url":"https://...","supports":"specific fact supported by this source"}}, ...],
+  "fallback_editorial_answers": {{
+    "what_happened": "...",
+    "why_happening": "...",
+    "who_is_affected": "...",
+    "personal_impact": "...",
+    "action_now": "..."
   }}
 }}
 """.strip()
@@ -178,15 +180,62 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
     }
 
 
+def load_active_series_candidate(verified_at: str) -> dict[str, Any] | None:
+    if not ACTIVE_SERIES_PATH.exists():
+        return None
+    try:
+        state = json.loads(ACTIVE_SERIES_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise SystemExit(f"ACTIVE_SERIES_INVALID: {type(exc).__name__}: {exc}")
+    if str(state.get("status") or "").strip().lower() not in {"active", "ready_for_selection"}:
+        return None
+    raw = state.get("trend")
+    if not isinstance(raw, dict):
+        raise SystemExit("ACTIVE_SERIES_INVALID: missing trend object")
+    candidate = normalized_candidate(raw, verified_at)
+    if not candidate:
+        raise SystemExit("ACTIVE_SERIES_INVALID: active episode is not contract-valid")
+    candidate["source_context"]["series_context"] = {
+        "series_id": clean(state.get("series_id"), 120),
+        "series_title": clean(state.get("series_title"), 180),
+        "episode": int(state.get("episode") or 0),
+        "episode_title": clean(state.get("episode_title"), 180),
+        "cover_text": clean(state.get("cover_text"), 120),
+        "hook": clean(state.get("hook"), 600),
+        "bridge_out": clean(state.get("bridge_out"), 600),
+        "visual_continuity": clean(state.get("visual_continuity"), 1200),
+        "red_thread": clean(state.get("red_thread"), 1200),
+        "approval_required": True,
+    }
+    return candidate
+
+
 def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any]]:
     ordered = sorted(candidates, key=lambda x: x["score"], reverse=True)
     selected: list[dict[str, Any]] = []
     scope_counts: dict[str, int] = {}
+
+    series = next((
+        c for c in ordered
+        if isinstance(c.get("source_context"), dict)
+        and isinstance(c["source_context"].get("series_context"), dict)
+        and c["source_context"]["series_context"].get("series_id")
+    ), None)
+    if series:
+        selected.append(series)
+        scope_counts[series["trend_scope"]] = 1
+
     if slot == "afternoon":
-        local = next((c for c in ordered if c.get("regional_relevance") == "local" and c["score"] >= 70), None)
+        local = next((
+            c for c in ordered
+            if c is not series
+            and c.get("regional_relevance") == "local"
+            and c["score"] >= 70
+        ), None)
         if local:
             selected.append(local)
-            scope_counts[local["trend_scope"]] = 1
+            scope_counts[local["trend_scope"]] = scope_counts.get(local["trend_scope"], 0) + 1
+
     for cand in ordered:
         if cand in selected:
             continue
@@ -223,6 +272,9 @@ def main() -> int:
     verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     raw_candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
     normalized = [c for raw in raw_candidates if isinstance(raw, dict) and (c := normalized_candidate(raw, verified_at))]
+    series_candidate = load_active_series_candidate(verified_at)
+    if series_candidate:
+        normalized.append(series_candidate)
     chosen = diversify(normalized, args.slot)
     if len(chosen) != 5:
         raise SystemExit(f"Need 5 contract-valid grounded trends, got {len(chosen)} from {len(raw_candidates)} candidates")
@@ -240,11 +292,22 @@ def main() -> int:
     }
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    audit = {"selection_id": selection_id, "slot": args.slot, "model": model, "grounding_chunks": chunks, "candidate_count": len(raw_candidates), "valid_count": len(normalized), "selected_count": 5, "quality_gates_weakened": False}
+    audit = {
+        "selection_id": selection_id,
+        "slot": args.slot,
+        "model": model,
+        "grounding_chunks": chunks,
+        "candidate_count": len(raw_candidates),
+        "valid_count": len(normalized),
+        "selected_count": 5,
+        "series_candidate_injected": bool(series_candidate),
+        "quality_gates_weakened": False,
+    }
     Path(args.audit_output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.audit_output).write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"selection_id": selection_id, "slot": args.slot, "model": model, "selected": [t["title"] for t in chosen]}, ensure_ascii=False))
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
