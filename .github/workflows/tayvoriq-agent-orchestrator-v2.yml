@@ -25,7 +25,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-agent-orchestrator-v2
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -40,6 +40,7 @@ jobs:
     outputs:
       should_run: ${{ steps.slot.outputs.should_run }}
       slot: ${{ steps.slot.outputs.slot }}
+      active_series: ${{ steps.mode.outputs.active_series }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -83,8 +84,37 @@ jobs:
           print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
           PY
 
-      - name: Generate grounded 5-trend ranking
+      - name: Detect active editorial series
+        id: mode
         if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          path=Path('state/tayvoriq-active-series.json')
+          active=False
+          info={}
+          if path.is_file():
+              state=json.loads(path.read_text(encoding='utf-8'))
+              active=str(state.get('status') or '').strip().lower() in {'active','ready_for_selection'}
+              info={'series_id':state.get('series_id'),'episode':state.get('episode'),'title':state.get('episode_title')}
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+              h.write(f"active_series={'true' if active else 'false'}\n")
+          print({'active_series':active, **info})
+          PY
+
+      - name: Build active series episode request
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true'
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_agent_series_request_v2.py \
+            --slot "${{ steps.slot.outputs.slot }}" \
+            --output /tmp/tayvoriq-trend-request.json \
+            --audit-output /tmp/tayvoriq-trend-audit.json
+
+      - name: Generate grounded 5-trend ranking
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true'
         run: |
           set -euo pipefail
           python tools/tayvoriq_agent_trend_radar_v3.py \
@@ -92,7 +122,7 @@ jobs:
             --output /tmp/tayvoriq-trend-request.json \
             --audit-output /tmp/tayvoriq-trend-audit.json
 
-      - name: Validate existing two-step contract
+      - name: Validate approval contract
         if: steps.slot.outputs.should_run == 'true'
         run: |
           set -euo pipefail
@@ -100,15 +130,24 @@ jobs:
           import json
           d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
           assert d.get('agent_orchestrator') == 'v2'
-          assert len(d.get('trends') or []) == 5
-          assert [x.get('id') for x in d['trends']] == ['1','2','3','4','5']
-          for t in d['trends']:
+          trends=d.get('trends') or []
+          if d.get('mode') == 'active_series':
+              assert len(trends) == 1
+              assert [x.get('id') for x in trends] == ['1']
+              sc=trends[0].get('source_context') or {}
+              series=sc.get('series_context') or {}
+              assert series.get('series_id') and int(series.get('episode') or 0) >= 1
+              assert series.get('hook') and series.get('bridge_out') and series.get('red_thread')
+          else:
+              assert len(trends) == 5
+              assert [x.get('id') for x in trends] == ['1','2','3','4','5']
+          for t in trends:
               assert len(t.get('sources') or []) >= 2
               sc=t.get('source_context') or {}
               assert sc.get('independent_news_count',0) >= 2
               assert len(sc.get('sources') or []) >= 2
               assert all((sc.get('fallback_editorial_answers') or {}).get(k) for k in ['what_happened','why_happening','who_is_affected','personal_impact','action_now'])
-          print('V2 trend request contract passed')
+          print({'contract':'passed','mode':d.get('mode') or 'trend_radar','trend_count':len(trends)})
           PY
 
       - name: Persist canonical request without triggering legacy push workflows
@@ -122,11 +161,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .github/run-now/tayvoriq-trend-request.json .automation/tayvoriq-agent-v2/sessions/
-          git commit -m "agent(v2): stage ${selection_id} trend ranking"
+          git commit -m "agent(v2): stage ${selection_id} approval request"
           git pull --rebase origin main
           git push origin HEAD:main
 
-      - name: Send correct slot ranking to Telegram
+      - name: Send approval request to Telegram
         if: steps.slot.outputs.should_run == 'true'
         run: |
           set -euo pipefail
@@ -135,18 +174,42 @@ jobs:
           python - <<'PY' >/tmp/message.json
           import json, os
           d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
-          morning=d['slot']=='morning'
-          lines=[('🌅 TAYVORIQ Morgen-Trends' if morning else '🌆 TAYVORIQ Nachmittags-Trends'),'', 'Rangliste:']
-          for t in d['trends']:
-              lines.append(f"{t['id']}. {t['title']} — {t['score']} %")
-          lines += ['', 'Aktuell geprüft · mindestens 2 Quellen je Trend · Qualität vor Geschwindigkeit.', '', 'Schritt 1: Trendnummer wählen.', 'Schritt 2: Details prüfen und separat „Trend freigeben“ tippen.', '', 'Erst danach übernimmt Agent V2 Produktion, Reparaturen, Quality-Gates und Veröffentlichung selbstständig.']
           sid=d['selection_id']
-          kb={'inline_keyboard':[[
-              {'text':'1️⃣ Trend 1','callback_data':f'select_trend:{sid}:1'},
-              {'text':'2️⃣ Trend 2','callback_data':f'select_trend:{sid}:2'}],[
-              {'text':'3️⃣ Trend 3','callback_data':f'select_trend:{sid}:3'},
-              {'text':'4️⃣ Trend 4','callback_data':f'select_trend:{sid}:4'}],[
-              {'text':'5️⃣ Trend 5','callback_data':f'select_trend:{sid}:5'}]]}
+          if d.get('mode') == 'active_series':
+              t=d['trends'][0]
+              sc=(t.get('source_context') or {}).get('series_context') or {}
+              lines=[
+                  f"🧭 TAYVORIQ Serie · Teil {sc.get('episode')}/5",
+                  str(sc.get('series_title') or ''),
+                  '',
+                  f"Folge: {sc.get('episode_title') or t.get('title')}",
+                  f"Cover: {sc.get('cover_text') or ''}",
+                  '',
+                  f"Hook: {sc.get('hook') or ''}",
+                  '',
+                  f"Übergang zu Teil {int(sc.get('episode') or 0)+1}: {sc.get('bridge_out') or ''}",
+                  '',
+                  f"Quellen geprüft: {len(t.get('sources') or [])}",
+                  'Die Serie und die rote Linie sind bereits festgelegt. Kein neuer Trend-Scan nötig.',
+                  '',
+                  'Mit „Trend freigeben“ übernimmt Agent V2 danach Produktion, Reparaturen, Quality-Gates und Veröffentlichung autonom.'
+              ]
+              kb={'inline_keyboard':[
+                  [{'text':'✅ Trend freigeben','callback_data':f'approve_trend:{sid}:1'}],
+                  [{'text':'❌ Ablehnen','callback_data':'reject_trend:1'}]
+              ]}
+          else:
+              morning=d['slot']=='morning'
+              lines=[('🌅 TAYVORIQ Morgen-Trends' if morning else '🌆 TAYVORIQ Nachmittags-Trends'),'', 'Rangliste:']
+              for t in d['trends']:
+                  lines.append(f"{t['id']}. {t['title']} — {t['score']} %")
+              lines += ['', 'Aktuell geprüft · mindestens 2 Quellen je Trend · Qualität vor Geschwindigkeit.', '', 'Schritt 1: Trendnummer wählen.', 'Schritt 2: Details prüfen und separat „Trend freigeben“ tippen.', '', 'Erst danach übernimmt Agent V2 Produktion, Reparaturen, Quality-Gates und Veröffentlichung selbstständig.']
+              kb={'inline_keyboard':[[
+                  {'text':'1️⃣ Trend 1','callback_data':f'select_trend:{sid}:1'},
+                  {'text':'2️⃣ Trend 2','callback_data':f'select_trend:{sid}:2'}],[
+                  {'text':'3️⃣ Trend 3','callback_data':f'select_trend:{sid}:3'},
+                  {'text':'4️⃣ Trend 4','callback_data':f'select_trend:{sid}:4'}],[
+                  {'text':'5️⃣ Trend 5','callback_data':f'select_trend:{sid}:5'}]]}
           print(json.dumps({'chat_id':os.environ['TELEGRAM_CHAT_ID'],'text':'\n'.join(lines),'disable_web_page_preview':True,'reply_markup':kb}, ensure_ascii=False))
           PY
           curl --fail --silent --show-error --retry 3 --retry-all-errors \
@@ -160,9 +223,13 @@ jobs:
           print({'telegram_message_id':d['result']['message_id']})
           PY
 
-      - name: Notify radar failure only
+      - name: Notify gate failure once for this run
         if: failure() && steps.slot.outputs.should_run == 'true'
         continue-on-error: true
         run: |
-          text="❌ TAYVORIQ Agent V2 konnte die aktuelle Trend-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet und kein bestehender Workflow verändert."
+          if [ "${{ steps.mode.outputs.active_series }}" = "true" ]; then
+            text="❌ TAYVORIQ Agent V2 konnte die vorbereitete Serienfolge nicht bis zur Telegram-Freigabe bereitstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
+          else
+            text="❌ TAYVORIQ Agent V2 konnte die aktuelle Trend-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
+          fi
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
