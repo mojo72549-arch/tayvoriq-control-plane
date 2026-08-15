@@ -75,18 +75,63 @@ jobs:
         if: steps.owner.outputs.owned != 'true'
         run: echo "Run is not owned by Agent V2. Existing/manual behavior remains untouched."
 
+      - name: Diagnose failed V2 production and notify
+        id: diagnosis
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion != 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+          TOPIC: ${{ steps.owner.outputs.topic }}
+        run: |
+          set +e
+          gh run view "$RUN_ID" --log > /tmp/golden.log 2>/dev/null
+          controller_line=$(grep -E 'Controller handoff: state=' /tmp/golden.log | tail -n 1 | sed -E 's/^.*Controller handoff:/Controller handoff:/' || true)
+          production_line=$(grep -E 'Production is not publishable:' /tmp/golden.log | tail -n 1 | sed -E 's/^.*Production is not publishable:/Production is not publishable:/' || true)
+          state=$(printf '%s\n' "$controller_line" | sed -nE 's/.*state=([A-Z0-9_]+).*/\1/p' | tail -n 1)
+          [ -n "$state" ] || state="TECHNICAL_FAILURE"
+          retryable=true
+          case "$state" in
+            CONTENT_REJECTED|SKIPPED_NO_PUBLISHABLE_TREND) retryable=false ;;
+          esac
+          case "$state" in
+            TRANSIENT_RENDER_FAILURE) human="Render-/Skriptpfad konnte noch keinen sicheren Master erzeugen." ;;
+            PUBLISHABLE_OUTPUT_RETRY_REQUIRED) human="Ein Produktionsartefakt existiert, aber mindestens ein lokales Freigabe-Gate ist noch offen." ;;
+            PREFLIGHT_FAILED) human="Ein technischer Vorabcheck hat die Produktion vor dem Render blockiert." ;;
+            CONTENT_REJECTED|SKIPPED_NO_PUBLISHABLE_TREND) human="Ein unverändertes Inhalts- oder Fakten-Gate hat den freigegebenen Inhalt blockiert." ;;
+            *) human="Die Produktion ist technisch vor der sicheren Freigabe abgebrochen." ;;
+          esac
+          detail="$controller_line"
+          [ -n "$production_line" ] && detail="${detail}${detail:+ | }${production_line}"
+          detail=$(printf '%s' "$detail" | cut -c1-900)
+          {
+            echo "state=$state"
+            echo "retryable=$retryable"
+            echo "human=$human"
+          } >> "$GITHUB_OUTPUT"
+          text=$(printf '⚠️ TAYVORIQ Fehler erkannt\n\nThema: %s\nRun: %s\nStatus: %s\nUrsache: %s\n%s\n\nFür dich: ✅ Keine Aktion nötig – der Orchestrator übernimmt die technische Recovery.' "$TOPIC" "$RUN_ID" "$state" "$human" "$detail")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
+          exit 0
+
       - name: Bounded autonomous retry after failed V2 production
-        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion != 'success' && steps.owner.outputs.retry_count == '0'
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion != 'success' && steps.diagnosis.outputs.retryable == 'true' && fromJSON(steps.owner.outputs.retry_count) < 2
         env:
           GH_TOKEN: ${{ github.token }}
           TOPIC: ${{ steps.owner.outputs.topic }}
           TREND_ID: ${{ steps.owner.outputs.trend_id }}
           SELECTION_ID: ${{ steps.owner.outputs.selection_id }}
           ROOT_RUN_ID: ${{ steps.owner.outputs.run_id }}
+          RETRY_COUNT: ${{ steps.owner.outputs.retry_count }}
+          DIAGNOSIS_STATE: ${{ steps.diagnosis.outputs.state }}
+          DIAGNOSIS_HUMAN: ${{ steps.diagnosis.outputs.human }}
         run: |
           set -euo pipefail
+          next_retry=$((RETRY_COUNT + 1))
+          repair_text=$(printf '🔧 TAYVORIQ Reparatur gestartet\n\nFehlerklasse: %s\nBearbeitung: %s\nRecovery: %s/2\n\nDer bereits freigegebene Auftrag und seine Fakten bleiben erhalten. Der neue Produktionslauf wird vom aktuellen main-Stand gestartet.\n\nFür dich: ✅ Keine Aktion nötig.' "$DIAGNOSIS_STATE" "$DIAGNOSIS_HUMAN" "$next_retry")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${repair_text}" >/dev/null || true
+
           before=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-          gh workflow run tayvoriq-deliver-video-now.yml --ref main -f topic="$TOPIC" -f trend_id="$TREND_ID"
+          gh workflow run tayvoriq-deliver-video-now.yml --repo "$GITHUB_REPOSITORY" --ref main -f topic="$TOPIC" -f trend_id="$TREND_ID"
           new=""
           for attempt in $(seq 1 18); do
             sleep 5
@@ -95,26 +140,46 @@ jobs:
           done
           [ -n "$new" ] || { echo "retry run not found"; exit 1; }
           mkdir -p .automation/tayvoriq-agent-v2/run-map
-          python - "$new" <<'PY'
+          python - "$new" "$next_retry" <<'PY'
           import json, os, sys
           from pathlib import Path
-          run=sys.argv[1]
-          payload={'run_id':run,'root_run_id':os.environ['ROOT_RUN_ID'],'retry_count':1,'selection_id':os.environ['SELECTION_ID'],'topic':os.environ['TOPIC'],'trend_id':os.environ['TREND_ID'],'agent_orchestrator':'v2'}
+          run=sys.argv[1]; retry_count=int(sys.argv[2])
+          payload={'run_id':run,'root_run_id':os.environ['ROOT_RUN_ID'],'retry_count':retry_count,'selection_id':os.environ['SELECTION_ID'],'topic':os.environ['TOPIC'],'trend_id':os.environ['TREND_ID'],'agent_orchestrator':'v2'}
           Path(f'.automation/tayvoriq-agent-v2/run-map/{run}.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .automation/tayvoriq-agent-v2/run-map/
-          git commit -m "agent(v2): map bounded retry ${new}"
+          git commit -m "agent(v2): map recovery ${next_retry} run ${new}"
           git pull --rebase origin main
           git push origin HEAD:main
-          text="🔧 TAYVORIQ Agent V2 repariert autonom weiter. Der erste Produktionslauf ist fehlgeschlagen; genau ein begrenzter Wiederholungsversuch wurde gestartet. Für dich: ✅ Keine Aktion nötig."
+          restarted_text=$(printf '🔁 TAYVORIQ Produktion erneut gestartet\n\nRun: %s\nRecovery: %s/2\nThema: %s\n\nDer Fehlerpfad wurde übernommen; es wird nicht wieder bei der Trendauswahl begonnen.\n\nFür dich: ✅ Keine Aktion nötig.' "$new" "$next_retry" "$TOPIC")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${restarted_text}" >/dev/null || true
+
+      - name: Stop only after safe recovery paths are exhausted
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion != 'success' && (steps.diagnosis.outputs.retryable != 'true' || fromJSON(steps.owner.outputs.retry_count) >= 2)
+        env:
+          TOPIC: ${{ steps.owner.outputs.topic }}
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+          DIAGNOSIS_STATE: ${{ steps.diagnosis.outputs.state }}
+          DIAGNOSIS_HUMAN: ${{ steps.diagnosis.outputs.human }}
+          RETRYABLE: ${{ steps.diagnosis.outputs.retryable }}
+        run: |
+          if [ "$RETRYABLE" = "true" ]; then
+            text=$(printf '🛑 TAYVORIQ finaler technischer Blocker\n\nThema: %s\nRun: %s\nStatus: %s\nUrsache: %s\n\nZwei sichere Recovery-Generationen wurden ausgeschöpft. Es wurde nichts veröffentlicht. Erst jetzt ist eine technische Prüfung erforderlich.' "$TOPIC" "$RUN_ID" "$DIAGNOSIS_STATE" "$DIAGNOSIS_HUMAN")
+          else
+            text=$(printf '🛑 TAYVORIQ Inhalts-/Fakten-Gate benötigt Entscheidung\n\nThema: %s\nRun: %s\nStatus: %s\nUrsache: %s\n\nDer Orchestrator verändert freigegebene Fakten nicht automatisch. Es wurde nichts veröffentlicht.' "$TOPIC" "$RUN_ID" "$DIAGNOSIS_STATE" "$DIAGNOSIS_HUMAN")
+          fi
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
-      - name: Stop after bounded retry failure
-        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion != 'success' && steps.owner.outputs.retry_count != '0'
+      - name: Notify independent quality audit start
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
+        continue-on-error: true
+        env:
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+          TOPIC: ${{ steps.owner.outputs.topic }}
         run: |
-          text="❌ TAYVORIQ Agent V2 hat den begrenzten Self-Heal-Pfad ausgeschöpft. Es wurde nichts veröffentlicht. Bestehende Workflows wurden nicht verändert."
+          text=$(printf '🧪 TAYVORIQ Produktion abgeschlossen – Quality-Gates laufen\n\nThema: %s\nRun: %s\n\nMaster und Plattformvarianten sind erstellt. Jetzt laufen die unabhängigen finalen Qualitäts- und Freigabeprüfungen.\n\nFür dich: ✅ Keine Aktion nötig.' "$TOPIC" "$RUN_ID")
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
       - name: Wait for verified review assets
@@ -154,6 +219,16 @@ jobs:
           assert not audit.get('blockers'), f"blockers={audit.get('blockers')}"
           print({'run_id':os.environ['RUN_ID'],'agent_v2_release_gate':'passed','quality_gates_weakened':False})
           PY
+
+      - name: Notify quality gates passed
+        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
+        continue-on-error: true
+        env:
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+          TOPIC: ${{ steps.owner.outputs.topic }}
+        run: |
+          text=$(printf '✅ TAYVORIQ Quality-Gates bestanden\n\nThema: %s\nRun: %s\n\nQualität, Preapproval-Audit, Gate-Integrität und Blocker-Prüfung sind bestanden. Die automatische Veröffentlichung wird jetzt vorbereitet.\n\nFür dich: ✅ Keine Aktion nötig.' "$TOPIC" "$RUN_ID")
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
       - name: Remove redundant manual review buttons from V2 message
         if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
@@ -206,5 +281,5 @@ jobs:
         run: |
           set -euo pipefail
           gh workflow run tayvoriq-auto-publish-approved.yml --ref main -f review_id="$RUN_ID"
-          text="✅ TAYVORIQ Agent V2: Alle unabhängigen Quality-Gates sind bestanden. YouTube-Veröffentlichung wurde automatisch gestartet; TikTok-Paket bleibt wie vereinbart zur manuellen Veröffentlichung. Für dich: ✅ Keine weitere Freigabe nötig."
+          text="✅ TAYVORIQ Agent V2: Finale bestanden. YouTube-Veröffentlichung wurde automatisch gestartet; TikTok-Paket bleibt wie vereinbart zur manuellen Veröffentlichung. Für dich: ✅ Keine weitere Freigabe nötig."
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
