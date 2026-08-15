@@ -84,6 +84,92 @@ def gemini_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[st
     raise RuntimeError(f"Gemini grounded trend scan failed: {last_error}")
 
 
+def groq_call(prompt: str, api_key: str) -> tuple[dict[str, Any], list[dict[str, str]], str]:
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY missing")
+    payload = {
+        "model": "groq/compound",
+        "messages": [{
+            "role": "user",
+            "content": prompt + "\n\nUse web search and website visits. Return ONLY the requested JSON object, with direct source URLs in every source entry."
+        }],
+        "citation_options": "disabled",
+        "compound_custom": {
+            "tools": {
+                "enabled_tools": ["web_search", "visit_website"]
+            }
+        },
+        "search_settings": {
+            "exclude_domains": [
+                "tiktok.com", "instagram.com", "facebook.com",
+                "x.com", "twitter.com", "youtube.com"
+            ]
+        },
+    }
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "tayvoriq-agent-v2",
+            "Groq-Model-Version": "latest",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=180) as response:
+            raw = json.loads(response.read().decode("utf-8"))
+        message = (((raw.get("choices") or [{}])[0]).get("message") or {})
+        data = extract_json(str(message.get("content") or ""))
+        chunks: list[dict[str, str]] = []
+        for tool in message.get("executed_tools") or []:
+            if not isinstance(tool, dict):
+                continue
+            search_results = tool.get("search_results")
+            results = []
+            if isinstance(search_results, dict):
+                results = search_results.get("results") or []
+            elif isinstance(search_results, list):
+                results = search_results
+            for item in results:
+                if isinstance(item, dict) and item.get("url"):
+                    chunks.append({
+                        "title": clean(item.get("title"), 500),
+                        "uri": clean(item.get("url"), 2000),
+                    })
+        if len(chunks) < 4:
+            for candidate in data.get("candidates") or []:
+                if not isinstance(candidate, dict):
+                    continue
+                for source in candidate.get("sources") or []:
+                    if isinstance(source, dict) and str(source.get("url") or "").startswith(("https://", "http://")):
+                        chunks.append({
+                            "title": clean(source.get("publisher") or source.get("url"), 500),
+                            "uri": clean(source.get("url"), 2000),
+                        })
+        return data, chunks, "groq/compound"
+    except Exception as exc:
+        raise RuntimeError(f"Groq grounded trend scan failed: {type(exc).__name__}: {exc}") from exc
+
+
+def grounded_call(prompt: str, gemini_key: str, groq_key: str) -> tuple[dict[str, Any], list[dict[str, str]], str, str]:
+    errors: list[str] = []
+    if gemini_key:
+        try:
+            data, chunks, model = gemini_call(prompt, gemini_key)
+            return data, chunks, model, "gemini"
+        except Exception as exc:
+            errors.append(str(exc))
+    if groq_key:
+        try:
+            data, chunks, model = groq_call(prompt, groq_key)
+            return data, chunks, model, "groq"
+        except Exception as exc:
+            errors.append(str(exc))
+    raise RuntimeError("All grounded trend providers failed: " + " | ".join(errors))
+
+
 def prompt_for(slot: str, now: datetime) -> str:
     slot_rules = (
         "MORNING: prioritize Germany + Europe + major global developments with strong visual/explainer potential."
@@ -95,7 +181,7 @@ You are the TrendSourceAgent for the German short-video brand TAYVORIQ.
 Current local time: {now.isoformat()} (Europe/Berlin). Slot: {slot.upper()}.
 {slot_rules}
 
-Use Google Search grounding and identify 8 CURRENT candidate stories from roughly the last 24 hours (48 hours only if still actively unfolding). Return ONLY one JSON object with key "candidates".
+Use web search grounding and identify 8 CURRENT candidate stories from roughly the last 24 hours (48 hours only if still actively unfolding). Return ONLY one JSON object with key "candidates".
 
 Editorial goals:
 - Audience: broad 16-44, especially 18-34, understandable without prior knowledge.
@@ -262,11 +348,12 @@ def main() -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument("--audit-output", required=True)
     args = parser.parse_args()
-    api_key = clean(os.getenv("GEMINI_API_KEY"), 500)
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY missing")
+    gemini_key = clean(os.getenv("GEMINI_API_KEY"), 500)
+    groq_key = clean(os.getenv("GROQ_API_KEY"), 500)
+    if not gemini_key and not groq_key:
+        raise SystemExit("No grounded trend provider configured: GEMINI_API_KEY or GROQ_API_KEY required")
     now = datetime.now(ZoneInfo("Europe/Berlin"))
-    data, chunks, model = gemini_call(prompt_for(args.slot, now), api_key)
+    data, chunks, model, provider = grounded_call(prompt_for(args.slot, now), gemini_key, groq_key)
     if len(chunks) < 4:
         raise SystemExit(f"Grounding evidence too weak: only {len(chunks)} web chunks")
     verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -295,6 +382,7 @@ def main() -> int:
     audit = {
         "selection_id": selection_id,
         "slot": args.slot,
+        "provider": provider,
         "model": model,
         "grounding_chunks": chunks,
         "candidate_count": len(raw_candidates),
@@ -305,7 +393,7 @@ def main() -> int:
     }
     Path(args.audit_output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.audit_output).write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"selection_id": selection_id, "slot": args.slot, "model": model, "selected": [t["title"] for t in chosen]}, ensure_ascii=False))
+    print(json.dumps({"selection_id": selection_id, "slot": args.slot, "provider": provider, "model": model, "selected": [t["title"] for t in chosen]}, ensure_ascii=False))
     return 0
 
 
