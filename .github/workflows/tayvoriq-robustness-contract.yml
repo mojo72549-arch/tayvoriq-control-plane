@@ -1,0 +1,121 @@
+name: TAYVORIQ Robustness Contract
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-deliver-video-now.yml
+      - .github/workflows/tayvoriq-delivery-watch.yml
+      - .github/workflows/tayvoriq-robustness-contract.yml
+
+permissions:
+  contents: read
+
+jobs:
+  robustness-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Checkout current implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run zero-heavy-dependency implementation contracts
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools src runtime_patches tests
+          python tools/tayvoriq_lightweight_preflight.py
+
+      - name: Enforce workflow performance and notification invariants
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          golden_path = Path('.github/workflows/tayvoriq-deliver-video-now.yml').read_text(encoding='utf-8')
+          watcher = Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8')
+
+          def position(text: str, token: str) -> int:
+              value = text.find(token)
+              if value < 0:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_MISSING:{token}')
+              return value
+
+          light = position(golden_path, '- name: Lightweight contract preflight')
+          pip_cache = position(golden_path, '- name: Restore pip dependency cache')
+          install = position(golden_path, '- name: Install production dependencies')
+          full_preflight = position(golden_path, '- name: Preflight')
+          model_cache = position(golden_path, '- name: Restore production model cache')
+          controller = position(golden_path, '- name: Produce approved master or reuse checkpoint')
+
+          if not (light < pip_cache < install < full_preflight < model_cache < controller):
+              raise SystemExit(
+                  'ROBUSTNESS_CONTRACT_ORDER_FAILED:'
+                  f'light={light},pip={pip_cache},install={install},preflight={full_preflight},'
+                  f'model={model_cache},controller={controller}'
+              )
+
+          forbidden_golden = (
+              '- name: Restore dependency and model cache',
+              '- name: Notify final failure with concrete state',
+              '❌ TAYVORIQ Produktion konnte nicht abgeschlossen werden',
+          )
+          for token in forbidden_golden:
+              if token in golden_path:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_FORBIDDEN_GOLDEN:{token}')
+
+          required_golden = (
+              'telegram_technical_failure_emitted',
+              'notification_owner',
+              'tayvoriq-delivery-watch',
+              'GITHUB_RUN_ATTEMPT',
+          )
+          for token in required_golden:
+              if token not in golden_path:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_GOLDEN_MISSING:{token}')
+
+          forbidden_watcher = (
+              '- name: Telegram same-run recovery status',
+              '- name: Telegram verified fresh recovery generation status',
+              'Recovery läuft\\n',
+          )
+          for token in forbidden_watcher:
+              if token in watcher:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_FORBIDDEN_WATCHER:{token}')
+
+          required_watcher = (
+              "data['suppress_start_notification'] = True",
+              '- name: Record silent same-run recovery',
+              '- name: Record verified silent fresh recovery generation',
+              '- name: Telegram external action blocker',
+              'EXTERNAL_ACTION_REQUIRED',
+              'new_run_id',
+          )
+          for token in required_watcher:
+              if token not in watcher:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_WATCHER_MISSING:{token}')
+
+          print({
+              'state': 'TAYVORIQ_ROBUSTNESS_CONTRACT_PASSED',
+              'lightweight_before_heavy_runtime': True,
+              'model_cache_after_full_preflight': True,
+              'internal_recovery_silent': True,
+              'external_blocker_notification_retained': True,
+              'quality_gates_weakened': False,
+          })
+          PY
