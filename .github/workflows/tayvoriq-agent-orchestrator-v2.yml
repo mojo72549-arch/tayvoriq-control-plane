@@ -9,6 +9,10 @@ on:
         default: morning
         type: choice
         options: [morning, afternoon]
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-agent-trigger.txt"
   schedule:
     - cron: "30 4 * * *"
     - cron: "30 5 * * *"
@@ -61,6 +65,8 @@ jobs:
           requested = os.environ.get('INPUT_SLOT','')
           slot = requested if event == 'workflow_dispatch' else ''
           should = now.date().isoformat() >= '2026-08-15'
+          if event == 'push':
+              slot = 'morning' if now.hour < 12 else 'afternoon'
           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
