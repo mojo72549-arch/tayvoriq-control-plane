@@ -1,6 +1,6 @@
 name: TAYVORIQ Robustness Contract
 
-# implementation-contract-revision: v22-semantic-episode2-checkpoint
+# implementation-contract-revision: v23-episode2-pre-asr-pacing
 on:
   workflow_dispatch:
   push:
@@ -99,8 +99,18 @@ jobs:
               '_EPISODE_TWO_CRITICAL_FACT_TERMS',
               'critical_fact_terms_missing',
               'world-forces-episode-2-semantic-audio-v1',
+              'if _natural_wpm(contract, fitted_duration) > NATURAL_WPM_MAX:',
           ):
               assert marker in voice_repair_source, marker
+          assert (
+              'if bool(strict.get("passed")) and _natural_wpm'
+              not in voice_repair_source
+          )
+          assert (
+              'EARTHQUAKE_EPISODE_AFFECTED = (\n'
+              '    "Besonders gefährdet sind Menschen in Regionen mit aktiven Bruchzonen."'
+              in visual_repair_source
+          )
 
           for legacy in ('TAYVORIQ', 'Tai wo rik', 'Taiworik', 'Tai vor ik', 'Tayvorik'):
               assert brand.normalize_spoken_brand(f'Abonniere {legacy}.') == 'Abonniere Tayvorik.'
