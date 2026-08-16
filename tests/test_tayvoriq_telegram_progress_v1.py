@@ -34,6 +34,19 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("Keine Aktion nötig", text)
         self.assertNotIn("fehlgeschlagen", text.casefold())
 
+    def test_recovery_payload_explains_safe_stop_and_restart(self) -> None:
+        payload = progress.build_payload(
+            "recovery_started",
+            "Wenn die Erde plötzlich bricht",
+            "31966058297",
+            "12345",
+        )
+        text = payload["text"]
+        self.assertIn("Sichere Reparatur gestartet", text)
+        self.assertIn("nichts veröffentlicht", text)
+        self.assertIn("neu gestartet", text)
+        self.assertIn("Keine Aktion nötig", text)
+
     def test_policy_controls_progress_and_same_run_reruns_are_suppressed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "policy.json"
@@ -66,6 +79,14 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertIn("Videomaster erstellt", workflow)
         self.assertIn("Quality-Gates bestanden", workflow)
         self.assertNotIn("Nächste Nachricht erst beim fertigen Video-Review", workflow)
+
+    def test_on_demand_status_bridge_is_bound_to_one_trigger_file(self) -> None:
+        workflow = (
+            ROOT / ".github/workflows/tayvoriq-telegram-status-bridge-v1.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('.github/run-now/tayvoriq-progress-trigger.json', workflow)
+        self.assertIn('STATUS_STAGE_INVALID', workflow)
+        self.assertIn('Send and verify Telegram status', workflow)
 
     def test_checked_in_policy_is_enabled_until_user_opt_out(self) -> None:
         policy = json.loads(
