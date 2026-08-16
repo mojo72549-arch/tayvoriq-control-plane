@@ -605,6 +605,17 @@ jobs:
           path: implementation/out/recovery-checkpoint
           key: tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-${{ github.run_id }}-${{ github.run_attempt }}
 
+      - name: Telegram progress - checkpoint repair
+        if: steps.controller.outputs.state != 'SUCCESS' && steps.controller.outputs.reusable_master == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage checkpoint_repair \
+            --topic "$TOPIC" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+
       - name: Repair only failed local checkpoints
         id: checkpoint_recovery
         if: steps.controller.outputs.state != 'SUCCESS' && steps.controller.outputs.reusable_master == 'true'
@@ -613,6 +624,32 @@ jobs:
         run: |
           set -uo pipefail
           echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
+
+          repair_heartbeat_stop="${RUNNER_TEMP}/tayvoriq-repair-heartbeat-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.stop"
+          rm -f "$repair_heartbeat_stop"
+          (
+            repair_started=$(date +%s)
+            while true; do
+              sleep 180
+              [ -f "$repair_heartbeat_stop" ] && exit 0
+              elapsed_minutes=$(( ( $(date +%s) - repair_started ) / 60 ))
+              python ../tools/tayvoriq_telegram_progress_v1.py \
+                --stage checkpoint_heartbeat \
+                --topic "$TOPIC" \
+                --run-id "$GITHUB_RUN_ID" \
+                --run-attempt "$GITHUB_RUN_ATTEMPT" \
+                --elapsed-minutes "$elapsed_minutes" \
+                --policy ../state/tayvoriq-notification-policy.json || true
+            done
+          ) &
+          repair_heartbeat_pid=$!
+          stop_repair_heartbeat() {
+            touch "$repair_heartbeat_stop"
+            kill "$repair_heartbeat_pid" 2>/dev/null || true
+            wait "$repair_heartbeat_pid" 2>/dev/null || true
+          }
+          trap stop_repair_heartbeat EXIT
+
           set +e
           python tools/tayvoriq_resume_existing_render_v2.py \
             --outdir out/tayvoriq-youtube-tiktok \
@@ -627,6 +664,8 @@ jobs:
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "process_exit=$resume_exit" >> "$GITHUB_OUTPUT"
           echo "Checkpoint handoff: state=$state process_exit=$resume_exit"
+          stop_repair_heartbeat
+          trap - EXIT
           exit 0
 
       - name: Assert publishable production output
