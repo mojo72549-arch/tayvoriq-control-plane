@@ -207,7 +207,7 @@ def prompt_for(slot: str, now: datetime) -> str:
     slot_rules = (
         "MORNING: prioritize Germany + Europe + major global developments with strong visual/explainer potential."
         if slot == "morning" else
-        "AFTERNOON: prioritize Stuttgart/Baden-Württemberg/South Germany and Germany-wide youth/creator/local-interest trends, while still allowing a major global breaking story if clearly stronger."
+        "EVENING: prioritize Stuttgart/Baden-Württemberg/South Germany and Germany-wide youth/creator/local-interest trends, while still allowing a major global breaking story if clearly stronger."
     )
     return f"""
 You are the TrendSourceAgent for the German short-video brand TAYVORIQ.
@@ -304,6 +304,8 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
 
 
 def load_active_series_candidate(verified_at: str) -> dict[str, Any] | None:
+    if str(os.getenv("TAYVORIQ_SKIP_ACTIVE_SERIES") or "").strip().lower() in {"1", "true", "yes"}:
+        return None
     if not ACTIVE_SERIES_PATH.exists():
         return None
     try:
@@ -348,7 +350,7 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
         selected.append(series)
         scope_counts[series["trend_scope"]] = 1
 
-    if slot == "afternoon":
+    if slot == "evening":
         local = next((
             c for c in ordered
             if c is not series
@@ -381,7 +383,7 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--slot", choices=["morning", "afternoon"], required=True)
+    parser.add_argument("--slot", choices=["morning", "evening"], required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--audit-output", required=True)
     args = parser.parse_args()

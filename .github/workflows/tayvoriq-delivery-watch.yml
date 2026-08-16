@@ -229,10 +229,37 @@ jobs:
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n",
               encoding="utf-8",
           )
+
+          fresh_run_id=str(os.environ.get('FRESH_RUN_ID') or '').strip()
+          if fresh_run_id.isdigit():
+              x_path=Path('.github/run-now/tayvoriq-x-request.json')
+              x_request=json.loads(x_path.read_text(encoding='utf-8')) if x_path.is_file() else {}
+              source_request_id=str(x_request.get('source_request_id') or '').strip()
+              source_path=Path('requests') / f'{source_request_id}.json'
+              source=json.loads(source_path.read_text(encoding='utf-8')) if source_path.is_file() else {}
+              selection_id=str(source.get('selection_id') or '').strip()
+              if '-agentv2' in selection_id:
+                  mapping={
+                      'run_id':int(fresh_run_id),
+                      'root_run_id':int(os.environ['RUN_ID']),
+                      'retry_count':int(x_request.get('recovery_generation') or 0),
+                      'selection_id':selection_id,
+                      'topic':str(source.get('topic') or x_request.get('topic') or ''),
+                      'trend_id':str(source.get('trend_id') or x_request.get('trend_id') or ''),
+                      'source_request_id':source_request_id,
+                      'agent_orchestrator':'v2',
+                      'recovery_owner':'tayvoriq-delivery-watch',
+                  }
+                  map_path=Path(f'.automation/tayvoriq-agent-v2/run-map/{fresh_run_id}.json')
+                  map_path.parent.mkdir(parents=True, exist_ok=True)
+                  map_path.write_text(json.dumps(mapping,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           print(payload)
           PY
 
             git add .github/run-now/latest-delivery-run.json
+            if [ -d .automation/tayvoriq-agent-v2/run-map ]; then
+              git add .automation/tayvoriq-agent-v2/run-map/
+            fi
             if git diff --cached --quiet; then
               exit 0
             fi

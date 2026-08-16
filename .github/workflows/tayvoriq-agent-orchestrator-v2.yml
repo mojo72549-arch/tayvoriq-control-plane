@@ -8,7 +8,7 @@ on:
         required: true
         default: morning
         type: choice
-        options: [morning, afternoon]
+        options: [morning, evening]
   push:
     branches: [main]
     paths:
@@ -16,8 +16,8 @@ on:
   schedule:
     - cron: "30 4 * * *"
     - cron: "30 5 * * *"
-    - cron: "30 12 * * *"
-    - cron: "30 13 * * *"
+    - cron: "30 15 * * *"
+    - cron: "30 16 * * *"
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-agent-orchestrator-v2
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -68,22 +68,28 @@ jobs:
           slot = requested if event == 'workflow_dispatch' else ''
           should = now.date().isoformat() >= '2026-08-15'
           if event == 'push':
-              slot = 'morning' if now.hour < 12 else 'afternoon'
+              slot = 'morning' if now.hour < 12 else 'evening'
           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
                   'morning': '30 4 * * *' if offset == 2 else '30 5 * * *',
-                  'afternoon': '30 12 * * *' if offset == 2 else '30 13 * * *',
+                  'evening': '30 15 * * *' if offset == 2 else '30 16 * * *',
               }
               slot = next((name for name, cron in expected.items() if cron == schedule), '')
               should = should and bool(slot)
-          if slot not in {'morning','afternoon'}:
+          if slot not in {'morning','evening'}:
               should = False
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
               h.write(f"should_run={'true' if should else 'false'}\n")
               h.write(f"slot={slot}\n")
           print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
           PY
+
+      - name: Reconcile active series after verified publication
+        if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_agent_series_state_v2.py
 
       - name: Detect active editorial series and in-flight episode
         id: mode
@@ -136,7 +142,7 @@ jobs:
       - name: Hold duplicate series proposal while approved episode is in flight
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true' && steps.mode.outputs.series_in_flight == 'true'
         run: |
-          echo "Active series episode already approved/dispatched; no duplicate Telegram approval and no new trend scan."
+          echo "Active series episode is still in flight; this slot uses a loose trend ranking instead."
 
       - name: Build active series episode request
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true' && steps.mode.outputs.series_in_flight != 'true'
@@ -148,7 +154,9 @@ jobs:
             --audit-output /tmp/tayvoriq-trend-audit.json
 
       - name: Generate grounded 5-trend ranking
-        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true'
+        if: steps.slot.outputs.should_run == 'true' && (steps.mode.outputs.active_series != 'true' || steps.mode.outputs.series_in_flight == 'true')
+        env:
+          TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.mode.outputs.series_in_flight }}
         run: |
           set -euo pipefail
           python tools/tayvoriq_agent_trend_radar_v3.py \
@@ -156,8 +164,39 @@ jobs:
             --output /tmp/tayvoriq-trend-request.json \
             --audit-output /tmp/tayvoriq-trend-audit.json
 
+      - name: Resolve idempotent selection delivery
+        id: delivery
+        if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          request=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
+          selection_id=str(request.get('selection_id') or '')
+          if not re.fullmatch(r'[A-Za-z0-9_-]{4,40}', selection_id):
+              raise SystemExit(f'invalid selection id: {selection_id!r}')
+          delivery=Path(f'.automation/tayvoriq-agent-v2/deliveries/{selection_id}.json')
+          verified=False
+          if delivery.is_file():
+              try:
+                  data=json.loads(delivery.read_text(encoding='utf-8'))
+                  verified=(
+                      data.get('selection_id') == selection_id
+                      and data.get('telegram_delivery_verified') is True
+                      and int(data.get('telegram_message_id') or 0) > 0
+                  )
+              except Exception:
+                  verified=False
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
+              handle.write(f'selection_id={selection_id}\n')
+              handle.write(f"needs_delivery={'false' if verified else 'true'}\n")
+          print({'selection_id':selection_id,'already_delivered':verified})
+          PY
+
       - name: Validate approval contract
-        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.series_in_flight != 'true'
+        if: steps.delivery.outputs.needs_delivery == 'true'
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -185,22 +224,35 @@ jobs:
           PY
 
       - name: Persist canonical request without triggering legacy push workflows
-        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.series_in_flight != 'true'
+        if: steps.delivery.outputs.needs_delivery == 'true'
         run: |
           set -euo pipefail
           cp /tmp/tayvoriq-trend-request.json .github/run-now/tayvoriq-trend-request.json
           selection_id=$(python -c "import json; print(json.load(open('/tmp/tayvoriq-trend-request.json'))['selection_id'])")
-          mkdir -p .automation/tayvoriq-agent-v2/sessions
+          mkdir -p .automation/tayvoriq-agent-v2/sessions .automation/tayvoriq-agent-v2/selections
           cp /tmp/tayvoriq-trend-audit.json ".automation/tayvoriq-agent-v2/sessions/${selection_id}.json"
+          cp /tmp/tayvoriq-trend-request.json ".automation/tayvoriq-agent-v2/selections/${selection_id}.json"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/run-now/tayvoriq-trend-request.json .automation/tayvoriq-agent-v2/sessions/
+          git add .github/run-now/tayvoriq-trend-request.json \
+            .automation/tayvoriq-agent-v2/sessions/ \
+            .automation/tayvoriq-agent-v2/selections/ \
+            state/tayvoriq-active-series.json
           git commit -m "agent(v2): stage ${selection_id} approval request"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              pushed=true
+              break
+            fi
+            sleep $((attempt * 2))
+          done
+          [ "$pushed" = "true" ]
 
       - name: Send approval request to Telegram
-        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.series_in_flight != 'true'
+        id: telegram
+        if: steps.delivery.outputs.needs_delivery == 'true'
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
@@ -226,15 +278,17 @@ jobs:
                   f"Quellen geprüft: {len(t.get('sources') or [])}",
                   'Die Serie und die rote Linie sind bereits festgelegt. Kein neuer Trend-Scan nötig.',
                   '',
-                  'Mit „Trend freigeben“ übernimmt Agent V2 danach Produktion, Reparaturen, Quality-Gates und Veröffentlichung autonom.'
+                  'Schritt 1: Folge auswählen.',
+                  'Schritt 2: Details prüfen und separat „Trend freigeben“ tippen.',
+                  '',
+                  'Erst danach übernimmt Agent V2 Produktion, Reparaturen, Quality-Gates und Veröffentlichung autonom.'
               ]
               kb={'inline_keyboard':[
-                  [{'text':'✅ Trend freigeben','callback_data':f'approve_trend:{sid}:1'}],
-                  [{'text':'❌ Ablehnen','callback_data':'reject_trend:1'}]
+                  [{'text':'1️⃣ Folge auswählen','callback_data':f'select_trend:{sid}:1'}]
               ]}
           else:
               morning=d['slot']=='morning'
-              lines=[('🌅 TAYVORIQ Morgen-Trends' if morning else '🌆 TAYVORIQ Nachmittags-Trends'),'', 'Rangliste:']
+              lines=[('🌅 TAYVORIQ Morgen-Trends' if morning else '🌙 TAYVORIQ Abend-Trends'),'', 'Rangliste:']
               for t in d['trends']:
                   lines.append(f"{t['id']}. {t['title']} — {t['score']} %")
               lines += ['', 'Aktuell geprüft · mindestens 2 Quellen je Trend · Qualität vor Geschwindigkeit.', '', 'Schritt 1: Trendnummer wählen.', 'Schritt 2: Details prüfen und separat „Trend freigeben“ tippen.', '', 'Erst danach übernimmt Agent V2 Produktion, Reparaturen, Quality-Gates und Veröffentlichung selbstständig.']
@@ -251,11 +305,48 @@ jobs:
             -d @/tmp/message.json \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" > /tmp/telegram.json
           python - <<'PY'
-          import json
+          import json, os
           d=json.load(open('/tmp/telegram.json'))
           assert d.get('ok') and (d.get('result') or {}).get('message_id'), d
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
+              handle.write(f"message_id={int(d['result']['message_id'])}\n")
           print({'telegram_message_id':d['result']['message_id']})
           PY
+
+      - name: Persist verified Telegram delivery evidence
+        if: steps.telegram.outcome == 'success'
+        env:
+          SELECTION_ID: ${{ steps.delivery.outputs.selection_id }}
+          TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-agent-v2/deliveries
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          payload={
+              'selection_id':os.environ['SELECTION_ID'],
+              'telegram_delivery_verified':True,
+              'telegram_message_id':int(os.environ['TELEGRAM_MESSAGE_ID']),
+              'delivered_at':datetime.now(timezone.utc).isoformat(),
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+          }
+          path=Path(f".automation/tayvoriq-agent-v2/deliveries/{payload['selection_id']}.json")
+          path.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git add ".automation/tayvoriq-agent-v2/deliveries/${SELECTION_ID}.json"
+          git commit -m "agent(v2): verify Telegram delivery ${SELECTION_ID}"
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              pushed=true
+              break
+            fi
+            sleep $((attempt * 2))
+          done
+          [ "$pushed" = "true" ]
 
       - name: Notify gate failure once for this run
         if: failure() && steps.slot.outputs.should_run == 'true'

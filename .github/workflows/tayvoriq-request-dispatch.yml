@@ -11,8 +11,6 @@ on:
       - "requests/*.json"
       - "tools/tayvoriq_orchestration_contract.py"
       - ".github/workflows/tayvoriq-request-dispatch.yml"
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -54,8 +52,29 @@ jobs:
 
           if [ "$EVENT_NAME" = "repository_dispatch" ]; then
             test -n "${TELEGRAM_MESSAGE_ID:-}" || { echo "::error title=Missing Telegram message id::Cannot create an idempotent production request"; exit 1; }
+            TREND_REQUEST_FILE=$(python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          selection_id=str(os.environ.get('SELECTION_ID') or '').strip()
+          if not re.fullmatch(r'[A-Za-z0-9_-]{4,40}', selection_id):
+              raise SystemExit(f'INVALID_SELECTION_ID: {selection_id!r}')
+          snapshot=Path(f'.automation/tayvoriq-agent-v2/selections/{selection_id}.json')
+          canonical=Path('.github/run-now/tayvoriq-trend-request.json')
+          if snapshot.is_file():
+              selected=snapshot
+          elif canonical.is_file():
+              data=json.loads(canonical.read_text(encoding='utf-8'))
+              if str(data.get('selection_id') or '') != selection_id:
+                  raise SystemExit('SELECTION_SNAPSHOT_MISSING: canonical request belongs to another slot')
+              selected=canonical
+          else:
+              raise SystemExit('SELECTION_SNAPSHOT_MISSING: no approval source exists')
+          print(selected)
+          PY
+            )
             REQUEST_FILE=$(python tools/tayvoriq_orchestration_contract.py create-from-telegram \
-              --trend-request .github/run-now/tayvoriq-trend-request.json \
+              --trend-request "$TREND_REQUEST_FILE" \
               --trend-id "${TREND_ID:-}" \
               --selection-id "${SELECTION_ID:-}" \
               --message-id "$TELEGRAM_MESSAGE_ID" \

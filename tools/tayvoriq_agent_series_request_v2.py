@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -23,7 +24,7 @@ def clamp(value):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--slot", choices=["morning", "afternoon"], required=True)
+    parser.add_argument("--slot", choices=["morning", "evening"], required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--audit-output", required=True)
     args = parser.parse_args()
@@ -35,7 +36,13 @@ def main() -> int:
     if status not in {"active", "ready_for_selection"}:
         raise SystemExit(f"ACTIVE_SERIES_NOT_READY: {status}")
 
-    raw = state.get("trend")
+    episode = int(state.get("episode") or 0)
+    episodes = state.get("episodes") if isinstance(state.get("episodes"), list) else []
+    episode_state = next(
+        (item for item in episodes if int(item.get("episode") or 0) == episode),
+        state,
+    )
+    raw = episode_state.get("trend")
     if not isinstance(raw, dict):
         raise SystemExit("ACTIVE_SERIES_INVALID: missing trend")
 
@@ -73,7 +80,6 @@ def main() -> int:
     now = datetime.now(ZoneInfo("Europe/Berlin"))
     verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     series_id = clean(state.get("series_id"), 120)
-    episode = int(state.get("episode") or 0)
     if not series_id or episode < 1:
         raise SystemExit("ACTIVE_SERIES_INVALID: series id/episode")
 
@@ -95,11 +101,11 @@ def main() -> int:
                 "series_id": series_id,
                 "series_title": clean(state.get("series_title"), 180),
                 "episode": episode,
-                "episode_title": clean(state.get("episode_title"), 180),
-                "cover_text": clean(state.get("cover_text"), 120),
-                "hook": clean(state.get("hook"), 700),
-                "bridge_out": clean(state.get("bridge_out"), 700),
-                "visual_continuity": clean(state.get("visual_continuity"), 1600),
+                "episode_title": clean(episode_state.get("episode_title"), 180),
+                "cover_text": clean(episode_state.get("cover_text"), 120),
+                "hook": clean(episode_state.get("hook"), 700),
+                "bridge_out": clean(episode_state.get("bridge_out"), 700),
+                "visual_continuity": clean(episode_state.get("visual_continuity"), 1600),
                 "red_thread": clean(state.get("red_thread"), 1600),
                 "approval_required": True,
             },
@@ -108,7 +114,8 @@ def main() -> int:
     if not trend["title"]:
         raise SystemExit("ACTIVE_SERIES_INVALID: missing title")
 
-    selection_id = f"{now:%Y%m%d}-{args.slot}-agentv2-series"
+    series_token = re.sub(r"[^A-Za-z0-9_-]", "", series_id)[:10] or "series"
+    selection_id = f"{now:%Y%m%d}-{args.slot[0]}-agentv2-{series_token}-e{episode}"
     request = {
         "date": now.strftime("%Y-%m-%d"),
         "slot": args.slot,

@@ -25,6 +25,9 @@ env:
 
 jobs:
   autorelease:
+    # Delivery Watch is the sole owner of failed-run recovery. AutoRelease only
+    # handles a successful final generation (or an explicit manual audit).
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -172,16 +175,6 @@ jobs:
           fi
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
-      - name: Notify independent quality audit start
-        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
-        continue-on-error: true
-        env:
-          RUN_ID: ${{ steps.owner.outputs.run_id }}
-          TOPIC: ${{ steps.owner.outputs.topic }}
-        run: |
-          text=$(printf '🧪 TAYVORIQ Produktion abgeschlossen – Quality-Gates laufen\n\nThema: %s\nRun: %s\n\nMaster und Plattformvarianten sind erstellt. Jetzt laufen die unabhängigen finalen Qualitäts- und Freigabeprüfungen.\n\nFür dich: ✅ Keine Aktion nötig.' "$TOPIC" "$RUN_ID")
-          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
-
       - name: Wait for verified review assets
         if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
         env:
@@ -219,16 +212,6 @@ jobs:
           assert not audit.get('blockers'), f"blockers={audit.get('blockers')}"
           print({'run_id':os.environ['RUN_ID'],'agent_v2_release_gate':'passed','quality_gates_weakened':False})
           PY
-
-      - name: Notify quality gates passed
-        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
-        continue-on-error: true
-        env:
-          RUN_ID: ${{ steps.owner.outputs.run_id }}
-          TOPIC: ${{ steps.owner.outputs.topic }}
-        run: |
-          text=$(printf '✅ TAYVORIQ Quality-Gates bestanden\n\nThema: %s\nRun: %s\n\nQualität, Preapproval-Audit, Gate-Integrität und Blocker-Prüfung sind bestanden. Die automatische Veröffentlichung wird jetzt vorbereitet.\n\nFür dich: ✅ Keine Aktion nötig.' "$TOPIC" "$RUN_ID")
-          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
       - name: Remove redundant manual review buttons from V2 message
         if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
@@ -281,5 +264,4 @@ jobs:
         run: |
           set -euo pipefail
           gh workflow run tayvoriq-auto-publish-approved.yml --ref main -f review_id="$RUN_ID"
-          text="✅ TAYVORIQ Agent V2: Finale bestanden. YouTube-Veröffentlichung wurde automatisch gestartet; TikTok-Paket bleibt wie vereinbart zur manuellen Veröffentlichung. Für dich: ✅ Keine weitere Freigabe nötig."
-          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
+          echo "Verified publisher dispatch accepted for review $RUN_ID. Final Telegram is owned by the publisher after confirmed upload."
