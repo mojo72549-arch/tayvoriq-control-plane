@@ -1,6 +1,6 @@
 name: TAYVORIQ Robustness Contract
 
-# implementation-contract-revision: v20-authoritative-length-v6-stdlib-contracts
+# implementation-contract-revision: v21-global-dedupe-telegram-heartbeat
 on:
   workflow_dispatch:
   push:
@@ -12,11 +12,15 @@ on:
       - .github/workflows/tayvoriq-agent-orchestrator-v2.yml
       - .github/workflows/tayvoriq-daily-orchestrator.yml
       - .github/workflows/tayvoriq-request-dispatch.yml
+      - .github/workflows/tayvoriq-telegram-status-bridge-v1.yml
       - .github/workflows/tayvoriq-robustness-contract.yml
       - infra/telegram-approval-worker-v2.js
       - tools/tayvoriq_agent_*.py
+      - tools/tayvoriq_telegram_progress_v1.py
+      - tools/tayvoriq_global_duplicate_gate_v1.py
       - state/tayvoriq-active-series.json
-      - tests/test_tayvoriq_control_plane_v2.py
+      - state/tayvoriq-notification-policy.json
+      - tests/test_tayvoriq_*.py
 
 permissions:
   contents: read
@@ -124,12 +128,20 @@ jobs:
           full_preflight = position(golden_path, '- name: Preflight')
           model_cache = position(golden_path, '- name: Restore production model cache')
           controller = position(golden_path, '- name: Produce approved master or reuse checkpoint')
+          source_context = position(golden_path, '- name: Materialize immutable verified source context')
+          duplicate_gate = position(golden_path, '- name: Block global duplicate content before production')
+          sources_notice = position(golden_path, '- name: Telegram progress - sources locked')
 
           if not (light < pip_cache < install < full_preflight < model_cache < controller):
               raise SystemExit(
                   'ROBUSTNESS_CONTRACT_ORDER_FAILED:'
                   f'light={light},pip={pip_cache},install={install},preflight={full_preflight},'
                   f'model={model_cache},controller={controller}'
+              )
+          if not (source_context < duplicate_gate < sources_notice < light):
+              raise SystemExit(
+                  'ROBUSTNESS_CONTRACT_DUPLICATE_GATE_ORDER_FAILED:'
+                  f'source={source_context},duplicate={duplicate_gate},notice={sources_notice},light={light}'
               )
 
           forbidden_golden = (
@@ -142,10 +154,16 @@ jobs:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_FORBIDDEN_GOLDEN:{token}')
 
           required_golden = (
-              'telegram_technical_failure_emitted',
+              'telegram_technical_failure_expected',
               'notification_owner',
+              'tayvoriq-x-golden-path',
+              'recovery_owner',
               'tayvoriq-delivery-watch',
               'GITHUB_RUN_ATTEMPT',
+              'tayvoriq_global_duplicate_gate_v1.py',
+              '--stage render_heartbeat',
+              '- name: Telegram immediate verified stop',
+              'telegram-failure-receipt.json',
           )
           for token in required_golden:
               if token not in golden_path:
