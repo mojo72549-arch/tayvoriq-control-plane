@@ -26,6 +26,11 @@ on:
         description: Related Golden Path run id
         required: true
         type: string
+      elapsed_minutes:
+        description: Verified active render minutes (heartbeat only)
+        required: false
+        default: "0"
+        type: string
   push:
     branches: [main]
     paths:
@@ -53,6 +58,7 @@ jobs:
           INPUT_STAGE: ${{ inputs.stage || '' }}
           INPUT_TOPIC: ${{ inputs.topic || '' }}
           INPUT_RUN_ID: ${{ inputs.run_id || '' }}
+          INPUT_ELAPSED_MINUTES: ${{ inputs.elapsed_minutes || '0' }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -65,12 +71,14 @@ jobs:
               stage = os.environ.get("INPUT_STAGE", "")
               topic = os.environ.get("INPUT_TOPIC", "")
               run_id = os.environ.get("INPUT_RUN_ID", "")
+              elapsed_minutes = os.environ.get("INPUT_ELAPSED_MINUTES", "0")
           else:
               path = Path(".github/run-now/tayvoriq-progress-trigger.json")
               data = json.loads(path.read_text(encoding="utf-8"))
               stage = str(data.get("stage") or "")
               topic = str(data.get("topic") or "")
               run_id = str(data.get("run_id") or "")
+              elapsed_minutes = str(data.get("elapsed_minutes") or "0")
 
           allowed = {
               "recovery_started",
@@ -90,11 +98,25 @@ jobs:
               raise SystemExit("STATUS_TOPIC_INVALID")
           if not re.fullmatch(r"[0-9]{6,20}", run_id):
               raise SystemExit("STATUS_RUN_ID_INVALID")
+          try:
+              elapsed = int(str(elapsed_minutes).strip() or "0")
+          except ValueError:
+              raise SystemExit("STATUS_ELAPSED_MINUTES_INVALID")
+          if elapsed < 0 or elapsed > 80:
+              raise SystemExit("STATUS_ELAPSED_MINUTES_INVALID")
+          if stage != "render_heartbeat":
+              elapsed = 0
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"stage={stage}\n")
               handle.write(f"topic={topic}\n")
               handle.write(f"run_id={run_id}\n")
-          print(json.dumps({"stage": stage, "topic": topic, "run_id": run_id}, ensure_ascii=False))
+              handle.write(f"elapsed_minutes={elapsed}\n")
+          print(json.dumps({
+              "stage": stage,
+              "topic": topic,
+              "run_id": run_id,
+              "elapsed_minutes": elapsed,
+          }, ensure_ascii=False))
           PY
 
       - name: Send and verify Telegram status
@@ -107,4 +129,5 @@ jobs:
             --stage "${{ steps.payload.outputs.stage }}" \
             --topic "${{ steps.payload.outputs.topic }}" \
             --run-id "${{ steps.payload.outputs.run_id }}" \
-            --run-attempt "1"
+            --run-attempt "1" \
+            --elapsed-minutes "${{ steps.payload.outputs.elapsed_minutes }}"
