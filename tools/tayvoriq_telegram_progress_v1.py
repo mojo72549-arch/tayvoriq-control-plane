@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Send concise Telegram production progress at verified workflow milestones."""
+"""Send verified Telegram production status without inventing progress."""
 from __future__ import annotations
 
 import argparse
@@ -16,7 +16,7 @@ TRUE_VALUES = {"1", "true", "yes", "on"}
 
 @dataclass(frozen=True)
 class Milestone:
-    percent: int
+    percent: int | None
     title: str
     completed: str
     next_step: str
@@ -26,8 +26,8 @@ MILESTONES = {
     "recovery_started": Milestone(
         30,
         "Sichere Reparatur gestartet",
-        "Der vorherige Lauf wurde an einem Inhalts-Gate gestoppt; es wurde nichts veröffentlicht.",
-        "Die erkannte Vertragsursache wird repariert und derselbe freigegebene Auftrag neu gestartet.",
+        "Der vorherige Lauf wurde sicher gestoppt; es wurde nichts veröffentlicht.",
+        "Die erkannte Ursache wird repariert und derselbe freigegebene Auftrag neu gestartet.",
     ),
     "sources_locked": Milestone(
         20,
@@ -53,7 +53,34 @@ MILESTONES = {
         "Stimme, Bild, Fakten und beide Plattformpakete haben die Pflicht-Gates bestanden.",
         "Review-Seite und Telegram-Videofreigabe.",
     ),
+    "render_heartbeat": Milestone(
+        45,
+        "Produktion arbeitet weiter",
+        "Der Workflow ist aktiv; seit dem letzten geprüften Meilenstein wurde kein neuer Fehler erkannt.",
+        "Die rechenintensive Sprecher-, Visual-, Untertitel- und Renderphase läuft weiter.",
+    ),
+    "audio_recovery": Milestone(
+        None,
+        "Audio-Gate hat sicher gestoppt",
+        "Fakten, Serienfolge und Dublettenprüfung bleiben gültig; es wurde nichts veröffentlicht.",
+        "Nur der Pfad für die tiefe Sprecherstimme wird rückgekoppelt repariert und erneut geprüft.",
+    ),
+    "duplicate_blocked": Milestone(
+        None,
+        "Dublette verhindert",
+        "Der Auftrag wurde vor Render und Upload blockiert; es wurde nichts veröffentlicht.",
+        "Ein klar unterscheidbarer Themenwinkel muss vor einer neuen Produktion freigegeben werden.",
+    ),
+    "technical_stop": Milestone(
+        None,
+        "Technischer Stopp erkannt",
+        "Der Lauf wurde fail-closed beendet; es wurde nichts veröffentlicht.",
+        "Die konkrete Ursache wird gesichert und nur der betroffene technische Pfad wird repariert.",
+    ),
 }
+
+
+REPLAY_SUPPRESSED_STAGES = {"sources_locked", "production_active"}
 
 
 def read_policy(path: Path = DEFAULT_POLICY) -> dict:
@@ -71,27 +98,54 @@ def progress_enabled(path: Path = DEFAULT_POLICY) -> bool:
     return str(value or "").strip().casefold() in TRUE_VALUES
 
 
-def should_send(path: Path, run_attempt: int) -> bool:
-    return progress_enabled(path) and int(run_attempt) <= 1
+def should_send(path: Path, run_attempt: int, stage: str = "") -> bool:
+    if not progress_enabled(path):
+        return False
+    return int(run_attempt) <= 1 or stage not in REPLAY_SUPPRESSED_STAGES
 
 
 def clean_topic(value: str) -> str:
     return " ".join(str(value or "").split()).strip()[:180] or "Freigegebene TAYVORIQ-Folge"
 
 
-def build_payload(stage: str, topic: str, run_id: str, chat_id: str) -> dict:
+def build_payload(
+    stage: str,
+    topic: str,
+    run_id: str,
+    chat_id: str,
+    *,
+    elapsed_minutes: int = 0,
+    failure_state: str = "",
+    detail: str = "",
+) -> dict:
     milestone = MILESTONES[stage]
+    heading = f"TAYVORIQ {milestone.percent} %" if milestone.percent is not None else "TAYVORIQ"
+    icon = "🔄" if stage == "render_heartbeat" else ("🟠" if stage in {"audio_recovery", "technical_stop"} else "🟣")
+    if stage == "duplicate_blocked":
+        icon = "🛑"
     lines = [
-        f"🟣 TAYVORIQ {milestone.percent} % · {milestone.title}",
+        f"{icon} {heading} · {milestone.title}",
         "",
         f"Thema: {clean_topic(topic)}",
         f"Run: {str(run_id or 'unbekannt').strip()}",
+    ]
+    if stage == "render_heartbeat":
+        lines.extend(["", f"⏱️ Renderphase aktiv seit: {max(1, int(elapsed_minutes or 0))} Minuten"])
+    if failure_state:
+        lines.extend(["", f"Status: {clean_topic(failure_state)}"])
+    if detail:
+        lines.extend(["", f"Hinweis: {clean_topic(detail)}"])
+    lines.extend([
         "",
         f"✅ Erledigt: {milestone.completed}",
         f"➡️ Als Nächstes: {milestone.next_step}",
         "",
-        "Für dich: ✅ Keine Aktion nötig.",
-    ]
+        (
+            "Für dich: ⚠️ Neuer Themenwinkel zur Freigabe nötig."
+            if stage == "duplicate_blocked"
+            else "Für dich: ✅ Keine Aktion nötig."
+        ),
+    ])
     return {
         "chat_id": str(chat_id).strip(),
         "text": "\n".join(lines),
@@ -127,6 +181,10 @@ def main() -> int:
     parser.add_argument("--topic", default=os.getenv("TOPIC", ""))
     parser.add_argument("--run-id", default=os.getenv("GITHUB_RUN_ID", ""))
     parser.add_argument("--run-attempt", default=os.getenv("GITHUB_RUN_ATTEMPT", "1"))
+    parser.add_argument("--elapsed-minutes", type=int, default=0)
+    parser.add_argument("--failure-state", default="")
+    parser.add_argument("--detail", default="")
+    parser.add_argument("--receipt-out", type=Path)
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
     args = parser.parse_args()
 
@@ -134,7 +192,7 @@ def main() -> int:
     if not progress_enabled(args.policy):
         print(json.dumps({"status": "disabled", "stage": args.stage}))
         return 0
-    if attempt > 1:
+    if not should_send(args.policy, attempt, args.stage):
         print(json.dumps({"status": "suppressed_rerun", "stage": args.stage, "run_attempt": attempt}))
         return 0
 
@@ -143,14 +201,29 @@ def main() -> int:
     if not token or not chat_id:
         raise SystemExit("TELEGRAM_PROGRESS_SECRETS_MISSING")
 
-    payload = build_payload(args.stage, args.topic, args.run_id, chat_id)
+    payload = build_payload(
+        args.stage,
+        args.topic,
+        args.run_id,
+        chat_id,
+        elapsed_minutes=args.elapsed_minutes,
+        failure_state=args.failure_state,
+        detail=args.detail,
+    )
     message_id = telegram_send(token, payload)
-    print(json.dumps({
+    receipt = {
         "status": "sent",
         "stage": args.stage,
         "percent": MILESTONES[args.stage].percent,
+        "run_id": str(args.run_id),
+        "run_attempt": attempt,
+        "failure_state": clean_topic(args.failure_state) if args.failure_state else "",
         "telegram_message_id": message_id,
-    }, ensure_ascii=False))
+    }
+    if args.receipt_out:
+        args.receipt_out.parent.mkdir(parents=True, exist_ok=True)
+        args.receipt_out.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(receipt, ensure_ascii=False))
     return 0
 
 

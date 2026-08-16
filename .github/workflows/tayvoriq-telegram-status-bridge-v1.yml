@@ -10,8 +10,12 @@ on:
         type: choice
         options:
           - recovery_started
+          - audio_recovery
+          - duplicate_blocked
+          - technical_stop
           - sources_locked
           - production_active
+          - render_heartbeat
           - master_ready
           - quality_passed
       topic:
@@ -70,8 +74,12 @@ jobs:
 
           allowed = {
               "recovery_started",
+              "audio_recovery",
+              "duplicate_blocked",
+              "technical_stop",
               "sources_locked",
               "production_active",
+              "render_heartbeat",
               "master_ready",
               "quality_passed",
           }
