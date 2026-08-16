@@ -34,13 +34,13 @@ export default {
 
       let requestData;
       try {
-        requestData = await loadTrendRequest(env);
+        requestData = await loadTrendRequest(env, selectionId);
       } catch (error) {
         await requireTelegramMessage(await telegram(env, chatId, `❌ Trendauswahl konnte nicht geladen werden.\nGrund: ${String(error).slice(0, 350)}`));
         return new Response('trend request unavailable', { status: 502 });
       }
       if (String(requestData?.selection_id || '') !== selectionId) {
-        await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendauswahl ist nicht mehr aktuell. Bitte nutze die neueste Abend-Rangliste.'));
+        await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendauswahl ist nicht mehr aktuell. Bitte nutze die zugehörige aktuelle Rangliste.'));
         return new Response('stale trend selection', { status: 409 });
       }
       const trend = (requestData.trends || []).find(item => String(item.id) === trendId);
@@ -65,13 +65,13 @@ export default {
       if (callback?.id) await answerCallback(env, callback.id, 'Rangliste geöffnet.');
       let requestData;
       try {
-        requestData = await loadTrendRequest(env);
+        requestData = await loadTrendRequest(env, selectionId);
       } catch (error) {
         await requireTelegramMessage(await telegram(env, chatId, `❌ Trendauswahl konnte nicht geladen werden.\nGrund: ${String(error).slice(0, 350)}`));
         return new Response('trend request unavailable', { status: 502 });
       }
       if (String(requestData?.selection_id || '') !== selectionId) {
-        await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendauswahl ist nicht mehr aktuell. Bitte nutze die neueste Abend-Rangliste.'));
+        await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendauswahl ist nicht mehr aktuell. Bitte nutze die zugehörige aktuelle Rangliste.'));
         return new Response('stale trend selection', { status: 409 });
       }
       await requireTelegramMessage(await editMessageWithMarkup(
@@ -79,21 +79,24 @@ export default {
         chatId,
         callback?.message?.message_id,
         trendListBody(requestData),
-        trendSelectionKeyboard(selectionId),
+        trendSelectionKeyboard(selectionId, (requestData.trends || []).length),
       ));
       return new Response('ok');
     }
 
-    const reasonMatch = callbackData.match(/^trend_reason:(newtrend|newformat):(\d+)$/i);
+    const currentReason = callbackData.match(/^trend_reason:(newtrend|newformat):([A-Za-z0-9_-]{4,40}):([1-5])$/i);
+    const legacyReason = callbackData.match(/^trend_reason:(newtrend|newformat):(\d+)$/i);
+    const reasonMatch = currentReason || legacyReason;
     if (reasonMatch) {
       const action = reasonMatch[1].toLowerCase();
-      const trendId = reasonMatch[2];
+      const selectionId = currentReason?.[2] || '';
+      const trendId = currentReason?.[3] || legacyReason?.[2] || '';
       if (callback?.id) await answerCallback(env, callback.id, action === 'newtrend' ? 'Neuer Trend wird vorgeschlagen.' : 'Neues Format wird vorgeschlagen.');
       if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
 
       let requestData;
       try {
-        requestData = await loadTrendRequest(env);
+        requestData = await loadTrendRequest(env, selectionId);
       } catch (error) {
         await requireTelegramMessage(await telegram(env, chatId, `❌ Trend-Neuvorschlag fehlgeschlagen.\nGrund: ${String(error).slice(0, 350)}`));
         return new Response('trend request unavailable', { status: 502 });
@@ -114,7 +117,7 @@ export default {
           'Grund berücksichtigt: bisheriges Thema abgelehnt.',
           'Erst mit „Trend freigeben“ startet die Produktion.'
         ].join('\n');
-        await requireTelegramMessage(await telegramWithMarkup(env, chatId, body, trendKeyboard(String(next.id))));
+        await requireTelegramMessage(await telegramWithMarkup(env, chatId, body, trendKeyboard(String(next.id), selectionId)));
         return new Response('ok');
       }
 
@@ -126,7 +129,7 @@ export default {
         'Grund berücksichtigt: Thema bleibt, Format wird neu aufgesetzt.',
         'Erst mit „Trend freigeben“ startet die Produktion.'
       ].join('\n');
-      await requireTelegramMessage(await telegramWithMarkup(env, chatId, body, trendKeyboard(String(current.id))));
+      await requireTelegramMessage(await telegramWithMarkup(env, chatId, body, trendKeyboard(String(current.id), selectionId)));
       return new Response('ok');
     }
 
@@ -137,7 +140,7 @@ export default {
 
       let requestData;
       try {
-        requestData = await loadTrendRequest(env);
+        requestData = await loadTrendRequest(env, selectionId);
       } catch (error) {
         await requireTelegramMessage(await telegram(env, chatId, `❌ Trendfreigabe konnte die aktuelle Rangliste nicht laden.\nGrund: ${String(error).slice(0, 350)}`));
         return new Response('trend request unavailable', { status: 502 });
@@ -172,15 +175,18 @@ export default {
       return new Response('ok');
     }
 
-    const rejectTrend = callbackData.match(/^(?:reject_trend|trend_reject|reject:trend)[:_](\d+)$/i);
+    const currentReject = callbackData.match(/^reject_trend:([A-Za-z0-9_-]{4,40}):([1-5])$/i);
+    const legacyReject = callbackData.match(/^(?:reject_trend|trend_reject|reject:trend)[:_](\d+)$/i);
+    const rejectTrend = currentReject || legacyReject;
     if (rejectTrend) {
-      const trendId = rejectTrend[1];
+      const selectionId = currentReject?.[1] || '';
+      const trendId = currentReject?.[2] || legacyReject?.[1] || '';
       if (callback?.id) await answerCallback(env, callback.id, `Trend ${trendId} abgelehnt.`);
       if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
       await requireTelegramMessage(await telegramWithMarkup(env, chatId, `❌ Trend ${trendId} abgelehnt.\n\nWas ist der Hauptgrund?`, {
         inline_keyboard: [
-          [{ text: '📰 Thema/Trend passt nicht', callback_data: `trend_reason:newtrend:${trendId}` }],
-          [{ text: '🎬 Format passt nicht', callback_data: `trend_reason:newformat:${trendId}` }]
+          [{ text: '📰 Thema/Trend passt nicht', callback_data: selectionId ? `trend_reason:newtrend:${selectionId}:${trendId}` : `trend_reason:newtrend:${trendId}` }],
+          [{ text: '🎬 Format passt nicht', callback_data: selectionId ? `trend_reason:newformat:${selectionId}:${trendId}` : `trend_reason:newformat:${trendId}` }]
         ]
       }));
       return new Response('ok');
@@ -244,40 +250,42 @@ export default {
   },
 };
 
-function trendKeyboard(trendId) {
+function trendKeyboard(trendId, selectionId = '') {
+  if (selectionId) return trendConfirmationKeyboard(selectionId, trendId);
   return { inline_keyboard: [[
     { text: '✅ Trend freigeben', callback_data: `approve_trend:${trendId}` },
     { text: '❌ Ablehnen', callback_data: `reject_trend:${trendId}` }
   ]] };
 }
 
-function trendSelectionKeyboard(selectionId) {
-  return {
-    inline_keyboard: [
-      [
-        { text: '1️⃣ Trend 1', callback_data: `select_trend:${selectionId}:1` },
-        { text: '2️⃣ Trend 2', callback_data: `select_trend:${selectionId}:2` },
-      ],
-      [
-        { text: '3️⃣ Trend 3', callback_data: `select_trend:${selectionId}:3` },
-        { text: '4️⃣ Trend 4', callback_data: `select_trend:${selectionId}:4` },
-      ],
-      [{ text: '5️⃣ Trend 5', callback_data: `select_trend:${selectionId}:5` }],
-    ],
-  };
+function trendSelectionKeyboard(selectionId, trendCount = 5) {
+  const count = Math.max(1, Math.min(5, Number(trendCount) || 1));
+  const emoji = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+  const label = count === 1 ? 'Folge' : 'Trend';
+  const buttons = Array.from({ length: count }, (_, index) => ({
+    text: `${emoji[index]} ${label} ${index + 1}`,
+    callback_data: `select_trend:${selectionId}:${index + 1}`,
+  }));
+  const rows = [];
+  for (let index = 0; index < buttons.length; index += 2) rows.push(buttons.slice(index, index + 2));
+  return { inline_keyboard: rows };
 }
 
 function trendConfirmationKeyboard(selectionId, trendId) {
   return {
     inline_keyboard: [
       [{ text: '✅ Trend freigeben', callback_data: `approve_trend:${selectionId}:${trendId}` }],
-      [{ text: '↩️ Anderen Trend wählen', callback_data: `trend_list:${selectionId}` }],
+      [
+        { text: '↩️ Anderen Trend wählen', callback_data: `trend_list:${selectionId}` },
+        { text: '❌ Ablehnen', callback_data: `reject_trend:${selectionId}:${trendId}` },
+      ],
     ],
   };
 }
 
 function trendListBody(requestData) {
-  const lines = ['🌙 TAYVORIQ Abend-Trends', '', 'Rangliste:'];
+  const heading = requestData?.slot === 'morning' ? '🌅 TAYVORIQ Morgen-Trends' : '🌙 TAYVORIQ Abend-Trends';
+  const lines = [heading, '', 'Rangliste:'];
   for (const trend of requestData.trends || []) {
     lines.push(`${trend.id}. ${trend.title} — ${trend.score} %`);
   }
@@ -337,11 +345,23 @@ function parseTrendApproval(callbackData, text, messageText) {
   return { trendId, selectionId, topic };
 }
 
-async function loadTrendRequest(env) {
+async function loadTrendRequest(env, selectionId = '') {
   const repository = env.GITHUB_REPOSITORY || 'mojo72549-arch/tayvoriq-control-plane';
-  const response = await fetch(`https://raw.githubusercontent.com/${repository}/main/.github/run-now/tayvoriq-trend-request.json`, { headers: { 'User-Agent': 'tayvoriq-telegram-approval' } });
-  if (!response.ok) throw new Error(`Trend request HTTP ${response.status}`);
-  return response.json();
+  const safeSelection = /^[A-Za-z0-9_-]{4,40}$/.test(selectionId) ? selectionId : '';
+  const paths = safeSelection
+    ? [`.automation/tayvoriq-agent-v2/selections/${safeSelection}.json`, '.github/run-now/tayvoriq-trend-request.json']
+    : ['.github/run-now/tayvoriq-trend-request.json'];
+  let lastStatus = 404;
+  for (const path of paths) {
+    const response = await fetch(`https://raw.githubusercontent.com/${repository}/main/${path}`, {
+      headers: { 'User-Agent': 'tayvoriq-telegram-approval' },
+    });
+    lastStatus = response.status;
+    if (!response.ok) continue;
+    const data = await response.json();
+    if (!safeSelection || String(data?.selection_id || '') === safeSelection) return data;
+  }
+  throw new Error(`Trend request HTTP ${lastStatus} for selection ${safeSelection || 'current'}`);
 }
 
 async function upsertApprovalRecord(env, { runId, youtubeVideoUrl, tiktokVideoUrl, reviewUrl, telegramMessageId }) {

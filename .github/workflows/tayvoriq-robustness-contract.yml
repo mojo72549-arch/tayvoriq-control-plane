@@ -8,7 +8,15 @@ on:
     paths:
       - .github/workflows/tayvoriq-deliver-video-now.yml
       - .github/workflows/tayvoriq-delivery-watch.yml
+      - .github/workflows/tayvoriq-agent-autorelease-v2.yml
+      - .github/workflows/tayvoriq-agent-orchestrator-v2.yml
+      - .github/workflows/tayvoriq-daily-orchestrator.yml
+      - .github/workflows/tayvoriq-request-dispatch.yml
       - .github/workflows/tayvoriq-robustness-contract.yml
+      - infra/telegram-approval-worker-v2.js
+      - tools/tayvoriq_agent_*.py
+      - state/tayvoriq-active-series.json
+      - tests/test_tayvoriq_control_plane_v2.py
 
 permissions:
   contents: read
@@ -34,6 +42,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Run control-plane unit contracts
+        run: python -m unittest discover -s tests -p 'test_*.py'
 
       - name: Run zero-heavy-dependency implementation contracts
         working-directory: implementation
@@ -92,6 +103,12 @@ jobs:
 
           golden_path = Path('.github/workflows/tayvoriq-deliver-video-now.yml').read_text(encoding='utf-8')
           watcher = Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8')
+          release = Path('.github/workflows/tayvoriq-agent-autorelease-v2.yml').read_text(encoding='utf-8')
+          scheduler = Path('.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text(encoding='utf-8')
+          legacy_bridge = Path('.github/workflows/tayvoriq-daily-orchestrator.yml').read_text(encoding='utf-8')
+          dispatcher = Path('.github/workflows/tayvoriq-request-dispatch.yml').read_text(encoding='utf-8')
+          worker = Path('infra/telegram-approval-worker-v2.js').read_text(encoding='utf-8')
+          series_state = Path('tools/tayvoriq_agent_series_state_v2.py').read_text(encoding='utf-8')
           entrypoint = Path('implementation/tools/tayvoriq_autonomous_entrypoint.py').read_text(encoding='utf-8')
           bootstrap = Path('implementation/tools/tayvoriq_production_render_bootstrap.py').read_text(encoding='utf-8')
 
@@ -155,6 +172,55 @@ jobs:
               if token not in watcher:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_WATCHER_MISSING:{token}')
 
+          required_scheduler = (
+              'options: [morning, evening]',
+              '- cron: "30 4 * * *"',
+              '- cron: "30 5 * * *"',
+              '- cron: "30 15 * * *"',
+              '- cron: "30 16 * * *"',
+              'cancel-in-progress: false',
+              'TAYVORIQ_SKIP_ACTIVE_SERIES',
+              '.automation/tayvoriq-agent-v2/selections/',
+              '.automation/tayvoriq-agent-v2/deliveries/',
+              '1️⃣ Folge auswählen',
+          )
+          for token in required_scheduler:
+              if token not in scheduler:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_SCHEDULER_MISSING:{token}')
+          if 'afternoon' in scheduler.lower() or '30 12 * * *' in scheduler or '30 13 * * *' in scheduler:
+              raise SystemExit('ROBUSTNESS_CONTRACT_SCHEDULER_FORBIDDEN: afternoon/legacy slot')
+
+          if '\n  schedule:' in legacy_bridge or 'tayvoriq-deliver-video-now.yml' in legacy_bridge:
+              raise SystemExit('ROBUSTNESS_CONTRACT_LEGACY_DIRECT_PRODUCTION_ACTIVE')
+          if 'tayvoriq-agent-orchestrator-v2.yml' not in legacy_bridge:
+              raise SystemExit('ROBUSTNESS_CONTRACT_LEGACY_BRIDGE_TARGET_MISSING')
+          if '*/5 * * * *' in dispatcher:
+              raise SystemExit('ROBUSTNESS_CONTRACT_NOOP_DISPATCH_POLLING_ACTIVE')
+
+          required_selection = (
+              'loadTrendRequest(env, selectionId)',
+              '.automation/tayvoriq-agent-v2/selections/${safeSelection}.json',
+              'SELECTION_SNAPSHOT_MISSING',
+          )
+          for token in required_selection:
+              if token not in worker + dispatcher:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_SELECTION_SNAPSHOT_MISSING:{token}')
+
+          if "github.event.workflow_run.conclusion == 'success'" not in release:
+              raise SystemExit('ROBUSTNESS_CONTRACT_RELEASE_FAILURE_OWNERSHIP_INVALID')
+          for token in (
+              '- name: Notify independent quality audit start',
+              '- name: Notify quality gates passed',
+              'YouTube-Veröffentlichung wurde automatisch gestartet',
+          ):
+              if token in release:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_REDUNDANT_RELEASE_NOISE:{token}')
+          if "'recovery_owner':'tayvoriq-delivery-watch'" not in watcher:
+              raise SystemExit('ROBUSTNESS_CONTRACT_RECOVERY_RUN_MAP_MISSING')
+          for token in ('platform_upload_performed', 'advanced_to_next_episode', 'series_completed'):
+              if token not in series_state:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_SERIES_LIFECYCLE_MISSING:{token}')
+
           required_entrypoint = (
               'def _runtime_progress_enabled()',
               'if not _runtime_progress_enabled():',
@@ -186,6 +252,11 @@ jobs:
               'brand_pronunciation_canonical': True,
               'world_forces_visuals_bound_before_first_render': True,
               'external_blocker_notification_retained': True,
+              'twice_daily_berlin_slots': True,
+              'selection_snapshots': True,
+              'single_recovery_owner': True,
+              'series_lifecycle_bounded': True,
+              'noop_polling_removed': True,
               'quality_gates_weakened': False,
           })
           PY

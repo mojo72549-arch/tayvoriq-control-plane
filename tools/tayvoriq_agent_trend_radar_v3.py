@@ -36,7 +36,7 @@ def groq_browser_then_structure(prompt: str, api_key: str):
     research_prompt = f"""
 Research CURRENT TAYVORIQ short-video candidates for Germany now.
 Use browser search. We need SIX different stories, normally from the last 24 hours (48 hours only if still unfolding).
-Morning focus: Germany, Europe, major global stories. Afternoon focus: Stuttgart/Baden-Württemberg/South Germany plus strong Germany-wide stories.
+Morning focus: Germany, Europe, major global stories. Evening focus: Stuttgart/Baden-Württemberg/South Germany plus strong Germany-wide stories.
 Audience 16-44, sweet spot 18-34. Prioritize direct relevance, surprise, weather, transport, safety, prices, science, technology, business, mobility, major world developments and sports.
 For earthquakes, volcanoes, eclipses, storms, wildfires, floods or similar natural events, include a concise WHY/HOW explanation.
 Avoid political advocacy, gossip, rumors, graphic violence and duplicate angles.
