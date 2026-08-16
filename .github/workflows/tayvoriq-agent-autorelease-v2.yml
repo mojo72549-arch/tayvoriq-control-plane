@@ -12,8 +12,8 @@ on:
         type: string
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
+  actions: read
 
 concurrency:
   group: tayvoriq-agent-autorelease-v2-${{ github.event.workflow_run.id || inputs.run_id }}
@@ -213,55 +213,26 @@ jobs:
           print({'run_id':os.environ['RUN_ID'],'agent_v2_release_gate':'passed','quality_gates_weakened':False})
           PY
 
-      - name: Remove redundant manual review buttons from V2 message
-        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.owner.outputs.run_id }}
-        run: |
-          set +e
-          gh run view "$RUN_ID" --log > /tmp/golden.log 2>/dev/null
-          message_id=$(grep -oE 'message_id=[0-9]+ state=SUCCESS' /tmp/golden.log | tail -n1 | grep -oE '[0-9]+' || true)
-          if [ -n "$message_id" ]; then
-            curl -fsS -H 'Content-Type: application/json' -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"message_id\":${message_id},\"reply_markup\":{\"inline_keyboard\":[]}}" "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup" >/dev/null
-          fi
-
-      - name: Create automatic approval record
+      - name: Preserve Telegram human approval gate
         if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
         run: |
           set -euo pipefail
-          mkdir -p .automation/tayvoriq-reviews
           python - <<'PY'
           import json, os
-          from datetime import datetime, timezone
-          from pathlib import Path
-          run=os.environ['RUN_ID']; path=Path(f'.automation/tayvoriq-reviews/{run}.json'); existing={}
-          if path.is_file():
-              try: existing=json.loads(path.read_text(encoding='utf-8'))
-              except Exception: existing={}
-          if not existing.get('platform_upload_performed'):
-              base=f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{run}'
-              record={**existing,'review_id':run,'status':'APPROVED','platform_upload_performed':False,'publication_pending':True,'approved_at':datetime.now(timezone.utc).isoformat(),'approved_via':'agent_orchestrator_v2_quality_gate','video_url':f'{base}/short_youtube.mp4','youtube_video_url':f'{base}/short_youtube.mp4','tiktok_video_url':f'{base}/short_tiktok.mp4','review_url':f'{base}/','tiktok_status':'MANUAL_UPLOAD_REQUIRED','quality_gates_weakened':False}
-              path.write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ".automation/tayvoriq-reviews/${RUN_ID}.json"
-          if ! git diff --cached --quiet; then
-            git commit -m "agent(v2): auto-approve review ${RUN_ID} after strict gates"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
 
-      - name: Explicitly start existing YouTube publisher
-        if: steps.owner.outputs.owned == 'true' && steps.owner.outputs.conclusion == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.owner.outputs.run_id }}
-        run: |
-          set -euo pipefail
-          gh workflow run tayvoriq-auto-publish-approved.yml --ref main -f review_id="$RUN_ID"
-          echo "Verified publisher dispatch accepted for review $RUN_ID. Final Telegram is owned by the publisher after confirmed upload."
+          job=json.load(open('/tmp/job.json',encoding='utf-8'))
+          audit=json.load(open('/tmp/audit.json',encoding='utf-8'))
+          assert audit.get('human_review_allowed') is True
+          assert audit.get('quality_gates_weakened') is False
+          print({
+              'run_id': os.environ['RUN_ID'],
+              'state': 'PENDING_TELEGRAM_VIDEO_APPROVAL',
+              'telegram_review_buttons_preserved': True,
+              'automatic_approval_created': False,
+              'youtube_upload_started': False,
+              'tiktok_delivery_started': False,
+              'quality_gates_weakened': False,
+          })
+          PY
