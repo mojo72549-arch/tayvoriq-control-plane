@@ -29,6 +29,24 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("tayvoriq-deliver-video-now.yml", bridge)
         self.assertNotIn("*/5 * * * *", dispatcher)
 
+    def test_local_repair_is_checkpointed_before_publishable_assert(self) -> None:
+        golden = (
+            ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml"
+        ).read_text(encoding="utf-8")
+        repair = golden.index("- name: Repair only failed local checkpoints")
+        refresh = golden.index(
+            "- name: Refresh lean recovery checkpoint after local repair"
+        )
+        persist = golden.index("- name: Persist refreshed post-repair checkpoint")
+        publishable = golden.index("- name: Assert publishable production output")
+
+        self.assertLess(repair, refresh)
+        self.assertLess(refresh, persist)
+        self.assertLess(persist, publishable)
+        self.assertIn("-post-local-repair", golden)
+        self.assertIn("steps.checkpoint_recovery.outputs.state", golden)
+        self.assertIn("quality_gates_weakened", golden)
+
     def test_in_flight_series_never_falls_back_to_loose_trends(self) -> None:
         scheduler = (ROOT / ".github/workflows/tayvoriq-agent-orchestrator-v2.yml").read_text(encoding="utf-8")
         self.assertIn(
