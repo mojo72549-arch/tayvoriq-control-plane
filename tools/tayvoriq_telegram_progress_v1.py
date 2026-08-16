@@ -59,6 +59,18 @@ MILESTONES = {
         "Der Workflow ist aktiv; seit dem letzten geprüften Meilenstein wurde kein neuer Fehler erkannt.",
         "Die rechenintensive Sprecher-, Visual-, Untertitel- und Renderphase läuft weiter.",
     ),
+    "checkpoint_repair": Milestone(
+        60,
+        "Master gesichert · gezielte Reparatur",
+        "Ein wiederverwendbarer Master ist dauerhaft gesichert; es wurde noch nichts veröffentlicht.",
+        "Nur fehlgeschlagene lokale Sprach-, Bild- oder Audit-Prüfpunkte werden repariert.",
+    ),
+    "checkpoint_heartbeat": Milestone(
+        60,
+        "Checkpoint-Reparatur arbeitet weiter",
+        "Master und Quellen bleiben gesichert; seit dem Reparaturstart wurde kein neuer Fehler erkannt.",
+        "Die verbliebenen lokalen Prüfpunkte werden weiter repariert und erneut gemessen.",
+    ),
     "audio_recovery": Milestone(
         None,
         "Audio-Gate hat sicher gestoppt",
@@ -121,6 +133,8 @@ def build_payload(
     milestone = MILESTONES[stage]
     heading = f"TAYVORIQ {milestone.percent} %" if milestone.percent is not None else "TAYVORIQ"
     icon = "🔄" if stage == "render_heartbeat" else ("🟠" if stage in {"audio_recovery", "technical_stop"} else "🟣")
+    if stage in {"checkpoint_repair", "checkpoint_heartbeat"}:
+        icon = "🔧"
     if stage == "duplicate_blocked":
         icon = "🛑"
     lines = [
@@ -129,8 +143,9 @@ def build_payload(
         f"Thema: {clean_topic(topic)}",
         f"Run: {str(run_id or 'unbekannt').strip()}",
     ]
-    if stage == "render_heartbeat":
-        lines.extend(["", f"⏱️ Renderphase aktiv seit: {max(1, int(elapsed_minutes or 0))} Minuten"])
+    if stage in {"render_heartbeat", "checkpoint_heartbeat"}:
+        phase = "Renderphase" if stage == "render_heartbeat" else "Reparaturphase"
+        lines.extend(["", f"⏱️ {phase} aktiv seit: {max(1, int(elapsed_minutes or 0))} Minuten"])
     if failure_state:
         lines.extend(["", f"Status: {clean_topic(failure_state)}"])
     if detail:
