@@ -208,13 +208,32 @@ jobs:
 
           if "github.event.workflow_run.conclusion == 'success'" not in release:
               raise SystemExit('ROBUSTNESS_CONTRACT_RELEASE_FAILURE_OWNERSHIP_INVALID')
+          required_manual_release = (
+              '- name: Preserve Telegram human approval gate',
+              'contents: read',
+              'actions: read',
+              "'state': 'PENDING_TELEGRAM_VIDEO_APPROVAL'",
+              "'telegram_review_buttons_preserved': True",
+              "'automatic_approval_created': False",
+              "'youtube_upload_started': False",
+              "'tiktok_delivery_started': False",
+              "approved_via: 'telegram_callback'",
+              'tayvoriq:approve:',
+          )
+          for token in required_manual_release:
+              if token not in release + worker:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_TELEGRAM_APPROVAL_MISSING:{token}')
           for token in (
               '- name: Notify independent quality audit start',
               '- name: Notify quality gates passed',
               'YouTube-Veröffentlichung wurde automatisch gestartet',
+              '- name: Remove redundant manual review buttons from V2 message',
+              '- name: Create automatic approval record',
+              'auto-approve review',
+              'gh workflow run tayvoriq-auto-publish-approved.yml',
           ):
               if token in release:
-                  raise SystemExit(f'ROBUSTNESS_CONTRACT_REDUNDANT_RELEASE_NOISE:{token}')
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_FORBIDDEN_AUTORELEASE:{token}')
           if "'recovery_owner':'tayvoriq-delivery-watch'" not in watcher:
               raise SystemExit('ROBUSTNESS_CONTRACT_RECOVERY_RUN_MAP_MISSING')
           for token in ('platform_upload_performed', 'advanced_to_next_episode', 'series_completed'):
