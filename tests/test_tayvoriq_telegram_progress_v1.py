@@ -75,6 +75,20 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("nichts veröffentlicht", text)
         self.assertIn("Dublettenprüfung bleiben gültig", text)
 
+    def test_checkpoint_repair_reports_saved_master_without_claiming_75_percent(self) -> None:
+        payload = progress.build_payload(
+            "checkpoint_heartbeat",
+            "Wenn die Erde plötzlich bricht",
+            "31970469274",
+            "12345",
+            elapsed_minutes=3,
+        )
+        text = payload["text"]
+        self.assertIn("TAYVORIQ 60 %", text)
+        self.assertIn("Master und Quellen bleiben gesichert", text)
+        self.assertIn("Reparaturphase aktiv seit: 3 Minuten", text)
+        self.assertNotIn("75 %", text)
+
     def test_duplicate_stop_requires_a_new_angle_and_never_claims_publication(self) -> None:
         payload = progress.build_payload(
             "duplicate_blocked",
@@ -108,6 +122,9 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         for stage in ("sources_locked", "production_active", "master_ready", "quality_passed"):
             self.assertEqual(workflow.count(f"--stage {stage}"), 1)
         self.assertEqual(workflow.count("--stage render_heartbeat"), 1)
+        self.assertEqual(workflow.count("--stage checkpoint_repair"), 1)
+        self.assertEqual(workflow.count("--stage checkpoint_heartbeat"), 1)
+        self.assertIn("Telegram progress - checkpoint repair", workflow)
         self.assertIn("sleep 180", workflow)
         self.assertIn("--policy ../state/tayvoriq-notification-policy.json", workflow)
         self.assertIn("Telegram immediate verified stop", workflow)
@@ -139,6 +156,8 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertIn('STATUS_STAGE_INVALID', workflow)
         self.assertIn('Send and verify Telegram status', workflow)
         self.assertIn('audio_recovery', workflow)
+        self.assertIn('checkpoint_repair', workflow)
+        self.assertIn('checkpoint_heartbeat', workflow)
         self.assertIn('elapsed_minutes', workflow)
         self.assertIn('STATUS_ELAPSED_MINUTES_INVALID', workflow)
 
@@ -151,6 +170,9 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertIs(policy["enabled_until_user_opt_out"], True)
         self.assertEqual(policy["heartbeat_interval_seconds"], 180)
         self.assertIs(policy["immediate_failure_notification_enabled"], True)
+        self.assertEqual(policy["checkpoint_repair_heartbeat_interval_seconds"], 180)
+        self.assertIn("checkpoint_repair", policy["milestones"])
+        self.assertIn("checkpoint_heartbeat", policy["milestones"])
 
 
 if __name__ == "__main__":
