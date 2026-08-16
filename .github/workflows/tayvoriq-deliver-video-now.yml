@@ -277,6 +277,8 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"sha256={digest}\n")
               handle.write(f"trend_id={trend_id}\n")
+              handle.write(f"request_id={data.get('request_id')}\n")
+              handle.write(f"request_file={request_path}\n")
           print(json.dumps({
               "source_context": "verified-and-materialized",
               "request_id": data.get("request_id"),
@@ -288,6 +290,18 @@ jobs:
               "quality_gates_weakened": False,
           }, ensure_ascii=False))
           PY
+
+      - name: Block global duplicate content before production
+        id: duplicate_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_global_duplicate_gate_v1.py \
+            --requests-dir requests \
+            --source-request-id "${{ steps.source_context.outputs.request_id }}" \
+            --topic "$TOPIC" \
+            --source-context "$TAYVORIQ_SOURCE_CONTEXT_FILE" \
+            --report-out out/control-plane/global-duplicate-gate.json
 
       - name: Telegram progress - sources locked
         continue-on-error: true
@@ -407,8 +421,13 @@ jobs:
           IMPLEMENTATION_SHA=$(git -C implementation rev-parse HEAD)
           PAGES_SHA=$(git -C pages-worktree rev-parse HEAD)
           SOURCE_SHA="${SOURCE_CONTEXT_SHA256:?canonical source context hash missing}"
+          SOURCE_REQUEST_ID="${{ steps.source_context.outputs.request_id }}"
+          DUPLICATE_REPORT=out/control-plane/global-duplicate-gate.json
+          test -f "$DUPLICATE_REPORT"
+          DUPLICATE_SHA=$(sha256sum "$DUPLICATE_REPORT" | awk '{print $1}')
+          cp "$DUPLICATE_REPORT" implementation/out/control-plane/global-duplicate-gate.json
           REQUEST_NONCE=$(env -u PYTHONPATH python -I -c 'import json,pathlib; p=pathlib.Path(".github/run-now/tayvoriq-x-request.json"); print((json.loads(p.read_text()).get("request_nonce") if p.exists() else "") or "")')
-          env -u PYTHONPATH python -I - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" "$REQUEST_NONCE" <<'PY'
+          env -u PYTHONPATH python -I - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" "$REQUEST_NONCE" "$SOURCE_REQUEST_ID" "$DUPLICATE_SHA" <<'PY'
           import json, os, pathlib, sys
           payload = {
               "run_id": os.environ.get("GITHUB_RUN_ID"),
@@ -421,10 +440,13 @@ jobs:
               "review_pages_sha": sys.argv[3],
               "source_context_sha256": sys.argv[4],
               "request_nonce": sys.argv[5],
+              "source_request_id": sys.argv[6],
+              "global_duplicate_gate_report_sha256": sys.argv[7],
               "implementation_branch": "feature/multi-platform-distribution-package",
               "execution_backend": os.environ.get("TAYVORIQ_EXECUTION_BACKEND"),
               "approved_trend_pinned": True,
               "source_context_bound": True,
+              "global_duplicate_gate_passed": True,
               "single_x_owner": True,
               "restored_recovery_checkpoint": os.environ.get("RESTORED_CHECKPOINT") == "true",
               "lightweight_preflight_passed": True,
@@ -500,6 +522,30 @@ jobs:
             exit 0
           fi
 
+          heartbeat_stop="${RUNNER_TEMP}/tayvoriq-render-heartbeat-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.stop"
+          rm -f "$heartbeat_stop"
+          (
+            heartbeat_started=$(date +%s)
+            while true; do
+              sleep 180
+              [ -f "$heartbeat_stop" ] && exit 0
+              elapsed_minutes=$(( ( $(date +%s) - heartbeat_started ) / 60 ))
+              python ../tools/tayvoriq_telegram_progress_v1.py \
+                --stage render_heartbeat \
+                --topic "$TOPIC" \
+                --run-id "$GITHUB_RUN_ID" \
+                --run-attempt "$GITHUB_RUN_ATTEMPT" \
+                --elapsed-minutes "$elapsed_minutes" || true
+            done
+          ) &
+          heartbeat_pid=$!
+          stop_heartbeat() {
+            touch "$heartbeat_stop"
+            kill "$heartbeat_pid" 2>/dev/null || true
+            wait "$heartbeat_pid" 2>/dev/null || true
+          }
+          trap stop_heartbeat EXIT
+
           set +e
           python tools/tayvoriq_autonomous_entrypoint.py \
             --trend-mode approved_trend \
@@ -532,6 +578,8 @@ jobs:
           echo "process_exit=$process_exit" >> "$GITHUB_OUTPUT"
           echo "reusable_master=$reusable_master" >> "$GITHUB_OUTPUT"
           echo "Controller handoff: state=$state reusable_master=$reusable_master process_exit=$process_exit"
+          stop_heartbeat
+          trap - EXIT
           exit 0
 
       - name: Prepare lean durable recovery checkpoint
@@ -673,38 +721,95 @@ jobs:
       - name: Record internal failure for Delivery Watch
         if: failure()
         continue-on-error: true
-        working-directory: implementation
         run: |
           set +e
-          mkdir -p out/control-plane
+          mkdir -p implementation/out/control-plane
           python - <<'PY'
           import json
           from pathlib import Path
-          report_path = Path("out/tayvoriq-self-heal/report.json")
-          preflight_path = Path("out/control-plane/preflight.json")
+          report_path = Path("implementation/out/tayvoriq-self-heal/report.json")
+          preflight_path = Path("implementation/out/control-plane/preflight.json")
+          duplicate_path = Path("out/control-plane/global-duplicate-gate.json")
           report = {}
           preflight = {}
+          duplicate = {}
           if report_path.exists():
               try: report = json.loads(report_path.read_text(encoding="utf-8"))
               except Exception: report = {}
           if preflight_path.exists():
               try: preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
               except Exception: preflight = {}
-          state = str(report.get("state") or preflight.get("state") or "TECHNICAL_FAILURE")
+          if duplicate_path.exists():
+              try: duplicate = json.loads(duplicate_path.read_text(encoding="utf-8"))
+              except Exception: duplicate = {}
+          state = str(
+              (duplicate.get("state") if duplicate.get("passed") is False else "")
+              or report.get("state")
+              or preflight.get("state")
+              or "TECHNICAL_FAILURE"
+          )
           payload = {
               "state": state,
-              "notification_owner": "tayvoriq-delivery-watch",
-              "telegram_technical_failure_emitted": False,
+              "notification_owner": "tayvoriq-x-golden-path",
+              "recovery_owner": "tayvoriq-delivery-watch",
+              "telegram_technical_failure_expected": True,
               "internal_recovery_expected": state != "EXTERNAL_ACTION_REQUIRED",
               "quality_gates_weakened": False,
           }
-          Path("out/control-plane/failure-notification-policy.json").write_text(
+          target = Path("implementation/out/control-plane/failure-notification-policy.json")
+          target.write_text(
               json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8",
           )
+          if duplicate:
+              Path("implementation/out/control-plane/global-duplicate-gate.json").write_text(
+                  json.dumps(duplicate, ensure_ascii=False, indent=2) + "\n",
+                  encoding="utf-8",
+              )
           print(payload)
           PY
-          echo "Recoverable technical failure retained for Delivery Watch; no Telegram technical-error message emitted."
+          echo "Failure state retained for immediate Telegram status and Delivery Watch recovery."
+
+      - name: Telegram immediate verified stop
+        if: failure()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          readarray -t status_fields < <(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          policy_path = Path("implementation/out/control-plane/failure-notification-policy.json")
+          duplicate_path = Path("out/control-plane/global-duplicate-gate.json")
+          policy = json.loads(policy_path.read_text(encoding="utf-8")) if policy_path.is_file() else {}
+          duplicate = json.loads(duplicate_path.read_text(encoding="utf-8")) if duplicate_path.is_file() else {}
+          state = str(policy.get("state") or "TECHNICAL_FAILURE")
+          stage = "technical_stop"
+          detail = "Der technische Teilpfad wird automatisch untersucht."
+          if state == "TRANSIENT_AUDIO_FAILURE":
+              stage = "audio_recovery"
+              detail = "Die tiefe Stimme blieb außerhalb des unveränderten 84–125-Hz-Gates."
+          elif state == "DUPLICATE_CONTENT_BLOCKED":
+              stage = "duplicate_blocked"
+              nearest = duplicate.get("nearest_prior") if isinstance(duplicate.get("nearest_prior"), dict) else {}
+              detail = "Ähnlich zu: " + str(nearest.get("topic") or "einer früheren Produktion")
+          print(stage)
+          print(state)
+          print(" ".join(detail.split())[:180])
+          PY
+          )
+          notification_stage="${status_fields[0]:-technical_stop}"
+          failure_state="${status_fields[1]:-TECHNICAL_FAILURE}"
+          notification_detail="${status_fields[2]:-Der technische Teilpfad wird automatisch untersucht.}"
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage "$notification_stage" \
+            --topic "$TOPIC" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --failure-state "$failure_state" \
+            --detail "$notification_detail" \
+            --receipt-out implementation/out/control-plane/telegram-failure-receipt.json
 
       - name: Build lean diagnostics bundle
         if: always()
