@@ -281,7 +281,7 @@ jobs:
           test -n "$TELEGRAM_BOT_TOKEN" && test -n "$TELEGRAM_CHAT_ID"
           RESPONSE=$(curl --fail --silent --show-error --request POST \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=🟣 TAYVORIQ Produktion gestartet\n\nThema: ${TOPIC}\n\nFür dich: ✅ Keine Aktion nötig.\n\nNächste Nachricht erst beim fertigen Video-Review oder bei einer echten externen Blockade." \
+            --data-urlencode "text=🟣 TAYVORIQ 10 % · Produktion gestartet\n\nThema: ${TOPIC}\n\nDu erhältst für diesen beobachteten Lauf weitere Meldungen bei echten Meilensteinen: Fakten gesichert → Produktion läuft → Videomaster erstellt → Quality-Gates bestanden → Video-Review.\n\nFür dich: ✅ Keine Aktion nötig." \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage")
           MID=$(python - "$RESPONSE" <<'PY'
           import json,sys

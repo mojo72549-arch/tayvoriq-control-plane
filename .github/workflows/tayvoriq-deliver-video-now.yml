@@ -289,6 +289,16 @@ jobs:
           }, ensure_ascii=False))
           PY
 
+      - name: Telegram progress - sources locked
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage sources_locked \
+            --topic "$TOPIC" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+
       - name: Validate secrets and notify production start
         env:
           PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
@@ -300,6 +310,10 @@ jobs:
           done
           if [ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]; then
             echo "Production-start Telegram suppressed for same-run recovery attempt ${GITHUB_RUN_ATTEMPT}."
+            exit 0
+          fi
+          if [ "${GITHUB_EVENT_NAME}" != "push" ]; then
+            echo "Verified production-start Telegram is owned by the request dispatcher."
             exit 0
           fi
           suppress_start=false
@@ -446,6 +460,16 @@ jobs:
           python -m compileall -q tools src runtime_patches
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
+      - name: Telegram progress - production active
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage production_active \
+            --topic "$TOPIC" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+
       - name: Restore production model cache
         if: steps.preflight.outcome == 'success'
         uses: actions/cache@v4
@@ -583,6 +607,16 @@ jobs:
           echo "Production is not publishable: controller=$CONTROLLER_STATE/$CONTROLLER_EXIT recovery=$RECOVERY_STATE/$RECOVERY_EXIT"
           exit 1
 
+      - name: Telegram progress - master ready
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage master_ready \
+            --topic "$TOPIC" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+
       - name: Validate publication quality
         id: publication_gate
         if: steps.production.outcome == 'success'
@@ -592,6 +626,16 @@ jobs:
           JOB_DIR=$(python -c 'import json,pathlib; d=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); print(d.get("job_dir") or "")')
           test -n "$JOB_DIR" && test -d "$JOB_DIR"
           python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
+
+      - name: Telegram progress - quality passed
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage quality_passed \
+            --topic "$TOPIC" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Publish review page
         id: publish_review
