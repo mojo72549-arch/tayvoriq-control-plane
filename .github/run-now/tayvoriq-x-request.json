@@ -2,13 +2,13 @@
   "request": "tayvoriq-x-production",
   "topic": "Warum Erdbeben plötzlich kommen, obwohl Platten sich ständig bewegen",
   "trend_id": "1",
-  "requested_at": "2026-08-16T22:27:47.523Z",
-  "request_nonce": "episode2-current-main-post-repair-audit-1786919267523",
+  "requested_at": "2026-08-16T22:56:03.377Z",
+  "request_nonce": "episode2-safe-area-repair-1786920963377",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-1004-trend-1",
-  "retry_of_run_id": 31973860466,
+  "retry_of_run_id": 31976407410,
   "suppress_start_notification": true,
   "execution_backend": "github_hosted_public",
   "hardening": {
@@ -29,8 +29,9 @@
     "quality_gates_weakened": false,
     "post_repair_checkpoint_required": true,
     "fresh_post_repair_audit_required": true,
-    "shared_platform_geology_assets_required": true
+    "shared_platform_geology_assets_required": true,
+    "motion_safe_area_typography_required": true
   },
-  "reason": "operator-verified-current-main-after-stale-repair-audit-fix",
+  "reason": "operator-verified-episode2-safe-area-visual-repair",
   "recovery_generation": 5
 }
