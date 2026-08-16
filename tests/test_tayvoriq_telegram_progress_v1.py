@@ -109,6 +109,7 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
             self.assertEqual(workflow.count(f"--stage {stage}"), 1)
         self.assertEqual(workflow.count("--stage render_heartbeat"), 1)
         self.assertIn("sleep 180", workflow)
+        self.assertIn("--policy ../state/tayvoriq-notification-policy.json", workflow)
         self.assertIn("Telegram immediate verified stop", workflow)
         self.assertIn("--stage \"$notification_stage\"", workflow)
         self.assertIn("telegram-failure-receipt.json", workflow)
@@ -138,6 +139,8 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertIn('STATUS_STAGE_INVALID', workflow)
         self.assertIn('Send and verify Telegram status', workflow)
         self.assertIn('audio_recovery', workflow)
+        self.assertIn('elapsed_minutes', workflow)
+        self.assertIn('STATUS_ELAPSED_MINUTES_INVALID', workflow)
 
     def test_checked_in_policy_is_enabled_until_user_opt_out(self) -> None:
         policy = json.loads(
