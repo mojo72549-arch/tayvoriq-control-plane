@@ -1,0 +1,14 @@
+{
+  "schema_version": "v1",
+  "production_progress_enabled": true,
+  "mode": "verified_milestones_only",
+  "notify_only_on_real_state_change": true,
+  "suppress_same_run_retries": true,
+  "enabled_until_user_opt_out": true,
+  "milestones": [
+    "sources_locked",
+    "production_active",
+    "master_ready",
+    "quality_passed"
+  ]
+}
