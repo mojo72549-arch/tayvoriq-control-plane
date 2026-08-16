@@ -19,12 +19,34 @@ class WorkflowContractTests(unittest.TestCase):
         scheduler = (ROOT / ".github/workflows/tayvoriq-agent-orchestrator-v2.yml").read_text(encoding="utf-8")
         bridge = (ROOT / ".github/workflows/tayvoriq-daily-orchestrator.yml").read_text(encoding="utf-8")
         dispatcher = (ROOT / ".github/workflows/tayvoriq-request-dispatch.yml").read_text(encoding="utf-8")
-        for cron in ('30 4 * * *', '30 5 * * *', '30 15 * * *', '30 16 * * *'):
+        for cron in ('30 3 * * *', '30 4 * * *', '0 17 * * *', '0 18 * * *'):
             self.assertIn(cron, scheduler)
+        for stale_cron in ('30 5 * * *', '30 15 * * *', '30 16 * * *'):
+            self.assertNotIn(stale_cron, scheduler)
+        self.assertIn("'evening': '0 17 * * *' if offset == 2 else '0 18 * * *'", scheduler)
         self.assertNotIn("afternoon", scheduler.lower())
         self.assertNotIn("\n  schedule:", bridge)
         self.assertNotIn("tayvoriq-deliver-video-now.yml", bridge)
         self.assertNotIn("*/5 * * * *", dispatcher)
+
+    def test_in_flight_series_never_falls_back_to_loose_trends(self) -> None:
+        scheduler = (ROOT / ".github/workflows/tayvoriq-agent-orchestrator-v2.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "Active series episode is still in flight; no duplicate episode or loose trend is proposed.",
+            scheduler,
+        )
+        self.assertIn(
+            "if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true'",
+            scheduler,
+        )
+        self.assertIn(
+            "steps.mode.outputs.series_in_flight != 'true'",
+            scheduler,
+        )
+        self.assertNotIn(
+            "steps.mode.outputs.active_series != 'true' || steps.mode.outputs.series_in_flight == 'true'",
+            scheduler,
+        )
 
     def test_selection_snapshot_contract_is_wired_end_to_end(self) -> None:
         scheduler = (ROOT / ".github/workflows/tayvoriq-agent-orchestrator-v2.yml").read_text(encoding="utf-8")
@@ -65,6 +87,7 @@ class SeriesLifecycleTests(unittest.TestCase):
         request = {
             "request_id": "request-1",
             "selection_id": "selection-agentv2",
+            "topic": "Episode One",
             "golden_path_run_id": 123,
             "source_context": {"series_context": {"series_id": "series-1", "episode": 1}},
         }
@@ -95,6 +118,32 @@ class SeriesLifecycleTests(unittest.TestCase):
         self.assertEqual(reason, "advanced_to_next_episode")
         self.assertEqual(state["episode"], 2)
         self.assertEqual(state["trend"]["title"], "Next")
+
+    def test_verified_youtube_title_recovers_missing_run_map(self) -> None:
+        review = {
+            "review_id": "999",
+            "status": "APPROVED",
+            "platform_upload_performed": True,
+            "upload_status": "PUBLISHED_YOUTUBE",
+            "youtube": {"video_id": "video-1", "privacy": "public"},
+            "published_payload": {"title": "  Episode   One  "},
+        }
+        (self.root / "reviews/999.json").write_text(json.dumps(review), encoding="utf-8")
+        state, changed, reason = self.reconcile()
+        self.assertTrue(changed)
+        self.assertEqual(reason, "advanced_to_next_episode")
+        self.assertEqual(state["episode"], 2)
+
+    def test_explicit_publication_run_id_is_accepted(self) -> None:
+        path = self.root / "requests/request-1.json"
+        request = json.loads(path.read_text(encoding="utf-8"))
+        request["published_run_id"] = 777
+        path.write_text(json.dumps(request), encoding="utf-8")
+        review = {"review_id": "777", "platform_upload_performed": True}
+        (self.root / "reviews/777.json").write_text(json.dumps(review), encoding="utf-8")
+        state, changed, _ = self.reconcile()
+        self.assertTrue(changed)
+        self.assertEqual(state["episode"], 2)
 
     def test_verified_recovery_run_advances_source_request(self) -> None:
         mapping = {

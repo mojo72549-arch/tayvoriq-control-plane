@@ -15,6 +15,10 @@ def read_json(path: Path) -> dict:
         return {}
 
 
+def normalized_title(value: object) -> str:
+    return " ".join(str(value or "").split()).casefold()
+
+
 def published_run_ids(review_dir: Path) -> set[str]:
     result: set[str] = set()
     for path in review_dir.glob("*.json") if review_dir.is_dir() else []:
@@ -24,11 +28,27 @@ def published_run_ids(review_dir: Path) -> set[str]:
     return result
 
 
+def published_youtube_titles(review_dir: Path) -> set[str]:
+    """Return exact normalized titles backed by verified YouTube publication evidence."""
+    result: set[str] = set()
+    for path in review_dir.glob("*.json") if review_dir.is_dir() else []:
+        data = read_json(path)
+        youtube = data.get("youtube") if isinstance(data.get("youtube"), dict) else {}
+        upload_status = str(data.get("upload_status") or "").strip().upper()
+        verified_youtube = bool(str(youtube.get("video_id") or "").strip()) or upload_status == "PUBLISHED_YOUTUBE"
+        payload = data.get("published_payload") if isinstance(data.get("published_payload"), dict) else {}
+        title = normalized_title(payload.get("title"))
+        if data.get("platform_upload_performed") is True and verified_youtube and title:
+            result.add(title)
+    return result
+
+
 def request_run_ids(request: dict, run_map_dir: Path) -> set[str]:
     result: set[str] = set()
-    root = str(request.get("golden_path_run_id") or "")
-    if root.isdigit():
-        result.add(root)
+    for key in ("golden_path_run_id", "published_run_id", "publication_run_id"):
+        run_id = str(request.get(key) or "")
+        if run_id.isdigit():
+            result.add(run_id)
     request_id = str(request.get("request_id") or "")
     selection_id = str(request.get("selection_id") or "")
     for path in run_map_dir.glob("*.json") if run_map_dir.is_dir() else []:
@@ -78,9 +98,12 @@ def reconcile(state: dict, request_dir: Path, review_dir: Path, run_map_dir: Pat
         raise SystemExit("ACTIVE_SERIES_INVALID: missing series_id or episode")
 
     published = published_run_ids(review_dir)
+    published_titles = published_youtube_titles(review_dir)
     finished = False
     for request in matching_requests(request_dir, series_id, episode):
-        if request_run_ids(request, run_map_dir) & published:
+        run_evidence = bool(request_run_ids(request, run_map_dir) & published)
+        title_evidence = normalized_title(request.get("topic")) in published_titles
+        if run_evidence or title_evidence:
             finished = True
             break
     if not finished:
