@@ -200,9 +200,9 @@ jobs:
           required_scheduler = (
               'options: [morning, evening]',
               '- cron: "30 4 * * *"',
-              '- cron: "30 5 * * *"',
-              '- cron: "30 15 * * *"',
-              '- cron: "30 16 * * *"',
+              '- cron: "30 3 * * *"',
+              '- cron: "0 17 * * *"',
+              '- cron: "0 18 * * *"',
               'cancel-in-progress: false',
               'TAYVORIQ_SKIP_ACTIVE_SERIES',
               '.automation/tayvoriq-agent-v2/selections/',
