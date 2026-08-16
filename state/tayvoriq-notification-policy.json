@@ -1,14 +1,25 @@
 {
   "schema_version": "v1",
   "production_progress_enabled": true,
-  "mode": "verified_milestones_only",
+  "mode": "verified_milestones_heartbeat_and_immediate_stop",
   "notify_only_on_real_state_change": true,
   "suppress_same_run_retries": true,
+  "same_run_replay_suppressed_stages": [
+    "sources_locked",
+    "production_active"
+  ],
+  "heartbeat_interval_seconds": 180,
+  "heartbeat_reports_elapsed_time_without_fake_progress": true,
+  "immediate_failure_notification_enabled": true,
   "enabled_until_user_opt_out": true,
   "milestones": [
     "recovery_started",
+    "audio_recovery",
+    "duplicate_blocked",
+    "technical_stop",
     "sources_locked",
     "production_active",
+    "render_heartbeat",
     "master_ready",
     "quality_passed"
   ]
