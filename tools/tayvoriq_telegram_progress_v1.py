@@ -23,6 +23,12 @@ class Milestone:
 
 
 MILESTONES = {
+    "recovery_started": Milestone(
+        30,
+        "Sichere Reparatur gestartet",
+        "Der vorherige Lauf wurde an einem Inhalts-Gate gestoppt; es wurde nichts veröffentlicht.",
+        "Die erkannte Vertragsursache wird repariert und derselbe freigegebene Auftrag neu gestartet.",
+    ),
     "sources_locked": Milestone(
         20,
         "Fakten gesichert",
