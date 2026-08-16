@@ -1,0 +1,102 @@
+name: TAYVORIQ Telegram Status Bridge V1
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Verified production status stage
+        required: true
+        default: recovery_started
+        type: choice
+        options:
+          - recovery_started
+          - sources_locked
+          - production_active
+          - master_ready
+          - quality_passed
+      topic:
+        description: Approved topic
+        required: true
+        type: string
+      run_id:
+        description: Related Golden Path run id
+        required: true
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-progress-trigger.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-telegram-status-bridge
+  cancel-in-progress: false
+
+jobs:
+  send-verified-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Resolve validated status payload
+        id: payload
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_STAGE: ${{ inputs.stage || '' }}
+          INPUT_TOPIC: ${{ inputs.topic || '' }}
+          INPUT_RUN_ID: ${{ inputs.run_id || '' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          if os.environ["EVENT_NAME"] == "workflow_dispatch":
+              stage = os.environ.get("INPUT_STAGE", "")
+              topic = os.environ.get("INPUT_TOPIC", "")
+              run_id = os.environ.get("INPUT_RUN_ID", "")
+          else:
+              path = Path(".github/run-now/tayvoriq-progress-trigger.json")
+              data = json.loads(path.read_text(encoding="utf-8"))
+              stage = str(data.get("stage") or "")
+              topic = str(data.get("topic") or "")
+              run_id = str(data.get("run_id") or "")
+
+          allowed = {
+              "recovery_started",
+              "sources_locked",
+              "production_active",
+              "master_ready",
+              "quality_passed",
+          }
+          if stage not in allowed:
+              raise SystemExit(f"STATUS_STAGE_INVALID: {stage!r}")
+          topic = " ".join(topic.split()).strip()
+          if not topic or len(topic) > 180:
+              raise SystemExit("STATUS_TOPIC_INVALID")
+          if not re.fullmatch(r"[0-9]{6,20}", run_id):
+              raise SystemExit("STATUS_RUN_ID_INVALID")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"stage={stage}\n")
+              handle.write(f"topic={topic}\n")
+              handle.write(f"run_id={run_id}\n")
+          print(json.dumps({"stage": stage, "topic": topic, "run_id": run_id}, ensure_ascii=False))
+          PY
+
+      - name: Send and verify Telegram status
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage "${{ steps.payload.outputs.stage }}" \
+            --topic "${{ steps.payload.outputs.topic }}" \
+            --run-id "${{ steps.payload.outputs.run_id }}" \
+            --run-attempt "1"
