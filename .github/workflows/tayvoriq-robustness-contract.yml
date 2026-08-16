@@ -1,6 +1,6 @@
 name: TAYVORIQ Robustness Contract
 
-# implementation-contract-revision: v21-global-dedupe-telegram-heartbeat
+# implementation-contract-revision: v22-semantic-episode2-checkpoint
 on:
   workflow_dispatch:
   push:
@@ -57,6 +57,8 @@ jobs:
           python -m compileall -q tools src runtime_patches tests
           python tools/tayvoriq_lightweight_preflight.py
           python - <<'PY'
+          from pathlib import Path
+
           from runtime_patches import tayvoriq_brand_pronunciation_guard as brand
           from runtime_patches import tayvoriq_deep_voice_contract as voice
           from runtime_patches import tayvoriq_world_forces_visual_guard as visuals
@@ -77,6 +79,28 @@ jobs:
               projected = voice.projected_f0_hz(residual, factor)
               assert voice.DEEP_F0_MIN_HZ <= projected <= voice.DEEP_F0_MAX_HZ
           assert voice.feedback_repair_factor(134.45, repairs_applied=2) is None
+
+          visual_repair_source = Path(
+              'tools/tayvoriq_visual_only_repair_v1.py'
+          ).read_text(encoding='utf-8')
+          voice_repair_source = Path(
+              'tools/tayvoriq_voice_only_repair_v5.py'
+          ).read_text(encoding='utf-8')
+          for marker in (
+              'generated_geology_animation',
+              'world-forces-episode-2-fault-rupture-frames-v1',
+              'VISUAL_REPAIR_EPISODE2_UNVERIFIED_STOCK_FORBIDDEN',
+              'actual_frame_semantics_prevalidated',
+              'world-forces-episode-2-source-bound-narrator-safe-v1',
+          ):
+              assert marker in visual_repair_source, marker
+          for marker in (
+              'FULL_TAKE_ATTEMPTS = 3',
+              '_EPISODE_TWO_CRITICAL_FACT_TERMS',
+              'critical_fact_terms_missing',
+              'world-forces-episode-2-semantic-audio-v1',
+          ):
+              assert marker in voice_repair_source, marker
 
           for legacy in ('TAYVORIQ', 'Tai wo rik', 'Taiworik', 'Tai vor ik', 'Tayvorik'):
               assert brand.normalize_spoken_brand(f'Abonniere {legacy}.') == 'Abonniere Tayvorik.'
@@ -102,6 +126,8 @@ jobs:
               'deep_voice_bounded_recovery': True,
               'brand_pronunciation_canonical': True,
               'world_forces_visual_contract': True,
+              'episode2_actual_frame_semantics': True,
+              'episode2_semantic_voice_terms': True,
               'quality_gates_weakened': False,
           })
           PY

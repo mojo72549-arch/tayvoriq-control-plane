@@ -2,14 +2,14 @@
   "request": "tayvoriq-x-production",
   "topic": "Warum Erdbeben plötzlich kommen, obwohl Platten sich ständig bewegen",
   "trend_id": "1",
-  "requested_at": "2026-08-16T20:24:52.260930Z",
-  "request_nonce": "tayvoriq-recovery-telegram-1004-trend-1-g4-31968359576-1786911892",
+  "requested_at": "2026-08-16T21:32:34.924Z",
+  "request_nonce": "episode2-semantic-checkpoint-recovery-g5-31970469274-1786915954924",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-1004-trend-1",
-  "retry_of_run_id": 31968359576,
-  "suppress_start_notification": true,
+  "retry_of_run_id": 31970469274,
+  "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
   "hardening": {
     "checkpoint_source_context_required": true,
@@ -20,10 +20,14 @@
     "concrete_failure_state_required": true,
     "persistent_recovery_checkpoint_required": true,
     "topic_aware_visual_repair_required": true,
+    "actual_frame_semantics_required": true,
+    "semantic_voice_fact_terms_required": true,
+    "global_duplicate_gate_required": true,
+    "telegram_checkpoint_heartbeat_required": true,
     "cardinal_speech_normalization_required": true,
     "dependency_cache_enabled": true,
     "quality_gates_weakened": false
   },
-  "reason": "autonomous-fresh-recovery-generation-on-current-main-after-same-run-budget",
-  "recovery_generation": 4
+  "reason": "resume-saved-master-with-deterministic-geology-visuals-and-semantic-voice-gate",
+  "recovery_generation": 5
 }
