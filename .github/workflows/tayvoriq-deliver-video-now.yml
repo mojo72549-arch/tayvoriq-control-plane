@@ -668,6 +668,28 @@ jobs:
           trap - EXIT
           exit 0
 
+      - name: Refresh lean recovery checkpoint after local repair
+        id: refresh_recovery_checkpoint
+        if: steps.checkpoint_recovery.outcome == 'success' && steps.controller.outputs.reusable_master == 'true'
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_recovery_checkpoint_v1.py prepare \
+            --outdir out/tayvoriq-youtube-tiktok \
+            --checkpoint out/recovery-checkpoint \
+            --trend-id "$TREND_ID" \
+            --source-sha256 "$SOURCE_CONTEXT_SHA256" \
+            --controller-state "${{ steps.checkpoint_recovery.outputs.state }}" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Persist refreshed post-repair checkpoint
+        if: steps.refresh_recovery_checkpoint.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: implementation/out/recovery-checkpoint
+          key: tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-${{ github.run_id }}-${{ github.run_attempt }}-post-local-repair
+
       - name: Assert publishable production output
         id: production
         if: always()
