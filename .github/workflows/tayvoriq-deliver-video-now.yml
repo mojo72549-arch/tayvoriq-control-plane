@@ -535,7 +535,8 @@ jobs:
                 --topic "$TOPIC" \
                 --run-id "$GITHUB_RUN_ID" \
                 --run-attempt "$GITHUB_RUN_ATTEMPT" \
-                --elapsed-minutes "$elapsed_minutes" || true
+                --elapsed-minutes "$elapsed_minutes" \
+                --policy ../state/tayvoriq-notification-policy.json || true
             done
           ) &
           heartbeat_pid=$!
