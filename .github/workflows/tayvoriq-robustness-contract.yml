@@ -70,6 +70,13 @@ jobs:
               projected = voice.projected_f0_hz(median, factor)
               assert voice.DEEP_F0_MIN_HZ <= projected <= voice.DEEP_F0_MAX_HZ
           assert voice.repair_factor_for_median(156.26) is None
+          assert voice.MAX_FEEDBACK_REPAIR_PASSES == 2
+          for residual in (134.45, 126.98, 125.98):
+              factor = voice.feedback_repair_factor(residual, repairs_applied=1)
+              assert factor is not None
+              projected = voice.projected_f0_hz(residual, factor)
+              assert voice.DEEP_F0_MIN_HZ <= projected <= voice.DEEP_F0_MAX_HZ
+          assert voice.feedback_repair_factor(134.45, repairs_applied=2) is None
 
           for legacy in ('TAYVORIQ', 'Tai wo rik', 'Taiworik', 'Tai vor ik', 'Tayvorik'):
               assert brand.normalize_spoken_brand(f'Abonniere {legacy}.') == 'Abonniere Tayvorik.'
@@ -87,7 +94,7 @@ jobs:
           }
           result = visuals._apply_world_forces_visuals(package)
           queries = [item['visual_query'] for item in result['scenes']]
-          assert result['visual_query_contract'] == 'world-forces-v1-episode-1-geology-v1'
+          assert result['visual_query_contract'] == 'world-forces-v1-episode-1-geology-v2'
           assert len(queries) == 6
           assert any('geology' in query for query in queries)
           assert any('seismograph' in query for query in queries)
