@@ -1,0 +1,69 @@
+{
+  "request_id": "telegram-1004-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Warum Erdbeben plötzlich kommen, obwohl Platten sich ständig bewegen",
+  "trend_scope": "science_future",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-16T18:55:51.871Z",
+  "telegram_message_id": 1004,
+  "approval_key": "telegram:20260816-e-agentv2-world-forc-e2:1004:trend:1",
+  "mode": "full",
+  "selection_id": "20260816-e-agentv2-world-forc-e2",
+  "source_context": {
+    "verified_at": "2026-08-16T17:13:33.067950Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "U.S. Geological Survey",
+        "url": "https://www.usgs.gov/faqs/what-earthquake-and-what-causes-them-happen",
+        "supports": "Erdbeben entstehen, wenn langsam bewegte Platten an einer Störung durch Reibung festhängen und gespeicherte Spannung einen plötzlichen Bruch auslöst."
+      },
+      {
+        "publisher": "GFZ Helmholtz-Zentrum für Geoforschung",
+        "url": "https://www.gfz.de/en/press/offers-for-schools/teaching-materials/images",
+        "supports": "Die weltweite Verteilung von Erdbeben ist eng mit den Grenzen tektonischer Platten verbunden."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Verhakte Gesteinsblöcke rutschen plötzlich an einer Störung gegeneinander.",
+      "why_happening": "Plattenbewegung speichert Spannung, bis sie stärker als die Reibung wird.",
+      "who_is_affected": "Besonders gefährdet sind Menschen nahe aktiver Störungen und Plattengrenzen.",
+      "personal_impact": "Stärke und Schaden hängen auch von Tiefe, Untergrund und Bauweise ab.",
+      "action_now": "Nutze Warnungen und Vorsorgehinweise offizieller Erdbebendienste statt Vorhersagegerüchten."
+    },
+    "series_context": {
+      "series_id": "world-forces-v1",
+      "series_title": "Die Kräfte, die unsere Welt bewegen",
+      "episode": 2,
+      "episode_title": "Wenn die Erde plötzlich bricht",
+      "cover_text": "WENN DIE PLATTE LOSLÄSST",
+      "hook": "Zwei Erdplatten können jahrelang feststecken. Wenn die Spannung die Reibung überwindet, reichen Sekunden für ein Erdbeben.",
+      "bridge_out": "Unter dem Meer kann genau dieser Ruck nicht nur den Boden, sondern eine ganze Wassersäule bewegen.",
+      "visual_continuity": "Start exakt an der verhakten Plattengrenze aus Folge 1. Spannung baut sich als leuchtende Bruchlinie auf, die Störung rutscht und Wellen laufen durch die Kruste. Der letzte Kameraflug folgt der Bruchzone unter den Ozean und setzt Folge 3 auf dem Meeresboden auf.",
+      "red_thread": "Eine zusammenhängende Reise von den unsichtbaren Kräften im Erdinneren bis zu den sichtbaren Folgen an Oberfläche, Ozean und Himmel. Jede Folge beantwortet die Frage der vorherigen und endet mit dem Auslöser der nächsten.",
+      "approval_required": true
+    }
+  },
+  "source_context_sha256": "a6c05fa4b5c1aa6273cd0fc95be90be9a9960ad3594a23142c6d4df4f3ac1459",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-16T18:55:51.871Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-16T18:56:00.676786+00:00",
+      "actor": "request-dispatcher:31966050190"
+    }
+  ],
+  "contract_sha256": "4419716bd21c52b90241e422025855776be0693de5486f75a77e96d2ac8c79a2",
+  "dispatch_claim_run_id": 31966050190,
+  "dispatch_contract_sha256": "4419716bd21c52b90241e422025855776be0693de5486f75a77e96d2ac8c79a2"
+}
