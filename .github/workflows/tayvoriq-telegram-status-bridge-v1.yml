@@ -16,6 +16,8 @@ on:
           - sources_locked
           - production_active
           - render_heartbeat
+          - checkpoint_repair
+          - checkpoint_heartbeat
           - master_ready
           - quality_passed
       topic:
@@ -88,6 +90,8 @@ jobs:
               "sources_locked",
               "production_active",
               "render_heartbeat",
+              "checkpoint_repair",
+              "checkpoint_heartbeat",
               "master_ready",
               "quality_passed",
           }
@@ -104,7 +108,7 @@ jobs:
               raise SystemExit("STATUS_ELAPSED_MINUTES_INVALID")
           if elapsed < 0 or elapsed > 80:
               raise SystemExit("STATUS_ELAPSED_MINUTES_INVALID")
-          if stage != "render_heartbeat":
+          if stage not in {"render_heartbeat", "checkpoint_heartbeat"}:
               elapsed = 0
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"stage={stage}\n")
