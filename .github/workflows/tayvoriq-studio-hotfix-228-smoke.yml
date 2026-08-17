@@ -29,6 +29,12 @@ jobs:
           python-version: "3.11"
           cache: "pip"
           cache-dependency-path: implementation/requirements.txt
+      - name: Install production media tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
       - name: Install production preflight dependencies
         working-directory: implementation
         run: |
