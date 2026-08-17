@@ -1,0 +1,25 @@
+name: TAYVORIQ Telegram Stale Selection Guard Smoke
+
+on:
+  pull_request:
+    paths:
+      - infra/telegram-approval-worker-v2.js
+      - infra/telegram-approval-worker-v3.js
+      - infra/wrangler.toml
+      - tests/telegram-stale-selection-guard-v3.test.mjs
+      - .github/workflows/tayvoriq-telegram-stale-guard-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  stale-selection-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run stale-selection regression
+        run: node --test tests/telegram-stale-selection-guard-v3.test.mjs
