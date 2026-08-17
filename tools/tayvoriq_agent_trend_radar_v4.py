@@ -5,9 +5,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-import tayvoriq_agent_trend_radar_v3 as v3
+import tayvoriq_agent_trend_provider_v3 as provider_v3
 
-base = v3.base
+base = provider_v3.base
 CONFIG_PATH = Path("config/tayvoriq_growth_runtime_v2.json")
 _original_normalize = base.normalized_candidate
 _original_prompt = base.prompt_for
@@ -95,8 +95,7 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
 
 def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any]]:
     cfg = _config().get("selection") or {}
-    reserve_min = 80
-    eligible = [c for c in candidates if int((c.get("growth_v2") or {}).get("growth_score") or 0) >= reserve_min]
+    eligible = [c for c in candidates if int((c.get("growth_v2") or {}).get("growth_score") or 0) >= 80]
     ordered = sorted(
         eligible,
         key=lambda c: (
