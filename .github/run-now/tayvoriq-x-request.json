@@ -2,8 +2,8 @@
   "request": "tayvoriq-x-production",
   "topic": "Warum Erdbeben plötzlich kommen, obwohl Platten sich ständig bewegen",
   "trend_id": "1",
-  "requested_at": "2026-08-17T13:13:14.000Z",
-  "request_nonce": "episode2-fresh-visual-assets-no-reuse-v8-20260817T131314Z",
+  "requested_at": "2026-08-17T13:20:33.000Z",
+  "request_nonce": "episode2-real-motion-no-reuse-v9-20260817T132033Z",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
@@ -41,11 +41,13 @@
     "reuse_render_master": false,
     "motion_preferred": true,
     "static_image_animation_required": true,
-    "min_unique_scene_count": 7,
+    "min_unique_scene_count": 6,
     "reject_generic_deterministic_geology_pack": true,
     "exact_scene_semantics_required": true,
-    "visual_audit_each_scene_required": true
+    "visual_audit_each_scene_required": true,
+    "real_motion_visual_contract": "world-forces-v1-episode-2-real-motion-v2",
+    "required_implementation_commit": "cc32d29f6a2a678f25434d3913467dd1aeef91d7"
   },
-  "reason": "operator-rejected-old-scenes-force-full-fresh-visual-render",
-  "recovery_generation": 8
+  "reason": "operator-rejected-old-scenes-force-real-motion-fresh-visual-render",
+  "recovery_generation": 9
 }
