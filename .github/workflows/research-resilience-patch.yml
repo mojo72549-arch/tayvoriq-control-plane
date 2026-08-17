@@ -1,0 +1,55 @@
+name: One-shot patch TAYVORIQ research resilience
+
+on:
+  push:
+    branches: [fix/growth-v2-research-resilience-2]
+    paths:
+      - ".github/workflows/research-resilience-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/growth-v2-research-resilience-2
+          fetch-depth: 0
+          token: ${{ github.token }}
+      - name: Patch orchestrator safely
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/tayvoriq-agent-orchestrator-v2.yml')
+          s=p.read_text(encoding='utf-8')
+          needle='  GROQ_API_KEY: $' + '{{ secrets.GROQ_API_KEY }}\n'
+          hf=('  HF_TOKEN: $' + '{{ secrets.HF_TOKEN }}\n' +
+              '  HUGGINGFACE_TOKEN: $' + '{{ secrets.HUGGINGFACE_TOKEN }}\n')
+          if '  HF_TOKEN:' not in s:
+              if needle not in s: raise SystemExit('GROQ env anchor missing')
+              s=s.replace(needle,needle+hf,1)
+          old='''          if [ "${{ steps.mode.outputs.active_series }}" = "true" ]; then
+            text="❌ TAYVORIQ Agent V2 konnte die vorbereitete Serienfolge nicht bis zur Telegram-Freigabe bereitstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
+          else
+            text="❌ TAYVORIQ Agent V2 konnte die aktuelle Trend-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
+          fi
+'''
+          new='''          if [ -f /tmp/tayvoriq-research-deferred.json ]; then
+            echo "Research providers temporarily saturated; deferred internally. No user-facing Telegram failure sent."
+            exit 0
+          fi
+          text="❌ TAYVORIQ Agent V2 konnte die aktuelle Growth-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
+'''
+          if old not in s: raise SystemExit('failure notification anchor missing')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/research-resilience-patch.yml
+          git add .github/workflows/tayvoriq-agent-orchestrator-v2.yml
+          git commit -m "fix: wire HF fallback and suppress transient research spam"
+          git push origin HEAD:fix/growth-v2-research-resilience-2
