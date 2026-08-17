@@ -8,7 +8,7 @@ on:
       - "tools/tayvoriq_agent_trend_radar_v3.py"
       - "tools/tayvoriq_agent_trend_radar_v4.py"
       - "tools/tayvoriq_agent_series_request_v2.py"
-      - "tests/test_tayvoriq_growth_v2_selection.py"
+      - "tests/**"
       - ".github/workflows/tayvoriq-growth-v2-control-plane-smoke.yml"
   workflow_dispatch:
 
@@ -37,5 +37,10 @@ jobs:
             tools/tayvoriq_agent_trend_radar_v4.py \
             tools/tayvoriq_agent_series_request_v2.py
 
-      - name: Run isolated Growth V2 selection tests
-        run: python -m pytest -q tests/test_tayvoriq_growth_v2_selection.py
+      - name: Run Growth V2 and existing control-plane regressions
+        run: |
+          python -m pytest -q \
+            tests/test_tayvoriq_growth_v2_selection.py \
+            tests/test_tayvoriq_control_plane_v2.py \
+            tests/test_tayvoriq_global_duplicate_gate_v1.py \
+            tests/test_tayvoriq_telegram_progress_v1.py
