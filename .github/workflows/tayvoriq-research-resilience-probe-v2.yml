@@ -18,8 +18,8 @@ jobs:
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
-      TAYVORIQ_GDELT_BUDGET_SECONDS: "30"
-      TAYVORIQ_GDELT_TIMEOUT_SECONDS: "8"
+      TAYVORIQ_GDELT_BUDGET_SECONDS: "10"
+      TAYVORIQ_GDELT_TIMEOUT_SECONDS: "5"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,49 +35,17 @@ jobs:
         run: |
           python -m py_compile \
             tools/tayvoriq_agent_research_http_v2.py \
+            tools/tayvoriq_agent_rss_v2.py \
             tools/tayvoriq_agent_gdelt_v2.py \
             tools/tayvoriq_agent_hf_v2.py \
             tools/tayvoriq_agent_research_resilience_v2.py \
-            tools/tayvoriq_agent_trend_radar_v5.py
+            tools/tayvoriq_agent_trend_radar_v5.py \
+            tools/tayvoriq_patch_orchestrator_research_v2.py
 
       - name: Wire production orchestrator on hotfix branch
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('.github/workflows/tayvoriq-agent-orchestrator-v2.yml')
-          s = p.read_text(encoding='utf-8')
-          if '  HF_TOKEN:' not in s:
-              lines = s.splitlines()
-              out = []
-              inserted = False
-              for line in lines:
-                  out.append(line)
-                  if line.startswith('  GROQ_API_KEY:') and not inserted:
-                      dollar = chr(36)
-                      out.append('  HF_TOKEN: ' + dollar + '{{ secrets.HF_TOKEN }}')
-                      out.append('  HUGGINGFACE_TOKEN: ' + dollar + '{{ secrets.HUGGINGFACE_TOKEN }}')
-                      inserted = True
-              if not inserted:
-                  raise SystemExit('GROQ env anchor missing')
-              s = '\n'.join(out) + '\n'
-          marker = '      - name: Notify gate failure once for this run\n'
-          if marker not in s:
-              raise SystemExit('failure step anchor missing')
-          prefix = s.split(marker, 1)[0]
-          replacement = '''      - name: Notify gate failure once for this run
-        if: failure() && steps.slot.outputs.should_run == 'true'
-        continue-on-error: true
-        run: |
-          if [ -f /tmp/tayvoriq-research-deferred.json ]; then
-            echo "Research providers temporarily saturated; deferred internally. No user-facing Telegram failure sent."
-            exit 0
-          fi
-          text="❌ TAYVORIQ Agent V2 konnte die aktuelle Growth-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
-          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
-'''
-          p.write_text(prefix + replacement, encoding='utf-8')
-          PY
+          python tools/tayvoriq_patch_orchestrator_research_v2.py
           if git diff --quiet -- .github/workflows/tayvoriq-agent-orchestrator-v2.yml; then
             echo "orchestrator already wired"
           else
@@ -100,17 +68,47 @@ jobs:
               h.write(f"present={'true' if present else 'false'}\n")
           PY
 
-      - name: Probe independent GDELT source pool
+      - name: Probe multi-publisher RSS source pool
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          import tayvoriq_agent_rss_v2 as rss
+          rows = rss.source_pool()
+          domains = {row.get('domain') for row in rows if row.get('domain')}
+          print(json.dumps({'rss_records': len(rows), 'independent_domains': len(domains)}))
+          if len(rows) < 8 or len(domains) < 2:
+              raise SystemExit('RSS_SOURCE_POOL_TOO_SMALL')
+          Path('/tmp/tayvoriq-rss-source-pool.json').write_text(json.dumps(rows, ensure_ascii=False), encoding='utf-8')
+          PY
+
+      - name: Probe source-bounded Hugging Face structuring
+        if: steps.hf.outputs.present == 'true'
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          import tayvoriq_agent_hf_v2 as hf
+          rows = json.loads(Path('/tmp/tayvoriq-rss-source-pool.json').read_text(encoding='utf-8'))
+          token = (os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
+          data, chunks, model = hf.structure('Current German TAYVORIQ trends; prioritize freshness, relevance, visual explainability and two independent sources.', token, rows, 'multi-publisher-rss')
+          candidates = [c for c in (data.get('candidates') or []) if len(c.get('sources') or []) == 2]
+          print(json.dumps({'hf_model': model, 'valid_candidates': len(candidates), 'grounding_chunks': len(chunks)}))
+          if not candidates:
+              raise SystemExit('HF_NO_SOURCE_BOUND_CANDIDATES')
+          PY
+
+      - name: Probe GDELT as secondary diagnostic only
+        continue-on-error: true
         run: |
           python - <<'PY'
           import json, sys
           sys.path.insert(0, 'tools')
           import tayvoriq_agent_gdelt_v2 as gdelt
           rows = gdelt.source_pool()
-          domains = {row.get('domain') for row in rows if row.get('domain')}
-          print(json.dumps({'gdelt_records': len(rows), 'independent_domains': len(domains)}))
-          if len(rows) < 8 or len(domains) < 4:
-              raise SystemExit('GDELT_SOURCE_POOL_TOO_SMALL')
+          print(json.dumps({'gdelt_records': len(rows), 'independent_domains': len({r.get('domain') for r in rows if r.get('domain')})}))
           PY
 
       - name: Require Hugging Face credential for production fallback
