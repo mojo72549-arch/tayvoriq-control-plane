@@ -1,0 +1,41 @@
+name: TAYVORIQ Growth V2 Control Plane Smoke
+
+on:
+  pull_request:
+    paths:
+      - "config/tayvoriq_growth_runtime_v2.json"
+      - "tools/tayvoriq_agent_trend_provider_v3.py"
+      - "tools/tayvoriq_agent_trend_radar_v3.py"
+      - "tools/tayvoriq_agent_trend_radar_v4.py"
+      - "tools/tayvoriq_agent_series_request_v2.py"
+      - "tests/test_tayvoriq_growth_v2_selection.py"
+      - ".github/workflows/tayvoriq-growth-v2-control-plane-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  growth-v2-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependency
+        run: python -m pip install pytest -q
+
+      - name: Compile Growth V2 entrypoints
+        run: |
+          python -m py_compile \
+            tools/tayvoriq_agent_trend_provider_v3.py \
+            tools/tayvoriq_agent_trend_radar_v3.py \
+            tools/tayvoriq_agent_trend_radar_v4.py \
+            tools/tayvoriq_agent_series_request_v2.py
+
+      - name: Run isolated Growth V2 selection tests
+        run: python -m pytest -q tests/test_tayvoriq_growth_v2_selection.py
