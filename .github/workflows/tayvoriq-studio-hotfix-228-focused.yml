@@ -39,5 +39,5 @@ jobs:
         working-directory: implementation
         run: |
           set -euo pipefail
-          pytest -q tests/test_tayvoriq_world_forces_visual_guard.py
+          PYTHONPATH="$PWD:$PWD/tools" pytest -q tests/test_tayvoriq_world_forces_visual_guard.py
           git diff --check
