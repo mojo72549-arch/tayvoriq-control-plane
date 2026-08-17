@@ -155,6 +155,7 @@ DOSSIER:
 
 
 _original_normalized_candidate = base.normalized_candidate
+_original_grounded_call = base.grounded_call
 
 
 def growth_normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:
@@ -190,10 +191,27 @@ def growth_normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[s
     return candidate
 
 
-# Replace only the Groq provider and candidate scoring. Existing Gemini-first
-# behavior, source validation, active-series injection, diversity and quality
-# gates remain in force. Legacy candidates remain backwards compatible.
+def growth_grounded_call(prompt: str, gemini_key: str, groq_key: str):
+    """Prefer the provider path that returns the complete growth-v1 dossier.
+
+    Gemini stays as a source-grounded fallback so production does not lose provider
+    redundancy. A fallback candidate without growth fields is scored with the legacy
+    editorial model instead of fabricating growth values.
+    """
+    if groq_key:
+        try:
+            data, chunks, model = groq_browser_then_structure(prompt, groq_key)
+            return data, chunks, model, "groq"
+        except Exception:
+            if not gemini_key:
+                raise
+    return _original_grounded_call(prompt, gemini_key, groq_key)
+
+
+# Growth-v1 is authoritative for the v3 radar. Source validation, active-series
+# injection, diversity and all existing hard quality gates remain in force.
 base.groq_call = groq_browser_then_structure
+base.grounded_call = growth_grounded_call
 base.normalized_candidate = growth_normalized_candidate
 
 if __name__ == "__main__":
