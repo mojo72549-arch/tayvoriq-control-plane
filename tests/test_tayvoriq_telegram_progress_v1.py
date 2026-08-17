@@ -61,6 +61,29 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("Workflow ist aktiv", text)
         self.assertNotIn("75 %", text)
 
+    def test_long_render_heartbeat_is_truthful_watchdog_warning(self) -> None:
+        payload = progress.build_payload(
+            "render_heartbeat",
+            "Wenn die Erde plötzlich bricht",
+            "31968359576",
+            "12345",
+            elapsed_minutes=15,
+        )
+        text = payload["text"]
+        self.assertIn("länger als üblich", text)
+        self.assertIn("Watchdog aktiv", text)
+        self.assertIn("nicht unbegrenzt", text)
+        self.assertNotIn("75 %", text)
+
+    def test_heartbeat_schedule_is_sparse_and_stops_spam(self) -> None:
+        self.assertFalse(progress.heartbeat_due("render_heartbeat", 3))
+        self.assertTrue(progress.heartbeat_due("render_heartbeat", 6))
+        self.assertFalse(progress.heartbeat_due("render_heartbeat", 9))
+        self.assertTrue(progress.heartbeat_due("render_heartbeat", 15))
+        for minute in (18, 21, 24, 27, 30, 33):
+            self.assertFalse(progress.heartbeat_due("render_heartbeat", minute))
+        self.assertTrue(progress.heartbeat_due("master_ready", 24))
+
     def test_audio_stop_is_immediate_truthful_and_says_nothing_was_published(self) -> None:
         payload = progress.build_payload(
             "audio_recovery",
@@ -81,12 +104,12 @@ class TelegramProgressUnitTests(unittest.TestCase):
             "Wenn die Erde plötzlich bricht",
             "31970469274",
             "12345",
-            elapsed_minutes=3,
+            elapsed_minutes=6,
         )
         text = payload["text"]
         self.assertIn("TAYVORIQ 60 %", text)
         self.assertIn("Master und Quellen bleiben gesichert", text)
-        self.assertIn("Reparaturphase aktiv seit: 3 Minuten", text)
+        self.assertIn("Reparaturphase aktiv seit: 6 Minuten", text)
         self.assertNotIn("75 %", text)
 
     def test_duplicate_stop_requires_a_new_angle_and_never_claims_publication(self) -> None:
@@ -102,14 +125,18 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("vor Render und Upload blockiert", text)
         self.assertIn("Neuer Themenwinkel", text)
 
-    def test_policy_suppresses_only_replayed_early_stages_on_same_run_reruns(self) -> None:
+    def test_policy_suppresses_replayed_routine_stages_and_sparse_heartbeats(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "policy.json"
             path.write_text(json.dumps({"production_progress_enabled": True}), encoding="utf-8")
             self.assertTrue(progress.should_send(path, 1, "sources_locked"))
             self.assertFalse(progress.should_send(path, 2, "sources_locked"))
             self.assertFalse(progress.should_send(path, 3, "production_active"))
-            self.assertTrue(progress.should_send(path, 3, "render_heartbeat"))
+            self.assertFalse(progress.should_send(path, 3, "render_heartbeat", 6))
+            self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 3))
+            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 6))
+            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 15))
+            self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 24))
             self.assertTrue(progress.should_send(path, 3, "master_ready"))
             self.assertTrue(progress.should_send(path, 3, "audio_recovery"))
             path.write_text(json.dumps({"production_progress_enabled": False}), encoding="utf-8")
@@ -139,6 +166,17 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
             "Verified production-start Telegram is owned by the request dispatcher.",
             workflow,
         )
+
+    def test_supersede_guard_cancels_only_older_active_runs(self) -> None:
+        workflow = (ROOT / ".github/workflows/tayvoriq-supersede-stale-runs.yml").read_text(encoding="utf-8")
+        self.assertIn("tayvoriq-x-request.json", workflow)
+        self.assertIn("actions: write", workflow)
+        self.assertIn("head_sha", workflow)
+        self.assertIn("keeper_run_id", workflow)
+        self.assertIn("cancelled_older_runs", workflow)
+        self.assertIn("/cancel", workflow)
+        self.assertIn("fail-safe-no-cancellation", workflow)
+        self.assertIn("publication_performed", workflow)
 
     def test_dispatcher_promises_real_milestones_not_silence(self) -> None:
         workflow = (ROOT / ".github/workflows/tayvoriq-request-dispatch.yml").read_text(encoding="utf-8")
