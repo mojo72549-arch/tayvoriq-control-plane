@@ -12,7 +12,7 @@ on:
       - .github/workflows/deploy-telegram-approval-worker.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   deploy:
@@ -23,6 +23,8 @@ jobs:
         working-directory: infra
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -107,6 +109,37 @@ jobs:
           assert actual == expected, (expected, actual, data)
           print('Webhook active:', actual)
           PY
+
+      - name: Persist production deploy receipt
+        if: github.ref == 'refs/heads/main'
+        env:
+          WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
+        run: |
+          set -euo pipefail
+          cd ..
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          payload = {
+              'worker_version': 'v3-stale-selection-guard',
+              'deploy_verified': True,
+              'webhook_verified': True,
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'commit_sha': os.environ['GITHUB_SHA'],
+              'worker_url': os.environ['WORKER_URL'],
+              'verified_at': datetime.now(timezone.utc).isoformat(),
+          }
+          Path('state/tayvoriq-telegram-worker-deploy-receipt.json').write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/tayvoriq-telegram-worker-deploy-receipt.json
+          git commit -m "ops(tayvoriq): verify Telegram worker v3 deployment"
+          git pull --rebase origin main
+          git push origin HEAD:main
 
       - name: Record worker readiness
         run: echo "Telegram approval worker deployed and webhook verified."
