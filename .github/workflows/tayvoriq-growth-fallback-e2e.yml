@@ -5,10 +5,12 @@ on:
     branches:
       - fix/growth-fallback-overcomplete-pool
     paths:
-      - "tools/tayvoriq_agent_hf_pool_v3.py"
+      - "config/tayvoriq_growth_runtime_v2.json"
+      - "tools/tayvoriq_agent_hf_v2.py"
       - "tools/tayvoriq_agent_research_resilience_v2.py"
       - "tools/tayvoriq_agent_trend_radar_v5.py"
       - "tools/tayvoriq_agent_series_request_v2.py"
+      - ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"
       - ".github/workflows/tayvoriq-growth-fallback-e2e.yml"
   workflow_dispatch:
 
@@ -22,7 +24,7 @@ concurrency:
 jobs:
   fallback-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     env:
       GEMINI_API_KEY: intentionally-invalid-force-fallback
       GROQ_API_KEY: ""
@@ -42,7 +44,7 @@ jobs:
       - name: Compile fallback entrypoints
         run: |
           python -m py_compile \
-            tools/tayvoriq_agent_hf_pool_v3.py \
+            tools/tayvoriq_agent_hf_v2.py \
             tools/tayvoriq_agent_research_resilience_v2.py \
             tools/tayvoriq_agent_trend_radar_v5.py \
             tools/tayvoriq_agent_series_request_v2.py
@@ -59,11 +61,13 @@ jobs:
           request=json.load(open('/tmp/request.json',encoding='utf-8'))
           audit=json.load(open('/tmp/audit.json',encoding='utf-8'))
           trends=request.get('trends') or []
-          assert len(trends) == 5, len(trends)
+          assert 1 <= len(trends) <= 5, len(trends)
+          assert [t.get('id') for t in trends] == [str(i) for i in range(1, len(trends)+1)]
           assert all(int((t.get('growth_v2') or {}).get('growth_score') or 0) >= 80 for t in trends)
           assert all(len(t.get('sources') or []) >= 2 for t in trends)
           assert all(int((t.get('source_context') or {}).get('independent_news_count') or 0) >= 2 for t in trends)
           assert audit.get('quality_gates_weakened') is False
+          assert audit.get('candidate_count_policy') == 'quality_driven_1_to_5'
           assert 1 <= int(audit.get('grounded_scan_count') or 0) <= 2
           print(json.dumps({
               'selection_id': request.get('selection_id'),
@@ -72,6 +76,6 @@ jobs:
               'provider': audit.get('provider'),
               'grounded_scan_count': audit.get('grounded_scan_count'),
               'growth_rescan_used': audit.get('growth_rescan_used'),
-              'quality_gates_weakened': audit.get('quality_gates_weakened'),
+              'candidate_count_policy': audit.get('candidate_count_policy'),
           }, ensure_ascii=False))
           PY
