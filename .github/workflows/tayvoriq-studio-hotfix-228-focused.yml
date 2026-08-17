@@ -1,0 +1,39 @@
+name: TAYVORIQ Studio Hotfix 228 Focused
+
+on:
+  push:
+    branches:
+      - test/studio-preflight-hotfix-228
+    paths:
+      - ".github/workflows/tayvoriq-studio-hotfix-228-focused.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Studio hotfix
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: fix/world-forces-real-motion-test-contract
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install focused test dependencies
+        working-directory: implementation
+        run: |
+          python -m pip install -q pytest Pillow requests python-slugify moviepy==1.0.3 numpy
+      - name: Run World Forces regression file
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          pytest -q tests/test_tayvoriq_world_forces_visual_guard.py
+          git diff --check
