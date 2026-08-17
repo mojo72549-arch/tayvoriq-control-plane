@@ -1,0 +1,52 @@
+{
+  "selection_id": "20260817-e-agentv2-world-forc-e3-c2f677",
+  "slot": "evening",
+  "provider": "huggingface_rss",
+  "model": "huggingface/openai/gpt-oss-120b:cheapest+multi-publisher-rss",
+  "grounding_chunks": [
+    {
+      "title": "sportschau.de",
+      "uri": "https://www.sportschau.de/fussball/fifa-trennt-sich-von-betriebsdirektor-lamour,fifa-lamour-aus-100.html"
+    },
+    {
+      "title": "bbc.com",
+      "uri": "https://www.bbc.co.uk/sport/football/articles/cn7n4d6vy03o?at_medium=RSS&at_campaign=rss"
+    },
+    {
+      "title": "bbc.com",
+      "uri": "https://www.bbc.co.uk/news/articles/cy5dzk0ryzdo?at_medium=RSS&at_campaign=rss"
+    },
+    {
+      "title": "theguardian.com",
+      "uri": "https://www.theguardian.com/world/live/2026/aug/17/trump-kushner-netanyahu-hamas-gaza-israel-blair-us-iran-hormuz-oil-latest-news-updates"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/ausland/asien/israel-gazastreifen-usa-kushner-ben-gvir-100.html"
+    },
+    {
+      "title": "theguardian.com",
+      "uri": "https://www.theguardian.com/us-news/2026/aug/16/jared-kushner-hamas-gaza-meeting"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/inland/gesellschaft/waldbraende-deutschland-monschau-100.html"
+    },
+    {
+      "title": "theguardian.com",
+      "uri": "https://www.theguardian.com/world/live/2026/aug/17/europe-wildfires-france-greece-belgium-germany-climate-crisis-drought-extreme-heat-latest-news-updates"
+    }
+  ],
+  "candidate_count": 4,
+  "valid_count": 4,
+  "selected_count": 2,
+  "series_candidate_injected": true,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 1,
+  "growth_rescan_used": false,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_1_to_5",
+  "selection_fingerprint": "c2f677",
+  "series_bypassed_trend_radar": false,
+  "series_competed_in_growth_ranking": true
+}
