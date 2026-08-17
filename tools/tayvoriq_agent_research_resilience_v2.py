@@ -5,7 +5,7 @@ import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
 import tayvoriq_agent_gdelt_v2 as gdelt
-import tayvoriq_agent_hf_pool_v3 as hf
+import tayvoriq_agent_hf_v2 as hf
 base=provider.base
 MARKER=Path('/tmp/tayvoriq-research-deferred.json')
 
@@ -25,10 +25,10 @@ def grounded(prompt:str,gemini_key:str,groq_key:str):
         except Exception as exc: errors.append(str(exc))
     token=str(os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
     try:
-        records=rss.source_pool(); data,chunks,model=hf.structure(prompt,token,records,'multi-publisher-rss'); return data,chunks,model,'huggingface_rss_pool'
+        records=rss.source_pool(); data,chunks,model=hf.structure(prompt,token,records,'multi-publisher-rss'); return data,chunks,model,'huggingface_rss'
     except Exception as exc: errors.append('HuggingFace/RSS fallback failed: '+http.summary(exc))
     try:
-        records=gdelt.source_pool(); data,chunks,model=hf.structure(prompt,token,records,'gdelt-context'); return data,chunks,model,'huggingface_gdelt_pool'
+        records=gdelt.source_pool(); data,chunks,model=hf.structure(prompt,token,records,'gdelt-context'); return data,chunks,model,'huggingface_gdelt'
     except Exception as exc: errors.append('HuggingFace/GDELT fallback failed: '+http.summary(exc))
     _defer(errors); raise RuntimeError('RESEARCH_DEFERRED: '+' | '.join(errors))
 
