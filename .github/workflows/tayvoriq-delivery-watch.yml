@@ -256,6 +256,7 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             mkdir -p .github/run-now
+            rm -f /tmp/tayvoriq-delivery-state-unchanged
 
             python - <<'PY'
           import json
@@ -343,12 +344,9 @@ jobs:
             if git push origin HEAD:main; then
               exit 0
             fi
-            rm -f /tmp/tayvoriq-delivery-state-unchanged
             sleep $((attempt * 2))
           done
           exit 1
-        env:
-          FRESH_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
 
       - name: Record silent same-run recovery
         if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.should_retry == 'true'
