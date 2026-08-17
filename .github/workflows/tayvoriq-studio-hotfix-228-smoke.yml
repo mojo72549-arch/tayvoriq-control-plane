@@ -1,0 +1,44 @@
+name: TAYVORIQ Studio Hotfix 228 Smoke
+
+on:
+  push:
+    branches:
+      - test/studio-preflight-hotfix-228
+    paths:
+      - ".github/workflows/tayvoriq-studio-hotfix-228-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Studio hotfix
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: fix/world-forces-real-motion-test-contract
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: implementation/requirements.txt
+      - name: Install production preflight dependencies
+        working-directory: implementation
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Run production preflight suite
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_preflight_check.py --report-out out/tayvoriq-self-heal/hotfix-228-preflight-report.json
+      - name: Confirm clean working tree
+        working-directory: implementation
+        run: git diff --check
