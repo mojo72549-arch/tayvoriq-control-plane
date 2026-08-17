@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "timezone": "Europe/Berlin",
+  "daily_editorial_runs": 2,
+  "selection": {
+    "always_run_fresh_trend_scan": true,
+    "series_reserved_slots": 0,
+    "series_competes_with_trends": true,
+    "base_quality_min": 75,
+    "growth_primary_min": 85,
+    "growth_breakout_min": 90,
+    "binding_primary_min": 60,
+    "telegram_candidates_min": 4,
+    "telegram_candidates_max": 5,
+    "weak_fill_allowed": false,
+    "max_grounded_scans": 2
+  },
+  "platform_native": {
+    "youtube_shorts": {"trend_target_seconds": [28,45], "deep_target_seconds": [42,70]},
+    "tiktok": {"trend_target_seconds": [65,85], "deep_target_seconds": [80,95], "hard_final_floor_seconds": 61}
+  },
+  "initial_learning_windows": {
+    "trend_selection": {"morning_local": "06:30", "evening_local": "15:30"},
+    "youtube_shorts": ["17:30-19:00", "20:00-21:30"],
+    "tiktok": ["12:00-14:00", "18:30-20:30"]
+  },
+  "timing_learning": {
+    "minimum_observations_per_platform_slot": 6,
+    "checkpoints_hours": [2,24,72,168],
+    "own_account_data_overrides_initial_windows": true,
+    "breaking_trend_may_ignore_clock_window": true,
+    "report_best_days_and_slots_to_telegram": true
+  },
+  "hard_rules": [
+    "Growth never weakens existing quality or publication gates.",
+    "A series episode is never selected merely because it is next.",
+    "Raw views never replace engaged or qualified views silently.",
+    "10k, 20k, 50k and 100k are targets, not guarantees."
+  ]
+}
