@@ -27,11 +27,23 @@ def structure(prompt: str, token: str, records: list[dict[str, str]], source_lab
     seen_candidates: set[tuple[str, tuple[str, ...]]] = set()
     seen_chunks: set[str] = set()
     models: list[str] = []
+    pass_errors: list[str] = []
 
     for index, lane in enumerate(passes, start=1):
-        data, pass_chunks, model = hf.structure(
-            f"{lane}\n\n{prompt}", token, records, f"{source_label}-pass{index}"
-        )
+        try:
+            data, pass_chunks, model = hf.structure(
+                f"{lane}\n\n{prompt}", token, records, f"{source_label}-pass{index}"
+            )
+        except Exception as exc:
+            pass_errors.append(f"pass{index}:{type(exc).__name__}:{exc}")
+            print(json.dumps({
+                "event": "hf_pool_pass_failed",
+                "pass": index,
+                "preserved_candidates": len(combined),
+                "error": f"{type(exc).__name__}: {exc}",
+            }, ensure_ascii=False))
+            continue
+
         models.append(model)
         for candidate in data.get("candidates") or []:
             if not isinstance(candidate, dict) or len(candidate.get("sources") or []) != 2:
@@ -56,4 +68,13 @@ def structure(prompt: str, token: str, records: list[dict[str, str]], source_lab
         if len(combined) >= 12:
             break
 
-    return {"candidates": combined[:18]}, chunks, "+".join(models)
+    if not combined:
+        raise RuntimeError("all HF fallback passes failed: " + " | ".join(pass_errors))
+
+    print(json.dumps({
+        "event": "hf_pool_complete",
+        "unique_candidates": len(combined),
+        "unique_grounding_chunks": len(chunks),
+        "failed_passes": len(pass_errors),
+    }, ensure_ascii=False))
+    return {"candidates": combined[:18]}, chunks, "+".join(models) or "hf-pool-partial"
