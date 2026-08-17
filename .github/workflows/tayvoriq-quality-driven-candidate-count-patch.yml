@@ -1,6 +1,7 @@
 name: Apply quality-driven candidate count migration
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - fix/growth-fallback-overcomplete-pool
