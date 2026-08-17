@@ -1,0 +1,68 @@
+name: TAYVORIQ Growth Fallback E2E
+
+on:
+  push:
+    branches:
+      - fix/growth-fallback-overcomplete-pool
+    paths:
+      - "tools/tayvoriq_agent_hf_pool_v3.py"
+      - "tools/tayvoriq_agent_research_resilience_v2.py"
+      - ".github/workflows/tayvoriq-growth-fallback-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fallback-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GEMINI_API_KEY: intentionally-invalid-force-fallback
+      GROQ_API_KEY: ""
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+      TAYVORIQ_GDELT_BUDGET_SECONDS: "5"
+      TAYVORIQ_GDELT_TIMEOUT_SECONDS: "3"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/growth-fallback-overcomplete-pool
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile fallback entrypoints
+        run: |
+          python -m py_compile \
+            tools/tayvoriq_agent_hf_pool_v3.py \
+            tools/tayvoriq_agent_research_resilience_v2.py \
+            tools/tayvoriq_agent_trend_radar_v5.py \
+            tools/tayvoriq_agent_series_request_v2.py
+
+      - name: Force RSS-HF fallback through real active-series request path
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_agent_series_request_v2.py \
+            --slot evening \
+            --output /tmp/request.json \
+            --audit-output /tmp/audit.json
+          python - <<'PY'
+          import json
+          request=json.load(open('/tmp/request.json',encoding='utf-8'))
+          audit=json.load(open('/tmp/audit.json',encoding='utf-8'))
+          trends=request.get('trends') or []
+          assert len(trends) == 5, len(trends)
+          assert all(int((t.get('growth_v2') or {}).get('growth_score') or 0) >= 80 for t in trends)
+          assert all(len(t.get('sources') or []) >= 2 for t in trends)
+          assert all(int((t.get('source_context') or {}).get('independent_news_count') or 0) >= 2 for t in trends)
+          print(json.dumps({
+              'selection_id': request.get('selection_id'),
+              'trend_count': len(trends),
+              'growth_scores': [int((t.get('growth_v2') or {}).get('growth_score') or 0) for t in trends],
+              'provider': audit.get('provider'),
+              'quality_gates_weakened': audit.get('quality_gates_weakened'),
+          }, ensure_ascii=False))
+          assert audit.get('quality_gates_weakened') is False
+          PY
