@@ -1,0 +1,65 @@
+{
+  "request_id": "telegram-1148-trend-2",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "2",
+  "topic": "Deutsche Leichtathleten erobern EM mit vier Gold",
+  "trend_scope": "sports",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-17T19:11:42.364Z",
+  "telegram_message_id": 1148,
+  "approval_key": "telegram:20260817-e-agentv2-world-forc-e3-b48a74:1148:trend:2",
+  "mode": "full",
+  "selection_id": "20260817-e-agentv2-world-forc-e3-b48a74",
+  "source_context": {
+    "verified_at": "2026-08-17T18:24:05.361854Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "sportschau.de",
+        "url": "https://www.sportschau.de/leichtathletik/em/dlv-team-im-medaillenrausch-und-bereit-fuer-mehr,la-em-2026-birmingham-bilanz-100.html",
+        "supports": "Die deutschen Leichtathleten haben bei der EM ein Medaillen-Feuerwerk gezündet."
+      },
+      {
+        "publisher": "bbc.com",
+        "url": "https://www.bbc.co.uk/sport/athletics/videos/cvgjye6dpgpo?at_medium=RSS&at_campaign=rss",
+        "supports": "Amy Hunt gewann vier Goldmedaillen bei den Europameisterschaften."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Deutsche Athleten holten bei der Europameisterschaft vier Goldmedaillen.",
+      "why_happening": "Gezielte Trainingsprogramme und starke Nachwuchsförderung führen zu Spitzenleistungen.",
+      "who_is_affected": "Die deutschen Leichtathleten, Fans und das nationale Sportumfeld.",
+      "personal_impact": "Junge Sportbegeisterte sehen Vorbilder und werden motiviert, selbst aktiv zu werden.",
+      "action_now": "Sportverbände sollten die Erfolge nutzen, um weitere Investitionen in den Breitensport zu fördern."
+    },
+    "growth_v2": {
+      "growth_score": 83,
+      "binding_score": 90,
+      "priority_score": 85,
+      "tier": "reserve",
+      "series_candidate": false,
+      "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+    }
+  },
+  "source_context_sha256": "38b738a1d511f1eed261a865a3ba37df8c473ea74409b66b18584f46c74219ca",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-17T19:11:42.364Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-17T19:11:51.957798+00:00",
+      "actor": "request-dispatcher:32058989492"
+    }
+  ],
+  "contract_sha256": "797a7ac316e795ae241f566c306824d49706e7e89c48e2d3fd7f9e37e7ba73a8",
+  "dispatch_claim_run_id": 32058989492,
+  "dispatch_contract_sha256": "797a7ac316e795ae241f566c306824d49706e7e89c48e2d3fd7f9e37e7ba73a8"
+}
