@@ -57,9 +57,8 @@ def main() -> int:
         if scan_index > 1:
             prior_titles = [str(candidate.get("title") or "") for candidate in normalized]
             prompt += (
-                "\n\nAUTOMATIC GROWTH RESCAN: The previous scan did not yield enough candidates above the existing Growth reserve threshold. "
-                "Find DISTINCT current stories/angles rather than weakening scores or repeating prior topics. "
-                "Keep all source and editorial rules unchanged. Exclude these already-seen titles or equivalent story angles: "
+                "\n\nAUTOMATIC ZERO-RESULT RESCAN: the previous scan produced no candidate above the existing Growth reserve threshold. "
+                "Find DISTINCT current stories/angles without weakening scores or source rules. Exclude already-seen titles or equivalent angles: "
                 + " | ".join(prior_titles[:12])
             )
 
@@ -98,7 +97,7 @@ def main() -> int:
 
         try:
             selected = base.diversify(candidate_pool, args.slot)
-            if len(selected) == 5:
+            if 1 <= len(selected) <= int(selection_cfg.get("telegram_candidates_max") or 5):
                 chosen = selected
                 break
         except SystemExit as exc:
@@ -107,7 +106,7 @@ def main() -> int:
             if "GROWTH_RESCAN_REQUIRED" in message and scan_index < max_scans:
                 print(json.dumps({
                     "event": "growth_rescan",
-                    "reason": "not_enough_reserve_candidates",
+                    "reason": "zero_reserve_candidates",
                     "scan": scan_index,
                     "valid_pool": len(candidate_pool),
                     "error": message,
@@ -118,7 +117,7 @@ def main() -> int:
     if chosen is None:
         if last_growth_error is not None:
             raise last_growth_error
-        raise SystemExit(f"Need 5 contract-valid grounded trends after {max_scans} scan(s), got {len(normalized)}")
+        raise SystemExit(f"Need at least 1 contract-valid grounded trend after {max_scans} scan(s), got 0")
 
     selection_id = f"{now:%Y%m%d}-{args.slot}-agentv2"
     for index, trend in enumerate(chosen, start=1):
@@ -144,12 +143,13 @@ def main() -> int:
         "grounding_chunks": grounding_chunks,
         "candidate_count": raw_count,
         "valid_count": len(normalized) + (1 if series_candidate else 0),
-        "selected_count": 5,
+        "selected_count": len(chosen),
         "series_candidate_injected": bool(series_candidate),
         "quality_gates_weakened": False,
         "grounded_scan_count": len(providers),
         "growth_rescan_used": len(providers) > 1,
         "max_grounded_scans": max_scans,
+        "candidate_count_policy": "quality_driven_1_to_5",
     }
     Path(args.audit_output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.audit_output).write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -158,6 +158,7 @@ def main() -> int:
         "slot": args.slot,
         "providers": providers,
         "scan_count": len(providers),
+        "selected_count": len(chosen),
         "selected": [trend["title"] for trend in chosen],
         "growth_scores": [int((trend.get("growth_v2") or {}).get("growth_score") or 0) for trend in chosen],
     }, ensure_ascii=False))
