@@ -7,6 +7,11 @@ on:
       - "tools/tayvoriq_agent_trend_provider_v3.py"
       - "tools/tayvoriq_agent_trend_radar_v3.py"
       - "tools/tayvoriq_agent_trend_radar_v4.py"
+      - "tools/tayvoriq_agent_trend_radar_v5.py"
+      - "tools/tayvoriq_agent_research_http_v2.py"
+      - "tools/tayvoriq_agent_gdelt_v2.py"
+      - "tools/tayvoriq_agent_hf_v2.py"
+      - "tools/tayvoriq_agent_research_resilience_v2.py"
       - "tools/tayvoriq_agent_series_request_v2.py"
       - "tests/**"
       - ".github/workflows/tayvoriq-growth-v2-control-plane-smoke.yml"
@@ -35,11 +40,17 @@ jobs:
             tools/tayvoriq_agent_trend_provider_v3.py \
             tools/tayvoriq_agent_trend_radar_v3.py \
             tools/tayvoriq_agent_trend_radar_v4.py \
+            tools/tayvoriq_agent_trend_radar_v5.py \
+            tools/tayvoriq_agent_research_http_v2.py \
+            tools/tayvoriq_agent_gdelt_v2.py \
+            tools/tayvoriq_agent_hf_v2.py \
+            tools/tayvoriq_agent_research_resilience_v2.py \
             tools/tayvoriq_agent_series_request_v2.py
 
       - name: Run Growth V2 and existing control-plane regressions
         run: |
           python -m pytest -q \
+            tests/test_tayvoriq_research_resilience_v2.py \
             tests/test_tayvoriq_growth_v2_selection.py \
             tests/test_tayvoriq_control_plane_v2.py \
             tests/test_tayvoriq_global_duplicate_gate_v1.py \
