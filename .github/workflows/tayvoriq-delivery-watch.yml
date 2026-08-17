@@ -34,8 +34,65 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Guard stale or superseded completed run
+        id: guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          ignore=false
+          reason=current
+
+          case "${RUN_CONCLUSION:-}" in
+            cancelled|skipped|neutral)
+              ignore=true
+              reason="terminal-${RUN_CONCLUSION}"
+              ;;
+          esac
+
+          if [ "$ignore" != "true" ] && [ -f .github/run-now/tayvoriq-stale-stop.json ]; then
+            stale_target=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('.github/run-now/tayvoriq-stale-stop.json')
+          try:
+              d=json.loads(p.read_text(encoding='utf-8'))
+          except Exception:
+              d={}
+          value=str(d.get('target_run_id') or '')
+          print(value if value.isdigit() else '')
+          PY
+            )
+            if [ -n "$stale_target" ] && [ "$stale_target" = "$RUN_ID" ]; then
+              ignore=true
+              reason=explicit-stale-stop
+            fi
+          fi
+
+          if [ "$ignore" != "true" ]; then
+            latest=$(gh run list \
+              --workflow tayvoriq-deliver-video-now.yml \
+              --limit 20 \
+              --json databaseId \
+              --jq '[.[].databaseId] | max // 0' 2>/dev/null || echo 0)
+            if [[ "$latest" =~ ^[0-9]+$ ]] && [ "$latest" -gt "$RUN_ID" ]; then
+              ignore=true
+              reason="newer-golden-path-${latest}"
+            fi
+          fi
+
+          echo "ignore=$ignore" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "TAYVORIQ delivery-watch guard: run=$RUN_ID ignore=$ignore reason=$reason"
+
+      - name: Record stale run suppression
+        if: steps.guard.outputs.ignore == 'true'
+        run: |
+          echo "Stale/superseded run $RUN_ID ignored; no recovery and no Telegram action. Reason: ${{ steps.guard.outputs.reason }}"
+
       - name: Classify recovery state
         id: classify
+        if: steps.guard.outputs.ignore != 'true'
+        shell: bash
         run: |
           set -euo pipefail
           external_blocker=false
@@ -47,7 +104,9 @@ jobs:
             recovery_state=TECHNICAL_FAILURE
             logs=$(gh run view "$RUN_ID" --log-failed 2>/dev/null || true)
             lowered=$(printf '%s' "$logs" | tr '[:upper:]' '[:lower:]')
-            if printf '%s' "$lowered" | grep -Eq 'external_auth_blocker|missing secret|401 client error|unauthorized|billing|spending limit|payment|permission denied'; then
+            if printf '%s' "$lowered" | grep -Eq 'cancelled|canceled|superseded|stale-stop|stop-stale-golden-path'; then
+              recovery_state=SUPERSEDED_CANCELLED
+            elif printf '%s' "$lowered" | grep -Eq 'external_auth_blocker|missing secret|401 client error|unauthorized|billing|spending limit|payment|permission denied'; then
               external_blocker=true
               recovery_state=EXTERNAL_ACTION_REQUIRED
             elif [ "${RUN_ATTEMPT:-1}" -lt 3 ]; then
@@ -66,7 +125,7 @@ jobs:
           echo "TAYVORIQ delivery-watch: state=$recovery_state attempt=$RUN_ATTEMPT"
 
       - name: Re-run failed production automatically
-        if: steps.classify.outputs.should_retry == 'true'
+        if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.should_retry == 'true'
         run: |
           set -euo pipefail
           echo "Automatic silent recovery: rerunning failed jobs for run $RUN_ID after attempt $RUN_ATTEMPT."
@@ -74,7 +133,7 @@ jobs:
 
       - name: Start and verify fresh recovery generation on current main
         id: fresh
-        if: steps.classify.outputs.needs_fresh_generation == 'true'
+        if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.needs_fresh_generation == 'true'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -128,13 +187,11 @@ jobs:
               f"{os.environ['RUN_ID']}-{int(now.timestamp())}"
           )
           data['reason'] = 'autonomous-fresh-recovery-generation-on-current-main-after-same-run-budget'
-          # Internal recovery is intentionally silent. A recovered request must
-          # not emit a second "production started" message either.
           data['suppress_start_notification'] = True
           path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           print('true'); print(str(generation)); print('FRESH_RECOVERY_GENERATION_PREPARED'); print(topic); print(trend_id)
           PY
-          )
+            )
 
             prepared="${decision[0]:-false}"
             generation="${decision[1]:-0}"
@@ -185,6 +242,7 @@ jobs:
           echo "TAYVORIQ fresh recovery: prepared=$prepared started=$started generation=$generation new_run_id=$new_run_id state=$state"
 
       - name: Persist delivery and recovery state
+        if: steps.guard.outputs.ignore != 'true'
         env:
           CLASSIFIED_STATE: ${{ steps.classify.outputs.recovery_state }}
           FRESH_STATE: ${{ steps.fresh.outputs.state }}
@@ -205,8 +263,13 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
+          path=Path('.github/run-now/latest-delivery-run.json')
+          try:
+              previous=json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
+          except Exception:
+              previous={}
           state = str(os.environ.get('FRESH_STATE') or os.environ.get('CLASSIFIED_STATE') or 'TECHNICAL_FAILURE')
-          payload = {
+          semantic = {
               "run_id": int(os.environ["RUN_ID"]),
               "status": "completed",
               "conclusion": os.environ["RUN_CONCLUSION"],
@@ -214,7 +277,6 @@ jobs:
               "recovery_state": state,
               "recovery_run_id": int(os.environ['FRESH_RUN_ID']) if str(os.environ.get('FRESH_RUN_ID') or '').isdigit() else None,
               "url": os.environ["RUN_URL"],
-              "completed_at": datetime.now(timezone.utc).isoformat(),
               "workflow": "TAYVORIQ-X Golden Path",
               "user_intervention_required": state == "EXTERNAL_ACTION_REQUIRED",
               "internal_recovery_silent": state in {
@@ -223,38 +285,52 @@ jobs:
                   "FRESH_RECOVERY_GENERATION_RUNNING",
                   "AUTONOMOUS_TECHNICAL_ESCALATION",
                   "TECHNICAL_FAILURE",
+                  "SUPERSEDED_CANCELLED",
               },
           }
-          Path(".github/run-now/latest-delivery-run.json").write_text(
-              json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n",
-              encoding="utf-8",
-          )
-
-          fresh_run_id=str(os.environ.get('FRESH_RUN_ID') or '').strip()
-          if fresh_run_id.isdigit():
-              x_path=Path('.github/run-now/tayvoriq-x-request.json')
-              x_request=json.loads(x_path.read_text(encoding='utf-8')) if x_path.is_file() else {}
-              source_request_id=str(x_request.get('source_request_id') or '').strip()
-              source_path=Path('requests') / f'{source_request_id}.json'
-              source=json.loads(source_path.read_text(encoding='utf-8')) if source_path.is_file() else {}
-              selection_id=str(source.get('selection_id') or '').strip()
-              if '-agentv2' in selection_id:
-                  mapping={
-                      'run_id':int(fresh_run_id),
-                      'root_run_id':int(os.environ['RUN_ID']),
-                      'retry_count':int(x_request.get('recovery_generation') or 0),
-                      'selection_id':selection_id,
-                      'topic':str(source.get('topic') or x_request.get('topic') or ''),
-                      'trend_id':str(source.get('trend_id') or x_request.get('trend_id') or ''),
-                      'source_request_id':source_request_id,
-                      'agent_orchestrator':'v2',
-                      'recovery_owner':'tayvoriq-delivery-watch',
-                  }
-                  map_path=Path(f'.automation/tayvoriq-agent-v2/run-map/{fresh_run_id}.json')
-                  map_path.parent.mkdir(parents=True, exist_ok=True)
-                  map_path.write_text(json.dumps(mapping,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          print(payload)
+          same = all(previous.get(k) == v for k,v in semantic.items())
+          if same:
+              Path('/tmp/tayvoriq-delivery-state-unchanged').write_text('1',encoding='utf-8')
+          else:
+              semantic['completed_at'] = datetime.now(timezone.utc).isoformat()
+              path.write_text(json.dumps(semantic, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+          print({'changed':not same, **semantic})
           PY
+
+            if [ -f /tmp/tayvoriq-delivery-state-unchanged ]; then
+              echo "Delivery recovery state unchanged; no timestamp-only commit."
+              exit 0
+            fi
+
+            fresh_run_id="${{ steps.fresh.outputs.new_run_id }}"
+            if [[ "$fresh_run_id" =~ ^[0-9]+$ ]]; then
+              python - <<'PY'
+          import json, os
+          from pathlib import Path
+          fresh_run_id=str(os.environ.get('FRESH_RUN_ID') or '').strip()
+          x_path=Path('.github/run-now/tayvoriq-x-request.json')
+          x_request=json.loads(x_path.read_text(encoding='utf-8')) if x_path.is_file() else {}
+          source_request_id=str(x_request.get('source_request_id') or '').strip()
+          source_path=Path('requests') / f'{source_request_id}.json'
+          source=json.loads(source_path.read_text(encoding='utf-8')) if source_path.is_file() else {}
+          selection_id=str(source.get('selection_id') or '').strip()
+          if fresh_run_id.isdigit() and '-agentv2' in selection_id:
+              mapping={
+                  'run_id':int(fresh_run_id),
+                  'root_run_id':int(os.environ['RUN_ID']),
+                  'retry_count':int(x_request.get('recovery_generation') or 0),
+                  'selection_id':selection_id,
+                  'topic':str(source.get('topic') or x_request.get('topic') or ''),
+                  'trend_id':str(source.get('trend_id') or x_request.get('trend_id') or ''),
+                  'source_request_id':source_request_id,
+                  'agent_orchestrator':'v2',
+                  'recovery_owner':'tayvoriq-delivery-watch',
+              }
+              map_path=Path(f'.automation/tayvoriq-agent-v2/run-map/{fresh_run_id}.json')
+              map_path.parent.mkdir(parents=True, exist_ok=True)
+              map_path.write_text(json.dumps(mapping,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            fi
 
             git add .github/run-now/latest-delivery-run.json
             if [ -d .automation/tayvoriq-agent-v2/run-map ]; then
@@ -267,18 +343,21 @@ jobs:
             if git push origin HEAD:main; then
               exit 0
             fi
+            rm -f /tmp/tayvoriq-delivery-state-unchanged
             sleep $((attempt * 2))
           done
           exit 1
+        env:
+          FRESH_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
 
       - name: Record silent same-run recovery
-        if: steps.classify.outputs.should_retry == 'true'
+        if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.should_retry == 'true'
         run: |
           set -euo pipefail
           echo "Internal recovery queued silently for run $RUN_ID; no user notification emitted."
 
       - name: Record verified silent fresh recovery generation
-        if: steps.fresh.outputs.started == 'true'
+        if: steps.guard.outputs.ignore != 'true' && steps.fresh.outputs.started == 'true'
         env:
           GENERATION: ${{ steps.fresh.outputs.generation }}
           NEW_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
@@ -288,7 +367,7 @@ jobs:
           echo "Internal recovery generation $GENERATION/$MAX_RECOVERY_GENERATIONS verified as run $NEW_RUN_ID; no user notification emitted."
 
       - name: Telegram external action blocker
-        if: steps.classify.outputs.external_blocker == 'true'
+        if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.external_blocker == 'true'
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
@@ -307,7 +386,7 @@ jobs:
             --data-urlencode "text=${message}" >/dev/null
 
       - name: Record internal technical escalation without user noise
-        if: steps.classify.outputs.needs_fresh_generation == 'true' && steps.fresh.outputs.started != 'true'
+        if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.needs_fresh_generation == 'true' && steps.fresh.outputs.started != 'true'
         run: |
           set -euo pipefail
           echo "Internal recovery escalation remains active. Approval is retained; no user action requested and no Telegram technical-error message emitted."
