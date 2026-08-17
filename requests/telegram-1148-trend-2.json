@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1148-trend-2",
-  "status": "DISPATCHED",
+  "status": "INVALIDATED",
   "source": "telegram_trend_approval",
   "trend_id": "2",
   "topic": "Deutsche Leichtathleten erobern EM mit vier Gold",
@@ -62,10 +62,20 @@
       "state": "DISPATCHED",
       "at": "2026-08-17T19:12:04.322910+00:00",
       "actor": "request-dispatcher:32058989492"
+    },
+    {
+      "state": "INVALIDATED",
+      "at": "2026-08-17T21:50:20Z",
+      "actor": "source-claim-coherence-repair:ffce28f5fb6d4e9d3aff165fa408ab7d49e0a40a",
+      "reason": "CROSS_SOURCE_FACTUAL_MISMATCH"
     }
   ],
   "contract_sha256": "797a7ac316e795ae241f566c306824d49706e7e89c48e2d3fd7f9e37e7ba73a8",
   "dispatch_claim_run_id": 32058989492,
   "dispatch_contract_sha256": "797a7ac316e795ae241f566c306824d49706e7e89c48e2d3fd7f9e37e7ba73a8",
-  "golden_path_run_id": 32059008145
+  "golden_path_run_id": 32059008145,
+  "invalidated_by_guard_sha": "ffce28f5fb6d4e9d3aff165fa408ab7d49e0a40a",
+  "invalidation_reason": "CROSS_SOURCE_FACTUAL_MISMATCH",
+  "retry_allowed": false,
+  "replacement_required": true
 }
