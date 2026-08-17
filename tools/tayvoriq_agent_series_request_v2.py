@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse, json, re
+import argparse, hashlib, json, re
 from pathlib import Path
 
-# Active series no longer bypass fresh research. If a series episode really
-# earns a Top-5 position, preserve the historical -agentv2- series id contract.
 import tayvoriq_agent_trend_radar_v5 as growth
 base = growth.base
+
+
+def _fingerprint(trends: list[dict]) -> str:
+    rows = []
+    for trend in trends:
+        rows.append({
+            "title": " ".join(str(trend.get("title") or "").casefold().split()),
+            "sources": sorted(str(url).strip() for url in (trend.get("sources") or []) if str(url).strip()),
+        })
+    raw = json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:6]
 
 
 def main() -> int:
@@ -23,8 +32,9 @@ def main() -> int:
     output = Path(args.output)
     audit_path = Path(args.audit_output)
     request = json.loads(output.read_text(encoding="utf-8"))
+    trends = [trend for trend in (request.get("trends") or []) if isinstance(trend, dict)]
     series = None
-    for trend in request.get("trends") or []:
+    for trend in trends:
         source = trend.get("source_context") if isinstance(trend, dict) else {}
         ctx = source.get("series_context") if isinstance(source, dict) else None
         if isinstance(ctx, dict) and ctx.get("series_id"):
@@ -36,8 +46,12 @@ def main() -> int:
     token = re.sub(r"[^A-Za-z0-9_-]", "", str(series.get("series_id") or "series"))[:10] or "series"
     episode = int(series.get("episode") or 0)
     date_token = str(request.get("date") or "").replace("-", "")
-    selection_id = f"{date_token}-{args.slot[0]}-agentv2-{token}-e{episode}"
+    fingerprint = _fingerprint(trends)
+    selection_id = f"{date_token}-{args.slot[0]}-agentv2-{token}-e{episode}-{fingerprint}"
+    if len(selection_id) > 40:
+        raise RuntimeError(f"selection id too long: {selection_id}")
     request["selection_id"] = selection_id
+    request["selection_fingerprint"] = fingerprint
     request["series_competed_in_growth_ranking"] = True
     output.write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -45,6 +59,7 @@ def main() -> int:
         audit = json.loads(audit_path.read_text(encoding="utf-8"))
         audit.update({
             "selection_id": selection_id,
+            "selection_fingerprint": fingerprint,
             "series_candidate_injected": True,
             "series_bypassed_trend_radar": False,
             "series_competed_in_growth_ranking": True,
