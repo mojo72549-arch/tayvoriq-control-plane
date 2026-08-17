@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,35 @@ base = provider_v3.base
 CONFIG_PATH = Path("config/tayvoriq_growth_runtime_v2.json")
 _original_normalize = base.normalized_candidate
 _original_prompt = base.prompt_for
+
+_NUMBER_WORDS = {
+    "null": "0", "eins": "1", "ein": "1", "eine": "1", "einen": "1",
+    "zwei": "2", "drei": "3", "vier": "4", "fünf": "5", "fuenf": "5",
+    "sechs": "6", "sieben": "7", "acht": "8", "neun": "9", "zehn": "10",
+    "elf": "11", "zwölf": "12", "zwoelf": "12", "dreizehn": "13",
+    "vierzehn": "14", "fünfzehn": "15", "fuenfzehn": "15", "sechzehn": "16",
+    "siebzehn": "17", "achtzehn": "18", "neunzehn": "19", "zwanzig": "20",
+}
+_COUNTRY_MARKERS = {
+    "germany": {"deutschland", "deutsch", "deutsche", "deutschen", "deutscher", "deutsches", "dlv"},
+    "britain": {"großbritannien", "grossbritannien", "britannien", "britisch", "britische", "britischen", "britischer", "gb", "uk"},
+    "italy": {"italien", "italienisch", "italienische", "italienischen"},
+    "france": {"frankreich", "französisch", "franzoesisch", "französische", "franzoesische"},
+    "spain": {"spanien", "spanisch", "spanische", "spanischen"},
+    "austria": {"österreich", "oesterreich", "österreichisch", "oesterreichisch"},
+    "switzerland": {"schweiz", "schweizer", "schweizerisch"},
+    "belgium": {"belgien", "belgisch", "belgische", "belgischen"},
+    "netherlands": {"niederlande", "niederländisch", "niederlaendisch", "niederländische", "niederlaendische"},
+    "usa": {"usa", "us", "vereinigte", "amerikanisch", "amerikanische", "amerikanischen"},
+}
+_CAUSAL_MARKERS = ("weil", "wegen", "aufgrund", "durch", "dank", "führt", "fuehrt", "verursacht", "liegt an")
+_STOPWORDS = {
+    "diese", "dieser", "dieses", "einer", "einen", "einem", "eines", "eine", "einer",
+    "führen", "fuehren", "führt", "fuehrt", "starke", "starken", "starker", "aktuell",
+    "heute", "jetzt", "dadurch", "daher", "damit", "wurde", "werden", "haben", "hatte",
+    "athleten", "athletinnen", "menschen", "deutsch", "deutsche", "deutschen", "deutscher",
+    "ereignis", "erfolg", "erfolge", "spitzenleistungen", "leistung", "leistungen",
+}
 
 
 def _config() -> dict[str, Any]:
@@ -23,6 +53,55 @@ def _config() -> dict[str, Any]:
 
 def _clamp(value: float) -> int:
     return max(0, min(100, int(round(value))))
+
+
+def _words(text: str) -> set[str]:
+    return set(re.findall(r"[a-zäöüß0-9]+", str(text or "").casefold()))
+
+
+def _numbers(text: str) -> set[str]:
+    words = _words(text)
+    values = {token for token in words if token.isdigit()}
+    values.update(_NUMBER_WORDS[token] for token in words if token in _NUMBER_WORDS)
+    return values
+
+
+def _country_groups(text: str) -> set[str]:
+    words = _words(text)
+    return {group for group, markers in _COUNTRY_MARKERS.items() if words & markers}
+
+
+def _meaningful_words(text: str) -> set[str]:
+    return {word for word in _words(text) if len(word) >= 5 and not word.isdigit() and word not in _STOPWORDS}
+
+
+def _source_claim_coherent(candidate: dict[str, Any]) -> tuple[bool, list[str]]:
+    title = str(candidate.get("title") or "")
+    ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
+    sources = ctx.get("sources") if isinstance(ctx.get("sources"), list) else []
+    supports = [str(item.get("supports") or "") for item in sources if isinstance(item, dict)]
+    answers = ctx.get("fallback_editorial_answers") if isinstance(ctx.get("fallback_editorial_answers"), dict) else {}
+    reasons: list[str] = []
+
+    title_numbers = _numbers(title)
+    title_countries = _country_groups(title)
+    critical_numeric = bool(title_numbers) and bool(title_countries)
+    if critical_numeric:
+        for index, support in enumerate(supports[:2], start=1):
+            if not title_numbers.issubset(_numbers(support)):
+                reasons.append(f"source_{index}_missing_title_number")
+            if not title_countries.issubset(_country_groups(support)):
+                reasons.append(f"source_{index}_missing_title_country")
+
+    why = str(answers.get("why_happening") or "").strip()
+    why_lower = why.casefold()
+    if why and any(marker in why_lower for marker in _CAUSAL_MARKERS):
+        why_terms = _meaningful_words(why)
+        support_terms = _meaningful_words(" ".join(supports))
+        if why_terms and not (why_terms & support_terms):
+            reasons.append("why_happening_not_supported_by_source_claims")
+
+    return not reasons, reasons
 
 
 def _marker_score(text: str) -> int:
@@ -84,12 +163,16 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
     candidate = _original_normalize(raw, verified_at)
     if not candidate:
         return None
+    coherent, reasons = _source_claim_coherent(candidate)
+    if not coherent:
+        return None
     cfg = _config().get("selection") or {}
     if int(candidate.get("score") or 0) < int(cfg.get("base_quality_min") or 75):
         return None
     report = _growth(candidate)
     candidate["growth_v2"] = report
     candidate["source_context"]["growth_v2"] = report
+    candidate["source_context"]["claim_coherence"] = {"passed": True, "reasons": reasons}
     return candidate
 
 
@@ -128,7 +211,8 @@ def prompt_for(slot, now):
     return prompt.replace(
         "Strong hook within 1.5 seconds; 35-60 second vertical short potential.",
         "Strong hook within 1.5 seconds. Evaluate breakout reach AND follower/subscriber conversion. The verified fact core must support a concise YouTube cut and a deeper TikTok cut over 61 seconds without padding."
-    ) + "\n- An active series episode has NO reserved slot. Treat it as a candidate only if its current relevance and growth potential compete with fresh trends."
+    ) + "\n- An active series episode has NO reserved slot. Treat it as a candidate only if its current relevance and growth potential compete with fresh trends." \
+      + "\n- CROSS-SOURCE CONSISTENCY IS MANDATORY: central numbers, countries/nationalities and causal WHY claims in the title/editorial answers must be supported by BOTH independent source summaries. Never combine a number from one story/person/country with another source."
 
 
 base.normalized_candidate = normalized_candidate
