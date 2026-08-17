@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - mofit-apk-build
+    paths-ignore:
+      - 'mofit-apk/dist/**'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -49,9 +54,19 @@ jobs:
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk MO-FIT-v1.3.apk
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: MO-FIT-APK-v1.3
           path: mofit-apk/MO-FIT-v1.3.apk
           if-no-files-found: error
+
+      - name: Publish APK to branch
+        run: |
+          mkdir -p dist
+          cp MO-FIT-v1.3.apk dist/MO-FIT-v1.3.apk
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dist/MO-FIT-v1.3.apk
+          git commit -m 'build: publish MO FIT v1.3 APK [skip ci]' || exit 0
+          git push origin HEAD:mofit-apk-build
