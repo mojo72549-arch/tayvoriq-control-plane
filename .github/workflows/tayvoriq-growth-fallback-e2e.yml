@@ -49,7 +49,7 @@ jobs:
             tools/tayvoriq_agent_trend_radar_v5.py \
             tools/tayvoriq_agent_series_request_v2.py
 
-      - name: Force RSS-HF fallback through real active-series request path
+      - name: Force fallback and accept quality-driven 1-5 selection
         run: |
           set -euo pipefail
           python tools/tayvoriq_agent_series_request_v2.py \
