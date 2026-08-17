@@ -1,0 +1,24 @@
+name: TAYVORIQ Stale Golden Path Stopper
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-now/tayvoriq-stale-stop.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-x-golden-path
+  cancel-in-progress: true
+
+jobs:
+  stop-stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Replace stale golden-path slot
+        run: |
+          echo "Stale TAYVORIQ golden-path runs cancelled by concurrency replacement."
+          echo "No publication is performed by this stopper."
