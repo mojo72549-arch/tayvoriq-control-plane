@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Active series no longer bypass fresh research. If a series episode really
 # earns a Top-5 position, preserve the historical -agentv2- series id contract.
-import tayvoriq_agent_trend_radar_v4 as growth
+import tayvoriq_agent_trend_radar_v5 as growth
 base = growth.base
 
 
