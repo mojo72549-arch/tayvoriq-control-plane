@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -23,17 +25,29 @@ def test_runtime_contract_is_two_runs_every_day_and_series_has_no_reserved_slot(
     assert cfg["selection"]["always_run_fresh_trend_scan"] is True
     assert cfg["selection"]["series_reserved_slots"] == 0
     assert cfg["selection"]["series_competes_with_trends"] is True
-    assert cfg["selection"]["telegram_candidates_min"] == 1
+    assert cfg["selection"]["telegram_candidates_min"] == 4
     assert cfg["selection"]["telegram_candidates_max"] == 5
     assert cfg["selection"]["weak_fill_allowed"] is False
-    assert cfg["selection"]["rescan_only_when_zero_eligible"] is True
+    assert cfg["selection"]["rescan_when_below_candidate_minimum"] is True
     assert cfg["platform_native"]["tiktok"]["hard_final_floor_seconds"] == 61
 
 
-def test_one_strong_candidate_is_surfaced_without_weak_fill() -> None:
+def test_one_strong_candidate_requests_rescan_instead_of_thin_telegram_list() -> None:
     items = [_candidate("strong", 95, 91, scope="world_society"), _candidate("weak-a", 70, 79, scope="technology_ai"), _candidate("weak-b", 69, 72, scope="business_economy")]
+    with pytest.raises(SystemExit, match="GROWTH_RESCAN_REQUIRED"):
+        growth.diversify(items, "evening")
+
+
+def test_four_strong_candidates_are_allowed_without_weak_fill() -> None:
+    items = [
+        _candidate("a", 96, 94, scope="world_society"),
+        _candidate("b", 95, 93, scope="technology_ai"),
+        _candidate("c", 94, 92, scope="business_economy"),
+        _candidate("d", 93, 91, scope="mobility_energy"),
+        _candidate("weak", 70, 79, scope="sports"),
+    ]
     selected = growth.diversify(items, "evening")
-    assert [item["title"] for item in selected] == ["strong"]
+    assert [item["title"] for item in selected] == ["a", "b", "c", "d"]
 
 
 def test_series_is_not_forced_when_five_stronger_fresh_candidates_exist() -> None:
