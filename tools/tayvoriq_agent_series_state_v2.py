@@ -43,6 +43,33 @@ def published_youtube_titles(review_dir: Path) -> set[str]:
     return result
 
 
+def published_series_episodes(review_dir: Path) -> set[tuple[str, int]]:
+    """Return explicit series lineage carried by an approved published review.
+
+    This is required for repaired/hotfix reviews whose review id can differ from the
+    original Golden Path run id. It deliberately requires explicit provenance plus
+    verified YouTube publication; a title or hashtag alone can never advance a series.
+    """
+    result: set[tuple[str, int]] = set()
+    for path in review_dir.glob("*.json") if review_dir.is_dir() else []:
+        data = read_json(path)
+        youtube = data.get("youtube") if isinstance(data.get("youtube"), dict) else {}
+        upload_status = str(data.get("upload_status") or "").strip().upper()
+        verified_youtube = bool(str(youtube.get("video_id") or "").strip()) or upload_status == "PUBLISHED_YOUTUBE"
+        if data.get("platform_upload_performed") is not True or not verified_youtube:
+            continue
+        if data.get("series_publication_verified") is not True:
+            continue
+        series_id = str(data.get("series_id") or "").strip()
+        try:
+            episode = int(data.get("series_episode") or 0)
+        except Exception:
+            episode = 0
+        if series_id and episode > 0:
+            result.add((series_id, episode))
+    return result
+
+
 def request_run_ids(request: dict, run_map_dir: Path) -> set[str]:
     result: set[str] = set()
     for key in ("golden_path_run_id", "published_run_id", "publication_run_id"):
@@ -99,13 +126,15 @@ def reconcile(state: dict, request_dir: Path, review_dir: Path, run_map_dir: Pat
 
     published = published_run_ids(review_dir)
     published_titles = published_youtube_titles(review_dir)
-    finished = False
-    for request in matching_requests(request_dir, series_id, episode):
-        run_evidence = bool(request_run_ids(request, run_map_dir) & published)
-        title_evidence = normalized_title(request.get("topic")) in published_titles
-        if run_evidence or title_evidence:
-            finished = True
-            break
+    published_series = published_series_episodes(review_dir)
+    finished = (series_id, episode) in published_series
+    if not finished:
+        for request in matching_requests(request_dir, series_id, episode):
+            run_evidence = bool(request_run_ids(request, run_map_dir) & published)
+            title_evidence = normalized_title(request.get("topic")) in published_titles
+            if run_evidence or title_evidence:
+                finished = True
+                break
     if not finished:
         return state, False, "current_episode_not_published"
 
