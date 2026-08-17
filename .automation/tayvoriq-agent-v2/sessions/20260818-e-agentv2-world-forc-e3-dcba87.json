@@ -1,0 +1,71 @@
+{
+  "selection_id": "20260818-e-agentv2-world-forc-e3-dcba87",
+  "slot": "evening",
+  "provider": "huggingface_rss+huggingface_rss",
+  "model": "huggingface/openai/gpt-oss-120b:cheapest+multi-publisher-rss+huggingface/openai/gpt-oss-120b:cheapest+multi-publisher-rss",
+  "grounding_chunks": [
+    {
+      "title": "sportschau.de",
+      "uri": "https://www.sportschau.de/fussball/fifa-trennt-sich-von-betriebsdirektor-lamour,fifa-lamour-aus-100.html"
+    },
+    {
+      "title": "bbc.com",
+      "uri": "https://www.bbc.co.uk/sport/football/articles/cn7n4d6vy03o?at_medium=RSS&at_campaign=rss"
+    },
+    {
+      "title": "theguardian.com",
+      "uri": "https://www.theguardian.com/world/2026/aug/17/ebola-outbreak-drc-democratic-republic-of-congo-deadliest-in-history"
+    },
+    {
+      "title": "dw.com",
+      "uri": "https://www.dw.com/de/ebola-ausbruch-ist-tödlichster-in-der-geschichte-des-kongo/a-78398871?maca=de-rss-de-all-1119-xml-mrss"
+    },
+    {
+      "title": "bbc.com",
+      "uri": "https://www.bbc.co.uk/news/articles/cy5dzk0ryzdo?at_medium=RSS&at_campaign=rss"
+    },
+    {
+      "title": "theguardian.com",
+      "uri": "https://www.theguardian.com/world/live/2026/aug/17/trump-kushner-netanyahu-hamas-gaza-israel-blair-us-iran-hormuz-oil-latest-news-updates"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/wirtschaft/digitales/apple-app-traking-eu-aenderungen-100.html"
+    },
+    {
+      "title": "bbc.com",
+      "uri": "https://www.bbc.co.uk/news/articles/clyqpx6xk69o?at_medium=RSS&at_campaign=rss"
+    },
+    {
+      "title": "bbc.com",
+      "uri": "https://www.bbc.co.uk/news/articles/crl76jkxel3o?at_medium=RSS&at_campaign=rss"
+    },
+    {
+      "title": "theguardian.com",
+      "uri": "https://www.theguardian.com/politics/2026/aug/17/children-poverty-reform-uk-benefits"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/inland/innenpolitik/klimaschutz-sozialer-ausgleich-100.html"
+    },
+    {
+      "title": "theguardian.com",
+      "uri": "https://www.theguardian.com/environment/2026/aug/17/european-farmers-unprecedented-crisis-successive-heatwaves"
+    }
+  ],
+  "candidate_count": 10,
+  "valid_count": 8,
+  "selected_count": 4,
+  "series_candidate_injected": true,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 2,
+  "growth_rescan_used": true,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_4_to_5",
+  "candidate_minimum": 4,
+  "candidate_maximum": 5,
+  "weak_fill_allowed": false,
+  "selection_fingerprint": "dcba87",
+  "series_bypassed_trend_radar": false,
+  "series_competed_in_growth_ranking": true
+}
