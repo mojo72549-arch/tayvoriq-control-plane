@@ -1,0 +1,36 @@
+name: TAYVORIQ Retire Stale Telegram Trend Lists
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-retire-stale-telegram-lists.txt"
+
+permissions:
+  contents: read
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Remove keyboards from superseded trend lists
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          for message_id in 1153 1154; do
+            payload=$(printf '{"chat_id":"%s","message_id":%s,"reply_markup":{"inline_keyboard":[]}}' "$TELEGRAM_CHAT_ID" "$message_id")
+            curl --fail --silent --show-error \
+              -H 'Content-Type: application/json' \
+              -d "$payload" \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup" >/tmp/telegram-${message_id}.json
+            python - "$message_id" <<'PY'
+          import json, sys
+          mid=sys.argv[1]
+          data=json.load(open(f'/tmp/telegram-{mid}.json'))
+          assert data.get('ok') is True, data
+          print({'retired_message_id': int(mid)})
+          PY
+          done
