@@ -31,21 +31,21 @@ jobs:
           if '  HF_TOKEN:' not in s:
               if needle not in s: raise SystemExit('GROQ env anchor missing')
               s=s.replace(needle,needle+hf,1)
-          old='''          if [ "${{ steps.mode.outputs.active_series }}" = "true" ]; then
-            text="❌ TAYVORIQ Agent V2 konnte die vorbereitete Serienfolge nicht bis zur Telegram-Freigabe bereitstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
-          else
-            text="❌ TAYVORIQ Agent V2 konnte die aktuelle Trend-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
-          fi
-'''
-          new='''          if [ -f /tmp/tayvoriq-research-deferred.json ]; then
+          marker='      - name: Notify gate failure once for this run\n'
+          if marker not in s: raise SystemExit('failure step anchor missing')
+          before=s.split(marker,1)[0]
+          replacement='''      - name: Notify gate failure once for this run
+        if: failure() && steps.slot.outputs.should_run == 'true'
+        continue-on-error: true
+        run: |
+          if [ -f /tmp/tayvoriq-research-deferred.json ]; then
             echo "Research providers temporarily saturated; deferred internally. No user-facing Telegram failure sent."
             exit 0
           fi
           text="❌ TAYVORIQ Agent V2 konnte die aktuelle Growth-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 '''
-          if old not in s: raise SystemExit('failure notification anchor missing')
-          s=s.replace(old,new,1)
-          p.write_text(s,encoding='utf-8')
+          p.write_text(before+replacement,encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
