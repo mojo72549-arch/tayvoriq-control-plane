@@ -8,6 +8,7 @@ on:
       - infra/telegram-approval-worker-v2.js
       - infra/telegram-approval-worker-v3.js
       - infra/wrangler.toml
+      - tests/telegram-stale-selection-guard-v3.test.mjs
       - .github/workflows/deploy-telegram-approval-worker.yml
 
 permissions:
@@ -26,6 +27,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Test stale-selection guard
+        run: node --test ../tests/telegram-stale-selection-guard-v3.test.mjs
 
       - name: Validate deployment secrets
         env:
