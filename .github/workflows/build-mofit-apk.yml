@@ -65,8 +65,9 @@ jobs:
         run: |
           mkdir -p dist
           cp MO-FIT-v1.3.apk dist/MO-FIT-v1.3.apk
+          echo "$GITHUB_RUN_ID" > dist/run-id.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add dist/MO-FIT-v1.3.apk
-          git commit -m 'build: publish MO FIT v1.3 APK [skip ci]' || exit 0
+          git add dist/MO-FIT-v1.3.apk dist/run-id.txt
+          git commit -m 'build: publish MO FIT v1.3 APK and run id [skip ci]' || exit 0
           git push origin HEAD:mofit-apk-build
