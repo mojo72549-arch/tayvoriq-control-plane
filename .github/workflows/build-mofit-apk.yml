@@ -44,10 +44,11 @@ jobs:
 
       - name: Package Android signing tools
         run: |
-          mkdir -p sign-tools/lib
+          mkdir -p sign-tools/lib sign-tools/lib64
           cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign-tools/
           cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" sign-tools/
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" sign-tools/lib/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib64/libc++.so" sign-tools/lib64/
           chmod +x sign-tools/apksigner sign-tools/zipalign
 
       - name: Upload Android signing tools
