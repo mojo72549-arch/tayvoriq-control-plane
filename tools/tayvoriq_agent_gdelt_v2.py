@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, urllib.parse, urllib.request
+import json, os, time, urllib.parse, urllib.request
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
@@ -13,12 +13,14 @@ def domain(url:str)->str:
 
 def source_pool()->list[dict[str,str]]:
     queries=["(wildfire OR earthquake OR volcano OR flood OR storm OR heatwave)","(AI OR technology OR cyber)","(Germany OR Stuttgart OR transport OR rail)","(economy OR prices OR energy OR automotive)","(sports OR football OR athletics) Germany"]
-    out=[]; seen=set()
+    out=[]; seen=set(); started=time.monotonic(); budget=float(os.getenv("TAYVORIQ_GDELT_BUDGET_SECONDS") or 45); per_call=float(os.getenv("TAYVORIQ_GDELT_TIMEOUT_SECONDS") or 12)
     for query in queries:
+        if time.monotonic()-started>=budget: break
         params=urllib.parse.urlencode({"query":query,"mode":"artlist","maxrecords":75,"format":"json","timespan":"24H","sort":"DateDesc"})
         req=urllib.request.Request(f"{GDELT_URL}?{params}",headers={"User-Agent":"tayvoriq-agent-v3"})
+        timeout=max(3.0,min(per_call,budget-(time.monotonic()-started)))
         try:
-            with urllib.request.urlopen(req,timeout=30) as resp: payload=json.loads(resp.read().decode())
+            with urllib.request.urlopen(req,timeout=timeout) as resp: payload=json.loads(resp.read().decode())
         except Exception as exc:
             print(json.dumps({"event":"gdelt_query_failed","query":query,"error":http.summary(exc)},ensure_ascii=False)); continue
         for item in payload.get("articles") or []:
@@ -27,4 +29,5 @@ def source_pool()->list[dict[str,str]]:
             if not url.startswith(("https://","http://")) or not title or not context or not host or url in seen: continue
             if any(marker in url.casefold() for marker in base.BLOCKED_SOURCE_MARKERS): continue
             seen.add(url); out.append({"title":title,"context":context,"url":url,"domain":host,"seen_date":base.clean(item.get("seendate"),80),"source_country":base.clean(item.get("sourcecountry"),80),"language":base.clean(item.get("language"),80)})
-    print(json.dumps({"event":"gdelt_context_pool","records":len(out),"independent_domains":len({x['domain'] for x in out})},ensure_ascii=False)); return out[:100]
+        if len(out)>=100: break
+    print(json.dumps({"event":"gdelt_context_pool","records":len(out),"independent_domains":len({x['domain'] for x in out}),"elapsed_seconds":round(time.monotonic()-started,2)},ensure_ascii=False)); return out[:100]
