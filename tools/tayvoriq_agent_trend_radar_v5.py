@@ -38,7 +38,10 @@ def main() -> int:
     now = datetime.now(ZoneInfo("Europe/Berlin"))
     verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     selection_cfg = (growth._config().get("selection") or {})
+    max_candidates = max(1, min(5, int(selection_cfg.get("telegram_candidates_max") or 5)))
+    min_candidates = max(1, min(max_candidates, int(selection_cfg.get("telegram_candidates_min") or 4)))
     max_scans = max(1, min(3, int(selection_cfg.get("max_grounded_scans") or 2)))
+    rescan_below_minimum = bool(selection_cfg.get("rescan_when_below_candidate_minimum", True))
 
     normalized: list[dict[str, Any]] = []
     seen: set[tuple[str, tuple[str, ...]]] = set()
@@ -57,8 +60,9 @@ def main() -> int:
         if scan_index > 1:
             prior_titles = [str(candidate.get("title") or "") for candidate in normalized]
             prompt += (
-                "\n\nAUTOMATIC ZERO-RESULT RESCAN: the previous scan produced no candidate above the existing Growth reserve threshold. "
-                "Find DISTINCT current stories/angles without weakening scores or source rules. Exclude already-seen titles or equivalent angles: "
+                f"\n\nAUTOMATIC BELOW-MINIMUM RESCAN: the previous scan left fewer than {min_candidates} candidates above the existing Growth reserve/source thresholds. "
+                "Find DISTINCT current stories/angles without weakening scores, source quality, novelty, claim coherence or duplicate rules. "
+                "Exclude already-seen titles or equivalent angles: "
                 + " | ".join(prior_titles[:12])
             )
 
@@ -97,18 +101,26 @@ def main() -> int:
 
         try:
             selected = base.diversify(candidate_pool, args.slot)
-            if 1 <= len(selected) <= int(selection_cfg.get("telegram_candidates_max") or 5):
+            if min_candidates <= len(selected) <= max_candidates:
                 chosen = selected
                 break
+            raise SystemExit(
+                f"GROWTH_RESCAN_REQUIRED: only {len(selected)} candidates reached the strong-candidate threshold; minimum is {min_candidates}"
+            )
         except SystemExit as exc:
             last_growth_error = exc
             message = str(exc)
-            if "GROWTH_RESCAN_REQUIRED" in message and scan_index < max_scans:
+            if (
+                "GROWTH_RESCAN_REQUIRED" in message
+                and rescan_below_minimum
+                and scan_index < max_scans
+            ):
                 print(json.dumps({
                     "event": "growth_rescan",
-                    "reason": "zero_reserve_candidates",
+                    "reason": "below_minimum_candidates",
                     "scan": scan_index,
                     "valid_pool": len(candidate_pool),
+                    "minimum_required": min_candidates,
                     "error": message,
                 }, ensure_ascii=False))
                 continue
@@ -117,7 +129,9 @@ def main() -> int:
     if chosen is None:
         if last_growth_error is not None:
             raise last_growth_error
-        raise SystemExit(f"Need at least 1 contract-valid grounded trend after {max_scans} scan(s), got 0")
+        raise SystemExit(
+            f"Need {min_candidates}-{max_candidates} contract-valid grounded trends after {max_scans} scan(s), got 0"
+        )
 
     selection_id = f"{now:%Y%m%d}-{args.slot}-agentv2"
     for index, trend in enumerate(chosen, start=1):
@@ -149,7 +163,10 @@ def main() -> int:
         "grounded_scan_count": len(providers),
         "growth_rescan_used": len(providers) > 1,
         "max_grounded_scans": max_scans,
-        "candidate_count_policy": "quality_driven_1_to_5",
+        "candidate_count_policy": f"quality_driven_{min_candidates}_to_{max_candidates}",
+        "candidate_minimum": min_candidates,
+        "candidate_maximum": max_candidates,
+        "weak_fill_allowed": False,
     }
     Path(args.audit_output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.audit_output).write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -159,6 +176,7 @@ def main() -> int:
         "providers": providers,
         "scan_count": len(providers),
         "selected_count": len(chosen),
+        "candidate_minimum": min_candidates,
         "selected": [trend["title"] for trend in chosen],
         "growth_scores": [int((trend.get("growth_v2") or {}).get("growth_score") or 0) for trend in chosen],
     }, ensure_ascii=False))
