@@ -40,6 +40,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: tayvoriq-telegram-status-bridge
@@ -123,7 +124,56 @@ jobs:
           }, ensure_ascii=False))
           PY
 
+      - name: Suppress stale or superseded status
+        id: guard
+        env:
+          STATUS_RUN_ID: ${{ steps.payload.outputs.run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          suppressed=false
+          reason=current
+
+          if [ -f .github/run-now/tayvoriq-stale-stop.json ]; then
+            target=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              d=json.loads(Path('.github/run-now/tayvoriq-stale-stop.json').read_text(encoding='utf-8'))
+          except Exception:
+              d={}
+          value=str(d.get('target_run_id') or '')
+          print(value if value.isdigit() else '')
+          PY
+            )
+            if [ -n "$target" ] && [ "$target" = "$STATUS_RUN_ID" ]; then
+              suppressed=true
+              reason=explicit-stale-stop
+            fi
+          fi
+
+          if [ "$suppressed" != "true" ]; then
+            latest=$(gh run list \
+              --workflow tayvoriq-deliver-video-now.yml \
+              --limit 20 \
+              --json databaseId \
+              --jq '[.[].databaseId] | max // 0' 2>/dev/null || echo 0)
+            if [[ "$latest" =~ ^[0-9]+$ ]] && [ "$latest" -gt "$STATUS_RUN_ID" ]; then
+              suppressed=true
+              reason="superseded-by-${latest}"
+            fi
+          fi
+
+          echo "suppressed=$suppressed" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "TAYVORIQ Telegram status guard: run=$STATUS_RUN_ID suppressed=$suppressed reason=$reason"
+
+      - name: Record suppressed stale status
+        if: steps.guard.outputs.suppressed == 'true'
+        run: echo "Stale Telegram status suppressed for run ${{ steps.payload.outputs.run_id }}; no message sent."
+
       - name: Send and verify Telegram status
+        if: steps.guard.outputs.suppressed != 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
