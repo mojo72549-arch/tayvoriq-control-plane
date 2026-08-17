@@ -15,18 +15,50 @@ def domain(url:str)->str:
 def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool"):
     if not token: raise RuntimeError("HF_TOKEN/HUGGINGFACE_TOKEN missing")
     if len(records)<8 or len({r['domain'] for r in records})<2: raise RuntimeError("source pool too small for safe fallback")
-    model=base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest"; blob=json.dumps(records,ensure_ascii=False)
-    schema='''{"candidates":[{"title":"German headline","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"sources":[{"publisher":"domain","url":"exact URL","supports":"supported fact"},{"publisher":"different domain","url":"exact URL","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
-    user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Cluster only records clearly describing the same current story. A candidate is valid only with EXACTLY TWO different publisher domains. Copy URLs exactly. If any required editorial answer is unsupported, drop the candidate. Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return up to SIX candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:2500]}\nSOURCE RECORDS ({source_label}):\n{blob[:60000]}'''
-    payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; never invent facts or URLs."},{"role":"user","content":user}],"temperature":0,"max_tokens":8000,"stream":False}
+    model=base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest"
+    indexed=[]; by_id={}; by_url={}
+    for idx,record in enumerate(records, start=1):
+        sid=f"S{idx:03d}"
+        original={**record,"source_id":sid}
+        by_id[sid]=original
+        by_url[str(record.get('url') or '')]=original
+        indexed.append({
+            "source_id":sid,
+            "domain":record.get("domain"),
+            "title":record.get("title"),
+            "context":record.get("context"),
+            "seen_date":record.get("seen_date"),
+            "feed":record.get("feed"),
+        })
+    blob=json.dumps(indexed,ensure_ascii=False)
+    schema='''{"candidates":[{"title":"German headline","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
+    user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Cluster only records clearly describing the same current story. A candidate is valid only with EXACTLY TWO source_id values from DIFFERENT domains. Return source_id values only; NEVER invent or copy URLs. If any required editorial answer is unsupported, drop the candidate. Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return up to SIX candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:2500]}\nSOURCE RECORDS ({source_label}):\n{blob[:60000]}'''
+    payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"max_tokens":8000,"stream":False}
     def call()->dict[str,Any]:
         raw,hs=http.post_json(HF_URL,payload,{"Content-Type":"application/json","Authorization":f"Bearer {token}","User-Agent":"tayvoriq-agent-v3-hf"},150)
         print(json.dumps({"event":"provider_success","provider":"huggingface","model":model,"source_label":source_label,"rate_limit":{k:hs[k] for k in http.RATE_HEADERS if k in hs}},ensure_ascii=False)); return raw
-    raw=http.retry("huggingface",call,2); data=base.extract_json(provider.content_of(raw)); allowed={r['url'] for r in records}; chunks=[]
+    raw=http.retry("huggingface",call,2); data=base.extract_json(provider.content_of(raw)); chunks=[]
     for c in data.get("candidates") or []:
         if not isinstance(c,dict): continue
-        src=[s for s in (c.get("sources") or []) if isinstance(s,dict)]; urls=[base.clean(s.get("url"),2000) for s in src]
-        if len(urls)!=2 or any(u not in allowed for u in urls) or len({domain(u) for u in urls})!=2: c["sources"]=[]; continue
-        for s in src:
-            s["publisher"]=domain(base.clean(s.get("url"),2000)); chunks.append({"title":s["publisher"],"uri":base.clean(s.get("url"),2000)})
+        raw_sources=[s for s in (c.get("sources") or []) if isinstance(s,dict)]
+        resolved=[]
+        for s in raw_sources:
+            sid=base.clean(s.get("source_id"),20)
+            rec=by_id.get(sid)
+            if rec is None:
+                legacy_url=base.clean(s.get("url"),2000)
+                rec=by_url.get(legacy_url)
+                sid=str((rec or {}).get("source_id") or "")
+            if rec is None: continue
+            resolved.append((sid,rec,base.clean(s.get("supports"),600)))
+        if len(resolved)!=2 or len({str(rec.get('domain') or domain(str(rec.get('url') or ''))).casefold() for _,rec,_ in resolved})!=2:
+            print(json.dumps({"event":"hf_candidate_source_rejected","title":base.clean(c.get('title'),180),"source_ids":[base.clean(s.get('source_id'),20) for s in raw_sources],"resolved_count":len(resolved)},ensure_ascii=False))
+            c["sources"]=[]
+            continue
+        normalized=[]
+        for sid,rec,supports in resolved:
+            url=base.clean(rec.get("url"),2000); publisher=base.clean(rec.get("domain"),200) or domain(url)
+            normalized.append({"source_id":sid,"publisher":publisher,"url":url,"supports":supports or base.clean(rec.get("context"),600)})
+            chunks.append({"title":publisher,"uri":url})
+        c["sources"]=normalized
     return data,chunks,f"huggingface/{model}+{source_label}"
