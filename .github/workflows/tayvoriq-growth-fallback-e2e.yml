@@ -7,16 +7,22 @@ on:
     paths:
       - "tools/tayvoriq_agent_hf_pool_v3.py"
       - "tools/tayvoriq_agent_research_resilience_v2.py"
+      - "tools/tayvoriq_agent_trend_radar_v5.py"
+      - "tools/tayvoriq_agent_series_request_v2.py"
       - ".github/workflows/tayvoriq-growth-fallback-e2e.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: tayvoriq-growth-fallback-e2e
+  cancel-in-progress: true
+
 jobs:
   fallback-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     env:
       GEMINI_API_KEY: intentionally-invalid-force-fallback
       GROQ_API_KEY: ""
@@ -57,12 +63,15 @@ jobs:
           assert all(int((t.get('growth_v2') or {}).get('growth_score') or 0) >= 80 for t in trends)
           assert all(len(t.get('sources') or []) >= 2 for t in trends)
           assert all(int((t.get('source_context') or {}).get('independent_news_count') or 0) >= 2 for t in trends)
+          assert audit.get('quality_gates_weakened') is False
+          assert 1 <= int(audit.get('grounded_scan_count') or 0) <= 2
           print(json.dumps({
               'selection_id': request.get('selection_id'),
               'trend_count': len(trends),
               'growth_scores': [int((t.get('growth_v2') or {}).get('growth_score') or 0) for t in trends],
               'provider': audit.get('provider'),
+              'grounded_scan_count': audit.get('grounded_scan_count'),
+              'growth_rescan_used': audit.get('growth_rescan_used'),
               'quality_gates_weakened': audit.get('quality_gates_weakened'),
           }, ensure_ascii=False))
-          assert audit.get('quality_gates_weakened') is False
           PY
