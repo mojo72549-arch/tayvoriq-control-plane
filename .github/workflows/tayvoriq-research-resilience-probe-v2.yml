@@ -14,10 +14,12 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+      TAYVORIQ_GDELT_BUDGET_SECONDS: "30"
+      TAYVORIQ_GDELT_TIMEOUT_SECONDS: "8"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,6 +38,18 @@ jobs:
             tools/tayvoriq_agent_research_resilience_v2.py \
             tools/tayvoriq_agent_trend_radar_v5.py
 
+      - name: Check Hugging Face credential presence without exposing it
+        id: hf
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          present = bool((os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip())
+          print({'huggingface_token_present': present})
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as h:
+              h.write(f"present={'true' if present else 'false'}\n")
+          PY
+
       - name: Probe independent GDELT source pool
         run: |
           python - <<'PY'
@@ -49,12 +63,8 @@ jobs:
               raise SystemExit('GDELT_SOURCE_POOL_TOO_SMALL')
           PY
 
-      - name: Verify Hugging Face credential presence without exposing it
+      - name: Require Hugging Face credential for production fallback
+        if: steps.hf.outputs.present != 'true'
         run: |
-          python - <<'PY'
-          import os
-          token = (os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
-          print({'huggingface_token_present': bool(token)})
-          if not token:
-              raise SystemExit('HF_TOKEN_MISSING')
-          PY
+          echo "HF_TOKEN_MISSING"
+          exit 1
