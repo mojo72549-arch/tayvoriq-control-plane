@@ -33,13 +33,17 @@ _COUNTRY_MARKERS = {
     "netherlands": {"niederlande", "niederländisch", "niederlaendisch", "niederländische", "niederlaendische"},
     "usa": {"usa", "us", "vereinigte", "amerikanisch", "amerikanische", "amerikanischen"},
 }
-_CAUSAL_MARKERS = ("weil", "wegen", "aufgrund", "durch", "dank", "führt", "fuehrt", "verursacht", "liegt an")
+_CAUSAL_MARKERS = (
+    "weil", "wegen", "aufgrund", "durch", "dank", "führt", "fuehrt", "führen", "fuehren",
+    "verursacht", "liegt an",
+)
 _STOPWORDS = {
     "diese", "dieser", "dieses", "einer", "einen", "einem", "eines", "eine", "einer",
-    "führen", "fuehren", "führt", "fuehrt", "starke", "starken", "starker", "aktuell",
-    "heute", "jetzt", "dadurch", "daher", "damit", "wurde", "werden", "haben", "hatte",
-    "athleten", "athletinnen", "menschen", "deutsch", "deutsche", "deutschen", "deutscher",
-    "ereignis", "erfolg", "erfolge", "spitzenleistungen", "leistung", "leistungen",
+    "neue", "neuen", "neuer", "neues", "führen", "fuehren", "führt", "fuehrt",
+    "starke", "starken", "starker", "aktuell", "heute", "jetzt", "dadurch", "daher",
+    "damit", "wurde", "werden", "haben", "hatte", "athleten", "athletinnen", "menschen",
+    "deutsch", "deutsche", "deutschen", "deutscher", "ereignis", "erfolg", "erfolge",
+    "spitzenleistungen", "leistung", "leistungen",
 }
 
 
