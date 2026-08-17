@@ -73,6 +73,7 @@ def test_all_provider_failure_creates_deferred_marker(monkeypatch, tmp_path) -> 
     monkeypatch.setattr(resilience, "MARKER", marker)
     monkeypatch.setattr(http, "retry", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 429")))
     monkeypatch.setattr(resilience.provider, "groq_browser_then_structure", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 429")))
+    monkeypatch.setattr(resilience.rss, "source_pool", lambda: [])
     monkeypatch.setattr(resilience.gdelt, "source_pool", lambda: [])
     try:
         resilience.grounded("prompt", "gemini", "groq")
