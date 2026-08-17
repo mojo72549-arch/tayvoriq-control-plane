@@ -1,0 +1,60 @@
+name: TAYVORIQ Recovery Run Observer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-recovery-observe-trigger.txt"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Capture latest orchestrator workflow-dispatch run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --workflow tayvoriq-agent-orchestrator-v2.yml \
+            --event workflow_dispatch \
+            --limit 5 \
+            --json databaseId,status,conclusion,createdAt,headSha,displayTitle \
+            > /tmp/runs.json
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          rows=json.load(open('/tmp/runs.json', encoding='utf-8'))
+          if not rows:
+              raise SystemExit('NO_ORCHESTRATOR_WORKFLOW_DISPATCH_RUN_FOUND')
+          latest=rows[0]
+          payload={
+              'observed_at': datetime.now(timezone.utc).isoformat(),
+              'target_run_id': int(latest['databaseId']),
+              'status': latest.get('status'),
+              'conclusion': latest.get('conclusion') or None,
+              'created_at': latest.get('createdAt'),
+              'head_sha': latest.get('headSha'),
+              'display_title': latest.get('displayTitle'),
+          }
+          Path('state/tayvoriq-recovery-run-observation.json').write_text(json.dumps(payload, indent=2)+'\n', encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/tayvoriq-recovery-run-observation.json
+          git commit -m "ops(tayvoriq): observe evening recovery run"
+          git pull --rebase origin main
+          git push origin HEAD:main
