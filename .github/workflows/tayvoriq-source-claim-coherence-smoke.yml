@@ -1,0 +1,26 @@
+name: TAYVORIQ Source Claim Coherence Smoke
+
+on:
+  push:
+    branches:
+      - agent/source-claim-coherence-guard
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-claim-coherence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependency
+        run: python -m pip install -q pytest
+      - name: Compile Growth V2 radar
+        run: python -m py_compile tools/tayvoriq_agent_trend_radar_v4.py tools/tayvoriq_agent_trend_provider_v3.py tools/tayvoriq_agent_trend_radar_v2.py
+      - name: Run source-coherence and Growth V2 regression tests
+        run: pytest -q tests/test_tayvoriq_source_claim_coherence_v1.py tests/test_tayvoriq_growth_v2_selection.py
