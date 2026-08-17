@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse, hashlib, json, re
 from pathlib import Path
 
-import tayvoriq_agent_trend_radar_v5 as growth
+import tayvoriq_agent_trend_radar_v6 as growth
 base = growth.base
 
 
