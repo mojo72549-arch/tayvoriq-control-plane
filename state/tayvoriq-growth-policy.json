@@ -1,0 +1,82 @@
+{
+  "version": "growth-v1",
+  "effective_date": "2026-08-17",
+  "priority": ["youtube", "tiktok"],
+  "instagram_phase": "later_after_youtube_tiktok_stable",
+  "publishing_model": {
+    "researched_stories_per_day": 2,
+    "platform_variants_per_story": ["youtube", "tiktok"],
+    "principle": "one evidence package, platform-specific script and render; no duplicate topic research"
+  },
+  "platform_profiles": {
+    "youtube": {
+      "target_duration_seconds": {"min": 40, "ideal": 50, "max": 55},
+      "primary_goal": "retention_rewatch_subscriber_conversion",
+      "monetization_reference": {
+        "early_ypp_subscribers": 500,
+        "early_ypp_valid_public_shorts_views_90d": 3000000,
+        "full_shorts_ads_subscribers": 1000,
+        "full_shorts_ads_valid_public_shorts_views_90d": 10000000,
+        "verify_before_enforcement": true
+      }
+    },
+    "tiktok": {
+      "target_duration_seconds": {"min": 65, "ideal": 72, "max": 85},
+      "primary_goal": "qualified_views_follow_conversion",
+      "monetization_reference": {
+        "creator_rewards_followers": 10000,
+        "creator_rewards_video_views_30d": 100000,
+        "reward_video_min_seconds": 61,
+        "verify_before_enforcement": true
+      }
+    }
+  },
+  "daily_slots": {
+    "morning": {
+      "role": "reach",
+      "preferred_content": "current high-intent trend, search demand, strong visual payoff"
+    },
+    "evening": {
+      "role": "return",
+      "preferred_content": "active series episode or recurring explainer with next-episode bridge"
+    }
+  },
+  "growth_scoring": {
+    "editorial_weight": 0.60,
+    "growth_weight": 0.40,
+    "growth_factors": {
+      "hook_strength": 0.20,
+      "retention_potential": 0.25,
+      "follow_conversion_potential": 0.20,
+      "series_fit": 0.15,
+      "share_comment_potential": 0.10,
+      "search_discoverability": 0.10
+    }
+  },
+  "content_rules": [
+    "Every series episode must work as a standalone video.",
+    "Do not open with a series number; earn attention with the hook first.",
+    "Place the series marker visually after the hook or in metadata.",
+    "CTA comes after the factual payoff and should promise the next useful episode, not beg for follows.",
+    "Never add filler only to reach TikTok duration; add a second factual payoff instead.",
+    "Run the global duplicate gate before production for both standalone and series stories.",
+    "The same researched story may have YouTube and TikTok variants; that is a platform variant, not a duplicate topic."
+  ],
+  "measurement": {
+    "kpis": [
+      "views",
+      "first_3_second_hold",
+      "average_view_duration",
+      "average_percentage_viewed",
+      "completion_rate",
+      "rewatch_rate",
+      "shares_per_1000_views",
+      "comments_per_1000_views",
+      "subscribers_or_follows_per_1000_views",
+      "returning_viewers",
+      "series_next_episode_continuation",
+      "tiktok_qualified_views_when_eligible"
+    ],
+    "decision_rule": "After at least 30 published platform variants, compare formats against the channel's own rolling baseline and prioritize repeatable winners instead of fixed vanity thresholds."
+  }
+}
