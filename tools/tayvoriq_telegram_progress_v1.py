@@ -57,7 +57,7 @@ MILESTONES = {
         45,
         "Produktion arbeitet weiter",
         "Der Workflow ist aktiv; seit dem letzten geprüften Meilenstein wurde kein neuer Fehler erkannt.",
-        "Die rechenintensive Sprecher-, Visual-, Untertitel- und Renderphase läuft weiter.",
+        "Die Sprecher-, Visual-, Untertitel- und Renderphase läuft kontrolliert weiter.",
     ),
     "checkpoint_repair": Milestone(
         60,
@@ -92,7 +92,20 @@ MILESTONES = {
 }
 
 
-REPLAY_SUPPRESSED_STAGES = {"sources_locked", "production_active"}
+REPLAY_SUPPRESSED_STAGES = {
+    "sources_locked",
+    "production_active",
+    "render_heartbeat",
+    "checkpoint_heartbeat",
+}
+
+# Heartbeats are deliberately sparse. The workflow may poll every three minutes,
+# but Telegram only gets two meaningful updates. This prevents 24/27/30-minute
+# spam while still telling the operator that a long phase is alive.
+HEARTBEAT_SEND_MINUTES = {
+    "render_heartbeat": (6, 15),
+    "checkpoint_heartbeat": (6, 15),
+}
 
 
 def read_policy(path: Path = DEFAULT_POLICY) -> dict:
@@ -110,10 +123,27 @@ def progress_enabled(path: Path = DEFAULT_POLICY) -> bool:
     return str(value or "").strip().casefold() in TRUE_VALUES
 
 
-def should_send(path: Path, run_attempt: int, stage: str = "") -> bool:
+def heartbeat_due(stage: str, elapsed_minutes: int) -> bool:
+    schedule = HEARTBEAT_SEND_MINUTES.get(stage)
+    if not schedule:
+        return True
+    elapsed = max(0, int(elapsed_minutes or 0))
+    return elapsed in schedule
+
+
+def should_send(
+    path: Path,
+    run_attempt: int,
+    stage: str = "",
+    elapsed_minutes: int = 0,
+) -> bool:
     if not progress_enabled(path):
         return False
-    return int(run_attempt) <= 1 or stage not in REPLAY_SUPPRESSED_STAGES
+    if int(run_attempt) > 1 and stage in REPLAY_SUPPRESSED_STAGES:
+        return False
+    if stage in HEARTBEAT_SEND_MINUTES and not heartbeat_due(stage, elapsed_minutes):
+        return False
+    return True
 
 
 def clean_topic(value: str) -> str:
@@ -137,8 +167,23 @@ def build_payload(
         icon = "🔧"
     if stage == "duplicate_blocked":
         icon = "🛑"
+
+    title = milestone.title
+    completed = milestone.completed
+    next_step = milestone.next_step
+    if stage == "render_heartbeat" and int(elapsed_minutes or 0) >= 15:
+        icon = "🟠"
+        title = "Renderphase länger als üblich · Watchdog aktiv"
+        completed = "Der Lauf ist noch aktiv, aber die Renderphase hat den normalen Zwischenbereich überschritten."
+        next_step = "Der Watchdog lässt den Lauf nicht unbegrenzt weiterlaufen; bei Stillstand wird fail-closed beendet bzw. gezielt repariert."
+    elif stage == "checkpoint_heartbeat" and int(elapsed_minutes or 0) >= 15:
+        icon = "🟠"
+        title = "Reparaturphase länger als üblich · Watchdog aktiv"
+        completed = "Checkpoint und Quellen sind gesichert; die Reparatur dauert länger als vorgesehen."
+        next_step = "Der Watchdog entscheidet zwischen gezielter Fortsetzung und sicherem Stopp statt endlosen Statusmeldungen."
+
     lines = [
-        f"{icon} {heading} · {milestone.title}",
+        f"{icon} {heading} · {title}",
         "",
         f"Thema: {clean_topic(topic)}",
         f"Run: {str(run_id or 'unbekannt').strip()}",
@@ -152,8 +197,8 @@ def build_payload(
         lines.extend(["", f"Hinweis: {clean_topic(detail)}"])
     lines.extend([
         "",
-        f"✅ Erledigt: {milestone.completed}",
-        f"➡️ Als Nächstes: {milestone.next_step}",
+        f"✅ Erledigt: {completed}",
+        f"➡️ Als Nächstes: {next_step}",
         "",
         (
             "Für dich: ⚠️ Neuer Themenwinkel zur Freigabe nötig."
@@ -207,8 +252,14 @@ def main() -> int:
     if not progress_enabled(args.policy):
         print(json.dumps({"status": "disabled", "stage": args.stage}))
         return 0
-    if not should_send(args.policy, attempt, args.stage):
-        print(json.dumps({"status": "suppressed_rerun", "stage": args.stage, "run_attempt": attempt}))
+    if not should_send(args.policy, attempt, args.stage, args.elapsed_minutes):
+        reason = "suppressed_heartbeat" if args.stage in HEARTBEAT_SEND_MINUTES else "suppressed_rerun"
+        print(json.dumps({
+            "status": reason,
+            "stage": args.stage,
+            "run_attempt": attempt,
+            "elapsed_minutes": int(args.elapsed_minutes or 0),
+        }))
         return 0
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
