@@ -1,0 +1,26 @@
+name: TAYVORIQ Evening Recovery Dispatch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-evening-recovery-trigger.txt"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-evening-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch existing orchestrator as evening slot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-agent-orchestrator-v2.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref main \
+            -f slot=evening
