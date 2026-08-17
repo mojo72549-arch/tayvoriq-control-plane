@@ -32,7 +32,7 @@ MILESTONES = {
     "sources_locked": Milestone(
         20,
         "Fakten gesichert",
-        "Serienfolge, Fakten und mindestens zwei Quellen sind verbindlich geprüft.",
+        "Thema, Fakten und mindestens zwei Quellen sind verbindlich geprüft.",
         "Technischer Preflight und Produktionsvorbereitung.",
     ),
     "production_active": Milestone(
@@ -74,7 +74,7 @@ MILESTONES = {
     "audio_recovery": Milestone(
         None,
         "Audio-Gate hat sicher gestoppt",
-        "Fakten, Serienfolge und Dublettenprüfung bleiben gültig; es wurde nichts veröffentlicht.",
+        "Fakten, Thema und Dublettenprüfung bleiben gültig; es wurde nichts veröffentlicht.",
         "Nur der Pfad für die tiefe Sprecherstimme wird rückgekoppelt repariert und erneut geprüft.",
     ),
     "duplicate_blocked": Milestone(
