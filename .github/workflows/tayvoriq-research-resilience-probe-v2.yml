@@ -84,8 +84,8 @@ jobs:
           data, chunks, model = hf.structure('Current German TAYVORIQ trends; prioritize freshness, relevance, visual explainability and two independent sources.', token, rows, 'multi-publisher-rss')
           candidates = [c for c in (data.get('candidates') or []) if len(c.get('sources') or []) == 2]
           print(json.dumps({'hf_model': model, 'valid_candidates': len(candidates), 'grounding_chunks': len(chunks)}))
-          if not candidates:
-              raise SystemExit('HF_NO_SOURCE_BOUND_CANDIDATES')
+          if len(candidates) < 5 or len(chunks) < 10:
+              raise SystemExit(f'HF_NEEDS_FIVE_SOURCE_BOUND_CANDIDATES: got={len(candidates)} chunks={len(chunks)}')
           PY
 
       - name: Probe GDELT as secondary diagnostic only
