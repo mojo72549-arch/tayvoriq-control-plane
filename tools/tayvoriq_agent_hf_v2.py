@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json, os
+from collections import defaultdict, deque
 from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
@@ -12,12 +13,54 @@ def domain(url:str)->str:
         h=urlparse(url).netloc.casefold().split(":",1)[0]; return h[4:] if h.startswith("www.") else h
     except Exception: return ""
 
+def _balanced_compact_records(records:list[dict[str,str]],max_chars:int=56000)->list[dict[str,str]]:
+    groups:dict[str,deque[dict[str,str]]]=defaultdict(deque)
+    for record in records:
+        host=str(record.get('domain') or domain(str(record.get('url') or ''))).casefold()
+        if host:
+            groups[host].append(record)
+    selected=[]; hosts=sorted(groups)
+    while hosts:
+        next_hosts=[]
+        for host in hosts:
+            if not groups[host]:
+                continue
+            rec=groups[host].popleft()
+            compact={
+                **rec,
+                'title':base.clean(rec.get('title'),280),
+                'context':base.clean(rec.get('context'),750),
+                'domain':host,
+            }
+            selected.append(compact)
+            next_hosts.append(host)
+        hosts=next_hosts
+        if len(selected)>=96:
+            break
+    bounded=[]
+    for rec in selected:
+        candidate=bounded+[rec]
+        preview=[{
+            'source_id':f'S{i+1:03d}',
+            'domain':item.get('domain'),
+            'title':item.get('title'),
+            'context':item.get('context'),
+            'seen_date':item.get('seen_date'),
+            'feed':item.get('feed'),
+        } for i,item in enumerate(candidate)]
+        if len(json.dumps(preview,ensure_ascii=False))>max_chars:
+            break
+        bounded.append(rec)
+    return bounded
+
 def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool"):
     if not token: raise RuntimeError("HF_TOKEN/HUGGINGFACE_TOKEN missing")
     if len(records)<8 or len({r['domain'] for r in records})<2: raise RuntimeError("source pool too small for safe fallback")
+    balanced=_balanced_compact_records(records)
+    if len(balanced)<8 or len({r['domain'] for r in balanced})<2: raise RuntimeError("balanced source pool too small for safe fallback")
     model=base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest"
     indexed=[]; by_id={}; by_url={}
-    for idx,record in enumerate(records, start=1):
+    for idx,record in enumerate(balanced, start=1):
         sid=f"S{idx:03d}"
         original={**record,"source_id":sid}
         by_id[sid]=original
@@ -31,8 +74,9 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
             "feed":record.get("feed"),
         })
     blob=json.dumps(indexed,ensure_ascii=False)
+    print(json.dumps({"event":"hf_balanced_source_pool","records":len(indexed),"independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     schema='''{"candidates":[{"title":"German headline","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
-    user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Cluster only records clearly describing the same current story. A candidate is valid only with EXACTLY TWO source_id values from DIFFERENT domains. Return source_id values only; NEVER invent or copy URLs. If any required editorial answer is unsupported, drop the candidate. Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return up to SIX candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:2500]}\nSOURCE RECORDS ({source_label}):\n{blob[:60000]}'''
+    user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Search across ALL supplied publisher domains, not just the first records. Cluster records that clearly describe the same current story. A candidate is valid only with EXACTLY TWO source_id values from DIFFERENT domains. Return source_id values only; NEVER invent or copy URLs. Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy, sport/local when the records support them. If any required editorial answer is unsupported, drop that candidate. Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return up to SIX candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:2500]}\nSOURCE RECORDS ({source_label}):\n{blob}'''
     payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"max_tokens":8000,"stream":False}
     def call()->dict[str,Any]:
         raw,hs=http.post_json(HF_URL,payload,{"Content-Type":"application/json","Authorization":f"Bearer {token}","User-Agent":"tayvoriq-agent-v3-hf"},150)
