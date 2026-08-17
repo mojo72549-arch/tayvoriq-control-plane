@@ -1,0 +1,60 @@
+{
+  "request_id": "telegram-1148-trend-2-fact-repair-v1",
+  "status": "APPROVED",
+  "source": "telegram_trend_approval_fact_repair",
+  "trend_id": "2",
+  "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
+  "trend_scope": "sports",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-17T19:11:42.364Z",
+  "telegram_message_id": 1148,
+  "approval_key": "telegram:20260817-e-agentv2-world-forc-e3-b48a74:1148:trend:2:fact-repair-v1",
+  "mode": "full",
+  "selection_id": "20260817-e-agentv2-world-forc-e3-b48a74",
+  "source_context": {
+    "verified_at": "2026-08-18T00:25:00+02:00",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/sports/britains-hunt-asher-smith-set-medal-records-european-championships-2026-08-16/",
+        "supports": "Deutschland beendete die Leichtathletik-Europameisterschaften auf Rang drei der Medaillenwertung mit 21 Medaillen, darunter sechs Goldmedaillen."
+      },
+      {
+        "publisher": "The Guardian",
+        "url": "https://www.theguardian.com/sport/live/2026/aug/16/birmingham-2026-european-athletics-championships-day-seven-live",
+        "supports": "Die Endabrechnung weist Deutschland mit sechs Gold-, zehn Silber- und fünf Bronzemedaillen aus: 21 Medaillen insgesamt und Rang drei."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Deutschland beendet die Leichtathletik-EM in Birmingham mit 21 Medaillen: sechs Gold, zehn Silber und fünf Bronze – Rang drei in Europa.",
+      "why_happening": "Die offizielle Endbilanz aus sechs Gold-, zehn Silber- und fünf Bronzemedaillen ergibt 21 Medaillen; damit liegt Deutschland hinter Italien und Großbritannien auf Rang drei.",
+      "who_is_affected": "Das deutsche Leichtathletik-Team und seine Fans – besonders die Athletinnen und Athleten, die zu den 21 Medaillen beigetragen haben.",
+      "personal_impact": "Für deutsche Sportfans ist die Bilanz ein klarer Einordnungswert: Deutschland gehörte bei dieser EM zu den drei erfolgreichsten Nationen.",
+      "action_now": "Im Short werden die bestätigte Medaillenbilanz und ausgewählte deutsche EM-Höhepunkte gezeigt; weiterführend gelten die offiziellen Ergebnislisten und die verifizierten Abschlussberichte."
+    },
+    "fact_repair": {
+      "original_request_id": "telegram-1148-trend-2",
+      "repair_reason": "CROSS_SOURCE_FACTUAL_MISMATCH",
+      "original_claim": "Deutschland vier Gold",
+      "corrected_claim": "Deutschland 21 Medaillen, sechs Gold, zehn Silber, fünf Bronze, Rang drei",
+      "same_editorial_event": true
+    }
+  },
+  "source_context_sha256": "32eaf2e4511ef482357d05362b4dfef08cb7683dc3316a5b656d029ea7355e8a",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T00:25:00+02:00",
+      "actor": "factual_repair_same_approved_event"
+    }
+  ],
+  "repair_of_request_id": "telegram-1148-trend-2",
+  "retry_allowed": true,
+  "replacement_reason": "FACTUAL_CORRECTION_SAME_EDITORIAL_EVENT",
+  "contract_sha256": "8fdf5dba797889bfb718593d4f36cf6238f0fa59eb510ffdb29bbc41c768da62"
+}
