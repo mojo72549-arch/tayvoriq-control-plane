@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Fail closed when an approved video repeats an earlier production request.
 
-The gate is deliberately deterministic and stdlib-only.  It scans the durable
-request ledger, permits retries of the exact same request id, and compares the
-topic plus the five verified editorial answers.  Adjacent series episodes are
-allowed only when their factual focus is distinct; the same series episode under
-a new request id is always blocked.
+The gate is deliberately deterministic and stdlib-only. It scans the durable
+request ledger, permits retries of the exact same request id and the explicit
+repair lineage of that request, and compares the topic plus the five verified
+editorial answers. Adjacent series episodes are allowed only when their factual
+focus is distinct; the same series episode under an unrelated request id remains
+blocked.
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ import json
 import math
 import re
 import unicodedata
-from collections import Counter
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -157,6 +158,47 @@ def _series_identity(source_context: dict[str, Any]) -> tuple[str, int | None]:
     return series_id, episode
 
 
+def _lineage_targets(data: dict[str, Any]) -> set[str]:
+    """Return explicit repair-lineage links declared by one durable request."""
+    targets = set()
+    for key in ("repair_of_request_id",):
+        value = _clean(data.get(key))
+        if value:
+            targets.add(value)
+    source_context = data.get("source_context")
+    if isinstance(source_context, dict):
+        fact_repair = source_context.get("fact_repair")
+        if isinstance(fact_repair, dict):
+            for key in ("previous_repair_request_id", "original_request_id"):
+                value = _clean(fact_repair.get(key))
+                if value:
+                    targets.add(value)
+    return targets
+
+
+def _repair_family(ledger: dict[str, dict[str, Any]], source_request_id: str) -> set[str]:
+    """Build the connected component of explicit repair links for this request.
+
+    This intentionally does not infer lineage from topic similarity. Only durable,
+    explicit repair references can exempt a request from duplicate blocking.
+    """
+    graph: dict[str, set[str]] = defaultdict(set)
+    for request_id, data in ledger.items():
+        for target in _lineage_targets(data):
+            if target in ledger:
+                graph[request_id].add(target)
+                graph[target].add(request_id)
+    family = {source_request_id}
+    queue = deque([source_request_id])
+    while queue:
+        current = queue.popleft()
+        for linked in graph.get(current, set()):
+            if linked not in family:
+                family.add(linked)
+                queue.append(linked)
+    return family
+
+
 def compare(
     *,
     topic: str,
@@ -224,14 +266,22 @@ def run_gate(
     topic: str,
     source_context: dict[str, Any],
 ) -> dict[str, Any]:
-    comparisons = []
+    ledger: dict[str, dict[str, Any]] = {}
+    files: dict[str, Path] = {}
     for path in sorted(requests_dir.glob("*.json")):
         try:
-            prior = _read_json(path)
+            data = _read_json(path)
         except Exception:
             continue
-        prior_id = _clean(prior.get("request_id"))
-        if not prior_id or prior_id == source_request_id:
+        request_id = _clean(data.get("request_id"))
+        if request_id:
+            ledger[request_id] = data
+            files[request_id] = path
+
+    repair_family = _repair_family(ledger, source_request_id)
+    comparisons = []
+    for prior_id, prior in ledger.items():
+        if prior_id in repair_family:
             continue
         if _clean(prior.get("status")).upper() not in ACTIVE_STATES:
             continue
@@ -247,7 +297,7 @@ def run_gate(
         )
         comparisons.append({
             "request_id": prior_id,
-            "request_file": str(path),
+            "request_file": str(files[prior_id]),
             "topic": prior_topic,
             **metrics,
         })
@@ -264,6 +314,7 @@ def run_gate(
         "content_fingerprint_sha256": hashlib.sha256(_ascii(canonical).encode("utf-8")).hexdigest(),
         "history_candidates_checked": len(comparisons),
         "retry_of_same_request_allowed": True,
+        "repair_family_exemptions": sorted(repair_family - {source_request_id}),
         "quality_gates_weakened": False,
         "nearest_prior": comparisons[0] if comparisons else None,
         "blocked_matches": blocked[:5],
