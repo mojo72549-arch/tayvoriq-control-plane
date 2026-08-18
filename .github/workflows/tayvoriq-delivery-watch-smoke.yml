@@ -1,0 +1,41 @@
+name: TAYVORIQ Delivery Watch Smoke
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/tayvoriq-delivery-watch.yml"
+      - ".github/workflows/tayvoriq-delivery-watch-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-delivery-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate request-bound recovery contract
+        run: |
+          set -euo pipefail
+          python -m pip install pyyaml -q
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path=Path('.github/workflows/tayvoriq-delivery-watch.yml')
+          text=path.read_text(encoding='utf-8')
+          doc=yaml.load(text, Loader=yaml.BaseLoader)
+          assert isinstance(doc, dict), 'delivery watch must parse as a YAML mapping'
+          assert 'jobs' in doc, 'delivery watch jobs missing'
+          assert 'workflow_run' in doc.get('on', {}), 'workflow_run trigger missing'
+          assert 'newer-golden-path-' not in text, 'global unrelated-run supersession guard must stay removed'
+          assert '.github/run-now/tayvoriq-x-request.json' not in text, 'fresh recovery must not use stale global X request'
+          assert 'golden_path_run_id' in text, 'recovery must resolve exact durable request owner'
+          assert "data['status']='APPROVED'" in text, 'exact request must be requeueable'
+          assert 'REQUEST_BOUND_RECOVERY_RUNNING' in text, 'verified request-bound recovery state missing'
+          print('TAYVORIQ request-bound delivery-watch smoke: PASS')
+          PY
