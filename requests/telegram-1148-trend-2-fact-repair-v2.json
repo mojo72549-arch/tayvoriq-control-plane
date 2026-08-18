@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1148-trend-2-fact-repair-v2",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "telegram_trend_approval_semantic_source_repair",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -87,6 +87,11 @@
         "retry_of_run_id": 32104299040,
         "reason": "source-bound-medal-table-explanation-repair"
       }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-18T06:45:31.059795+00:00",
+      "actor": "request-dispatcher:32108289280"
     }
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
@@ -98,5 +103,7 @@
     32104080203,
     32104299040
   ],
-  "contract_sha256": "d11445505b55ef8ec3809c73344e8a4724068303c9f9a28344934270e86ffa07"
+  "contract_sha256": "d11445505b55ef8ec3809c73344e8a4724068303c9f9a28344934270e86ffa07",
+  "dispatch_claim_run_id": 32108289280,
+  "dispatch_contract_sha256": "d11445505b55ef8ec3809c73344e8a4724068303c9f9a28344934270e86ffa07"
 }
