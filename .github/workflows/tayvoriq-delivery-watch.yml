@@ -40,58 +40,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          run_id = int(os.environ['RUN_ID'])
-          matches = []
-          for path in Path('requests').glob('*.json'):
-              try:
-                  data = json.loads(path.read_text(encoding='utf-8'))
-              except Exception:
-                  continue
-              if int(data.get('golden_path_run_id') or 0) == run_id:
-                  matches.append((path, data))
-
-          if len(matches) > 1:
-              raise SystemExit(f'RECOVERY_BINDING_AMBIGUOUS: run={run_id} matches={[str(p) for p,_ in matches]}')
-
-          output = Path(os.environ['GITHUB_OUTPUT'])
-          with output.open('a', encoding='utf-8') as handle:
-              if not matches:
-                  handle.write('bound=false\n')
-                  handle.write('request_id=\n')
-                  handle.write('request_path=\n')
-                  handle.write('topic=\n')
-                  handle.write('trend_id=\n')
-                  handle.write('recovery_generation=0\n')
-                  handle.write('retry_allowed=false\n')
-              else:
-                  path, data = matches[0]
-                  request_id = str(data.get('request_id') or path.stem).strip()
-                  topic = str(data.get('topic') or '').strip()
-                  trend_id = str(data.get('trend_id') or '').strip()
-                  generation = int(data.get('recovery_generation') or 0)
-                  retry_allowed = data.get('retry_allowed') is not False
-                  if not request_id or not topic or not trend_id:
-                      raise SystemExit(f'RECOVERY_BINDING_INCOMPLETE: {path}')
-                  handle.write('bound=true\n')
-                  handle.write(f'request_id={request_id}\n')
-                  handle.write(f'request_path={path.as_posix()}\n')
-                  handle.write(f'topic={topic}\n')
-                  handle.write(f'trend_id={trend_id}\n')
-                  handle.write(f'recovery_generation={generation}\n')
-                  handle.write(f'retry_allowed={str(retry_allowed).lower()}\n')
-                  print(json.dumps({
-                      'run_id': run_id,
-                      'request_id': request_id,
-                      'request_path': path.as_posix(),
-                      'recovery_generation': generation,
-                      'retry_allowed': retry_allowed,
-                  }, ensure_ascii=False))
-          PY
+          python tools/tayvoriq_delivery_recovery_v3.py resolve \
+            --run-id "$RUN_ID" \
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Guard explicitly stopped terminal run
         id: guard
@@ -129,7 +80,7 @@ jobs:
 
           echo "ignore=$ignore" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          echo "TAYVORIQ delivery-watch guard: run=$RUN_ID ignore=$ignore reason=$reason request=${{ steps.request.outputs.request_id }}"
+          echo "TAYVORIQ delivery-watch guard: run=$RUN_ID request=${{ steps.request.outputs.request_id }} ignore=$ignore reason=$reason"
 
       - name: Classify recovery state
         id: classify
@@ -182,7 +133,7 @@ jobs:
           echo "Automatic silent recovery: rerunning failed jobs for run $RUN_ID attempt $RUN_ATTEMPT request=${{ steps.request.outputs.request_id }}."
           gh run rerun "$RUN_ID" --failed
 
-      - name: Start fresh recovery generation for the exact bound request
+      - name: Start fresh recovery generation for exact bound request
         id: fresh
         if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.needs_fresh_generation == 'true'
         shell: bash
@@ -198,65 +149,24 @@ jobs:
 
           prepared=false
           started=false
-          new_run_id=""
           generation=0
+          new_run_id=""
 
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
-
-            readarray -t prepared_data < <(python - <<'PY'
-          import json
-          import os
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          path = Path(os.environ['REQUEST_PATH'])
-          if not path.is_file():
-              print('false'); print('0'); raise SystemExit(0)
-          data = json.loads(path.read_text(encoding='utf-8'))
-          if str(data.get('request_id') or '').strip() != os.environ['REQUEST_ID']:
-              print('false'); print(str(int(data.get('recovery_generation') or 0))); raise SystemExit(0)
-          if int(data.get('golden_path_run_id') or 0) != int(os.environ['RUN_ID']):
-              print('false'); print(str(int(data.get('recovery_generation') or 0))); raise SystemExit(0)
-          if data.get('retry_allowed') is False:
-              print('false'); print(str(int(data.get('recovery_generation') or 0))); raise SystemExit(0)
-
-          current = int(data.get('recovery_generation') or 0)
-          maximum = int(os.environ['MAX_RECOVERY_GENERATIONS'])
-          if current >= maximum:
-              print('false'); print(str(current)); raise SystemExit(0)
-
-          generation = current + 1
-          now = datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
-          history = data.setdefault('golden_path_run_history', [])
-          old_run = int(os.environ['RUN_ID'])
-          if old_run not in history:
-              history.append(old_run)
-          data['recovery_generation'] = generation
-          data['retry_of_run_id'] = old_run
-          data['recovery_state'] = 'FRESH_RECOVERY_GENERATION_PREPARED'
-          data['recovery_updated_at'] = now
-          data.setdefault('state_history', []).append({
-              'state': 'FRESH_RECOVERY_GENERATION_PREPARED',
-              'at': now,
-              'actor': f'delivery-watch:{old_run}',
-          })
-          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print('true'); print(str(generation))
-          PY
-            )
-
-            prepared="${prepared_data[0]:-false}"
-            generation="${prepared_data[1]:-0}"
-            [ "$prepared" = "true" ] || break
-
+            tmp=$(mktemp)
+            python tools/tayvoriq_delivery_recovery_v3.py prepare \
+              --run-id "$RUN_ID" \
+              --maximum "$MAX_RECOVERY_GENERATIONS" \
+              --github-output "$tmp"
+            generation=$(awk -F= '$1=="generation" {print $2}' "$tmp")
             git add "$REQUEST_PATH"
             git commit -m "agent(v2): prepare request-bound recovery ${REQUEST_ID} g${generation}"
             if git push origin HEAD:main; then
+              prepared=true
               break
             fi
-            prepared=false
             sleep $((attempt * 2))
           done
 
@@ -283,33 +193,10 @@ jobs:
             for attempt in 1 2 3 4 5; do
               git fetch origin main
               git reset --hard origin/main
-              python - <<'PY'
-          import json
-          import os
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          path = Path(os.environ['REQUEST_PATH'])
-          data = json.loads(path.read_text(encoding='utf-8'))
-          if str(data.get('request_id') or '').strip() != os.environ['REQUEST_ID']:
-              raise SystemExit('RECOVERY_REQUEST_ID_CHANGED')
-          old_run = int(os.environ['RUN_ID'])
-          new_run = int(os.environ['NEW_RUN_ID'])
-          history = data.setdefault('golden_path_run_history', [])
-          if old_run not in history:
-              history.append(old_run)
-          data['golden_path_run_id'] = new_run
-          data['recovery_state'] = 'FRESH_RECOVERY_GENERATION_RUNNING'
-          data['recovery_run_id'] = new_run
-          data['recovery_updated_at'] = datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
-          data.setdefault('state_history', []).append({
-              'state': 'FRESH_RECOVERY_GENERATION_RUNNING',
-              'at': data['recovery_updated_at'],
-              'actor': f'delivery-watch:{old_run}',
-              'run_id': new_run,
-          })
-          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          PY
+              python tools/tayvoriq_delivery_recovery_v3.py bind-new \
+                --request-id "$REQUEST_ID" \
+                --old-run-id "$RUN_ID" \
+                --new-run-id "$new_run_id"
               git add "$REQUEST_PATH"
               git commit -m "ops(tayvoriq): bind ${REQUEST_ID} recovery to Golden Path ${new_run_id}"
               if git push origin HEAD:main; then
@@ -323,8 +210,6 @@ jobs:
           echo "started=$started" >> "$GITHUB_OUTPUT"
           echo "generation=$generation" >> "$GITHUB_OUTPUT"
           echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
-        env:
-          NEW_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
 
       - name: Persist delivery and recovery state
         if: steps.guard.outputs.ignore != 'true'
@@ -347,7 +232,6 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
-          path = Path('.github/run-now/latest-delivery-run.json')
           fresh_started = str(os.environ.get('FRESH_STARTED') or '').lower() == 'true'
           state = 'FRESH_RECOVERY_GENERATION_RUNNING' if fresh_started else str(os.environ.get('CLASSIFIED_STATE') or 'TECHNICAL_FAILURE')
           payload = {
@@ -364,6 +248,7 @@ jobs:
               'internal_recovery_silent': state != 'EXTERNAL_ACTION_REQUIRED',
               'completed_at': datetime.now(timezone.utc).isoformat(),
           }
+          path = Path('.github/run-now/latest-delivery-run.json')
           path.parent.mkdir(parents=True, exist_ok=True)
           path.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
           print(payload)
