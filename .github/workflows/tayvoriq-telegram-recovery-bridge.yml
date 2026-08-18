@@ -48,14 +48,59 @@ jobs:
           output = Path(sys.argv[1])
           event_name = os.environ.get('GITHUB_EVENT_NAME', '')
           send = False
+          mode = 'text'
+          video_url = ''
+          delivery_nonce = ''
+          source_run_id = ''
           message = ''
 
           if event_name == 'push':
-              send = True
-              message = (
-                  '✅ TAYVORIQ · Telegram-Statuskanal aktiv\n\n'
-                  'Recovery und Produktion bleiben autonom. Ab jetzt bekommst du wieder Meldungen bei echten Zustandsänderungen – ohne neues Go und ohne künstliche Prozentangaben.'
+              delivery_path = Path('.github/run-now/tayvoriq-send-existing-video.json')
+              receipt_path = Path('.github/run-now/tayvoriq-telegram-bridge-receipt.json')
+              delivery = {}
+              receipt = {}
+              if delivery_path.is_file():
+                  try:
+                      delivery = json.loads(delivery_path.read_text(encoding='utf-8'))
+                  except Exception:
+                      delivery = {}
+              if receipt_path.is_file():
+                  try:
+                      receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                  except Exception:
+                      receipt = {}
+
+              delivery_nonce = str(delivery.get('delivery_nonce') or '').strip()
+              source_run_id = str(delivery.get('source_run_id') or '').strip()
+              video_url = str(delivery.get('video_url') or '').strip()
+              topic = str(delivery.get('topic') or '').strip()
+              already_confirmed = (
+                  delivery_nonce
+                  and str(receipt.get('delivery_nonce') or '') == delivery_nonce
+                  and receipt.get('status') == 'TELEGRAM_VIDEO_SEND_CONFIRMED'
               )
+
+              if (
+                  not already_confirmed
+                  and source_run_id == '32122612482'
+                  and delivery_nonce
+                  and video_url.startswith('https://')
+                  and 'short_tiktok.mp4' in video_url
+              ):
+                  send = True
+                  mode = 'video'
+                  message = (
+                      '🎬 TAYVORIQ · EM-Leichtathletik\n\n'
+                      f'{topic}\n\n'
+                      '✅ Publishability und finales Quality-Gate bestanden.\n'
+                      '➡️ Hier ist die fertige MP4 zur Review/Freigabe.'
+                  )
+              elif not delivery_nonce:
+                  send = True
+                  message = (
+                      '✅ TAYVORIQ · Telegram-Statuskanal aktiv\n\n'
+                      'Recovery und Produktion bleiben autonom. Ab jetzt bekommst du wieder Meldungen bei echten Zustandsänderungen – ohne neues Go und ohne künstliche Prozentangaben.'
+                  )
           else:
               state_path = Path('.github/run-now/latest-delivery-run.json')
               if state_path.is_file():
@@ -112,15 +157,16 @@ jobs:
                           f'Run: {run_id}\n\n'
                           'Es wurde nichts veröffentlicht und keine neue Trendfreigabe erzeugt. Der bestehende Auftrag bleibt eindeutig erhalten.'
                       )
-                  # EXTERNAL_ACTION_REQUIRED and AUTONOMOUS_RECOVERY_EXHAUSTED already
-                  # have dedicated messages in Delivery Watch. SUCCESS is handled by the
-                  # normal review/publish path. Skipping them here prevents duplicates.
 
           token = f'TAYVORIQ_{uuid.uuid4().hex}'
           with output.open('a', encoding='utf-8') as handle:
               handle.write(f"send={'true' if send else 'false'}\n")
+              handle.write(f'mode={mode}\n')
+              handle.write(f'video_url={video_url}\n')
+              handle.write(f'delivery_nonce={delivery_nonce}\n')
+              handle.write(f'source_run_id={source_run_id}\n')
               handle.write(f'text<<{token}\n{message}\n{token}\n')
-          print({'event': event_name, 'send': send})
+          print({'event': event_name, 'send': send, 'mode': mode, 'source_run_id': source_run_id})
           PY
 
       - name: Send Telegram recovery status
@@ -128,17 +174,33 @@ jobs:
         if: steps.status.outputs.send == 'true'
         env:
           MESSAGE: ${{ steps.status.outputs.text }}
+          MODE: ${{ steps.status.outputs.mode }}
+          VIDEO_URL: ${{ steps.status.outputs.video_url }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
-          response=$(curl -fsS --retry 3 --retry-all-errors -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${MESSAGE}")
-          message_id=$(python - "$response" <<'PY'
+          if [ "$MODE" = "video" ]; then
+            test -n "$VIDEO_URL"
+            curl -fL --retry 3 --retry-all-errors "$VIDEO_URL" -o /tmp/tayvoriq-review.mp4
+            bytes=$(stat -c%s /tmp/tayvoriq-review.mp4)
+            test "$bytes" -ge 1000000 || { echo "TELEGRAM_VIDEO_DOWNLOAD_TOO_SMALL:$bytes"; exit 1; }
+            response=$(curl -fsS --retry 3 --retry-all-errors -X POST \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+              -F "chat_id=${TELEGRAM_CHAT_ID}" \
+              -F "video=@/tmp/tayvoriq-review.mp4" \
+              -F "supports_streaming=true" \
+              -F "caption=${MESSAGE}")
+          else
+            response=$(curl -fsS --retry 3 --retry-all-errors -X POST \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${MESSAGE}")
+          fi
+          parsed=$(MODE="$MODE" python - "$response" <<'PY'
           import json
+          import os
           import sys
           payload = json.loads(sys.argv[1])
           if payload.get('ok') is not True:
@@ -147,16 +209,32 @@ jobs:
           message_id = result.get('message_id')
           if not isinstance(message_id, int):
               raise SystemExit('TELEGRAM_MESSAGE_ID_MISSING')
-          print(message_id)
+          mode = os.environ.get('MODE')
+          video = result.get('video') if isinstance(result.get('video'), dict) else {}
+          if mode == 'video' and not video.get('file_id'):
+              raise SystemExit('TELEGRAM_VIDEO_FILE_ID_MISSING')
+          print(f"{message_id}|{video.get('file_size') or ''}")
           PY
           )
+          message_id=${parsed%%|*}
+          file_size=${parsed#*|}
           echo "message_id=$message_id" >> "$GITHUB_OUTPUT"
-          echo "TELEGRAM_SEND_CONFIRMED message_id=$message_id"
+          echo "media_type=$MODE" >> "$GITHUB_OUTPUT"
+          echo "file_size=$file_size" >> "$GITHUB_OUTPUT"
+          if [ "$MODE" = "video" ]; then
+            echo "TELEGRAM_SENDVIDEO_CONFIRMED message_id=$message_id file_size=$file_size"
+          else
+            echo "TELEGRAM_SEND_CONFIRMED message_id=$message_id"
+          fi
 
       - name: Persist confirmed Telegram receipt
         if: steps.status.outputs.send == 'true' && steps.telegram.outputs.message_id != ''
         env:
           TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+          TELEGRAM_MEDIA_TYPE: ${{ steps.telegram.outputs.media_type }}
+          TELEGRAM_FILE_SIZE: ${{ steps.telegram.outputs.file_size }}
+          DELIVERY_NONCE: ${{ steps.status.outputs.delivery_nonce }}
+          SOURCE_RUN_ID: ${{ steps.status.outputs.source_run_id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -171,10 +249,15 @@ jobs:
           import os
           from datetime import datetime, timezone
           from pathlib import Path
+          media_type = os.environ.get('TELEGRAM_MEDIA_TYPE') or 'text'
           payload = {
-              'schema_version': 'v1',
-              'status': 'TELEGRAM_SEND_CONFIRMED',
+              'schema_version': 'v2',
+              'status': 'TELEGRAM_VIDEO_SEND_CONFIRMED' if media_type == 'video' else 'TELEGRAM_SEND_CONFIRMED',
               'message_id': int(os.environ['TELEGRAM_MESSAGE_ID']),
+              'media_type': media_type,
+              'file_size': int(os.environ['TELEGRAM_FILE_SIZE']) if str(os.environ.get('TELEGRAM_FILE_SIZE') or '').isdigit() else None,
+              'delivery_nonce': os.environ.get('DELIVERY_NONCE') or '',
+              'source_run_id': os.environ.get('SOURCE_RUN_ID') or '',
               'event_name': os.environ.get('GITHUB_EVENT_NAME'),
               'workflow_run_id': int(os.environ.get('GITHUB_RUN_ID') or 0),
               'confirmed_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
@@ -185,7 +268,7 @@ jobs:
           print(payload)
           PY
             git add .github/run-now/tayvoriq-telegram-bridge-receipt.json
-            git commit -m "ops(tayvoriq): record confirmed Telegram status delivery" || exit 0
+            git commit -m "ops(tayvoriq): record confirmed Telegram media delivery" || exit 0
             if git push origin HEAD:main; then exit 0; fi
             sleep $((attempt * 2))
           done
