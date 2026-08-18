@@ -1,0 +1,216 @@
+name: TAYVORIQ Voice Reference Repair
+
+on:
+  push:
+    paths:
+      - '.github/run-now/tayvoriq-voice-reference-repair.json'
+
+permissions:
+  contents: read
+
+env:
+  TAYVORIQ_TTS_PROVIDER: chatterbox_v3
+  TAYVORIQ_CHATTERBOX_REQUIRED: 'true'
+  TAYVORIQ_CHATTERBOX_LANGUAGE: de
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: '0.50'
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: '0.47'
+  TAYVORIQ_NARRATOR_PITCH_FACTOR: '1.0'
+  TAYVORIQ_NARRATOR_TONE_REQUIRED: 'false'
+  TAYVORIQ_NATURAL_VOICE_WPM: '132'
+  TAYVORIQ_ASR_MODEL: small
+  HF_HOME: ${{ github.workspace }}/.cache/huggingface
+  TORCH_HOME: ${{ github.workspace }}/.cache/torch
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Checkout current TAYVORIQ review master
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Restore dependency cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: tayvoriq-voice-ref-pip-v1-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}
+          restore-keys: |
+            tayvoriq-voice-ref-pip-v1-${{ runner.os }}-py311-
+            tayvoriq-pip-v3-${{ runner.os }}-py311-
+
+      - name: Install voice repair dependencies
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          export PIP_DISABLE_PIP_VERSION_CHECK=1
+          python -m pip install -r implementation/requirements.txt pytest -q
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch==2.6.0' 'torchaudio==2.6.0' -q
+          python -m pip install 'git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948' -q
+
+      - name: Restore old accepted TAYVORIQ narrator as immutable reference
+        run: |
+          set -euo pipefail
+          REF_MP4="$RUNNER_TEMP/tayvoriq-human-narrator-v3-reference.mp4"
+          REF_WAV="$RUNNER_TEMP/tayvoriq-human-narrator-v3-reference.wav"
+          curl -fsSL --retry 4 --retry-all-errors \
+            'https://raw.githubusercontent.com/mojo72549-arch/mind-reset-daily/08e2dada47d4e823ae139d1151a07fea1ff5d92c/tayvoriq/voice-samples/30580946038/voice-sample.mp4' \
+            -o "$REF_MP4"
+          ffmpeg -y -v error -i "$REF_MP4" -vn -ac 1 -ar 24000 -c:a pcm_s16le "$REF_WAV"
+          test -s "$REF_WAV"
+          echo "TAYVORIQ_CHATTERBOX_REFERENCE_AUDIO=$REF_WAV" >> "$GITHUB_ENV"
+          echo "Reference narrator locked to accepted 2026-07-30 Human Narrator V3 sample."
+
+      - name: Stage current athletics master for voice-only repair
+        run: |
+          set -euo pipefail
+          SRC='pages-worktree/tayvoriq/runs/32122612482'
+          DST='implementation/out/voice-reference-repair/current'
+          test -s "$SRC/job.json"
+          test -s "$SRC/short_youtube.mp4"
+          test -s "$SRC/short_tiktok.mp4"
+          rm -rf "$DST"
+          mkdir -p "$DST/youtube_shorts" "$DST/tiktok"
+          cp "$SRC/job.json" "$DST/job.json"
+          cp "$SRC/short_youtube.mp4" "$DST/short_youtube.mp4"
+          cp "$SRC/short_tiktok.mp4" "$DST/short_tiktok.mp4"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('implementation/out/voice-reference-repair/current/job.json')
+          job = json.loads(p.read_text(encoding='utf-8'))
+          for platform in ('youtube_shorts', 'tiktok'):
+              variant = (job.get('variants') or {}).get(platform) or {}
+              audio = variant.get('audio') if isinstance(variant.get('audio'), dict) else {}
+              # Human review rejected the previous voice. Force a new referenced full take;
+              # never allow V5 to re-label/reuse the current Anonymous-like mux.
+              audio['continuous_narrator_take'] = False
+              audio['existing_human_narrator_take_reused'] = False
+              audio['human_review_rejection'] = True
+              audio['human_review_reason'] = 'voice_identity_and_pronunciation_not_natural'
+              audio['narrator_pitch_factor'] = 1.0
+              audio['narrator_pitch_shift_applied'] = False
+              audio.pop('deep_voice_gate', None)
+              variant['audio'] = audio
+              variant['video_path'] = 'short_youtube.mp4' if platform == 'youtube_shorts' else 'short_tiktok.mp4'
+              job.setdefault('variants', {})[platform] = variant
+          job['approval_status'] = 'PENDING_HUMAN_REVIEW'
+          job['upload_status'] = 'NOT_STARTED_PENDING_HUMAN_APPROVAL'
+          job['voice_reference_repair'] = {
+              'requested': True,
+              'reference': 'accepted-human-narrator-v3-2026-07-30',
+              'source_run': '32122612482',
+              'visual_master_reused': True,
+              'script_reused': True,
+              'pitch_shift_forbidden': True,
+              'deep_voice_self_heal_forbidden': True,
+              'quality_gates_weakened': False,
+          }
+          p.write_text(json.dumps(job, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Generate referenced narrator and remux only audio
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools src runtime_patches
+          python tools/tayvoriq_voice_only_repair_v5.py --outdir out/voice-reference-repair
+
+      - name: Verify voice identity contract and final publication quality
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          JOB_DIR='out/voice-reference-repair/current'
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('out/voice-reference-repair/current/job.json')
+          job = json.loads(p.read_text(encoding='utf-8'))
+          failures = []
+          reference_seen = False
+          for platform in ('youtube_shorts', 'tiktok'):
+              variant = (job.get('variants') or {}).get(platform) or {}
+              audio = variant.get('audio') if isinstance(variant.get('audio'), dict) else {}
+              if audio.get('continuous_narrator_take') is not True:
+                  failures.append(f'{platform}: continuous narrator take missing')
+              if audio.get('narrator_pitch_shift_applied') is not False:
+                  failures.append(f'{platform}: pitch shift detected')
+              if audio.get('existing_human_narrator_take_reused') is not False:
+                  failures.append(f'{platform}: rejected old mux was reused')
+              def walk(x):
+                  nonlocal_ref = []
+                  if isinstance(x, dict):
+                      for k, v in x.items():
+                          if k == 'reference_audio_used' and v is True:
+                              nonlocal_ref.append(True)
+                          nonlocal_ref.extend(walk(v))
+                  elif isinstance(x, list):
+                      for v in x:
+                          nonlocal_ref.extend(walk(v))
+                  return nonlocal_ref
+              if walk(audio):
+                  reference_seen = True
+              video = Path('out/voice-reference-repair/current') / ('short_youtube.mp4' if platform == 'youtube_shorts' else 'short_tiktok.mp4')
+              if not video.is_file() or video.stat().st_size < 1_000_000:
+                  failures.append(f'{platform}: repaired video missing')
+          if not reference_seen:
+              failures.append('reference_audio_used=true not present in repaired audio metadata')
+          if failures:
+              raise SystemExit('VOICE_REFERENCE_REPAIR_VERIFY_FAILED: ' + '; '.join(failures))
+          print('VOICE_REFERENCE_REPAIR_VERIFY_PASSED')
+          PY
+          python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
+
+      - name: Send corrected video to Telegram
+        continue-on-error: true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo 'Telegram secrets unavailable; artifact delivery remains authoritative.'
+            exit 0
+          fi
+          VIDEO='implementation/out/voice-reference-repair/current/short_youtube.mp4'
+          response=$(curl -fsS --retry 3 --retry-all-errors \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F 'caption=✅ TAYVORIQ · Leichtathletik-EM · Sprecher repariert\nAlter akzeptierter Human-Narrator als Referenz · kein Pitch-Shift · Visual-Master unverändert.' \
+            -F "video=@${VIDEO}" \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo")
+          python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok"), d' "$response"
+
+      - name: Package corrected videos
+        run: |
+          set -euo pipefail
+          mkdir -p deliver
+          cp implementation/out/voice-reference-repair/current/short_youtube.mp4 deliver/TAYVORIQ_EM_Deutschland_21_Medaillen_voice_fixed_youtube.mp4
+          cp implementation/out/voice-reference-repair/current/short_tiktok.mp4 deliver/TAYVORIQ_EM_Deutschland_21_Medaillen_voice_fixed_tiktok.mp4
+          cp implementation/out/voice-reference-repair/current/job.json deliver/job.json
+          cp implementation/out/voice-reference-repair/current/youtube_shorts/audio_report.json deliver/youtube_audio_report.json
+          cp implementation/out/voice-reference-repair/current/tiktok/audio_report.json deliver/tiktok_audio_report.json
+
+      - name: Upload corrected video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-athletics-voice-fixed-${{ github.run_id }}
+          path: deliver/
+          retention-days: 7
+          if-no-files-found: error
