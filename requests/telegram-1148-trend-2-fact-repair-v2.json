@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1148-trend-2-fact-repair-v2",
-  "status": "DISPATCHED",
+  "status": "APPROVED",
   "source": "telegram_trend_approval_semantic_source_repair",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -16,26 +16,26 @@
   "mode": "full",
   "selection_id": "20260817-e-agentv2-world-forc-e3-b48a74",
   "source_context": {
-    "verified_at": "2026-08-18T05:41:00Z",
+    "verified_at": "2026-08-18T06:40:00Z",
     "independent_news_count": 2,
     "sources": [
       {
         "publisher": "Reuters",
         "url": "https://www.reuters.com/sports/britains-hunt-asher-smith-set-medal-records-european-championships-2026-08-16/",
-        "supports": "Deutschland beendete die Leichtathletik-Europameisterschaften auf Rang drei der Medaillenwertung mit 21 Medaillen, darunter sechs Goldmedaillen."
+        "supports": "Die Schlussbilanz ordnet Großbritannien mit 19 Medaillen und neun Gold hinter Italien mit 22 Medaillen und zehn Gold ein; Deutschland beendete die EM mit 21 Medaillen, darunter sechs Gold, auf Rang drei."
       },
       {
         "publisher": "The Guardian",
         "url": "https://www.theguardian.com/sport/live/2026/aug/16/birmingham-2026-european-athletics-championships-day-seven-live",
-        "supports": "Die Endabrechnung weist Deutschland mit sechs Gold-, zehn Silber- und fünf Bronzemedaillen aus: 21 Medaillen insgesamt und Rang drei."
+        "supports": "Die finale Medaillentabelle zeigt Italien auf Rang eins mit 10 Gold und 22 Medaillen, Großbritannien auf Rang zwei mit 9 Gold und 19 Medaillen und Deutschland auf Rang drei mit 6 Gold und 21 Medaillen."
       }
     ],
     "fallback_editorial_answers": {
       "what_happened": "Deutschland beendet die Leichtathletik-EM in Birmingham mit 21 Medaillen: sechs Gold, zehn Silber und fünf Bronze – Rang drei in Europa.",
-      "why_happening": "Deutschland kam auf Rang drei, weil das Team sechs Gold-, zehn Silber- und fünf Bronzemedaillen gewann; zusammen sind das 21 Medaillen.",
+      "why_happening": "Deutschland gewann insgesamt sogar mehr Medaillen als Großbritannien, landete aber trotzdem hinter den Briten: Für die Platzierung in der finalen Medaillentabelle waren die Goldmedaillen entscheidend – Italien hatte zehn, Großbritannien neun und Deutschland sechs.",
       "who_is_affected": "Das deutsche Leichtathletik-Team und seine Fans – besonders die Athletinnen und Athleten, die zu den 21 Medaillen beigetragen haben.",
-      "personal_impact": "Für deutsche Sportfans zeigt die Bilanz die Einordnung direkt: Nur Italien und Großbritannien lagen in der Medaillenwertung vor Deutschland.",
-      "action_now": "Im Short werden ausschließlich die bestätigte Medaillenbilanz und belegte deutsche EM-Höhepunkte gezeigt; unbestätigte Ursachen oder Trainingsbehauptungen bleiben ausgeschlossen."
+      "personal_impact": "Für Zuschauer erklärt das den scheinbaren Widerspruch: 21 deutsche Medaillen sind mehr als die 19 britischen, trotzdem steht Deutschland nur auf Rang drei. Wer nur die Gesamtzahl betrachtet, würde die EM-Bilanz falsch einordnen.",
+      "action_now": "Der Short erklärt genau diesen überraschenden Unterschied zwischen Gesamtmedaillen und Platzierung anhand der finalen Medaillentabelle; unbestätigte Ursachen oder Trainingsbehauptungen bleiben ausgeschlossen."
     },
     "fact_repair": {
       "original_request_id": "telegram-1148-trend-2",
@@ -43,11 +43,11 @@
       "repair_reason": "SEMANTIC_SOURCE_CONTEXT_REPAIR",
       "original_claim": "Deutschland vier Gold",
       "corrected_claim": "Deutschland 21 Medaillen, sechs Gold, zehn Silber, fünf Bronze, Rang drei",
-      "semantic_repair": "Explizite source-bound Warum- und Relevanzformulierung ohne neue Tatsachenbehauptung",
+      "semantic_repair": "Source-bound Erklärung des scheinbaren Widerspruchs 21 Gesamtmedaillen vs. Rang drei anhand der finalen Medaillentabelle; keine unbelegte Leistungsursache.",
       "same_editorial_event": true
     }
   },
-  "source_context_sha256": "b200a9a271aa759f252d77c0c83a3f366b843af63c118acd80ad057596d9473d",
+  "source_context_sha256": "a4022d849b5bedae5c42d94ef706bc2521f98616c795d8a9665ac9f121e7efcb",
   "state_history": [
     {
       "state": "APPROVED",
@@ -78,13 +78,25 @@
       "state": "DISPATCHED",
       "at": "2026-08-18T05:48:19.803760+00:00",
       "actor": "request-dispatcher:32104289518"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T06:40:00Z",
+      "actor": "autonomous_source_editorial_repair",
+      "meta": {
+        "retry_of_run_id": 32104299040,
+        "reason": "source-bound-medal-table-explanation-repair"
+      }
     }
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
-  "replacement_reason": "SEMANTIC_SOURCE_CONTEXT_REPAIR_SAME_EDITORIAL_EVENT",
-  "contract_sha256": "d23bbc8cf2f3697d941a6bf26d76a030b88361e94a1f2a1e5e701df645f9daef",
-  "dispatch_claim_run_id": 32104289518,
-  "dispatch_contract_sha256": "d23bbc8cf2f3697d941a6bf26d76a030b88361e94a1f2a1e5e701df645f9daef",
-  "golden_path_run_id": 32104299040
+  "replacement_reason": "SOURCE_BOUND_EDITORIAL_REPAIR_SAME_APPROVED_EVENT",
+  "recovery_generation": 1,
+  "retry_of_run_id": 32104299040,
+  "previous_golden_path_run_ids": [
+    32104080203,
+    32104299040
+  ],
+  "contract_sha256": "d11445505b55ef8ec3809c73344e8a4724068303c9f9a28344934270e86ffa07"
 }
