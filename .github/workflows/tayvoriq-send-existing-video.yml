@@ -1,0 +1,81 @@
+name: TAYVORIQ Send Existing Review Video
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-now/tayvoriq-send-existing-video.json
+
+permissions:
+  contents: read
+
+jobs:
+  send-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Resolve verified delivery request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path('.github/run-now/tayvoriq-send-existing-video.json')
+          d = json.loads(p.read_text(encoding='utf-8'))
+          required = ('topic','source_run_id','video_url','expected_min_bytes')
+          if any(not d.get(k) for k in required):
+              raise SystemExit('DELIVERY_REQUEST_INVALID')
+          if str(d['source_run_id']) != '32122612482':
+              raise SystemExit('DELIVERY_SOURCE_RUN_MISMATCH')
+          if 'short_tiktok.mp4' not in str(d['video_url']):
+              raise SystemExit('DELIVERY_VIDEO_URL_MISMATCH')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as h:
+              h.write(f"TOPIC={str(d['topic']).replace(chr(10),' ').replace(chr(13),' ')}\n")
+              h.write(f"VIDEO_URL={d['video_url']}\n")
+              h.write(f"EXPECTED_MIN_BYTES={int(d['expected_min_bytes'])}\n")
+          print(json.dumps({'delivery_request':'verified','source_run_id':d['source_run_id'],'topic':d['topic']}, ensure_ascii=False))
+          PY
+
+      - name: Download already-publishable MP4
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 "$VIDEO_URL" -o /tmp/tayvoriq-em-athletics.mp4
+          actual=$(stat -c%s /tmp/tayvoriq-em-athletics.mp4)
+          echo "downloaded_bytes=$actual"
+          test "$actual" -ge "$EXPECTED_MIN_BYTES" || { echo "VIDEO_SIZE_GUARD_FAILED"; exit 1; }
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=nw=1 /tmp/tayvoriq-em-athletics.mp4
+
+      - name: Send actual MP4 to Telegram
+        shell: bash
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          response=$(curl -sS --fail-with-body \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "video=@/tmp/tayvoriq-em-athletics.mp4" \
+            -F "supports_streaming=true" \
+            -F "caption=🎬 TAYVORIQ · EM-Leichtathletik\nDeutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa.\n\nRun 32122612482 · Quality + Publishability bestanden.")
+          RESPONSE="$response" python - <<'PY'
+          import json, os
+          d = json.loads(os.environ['RESPONSE'])
+          if d.get('ok') is not True:
+              raise SystemExit('TELEGRAM_SENDVIDEO_REJECTED: ' + str(d.get('description') or d))
+          result = d.get('result') or {}
+          video = result.get('video') or {}
+          message_id = result.get('message_id')
+          file_size = video.get('file_size')
+          if not message_id:
+              raise SystemExit('TELEGRAM_SENDVIDEO_NO_MESSAGE_ID')
+          print(json.dumps({'TELEGRAM_SENDVIDEO_CONFIRMED': True, 'message_id': message_id, 'file_size': file_size, 'file_id_present': bool(video.get('file_id'))}, ensure_ascii=False))
+          PY
