@@ -92,6 +92,50 @@ class GlobalDuplicateGateTests(unittest.TestCase):
         self.assertEqual(report["history_candidates_checked"], 0)
         self.assertTrue(report["retry_of_same_request_allowed"])
 
+    def test_explicit_repair_lineage_is_allowed_without_weakening_duplicate_thresholds(self) -> None:
+        context = {
+            "fallback_editorial_answers": {
+                key: f"Belegte Antwort {key}" for key in duplicate_gate.ANSWER_KEYS
+            },
+            "sources": [
+                {"url": "https://example.com/source-a"},
+                {"url": "https://example.org/source-b"},
+            ],
+        }
+        original = request("request-original", "Deutschland holt 21 EM-Medaillen", context)
+        repair_v1 = request("request-repair-v1", "Deutschland holt 21 EM-Medaillen", context)
+        repair_v1["repair_of_request_id"] = "request-original"
+        repair_v2 = request("request-repair-v2", "Deutschland holt 21 EM-Medaillen", context)
+        repair_v2["repair_of_request_id"] = "request-repair-v1"
+        repair_v2["source_context"] = json.loads(json.dumps(context))
+        repair_v2["source_context"]["fact_repair"] = {
+            "original_request_id": "request-original",
+            "previous_repair_request_id": "request-repair-v1",
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            for name, payload in (
+                ("original.json", original),
+                ("repair-v1.json", repair_v1),
+                ("repair-v2.json", repair_v2),
+            ):
+                (directory / name).write_text(json.dumps(payload), encoding="utf-8")
+            report = duplicate_gate.run_gate(
+                requests_dir=directory,
+                source_request_id="request-repair-v2",
+                topic=repair_v2["topic"],
+                source_context=repair_v2["source_context"],
+            )
+
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(report["history_candidates_checked"], 0)
+        self.assertEqual(
+            set(report["repair_family_exemptions"]),
+            {"request-original", "request-repair-v1"},
+        )
+        self.assertEqual(report["thresholds"]["content_cosine"], 0.82)
+
     def test_inactive_draft_does_not_block_production(self) -> None:
         context = {"fallback_editorial_answers": {key: f"Antwort {key}" for key in duplicate_gate.ANSWER_KEYS}}
         with tempfile.TemporaryDirectory() as tmp:
