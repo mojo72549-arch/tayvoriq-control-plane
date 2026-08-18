@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1148-trend-2-fact-repair-v2",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "telegram_trend_approval_semantic_source_repair",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -49,28 +49,121 @@
   },
   "source_context_sha256": "804ab60fa42e883d2f4cfd93a65f0f401b59bac4b8b5fffd9da07dba9df73b52",
   "state_history": [
-    {"state":"APPROVED","at":"2026-08-18T05:41:00Z","actor":"autonomous_semantic_source_repair"},
-    {"state":"DISPATCHING","at":"2026-08-18T05:44:53.144095+00:00","actor":"request-dispatcher:32104055012"},
-    {"state":"DISPATCHED","at":"2026-08-18T05:45:03.284909+00:00","actor":"request-dispatcher:32104055012"},
-    {"state":"APPROVED","at":"2026-08-18T05:52:00Z","actor":"autonomous_duplicate_lineage_repair"},
-    {"state":"DISPATCHING","at":"2026-08-18T05:48:10.834270+00:00","actor":"request-dispatcher:32104289518"},
-    {"state":"DISPATCHED","at":"2026-08-18T05:48:19.803760+00:00","actor":"request-dispatcher:32104289518"},
-    {"state":"APPROVED","at":"2026-08-18T06:40:00Z","actor":"autonomous_source_editorial_repair","meta":{"retry_of_run_id":32104299040,"reason":"source-bound-medal-table-explanation-repair"}},
-    {"state":"DISPATCHING","at":"2026-08-18T06:45:31.059795+00:00","actor":"request-dispatcher:32108289280"},
-    {"state":"DISPATCHED","at":"2026-08-18T06:45:41.663067+00:00","actor":"request-dispatcher:32108289280"},
-    {"state":"APPROVED","at":"2026-08-18T09:14:00Z","actor":"stable_core_contract_adapter","meta":{"retry_of_run_id":32108304357,"reason":"compact-source-bound-editorial-input-for-stable-production-core"}},
-    {"state":"DISPATCHING","at":"2026-08-18T09:21:28.018376+00:00","actor":"request-dispatcher:32121154555"},
-    {"state":"DISPATCHED","at":"2026-08-18T09:21:38.411088+00:00","actor":"request-dispatcher:32121154555"},
-    {"state":"APPROVED","at":"2026-08-18T09:30:00Z","actor":"stable_core_causal_adapter","meta":{"retry_of_run_id":32121171507,"reason":"align-v34-causal-marker-with-verified-stable-core-packet"}},
-    {"state":"DISPATCHING","at":"2026-08-18T09:29:59.789442+00:00","actor":"request-dispatcher:32121903524"},
-    {"state":"DISPATCHED","at":"2026-08-18T09:30:09.514664+00:00","actor":"request-dispatcher:32121903524"},
-    {"state":"APPROVED","at":"2026-08-18T09:35:00Z","actor":"stable_core_word_budget_adapter","meta":{"retry_of_run_id":32121917817,"reason":"legacy-editorial-body-max-49"}}
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T05:41:00Z",
+      "actor": "autonomous_semantic_source_repair"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-18T05:44:53.144095+00:00",
+      "actor": "request-dispatcher:32104055012"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-18T05:45:03.284909+00:00",
+      "actor": "request-dispatcher:32104055012"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T05:52:00Z",
+      "actor": "autonomous_duplicate_lineage_repair"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-18T05:48:10.834270+00:00",
+      "actor": "request-dispatcher:32104289518"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-18T05:48:19.803760+00:00",
+      "actor": "request-dispatcher:32104289518"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T06:40:00Z",
+      "actor": "autonomous_source_editorial_repair",
+      "meta": {
+        "retry_of_run_id": 32104299040,
+        "reason": "source-bound-medal-table-explanation-repair"
+      }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-18T06:45:31.059795+00:00",
+      "actor": "request-dispatcher:32108289280"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-18T06:45:41.663067+00:00",
+      "actor": "request-dispatcher:32108289280"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T09:14:00Z",
+      "actor": "stable_core_contract_adapter",
+      "meta": {
+        "retry_of_run_id": 32108304357,
+        "reason": "compact-source-bound-editorial-input-for-stable-production-core"
+      }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-18T09:21:28.018376+00:00",
+      "actor": "request-dispatcher:32121154555"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-18T09:21:38.411088+00:00",
+      "actor": "request-dispatcher:32121154555"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T09:30:00Z",
+      "actor": "stable_core_causal_adapter",
+      "meta": {
+        "retry_of_run_id": 32121171507,
+        "reason": "align-v34-causal-marker-with-verified-stable-core-packet"
+      }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-18T09:29:59.789442+00:00",
+      "actor": "request-dispatcher:32121903524"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-18T09:30:09.514664+00:00",
+      "actor": "request-dispatcher:32121903524"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-18T09:35:00Z",
+      "actor": "stable_core_word_budget_adapter",
+      "meta": {
+        "retry_of_run_id": 32121917817,
+        "reason": "legacy-editorial-body-max-49"
+      }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-18T09:37:53.262101+00:00",
+      "actor": "request-dispatcher:32122595714"
+    }
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
   "replacement_reason": "STABLE_CORE_WORD_BUDGET_ADAPTER_SAME_APPROVED_EVENT",
   "recovery_generation": 4,
   "retry_of_run_id": 32121917817,
-  "previous_golden_path_run_ids": [32104080203,32104299040,32108304357,32121171507,32121917817],
-  "contract_sha256": "48242d8f799e7198b4de909658586b09f1c2fb7661a847e241b27297a5c5a8c2"
+  "previous_golden_path_run_ids": [
+    32104080203,
+    32104299040,
+    32108304357,
+    32121171507,
+    32121917817
+  ],
+  "contract_sha256": "48242d8f799e7198b4de909658586b09f1c2fb7661a847e241b27297a5c5a8c2",
+  "dispatch_claim_run_id": 32122595714,
+  "dispatch_contract_sha256": "48242d8f799e7198b4de909658586b09f1c2fb7661a847e241b27297a5c5a8c2"
 }
