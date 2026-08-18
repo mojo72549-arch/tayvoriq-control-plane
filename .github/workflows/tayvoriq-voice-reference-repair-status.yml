@@ -1,0 +1,55 @@
+name: TAYVORIQ Voice Reference Repair Status
+
+on:
+  workflow_run:
+    workflows: ['TAYVORIQ Voice Reference Repair']
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout review repository
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          fetch-depth: 1
+
+      - name: Record repair completion
+        env:
+          REPAIR_RUN_ID: ${{ github.event.workflow_run.id }}
+          REPAIR_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          REPAIR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          REPAIR_URL: ${{ github.event.workflow_run.html_url }}
+          REPAIR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p tayvoriq/voice-repairs/32122612482
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload = {
+              'source_run_id': '32122612482',
+              'topic': 'Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa',
+              'repair_run_id': os.environ['REPAIR_RUN_ID'],
+              'repair_run_number': os.environ['REPAIR_RUN_NUMBER'],
+              'conclusion': os.environ['REPAIR_CONCLUSION'],
+              'workflow_url': os.environ['REPAIR_URL'],
+              'head_sha': os.environ['REPAIR_HEAD_SHA'],
+              'repair': 'voice_only_old_accepted_reference',
+          }
+          Path('tayvoriq/voice-repairs/32122612482/status.json').write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tayvoriq/voice-repairs/32122612482/status.json
+          git commit -m "Record TAYVORIQ narrator repair ${REPAIR_RUN_ID}"
+          git pull --rebase origin main
+          git push origin main
