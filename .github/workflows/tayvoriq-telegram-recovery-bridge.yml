@@ -13,7 +13,7 @@ on:
       - .github/run-now/tayvoriq-telegram-status-probe.json
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: tayvoriq-telegram-recovery-bridge
@@ -124,6 +124,7 @@ jobs:
           PY
 
       - name: Send Telegram recovery status
+        id: telegram
         if: steps.status.outputs.send == 'true'
         env:
           MESSAGE: ${{ steps.status.outputs.text }}
@@ -136,15 +137,59 @@ jobs:
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${MESSAGE}")
-          python - "$response" <<'PY'
+          message_id=$(python - "$response" <<'PY'
           import json
           import sys
           payload = json.loads(sys.argv[1])
           if payload.get('ok') is not True:
               raise SystemExit('TELEGRAM_SEND_NOT_CONFIRMED')
           result = payload.get('result') or {}
-          print(f"TELEGRAM_SEND_CONFIRMED message_id={result.get('message_id')}")
+          message_id = result.get('message_id')
+          if not isinstance(message_id, int):
+              raise SystemExit('TELEGRAM_MESSAGE_ID_MISSING')
+          print(message_id)
           PY
+          )
+          echo "message_id=$message_id" >> "$GITHUB_OUTPUT"
+          echo "TELEGRAM_SEND_CONFIRMED message_id=$message_id"
+
+      - name: Persist confirmed Telegram receipt
+        if: steps.status.outputs.send == 'true' && steps.telegram.outputs.message_id != ''
+        env:
+          TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p .github/run-now
+            python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          payload = {
+              'schema_version': 'v1',
+              'status': 'TELEGRAM_SEND_CONFIRMED',
+              'message_id': int(os.environ['TELEGRAM_MESSAGE_ID']),
+              'event_name': os.environ.get('GITHUB_EVENT_NAME'),
+              'workflow_run_id': int(os.environ.get('GITHUB_RUN_ID') or 0),
+              'confirmed_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+          }
+          Path('.github/run-now/tayvoriq-telegram-bridge-receipt.json').write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+          print(payload)
+          PY
+            git add .github/run-now/tayvoriq-telegram-bridge-receipt.json
+            git commit -m "ops(tayvoriq): record confirmed Telegram status delivery" || exit 0
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
 
       - name: Record intentional no-op
         if: steps.status.outputs.send != 'true'
