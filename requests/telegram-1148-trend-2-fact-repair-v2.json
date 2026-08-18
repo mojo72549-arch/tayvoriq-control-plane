@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1148-trend-2-fact-repair-v2",
-  "status": "DISPATCHED",
+  "status": "APPROVED",
   "source": "telegram_trend_approval_semantic_source_repair",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -10,7 +10,7 @@
   "target_duration": 35,
   "approval_required_before_youtube_publish": true,
   "tiktok_delivery": "telegram_manual",
-  "approved_at": "2026-08-18T09:14:00Z",
+  "approved_at": "2026-08-18T09:30:00Z",
   "telegram_message_id": 1148,
   "approval_key": "telegram:20260817-e-agentv2-world-forc-e3-b48a74:1148:trend:2:fact-repair-v2",
   "mode": "full",
@@ -32,7 +32,7 @@
     ],
     "fallback_editorial_answers": {
       "what_happened": "Deutschland beendet die EM mit 21 Medaillen, sechs Gold und Rang drei.",
-      "why_happening": "Grund für Rang drei: Großbritannien hatte neun Gold, Deutschland sechs.",
+      "why_happening": "Weil Großbritannien neun Gold hatte und Deutschland sechs, steht Deutschland auf Rang drei.",
       "who_is_affected": "Betroffen sind Deutschlands Leichtathleten und ihre Fans.",
       "personal_impact": "Für dich erklärt das den Widerspruch zwischen Medaillen und Rang.",
       "action_now": "Prüfe bei Medaillentabellen zuerst Gold, dann die Gesamtzahl."
@@ -47,89 +47,27 @@
       "same_editorial_event": true
     }
   },
-  "source_context_sha256": "3f79e09625ac6ceada0a2d8543183ef5dd907d447f623dac453e9bcd25d1b4c1",
+  "source_context_sha256": "85ad8fd67683e32dbeab1a294fb33ee91e53d804ae5b0f25ae049eee34ce116f",
   "state_history": [
-    {
-      "state": "APPROVED",
-      "at": "2026-08-18T05:41:00Z",
-      "actor": "autonomous_semantic_source_repair"
-    },
-    {
-      "state": "DISPATCHING",
-      "at": "2026-08-18T05:44:53.144095+00:00",
-      "actor": "request-dispatcher:32104055012"
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-18T05:45:03.284909+00:00",
-      "actor": "request-dispatcher:32104055012"
-    },
-    {
-      "state": "APPROVED",
-      "at": "2026-08-18T05:52:00Z",
-      "actor": "autonomous_duplicate_lineage_repair"
-    },
-    {
-      "state": "DISPATCHING",
-      "at": "2026-08-18T05:48:10.834270+00:00",
-      "actor": "request-dispatcher:32104289518"
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-18T05:48:19.803760+00:00",
-      "actor": "request-dispatcher:32104289518"
-    },
-    {
-      "state": "APPROVED",
-      "at": "2026-08-18T06:40:00Z",
-      "actor": "autonomous_source_editorial_repair",
-      "meta": {
-        "retry_of_run_id": 32104299040,
-        "reason": "source-bound-medal-table-explanation-repair"
-      }
-    },
-    {
-      "state": "DISPATCHING",
-      "at": "2026-08-18T06:45:31.059795+00:00",
-      "actor": "request-dispatcher:32108289280"
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-18T06:45:41.663067+00:00",
-      "actor": "request-dispatcher:32108289280"
-    },
-    {
-      "state": "APPROVED",
-      "at": "2026-08-18T09:14:00Z",
-      "actor": "stable_core_contract_adapter",
-      "meta": {
-        "retry_of_run_id": 32108304357,
-        "reason": "compact-source-bound-editorial-input-for-stable-production-core"
-      }
-    },
-    {
-      "state": "DISPATCHING",
-      "at": "2026-08-18T09:21:28.018376+00:00",
-      "actor": "request-dispatcher:32121154555"
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-18T09:21:38.411088+00:00",
-      "actor": "request-dispatcher:32121154555"
-    }
+    {"state":"APPROVED","at":"2026-08-18T05:41:00Z","actor":"autonomous_semantic_source_repair"},
+    {"state":"DISPATCHING","at":"2026-08-18T05:44:53.144095+00:00","actor":"request-dispatcher:32104055012"},
+    {"state":"DISPATCHED","at":"2026-08-18T05:45:03.284909+00:00","actor":"request-dispatcher:32104055012"},
+    {"state":"APPROVED","at":"2026-08-18T05:52:00Z","actor":"autonomous_duplicate_lineage_repair"},
+    {"state":"DISPATCHING","at":"2026-08-18T05:48:10.834270+00:00","actor":"request-dispatcher:32104289518"},
+    {"state":"DISPATCHED","at":"2026-08-18T05:48:19.803760+00:00","actor":"request-dispatcher:32104289518"},
+    {"state":"APPROVED","at":"2026-08-18T06:40:00Z","actor":"autonomous_source_editorial_repair","meta":{"retry_of_run_id":32104299040,"reason":"source-bound-medal-table-explanation-repair"}},
+    {"state":"DISPATCHING","at":"2026-08-18T06:45:31.059795+00:00","actor":"request-dispatcher:32108289280"},
+    {"state":"DISPATCHED","at":"2026-08-18T06:45:41.663067+00:00","actor":"request-dispatcher:32108289280"},
+    {"state":"APPROVED","at":"2026-08-18T09:14:00Z","actor":"stable_core_contract_adapter","meta":{"retry_of_run_id":32108304357,"reason":"compact-source-bound-editorial-input-for-stable-production-core"}},
+    {"state":"DISPATCHING","at":"2026-08-18T09:21:28.018376+00:00","actor":"request-dispatcher:32121154555"},
+    {"state":"DISPATCHED","at":"2026-08-18T09:21:38.411088+00:00","actor":"request-dispatcher:32121154555"},
+    {"state":"APPROVED","at":"2026-08-18T09:30:00Z","actor":"stable_core_causal_adapter","meta":{"retry_of_run_id":32121171507,"reason":"align-v34-causal-marker-with-verified-stable-core-packet"}}
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
-  "replacement_reason": "STABLE_CORE_INPUT_ADAPTER_SAME_APPROVED_EVENT",
-  "recovery_generation": 2,
-  "retry_of_run_id": 32108304357,
-  "previous_golden_path_run_ids": [
-    32104080203,
-    32104299040,
-    32108304357
-  ],
-  "contract_sha256": "d8698461c3be76e99614c29d4231859c4318bc49e775746c8887e06bc37e326b",
-  "dispatch_claim_run_id": 32121154555,
-  "dispatch_contract_sha256": "d8698461c3be76e99614c29d4231859c4318bc49e775746c8887e06bc37e326b",
-  "golden_path_run_id": 32121171507
+  "replacement_reason": "STABLE_CORE_CAUSAL_ADAPTER_SAME_APPROVED_EVENT",
+  "recovery_generation": 3,
+  "retry_of_run_id": 32121171507,
+  "previous_golden_path_run_ids": [32104080203,32104299040,32108304357,32121171507],
+  "contract_sha256": "54030d73944cf6be3accbd2faaadb38164a9d068becf238c0d616f8fa02d013b"
 }
