@@ -1,0 +1,125 @@
+name: TAYVORIQ Voice Only Fix
+
+on:
+  push:
+    paths:
+      - '.github/run-now/tayvoriq-voice-only-fix.json'
+
+permissions:
+  contents: read
+
+jobs:
+  voice_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TAYVORIQ_TTS_PROVIDER: chatterbox_v3
+      TAYVORIQ_CHATTERBOX_REQUIRED: 'true'
+      TAYVORIQ_CHATTERBOX_LANGUAGE: de
+      TAYVORIQ_CHATTERBOX_EXAGGERATION: '0.50'
+      TAYVORIQ_CHATTERBOX_CFG_WEIGHT: '0.47'
+      TAYVORIQ_NARRATOR_PITCH_FACTOR: '1.0'
+      TAYVORIQ_NARRATOR_TONE_REQUIRED: 'false'
+      TAYVORIQ_NATURAL_VOICE_WPM: '132'
+      TAYVORIQ_ASR_MODEL: small
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+      TORCH_HOME: ${{ github.workspace }}/.cache/torch
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages
+          fetch-depth: 1
+
+      - name: Install voice dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install -r implementation/requirements.txt pytest -q
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch==2.6.0' 'torchaudio==2.6.0' -q
+          python -m pip install 'git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948' -q
+
+      - name: Prepare old accepted narrator and existing video only
+        run: |
+          set -euo pipefail
+          REF_COMMIT='08e2dada47d4e823ae139d1151a07fea1ff5d92c'
+          REF_PATH='tayvoriq/voice-samples/30580946038/voice-sample.mp4'
+          git -C pages fetch --depth=1 origin "$REF_COMMIT"
+          git -C pages show "${REF_COMMIT}:${REF_PATH}" > "$RUNNER_TEMP/ref.mp4"
+          ffmpeg -y -v error -i "$RUNNER_TEMP/ref.mp4" -vn -ac 1 -ar 24000 -c:a pcm_s16le "$RUNNER_TEMP/ref.wav"
+          echo "TAYVORIQ_CHATTERBOX_REFERENCE_AUDIO=$RUNNER_TEMP/ref.wav" >> "$GITHUB_ENV"
+
+          SRC='pages/tayvoriq/runs/32122612482'
+          DST='implementation/out/voice-only/current'
+          rm -rf "$DST"
+          mkdir -p "$DST/youtube_shorts" "$DST/tiktok"
+          cp "$SRC/job.json" "$DST/job.json"
+          cp "$SRC/short_youtube.mp4" "$DST/short_youtube.mp4"
+          cp "$SRC/short_tiktok.mp4" "$DST/short_tiktok.mp4"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('implementation/out/voice-only/current/job.json')
+          job=json.loads(p.read_text(encoding='utf-8'))
+          for platform,video in [('youtube_shorts','short_youtube.mp4'),('tiktok','short_tiktok.mp4')]:
+              variant=(job.get('variants') or {}).get(platform) or {}
+              audio=variant.get('audio') if isinstance(variant.get('audio'),dict) else {}
+              audio['continuous_narrator_take']=False
+              audio['existing_human_narrator_take_reused']=False
+              audio['human_review_rejection']=True
+              audio['human_review_reason']='voice_only_change_requested'
+              audio['narrator_pitch_factor']=1.0
+              audio['narrator_pitch_shift_applied']=False
+              audio.pop('deep_voice_gate',None)
+              variant['audio']=audio
+              variant['video_path']=video
+              job.setdefault('variants',{})[platform]=variant
+          job['approval_status']='PENDING_HUMAN_REVIEW'
+          job['upload_status']='NOT_STARTED_PENDING_HUMAN_APPROVAL'
+          p.write_text(json.dumps(job,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+
+      - name: Replace only the voice track
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_voice_only_repair_v5.py --outdir out/voice-only
+          python tools/tayvoriq_publication_quality_gate_v2.py --job-dir out/voice-only/current --targets youtube_tiktok
+
+      - name: Deliver corrected video
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          VIDEO='implementation/out/voice-only/current/short_youtube.mp4'
+          if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+            curl -fsS --retry 3 --retry-all-errors \
+              -F "chat_id=${TELEGRAM_CHAT_ID}" \
+              -F 'caption=✅ TAYVORIQ · nur Sprecher angepasst · Video/Schnitt unverändert' \
+              -F "video=@${VIDEO}" \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo" >/dev/null
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-voice-only-fixed-${{ github.run_id }}
+          path: |
+            implementation/out/voice-only/current/short_youtube.mp4
+            implementation/out/voice-only/current/short_tiktok.mp4
+            implementation/out/voice-only/current/job.json
+          retention-days: 7
+          if-no-files-found: error
