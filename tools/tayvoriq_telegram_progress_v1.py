@@ -98,9 +98,11 @@ MILESTONES = {
 }
 
 
+# Facts are immutable and need not be repeated on a same-run retry. Later milestones
+# must stay eligible: if an earlier attempt never reached 45 %, a successful recovery
+# has to emit the first real 45 % update instead of staying silent.
 REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
-    "production_active",
     "render_heartbeat",
     "checkpoint_heartbeat",
 }
