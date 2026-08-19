@@ -1,0 +1,78 @@
+{
+  "request_id": "telegram-1148-trend-2-human-story-v1",
+  "status": "DISPATCHED",
+  "source": "human_story_repair_after_operator_rejection",
+  "trend_id": "2",
+  "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
+  "trend_scope": "sports",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-19T04:45:00+02:00",
+  "telegram_message_id": 1148,
+  "approval_key": "telegram:20260817-e-agentv2-world-forc-e3-b48a74:1148:trend:2:human-story-v1",
+  "mode": "full",
+  "selection_id": "20260817-e-agentv2-world-forc-e3-b48a74",
+  "source_context": {
+    "verified_at": "2026-08-19T04:45:00+02:00",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/sports/britains-hunt-asher-smith-set-medal-records-european-championships-2026-08-16/",
+        "supports": "Deutschland beendete die Leichtathletik-Europameisterschaften auf Rang drei der Medaillenwertung mit 21 Medaillen, darunter sechs Goldmedaillen."
+      },
+      {
+        "publisher": "The Guardian",
+        "url": "https://www.theguardian.com/sport/live/2026/aug/16/birmingham-2026-european-athletics-championships-day-seven-live",
+        "supports": "Die Endabrechnung weist Deutschland mit sechs Gold-, zehn Silber- und fünf Bronzemedaillen aus: 21 Medaillen insgesamt und Rang drei."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "21 Medaillen – und Deutschland wird trotzdem nur Dritter? Genau das ist bei dieser EM passiert.",
+      "why_happening": "Der Grund: Im Medaillenspiegel zählt zuerst Gold – und erst danach Silber und Bronze.",
+      "who_is_affected": "Deutschland holte sechs Gold, zehn Silber und fünf Bronze: 21 Podestplätze insgesamt.",
+      "personal_impact": "Italien und Großbritannien hatten mehr Gold und lagen deshalb vor Deutschland.",
+      "action_now": "Heißt: Rang drei im Medaillenspiegel – aber eine richtig breite deutsche EM-Bilanz."
+    },
+    "fact_repair": {
+      "original_request_id": "telegram-1148-trend-2",
+      "previous_repair_request_id": "telegram-1148-trend-2-fact-repair-v1",
+      "repair_reason": "HUMAN_STORY_REWRITE_AFTER_OPERATOR_REJECTION",
+      "original_claim": "Deutschland vier Gold",
+      "corrected_claim": "Deutschland 21 Medaillen, sechs Gold, zehn Silber, fünf Bronze, Rang drei",
+      "same_editorial_event": true,
+      "facts_unchanged": true,
+      "storytelling_only": true
+    },
+    "human_story_contract": {
+      "version": "v1",
+      "goal": "viewer_retention",
+      "hook_under_seconds": 1.5,
+      "open_loop_required": true,
+      "robotic_filler_forbidden": true,
+      "forced_personal_impact_language_forbidden": true,
+      "natural_conversational_german_required": true,
+      "youtube_cta_action": "subscribe",
+      "tiktok_cta_action": "follow"
+    }
+  },
+  "source_context_sha256": "7d3ccd033f31a1a9f404c5570b9897b4f4319789c7f7dfb5a5ba8d21f0c5156f",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-19T04:45:00+02:00",
+      "actor": "operator-human-story-repair"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-19T04:45:00+02:00",
+      "actor": "operator-human-story-repair"
+    }
+  ],
+  "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
+  "retry_allowed": true,
+  "replacement_reason": "HUMAN_STORY_REWRITE_SAME_EDITORIAL_EVENT"
+}
