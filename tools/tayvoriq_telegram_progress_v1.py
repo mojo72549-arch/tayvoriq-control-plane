@@ -39,7 +39,7 @@ MILESTONES = {
         45,
         "Produktion läuft",
         "Preflight und Produktionsvertrag sind bestanden.",
-        "Skript, tiefe Sprecherstimme, Visuals, Untertitel und 9:16-Render werden erstellt und geprüft.",
+        "Menschliches Skript, natürliche tiefe Sprecherstimme, Visuals, Untertitel und 9:16-Render werden erstellt und geprüft.",
     ),
     "master_ready": Milestone(
         75,
@@ -75,7 +75,7 @@ MILESTONES = {
         None,
         "Audio-Gate hat sicher gestoppt",
         "Fakten, Thema und Dublettenprüfung bleiben gültig; es wurde nichts veröffentlicht.",
-        "Nur der Pfad für die tiefe Sprecherstimme wird rückgekoppelt repariert und erneut geprüft.",
+        "Nur der Pfad für die natürliche tiefe Sprecherstimme wird rückgekoppelt repariert und erneut geprüft.",
     ),
     "duplicate_blocked": Milestone(
         None,
@@ -86,8 +86,8 @@ MILESTONES = {
     "technical_stop": Milestone(
         None,
         "Technischer Stopp erkannt",
-        "Der Lauf wurde fail-closed beendet; es wurde nichts veröffentlicht.",
-        "Die konkrete Ursache wird gesichert und nur der betroffene technische Pfad wird repariert.",
+        "Der aktuelle Lauf wurde fail-closed beendet; Trendfreigabe und Quellen bleiben erhalten und es wurde nichts veröffentlicht.",
+        "Delivery Watch übernimmt denselben freigegebenen Auftrag; der Recovery Dispatcher startet und bindet den nächsten Run automatisch.",
     ),
 }
 
@@ -181,6 +181,15 @@ def build_payload(
         title = "Reparaturphase länger als üblich · Watchdog aktiv"
         completed = "Checkpoint und Quellen sind gesichert; die Reparatur dauert länger als vorgesehen."
         next_step = "Der Watchdog entscheidet zwischen gezielter Fortsetzung und sicherem Stopp statt endlosen Statusmeldungen."
+
+    # Older Golden Path revisions may still pass the legacy vague detail string.
+    # The progress layer is the final Telegram truth boundary and must describe
+    # the actual request-bound recovery contract, not an undefined investigation.
+    if stage == "technical_stop":
+        detail = (
+            "Automatische Recovery ist request-gebunden: Nach der Übergabe folgt "
+            "eine konkrete Meldung mit altem und neuem Run."
+        )
 
     lines = [
         f"{icon} {heading} · {title}",
