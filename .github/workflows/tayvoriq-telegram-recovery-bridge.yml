@@ -102,61 +102,10 @@ jobs:
                       'Recovery und Produktion bleiben autonom. Ab jetzt bekommst du wieder Meldungen bei echten Zustandsänderungen – ohne neues Go und ohne künstliche Prozentangaben.'
                   )
           else:
-              state_path = Path('.github/run-now/latest-delivery-run.json')
-              if state_path.is_file():
-                  try:
-                      state = json.loads(state_path.read_text(encoding='utf-8'))
-                  except Exception:
-                      state = {}
-
-                  recovery_state = str(state.get('recovery_state') or '').upper()
-                  run_id = str(state.get('run_id') or '').strip()
-                  run_attempt = int(state.get('run_attempt') or 1)
-                  recovery_run_id = str(state.get('recovery_run_id') or '').strip()
-                  request_id = str(state.get('request_id') or '').strip()
-                  request_file = str(state.get('request_file') or '').strip()
-                  topic = ''
-
-                  if request_file:
-                      request_path = Path(request_file)
-                      if request_path.is_file():
-                          try:
-                              request = json.loads(request_path.read_text(encoding='utf-8'))
-                              topic = str(request.get('topic') or '').strip()
-                          except Exception:
-                              pass
-
-                  label = topic or request_id or 'freigegebener Auftrag'
-
-                  if recovery_state == 'AUTO_RECOVERY_QUEUED':
-                      send = True
-                      message = (
-                          f'🔧 TAYVORIQ · Recovery läuft\n\n'
-                          f'Thema: {label}\n'
-                          f'Run: {run_id} · nächster Reparaturversuch: {run_attempt + 1}/3\n\n'
-                          '✅ Deine Trendfreigabe bleibt gültig.\n'
-                          '➡️ Derselbe Produktionslauf wird automatisch weiter repariert und erneut geprüft.\n'
-                          'Für dich: ✅ Keine Aktion nötig.'
-                      )
-                  elif recovery_state in {'REQUEST_BOUND_RECOVERY_REQUIRED', 'REQUEST_BOUND_RECOVERY_QUEUED', 'REQUEST_BOUND_RECOVERY_RUNNING'}:
-                      send = True
-                      next_run = f'\nNeuer Recovery-Run: {recovery_run_id}' if recovery_run_id.isdigit() else ''
-                      message = (
-                          f'🛠️ TAYVORIQ · Lokale Reparatur läuft weiter\n\n'
-                          f'Thema: {label}\n'
-                          f'Ausgangs-Run: {run_id}{next_run}\n\n'
-                          '✅ Freigabe, Quellen und vorhandene Produktionsdaten bleiben erhalten.\n'
-                          '➡️ Nur der blockierende Prüfpunkt wird erneut bearbeitet.\n'
-                          'Für dich: ✅ Keine Aktion nötig.'
-                      )
-                  elif recovery_state in {'TECHNICAL_FAILURE', 'AUTONOMOUS_TECHNICAL_ESCALATION'}:
-                      send = True
-                      message = (
-                          f'⚠️ TAYVORIQ · Technischer Stop erkannt\n\n'
-                          f'Thema: {label}\n'
-                          f'Run: {run_id}\n\n'
-                          'Es wurde nichts veröffentlicht und keine neue Trendfreigabe erzeugt. Der bestehende Auftrag bleibt eindeutig erhalten.'
-                      )
+              # Golden Path owns production progress and concrete failure messages.
+              # Delivery Watch must recover silently; this bridge must not duplicate
+              # AUTO_RECOVERY_QUEUED / REQUEST_BOUND_* / TECHNICAL_FAILURE Telegram spam.
+              send = False
 
           token = f'TAYVORIQ_{uuid.uuid4().hex}'
           with output.open('a', encoding='utf-8') as handle:
