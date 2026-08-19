@@ -16,35 +16,112 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 1
-      - name: Insert guarded V15 runtime repair
+
+      - name: Install autonomous recovery and voice non-regression
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
 
-          path = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
-          text = path.read_text(encoding='utf-8')
-          marker = '''      - name: Checkout review pages\n        uses: actions/checkout@v4\n'''
-          if marker not in text:
-              raise SystemExit('GOLDEN_PATH_REPAIR_REFUSED: insertion marker missing')
-          step_name = '      - name: Apply guarded V15 fallback contract repair locally\n'
-          if step_name in text:
-              print('Golden Path runtime repair already installed')
-              raise SystemExit(0)
-          injected = '''      - name: Apply guarded V15 fallback contract repair locally\n        shell: bash\n        run: |\n          set -euo pipefail\n          cd implementation\n          python - <<'PYCODE'\n          from pathlib import Path\n          p = Path("tools/tayvoriq_dual_platform_render_v15.py")\n          s = p.read_text(encoding="utf-8")\n          blank = 'result["series_next"] = ""'\n          payoff = 'result["viewer_payoff"] = v2.ensure_sentence(\\n        result.get("viewer_payoff") or "Das Video erklärt den Trend vollständig."\\n    )'\n          if s.count(blank) != 2 or s.count(payoff) != 1:\n              raise SystemExit("V15_RUNTIME_REPAIR_REFUSED: implementation shape changed")\n          s = s.replace(blank, 'result["series_next"] = "Im nächsten Teil: die wichtigsten Folgen."')\n          s = s.replace(payoff, 'result["viewer_payoff"] = "So weißt du, was zählt."')\n          s = s.replace('"series_next": "",\\n            "viewer_payoff": "Das Video erklärt den Trend vollständig.",', '"series_next": normalized["series_next"],\\n            "viewer_payoff": normalized["viewer_payoff"],')\n          p.write_text(s, encoding="utf-8")\n          PYCODE\n          python -m py_compile tools/tayvoriq_dual_platform_render_v15.py\n          git diff --check\n          echo "V15_RUNTIME_CONTRACT_REPAIR_APPLIED quality_gates_weakened=false"\n\n'''
-          text = text.replace(marker, injected + marker, 1)
-          path.write_text(text, encoding='utf-8')
+          golden = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
+          text = golden.read_text(encoding='utf-8')
+
+          old_pitch = '  TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"'
+          new_pitch = '  TAYVORIQ_NARRATOR_PITCH_FACTOR: "1.0"'
+          if old_pitch in text:
+              if text.count(old_pitch) != 1:
+                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:pitch-factor-shape')
+              text = text.replace(old_pitch, new_pitch, 1)
+          elif new_pitch not in text:
+              raise SystemExit('AUTONOMY_HARDEN_REFUSED:pitch-factor-marker-missing')
+
+          old_detail = '          detail = "Der technische Teilpfad wird automatisch untersucht."'
+          new_detail = '          detail = "Technischer Stopp vor dem Render. Nach Laufende übernimmt Delivery Watch denselben freigegebenen Auftrag automatisch und setzt die Recovery fort."'
+          if old_detail in text:
+              if text.count(old_detail) != 1:
+                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:telegram-detail-shape')
+              text = text.replace(old_detail, new_detail, 1)
+
+          old_default = '${status_fields[2]:-Der technische Teilpfad wird automatisch untersucht.}'
+          new_default = '${status_fields[2]:-Technischer Stopp vor dem Render. Delivery Watch übernimmt danach automatisch die Recovery.}'
+          if old_default in text:
+              text = text.replace(old_default, new_default, 1)
+
+          golden.write_text(text, encoding='utf-8')
+
+          watch = Path('.github/workflows/tayvoriq-delivery-watch.yml')
+          text = watch.read_text(encoding='utf-8')
+
+          old_branch = '''            elif printf '%s' "$lowered" | grep -Eq 'content_rejected:|semantic-repair-missing|quellenkontext enthält keine belastbare erklärung|code_repair_required|no safe patch passed validation|weder provider noch quellen-fallback konnten einen erklärenden text liefern'; then
+              # Deterministic editorial/evidence/code failures do not change on a blind rerun.
+              # They may only continue after source/code/repair input actually changes.
+              recovery_state=DETERMINISTIC_REPAIR_INPUT_REQUIRED
+'''
+          new_branch = '''            elif printf '%s' "$lowered" | grep -Eq 'content_rejected:|semantic-repair-missing|quellenkontext enthält keine belastbare erklärung|code_repair_required|no safe patch passed validation|weder provider noch quellen-fallback konnten einen erklärenden text liefern'; then
+              # Never orphan an already approved request. Re-dispatch the exact
+              # durable request on current main/implementation after a bounded
+              # technical/editorial repair. Generation limits below prevent loops;
+              # publication thresholds remain unchanged.
+              if [ "${{ steps.owner.outputs.found }}" = "true" ]; then
+                needs_fresh_generation=true
+                recovery_state=REQUEST_BOUND_RECOVERY_REQUIRED
+              else
+                recovery_state=DETERMINISTIC_REPAIR_INPUT_REQUIRED
+              fi
+'''
+          if old_branch in text:
+              if text.count(old_branch) != 1:
+                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:deterministic-branch-shape')
+              text = text.replace(old_branch, new_branch, 1)
+          elif new_branch not in text:
+              raise SystemExit('AUTONOMY_HARDEN_REFUSED:deterministic-branch-marker-missing')
+
+          old_silent = '''      - name: Record silent autonomous continuation
+        if: steps.guard.outputs.ignore != 'true' && (steps.classify.outputs.should_retry == 'true' || steps.fresh.outputs.requeued == 'true')
+        run: |
+          echo "Autonomous continuation active for request=${{ steps.owner.outputs.request_id }} run=$RUN_ID; no technical-error Telegram spam emitted."
+'''
+          new_visible = '''      - name: Telegram autonomous recovery resumed
+        if: steps.guard.outputs.ignore != 'true' && steps.fresh.outputs.requeued == 'true' && steps.verify.outputs.started == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          new_run="${{ steps.verify.outputs.new_run_id }}"
+          state="${{ steps.classify.outputs.recovery_state }}"
+          message="🔧 TAYVORIQ · Recovery übernommen%0A%0AThema: ${{ steps.owner.outputs.topic }}%0AAlter Run: ${RUN_ID}%0ANeuer Run: ${new_run}%0A%0A✅ Trendfreigabe und Quellen bleiben erhalten.%0A➡️ Der technische Stopp wurde aufgegriffen; die Produktion läuft im neuen Recovery-Run weiter.%0AStatus: ${state}%0A%0AFür dich: ✅ Keine Aktion nötig."
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${message}" >/dev/null
+
+      - name: Record same-run transient continuation
+        if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.should_retry == 'true'
+        run: |
+          echo "Same-run transient recovery active for request=${{ steps.owner.outputs.request_id }} run=$RUN_ID."
+'''
+          if old_silent in text:
+              if text.count(old_silent) != 1:
+                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:silent-continuation-shape')
+              text = text.replace(old_silent, new_visible, 1)
+          elif '      - name: Telegram autonomous recovery resumed\n' not in text:
+              raise SystemExit('AUTONOMY_HARDEN_REFUSED:continuation-marker-missing')
+
+          watch.write_text(text, encoding='utf-8')
           PY
+
           git diff --check
-          git diff -- .github/workflows/tayvoriq-deliver-video-now.yml
+          git diff -- .github/workflows/tayvoriq-deliver-video-now.yml .github/workflows/tayvoriq-delivery-watch.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/tayvoriq-deliver-video-now.yml
+          git add .github/workflows/tayvoriq-deliver-video-now.yml .github/workflows/tayvoriq-delivery-watch.yml
           if git diff --cached --quiet; then
-            echo 'No Golden Path change required.'
+            echo 'Autonomous recovery hardening already installed.'
             exit 0
           fi
-          git commit -m 'fix(tayvoriq): apply guarded V15 contract repair before production'
+          git commit -m 'fix(tayvoriq): auto-resume technical stops and restore natural pitch'
           git push origin HEAD:main
