@@ -1,7 +1,7 @@
 {
   "request_id": "telegram-1148-trend-2-human-story-v1",
-  "status": "DISPATCHING",
-  "golden_path_run_id": null,
+  "status": "DISPATCHED",
+  "golden_path_run_id": 32246482823,
   "source": "human_story_repair_after_operator_rejection",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -78,7 +78,8 @@
     {"state":"APPROVED","at":"2026-08-19T10:06:00.801124Z","actor":"tayvoriq-delivery-watch","meta":{"retry_of_run_id":32240504048,"recovery_generation":2,"reason":"request-bound-autonomous-recovery"}},
     {"state":"DISPATCHING","at":"2026-08-19T12:28:00+02:00","actor":"recovery-generation-2-dispatch","meta":{"retry_of_run_id":32240504048,"recovery_generation":2,"reason":"direct-golden-path-recovery-trigger-after-v34-human-story-repair"}},
     {"state":"DISPATCHED","at":"2026-08-19T12:33:00+02:00","actor":"run-owner-binding","meta":{"golden_path_run_id":32243154660,"retry_of_run_id":32240504048,"recovery_generation":2,"reason":"bind-code-repair-recovery-to-active-run"}},
-    {"state":"DISPATCHING","at":"2026-08-19T12:59:00+02:00","actor":"request-bound-human-story-repair","meta":{"retry_of_run_id":32243154660,"recovery_generation":3,"reason":"exact-source-pin-and-human-story-legacy-wording-repair"}}
+    {"state":"DISPATCHING","at":"2026-08-19T12:59:00+02:00","actor":"request-bound-human-story-repair","meta":{"retry_of_run_id":32243154660,"recovery_generation":3,"reason":"exact-source-pin-and-human-story-legacy-wording-repair"}},
+    {"state":"DISPATCHED","at":"2026-08-19T13:01:00+02:00","actor":"run-owner-binding","meta":{"golden_path_run_id":32246482823,"source_request_id":"telegram-1148-trend-2-human-story-v1","retry_of_run_id":32243154660,"recovery_generation":3,"reason":"exact-source-pinned-human-story-recovery"}}
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
@@ -87,5 +88,6 @@
   "previous_golden_path_run_ids": [32227251908,32238894468,32240504048,32243154660],
   "replacement_reason": "PINNED_HUMAN_STORY_CONTRACT_RECOVERY",
   "recovery_owner": "tayvoriq-delivery-watch",
-  "dispatch_owner": "request-bound-human-story-repair"
+  "dispatch_owner": "request-bound-human-story-repair",
+  "dispatch_contract_sha256": "exact-source-request-pin-v1"
 }
