@@ -1,0 +1,64 @@
+{
+  "request_id": "telegram-1268-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?",
+  "trend_scope": "mobility_energy",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-19T21:42:36Z",
+  "telegram_message_id": 1268,
+  "approval_key": "telegram:20260820-m-agentv2-oil9162:1268:trend:1",
+  "mode": "full",
+  "selection_id": "20260820-m-agentv2-oil9162",
+  "source_context": {
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/business/energy/oil-edges-up-uncertainty-over-exports-through-hormuz-2026-08-19/",
+        "supports": "Brent settled at 91.62 US dollars per barrel on 19 August 2026; escalating Middle East tensions and uncertainty over exports through the Strait of Hormuz raised supply-risk concerns."
+      },
+      {
+        "publisher": "The Wall Street Journal",
+        "url": "https://www.wsj.com/finance/commodities-futures/oil-rises-amid-growing-concerns-over-supply-disruptions-c33bffbd",
+        "supports": "Independent confirmation that oil prices rose as markets focused on possible supply disruptions connected to the Strait of Hormuz."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Am Mittwoch, 19. August 2026, schloss Brent bei 91,62 US-Dollar je Barrel und damit auf dem höchsten Schlussstand seit dem 24. Juli.",
+      "why_happening": "Die neue Eskalation rund um Iran und die Straße von Hormus erhöht das Risiko, dass Öltransporte gestört werden; dieses Versorgungsrisiko wird am Ölmarkt eingepreist.",
+      "who_is_affected": "Betroffen sind zunächst der globale Ölmarkt, Transporteure und energieabhängige Unternehmen; über Kraftstoff- und Transportkosten kann die Entwicklung auch Verbraucher in Deutschland erreichen.",
+      "personal_impact": "Ein höherer Rohölpreis kann Benzin und Diesel in Deutschland mit Verzögerung verteuern, wird aber nicht eins zu eins und nicht sofort an der Zapfsäule weitergegeben.",
+      "action_now": "Im Short erklären wir die Kette Hormus → mögliches Angebotsrisiko → Rohölpreis → deutsche Zapfsäule und nennen zusätzlich Wechselkurs, Steuern sowie Raffinerie- und Handelsmargen als wichtige Preisfaktoren."
+    },
+    "factual_guardrails": [
+      "91.62 US dollars is explicitly time-stamped to the Brent settlement on 19 August 2026.",
+      "Do not claim that German petrol prices must rise by a specific amount.",
+      "Do not claim a direct one-to-one or immediate pass-through from Brent to pump prices.",
+      "Use conditional language for future oil and fuel prices."
+    ],
+    "content_angle": "Warum eine Meerenge Tausende Kilometer entfernt deinen Spritpreis in Deutschland beeinflussen kann.",
+    "duplicate_guard": "Explain current 19-August-2026 oil/Hormuz price shock; do not recycle earlier generic fuel-price coverage."
+  },
+  "source_context_sha256": "1ca218bc6f95076909ee2f3ea107eb9ec5b1a91dc5efc5fde88f440b864d4038",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-19T21:42:36Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-19T21:42:45.948442+00:00",
+      "actor": "request-dispatcher:32305255252"
+    }
+  ],
+  "contract_sha256": "33264c07e6b13016b9d32762a01b6926cb167589aaed1a3e409dac7be8918f37",
+  "dispatch_claim_run_id": 32305255252,
+  "dispatch_contract_sha256": "33264c07e6b13016b9d32762a01b6926cb167589aaed1a3e409dac7be8918f37"
+}
