@@ -15,21 +15,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve Golden Path run
+      - name: Resolve requested workflow run
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TARGET_SHA=$(python -c 'import json; print(json.load(open(".github/run-now/query-tayvoriq-run.json"))["head_sha"])')
-          gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" -f head_sha="$TARGET_SHA" -f per_page=20 > /tmp/runs.json
+          gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" -f head_sha="$TARGET_SHA" -f per_page=30 > /tmp/runs.json
           python - <<'PY'
           import json, pathlib
           trigger=json.load(open('.github/run-now/query-tayvoriq-run.json'))
           data=json.load(open('/tmp/runs.json'))
-          runs=[r for r in data.get('workflow_runs',[]) if r.get('name')=='TAYVORIQ-X Golden Path']
+          wanted=str(trigger.get('workflow_name') or 'TAYVORIQ-X Golden Path')
+          runs=[r for r in data.get('workflow_runs',[]) if r.get('name')==wanted]
           run=runs[0] if runs else {}
           out={
               'target_head_sha': trigger['head_sha'],
+              'workflow_name': wanted,
               'run_id': run.get('id'),
               'status': run.get('status','not_found'),
               'conclusion': run.get('conclusion'),
@@ -45,4 +47,5 @@ jobs:
           git config user.email github-actions@github.com
           git add run-status/latest-human-story.json
           git commit -m "Record TAYVORIQ human-story run status" || exit 0
+          git pull --rebase origin main
           git push
