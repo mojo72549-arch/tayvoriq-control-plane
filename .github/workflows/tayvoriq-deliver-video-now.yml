@@ -11,6 +11,10 @@ on:
         description: Freigegebene Trend-ID
         required: false
         type: string
+      source_request_id:
+        description: Exakt gebundene freigegebene Request-ID
+        required: false
+        type: string
   push:
     branches: [main]
     paths:
@@ -44,8 +48,8 @@ env:
   TAYVORIQ_CHATTERBOX_CFG_WEIGHT: "0.36"
   TAYVORIQ_CHATTERBOX_PAUSE_MS: "360"
   TAYVORIQ_NATURAL_VOICE_WPM: "132"
-  TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"
-  TAYVORIQ_NARRATOR_TONE_REQUIRED: "true"
+  TAYVORIQ_NARRATOR_PITCH_FACTOR: "1.0"
+  TAYVORIQ_NARRATOR_TONE_REQUIRED: "false"
   TAYVORIQ_RENDER_TIMEOUT_SECONDS: "900"
   TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: "900"
   TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "210"
@@ -67,6 +71,7 @@ env:
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
   TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
+  SOURCE_REQUEST_ID_PIN: ${{ github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
 
 jobs:
   orchestrate:
@@ -82,6 +87,7 @@ jobs:
         env:
           EVENT_TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
           EVENT_TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
+          EVENT_SOURCE_REQUEST_ID: ${{ github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -95,20 +101,34 @@ jobs:
           request = json.loads(request_path.read_text(encoding="utf-8"))
           topic = str(os.environ.get("EVENT_TOPIC") or request.get("topic") or "").strip()
           trend_id = str(os.environ.get("EVENT_TREND_ID") or request.get("trend_id") or "").strip()
+          source_request_id = str(
+              os.environ.get("EVENT_SOURCE_REQUEST_ID")
+              or request.get("source_request_id")
+              or ""
+          ).strip()
           if not topic or any(char in topic for char in "\r\n"):
               raise SystemExit("CONTROL_PLANE_TOPIC_RESOLUTION_FAILED")
           if not trend_id or any(char in trend_id for char in "\r\n"):
               raise SystemExit("CONTROL_PLANE_TREND_RESOLUTION_FAILED")
+          if source_request_id and (
+              any(char in source_request_id for char in "\r\n/\\")
+              or source_request_id in {".", ".."}
+          ):
+              raise SystemExit("CONTROL_PLANE_SOURCE_REQUEST_ID_INVALID")
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
               handle.write(f"TOPIC={topic}\n")
               handle.write(f"TREND_ID={trend_id}\n")
+              handle.write(f"SOURCE_REQUEST_ID_PIN={source_request_id}\n")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"trend_id={trend_id}\n")
+              handle.write(f"source_request_id={source_request_id}\n")
           print(json.dumps({
               "request_resolution": "approved-x-request",
               "topic": topic,
               "trend_id": trend_id,
+              "source_request_id": source_request_id or None,
+              "source_request_pinned": bool(source_request_id),
               "event_topic_override": bool(os.environ.get("EVENT_TOPIC")),
               "quality_gates_weakened": False,
           }, ensure_ascii=False))
@@ -176,6 +196,10 @@ jobs:
                   raise SystemExit('CONTROL_PLANE_TOPIC_BINDING_FAILED')
               if str(data.get('trend_id') or '').strip() != str(os.environ.get('TREND_ID') or '').strip():
                   raise SystemExit('CONTROL_PLANE_TREND_BINDING_FAILED')
+              request_pin = str(data.get('source_request_id') or '').strip()
+              env_pin = str(os.environ.get('SOURCE_REQUEST_ID_PIN') or '').strip()
+              if request_pin and request_pin != env_pin:
+                  raise SystemExit('CONTROL_PLANE_SOURCE_REQUEST_BINDING_FAILED')
               hardening = data.get('hardening')
               required = (
                   'checkpoint_source_context_required',
@@ -209,34 +233,67 @@ jobs:
 
           trend_id = str(os.environ.get("TREND_ID") or "").strip()
           topic = str(os.environ.get("TOPIC") or "").strip()
+          source_request_id_pin = str(os.environ.get("SOURCE_REQUEST_ID_PIN") or "").strip()
           if not trend_id:
               raise SystemExit("SOURCE_CONTEXT_MISSING: approved trend id is empty")
           if not topic:
               raise SystemExit("SOURCE_CONTEXT_MISSING: approved topic is empty")
 
           candidates = []
-          for path in Path("requests").glob("*.json"):
+          if source_request_id_pin:
+              request_path = Path("requests") / f"{source_request_id_pin}.json"
+              if not request_path.is_file():
+                  raise SystemExit(
+                      f"SOURCE_CONTEXT_PIN_MISSING: exact request {source_request_id_pin!r} does not exist"
+                  )
               try:
-                  data = json.loads(path.read_text(encoding="utf-8"))
-              except Exception:
-                  continue
+                  data = json.loads(request_path.read_text(encoding="utf-8"))
+              except Exception as exc:
+                  raise SystemExit(
+                      f"SOURCE_CONTEXT_PIN_INVALID: cannot read {source_request_id_pin!r}: {exc}"
+                  ) from exc
+              if str(data.get("request_id") or "").strip() != source_request_id_pin:
+                  raise SystemExit("SOURCE_CONTEXT_PIN_IDENTITY_FAILED")
               if str(data.get("trend_id") or "").strip() != trend_id:
-                  continue
+                  raise SystemExit("SOURCE_CONTEXT_PIN_TREND_FAILED")
               if str(data.get("topic") or "").strip() != topic:
-                  continue
+                  raise SystemExit("SOURCE_CONTEXT_PIN_TOPIC_FAILED")
               if str(data.get("mode") or "").strip() != "full":
-                  continue
-              if str(data.get("status") or "").upper() not in {"DISPATCHING", "DISPATCHED"}:
-                  continue
+                  raise SystemExit("SOURCE_CONTEXT_PIN_MODE_FAILED")
+              if str(data.get("status") or "").upper() not in {"APPROVED", "DISPATCHING", "DISPATCHED"}:
+                  raise SystemExit("SOURCE_CONTEXT_PIN_STATE_FAILED")
               source = data.get("source_context")
               if not isinstance(source, dict) or not source:
-                  continue
+                  raise SystemExit("SOURCE_CONTEXT_PIN_EMPTY")
               approved = str(data.get("approved_at") or "")
               try:
                   stamp = datetime.fromisoformat(approved.replace("Z", "+00:00")).timestamp()
               except Exception:
                   stamp = 0.0
-              candidates.append((stamp, path, data, source))
+              candidates.append((stamp, request_path, data, source))
+          else:
+              for path in Path("requests").glob("*.json"):
+                  try:
+                      data = json.loads(path.read_text(encoding="utf-8"))
+                  except Exception:
+                      continue
+                  if str(data.get("trend_id") or "").strip() != trend_id:
+                      continue
+                  if str(data.get("topic") or "").strip() != topic:
+                      continue
+                  if str(data.get("mode") or "").strip() != "full":
+                      continue
+                  if str(data.get("status") or "").upper() not in {"DISPATCHING", "DISPATCHED"}:
+                      continue
+                  source = data.get("source_context")
+                  if not isinstance(source, dict) or not source:
+                      continue
+                  approved = str(data.get("approved_at") or "")
+                  try:
+                      stamp = datetime.fromisoformat(approved.replace("Z", "+00:00")).timestamp()
+                  except Exception:
+                      stamp = 0.0
+                  candidates.append((stamp, path, data, source))
 
           if not candidates:
               raise SystemExit(
@@ -245,6 +302,8 @@ jobs:
               )
 
           _, request_path, data, source = max(candidates, key=lambda item: item[0])
+          if source_request_id_pin and str(data.get("request_id") or "").strip() != source_request_id_pin:
+              raise SystemExit("SOURCE_CONTEXT_PIN_RESOLUTION_FAILED")
           raw = json.dumps(source, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
           digest = hashlib.sha256(raw).hexdigest()
           expected = str(data.get("source_context_sha256") or "").strip()
@@ -279,11 +338,13 @@ jobs:
               handle.write(f"trend_id={trend_id}\n")
               handle.write(f"request_id={data.get('request_id')}\n")
               handle.write(f"request_file={request_path}\n")
+              handle.write(f"source_request_pinned={'true' if source_request_id_pin else 'false'}\n")
           print(json.dumps({
               "source_context": "verified-and-materialized",
               "request_id": data.get("request_id"),
               "request_file": str(request_path),
               "trend_id": trend_id,
+              "source_request_pinned": bool(source_request_id_pin),
               "source_count": len(sources),
               "independent_news_count": source.get("independent_news_count"),
               "sha256": digest,
@@ -446,6 +507,7 @@ jobs:
               "execution_backend": os.environ.get("TAYVORIQ_EXECUTION_BACKEND"),
               "approved_trend_pinned": True,
               "source_context_bound": True,
+              "source_request_pinned": os.environ.get("SOURCE_REQUEST_ID_PIN", "") == sys.argv[6] and bool(sys.argv[6]),
               "global_duplicate_gate_passed": True,
               "single_x_owner": True,
               "restored_recovery_checkpoint": os.environ.get("RESTORED_CHECKPOINT") == "true",
@@ -848,10 +910,10 @@ jobs:
           duplicate = json.loads(duplicate_path.read_text(encoding="utf-8")) if duplicate_path.is_file() else {}
           state = str(policy.get("state") or "TECHNICAL_FAILURE")
           stage = "technical_stop"
-          detail = "Der technische Teilpfad wird automatisch untersucht."
+          detail = "Delivery Watch übernimmt den gebundenen Request; der konkrete Fehler wird gesichert und der Recovery-Run danach neu gebunden."
           if state == "TRANSIENT_AUDIO_FAILURE":
               stage = "audio_recovery"
-              detail = "Die tiefe Stimme blieb außerhalb des unveränderten 84–125-Hz-Gates."
+              detail = "Die Sprachprüfung hat den natürlichen Sprechervertrag noch nicht erfüllt; künstliches Pitch-Down bleibt deaktiviert."
           elif state == "DUPLICATE_CONTENT_BLOCKED":
               stage = "duplicate_blocked"
               nearest = duplicate.get("nearest_prior") if isinstance(duplicate.get("nearest_prior"), dict) else {}
@@ -863,7 +925,7 @@ jobs:
           )
           notification_stage="${status_fields[0]:-technical_stop}"
           failure_state="${status_fields[1]:-TECHNICAL_FAILURE}"
-          notification_detail="${status_fields[2]:-Der technische Teilpfad wird automatisch untersucht.}"
+          notification_detail="${status_fields[2]:-Delivery Watch übernimmt den gebundenen Request und startet den Recovery-Pfad neu.}"
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage "$notification_stage" \
             --topic "$TOPIC" \
