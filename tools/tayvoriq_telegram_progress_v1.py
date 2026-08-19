@@ -53,6 +53,12 @@ MILESTONES = {
         "Stimme, Bild, Fakten und beide Plattformpakete haben die Pflicht-Gates bestanden.",
         "Review-Seite und Telegram-Videofreigabe.",
     ),
+    "review_ready": Milestone(
+        100,
+        "Review bereit",
+        "Produktion, Render und alle verpflichtenden Quality-Gates sind abgeschlossen.",
+        "Das Review-Video wird jetzt mit Freigeben/Ablehnen bereitgestellt.",
+    ),
     "render_heartbeat": Milestone(
         45,
         "Produktion arbeitet weiter",
@@ -123,6 +129,13 @@ def progress_enabled(path: Path = DEFAULT_POLICY) -> bool:
     return str(value or "").strip().casefold() in TRUE_VALUES
 
 
+def immediate_failure_enabled(path: Path = DEFAULT_POLICY) -> bool:
+    value = read_policy(path).get("immediate_failure_notification_enabled")
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().casefold() in TRUE_VALUES
+
+
 def heartbeat_due(stage: str, elapsed_minutes: int) -> bool:
     schedule = HEARTBEAT_SEND_MINUTES.get(stage)
     if not schedule:
@@ -138,6 +151,12 @@ def should_send(
     elapsed_minutes: int = 0,
 ) -> bool:
     if not progress_enabled(path):
+        return False
+    # Internal technical/audio failures belong to the orchestrator. Telegram is
+    # the operator feed, so only verified percentage milestones are shown while
+    # request-bound recovery remains possible. Terminal external blockers are
+    # still reported by Delivery Watch through its dedicated user-action path.
+    if stage in {"technical_stop", "audio_recovery"} and not immediate_failure_enabled(path):
         return False
     if int(run_attempt) > 1 and stage in REPLAY_SUPPRESSED_STAGES:
         return False
@@ -165,6 +184,8 @@ def build_payload(
     icon = "🔄" if stage == "render_heartbeat" else ("🟠" if stage in {"audio_recovery", "technical_stop"} else "🟣")
     if stage in {"checkpoint_repair", "checkpoint_heartbeat"}:
         icon = "🔧"
+    if stage == "review_ready":
+        icon = "🟢"
     if stage == "duplicate_blocked":
         icon = "🛑"
 
@@ -182,9 +203,6 @@ def build_payload(
         completed = "Checkpoint und Quellen sind gesichert; die Reparatur dauert länger als vorgesehen."
         next_step = "Der Watchdog entscheidet zwischen gezielter Fortsetzung und sicherem Stopp statt endlosen Statusmeldungen."
 
-    # Older Golden Path revisions may still pass the legacy vague detail string.
-    # The progress layer is the final Telegram truth boundary and must describe
-    # the actual request-bound recovery contract, not an undefined investigation.
     if stage == "technical_stop":
         detail = (
             "Automatische Recovery ist request-gebunden: Nach der Übergabe folgt "
@@ -262,7 +280,11 @@ def main() -> int:
         print(json.dumps({"status": "disabled", "stage": args.stage}))
         return 0
     if not should_send(args.policy, attempt, args.stage, args.elapsed_minutes):
-        reason = "suppressed_heartbeat" if args.stage in HEARTBEAT_SEND_MINUTES else "suppressed_rerun"
+        reason = (
+            "suppressed_internal_recovery"
+            if args.stage in {"technical_stop", "audio_recovery"} and not immediate_failure_enabled(args.policy)
+            else ("suppressed_heartbeat" if args.stage in HEARTBEAT_SEND_MINUTES else "suppressed_rerun")
+        )
         print(json.dumps({
             "status": reason,
             "stage": args.stage,
