@@ -1,0 +1,48 @@
+name: TAYVORIQ Run Status Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-now/query-tayvoriq-run.json
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve Golden Path run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA=$(python -c 'import json; print(json.load(open(".github/run-now/query-tayvoriq-run.json"))["head_sha"])')
+          gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" -f head_sha="$TARGET_SHA" -f per_page=20 > /tmp/runs.json
+          python - <<'PY'
+          import json, pathlib
+          trigger=json.load(open('.github/run-now/query-tayvoriq-run.json'))
+          data=json.load(open('/tmp/runs.json'))
+          runs=[r for r in data.get('workflow_runs',[]) if r.get('name')=='TAYVORIQ-X Golden Path']
+          run=runs[0] if runs else {}
+          out={
+              'target_head_sha': trigger['head_sha'],
+              'run_id': run.get('id'),
+              'status': run.get('status','not_found'),
+              'conclusion': run.get('conclusion'),
+              'html_url': run.get('html_url'),
+              'run_attempt': run.get('run_attempt'),
+              'updated_at': run.get('updated_at'),
+          }
+          pathlib.Path('run-status').mkdir(exist_ok=True)
+          pathlib.Path('run-status/latest-human-story.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out))
+          PY
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add run-status/latest-human-story.json
+          git commit -m "Record TAYVORIQ human-story run status" || exit 0
+          git push
