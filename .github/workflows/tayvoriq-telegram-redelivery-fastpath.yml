@@ -1,0 +1,105 @@
+name: TAYVORIQ Telegram Redelivery Fastpath
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-telegram-redelivery-fastpath.yml
+
+permissions:
+  contents: read
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout delivery receipt repository
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages-worktree
+          fetch-depth: 1
+
+      - name: Download already validated repaired YouTube MP4
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          curl -L --fail --retry 3 --retry-all-errors \
+            -o out/leichtathletik-em-youtube-final.mp4 \
+            https://raw.githubusercontent.com/mojo72549-arch/mind-reset-daily/main/tayvoriq/voice-repairs/32122612482-v3/repaired_youtube.mp4
+          test -s out/leichtathletik-em-youtube-final.mp4
+          bytes=$(stat -c%s out/leichtathletik-em-youtube-final.mp4)
+          [ "$bytes" -gt 1000000 ]
+          echo "validated_file_bytes=$bytes"
+
+      - name: Send validated repaired video through existing Telegram path
+        id: telegram
+        shell: bash
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          response=$(curl -fsS --retry 3 --retry-all-errors \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F 'caption=✅ TAYVORIQ · Leichtathletik-EM · Sprecher korrigiert\nChatterbox Multilingual V3 · kein künstlicher Pitch-Shift · geprüfter V3-Repair 32183234839.' \
+            -F 'supports_streaming=true' \
+            -F 'video=@out/leichtathletik-em-youtube-final.mp4;type=video/mp4' \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendVideo")
+          python - "$response" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          data=json.loads(sys.argv[1])
+          if not data.get('ok'):
+              raise SystemExit(data)
+          mid=data['result']['message_id']
+          chat=data['result']['chat']['id']
+          with open(sys.argv[2],'a',encoding='utf-8') as f:
+              f.write(f'message_id={mid}\n')
+              f.write(f'chat_id={chat}\n')
+          print(json.dumps({'telegram_message_id':mid,'chat_id':chat,'delivery':'confirmed'}))
+          PY
+
+      - name: Persist Telegram delivery receipt
+        shell: bash
+        env:
+          MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+          CHAT_ID: ${{ steps.telegram.outputs.chat_id }}
+        run: |
+          set -euo pipefail
+          D='pages-worktree/tayvoriq/telegram-deliveries'
+          mkdir -p "$D"
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          receipt={
+            'state':'DELIVERED',
+            'delivered_at':datetime.now(timezone.utc).isoformat(),
+            'telegram_message_id':int(os.environ['MESSAGE_ID']),
+            'telegram_chat_id':str(os.environ['CHAT_ID']),
+            'source_master_run':'32122612482',
+            'source_repair_run':'32183234839',
+            'source_file':'tayvoriq/voice-repairs/32122612482-v3/repaired_youtube.mp4',
+            'delivery_workflow_run':os.environ.get('GITHUB_RUN_ID'),
+            'delivery_path':'tayvoriq-control-plane -> Telegram Bot sendVideo',
+            'quality_revalidation_skipped':True,
+            'reason':'already validated repaired MP4 redelivery only',
+          }
+          Path('pages-worktree/tayvoriq/telegram-deliveries/athletics-latest.json').write_text(
+            json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(receipt,ensure_ascii=False))
+          PY
+          cd pages-worktree
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tayvoriq/telegram-deliveries/athletics-latest.json
+          git commit -m "Record TAYVORIQ Telegram athletics delivery ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin main
+          git push origin main
