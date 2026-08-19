@@ -1,0 +1,250 @@
+name: TAYVORIQ Oil Price Telegram Start 2026-08-20
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-oilprice-telegram-start-20260820.yml
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  SELECTION_ID: 20260820-m-agentv2-oil9162
+  TREND_ID: "1"
+  TOPIC: "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?"
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+jobs:
+  telegram-start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Build source-grounded Agent V2 selection snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-agent-v2/selections
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          sid=os.environ['SELECTION_ID']
+          topic=os.environ['TOPIC']
+          payload={
+            'date':'2026-08-20',
+            'slot':'morning',
+            'created_at':datetime.now(timezone.utc).isoformat(),
+            'selection_id':sid,
+            'selected_trend_id':'1',
+            'agent_orchestrator':'v2',
+            'mode':'manual_verified_trend',
+            'superseded':False,
+            'trends':[{
+              'id':'1',
+              'title':topic,
+              'score':97,
+              'trend_scope':'mobility_energy',
+              'criteria':{
+                'aktualitaet':99,
+                'viralitaet':96,
+                'tayvoriq_passung':97,
+                'quellenqualitaet':97,
+                'visuell':96
+              },
+              'sources':[
+                {
+                  'publisher':'Reuters',
+                  'url':'https://www.reuters.com/business/energy/oil-edges-up-uncertainty-over-exports-through-hormuz-2026-08-19/',
+                  'supports':'Brent settled at 91.62 US dollars per barrel on 19 August 2026 amid escalating Middle East and Strait of Hormuz supply-risk concerns.'
+                },
+                {
+                  'publisher':'The Wall Street Journal',
+                  'url':'https://www.wsj.com/finance/commodities-futures/oil-rises-amid-growing-concerns-over-supply-disruptions-c33bffbd',
+                  'supports':'Independent market report corroborating the oil-price rise and supply-disruption concerns around the Strait of Hormuz.'
+                }
+              ],
+              'source_context':{
+                'independent_news_count':2,
+                'sources':[
+                  {
+                    'publisher':'Reuters',
+                    'url':'https://www.reuters.com/business/energy/oil-edges-up-uncertainty-over-exports-through-hormuz-2026-08-19/',
+                    'supports':'Brent settled at 91.62 US dollars per barrel on 19 August 2026; escalating Middle East tensions and uncertainty over exports through the Strait of Hormuz raised supply-risk concerns.'
+                  },
+                  {
+                    'publisher':'The Wall Street Journal',
+                    'url':'https://www.wsj.com/finance/commodities-futures/oil-rises-amid-growing-concerns-over-supply-disruptions-c33bffbd',
+                    'supports':'Independent confirmation that oil prices rose as markets focused on possible supply disruptions connected to the Strait of Hormuz.'
+                  }
+                ],
+                'fallback_editorial_answers':{
+                  'what_happened':'Am Mittwoch, 19. August 2026, schloss Brent bei 91,62 US-Dollar je Barrel und damit auf dem höchsten Schlussstand seit dem 24. Juli.',
+                  'why_happening':'Die neue Eskalation rund um Iran und die Straße von Hormus erhöht das Risiko, dass Öltransporte gestört werden; dieses Versorgungsrisiko wird am Ölmarkt eingepreist.',
+                  'who_is_affected':'Betroffen sind zunächst der globale Ölmarkt, Transporteure und energieabhängige Unternehmen; über Kraftstoff- und Transportkosten kann die Entwicklung auch Verbraucher in Deutschland erreichen.',
+                  'personal_impact':'Ein höherer Rohölpreis kann Benzin und Diesel in Deutschland mit Verzögerung verteuern, wird aber nicht eins zu eins und nicht sofort an der Zapfsäule weitergegeben.',
+                  'action_now':'Im Short erklären wir die Kette Hormus → mögliches Angebotsrisiko → Rohölpreis → deutsche Zapfsäule und nennen zusätzlich Wechselkurs, Steuern sowie Raffinerie- und Handelsmargen als wichtige Preisfaktoren.'
+                },
+                'factual_guardrails':[
+                  '91.62 US dollars is explicitly time-stamped to the Brent settlement on 19 August 2026.',
+                  'Do not claim that German petrol prices must rise by a specific amount.',
+                  'Do not claim a direct one-to-one or immediate pass-through from Brent to pump prices.',
+                  'Use conditional language for future oil and fuel prices.'
+                ],
+                'content_angle':'Warum eine Meerenge Tausende Kilometer entfernt deinen Spritpreis in Deutschland beeinflussen kann.',
+                'duplicate_guard':'Explain current 19-August-2026 oil/Hormuz price shock; do not recycle earlier generic fuel-price coverage.'
+              }
+            }]
+          }
+          out=Path(f'.automation/tayvoriq-agent-v2/selections/{sid}.json')
+          out.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(out)
+          PY
+
+      - name: Persist selection before Telegram handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ".automation/tayvoriq-agent-v2/selections/${SELECTION_ID}.json"
+          git commit -m "agent(v2): stage verified oil-price selection ${SELECTION_ID}" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Send Telegram production handoff
+        id: telegram
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          TEXT=$(cat <<EOF
+          🟢 TAYVORIQ · Morgenlauf 20.08. · Trend übernommen
+
+          🛢️ Ölpreis / Straße von Hormus
+          Thema: ${TOPIC}
+          Growth-Score: 97 %
+
+          ✅ Freigabe übernommen
+          ✅ 2 unabhängige Quellen hinterlegt
+          ✅ Faktenstand: Mittwochabend, 19.08.
+          ✅ Duplicate-Guard aktiv
+
+          ➡️ Produktion wird jetzt an Agent V2 übergeben.
+          Ab hier kommt alles über Telegram: Produktionsstatus → Recovery falls nötig → YouTube/TikTok-Review → Freigeben/Ablehnen → YouTube-Paket → TikTok-MP4 + Caption.
+
+          Für dich: ✅ Keine weitere Aktion bis zum Review nötig.
+          EOF
+          )
+          RESPONSE=$(curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode 'disable_web_page_preview=true')
+          python - "$RESPONSE" "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          d=json.loads(sys.argv[1]); assert d.get('ok') is True, d
+          result=d.get('result') or {}; assert result.get('message_id'), result
+          with open(sys.argv[2],'a',encoding='utf-8') as f:
+              f.write(f"message_id={int(result['message_id'])}\n")
+              f.write(f"chat_id={result['chat']['id']}\n")
+          print({'telegram_message_id':result['message_id'],'chat_id':result['chat']['id']})
+          PY
+
+      - name: Dispatch approved trend through existing V2 contract
+        id: dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPROVED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          export APPROVED_AT TELEGRAM_MESSAGE_ID
+          python - <<'PY' >/tmp/repository-dispatch.json
+          import json, os
+          print(json.dumps({
+            'event_type':'tayvoriq_trend_approved',
+            'client_payload':{
+              'trend_id':os.environ['TREND_ID'],
+              'topic':os.environ['TOPIC'],
+              'selection_id':os.environ['SELECTION_ID'],
+              'telegram_chat_id':os.environ['TELEGRAM_CHAT_ID'],
+              'telegram_message_id':int(os.environ['TELEGRAM_MESSAGE_ID']),
+              'approved_at':os.environ['APPROVED_AT'],
+              'approval_origin':'user_explicit_chat_selection_telegram_handoff'
+            }
+          },ensure_ascii=False))
+          PY
+          code=$(curl -sS -o /tmp/dispatch-response.txt -w '%{http_code}' \
+            -X POST \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/dispatches" \
+            -d @/tmp/repository-dispatch.json)
+          test "$code" = '204' || { cat /tmp/dispatch-response.txt; echo "dispatch HTTP $code"; exit 1; }
+          echo "approved_at=$APPROVED_AT" >> "$GITHUB_OUTPUT"
+          echo 'repository_dispatch=accepted'
+
+      - name: Persist verified Telegram start receipt
+        env:
+          TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+          TELEGRAM_CHAT: ${{ steps.telegram.outputs.chat_id }}
+          APPROVED_AT: ${{ steps.dispatch.outputs.approved_at }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p state
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          payload={
+            'state':'TELEGRAM_HANDOFF_DISPATCHED',
+            'selection_id':os.environ['SELECTION_ID'],
+            'trend_id':os.environ['TREND_ID'],
+            'topic':os.environ['TOPIC'],
+            'slot':'morning',
+            'target_date':'2026-08-20',
+            'telegram_message_id':int(os.environ['TELEGRAM_MESSAGE_ID']),
+            'telegram_chat_id':str(os.environ['TELEGRAM_CHAT']),
+            'approved_at':os.environ['APPROVED_AT'],
+            'repository_dispatch':'tayvoriq_trend_approved',
+            'repository_dispatch_accepted':True,
+            'agent_orchestrator':'v2',
+            'telegram_only_user_path':True,
+            'quality_gates_weakened':False,
+            'recorded_at':datetime.now(timezone.utc).isoformat(),
+            'workflow_run_id':os.environ['GITHUB_RUN_ID']
+          }
+          Path('state/tayvoriq-oilprice-telegram-start.json').write_text(
+            json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(payload,ensure_ascii=False))
+          PY
+          git add state/tayvoriq-oilprice-telegram-start.json
+          git commit -m "ops(tayvoriq): record oil-price Telegram handoff ${GITHUB_RUN_ID}"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Notify Telegram only if handoff fails
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+            curl -fsS --retry 2 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode $'text=🔴 TAYVORIQ · Ölpreis-Morgenlauf\nDie Telegram-Übergabe an Agent V2 konnte technisch nicht vollständig bestätigt werden. Es wurde nichts veröffentlicht. Der Fehler wird nicht als erfolgreicher Produktionsstart dargestellt.' >/dev/null || true
+          fi
