@@ -1,7 +1,7 @@
 {
   "request_id": "telegram-1148-trend-2-human-story-v1",
   "status": "DISPATCHED",
-  "golden_path_run_id": 32238894468,
+  "golden_path_run_id": 32240504048,
   "source": "human_story_repair_after_operator_rejection",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -119,9 +119,32 @@
         "golden_path_run_id": 32238894468,
         "reason": "bind-golden-quality-retry-to-active-request"
       }
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-19T12:02:00+02:00",
+      "actor": "preflight-regression-recovery",
+      "meta": {
+        "retry_of_run_id": 32238894468,
+        "recovery_generation": 1,
+        "reason": "bounded-preflight-and-natural-voice-runtime-repair"
+      }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-19T12:03:00+02:00",
+      "actor": "run-owner-binding",
+      "meta": {
+        "golden_path_run_id": 32240504048,
+        "reason": "bind-resumed-recovery-run-to-approved-request"
+      }
     }
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
-  "replacement_reason": "GOLDEN_QUALITY_FLOOR_SAME_APPROVED_EVENT"
+  "retry_of_run_id": 32238894468,
+  "recovery_generation": 1,
+  "previous_golden_path_run_ids": [32227251908, 32238894468],
+  "replacement_reason": "AUTONOMOUS_REQUEST_BOUND_PREFLIGHT_RECOVERY",
+  "recovery_owner": "tayvoriq-delivery-watch"
 }
