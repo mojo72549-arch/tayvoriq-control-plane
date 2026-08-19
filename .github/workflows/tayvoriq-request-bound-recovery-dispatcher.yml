@@ -185,13 +185,17 @@ jobs:
         env:
           TOPIC: ${{ steps.candidate.outputs.topic }}
           TREND_ID: ${{ steps.candidate.outputs.trend_id }}
+          REQUEST_ID: ${{ steps.candidate.outputs.request_id }}
         shell: bash
         run: |
           set -euo pipefail
           before=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
           echo "before_run_id=$before" >> "$GITHUB_OUTPUT"
-          gh workflow run tayvoriq-deliver-video-now.yml --ref main -f topic="$TOPIC" -f trend_id="$TREND_ID"
-          echo "Direct Golden Path workflow_dispatch accepted for recovery request ${{ steps.candidate.outputs.request_id }}."
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main \
+            -f topic="$TOPIC" \
+            -f trend_id="$TREND_ID" \
+            -f source_request_id="$REQUEST_ID"
+          echo "Direct Golden Path workflow_dispatch accepted for exact recovery request $REQUEST_ID."
 
       - name: Verify new Golden Path run
         id: verify
@@ -249,7 +253,7 @@ jobs:
           new_run=int(os.environ['NEW_RUN_ID'])
           data['status']='DISPATCHED'
           data['golden_path_run_id']=new_run
-          data['dispatch_contract_sha256']='workflow-dispatch-bound-v1'
+          data['dispatch_contract_sha256']='workflow-dispatch-bound-v2-exact-source-request'
           history=list(data.get('state_history') or [])
           history.append({
               'state':'DISPATCHED',
@@ -257,6 +261,7 @@ jobs:
               'actor':'tayvoriq-request-bound-recovery-dispatcher',
               'meta':{
                   'golden_path_run_id':new_run,
+                  'source_request_id':os.environ['REQUEST_ID'],
                   'recovery_generation':int(os.environ['GENERATION']),
                   'retry_of_run_id':data.get('retry_of_run_id'),
               },
