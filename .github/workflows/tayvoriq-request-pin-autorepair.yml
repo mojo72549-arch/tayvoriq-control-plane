@@ -1,0 +1,226 @@
+name: TAYVORIQ Request Pin AutoRepair
+
+on:
+  workflow_run:
+    workflows:
+      - TAYVORIQ-X Golden Path
+    types:
+      - completed
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-request-pin-autorepair.yml
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: tayvoriq-request-pin-autorepair
+  cancel-in-progress: false
+
+env:
+  BOOTSTRAP_RUN_ID: "32305272222"
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  repair-stale-source-pin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve failed Golden Path and exact durable owner
+        id: owner
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+          EVENT_CONCLUSION: ${{ github.event.workflow_run.conclusion || '' }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            RUN_ID="$EVENT_RUN_ID"
+            [ "$EVENT_CONCLUSION" = "failure" ] || { echo "repair=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          else
+            RUN_ID="$BOOTSTRAP_RUN_ID"
+          fi
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "repair=false" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          logs=$(gh run view "$RUN_ID" --log-failed 2>/dev/null || true)
+          if ! printf '%s' "$logs" | grep -Eq 'SOURCE_CONTEXT_PIN_(TREND|TOPIC|IDENTITY|MISSING|MODE|STATE|EMPTY|RESOLUTION)_FAILED|SOURCE_CONTEXT_PIN_MISSING'; then
+            echo "repair=false" >> "$GITHUB_OUTPUT"
+            echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          python - "$RUN_ID" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          from pathlib import Path
+          run_id=int(sys.argv[1]); out=Path(sys.argv[2])
+          matches=[]
+          for path in Path('requests').glob('*.json'):
+              try: data=json.loads(path.read_text(encoding='utf-8'))
+              except Exception: continue
+              try: bound=int(data.get('golden_path_run_id') or 0)
+              except Exception: bound=0
+              if bound == run_id:
+                  matches.append((path,data))
+          if len(matches) != 1:
+              with out.open('a',encoding='utf-8') as h:
+                  h.write('repair=false\n')
+                  h.write(f'run_id={run_id}\n')
+              print({'run_id':run_id,'owner_count':len(matches),'repair':False})
+              raise SystemExit(0)
+          path,data=matches[0]
+          request_id=str(data.get('request_id') or '').strip()
+          topic=' '.join(str(data.get('topic') or '').split()).strip()
+          trend_id=str(data.get('trend_id') or '').strip()
+          if not request_id or not topic or trend_id not in {'1','2','3','4','5'}:
+              raise SystemExit('PIN_AUTOREPAIR_OWNER_INVALID')
+          with out.open('a',encoding='utf-8') as h:
+              h.write('repair=true\n')
+              h.write(f'run_id={run_id}\n')
+              h.write(f'request_file={path}\n')
+              h.write(f'request_id={request_id}\n')
+              h.write(f'trend_id={trend_id}\n')
+              h.write(f'topic={topic}\n')
+          print({'run_id':run_id,'request_id':request_id,'trend_id':trend_id,'repair':True})
+          PY
+
+      - name: Rebind canonical X request to exact approved source and silence stale recovery noise
+        id: rebind
+        if: steps.owner.outputs.repair == 'true'
+        env:
+          FAILED_RUN_ID: ${{ steps.owner.outputs.run_id }}
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          REQUEST_FILE: ${{ steps.owner.outputs.request_file }}
+          TREND_ID: ${{ steps.owner.outputs.trend_id }}
+          TOPIC: ${{ steps.owner.outputs.topic }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git reset --hard origin/main
+
+          # If another recovery owner has already rebound the request, this run is
+          # idempotently finished and must not start a duplicate generation.
+          current_bound=$(python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['REQUEST_FILE'])
+          d=json.loads(p.read_text(encoding='utf-8')) if p.is_file() else {}
+          print(str(d.get('golden_path_run_id') or ''))
+          PY
+          )
+          if [ "$current_bound" != "$FAILED_RUN_ID" ]; then
+            echo "started=false" >> "$GITHUB_OUTPUT"
+            echo "Request already rebound by another autonomous recovery owner."
+            exit 0
+          fi
+
+          before=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event push --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          nonce="pinrepair-${FAILED_RUN_ID}-$(date +%s)"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload={
+              'request':'tayvoriq-x-production',
+              'workflow':'.github/workflows/tayvoriq-deliver-video-now.yml',
+              'topic':os.environ['TOPIC'],
+              'trend_id':os.environ['TREND_ID'],
+              'source_request_id':os.environ['REQUEST_ID'],
+              'approved_trend_pinned':True,
+              'suppress_start_notification':True,
+              'request_nonce':os.environ['NONCE'],
+              'hardening':{
+                  'checkpoint_source_context_required':True,
+                  'platform_specific_cta_required':True,
+                  'platform_specific_voice_repair_required':True,
+                  'validated_voice_candidate_required':True,
+                  'premium_voice_required':True,
+                  'concrete_failure_state_required':True,
+                  'quality_gates_weakened':False,
+              },
+          }
+          Path('.github/run-now/tayvoriq-x-request.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          Path('.github/run-now/tayvoriq-stale-stop.json').write_text(json.dumps({
+              'target_run_id':int(os.environ['FAILED_RUN_ID']),
+              'reason':'source-request-pin-autorepair',
+              'request_id':os.environ['REQUEST_ID'],
+          },ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git add .github/run-now/tayvoriq-x-request.json .github/run-now/tayvoriq-stale-stop.json
+          git commit -m "agent(v2): repair source pin for ${REQUEST_ID}"
+          git push origin HEAD:main
+
+          new_run=""
+          for poll in $(seq 1 24); do
+            sleep 5
+            new_run=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event push --limit 10 --json databaseId --jq ".[] | select(.databaseId > $before) | .databaseId" | head -n 1)
+            [ -n "$new_run" ] && break
+          done
+          [[ "$new_run" =~ ^[0-9]+$ ]] || { echo "::error title=Pin recovery not started::No replacement Golden Path became visible"; exit 1; }
+          echo "started=true" >> "$GITHUB_OUTPUT"
+          echo "new_run_id=$new_run" >> "$GITHUB_OUTPUT"
+        env:
+          NONCE: ${{ format('pinrepair-{0}-{1}', steps.owner.outputs.run_id, github.run_id) }}
+
+      - name: Bind durable request to replacement Golden Path
+        if: steps.rebind.outputs.started == 'true'
+        env:
+          REQUEST_FILE: ${{ steps.owner.outputs.request_file }}
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          FAILED_RUN_ID: ${{ steps.owner.outputs.run_id }}
+          NEW_RUN_ID: ${{ steps.rebind.outputs.new_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          p=Path(os.environ['REQUEST_FILE']); d=json.loads(p.read_text(encoding='utf-8'))
+          if str(d.get('request_id') or '') != os.environ['REQUEST_ID']:
+              raise SystemExit('PIN_AUTOREPAIR_IDENTITY_CHANGED')
+          current=str(d.get('golden_path_run_id') or '')
+          if current not in {os.environ['FAILED_RUN_ID'], os.environ['NEW_RUN_ID']}:
+              raise SystemExit('PIN_AUTOREPAIR_BINDING_CHANGED')
+          old=int(os.environ['FAILED_RUN_ID']); new=int(os.environ['NEW_RUN_ID'])
+          previous=list(d.get('previous_golden_path_run_ids') or [])
+          if old not in previous: previous.append(old)
+          d['previous_golden_path_run_ids']=previous[-12:]
+          d['golden_path_run_id']=new
+          d['retry_of_run_id']=old
+          d['recovery_generation']=int(d.get('recovery_generation') or 0)+1
+          d['replacement_reason']='SOURCE_REQUEST_PIN_AUTOREPAIR'
+          d['recovery_owner']='tayvoriq-request-pin-autorepair'
+          history=list(d.get('state_history') or [])
+          history.append({
+              'state':'DISPATCHED',
+              'at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
+              'actor':'tayvoriq-request-pin-autorepair',
+              'meta':{'retry_of_run_id':old,'golden_path_run_id':new,'reason':'stale-source-pin'},
+          })
+          d['state_history']=history
+          p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add "$REQUEST_FILE"
+            git commit -m "agent(v2): bind ${REQUEST_ID} to pin-repair run ${NEW_RUN_ID}"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
