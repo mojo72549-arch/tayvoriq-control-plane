@@ -1,0 +1,65 @@
+name: TAYVORIQ Run Lookup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-run-lookup.json"
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: tayvoriq-run-lookup
+  cancel-in-progress: true
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Resolve target Golden Path run
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=$(python -c "import json; print(json.load(open('.github/run-now/tayvoriq-run-lookup.json'))['target_head_sha'])")
+          found=''
+          for poll in $(seq 1 18); do
+            found=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?event=push&per_page=50" \
+              --jq ".workflow_runs[] | select(.head_sha == \"${target}\" and .name == \"TAYVORIQ-X Golden Path\") | [.id,.status,.conclusion,.run_attempt,.html_url] | @tsv" | head -n1 || true)
+            [ -n "$found" ] && break
+            sleep 5
+          done
+          python - "$target" "$found" <<'PY'
+          import json,sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          target=sys.argv[1]
+          fields=(sys.argv[2] or '').split('\t')
+          payload={
+              'target_head_sha':target,
+              'found':len(fields) >= 5 and fields[0].isdigit(),
+              'run_id':int(fields[0]) if len(fields) >= 5 and fields[0].isdigit() else None,
+              'status':fields[1] if len(fields) >= 5 else '',
+              'conclusion':fields[2] if len(fields) >= 5 else '',
+              'run_attempt':int(fields[3]) if len(fields) >= 5 and fields[3].isdigit() else None,
+              'url':fields[4] if len(fields) >= 5 else '',
+              'checked_at':datetime.now(timezone.utc).isoformat(),
+          }
+          Path('.github/run-now/tayvoriq-run-lookup-result.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(payload)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/run-now/tayvoriq-run-lookup-result.json
+          git commit -m "ops: record Golden Path run lookup" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
