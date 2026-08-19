@@ -46,8 +46,6 @@ def _dedupe_story_clusters(candidates: list[dict[str, Any]]) -> list[dict[str, A
         duplicate = False
         if len(signature) >= 2:
             for existing in signatures:
-                # Same two or more independent URLs means the radar is looking at
-                # the same underlying event/claim cluster under another title.
                 if len(signature & existing) >= 2:
                     duplicate = True
                     break
@@ -73,11 +71,11 @@ def _words(value: str) -> set[str]:
 
 
 def _editorial_semantics_strong(candidate: dict[str, Any]) -> bool:
-    """Reject source packages whose WHY/IMPACT merely restate the headline facts.
+    """Reject source packages whose WHY/IMPACT merely restate headline facts.
 
-    This is an early fail-closed radar filter, not a relaxed production gate. The
-    downstream semantic validator remains authoritative. Here we only prevent an
-    obviously tautological five-field fallback from being advertised as source-locked.
+    The WHY vocabulary is intentionally aligned with the downstream production
+    causality gate. A radar candidate must not pass on comparison words such as
+    'aber', 'trotz' or 'entscheidend' alone and then fail later in production.
     """
 
     ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
@@ -97,29 +95,25 @@ def _editorial_semantics_strong(candidate: dict[str, Any]) -> bool:
     impact_novel = impact_words - (what_words | affected_words)
 
     mechanism_markers = (
-        "dadurch", "deshalb", "daher", "wegen", "durch ", "führt", "treibt",
-        "ursache", "grund", "entscheidend", "entscheidet", "auslöser", "bedingt",
-        "hängt", "trotz", "aber", "während", "mehr als", "weniger als",
+        "weil", "wegen", "dadurch", "deshalb", "aufgrund", "infolge", "durch ",
+        "führt", "treiber", "ursache", "grund", "auslöser", " bis ",
     )
     consequence_markers = (
         "bedeutet", "heißt", "dadurch", "deshalb", "kann", "muss", "sollte",
         "wer ", "für zuschauer", "für verbraucher", "für reisende", "für fans",
-        "einordnen", "erklärt", "relevant", "konkret",
+        "einordnen", "erklärt", "relevant", "konkret", "automatisch",
     )
     why_lower = why.casefold()
     impact_lower = impact.casefold()
 
-    # A WHY needs both new evidence and at least one mechanism/comparison signal.
     if len(why_novel) < 4 or not any(marker in why_lower for marker in mechanism_markers):
         return False
-    # Personal impact must add a real consequence/interpretation, not merely repeat rank/who.
     if len(impact_novel) < 4 or not any(marker in impact_lower for marker in consequence_markers):
         return False
     return True
 
 
 def _mark_research_deferred(candidate_count: int, rejected_count: int) -> None:
-    """Record fail-closed research exhaustion without turning it into user-facing production failure."""
     path = Path("/tmp/tayvoriq-research-deferred.json")
     payload = {
         "state": "RESEARCH_DEFERRED_NO_SAFE_CANDIDATES",
