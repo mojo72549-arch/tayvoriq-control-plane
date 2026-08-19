@@ -1,7 +1,7 @@
 {
   "request_id": "telegram-1148-trend-2-human-story-v1",
   "status": "DISPATCHED",
-  "golden_path_run_id": 32227251908,
+  "golden_path_run_id": 32238894468,
   "source": "human_story_repair_after_operator_rejection",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -109,6 +109,15 @@
       "meta": {
         "reason": "operator-regression-feedback-locked-as-permanent-quality-floor",
         "previous_failed_run_id": 32227251908
+      }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-19T11:42:00+02:00",
+      "actor": "run-owner-binding",
+      "meta": {
+        "golden_path_run_id": 32238894468,
+        "reason": "bind-golden-quality-retry-to-active-request"
       }
     }
   ],
