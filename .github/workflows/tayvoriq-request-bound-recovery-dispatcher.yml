@@ -1,0 +1,285 @@
+name: TAYVORIQ Request-bound Recovery Dispatcher
+
+on:
+  workflow_run:
+    workflows:
+      - TAYVORIQ-X Golden Path
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: tayvoriq-request-bound-recovery-${{ github.event.workflow_run.id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch-recovery:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FAILED_RUN_ID: ${{ github.event.workflow_run.id || 0 }}
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Wait for Delivery Watch recovery generation
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=false
+          request_file=""
+          request_id=""
+          topic=""
+          trend_id=""
+          recovery_generation="0"
+          retry_of="${FAILED_RUN_ID}"
+
+          for poll in $(seq 1 45); do
+            git fetch origin main >/dev/null 2>&1 || true
+            git reset --hard origin/main >/dev/null 2>&1 || true
+            mapfile -t fields < <(python - "$retry_of" <<'PY'
+          import json, sys
+          from datetime import datetime
+          from pathlib import Path
+
+          retry_of = str(sys.argv[1] or '').strip()
+          candidates = []
+          for path in sorted(Path('requests').glob('*.json')):
+              try:
+                  data = json.loads(path.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              if str(data.get('status') or '').upper() != 'APPROVED':
+                  continue
+              if str(data.get('recovery_owner') or '') != 'tayvoriq-delivery-watch':
+                  continue
+              if data.get('golden_path_run_id') not in (None, '', 0):
+                  continue
+              if retry_of not in {'', '0'} and str(data.get('retry_of_run_id') or '') != retry_of:
+                  continue
+              topic = str(data.get('topic') or '').strip()
+              trend_id = str(data.get('trend_id') or '').strip()
+              request_id = str(data.get('request_id') or '').strip()
+              if not (topic and trend_id and request_id):
+                  continue
+              approved = str(data.get('approved_at') or '')
+              try:
+                  stamp = datetime.fromisoformat(approved.replace('Z', '+00:00')).timestamp()
+              except Exception:
+                  stamp = 0.0
+              candidates.append((stamp, path, data))
+
+          if not candidates:
+              print('false'); print(''); print(''); print(''); print(''); print('0'); print('0')
+          else:
+              _, path, data = max(candidates, key=lambda item: item[0])
+              print('true')
+              print(str(path))
+              print(str(data.get('request_id') or ''))
+              print(str(data.get('topic') or ''))
+              print(str(data.get('trend_id') or ''))
+              print(str(int(data.get('recovery_generation') or 0)))
+              print(str(int(data.get('retry_of_run_id') or 0)))
+          PY
+            )
+            found="${fields[0]:-false}"
+            request_file="${fields[1]:-}"
+            request_id="${fields[2]:-}"
+            topic="${fields[3]:-}"
+            trend_id="${fields[4]:-}"
+            recovery_generation="${fields[5]:-0}"
+            retry_of="${fields[6]:-${FAILED_RUN_ID}}"
+            [ "$found" = "true" ] && break
+            sleep 2
+          done
+
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+          echo "request_file=$request_file" >> "$GITHUB_OUTPUT"
+          echo "request_id=$request_id" >> "$GITHUB_OUTPUT"
+          echo "topic=$topic" >> "$GITHUB_OUTPUT"
+          echo "trend_id=$trend_id" >> "$GITHUB_OUTPUT"
+          echo "recovery_generation=$recovery_generation" >> "$GITHUB_OUTPUT"
+          echo "retry_of_run_id=$retry_of" >> "$GITHUB_OUTPUT"
+          echo "Recovery candidate: found=$found request=$request_id generation=$recovery_generation retry_of=$retry_of"
+
+      - name: Claim exact recovery request
+        id: claim
+        if: steps.candidate.outputs.found == 'true'
+        env:
+          REQUEST_FILE: ${{ steps.candidate.outputs.request_file }}
+          REQUEST_ID: ${{ steps.candidate.outputs.request_id }}
+          GENERATION: ${{ steps.candidate.outputs.recovery_generation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          claimed=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            claimed=$(python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(os.environ['REQUEST_FILE'])
+          if not path.is_file():
+              print('false'); raise SystemExit(0)
+          data=json.loads(path.read_text(encoding='utf-8'))
+          valid=(
+              str(data.get('request_id') or '') == os.environ['REQUEST_ID']
+              and str(data.get('status') or '').upper() == 'APPROVED'
+              and int(data.get('recovery_generation') or 0) == int(os.environ['GENERATION'])
+              and str(data.get('recovery_owner') or '') == 'tayvoriq-delivery-watch'
+              and data.get('golden_path_run_id') in (None, '', 0)
+          )
+          if not valid:
+              print('false'); raise SystemExit(0)
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          data['status']='DISPATCHING'
+          data['dispatch_claim_run_id']=int(os.environ['GITHUB_RUN_ID'])
+          data['dispatch_owner']='tayvoriq-request-bound-recovery-dispatcher'
+          history=list(data.get('state_history') or [])
+          history.append({
+              'state':'DISPATCHING',
+              'at':now,
+              'actor':'tayvoriq-request-bound-recovery-dispatcher',
+              'meta':{
+                  'recovery_generation':int(os.environ['GENERATION']),
+                  'retry_of_run_id':data.get('retry_of_run_id'),
+                  'dispatcher_run_id':int(os.environ['GITHUB_RUN_ID']),
+              },
+          })
+          data['state_history']=history
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print('true')
+          PY
+            )
+            if [ "$claimed" != "true" ]; then
+              break
+            fi
+            git add "$REQUEST_FILE"
+            git commit -m "agent(v2): claim recovery ${REQUEST_ID} g${GENERATION}"
+            if git push origin HEAD:main; then
+              break
+            fi
+            claimed=false
+            sleep $((attempt * 2))
+          done
+          echo "claimed=$claimed" >> "$GITHUB_OUTPUT"
+          [ "$claimed" = "true" ] || { echo "Recovery request was already claimed or superseded."; exit 0; }
+
+      - name: Dispatch Golden Path directly
+        id: dispatch
+        if: steps.claim.outputs.claimed == 'true'
+        env:
+          TOPIC: ${{ steps.candidate.outputs.topic }}
+          TREND_ID: ${{ steps.candidate.outputs.trend_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          before=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          echo "before_run_id=$before" >> "$GITHUB_OUTPUT"
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main -f topic="$TOPIC" -f trend_id="$TREND_ID"
+          echo "Direct Golden Path workflow_dispatch accepted for recovery request ${{ steps.candidate.outputs.request_id }}."
+
+      - name: Verify new Golden Path run
+        id: verify
+        if: steps.dispatch.outcome == 'success'
+        env:
+          BEFORE_RUN_ID: ${{ steps.dispatch.outputs.before_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          new_run_id=""
+          for poll in $(seq 1 30); do
+            candidate=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 10 --json databaseId --jq '[.[].databaseId | select(. > ('"${BEFORE_RUN_ID:-0}"'))] | max // 0')
+            if [[ "$candidate" =~ ^[0-9]+$ ]] && [ "$candidate" -gt "${BEFORE_RUN_ID:-0}" ]; then
+              new_run_id="$candidate"
+              break
+            fi
+            sleep 2
+          done
+          echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
+          [ -n "$new_run_id" ] || { echo "::error title=Recovery dispatch not visible::No new Golden Path workflow_dispatch run appeared"; exit 1; }
+          echo "Verified direct recovery run: $new_run_id"
+
+      - name: Bind request to new Golden Path run
+        if: steps.verify.outputs.new_run_id != ''
+        env:
+          REQUEST_FILE: ${{ steps.candidate.outputs.request_file }}
+          REQUEST_ID: ${{ steps.candidate.outputs.request_id }}
+          GENERATION: ${{ steps.candidate.outputs.recovery_generation }}
+          NEW_RUN_ID: ${{ steps.verify.outputs.new_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            updated=$(python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(os.environ['REQUEST_FILE'])
+          if not path.is_file():
+              print('false'); raise SystemExit(0)
+          data=json.loads(path.read_text(encoding='utf-8'))
+          valid=(
+              str(data.get('request_id') or '') == os.environ['REQUEST_ID']
+              and str(data.get('status') or '').upper() == 'DISPATCHING'
+              and int(data.get('recovery_generation') or 0) == int(os.environ['GENERATION'])
+              and int(data.get('dispatch_claim_run_id') or 0) == int(os.environ['GITHUB_RUN_ID'])
+          )
+          if not valid:
+              print('false'); raise SystemExit(0)
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          new_run=int(os.environ['NEW_RUN_ID'])
+          data['status']='DISPATCHED'
+          data['golden_path_run_id']=new_run
+          data['dispatch_contract_sha256']='workflow-dispatch-bound-v1'
+          history=list(data.get('state_history') or [])
+          history.append({
+              'state':'DISPATCHED',
+              'at':now,
+              'actor':'tayvoriq-request-bound-recovery-dispatcher',
+              'meta':{
+                  'golden_path_run_id':new_run,
+                  'recovery_generation':int(os.environ['GENERATION']),
+                  'retry_of_run_id':data.get('retry_of_run_id'),
+              },
+          })
+          data['state_history']=history
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print('true')
+          PY
+            )
+            [ "$updated" = "true" ] || { echo "Request binding already superseded."; exit 0; }
+            git add "$REQUEST_FILE"
+            git commit -m "agent(v2): bind ${REQUEST_ID} g${GENERATION} to ${NEW_RUN_ID}"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Assert autonomous handoff
+        if: steps.candidate.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+          test "${{ steps.claim.outputs.claimed }}" = "true"
+          test -n "${{ steps.verify.outputs.new_run_id }}"
+          echo "AUTONOMOUS_REQUEST_BOUND_RECOVERY_DISPATCH_PASSED request=${{ steps.candidate.outputs.request_id }} new_run=${{ steps.verify.outputs.new_run_id }}"
