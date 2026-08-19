@@ -32,25 +32,26 @@
       }
     ],
     "fallback_editorial_answers": {
-      "what_happened": "Deutschland holt 21 Medaillen – sogar zwei mehr als Großbritannien – und landet trotzdem nur auf Rang drei.",
-      "why_happening": "Der entscheidende Unterschied steckt bei den Goldmedaillen: Großbritannien liegt mit neun Gold und 19 Medaillen auf Rang zwei, Deutschland mit sechs Gold und 21 Medaillen dahinter.",
-      "who_is_affected": "Deutschland holte sechs Gold, zehn Silber und fünf Bronze: 21 Podestplätze insgesamt.",
-      "personal_impact": "Das Überraschende daran: Mehr Medaillen insgesamt bedeuteten in dieser Schlusswertung nicht automatisch den besseren Rang.",
-      "action_now": "Unterm Strich bleibt Rang drei – aber mit 21 Podestplätzen eine deutlich breitere Bilanz als die Platzierung zuerst vermuten lässt."
+      "what_happened": "21 EM-Medaillen – trotzdem landet Deutschland nur auf Rang drei.",
+      "why_happening": "Weil Gold zuerst zählt, reichen sechs deutsche Goldmedaillen nur für Rang drei.",
+      "who_is_affected": "Großbritannien holt neun Gold, aber insgesamt nur 19 Medaillen.",
+      "personal_impact": "Mehr Medaillen bedeuten in dieser Wertung also nicht automatisch Platz zwei.",
+      "action_now": "Vergleiche deshalb zuerst Gold, dann die Gesamtzahl."
     },
     "fact_repair": {
       "original_request_id": "telegram-1148-trend-2",
       "previous_repair_request_id": "telegram-1148-trend-2-fact-repair-v1",
-      "repair_reason": "EVIDENCE_HANDOFF_REPAIR_AFTER_WHY_GATE",
+      "repair_reason": "GOLDEN_QUALITY_STORY_REPAIR_AFTER_OPERATOR_REGRESSION_REPORT",
       "original_claim": "Deutschland vier Gold",
       "corrected_claim": "Deutschland 21 Medaillen, sechs Gold, zehn Silber, fünf Bronze, Rang drei",
       "same_editorial_event": true,
       "facts_unchanged": true,
       "storytelling_only": true,
-      "evidence_handoff_repaired": true
+      "evidence_handoff_repaired": true,
+      "golden_quality_floor_applied": true
     },
     "human_story_contract": {
-      "version": "v1",
+      "version": "v2-golden-floor",
       "goal": "viewer_retention",
       "hook_under_seconds": 1.5,
       "open_loop_required": true,
@@ -58,10 +59,12 @@
       "forced_personal_impact_language_forbidden": true,
       "natural_conversational_german_required": true,
       "youtube_cta_action": "subscribe",
-      "tiktok_cta_action": "follow"
+      "tiktok_cta_action": "follow",
+      "accepted_quality_may_not_regress": true,
+      "operator_rejection_becomes_negative_fixture": true
     }
   },
-  "source_context_sha256": "a5b8bc5ad8170baa6d7b08ceca5480a6925fec6ae42e4712d0b53fbff93882bc",
+  "source_context_sha256": "3ec60db74b0bd216e0ebbcae8d438ac53e51acf81ae4c95695ee644f9a5f0cf3",
   "state_history": [
     {
       "state": "APPROVED",
@@ -98,9 +101,18 @@
         "golden_path_run_id": 32227251908,
         "reason": "bind-delivery-watch-to-active-request"
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-19T11:30:00+02:00",
+      "actor": "golden-quality-floor",
+      "meta": {
+        "reason": "operator-regression-feedback-locked-as-permanent-quality-floor",
+        "previous_failed_run_id": 32227251908
+      }
     }
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
-  "replacement_reason": "EVIDENCE_HANDOFF_REPAIR_SAME_APPROVED_EVENT"
+  "replacement_reason": "GOLDEN_QUALITY_FLOOR_SAME_APPROVED_EVENT"
 }
