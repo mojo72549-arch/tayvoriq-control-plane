@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1148-trend-2-human-story-v1",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "human_story_repair_after_operator_rejection",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -200,6 +200,16 @@
         "recovery_generation": 4,
         "reason": "request-bound-autonomous-recovery"
       }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-19T11:26:30.475309Z",
+      "actor": "tayvoriq-request-bound-recovery-dispatcher",
+      "meta": {
+        "recovery_generation": 4,
+        "retry_of_run_id": 32246482823,
+        "dispatcher_run_id": 32247577437
+      }
     }
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
@@ -215,5 +225,6 @@
   ],
   "replacement_reason": "AUTONOMOUS_REQUEST_BOUND_TECHNICAL_RECOVERY",
   "recovery_owner": "tayvoriq-delivery-watch",
-  "dispatch_owner": "request-bound-human-story-repair"
+  "dispatch_owner": "tayvoriq-request-bound-recovery-dispatcher",
+  "dispatch_claim_run_id": 32247577437
 }
