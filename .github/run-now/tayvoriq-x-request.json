@@ -2,13 +2,13 @@
   "request": "tayvoriq-x-production",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
   "trend_id": "2",
-  "requested_at": "2026-08-19T11:30:00+02:00",
-  "request_nonce": "em-human-story-review-v8-golden-quality-floor-20260819T113000CEST",
+  "requested_at": "2026-08-19T12:02:00+02:00",
+  "request_nonce": "em-human-story-review-v9-preflight-recovery-20260819T120200CEST",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-1148-trend-2-human-story-v1",
-  "retry_of_run_id": 32227251908,
+  "retry_of_run_id": 32238894468,
   "suppress_start_notification": true,
   "execution_backend": "github_hosted_public",
   "hardening": {
@@ -44,8 +44,10 @@
     "min_unique_scene_count": 6,
     "golden_quality_floor_required": true,
     "operator_rejection_negative_fixture_required": true,
-    "artificial_pitch_shift_forbidden": true
+    "artificial_pitch_shift_forbidden": true,
+    "request_bound_recovery_required": true,
+    "preflight_regression_repaired": true
   },
-  "reason": "human-first-review-after-script-and-voice-regression-lock",
-  "recovery_generation": 0
+  "reason": "resume-same-approved-trend-after-bounded-preflight-and-voice-repair",
+  "recovery_generation": 1
 }
