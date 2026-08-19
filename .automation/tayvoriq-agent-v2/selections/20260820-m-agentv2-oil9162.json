@@ -1,0 +1,67 @@
+{
+  "date": "2026-08-20",
+  "slot": "morning",
+  "created_at": "2026-08-19T21:42:34.355587+00:00",
+  "selection_id": "20260820-m-agentv2-oil9162",
+  "selected_trend_id": "1",
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_trend",
+  "superseded": false,
+  "trends": [
+    {
+      "id": "1",
+      "title": "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?",
+      "score": 97,
+      "trend_scope": "mobility_energy",
+      "criteria": {
+        "aktualitaet": 99,
+        "viralitaet": 96,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 97,
+        "visuell": 96
+      },
+      "sources": [
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/energy/oil-edges-up-uncertainty-over-exports-through-hormuz-2026-08-19/",
+          "supports": "Brent settled at 91.62 US dollars per barrel on 19 August 2026 amid escalating Middle East and Strait of Hormuz supply-risk concerns."
+        },
+        {
+          "publisher": "The Wall Street Journal",
+          "url": "https://www.wsj.com/finance/commodities-futures/oil-rises-amid-growing-concerns-over-supply-disruptions-c33bffbd",
+          "supports": "Independent market report corroborating the oil-price rise and supply-disruption concerns around the Strait of Hormuz."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/energy/oil-edges-up-uncertainty-over-exports-through-hormuz-2026-08-19/",
+            "supports": "Brent settled at 91.62 US dollars per barrel on 19 August 2026; escalating Middle East tensions and uncertainty over exports through the Strait of Hormuz raised supply-risk concerns."
+          },
+          {
+            "publisher": "The Wall Street Journal",
+            "url": "https://www.wsj.com/finance/commodities-futures/oil-rises-amid-growing-concerns-over-supply-disruptions-c33bffbd",
+            "supports": "Independent confirmation that oil prices rose as markets focused on possible supply disruptions connected to the Strait of Hormuz."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Am Mittwoch, 19. August 2026, schloss Brent bei 91,62 US-Dollar je Barrel und damit auf dem höchsten Schlussstand seit dem 24. Juli.",
+          "why_happening": "Die neue Eskalation rund um Iran und die Straße von Hormus erhöht das Risiko, dass Öltransporte gestört werden; dieses Versorgungsrisiko wird am Ölmarkt eingepreist.",
+          "who_is_affected": "Betroffen sind zunächst der globale Ölmarkt, Transporteure und energieabhängige Unternehmen; über Kraftstoff- und Transportkosten kann die Entwicklung auch Verbraucher in Deutschland erreichen.",
+          "personal_impact": "Ein höherer Rohölpreis kann Benzin und Diesel in Deutschland mit Verzögerung verteuern, wird aber nicht eins zu eins und nicht sofort an der Zapfsäule weitergegeben.",
+          "action_now": "Im Short erklären wir die Kette Hormus → mögliches Angebotsrisiko → Rohölpreis → deutsche Zapfsäule und nennen zusätzlich Wechselkurs, Steuern sowie Raffinerie- und Handelsmargen als wichtige Preisfaktoren."
+        },
+        "factual_guardrails": [
+          "91.62 US dollars is explicitly time-stamped to the Brent settlement on 19 August 2026.",
+          "Do not claim that German petrol prices must rise by a specific amount.",
+          "Do not claim a direct one-to-one or immediate pass-through from Brent to pump prices.",
+          "Use conditional language for future oil and fuel prices."
+        ],
+        "content_angle": "Warum eine Meerenge Tausende Kilometer entfernt deinen Spritpreis in Deutschland beeinflussen kann.",
+        "duplicate_guard": "Explain current 19-August-2026 oil/Hormuz price shock; do not recycle earlier generic fuel-price coverage."
+      }
+    }
+  ]
+}
