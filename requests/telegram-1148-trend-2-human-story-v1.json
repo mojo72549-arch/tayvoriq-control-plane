@@ -65,179 +65,33 @@
   },
   "source_context_sha256": "3ec60db74b0bd216e0ebbcae8d438ac53e51acf81ae4c95695ee644f9a5f0cf3",
   "state_history": [
-    {
-      "state": "APPROVED",
-      "at": "2026-08-19T04:45:00+02:00",
-      "actor": "operator-human-story-repair"
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T04:45:00+02:00",
-      "actor": "operator-human-story-repair"
-    },
-    {
-      "state": "APPROVED",
-      "at": "2026-08-19T09:08:00+02:00",
-      "actor": "evidence-handoff-repair",
-      "meta": {
-        "reason": "why_happening-source-support-repair",
-        "retry_of_run_id": 32211951678
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T09:16:00+02:00",
-      "actor": "evidence-handoff-repair",
-      "meta": {
-        "reason": "same-approved-request-with-new-evidence"
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T09:22:00+02:00",
-      "actor": "run-owner-binding",
-      "meta": {
-        "golden_path_run_id": 32227251908,
-        "reason": "bind-delivery-watch-to-active-request"
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T11:30:00+02:00",
-      "actor": "golden-quality-floor",
-      "meta": {
-        "reason": "operator-regression-feedback-locked-as-permanent-quality-floor",
-        "previous_failed_run_id": 32227251908
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T11:42:00+02:00",
-      "actor": "run-owner-binding",
-      "meta": {
-        "golden_path_run_id": 32238894468,
-        "reason": "bind-golden-quality-retry-to-active-request"
-      }
-    },
-    {
-      "state": "APPROVED",
-      "at": "2026-08-19T12:02:00+02:00",
-      "actor": "preflight-regression-recovery",
-      "meta": {
-        "retry_of_run_id": 32238894468,
-        "recovery_generation": 1,
-        "reason": "bounded-preflight-and-natural-voice-runtime-repair"
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T12:03:00+02:00",
-      "actor": "run-owner-binding",
-      "meta": {
-        "golden_path_run_id": 32240504048,
-        "reason": "bind-resumed-recovery-run-to-approved-request"
-      }
-    },
-    {
-      "state": "APPROVED",
-      "at": "2026-08-19T10:06:00.801124Z",
-      "actor": "tayvoriq-delivery-watch",
-      "meta": {
-        "retry_of_run_id": 32240504048,
-        "recovery_generation": 2,
-        "reason": "request-bound-autonomous-recovery"
-      }
-    },
-    {
-      "state": "DISPATCHING",
-      "at": "2026-08-19T12:28:00+02:00",
-      "actor": "recovery-generation-2-dispatch",
-      "meta": {
-        "retry_of_run_id": 32240504048,
-        "recovery_generation": 2,
-        "reason": "direct-golden-path-recovery-trigger-after-v34-human-story-repair"
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T12:33:00+02:00",
-      "actor": "run-owner-binding",
-      "meta": {
-        "golden_path_run_id": 32243154660,
-        "retry_of_run_id": 32240504048,
-        "recovery_generation": 2,
-        "reason": "bind-code-repair-recovery-to-active-run"
-      }
-    },
-    {
-      "state": "DISPATCHING",
-      "at": "2026-08-19T12:59:00+02:00",
-      "actor": "request-bound-human-story-repair",
-      "meta": {
-        "retry_of_run_id": 32243154660,
-        "recovery_generation": 3,
-        "reason": "exact-source-pin-and-human-story-legacy-wording-repair"
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T13:01:00+02:00",
-      "actor": "run-owner-binding",
-      "meta": {
-        "golden_path_run_id": 32246482823,
-        "source_request_id": "telegram-1148-trend-2-human-story-v1",
-        "retry_of_run_id": 32243154660,
-        "recovery_generation": 3,
-        "reason": "exact-source-pinned-human-story-recovery"
-      }
-    },
-    {
-      "state": "APPROVED",
-      "at": "2026-08-19T11:26:28.640153Z",
-      "actor": "tayvoriq-delivery-watch",
-      "meta": {
-        "retry_of_run_id": 32246482823,
-        "recovery_generation": 4,
-        "reason": "request-bound-autonomous-recovery"
-      }
-    },
-    {
-      "state": "DISPATCHING",
-      "at": "2026-08-19T11:26:30.475309Z",
-      "actor": "tayvoriq-request-bound-recovery-dispatcher",
-      "meta": {
-        "recovery_generation": 4,
-        "retry_of_run_id": 32246482823,
-        "dispatcher_run_id": 32247577437
-      }
-    },
-    {
-      "state": "DISPATCHED",
-      "at": "2026-08-19T11:26:36.912442Z",
-      "actor": "tayvoriq-request-bound-recovery-dispatcher",
-      "meta": {
-        "golden_path_run_id": 32247592675,
-        "source_request_id": "telegram-1148-trend-2-human-story-v1",
-        "recovery_generation": 4,
-        "retry_of_run_id": 32246482823
-      }
-    }
+    {"state":"APPROVED","at":"2026-08-19T04:45:00+02:00","actor":"operator-human-story-repair"},
+    {"state":"DISPATCHED","at":"2026-08-19T04:45:00+02:00","actor":"operator-human-story-repair"},
+    {"state":"APPROVED","at":"2026-08-19T09:08:00+02:00","actor":"evidence-handoff-repair","meta":{"reason":"why_happening-source-support-repair","retry_of_run_id":32211951678}},
+    {"state":"DISPATCHED","at":"2026-08-19T09:16:00+02:00","actor":"evidence-handoff-repair","meta":{"reason":"same-approved-request-with-new-evidence"}},
+    {"state":"DISPATCHED","at":"2026-08-19T09:22:00+02:00","actor":"run-owner-binding","meta":{"golden_path_run_id":32227251908,"reason":"bind-delivery-watch-to-active-request"}},
+    {"state":"DISPATCHED","at":"2026-08-19T11:30:00+02:00","actor":"golden-quality-floor","meta":{"reason":"operator-regression-feedback-locked-as-permanent-quality-floor","previous_failed_run_id":32227251908}},
+    {"state":"DISPATCHED","at":"2026-08-19T11:42:00+02:00","actor":"run-owner-binding","meta":{"golden_path_run_id":32238894468,"reason":"bind-golden-quality-retry-to-active-request"}},
+    {"state":"APPROVED","at":"2026-08-19T12:02:00+02:00","actor":"preflight-regression-recovery","meta":{"retry_of_run_id":32238894468,"recovery_generation":1,"reason":"bounded-preflight-and-natural-voice-runtime-repair"}},
+    {"state":"DISPATCHED","at":"2026-08-19T12:03:00+02:00","actor":"run-owner-binding","meta":{"golden_path_run_id":32240504048,"reason":"bind-resumed-recovery-run-to-approved-request"}},
+    {"state":"APPROVED","at":"2026-08-19T10:06:00.801124Z","actor":"tayvoriq-delivery-watch","meta":{"retry_of_run_id":32240504048,"recovery_generation":2,"reason":"request-bound-autonomous-recovery"}},
+    {"state":"DISPATCHING","at":"2026-08-19T12:28:00+02:00","actor":"recovery-generation-2-dispatch","meta":{"retry_of_run_id":32240504048,"recovery_generation":2,"reason":"direct-golden-path-recovery-trigger-after-v34-human-story-repair"}},
+    {"state":"DISPATCHED","at":"2026-08-19T12:33:00+02:00","actor":"run-owner-binding","meta":{"golden_path_run_id":32243154660,"retry_of_run_id":32240504048,"recovery_generation":2,"reason":"bind-code-repair-recovery-to-active-run"}},
+    {"state":"DISPATCHING","at":"2026-08-19T12:59:00+02:00","actor":"request-bound-human-story-repair","meta":{"retry_of_run_id":32243154660,"recovery_generation":3,"reason":"exact-source-pin-and-human-story-legacy-wording-repair"}},
+    {"state":"DISPATCHED","at":"2026-08-19T13:01:00+02:00","actor":"run-owner-binding","meta":{"golden_path_run_id":32246482823,"source_request_id":"telegram-1148-trend-2-human-story-v1","retry_of_run_id":32243154660,"recovery_generation":3,"reason":"exact-source-pinned-human-story-recovery"}},
+    {"state":"APPROVED","at":"2026-08-19T11:26:28.640153Z","actor":"tayvoriq-delivery-watch","meta":{"retry_of_run_id":32246482823,"recovery_generation":4,"reason":"request-bound-autonomous-recovery"}},
+    {"state":"DISPATCHING","at":"2026-08-19T11:26:30.475309Z","actor":"tayvoriq-request-bound-recovery-dispatcher","meta":{"recovery_generation":4,"retry_of_run_id":32246482823,"dispatcher_run_id":32247577437}},
+    {"state":"DISPATCHED","at":"2026-08-19T11:26:36.912442Z","actor":"tayvoriq-request-bound-recovery-dispatcher","meta":{"golden_path_run_id":32247592675,"source_request_id":"telegram-1148-trend-2-human-story-v1","recovery_generation":4,"retry_of_run_id":32246482823}},
+    {"state":"DISPATCHED","at":"2026-08-19T13:49:00Z","actor":"final-delivery-run-binding","meta":{"golden_path_run_id":32258692448,"source_request_id":"telegram-1148-trend-2-human-story-v1","retry_of_run_id":32257886741,"reason":"bind-current-repaired-final-em-production"}}
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
-  "retry_of_run_id": 32246482823,
+  "retry_of_run_id": 32257886741,
   "recovery_generation": 4,
-  "previous_golden_path_run_ids": [
-    32227251908,
-    32238894468,
-    32240504048,
-    32243154660,
-    32246482823
-  ],
-  "replacement_reason": "AUTONOMOUS_REQUEST_BOUND_TECHNICAL_RECOVERY",
+  "previous_golden_path_run_ids": [32227251908,32238894468,32240504048,32243154660,32246482823,32247592675,32257886741],
+  "replacement_reason": "FINAL_REPAIRED_PRODUCTION_AFTER_PREFLIGHT_REGRESSION_FIX",
   "recovery_owner": "tayvoriq-delivery-watch",
-  "dispatch_owner": "tayvoriq-request-bound-recovery-dispatcher",
-  "dispatch_claim_run_id": 32247577437,
-  "golden_path_run_id": 32247592675,
-  "dispatch_contract_sha256": "workflow-dispatch-bound-v2-exact-source-request"
+  "dispatch_owner": "final-delivery-run-binding",
+  "golden_path_run_id": 32258692448,
+  "dispatch_contract_sha256": "exact-source-request-bound-final-repair-v1"
 }
