@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Any
 
 import tayvoriq_agent_trend_radar_v5 as growth_v5
@@ -116,6 +118,21 @@ def _editorial_semantics_strong(candidate: dict[str, Any]) -> bool:
     return True
 
 
+def _mark_research_deferred(candidate_count: int, rejected_count: int) -> None:
+    """Record fail-closed research exhaustion without turning it into user-facing production failure."""
+    path = Path("/tmp/tayvoriq-research-deferred.json")
+    payload = {
+        "state": "RESEARCH_DEFERRED_NO_SAFE_CANDIDATES",
+        "candidate_count": int(candidate_count),
+        "semantic_rejected": int(rejected_count),
+        "quality_gate_weakened": False,
+        "production_started": False,
+        "user_action_required": False,
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print({"event": "research_deferred", **payload})
+
+
 def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any]]:
     semantically_grounded = [candidate for candidate in candidates if _editorial_semantics_strong(candidate)]
     rejected = len(candidates) - len(semantically_grounded)
@@ -126,6 +143,8 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
             "kept": len(semantically_grounded),
             "reason": "why_or_personal_impact_was_tautological_or_underspecified",
         })
+    if candidates and not semantically_grounded:
+        _mark_research_deferred(len(candidates), rejected)
     return _original_diversify(_dedupe_story_clusters(semantically_grounded), slot)
 
 
