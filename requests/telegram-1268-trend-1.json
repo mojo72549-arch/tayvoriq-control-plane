@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1268-trend-1",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?",
@@ -92,6 +92,17 @@
         "retry_of_run_id": 32308570312,
         "dispatcher_run_id": 32309486027
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-19T22:35:32.250707Z",
+      "actor": "tayvoriq-request-bound-recovery-dispatcher",
+      "meta": {
+        "golden_path_run_id": 32309508226,
+        "source_request_id": "telegram-1268-trend-1",
+        "recovery_generation": 2,
+        "retry_of_run_id": 32308570312
+      }
     }
   ],
   "contract_sha256": "33264c07e6b13016b9d32762a01b6926cb167589aaed1a3e409dac7be8918f37",
@@ -104,5 +115,7 @@
   "replacement_reason": "AUTONOMOUS_REQUEST_BOUND_TECHNICAL_RECOVERY",
   "recovery_owner": "tayvoriq-delivery-watch",
   "dispatch_claim_run_id": 32309486027,
-  "dispatch_owner": "tayvoriq-request-bound-recovery-dispatcher"
+  "dispatch_owner": "tayvoriq-request-bound-recovery-dispatcher",
+  "golden_path_run_id": 32309508226,
+  "dispatch_contract_sha256": "workflow-dispatch-bound-v2-exact-source-request"
 }
