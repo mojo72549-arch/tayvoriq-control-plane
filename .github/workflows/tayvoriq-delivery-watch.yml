@@ -142,7 +142,11 @@ jobs:
             elif printf '%s' "$lowered" | grep -Eq 'external_auth_blocker|missing secret|401 client error|unauthorized|billing|spending limit|payment|permission denied'; then
               external_blocker=true
               recovery_state=EXTERNAL_ACTION_REQUIRED
-            elif [ "${RUN_ATTEMPT:-1}" -lt 3 ]; then
+            elif printf '%s' "$lowered" | grep -Eq 'content_rejected:|semantic-repair-missing|quellenkontext enthält keine belastbare erklärung|code_repair_required|no safe patch passed validation|weder provider noch quellen-fallback konnten einen erklärenden text liefern'; then
+              # Deterministic editorial/evidence/code failures do not change on a blind rerun.
+              # They may only continue after source/code/repair input actually changes.
+              recovery_state=DETERMINISTIC_REPAIR_INPUT_REQUIRED
+            elif [ "${RUN_ATTEMPT:-1}" -lt 3 ] && printf '%s' "$lowered" | grep -Eq '429|too many requests|timed out|timeout|connection reset|temporary failure|temporarily unavailable|502|503|504|transient_audio_failure'; then
               should_retry=true
               recovery_state=AUTO_RECOVERY_QUEUED
             elif [ "${{ steps.owner.outputs.found }}" = "true" ]; then
@@ -349,7 +353,7 @@ jobs:
               'url':os.environ['RUN_URL'],
               'workflow':'TAYVORIQ-X Golden Path',
               'user_intervention_required': state in {'EXTERNAL_ACTION_REQUIRED','AUTONOMOUS_RECOVERY_EXHAUSTED'},
-              'internal_recovery_silent': state in {'AUTO_RECOVERY_QUEUED','REQUEST_BOUND_RECOVERY_REQUIRED','REQUEST_BOUND_RECOVERY_QUEUED','REQUEST_BOUND_RECOVERY_RUNNING','TECHNICAL_FAILURE'},
+              'internal_recovery_silent': state in {'AUTO_RECOVERY_QUEUED','REQUEST_BOUND_RECOVERY_REQUIRED','REQUEST_BOUND_RECOVERY_QUEUED','REQUEST_BOUND_RECOVERY_RUNNING','TECHNICAL_FAILURE','DETERMINISTIC_REPAIR_INPUT_REQUIRED'},
               'completed_at':datetime.now(timezone.utc).isoformat(),
           }
           Path('.github/run-now/latest-delivery-run.json').write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8')
