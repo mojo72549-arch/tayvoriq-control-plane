@@ -1,0 +1,67 @@
+name: TAYVORIQ Golden Path Natural Voice Telegram Hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-golden-path-natural-voice-telegram-hotfix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-hotfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Align Golden Path runtime and Telegram truth
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path=Path('.github/workflows/tayvoriq-deliver-video-now.yml')
+          text=path.read_text(encoding='utf-8')
+
+          old='  TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"'
+          new='  TAYVORIQ_NARRATOR_PITCH_FACTOR: "1.0"'
+          if old in text:
+              if text.count(old) != 1:
+                  raise SystemExit('HOTFIX_REFUSED:pitch-shape')
+              text=text.replace(old,new,1)
+          elif new not in text:
+              raise SystemExit('HOTFIX_REFUSED:pitch-marker-missing')
+
+          old_detail='          detail = "Der technische Teilpfad wird automatisch untersucht."'
+          new_detail='          detail = "Technischer Stopp erkannt. Delivery Watch übernimmt denselben freigegebenen Auftrag und startet die gebundene Recovery automatisch."'
+          if old_detail in text:
+              if text.count(old_detail) != 1:
+                  raise SystemExit('HOTFIX_REFUSED:detail-shape')
+              text=text.replace(old_detail,new_detail,1)
+
+          old_default='${status_fields[2]:-Der technische Teilpfad wird automatisch untersucht.}'
+          new_default='${status_fields[2]:-Technischer Stopp erkannt. Delivery Watch übernimmt denselben freigegebenen Auftrag automatisch.}'
+          if old_default in text:
+              if text.count(old_default) != 1:
+                  raise SystemExit('HOTFIX_REFUSED:default-detail-shape')
+              text=text.replace(old_default,new_default,1)
+
+          path.write_text(text,encoding='utf-8')
+          PY
+
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/tayvoriq-deliver-video-now.yml
+          if git diff --cached --quiet; then
+            echo 'Golden Path natural voice / Telegram hotfix already present.'
+            exit 0
+          fi
+          git commit -m 'fix(tayvoriq): natural narrator and truthful technical-stop status'
+          git push origin HEAD:main
