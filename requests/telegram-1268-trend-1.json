@@ -61,10 +61,28 @@
       "state": "DISPATCHED",
       "at": "2026-08-19T21:42:57.189043+00:00",
       "actor": "request-dispatcher:32305255252"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-19T22:24:53.069924Z",
+      "actor": "tayvoriq-orchestrator",
+      "meta": {
+        "retry_of_run_id": 32305272222,
+        "golden_path_run_id": 32308570312,
+        "reason": "exact-source-request-rebind",
+        "operator_notifications": "percentage-only"
+      }
     }
   ],
   "contract_sha256": "33264c07e6b13016b9d32762a01b6926cb167589aaed1a3e409dac7be8918f37",
   "dispatch_claim_run_id": 32305255252,
   "dispatch_contract_sha256": "33264c07e6b13016b9d32762a01b6926cb167589aaed1a3e409dac7be8918f37",
-  "golden_path_run_id": 32305272222
+  "golden_path_run_id": 32308570312,
+  "previous_golden_path_run_ids": [
+    32305272222
+  ],
+  "retry_of_run_id": 32305272222,
+  "recovery_generation": 1,
+  "replacement_reason": "EXACT_SOURCE_REQUEST_REBIND",
+  "recovery_owner": "tayvoriq-orchestrator"
 }
