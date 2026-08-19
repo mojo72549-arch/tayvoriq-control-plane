@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1148-trend-2-human-story-v1",
-  "status": "DISPATCHED",
+  "status": "APPROVED",
   "source": "human_story_repair_after_operator_rejection",
   "trend_id": "2",
   "topic": "Deutschland holt 21 EM-Medaillen – sechs Gold und Platz drei in Europa",
@@ -22,30 +22,31 @@
       {
         "publisher": "Reuters",
         "url": "https://www.reuters.com/sports/britains-hunt-asher-smith-set-medal-records-european-championships-2026-08-16/",
-        "supports": "Deutschland beendete die Leichtathletik-Europameisterschaften auf Rang drei der Medaillenwertung mit 21 Medaillen, darunter sechs Goldmedaillen."
+        "supports": "Reuters berichtet die Schlusswertung: Italien Rang eins mit 22 Medaillen und zehn Gold, Großbritannien Rang zwei mit 19 Medaillen und neun Gold, Deutschland dahinter mit 21 Medaillen und sechs Gold."
       },
       {
         "publisher": "The Guardian",
         "url": "https://www.theguardian.com/sport/live/2026/aug/16/birmingham-2026-european-athletics-championships-day-seven-live",
-        "supports": "Die Endabrechnung weist Deutschland mit sechs Gold-, zehn Silber- und fünf Bronzemedaillen aus: 21 Medaillen insgesamt und Rang drei."
+        "supports": "Die finale Medaillentabelle führt Italien mit zehn Gold vor Großbritannien mit neun Gold und Deutschland mit sechs Gold; Deutschland kommt auf sechs Gold, zehn Silber und fünf Bronze, also 21 Medaillen und Rang drei."
       }
     ],
     "fallback_editorial_answers": {
-      "what_happened": "21 Medaillen – und Deutschland wird trotzdem nur Dritter? Genau das ist bei dieser EM passiert.",
-      "why_happening": "Der Grund: Im Medaillenspiegel zählt zuerst Gold – und erst danach Silber und Bronze.",
+      "what_happened": "Deutschland holt 21 Medaillen – sogar zwei mehr als Großbritannien – und landet trotzdem nur auf Rang drei.",
+      "why_happening": "Der entscheidende Unterschied steckt bei den Goldmedaillen: Großbritannien liegt mit neun Gold und 19 Medaillen auf Rang zwei, Deutschland mit sechs Gold und 21 Medaillen dahinter.",
       "who_is_affected": "Deutschland holte sechs Gold, zehn Silber und fünf Bronze: 21 Podestplätze insgesamt.",
-      "personal_impact": "Italien und Großbritannien hatten mehr Gold und lagen deshalb vor Deutschland.",
-      "action_now": "Heißt: Rang drei im Medaillenspiegel – aber eine richtig breite deutsche EM-Bilanz."
+      "personal_impact": "Das Überraschende daran: Mehr Medaillen insgesamt bedeuteten in dieser Schlusswertung nicht automatisch den besseren Rang.",
+      "action_now": "Unterm Strich bleibt Rang drei – aber mit 21 Podestplätzen eine deutlich breitere Bilanz als die Platzierung zuerst vermuten lässt."
     },
     "fact_repair": {
       "original_request_id": "telegram-1148-trend-2",
       "previous_repair_request_id": "telegram-1148-trend-2-fact-repair-v1",
-      "repair_reason": "HUMAN_STORY_REWRITE_AFTER_OPERATOR_REJECTION",
+      "repair_reason": "EVIDENCE_HANDOFF_REPAIR_AFTER_WHY_GATE",
       "original_claim": "Deutschland vier Gold",
       "corrected_claim": "Deutschland 21 Medaillen, sechs Gold, zehn Silber, fünf Bronze, Rang drei",
       "same_editorial_event": true,
       "facts_unchanged": true,
-      "storytelling_only": true
+      "storytelling_only": true,
+      "evidence_handoff_repaired": true
     },
     "human_story_contract": {
       "version": "v1",
@@ -59,7 +60,7 @@
       "tiktok_cta_action": "follow"
     }
   },
-  "source_context_sha256": "7d3ccd033f31a1a9f404c5570b9897b4f4319789c7f7dfb5a5ba8d21f0c5156f",
+  "source_context_sha256": "a5b8bc5ad8170baa6d7b08ceca5480a6925fec6ae42e4712d0b53fbff93882bc",
   "state_history": [
     {
       "state": "APPROVED",
@@ -70,9 +71,18 @@
       "state": "DISPATCHED",
       "at": "2026-08-19T04:45:00+02:00",
       "actor": "operator-human-story-repair"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-19T09:08:00+02:00",
+      "actor": "evidence-handoff-repair",
+      "meta": {
+        "reason": "why_happening-source-support-repair",
+        "retry_of_run_id": 32211951678
+      }
     }
   ],
   "repair_of_request_id": "telegram-1148-trend-2-fact-repair-v1",
   "retry_allowed": true,
-  "replacement_reason": "HUMAN_STORY_REWRITE_SAME_EDITORIAL_EVENT"
+  "replacement_reason": "EVIDENCE_HANDOFF_REPAIR_SAME_APPROVED_EVENT"
 }
