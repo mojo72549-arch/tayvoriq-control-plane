@@ -1,0 +1,57 @@
+name: TAYVORIQ Natural Review Retrigger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-now/tayvoriq-natural-review-retrigger.json
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  retrigger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply natural narrator contract and trigger review
+        run: |
+          set -euo pipefail
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git pull --rebase origin main
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
+          text = workflow.read_text(encoding='utf-8')
+          old_pitch = 'TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"'
+          old_tone = 'TAYVORIQ_NARRATOR_TONE_REQUIRED: "true"'
+          if old_pitch in text:
+              text = text.replace(old_pitch, 'TAYVORIQ_NARRATOR_PITCH_FACTOR: "1.0"')
+          if old_tone in text:
+              text = text.replace(old_tone, 'TAYVORIQ_NARRATOR_TONE_REQUIRED: "false"')
+          if 'TAYVORIQ_NARRATOR_PITCH_FACTOR: "1.0"' not in text:
+              raise SystemExit('NATURAL_PITCH_CONTRACT_NOT_APPLIED')
+          if 'TAYVORIQ_NARRATOR_TONE_REQUIRED: "false"' not in text:
+              raise SystemExit('NATURAL_TONE_CONTRACT_NOT_APPLIED')
+          workflow.write_text(text, encoding='utf-8')
+
+          trigger = Path('.github/run-now/tayvoriq-x-request.json')
+          data = json.loads(trigger.read_text(encoding='utf-8'))
+          data['requested_at'] = '2026-08-19T05:06:00+02:00'
+          data['request_nonce'] = 'em-human-story-review-v3-natural-voice-20260819T050600CEST'
+          data['retry_of_run_id'] = 32210196564
+          data['reason'] = 'human-first-review-natural-voice-pitch-preservation'
+          data['recovery_generation'] = 3
+          trigger.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+          git add .github/workflows/tayvoriq-deliver-video-now.yml .github/run-now/tayvoriq-x-request.json
+          git commit -m "Run EM human review with pitch-preserved narrator"
+          git pull --rebase origin main
+          git push origin HEAD:main
