@@ -1,5 +1,6 @@
 from pathlib import Path
 import importlib.util
+import json
 import sys
 
 
@@ -34,6 +35,23 @@ def test_fresh_recovery_confirms_sources_instead_of_hiding_them():
     milestone = progress.effective_milestone("sources_locked", 1)
     assert milestone.percent == 62
     assert "Recovery-Bindung" in milestone.title
+
+
+def test_recovery_generation_is_resolved_from_workspace_not_current_directory(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    request_dir = workspace / "requests"
+    request_dir.mkdir(parents=True)
+    request_id = "telegram-1268-trend-1"
+    (request_dir / f"{request_id}.json").write_text(
+        json.dumps({"request_id": request_id, "recovery_generation": 12}),
+        encoding="utf-8",
+    )
+    implementation = workspace / "implementation"
+    implementation.mkdir()
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
+    monkeypatch.setenv("SOURCE_REQUEST_ID_PIN", request_id)
+    monkeypatch.chdir(implementation)
+    assert progress.recovery_generation() == 12
 
 
 def test_active_golden_path_heartbeat_is_due_every_three_minutes():
