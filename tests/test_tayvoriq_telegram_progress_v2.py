@@ -1,11 +1,13 @@
 from pathlib import Path
 import importlib.util
+import sys
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "tayvoriq_telegram_progress_v1.py"
 spec = importlib.util.spec_from_file_location("tayvoriq_telegram_progress_v1", MODULE_PATH)
-progress = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
+progress = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = progress
 spec.loader.exec_module(progress)
 
 
