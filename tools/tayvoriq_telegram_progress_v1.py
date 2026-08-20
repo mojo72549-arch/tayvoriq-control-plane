@@ -6,7 +6,7 @@ import argparse
 import json
 import os
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 
@@ -24,10 +24,10 @@ class Milestone:
 
 MILESTONES = {
     "recovery_started": Milestone(
-        30,
-        "Sichere Reparatur gestartet",
-        "Der vorherige Lauf wurde sicher gestoppt; es wurde nichts veröffentlicht.",
-        "Die erkannte Ursache wird repariert und derselbe freigegebene Auftrag neu gestartet.",
+        60,
+        "Recovery übernommen",
+        "Der fehlgeschlagene Lauf wurde erkannt und derselbe freigegebene Auftrag ist an einen neuen Recovery-Lauf gebunden.",
+        "Der gespeicherte Produktionsstand wird übernommen und nur der noch offene Pfad weiterbearbeitet.",
     ),
     "sources_locked": Milestone(
         20,
@@ -35,16 +35,22 @@ MILESTONES = {
         "Thema, Fakten und mindestens zwei Quellen sind verbindlich geprüft.",
         "Technischer Preflight und Produktionsvorbereitung.",
     ),
+    "environment_active": Milestone(
+        35,
+        "Produktionsumgebung wird vorbereitet",
+        "Quellen, Dublettenprüfung, Implementierung und vorhandene Recovery-Artefakte sind gebunden.",
+        "Abhängigkeiten und Produktions-Preflight werden fertig vorbereitet.",
+    ),
     "production_active": Milestone(
         45,
         "Produktion läuft",
         "Preflight und Produktionsvertrag sind bestanden.",
-        "Menschliches Skript, natürliche tiefe Sprecherstimme, Visuals, Untertitel und 9:16-Render werden erstellt und geprüft.",
+        "Skript, natürliche Sprecherstimme, Visuals, Untertitel und 9:16-Master werden erstellt beziehungsweise aus dem Checkpoint fortgesetzt.",
     ),
     "master_ready": Milestone(
-        75,
-        "Videomaster erstellt",
-        "Ein wiederverwendbarer YouTube-/TikTok-Master liegt vor.",
+        84,
+        "Videomaster gesichert",
+        "Ein publishbarer beziehungsweise lokal reparierter YouTube-/TikTok-Master liegt verifiziert vor.",
         "Finale Sprach-, Bild-, Fakten- und Plattform-Gates.",
     ),
     "quality_passed": Milestone(
@@ -62,17 +68,17 @@ MILESTONES = {
     "render_heartbeat": Milestone(
         45,
         "Produktion arbeitet weiter",
-        "Der Workflow ist aktiv; seit dem letzten geprüften Meilenstein wurde kein neuer Fehler erkannt.",
-        "Die Sprecher-, Visual-, Untertitel- und Renderphase läuft kontrolliert weiter.",
+        "Der Produktionsprozess ist weiterhin aktiv; seit dem letzten verifizierten Meilenstein wurde kein neuer Fehler erkannt.",
+        "Die laufende Produktionsphase wird fortgesetzt und der nächste echte Gate-Wechsel wird sofort gemeldet.",
     ),
     "checkpoint_repair": Milestone(
-        60,
+        84,
         "Master gesichert · gezielte Reparatur",
         "Ein wiederverwendbarer Master ist dauerhaft gesichert; es wurde noch nichts veröffentlicht.",
         "Nur fehlgeschlagene lokale Sprach-, Bild- oder Audit-Prüfpunkte werden repariert.",
     ),
     "checkpoint_heartbeat": Milestone(
-        60,
+        84,
         "Checkpoint-Reparatur arbeitet weiter",
         "Master und Quellen bleiben gesichert; seit dem Reparaturstart wurde kein neuer Fehler erkannt.",
         "Die verbliebenen lokalen Prüfpunkte werden weiter repariert und erneut gemessen.",
@@ -93,37 +99,58 @@ MILESTONES = {
         None,
         "Technischer Stopp erkannt",
         "Der aktuelle Lauf wurde fail-closed beendet; Trendfreigabe und Quellen bleiben erhalten und es wurde nichts veröffentlicht.",
-        "Delivery Watch übernimmt denselben freigegebenen Auftrag; der Recovery Dispatcher startet und bindet den nächsten Run automatisch.",
+        "Der Orchestrator übernimmt denselben freigegebenen Auftrag automatisch in einen neuen Recovery-Lauf.",
     ),
 }
 
 
 # Facts are immutable and need not be repeated on a same-run retry. Later milestones
 # must stay eligible: if an original non-recovery attempt never reached 45 %, a
-# successful same-run retry still emits the first truthful 45 % update.
+# successful same-run retry still emits the first truthful production update.
 REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
-    "render_heartbeat",
-    "checkpoint_heartbeat",
 }
 
-# Once request-bound recovery has taken ownership, the operator has already seen
-# the earlier pipeline progress. A fresh recovery run must never move the visible
-# percentage backwards from 60 % to 20/45 %. These stages still execute and are
-# verified internally; only their Telegram replay is suppressed.
+# A request-bound recovery has already crossed the initial factual stages. Only
+# the 20 % source replay is suppressed. Every subsequent phase is rendered with
+# a recovery-safe percentage >= 60 so Telegram can never visibly move backwards.
 RECOVERY_REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
-    "production_active",
-    "render_heartbeat",
 }
 
-# Heartbeats are deliberately sparse. The workflow may poll every three minutes,
-# but Telegram only gets two meaningful updates. This prevents 24/27/30-minute
-# spam while still telling the operator that a long phase is alive.
-HEARTBEAT_SEND_MINUTES = {
-    "render_heartbeat": (6, 15),
-    "checkpoint_heartbeat": (6, 15),
+# Recovery-specific human-visible state. Percentages are tied to verified workflow
+# boundaries, not estimated completion. Long-running work stays at the latest true
+# gate instead of inventing forward progress.
+RECOVERY_MILESTONES = {
+    "environment_active": Milestone(
+        62,
+        "Recovery-Umgebung übernommen",
+        "Quellen, Dublettenprüfung und vorhandener Produktions-Checkpoint sind für diesen Recovery-Lauf gebunden.",
+        "Abhängigkeiten und der technische Preflight werden abgeschlossen.",
+    ),
+    "production_active": Milestone(
+        65,
+        "Recovery-Produktion läuft",
+        "Produktions-Preflight und Vertragsprüfungen sind bestanden; der bestehende Auftrag wird gezielt fortgesetzt.",
+        "Skript, Voice, Visuals und Renderpfad werden erstellt oder aus dem gesicherten Stand weitergeführt.",
+    ),
+    "render_heartbeat": Milestone(
+        65,
+        "Recovery arbeitet weiter",
+        "Der aktuelle Produktionslauf ist weiterhin aktiv; seit dem letzten verifizierten Gate wurde kein neuer Fehler erkannt.",
+        "Die aktive Produktionsphase läuft weiter; der nächste echte Meilenstein wird sofort gemeldet.",
+    ),
+    "checkpoint_repair": MILESTONES["checkpoint_repair"],
+    "checkpoint_heartbeat": MILESTONES["checkpoint_heartbeat"],
+    "master_ready": MILESTONES["master_ready"],
+    "quality_passed": MILESTONES["quality_passed"],
+    "review_ready": MILESTONES["review_ready"],
 }
+
+# The workflow heartbeat worker wakes every five minutes. Repeating every five
+# minutes prevents long operator silence while avoiding noisy minute-by-minute spam.
+HEARTBEAT_INTERVAL_MINUTES = 5
+HEARTBEAT_STAGES = {"render_heartbeat", "checkpoint_heartbeat"}
 
 
 def read_policy(path: Path = DEFAULT_POLICY) -> dict:
@@ -149,11 +176,10 @@ def immediate_failure_enabled(path: Path = DEFAULT_POLICY) -> bool:
 
 
 def heartbeat_due(stage: str, elapsed_minutes: int) -> bool:
-    schedule = HEARTBEAT_SEND_MINUTES.get(stage)
-    if not schedule:
+    if stage not in HEARTBEAT_STAGES:
         return True
     elapsed = max(0, int(elapsed_minutes or 0))
-    return elapsed in schedule
+    return elapsed >= HEARTBEAT_INTERVAL_MINUTES and elapsed % HEARTBEAT_INTERVAL_MINUTES == 0
 
 
 def recovery_generation() -> int:
@@ -175,6 +201,22 @@ def recovery_generation() -> int:
         return 0
 
 
+def effective_milestone(stage: str, generation: int) -> Milestone:
+    milestone = MILESTONES[stage]
+    if generation <= 0:
+        return milestone
+    if stage == "recovery_started":
+        return MILESTONES["recovery_started"]
+    override = RECOVERY_MILESTONES.get(stage)
+    if override is not None:
+        return override
+    # Hard monotonicity invariant: any percentage-bearing stage that is not
+    # explicitly mapped can never display less than the 60 % recovery floor.
+    if milestone.percent is not None and milestone.percent < 60:
+        return replace(milestone, percent=60)
+    return milestone
+
+
 def should_send(
     path: Path,
     run_attempt: int,
@@ -184,14 +226,13 @@ def should_send(
     if not progress_enabled(path):
         return False
     # Internal technical/audio failures belong to the orchestrator. Telegram is
-    # the operator feed, so only verified percentage milestones are shown while
-    # request-bound recovery remains possible. Terminal external blockers are
-    # still reported by Delivery Watch through its dedicated user-action path.
+    # the operator feed, so only verified milestones are shown while request-bound
+    # recovery remains possible. External blockers have a dedicated user-action path.
     if stage in {"technical_stop", "audio_recovery"} and not immediate_failure_enabled(path):
         return False
     if int(run_attempt) > 1 and stage in REPLAY_SUPPRESSED_STAGES:
         return False
-    if stage in HEARTBEAT_SEND_MINUTES and not heartbeat_due(stage, elapsed_minutes):
+    if stage in HEARTBEAT_STAGES and not heartbeat_due(stage, elapsed_minutes):
         return False
     return True
 
@@ -209,11 +250,12 @@ def build_payload(
     elapsed_minutes: int = 0,
     failure_state: str = "",
     detail: str = "",
+    generation: int = 0,
 ) -> dict:
-    milestone = MILESTONES[stage]
+    milestone = effective_milestone(stage, generation)
     heading = f"TAYVORIQ {milestone.percent} %" if milestone.percent is not None else "TAYVORIQ"
     icon = "🔄" if stage == "render_heartbeat" else ("🟠" if stage in {"audio_recovery", "technical_stop"} else "🟣")
-    if stage in {"checkpoint_repair", "checkpoint_heartbeat"}:
+    if stage in {"recovery_started", "checkpoint_repair", "checkpoint_heartbeat"} or generation > 0:
         icon = "🔧"
     if stage == "review_ready":
         icon = "🟢"
@@ -223,16 +265,16 @@ def build_payload(
     title = milestone.title
     completed = milestone.completed
     next_step = milestone.next_step
-    if stage == "render_heartbeat" and int(elapsed_minutes or 0) >= 15:
+    if stage == "render_heartbeat" and int(elapsed_minutes or 0) >= 20:
         icon = "🟠"
-        title = "Renderphase länger als üblich · Watchdog aktiv"
-        completed = "Der Lauf ist noch aktiv, aber die Renderphase hat den normalen Zwischenbereich überschritten."
-        next_step = "Der Watchdog lässt den Lauf nicht unbegrenzt weiterlaufen; bei Stillstand wird fail-closed beendet bzw. gezielt repariert."
-    elif stage == "checkpoint_heartbeat" and int(elapsed_minutes or 0) >= 15:
+        title = "Produktion dauert länger · Watchdog aktiv"
+        completed = "Der Lauf ist weiterhin aktiv; der letzte verifizierte Produktionsstand bleibt erhalten."
+        next_step = "Der Watchdog überwacht die laufende Phase und übernimmt bei einem echten Fehler automatisch den Auftrag."
+    elif stage == "checkpoint_heartbeat" and int(elapsed_minutes or 0) >= 20:
         icon = "🟠"
-        title = "Reparaturphase länger als üblich · Watchdog aktiv"
-        completed = "Checkpoint und Quellen sind gesichert; die Reparatur dauert länger als vorgesehen."
-        next_step = "Der Watchdog entscheidet zwischen gezielter Fortsetzung und sicherem Stopp statt endlosen Statusmeldungen."
+        title = "Reparatur dauert länger · Watchdog aktiv"
+        completed = "Checkpoint und Quellen sind gesichert; die lokale Reparatur läuft weiterhin kontrolliert."
+        next_step = "Der Watchdog lässt den Auftrag aktiv und übernimmt bei einem echten Laufabbruch automatisch in den nächsten Recovery-Lauf."
 
     if stage == "technical_stop":
         detail = (
@@ -246,8 +288,10 @@ def build_payload(
         f"Thema: {clean_topic(topic)}",
         f"Run: {str(run_id or 'unbekannt').strip()}",
     ]
-    if stage in {"render_heartbeat", "checkpoint_heartbeat"}:
-        phase = "Renderphase" if stage == "render_heartbeat" else "Reparaturphase"
+    if generation > 0:
+        lines.append(f"Recovery: Generation {generation}")
+    if stage in HEARTBEAT_STAGES:
+        phase = "Produktionsphase" if stage == "render_heartbeat" else "Reparaturphase"
         lines.extend(["", f"⏱️ {phase} aktiv seit: {max(1, int(elapsed_minutes or 0))} Minuten"])
     if failure_state:
         lines.extend(["", f"Status: {clean_topic(failure_state)}"])
@@ -323,7 +367,7 @@ def main() -> int:
         reason = (
             "suppressed_internal_recovery"
             if args.stage in {"technical_stop", "audio_recovery"} and not immediate_failure_enabled(args.policy)
-            else ("suppressed_heartbeat" if args.stage in HEARTBEAT_SEND_MINUTES else "suppressed_rerun")
+            else ("suppressed_heartbeat" if args.stage in HEARTBEAT_STAGES else "suppressed_rerun")
         )
         print(json.dumps({
             "status": reason,
@@ -339,6 +383,7 @@ def main() -> int:
     if not token or not chat_id:
         raise SystemExit("TELEGRAM_PROGRESS_SECRETS_MISSING")
 
+    milestone = effective_milestone(args.stage, generation)
     payload = build_payload(
         args.stage,
         args.topic,
@@ -347,12 +392,13 @@ def main() -> int:
         elapsed_minutes=args.elapsed_minutes,
         failure_state=args.failure_state,
         detail=args.detail,
+        generation=generation,
     )
     message_id = telegram_send(token, payload)
     receipt = {
         "status": "sent",
         "stage": args.stage,
-        "percent": MILESTONES[args.stage].percent,
+        "percent": milestone.percent,
         "run_id": str(args.run_id),
         "run_attempt": attempt,
         "recovery_generation": generation,
