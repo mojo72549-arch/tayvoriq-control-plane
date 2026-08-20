@@ -21,19 +21,24 @@ permissions:
   actions: write
   contents: write
 
+# Only one recovery owner may mutate durable request bindings at a time. A
+# workflow_run event that arrives while an explicit follow-up is active queues
+# behind it and becomes a no-op once the request has been rebound.
 concurrency:
-  group: tayvoriq-delivery-watch-${{ github.event.workflow_run.id || inputs.run_id || github.sha }}
+  group: tayvoriq-delivery-watch
   cancel-in-progress: false
 
 jobs:
   recover-or-finalize:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 90
     env:
       GH_TOKEN: ${{ github.token }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       MAX_RECOVERY_GENERATIONS: "4"
+      RECOVERY_POLL_SECONDS: "10"
+      RECOVERY_MAX_POLLS: "510"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -115,13 +120,18 @@ jobs:
                   matches.append((path,d))
           if not matches:
               with open(sys.argv[1],'a',encoding='utf-8') as h:
-                  h.write('found=false\nrequest_file=\nrequest_id=\ntopic=\ntrend_id=\nrecovery_generation=0\n')
+                  h.write('found=false\nis_current=false\nrequest_file=\nrequest_id=\ntopic=\ntrend_id=\nrecovery_generation=0\n')
               print({'run_id':run_id,'owner':None})
               raise SystemExit(0)
           matches.sort(key=lambda item: 0 if int(item[1].get('golden_path_run_id') or 0) == run_id else 1)
           path,d=matches[0]
+          try:
+              current_run=int(d.get('golden_path_run_id') or 0)
+          except (TypeError, ValueError):
+              current_run=0
           values={
               'found':'true',
+              'is_current':'true' if current_run == run_id else 'false',
               'request_file':str(path),
               'request_id':str(d.get('request_id') or '').strip(),
               'topic':str(d.get('topic') or '').strip(),
@@ -131,7 +141,7 @@ jobs:
           with open(sys.argv[1],'a',encoding='utf-8') as h:
               for k,v in values.items():
                   h.write(f'{k}={v}\n')
-          print({'run_id':run_id,**values})
+          print({'run_id':run_id,'current_run':current_run,**values})
           PY
 
       - name: Classify autonomous recovery
@@ -142,6 +152,7 @@ jobs:
           RUN_ID: ${{ steps.watched.outputs.run_id }}
           RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
           OWNER_FOUND: ${{ steps.owner.outputs.found }}
+          OWNER_CURRENT: ${{ steps.owner.outputs.is_current }}
         run: |
           set -euo pipefail
           logs=$(gh run view "$RUN_ID" --log-failed 2>/dev/null || true)
@@ -149,33 +160,75 @@ jobs:
           mode="fresh"
           state="REQUEST_BOUND_RECOVERY_REQUIRED"
 
-          if printf '%s' "$lowered" | grep -Eq 'external_auth_blocker|missing secret|401 client error|unauthorized|billing|spending limit|payment|permission denied'; then
+          if [ "$OWNER_FOUND" != "true" ]; then
+            mode="unowned"
+            state="RECOVERY_OWNER_MISSING"
+          elif [ "$OWNER_CURRENT" != "true" ]; then
+            mode="stale"
+            state="SUPERSEDED_RECOVERY_EVENT"
+          elif printf '%s' "$lowered" | grep -Eq 'external_auth_blocker|missing secret|401 client error|unauthorized|billing|spending limit|payment|permission denied'; then
             mode="external"
             state="EXTERNAL_ACTION_REQUIRED"
           elif printf '%s' "$lowered" | grep -Eq 'duplicate_content_blocked|dublette verhindert|duplicate blocked'; then
             mode="duplicate"
             state="DUPLICATE_CONTENT_BLOCKED"
-          elif [ "$OWNER_FOUND" != "true" ]; then
-            mode="unowned"
-            state="RECOVERY_OWNER_MISSING"
-          elif [ "${RUN_ATTEMPT:-1}" -lt 3 ] && printf '%s' "$lowered" | grep -Eq '429|too many requests|timed out|timeout|connection reset|temporary failure|temporarily unavailable|502|503|504|transient_audio_failure'; then
+          elif [ "${RUN_ATTEMPT:-1}" -lt 3 ] && printf '%s' "$lowered" | grep -Eq '429|too many requests|timed out|timeout|connection reset|temporary failure|temporarily unavailable|502|503|504|transient_audio_failure|circuit already open'; then
             mode="rerun"
             state="SAME_RUN_TRANSIENT_RECOVERY"
           fi
 
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "state=$state" >> "$GITHUB_OUTPUT"
-          echo "TAYVORIQ recovery classification: run=$RUN_ID mode=$mode state=$state owner=${{ steps.owner.outputs.request_id }}"
+          echo "TAYVORIQ recovery classification: run=$RUN_ID mode=$mode state=$state owner=${{ steps.owner.outputs.request_id }} current=$OWNER_CURRENT"
 
-      - name: Same-run transient recovery
+      - name: Same-run transient recovery and follow result
+        id: rerun
         if: steps.classify.outputs.mode == 'rerun'
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.watched.outputs.run_id }}
+          OLD_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
+        run: |
+          set -euo pipefail
+          gh run rerun "$RUN_ID" --failed
+          echo "Transient recovery re-run requested for run $RUN_ID after attempt $OLD_ATTEMPT."
+
+          conclusion="watch_timeout"
+          observed_attempt="$OLD_ATTEMPT"
+          for poll in $(seq 1 "${RECOVERY_MAX_POLLS:-510}"); do
+            sleep "${RECOVERY_POLL_SECONDS:-10}"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" > /tmp/rerun-state.json
+            readarray -t fields < <(python - <<'PY'
+          import json
+          d=json.load(open('/tmp/rerun-state.json',encoding='utf-8'))
+          print(int(d.get('run_attempt') or 1))
+          print(str(d.get('status') or ''))
+          print(str(d.get('conclusion') or ''))
+          PY
+            )
+            observed_attempt="${fields[0]:-$OLD_ATTEMPT}"
+            status="${fields[1]:-}"
+            current_conclusion="${fields[2]:-}"
+            if [ "$observed_attempt" -gt "$OLD_ATTEMPT" ] && [ "$status" = "completed" ]; then
+              conclusion="${current_conclusion:-failure}"
+              break
+            fi
+          done
+          echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+          echo "attempt=$observed_attempt" >> "$GITHUB_OUTPUT"
+          echo "Same-run recovery observed: run=$RUN_ID attempt=$observed_attempt conclusion=$conclusion"
+
+      - name: Continue recovery after failed same-run result
+        id: rerun_followup
+        if: steps.rerun.outcome == 'success' && steps.rerun.outputs.conclusion != 'success' && steps.rerun.outputs.conclusion != 'watch_timeout'
         shell: bash
         env:
           RUN_ID: ${{ steps.watched.outputs.run_id }}
         run: |
           set -euo pipefail
-          gh run rerun "$RUN_ID" --failed
-          echo "Transient failure re-run in place for run $RUN_ID."
+          gh workflow run tayvoriq-delivery-watch.yml --ref main -f "run_id=$RUN_ID"
+          echo "dispatched=true" >> "$GITHUB_OUTPUT"
+          echo "Direct follow-up recovery dispatched for same run $RUN_ID."
 
       - name: Start fresh request-bound recovery directly
         id: fresh
@@ -321,6 +374,50 @@ jobs:
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${text}" >/dev/null
 
+      - name: Follow fresh recovery result
+        id: fresh_follow
+        if: steps.fresh.outputs.started == 'true'
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
+        run: |
+          set -euo pipefail
+          conclusion="watch_timeout"
+          for poll in $(seq 1 "${RECOVERY_MAX_POLLS:-510}"); do
+            sleep "${RECOVERY_POLL_SECONDS:-10}"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" > /tmp/fresh-state.json
+            readarray -t fields < <(python - <<'PY'
+          import json
+          d=json.load(open('/tmp/fresh-state.json',encoding='utf-8'))
+          print(str(d.get('status') or ''))
+          print(str(d.get('conclusion') or ''))
+          print(int(d.get('run_attempt') or 1))
+          PY
+            )
+            status="${fields[0]:-}"
+            current_conclusion="${fields[1]:-}"
+            attempt="${fields[2]:-1}"
+            if [ "$status" = "completed" ]; then
+              conclusion="${current_conclusion:-failure}"
+              echo "attempt=$attempt" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+          echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+          echo "Fresh recovery observed: run=$RUN_ID conclusion=$conclusion"
+
+      - name: Continue recovery after failed fresh result
+        id: fresh_followup
+        if: steps.fresh_follow.outcome == 'success' && steps.fresh_follow.outputs.conclusion != 'success' && steps.fresh_follow.outputs.conclusion != 'watch_timeout'
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-delivery-watch.yml --ref main -f "run_id=$RUN_ID"
+          echo "dispatched=true" >> "$GITHUB_OUTPUT"
+          echo "Direct follow-up recovery dispatched for fresh run $RUN_ID."
+
       - name: Telegram external action blocker
         if: steps.classify.outputs.mode == 'external'
         shell: bash
@@ -344,7 +441,7 @@ jobs:
             --data-urlencode "text=${text}" >/dev/null
 
       - name: Record recovery state
-        if: always()
+        if: always() && steps.owner.outputs.is_current == 'true'
         continue-on-error: true
         shell: bash
         env:
@@ -353,6 +450,10 @@ jobs:
           CLASSIFIED_STATE: ${{ steps.classify.outputs.state }}
           NEW_RUN_ID: ${{ steps.fresh.outputs.new_run_id }}
           STARTED: ${{ steps.fresh.outputs.started }}
+          RERUN_CONCLUSION: ${{ steps.rerun.outputs.conclusion }}
+          FRESH_CONCLUSION: ${{ steps.fresh_follow.outputs.conclusion }}
+          RERUN_FOLLOWUP: ${{ steps.rerun_followup.outputs.dispatched }}
+          FRESH_FOLLOWUP: ${{ steps.fresh_followup.outputs.dispatched }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -365,13 +466,22 @@ jobs:
           import json, os
           from datetime import datetime, timezone
           from pathlib import Path
+          state=str(os.environ.get('CLASSIFIED_STATE') or 'NO_RECOVERY_REQUIRED')
+          if os.environ.get('RERUN_CONCLUSION') == 'success' or os.environ.get('FRESH_CONCLUSION') == 'success':
+              state='RECOVERY_COMPLETED'
+          elif os.environ.get('RERUN_FOLLOWUP') == 'true' or os.environ.get('FRESH_FOLLOWUP') == 'true':
+              state='RECOVERY_FOLLOWUP_DISPATCHED'
+          elif os.environ.get('RERUN_CONCLUSION') == 'watch_timeout' or os.environ.get('FRESH_CONCLUSION') == 'watch_timeout':
+              state='RECOVERY_WATCH_TIMEOUT'
           payload={
               'run_id':int(os.environ.get('WATCHED_RUN_ID') or 0),
               'request_id':str(os.environ.get('REQUEST_ID') or ''),
-              'recovery_state':str(os.environ.get('CLASSIFIED_STATE') or 'NO_RECOVERY_REQUIRED'),
+              'recovery_state':state,
               'recovery_run_id':int(os.environ['NEW_RUN_ID']) if str(os.environ.get('NEW_RUN_ID') or '').isdigit() else None,
               'direct_recovery_started':os.environ.get('STARTED') == 'true',
-              'recovery_transport':'workflow_dispatch-direct',
+              'same_run_conclusion':str(os.environ.get('RERUN_CONCLUSION') or ''),
+              'fresh_run_conclusion':str(os.environ.get('FRESH_CONCLUSION') or ''),
+              'recovery_transport':'workflow_dispatch-direct-self-followup',
               'workflow_run_chain_dependency':False,
               'recorded_at':datetime.now(timezone.utc).isoformat(),
           }
@@ -381,7 +491,7 @@ jobs:
           PY
             git add .github/run-now/latest-delivery-run.json
             if git diff --cached --quiet; then exit 0; fi
-            git commit -m "ops: record direct TAYVORIQ recovery state"
+            git commit -m "ops: record self-following TAYVORIQ recovery state"
             if git push origin HEAD:main; then exit 0; fi
             sleep $((attempt * 2))
           done
