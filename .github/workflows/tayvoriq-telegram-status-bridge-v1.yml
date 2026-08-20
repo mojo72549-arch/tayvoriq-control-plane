@@ -111,16 +111,43 @@ jobs:
               raise SystemExit("STATUS_ELAPSED_MINUTES_INVALID")
           if stage not in {"render_heartbeat", "checkpoint_heartbeat"}:
               elapsed = 0
+
+          # Bind the bridge to the same durable Telegram request as the Golden
+          # Path run. This prevents a bridge heartbeat from losing recovery
+          # generation and visibly regressing from >=60 % back to 45 %.
+          request_matches = []
+          run_number = int(run_id)
+          for request_path in Path("requests").glob("*.json"):
+              try:
+                  request = json.loads(request_path.read_text(encoding="utf-8"))
+                  current_run = int(request.get("golden_path_run_id") or 0)
+              except Exception:
+                  continue
+              if current_run != run_number:
+                  continue
+              if str(request.get("topic") or "").strip() != topic:
+                  continue
+              request_id = str(request.get("request_id") or "").strip()
+              if not request_id or any(char in request_id for char in "/\\\r\n"):
+                  continue
+              request_matches.append(request_id)
+          if len(request_matches) > 1:
+              raise SystemExit("STATUS_REQUEST_BINDING_AMBIGUOUS")
+          request_id = request_matches[0] if request_matches else ""
+
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"stage={stage}\n")
               handle.write(f"topic={topic}\n")
               handle.write(f"run_id={run_id}\n")
               handle.write(f"elapsed_minutes={elapsed}\n")
+              handle.write(f"request_id={request_id}\n")
           print(json.dumps({
               "stage": stage,
               "topic": topic,
               "run_id": run_id,
               "elapsed_minutes": elapsed,
+              "request_id": request_id or None,
+              "request_bound": bool(request_id),
           }, ensure_ascii=False))
           PY
 
@@ -177,6 +204,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SOURCE_REQUEST_ID_PIN: ${{ steps.payload.outputs.request_id }}
         run: |
           set -euo pipefail
           python tools/tayvoriq_telegram_progress_v1.py \
