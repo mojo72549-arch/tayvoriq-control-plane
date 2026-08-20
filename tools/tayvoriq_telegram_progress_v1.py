@@ -99,12 +99,22 @@ MILESTONES = {
 
 
 # Facts are immutable and need not be repeated on a same-run retry. Later milestones
-# must stay eligible: if an earlier attempt never reached 45 %, a successful recovery
-# has to emit the first real 45 % update instead of staying silent.
+# must stay eligible: if an original non-recovery attempt never reached 45 %, a
+# successful same-run retry still emits the first truthful 45 % update.
 REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
     "render_heartbeat",
     "checkpoint_heartbeat",
+}
+
+# Once request-bound recovery has taken ownership, the operator has already seen
+# the earlier pipeline progress. A fresh recovery run must never move the visible
+# percentage backwards from 60 % to 20/45 %. These stages still execute and are
+# verified internally; only their Telegram replay is suppressed.
+RECOVERY_REPLAY_SUPPRESSED_STAGES = {
+    "sources_locked",
+    "production_active",
+    "render_heartbeat",
 }
 
 # Heartbeats are deliberately sparse. The workflow may poll every three minutes,
@@ -144,6 +154,25 @@ def heartbeat_due(stage: str, elapsed_minutes: int) -> bool:
         return True
     elapsed = max(0, int(elapsed_minutes or 0))
     return elapsed in schedule
+
+
+def recovery_generation() -> int:
+    """Resolve the durable request recovery generation without trusting free text."""
+    request_id = str(os.getenv("SOURCE_REQUEST_ID_PIN") or "").strip()
+    if (
+        not request_id
+        or any(char in request_id for char in "/\\\r\n")
+        or request_id in {".", ".."}
+    ):
+        return 0
+    path = Path("requests") / f"{request_id}.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if str(data.get("request_id") or "").strip() != request_id:
+            return 0
+        return max(0, int(data.get("recovery_generation") or 0))
+    except Exception:
+        return 0
 
 
 def should_send(
@@ -278,8 +307,17 @@ def main() -> int:
     args = parser.parse_args()
 
     attempt = parse_attempt(args.run_attempt)
+    generation = recovery_generation()
     if not progress_enabled(args.policy):
         print(json.dumps({"status": "disabled", "stage": args.stage}))
+        return 0
+    if generation > 0 and args.stage in RECOVERY_REPLAY_SUPPRESSED_STAGES:
+        print(json.dumps({
+            "status": "suppressed_recovery_replay",
+            "stage": args.stage,
+            "run_attempt": attempt,
+            "recovery_generation": generation,
+        }))
         return 0
     if not should_send(args.policy, attempt, args.stage, args.elapsed_minutes):
         reason = (
@@ -292,6 +330,7 @@ def main() -> int:
             "stage": args.stage,
             "run_attempt": attempt,
             "elapsed_minutes": int(args.elapsed_minutes or 0),
+            "recovery_generation": generation,
         }))
         return 0
 
@@ -316,6 +355,7 @@ def main() -> int:
         "percent": MILESTONES[args.stage].percent,
         "run_id": str(args.run_id),
         "run_attempt": attempt,
+        "recovery_generation": generation,
         "failure_state": clean_topic(args.failure_state) if args.failure_state else "",
         "telegram_message_id": message_id,
     }
