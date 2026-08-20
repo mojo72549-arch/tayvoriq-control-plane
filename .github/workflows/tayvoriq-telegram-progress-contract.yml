@@ -1,0 +1,39 @@
+name: TAYVORIQ Telegram Progress Contract
+
+on:
+  pull_request:
+    paths:
+      - tools/tayvoriq_telegram_progress_v1.py
+      - tests/test_tayvoriq_telegram_progress_v2.py
+      - .github/workflows/tayvoriq-telegram-progress-contract.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/tayvoriq_telegram_progress_v1.py
+      - tests/test_tayvoriq_telegram_progress_v2.py
+      - .github/workflows/tayvoriq-telegram-progress-contract.yml
+
+permissions:
+  contents: read
+
+jobs:
+  telegram-progress-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile notifier
+        run: python -m py_compile tools/tayvoriq_telegram_progress_v1.py
+
+      - name: Install pytest
+        run: python -m pip install -q pytest
+
+      - name: Verify recovery progress contract
+        run: python -m pytest -q tests/test_tayvoriq_telegram_progress_v2.py
