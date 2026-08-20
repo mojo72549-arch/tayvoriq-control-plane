@@ -187,7 +187,7 @@ def heartbeat_due(stage: str, elapsed_minutes: int) -> bool:
 
 
 def recovery_generation() -> int:
-    """Resolve the durable request recovery generation without trusting free text."""
+    """Resolve durable recovery ownership from the repository root, never cwd."""
     request_id = str(os.getenv("SOURCE_REQUEST_ID_PIN") or "").strip()
     if (
         not request_id
@@ -195,7 +195,14 @@ def recovery_generation() -> int:
         or request_id in {".", ".."}
     ):
         return 0
-    path = Path("requests") / f"{request_id}.json"
+
+    workspace_raw = str(os.getenv("GITHUB_WORKSPACE") or "").strip()
+    if workspace_raw:
+        repository_root = Path(workspace_raw)
+    else:
+        # tools/tayvoriq_telegram_progress_v1.py -> repository root
+        repository_root = Path(__file__).resolve().parents[1]
+    path = repository_root / "requests" / f"{request_id}.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         if str(data.get("request_id") or "").strip() != request_id:
