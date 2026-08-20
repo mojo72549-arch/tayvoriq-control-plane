@@ -1,0 +1,262 @@
+name: TAYVORIQ Request Continuity Watchdog
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+# Shares the same lock as Delivery Watch. Only one recovery owner may rebind a
+# durable request at a time, regardless of which workflow noticed the failure.
+concurrency:
+  group: tayvoriq-delivery-watch
+  cancel-in-progress: false
+
+jobs:
+  adopt-stranded-request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find one stranded approved request
+        id: stranded
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "$GITHUB_OUTPUT" <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+
+          candidates=[]
+          for path in sorted(Path('requests').glob('*.json')):
+              try:
+                  d=json.loads(path.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              if str(d.get('status') or '').strip() != 'DISPATCHED':
+                  continue
+              try:
+                  run_id=int(d.get('golden_path_run_id') or 0)
+              except (TypeError, ValueError):
+                  continue
+              if not run_id:
+                  continue
+              approved=str(d.get('approved_at') or '')
+              candidates.append((approved,path,d,run_id))
+
+          candidates.sort(key=lambda item: item[0])
+          chosen=None
+          for _, path, d, run_id in candidates:
+              try:
+                  raw=subprocess.check_output(
+                      ['gh','api',f'repos/{__import__("os").environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'],
+                      text=True,
+                  )
+                  run=json.loads(raw)
+              except Exception:
+                  continue
+              if str(run.get('status') or '') != 'completed':
+                  continue
+              conclusion=str(run.get('conclusion') or '')
+              if conclusion == 'success':
+                  continue
+              chosen=(path,d,run_id,conclusion)
+              break
+
+          values={
+              'found':'false', 'request_file':'', 'request_id':'', 'topic':'',
+              'trend_id':'', 'run_id':'', 'generation':'0', 'conclusion':''
+          }
+          if chosen:
+              path,d,run_id,conclusion=chosen
+              values.update({
+                  'found':'true',
+                  'request_file':str(path),
+                  'request_id':str(d.get('request_id') or '').strip(),
+                  'topic':str(d.get('topic') or '').strip(),
+                  'trend_id':str(d.get('trend_id') or '').strip(),
+                  'run_id':str(run_id),
+                  'generation':str(max(0,int(d.get('recovery_generation') or 0))),
+                  'conclusion':conclusion,
+              })
+          with open(sys.argv[1],'a',encoding='utf-8') as h:
+              for k,v in values.items():
+                  h.write(f'{k}={v}\n')
+          print(values)
+          PY
+
+      - name: Classify terminal external blockers
+        id: classify
+        if: steps.stranded.outputs.found == 'true'
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.stranded.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          logs=$(gh run view "$RUN_ID" --log-failed 2>/dev/null || true)
+          lowered=$(printf '%s' "$logs" | tr '[:upper:]' '[:lower:]')
+          mode="internal"
+          if printf '%s' "$lowered" | grep -Eq 'external_auth_blocker|missing secret|401 client error|unauthorized|billing|spending limit|payment|permission denied'; then
+            mode="external"
+          elif printf '%s' "$lowered" | grep -Eq 'duplicate_content_blocked|dublette verhindert|duplicate blocked'; then
+            mode="duplicate"
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+      - name: Telegram external blocker
+        if: steps.classify.outputs.mode == 'external'
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '⚠️ TAYVORIQ braucht deine Hilfe\n\nThema: %s\nRun: %s\n\nEin externer Zugang, Secret, Zahlungs- oder Berechtigungsstatus blockiert die Produktion.\n✅ Trendfreigabe und Quellen bleiben gespeichert.\n➡️ Nach Behebung übernimmt der Orchestrator wieder automatisch.' "${{ steps.stranded.outputs.topic }}" "${{ steps.stranded.outputs.run_id }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
+
+      - name: Telegram duplicate blocker
+        if: steps.classify.outputs.mode == 'duplicate'
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🛑 TAYVORIQ · Dublette verhindert\n\nThema: %s\nRun: %s\n\n✅ Es wurde nichts veröffentlicht.\n➡️ Für dieses Thema ist ein klar unterscheidbarer neuer Winkel nötig.' "${{ steps.stranded.outputs.topic }}" "${{ steps.stranded.outputs.run_id }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
+
+      - name: Adopt stranded request and start fresh recovery
+        id: adopt
+        if: steps.classify.outputs.mode == 'internal'
+        shell: bash
+        env:
+          OLD_RUN_ID: ${{ steps.stranded.outputs.run_id }}
+          REQUEST_FILE: ${{ steps.stranded.outputs.request_file }}
+          REQUEST_ID: ${{ steps.stranded.outputs.request_id }}
+          TOPIC: ${{ steps.stranded.outputs.topic }}
+          TREND_ID: ${{ steps.stranded.outputs.trend_id }}
+          CURRENT_GENERATION: ${{ steps.stranded.outputs.generation }}
+        run: |
+          set -euo pipefail
+          generation=$(( ${CURRENT_GENERATION:-0} + 1 ))
+
+          before_ids=$(gh run list \
+            --workflow tayvoriq-deliver-video-now.yml \
+            --event workflow_dispatch \
+            --limit 40 \
+            --json databaseId \
+            --jq '.[].databaseId' | tr '\n' ' ')
+          dispatch_epoch=$(date +%s)
+
+          gh workflow run tayvoriq-deliver-video-now.yml \
+            --ref main \
+            -f "topic=$TOPIC" \
+            -f "trend_id=$TREND_ID" \
+            -f "source_request_id=$REQUEST_ID"
+
+          new_run_id=""
+          for poll in $(seq 1 30); do
+            sleep 4
+            gh run list \
+              --workflow tayvoriq-deliver-video-now.yml \
+              --event workflow_dispatch \
+              --limit 40 \
+              --json databaseId,createdAt > /tmp/recovery-runs.json
+            candidate=$(python - "$before_ids" "$dispatch_epoch" <<'PY'
+          import json, sys
+          from datetime import datetime
+          before={int(v) for v in sys.argv[1].split() if v.isdigit()}
+          epoch=int(sys.argv[2])
+          runs=json.load(open('/tmp/recovery-runs.json',encoding='utf-8'))
+          candidates=[]
+          for item in runs:
+              try:
+                  rid=int(item.get('databaseId') or 0)
+                  created=datetime.fromisoformat(str(item.get('createdAt') or '').replace('Z','+00:00')).timestamp()
+              except Exception:
+                  continue
+              if rid and rid not in before and created >= epoch - 5:
+                  candidates.append((created,rid))
+          print(max(candidates)[1] if candidates else '')
+          PY
+            )
+            if [[ "$candidate" =~ ^[0-9]+$ ]] && [ "$candidate" != "$OLD_RUN_ID" ]; then
+              new_run_id="$candidate"
+              break
+            fi
+          done
+          [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'CONTINUITY_RECOVERY_DISPATCH_NOT_VERIFIED'; exit 1; }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rebound=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python - "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" "$new_run_id" "$generation" <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(sys.argv[1]); request_id=sys.argv[2]
+          old_run=int(sys.argv[3]); new_run=int(sys.argv[4]); generation=int(sys.argv[5])
+          d=json.loads(path.read_text(encoding='utf-8'))
+          if str(d.get('request_id') or '').strip() != request_id:
+              raise SystemExit('REQUEST_ID_CHANGED_DURING_CONTINUITY_RECOVERY')
+          if int(d.get('golden_path_run_id') or 0) != old_run:
+              raise SystemExit('REQUEST_ALREADY_REBOUND_BY_OTHER_RECOVERY_OWNER')
+          previous=list(d.get('previous_golden_path_run_ids') or [])
+          if old_run not in previous:
+              previous.append(old_run)
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          d['previous_golden_path_run_ids']=previous[-20:]
+          d['golden_path_run_id']=new_run
+          d['status']='DISPATCHED'
+          d['recovery_generation']=generation
+          d['retry_of_run_id']=old_run
+          d['replacement_reason']='CONTINUITY_WATCHDOG_RECOVERY'
+          d['recovery_owner']='tayvoriq-request-continuity-watchdog'
+          d['recovery_dispatched_at']=now
+          d['state_history']=list(d.get('state_history') or []) + [{
+              'state':'DISPATCHED','at':now,'actor':'tayvoriq-request-continuity-watchdog',
+              'meta':{
+                  'retry_of_run_id':old_run,
+                  'golden_path_run_id':new_run,
+                  'recovery_generation':generation,
+                  'reason':'durable-request-continuity-safety-net'
+              }
+          }]
+          path.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add -- "$REQUEST_FILE"
+            git commit -m "ops: continuity-rebind ${REQUEST_ID} g${generation} to ${new_run_id}"
+            if git push origin HEAD:main; then
+              rebound=true
+              break
+            fi
+            sleep $((attempt * 2))
+          done
+          [ "$rebound" = "true" ] || { echo 'CONTINUITY_RECOVERY_BIND_FAILED'; exit 1; }
+          echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
+          echo "generation=$generation" >> "$GITHUB_OUTPUT"
+
+      - name: Telegram continuity recovery resumed
+        if: steps.adopt.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🔧 TAYVORIQ 60 %% · Orchestrator setzt automatisch fort\n\nThema: %s\nFehlgeschlagener Run: %s\nNeuer Recovery-Run: %s\n\n✅ Trend, Fakten und geprüfte Quellen bleiben unverändert.\n✅ Kein Eingreifen über ChatGPT nötig.\n➡️ Produktion wird am fehlgeschlagenen Auftrag weitergeführt bis zum Telegram-Review.\n\nFür dich: ✅ Keine Aktion nötig.' "${{ steps.stranded.outputs.topic }}" "${{ steps.stranded.outputs.run_id }}" "${{ steps.adopt.outputs.new_run_id }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
