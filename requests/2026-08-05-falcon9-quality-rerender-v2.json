@@ -163,17 +163,18 @@
   ],
   "dispatch_claimed_at": "2026-08-05T18:24:33.104364+00:00",
   "dispatch_claim_run_id": 31034573545,
-  "golden_path_run_id": 32358718111,
+  "golden_path_run_id": 32361328948,
   "dispatched_at": "2026-08-05T18:24:42.355431+00:00",
   "previous_golden_path_run_ids": [
     31034585866,
-    32356212492
+    32356212492,
+    32358718111
   ],
-  "recovery_generation": 2,
-  "retry_of_run_id": 32356212492,
+  "recovery_generation": 3,
+  "retry_of_run_id": 32358718111,
   "replacement_reason": "CONTINUITY_WATCHDOG_RECOVERY",
   "recovery_owner": "tayvoriq-request-continuity-watchdog",
-  "recovery_dispatched_at": "2026-08-20T10:23:46.520715Z",
+  "recovery_dispatched_at": "2026-08-20T10:56:02.310927Z",
   "state_history": [
     {
       "state": "DISPATCHED",
@@ -194,6 +195,17 @@
         "retry_of_run_id": 32356212492,
         "golden_path_run_id": 32358718111,
         "recovery_generation": 2,
+        "reason": "durable-request-continuity-safety-net"
+      }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-20T10:56:02.310927Z",
+      "actor": "tayvoriq-request-continuity-watchdog",
+      "meta": {
+        "retry_of_run_id": 32358718111,
+        "golden_path_run_id": 32361328948,
+        "recovery_generation": 3,
         "reason": "durable-request-continuity-safety-net"
       }
     }
