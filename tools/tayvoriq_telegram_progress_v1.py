@@ -104,24 +104,27 @@ MILESTONES = {
 }
 
 
-# Facts are immutable and need not be repeated on a same-run retry. Later milestones
-# must stay eligible: if an original non-recovery attempt never reached 45 %, a
-# successful same-run retry still emits the first truthful production update.
+# Facts need not be repeated on a same-run GitHub retry. A fresh request-bound
+# recovery run is different: it must visibly confirm that the exact source binding
+# and duplicate gate are intact instead of leaving the operator in silence.
 REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
 }
 
-# A request-bound recovery has already crossed the initial factual stages. Only
-# the 20 % source replay is suppressed. Every subsequent phase is rendered with
-# a recovery-safe percentage >= 60 so Telegram can never visibly move backwards.
-RECOVERY_REPLAY_SUPPRESSED_STAGES = {
-    "sources_locked",
-}
+# Fresh recovery runs use the same verified stages, but the human-visible percent
+# can never fall below the 60 % takeover floor. No recovery stage is hidden here.
+RECOVERY_REPLAY_SUPPRESSED_STAGES: set[str] = set()
 
 # Recovery-specific human-visible state. Percentages are tied to verified workflow
 # boundaries, not estimated completion. Long-running work stays at the latest true
 # gate instead of inventing forward progress.
 RECOVERY_MILESTONES = {
+    "sources_locked": Milestone(
+        62,
+        "Recovery-Bindung bestätigt",
+        "Der gleiche Telegram-Auftrag, seine geprüften Quellen und die Dublettenprüfung sind für diesen Recovery-Lauf bestätigt.",
+        "Produktionsumgebung und technischer Preflight werden abgeschlossen.",
+    ),
     "environment_active": Milestone(
         62,
         "Recovery-Umgebung übernommen",
@@ -147,9 +150,10 @@ RECOVERY_MILESTONES = {
     "review_ready": MILESTONES["review_ready"],
 }
 
-# The workflow heartbeat worker wakes every five minutes. Repeating every five
-# minutes prevents long operator silence while avoiding noisy minute-by-minute spam.
-HEARTBEAT_INTERVAL_MINUTES = 5
+# The active Golden Path heartbeat worker wakes every three minutes. Every wake-up
+# is a meaningful liveness check, so Telegram gets the verified heartbeat instead
+# of only the old 6/15-minute snapshots.
+HEARTBEAT_INTERVAL_MINUTES = 3
 HEARTBEAT_STAGES = {"render_heartbeat", "checkpoint_heartbeat"}
 
 
@@ -265,12 +269,12 @@ def build_payload(
     title = milestone.title
     completed = milestone.completed
     next_step = milestone.next_step
-    if stage == "render_heartbeat" and int(elapsed_minutes or 0) >= 20:
+    if stage == "render_heartbeat" and int(elapsed_minutes or 0) >= 18:
         icon = "🟠"
         title = "Produktion dauert länger · Watchdog aktiv"
         completed = "Der Lauf ist weiterhin aktiv; der letzte verifizierte Produktionsstand bleibt erhalten."
         next_step = "Der Watchdog überwacht die laufende Phase und übernimmt bei einem echten Fehler automatisch den Auftrag."
-    elif stage == "checkpoint_heartbeat" and int(elapsed_minutes or 0) >= 20:
+    elif stage == "checkpoint_heartbeat" and int(elapsed_minutes or 0) >= 18:
         icon = "🟠"
         title = "Reparatur dauert länger · Watchdog aktiv"
         completed = "Checkpoint und Quellen sind gesichert; die lokale Reparatur läuft weiterhin kontrolliert."
