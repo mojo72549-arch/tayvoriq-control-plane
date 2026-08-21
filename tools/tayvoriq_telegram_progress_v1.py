@@ -9,6 +9,8 @@ import urllib.request
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from tayvoriq_telegram_progress_notification_policy_v2 import HEARTBEAT_STAGES, heartbeat_due
+
 
 DEFAULT_POLICY = Path("state/tayvoriq-notification-policy.json")
 TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -104,20 +106,12 @@ MILESTONES = {
 }
 
 
-# Facts need not be repeated on a same-run GitHub retry. A fresh request-bound
-# recovery run is different: it must visibly confirm that the exact source binding
-# and duplicate gate are intact instead of leaving the operator in silence.
 REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
 }
 
-# Fresh recovery runs use the same verified stages, but the human-visible percent
-# can never fall below the 60 % takeover floor. No recovery stage is hidden here.
 RECOVERY_REPLAY_SUPPRESSED_STAGES: set[str] = set()
 
-# Recovery-specific human-visible state. Percentages are tied to verified workflow
-# boundaries, not estimated completion. Long-running work stays at the latest true
-# gate instead of inventing forward progress.
 RECOVERY_MILESTONES = {
     "sources_locked": Milestone(
         62,
@@ -150,12 +144,6 @@ RECOVERY_MILESTONES = {
     "review_ready": MILESTONES["review_ready"],
 }
 
-# The active Golden Path heartbeat worker wakes every three minutes. Every wake-up
-# is a meaningful liveness check, so Telegram gets the verified heartbeat instead
-# of only the old 6/15-minute snapshots.
-HEARTBEAT_INTERVAL_MINUTES = 3
-HEARTBEAT_STAGES = {"render_heartbeat", "checkpoint_heartbeat"}
-
 
 def read_policy(path: Path = DEFAULT_POLICY) -> dict:
     try:
@@ -179,13 +167,6 @@ def immediate_failure_enabled(path: Path = DEFAULT_POLICY) -> bool:
     return str(value or "").strip().casefold() in TRUE_VALUES
 
 
-def heartbeat_due(stage: str, elapsed_minutes: int) -> bool:
-    if stage not in HEARTBEAT_STAGES:
-        return True
-    elapsed = max(0, int(elapsed_minutes or 0))
-    return elapsed >= HEARTBEAT_INTERVAL_MINUTES and elapsed % HEARTBEAT_INTERVAL_MINUTES == 0
-
-
 def recovery_generation() -> int:
     """Resolve durable recovery ownership from the repository root, never cwd."""
     request_id = str(os.getenv("SOURCE_REQUEST_ID_PIN") or "").strip()
@@ -200,7 +181,6 @@ def recovery_generation() -> int:
     if workspace_raw:
         repository_root = Path(workspace_raw)
     else:
-        # tools/tayvoriq_telegram_progress_v1.py -> repository root
         repository_root = Path(__file__).resolve().parents[1]
     path = repository_root / "requests" / f"{request_id}.json"
     try:
@@ -221,8 +201,6 @@ def effective_milestone(stage: str, generation: int) -> Milestone:
     override = RECOVERY_MILESTONES.get(stage)
     if override is not None:
         return override
-    # Hard monotonicity invariant: any percentage-bearing stage that is not
-    # explicitly mapped can never display less than the 60 % recovery floor.
     if milestone.percent is not None and milestone.percent < 60:
         return replace(milestone, percent=60)
     return milestone
@@ -236,9 +214,6 @@ def should_send(
 ) -> bool:
     if not progress_enabled(path):
         return False
-    # Internal technical/audio failures belong to the orchestrator. Telegram is
-    # the operator feed, so only verified milestones are shown while request-bound
-    # recovery remains possible. External blockers have a dedicated user-action path.
     if stage in {"technical_stop", "audio_recovery"} and not immediate_failure_enabled(path):
         return False
     if int(run_attempt) > 1 and stage in REPLAY_SUPPRESSED_STAGES:
@@ -276,16 +251,27 @@ def build_payload(
     title = milestone.title
     completed = milestone.completed
     next_step = milestone.next_step
-    if stage == "render_heartbeat" and int(elapsed_minutes or 0) >= 18:
+    elapsed = int(elapsed_minutes or 0)
+    if stage == "render_heartbeat" and elapsed >= 45:
         icon = "🟠"
-        title = "Produktion dauert länger · Watchdog aktiv"
+        title = "Produktion ungewöhnlich lange aktiv · Watchdog überwacht"
         completed = "Der Lauf ist weiterhin aktiv; der letzte verifizierte Produktionsstand bleibt erhalten."
-        next_step = "Der Watchdog überwacht die laufende Phase und übernimmt bei einem echten Fehler automatisch den Auftrag."
-    elif stage == "checkpoint_heartbeat" and int(elapsed_minutes or 0) >= 18:
+        next_step = "Der Watchdog prüft weiter intern; Telegram meldet erst wieder einen echten Zustandswechsel oder einen Fehler."
+    elif stage == "render_heartbeat" and elapsed >= 18:
         icon = "🟠"
-        title = "Reparatur dauert länger · Watchdog aktiv"
+        title = "Produktion dauert länger · einmaliger Watchdog-Hinweis"
+        completed = "Der Lauf ist weiterhin aktiv; der letzte verifizierte Produktionsstand bleibt erhalten."
+        next_step = "Der Watchdog prüft intern weiter; Telegram bleibt bis zum nächsten echten Meilenstein ruhig."
+    elif stage == "checkpoint_heartbeat" and elapsed >= 45:
+        icon = "🟠"
+        title = "Reparatur ungewöhnlich lange aktiv · Watchdog überwacht"
         completed = "Checkpoint und Quellen sind gesichert; die lokale Reparatur läuft weiterhin kontrolliert."
-        next_step = "Der Watchdog lässt den Auftrag aktiv und übernimmt bei einem echten Laufabbruch automatisch in den nächsten Recovery-Lauf."
+        next_step = "Der Watchdog prüft weiter intern; Telegram meldet erst wieder einen echten Zustandswechsel oder einen Fehler."
+    elif stage == "checkpoint_heartbeat" and elapsed >= 18:
+        icon = "🟠"
+        title = "Reparatur dauert länger · einmaliger Watchdog-Hinweis"
+        completed = "Checkpoint und Quellen sind gesichert; die lokale Reparatur läuft weiterhin kontrolliert."
+        next_step = "Der Watchdog prüft intern weiter; Telegram bleibt bis zum nächsten echten Meilenstein ruhig."
 
     if stage == "technical_stop":
         detail = (
@@ -303,7 +289,7 @@ def build_payload(
         lines.append(f"Recovery: Generation {generation}")
     if stage in HEARTBEAT_STAGES:
         phase = "Produktionsphase" if stage == "render_heartbeat" else "Reparaturphase"
-        lines.extend(["", f"⏱️ {phase} aktiv seit: {max(1, int(elapsed_minutes or 0))} Minuten"])
+        lines.extend(["", f"⏱️ {phase} aktiv seit: {max(1, elapsed)} Minuten"])
     if failure_state:
         lines.extend(["", f"Status: {clean_topic(failure_state)}"])
     if detail:
