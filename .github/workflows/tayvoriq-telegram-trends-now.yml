@@ -1,0 +1,255 @@
+name: TAYVORIQ Telegram Trends Now
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-telegram-trends-now.txt"
+
+permissions:
+  contents: write
+
+env:
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+concurrency:
+  group: tayvoriq-telegram-trends-now
+  cancel-in-progress: false
+
+jobs:
+  trend-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Resolve explicit Telegram trend request
+        id: control
+        shell: bash
+        run: |
+          set -euo pipefail
+          control=.github/run-now/tayvoriq-telegram-trends-now.txt
+          test -f "$control"
+          slot="$(sed -n 's/^slot=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+          target_date="$(sed -n 's/^target_date=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+          case "$slot" in morning|evening) ;; *) echo "Invalid slot: $slot"; exit 1 ;; esac
+          python - "$target_date" <<'PY'
+          import datetime as dt, sys
+          dt.date.fromisoformat(sys.argv[1])
+          PY
+          compact="${target_date//-/}"
+          selection_id="${compact}-${slot}-agentv2"
+          needs_delivery=true
+          receipt=".automation/tayvoriq-agent-v2/deliveries/${selection_id}.json"
+          if [ -f "$receipt" ]; then
+            if python - "$receipt" "$selection_id" <<'PY'
+          import json, sys
+          p=json.load(open(sys.argv[1],encoding='utf-8'))
+          ok=(p.get('selection_id')==sys.argv[2] and p.get('telegram_delivery_verified') is True and int(p.get('telegram_message_id') or 0)>0)
+          raise SystemExit(0 if ok else 1)
+          PY
+            then
+              needs_delivery=false
+            fi
+          fi
+          echo "slot=$slot" >> "$GITHUB_OUTPUT"
+          echo "target_date=$target_date" >> "$GITHUB_OUTPUT"
+          echo "selection_id=$selection_id" >> "$GITHUB_OUTPUT"
+          echo "needs_delivery=$needs_delivery" >> "$GITHUB_OUTPUT"
+          echo "Resolved $selection_id needs_delivery=$needs_delivery"
+
+      - name: Generate fresh quality-driven ranking
+        if: steps.control.outputs.needs_delivery == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_agent_trend_radar_v3.py \
+            --slot "${{ steps.control.outputs.slot }}" \
+            --output /tmp/tayvoriq-trend-request.json \
+            --audit-output /tmp/tayvoriq-trend-audit.json
+
+      - name: Bind ranking to requested target date
+        if: steps.control.outputs.needs_delivery == 'true'
+        env:
+          TARGET_DATE: ${{ steps.control.outputs.target_date }}
+          SELECTION_ID: ${{ steps.control.outputs.selection_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          req=Path('/tmp/tayvoriq-trend-request.json')
+          audit=Path('/tmp/tayvoriq-trend-audit.json')
+          r=json.loads(req.read_text(encoding='utf-8'))
+          r['date']=os.environ['TARGET_DATE']
+          r['selection_id']=os.environ['SELECTION_ID']
+          r['selected_trend_id']=None
+          r['agent_orchestrator']='v2'
+          r['target_date']=os.environ['TARGET_DATE']
+          r['telegram_only_user_path']=True
+          req.write_text(json.dumps(r,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          a=json.loads(audit.read_text(encoding='utf-8'))
+          a['selection_id']=os.environ['SELECTION_ID']
+          a['target_date']=os.environ['TARGET_DATE']
+          a['explicit_fresh_trend_ranking']=True
+          audit.write_text(json.dumps(a,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+
+      - name: Validate approval contract
+        if: steps.control.outputs.needs_delivery == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
+          trends=d.get('trends') or []
+          assert d.get('agent_orchestrator') == 'v2'
+          assert d.get('slot') in {'morning','evening'}
+          assert 4 <= len(trends) <= 5, f'expected 4-5 strong trends, got {len(trends)}'
+          assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
+          for trend in trends:
+            assert len(trend.get('sources') or []) >= 2
+            sc=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
+            assert int(sc.get('independent_news_count') or 0) >= 2
+            assert len(sc.get('sources') or []) >= 2
+            answers=sc.get('fallback_editorial_answers') if isinstance(sc.get('fallback_editorial_answers'),dict) else {}
+            assert all(answers.get(k) for k in ['what_happened','why_happening','who_is_affected','personal_impact','action_now'])
+          print({'selection_id':d['selection_id'],'trend_count':len(trends),'contract':'passed'})
+          PY
+
+      - name: Persist canonical Agent V2 selection
+        if: steps.control.outputs.needs_delivery == 'true'
+        env:
+          SELECTION_ID: ${{ steps.control.outputs.selection_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-agent-v2/selections .automation/tayvoriq-agent-v2/sessions
+          cp /tmp/tayvoriq-trend-request.json .github/run-now/tayvoriq-trend-request.json
+          cp /tmp/tayvoriq-trend-request.json ".automation/tayvoriq-agent-v2/selections/${SELECTION_ID}.json"
+          cp /tmp/tayvoriq-trend-audit.json ".automation/tayvoriq-agent-v2/sessions/${SELECTION_ID}.json"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/run-now/tayvoriq-trend-request.json \
+            ".automation/tayvoriq-agent-v2/selections/${SELECTION_ID}.json" \
+            ".automation/tayvoriq-agent-v2/sessions/${SELECTION_ID}.json"
+          git commit -m "agent(v2): stage ${SELECTION_ID} approval request"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Send fresh ranking to Telegram
+        id: telegram
+        if: steps.control.outputs.needs_delivery == 'true'
+        env:
+          TARGET_DATE: ${{ steps.control.outputs.target_date }}
+          SLOT: ${{ steps.control.outputs.slot }}
+          SELECTION_ID: ${{ steps.control.outputs.selection_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          python - <<'PY' >/tmp/message.json
+          import json, os
+          from datetime import date
+          d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
+          sid=os.environ['SELECTION_ID']
+          target=date.fromisoformat(os.environ['TARGET_DATE'])
+          weekday=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][target.weekday()]
+          label='🌅 TAYVORIQ Morgen-Trends' if os.environ['SLOT']=='morning' else '🌙 TAYVORIQ Abend-Trends'
+          lines=[f"{label} · {weekday} {target:%d.%m.}",'','Frisch recherchierte Rangliste:']
+          for t in d['trends']:
+            growth=int((t.get('growth_v2') or {}).get('growth_score') or t.get('score') or 0)
+            lines.append(f"{t['id']}. {t['title']} — {growth} %")
+          lines += [
+            '',
+            f"{len(d['trends'])} Trends haben die aktuellen Growth-, Quellen-, Claim- und Dubletten-Gates bestanden · mindestens 2 unabhängige Quellen je Trend.",
+            '',
+            'Schritt 1: Trendnummer wählen.',
+            'Schritt 2: Details prüfen und separat „Trend freigeben“ tippen.',
+            '',
+            'Danach übernimmt Agent V2 Produktion, Render, Self-Heal, Quality-Gates und Veröffentlichung selbstständig.'
+          ]
+          labels={'1':'1️⃣','2':'2️⃣','3':'3️⃣','4':'4️⃣','5':'5️⃣'}
+          buttons=[{'text':f"{labels.get(str(t['id']),str(t['id']))} Trend {t['id']}",'callback_data':f"select_trend:{sid}:{t['id']}"} for t in d['trends']]
+          keyboard={'inline_keyboard':[buttons[i:i+2] for i in range(0,len(buttons),2)]}
+          print(json.dumps({'chat_id':os.environ['TELEGRAM_CHAT_ID'],'text':'\n'.join(lines),'disable_web_page_preview':True,'reply_markup':keyboard},ensure_ascii=False))
+          PY
+          curl --fail --silent --show-error --retry 3 --retry-all-errors \
+            -H 'Content-Type: application/json' \
+            -d @/tmp/message.json \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" > /tmp/telegram.json
+          python - <<'PY'
+          import json, os
+          d=json.load(open('/tmp/telegram.json',encoding='utf-8'))
+          assert d.get('ok') and (d.get('result') or {}).get('message_id'), d
+          result=d['result']
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+            h.write(f"message_id={int(result['message_id'])}\n")
+            h.write(f"chat_id={result['chat']['id']}\n")
+          print({'telegram_message_id':result['message_id'],'chat_id':result['chat']['id']})
+          PY
+
+      - name: Persist verified Telegram delivery receipt
+        if: steps.control.outputs.needs_delivery == 'true'
+        env:
+          SELECTION_ID: ${{ steps.control.outputs.selection_id }}
+          TELEGRAM_MESSAGE_ID: ${{ steps.telegram.outputs.message_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .automation/tayvoriq-agent-v2/deliveries
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          payload={
+            'selection_id':os.environ['SELECTION_ID'],
+            'telegram_delivery_verified':True,
+            'telegram_message_id':int(os.environ['TELEGRAM_MESSAGE_ID']),
+            'delivered_at':datetime.now(timezone.utc).isoformat(),
+            'run_id':int(os.environ['GITHUB_RUN_ID'])
+          }
+          Path(f".automation/tayvoriq-agent-v2/deliveries/{os.environ['SELECTION_ID']}.json").write_text(
+            json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(payload)
+          PY
+          git add ".automation/tayvoriq-agent-v2/deliveries/${SELECTION_ID}.json"
+          git commit -m "agent(v2): verify Telegram delivery ${SELECTION_ID}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Report idempotent existing delivery
+        if: steps.control.outputs.needs_delivery != 'true'
+        run: echo "Telegram ranking already has a verified delivery receipt; duplicate send suppressed."
+
+      - name: Notify Telegram on failed trend delivery
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+            curl -fsS --retry 2 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode $'text=🔴 TAYVORIQ Trend-Radar\nDie neue Telegram-Trendrangliste konnte technisch nicht vollständig zugestellt werden. Es wurde keine Produktion gestartet und nichts veröffentlicht.' >/dev/null || true
+          fi
