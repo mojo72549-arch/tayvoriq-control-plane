@@ -1,20 +1,20 @@
 {
   "request": "tayvoriq-x-production",
-  "topic": "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?",
+  "topic": "Stuttgart 21 wird zum Videospiel: Schaffst du in der S21-Demo Gleis 9 in 20 Minuten?",
   "trend_id": "1",
-  "requested_at": "2026-08-21T15:33:00+02:00",
-  "request_nonce": "oil-hormuz-critical-pronunciation-technical-replay-20260821T1533CEST",
+  "requested_at": "2026-08-21T23:59:30+02:00",
+  "request_nonce": "s21-game-morning-source-pin-recovery-20260821T235930CEST",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "implementation_merge_sha": "dac76ca449262a75134506bc59a7a233761f7130",
   "approved_trend_pinned": true,
-  "source_request_id": "telegram-1268-trend-1",
-  "retry_of_run_id": 32451685401,
-  "replay_of_run_id": 32451685401,
+  "source_request_id": "telegram-1418-trend-1",
+  "retry_of_run_id": 32530973038,
+  "replay_of_run_id": 32530973038,
   "technical_replay": true,
   "fresh_recovery": false,
   "reuse_exact_source_request": true,
-  "suppress_start_notification": true,
+  "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
   "hardening": {
     "checkpoint_source_context_required": true,
@@ -47,6 +47,6 @@
     "contextual_cta_required": true,
     "production_contract_version_required": true
   },
-  "reason": "same-request-technical-replay-after-oil-critical-pronunciation-fix",
-  "recovery_generation": 31
+  "reason": "same-request-recovery-after-stale-source-request-pin",
+  "recovery_generation": 32
 }
