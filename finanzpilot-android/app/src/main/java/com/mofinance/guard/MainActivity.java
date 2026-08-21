@@ -45,6 +45,21 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (url != null && url.startsWith("file:///android_asset/index.html")) {
+                    view.evaluateJavascript(
+                            "(function(){if(window.__advisorLoader)return;window.__advisorLoader=true;" +
+                                    "var s=document.createElement('script');" +
+                                    "s.src='file:///android_asset/advisor.js';" +
+                                    "s.onload=function(){console.log('Finanzberater geladen');};" +
+                                    "document.head.appendChild(s);})();",
+                            null
+                    );
+                }
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 if (url == null) return false;
                 Uri uri = Uri.parse(url);
