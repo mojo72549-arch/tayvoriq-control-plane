@@ -4,7 +4,10 @@ import json
 import sys
 
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "tayvoriq_telegram_progress_v1.py"
+TOOLS = Path(__file__).resolve().parents[1] / "tools"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+MODULE_PATH = TOOLS / "tayvoriq_telegram_progress_v1.py"
 spec = importlib.util.spec_from_file_location("tayvoriq_telegram_progress_v1", MODULE_PATH)
 assert spec and spec.loader
 progress = importlib.util.module_from_spec(spec)
