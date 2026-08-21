@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Window;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -43,17 +44,18 @@ public class MainActivity extends Activity {
         settings.setDefaultTextEncodingName("utf-8");
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
 
+        webView.addJavascriptInterface(new CoachBridge(), "FinanzPilotNative");
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 if (url != null && url.startsWith("file:///android_asset/index.html")) {
                     view.evaluateJavascript(
-                            "(function(){if(window.__advisorLoader)return;window.__advisorLoader=true;" +
-                                    "var s=document.createElement('script');" +
-                                    "s.src='file:///android_asset/advisor.js';" +
-                                    "s.onload=function(){console.log('Finanzberater geladen');};" +
-                                    "document.head.appendChild(s);})();",
+                            "(function(){" +
+                                    "if(!window.__advisorLoader){window.__advisorLoader=true;var a=document.createElement('script');a.src='file:///android_asset/advisor.js';document.head.appendChild(a);}" +
+                                    "if(!window.__learningLoader){window.__learningLoader=true;var l=document.createElement('script');l.src='file:///android_asset/learning_coach.js?v=15';document.head.appendChild(l);}" +
+                                    "})();",
                             null
                     );
                 }
@@ -106,6 +108,13 @@ public class MainActivity extends Activity {
         if (getIntent() != null && getIntent().getData() != null) handleBankCallback(getIntent().getData());
     }
 
+    public class CoachBridge {
+        @JavascriptInterface
+        public void notify(String title, String message) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show());
+        }
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -140,6 +149,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (webView != null) {
+            webView.removeJavascriptInterface("FinanzPilotNative");
             webView.stopLoading();
             webView.destroy();
         }
