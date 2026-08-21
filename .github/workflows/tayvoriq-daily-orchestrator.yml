@@ -1,6 +1,6 @@
 name: TAYVORIQ Daily Orchestrator
 
-# Legacy manual bridge only. The authoritative twice-daily schedule lives in
+# Legacy/manual bridge. The authoritative twice-daily schedule lives in
 # tayvoriq-agent-orchestrator-v2.yml and never starts production before approval.
 on:
   workflow_dispatch:
@@ -11,6 +11,10 @@ on:
         default: morning
         type: choice
         options: [morning, evening]
+  push:
+    branches: [main]
+    paths:
+      - ".github/run-now/tayvoriq-daily-slot.txt"
 
 permissions:
   actions: write
@@ -25,10 +29,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Delegate manual slot to the authoritative Agent V2 trend gate
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Resolve requested trend slot
+        id: slot
+        env:
+          INPUT_SLOT: ${{ inputs.slot || '' }}
+        run: |
+          set -euo pipefail
+          slot="$INPUT_SLOT"
+          if [ -z "$slot" ] && [ -f .github/run-now/tayvoriq-daily-slot.txt ]; then
+            slot="$(sed -n 's/^slot=//p' .github/run-now/tayvoriq-daily-slot.txt | tail -n 1 | tr -d '\r' | xargs)"
+          fi
+          case "$slot" in
+            morning|evening) ;;
+            *) echo "::error title=Invalid trend slot::Expected morning or evening, got '$slot'"; exit 1 ;;
+          esac
+          echo "slot=$slot" >> "$GITHUB_OUTPUT"
+
+      - name: Delegate slot to the authoritative Agent V2 trend gate
         env:
           GH_TOKEN: ${{ github.token }}
-          SLOT: ${{ inputs.slot }}
+          SLOT: ${{ steps.slot.outputs.slot }}
         run: |
           set -euo pipefail
           gh workflow run tayvoriq-agent-orchestrator-v2.yml \
