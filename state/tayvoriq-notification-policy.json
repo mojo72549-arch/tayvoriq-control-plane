@@ -1,14 +1,16 @@
 {
-  "schema_version": "v1",
+  "schema_version": "v2",
   "production_progress_enabled": true,
-  "mode": "verified_percentage_milestones_with_silent_internal_recovery",
+  "mode": "verified_state_changes_with_silent_watchdog_polling",
   "notify_only_on_real_state_change": true,
   "suppress_same_run_retries": true,
   "same_run_replay_suppressed_stages": [
     "sources_locked"
   ],
-  "heartbeat_interval_seconds": 180,
+  "watchdog_poll_interval_seconds": 180,
+  "operator_heartbeat_notify_minutes": [18, 45],
   "heartbeat_reports_elapsed_time_without_fake_progress": true,
+  "suppress_intermediate_liveness_polls": true,
   "immediate_failure_notification_enabled": false,
   "internal_recovery_operator_noise_suppressed": true,
   "terminal_external_blocker_notification_enabled": true,
@@ -16,12 +18,13 @@
   "milestones": [
     "sources_locked",
     "production_active",
-    "render_heartbeat",
     "checkpoint_repair",
-    "checkpoint_heartbeat",
     "master_ready",
     "quality_passed",
     "review_ready"
   ],
-  "checkpoint_repair_heartbeat_interval_seconds": 180
+  "long_running_threshold_stages": [
+    "render_heartbeat",
+    "checkpoint_heartbeat"
+  ]
 }
