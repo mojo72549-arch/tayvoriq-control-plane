@@ -1,0 +1,92 @@
+{
+  "date": "2026-08-22",
+  "slot": "morning",
+  "created_at": "2026-08-21T17:12:00Z",
+  "selection_id": "20260822-morning-agentv2-v2",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_ranking",
+  "superseded": false,
+  "target_date": "2026-08-22",
+  "telegram_only_user_path": true,
+  "trends": [
+    {
+      "id": "1",
+      "title": "Grand Theft Schwaben: S21 – aus Stuttgart 21 wird ein GTA-Satire-Spiel",
+      "score": 99,
+      "trend_scope": "local_stuttgart_satire",
+      "criteria": {"aktualitaet": 96, "viralitaet": 100, "tayvoriq_passung": 100, "quellenqualitaet": 90, "visuell": 100},
+      "sources": [
+        {"publisher": "Reddit r/stuttgart", "url": "https://www.reddit.com/r/stuttgart/comments/1uti9am/inspiriert_vom_vorherigen_post_zum_stra%C3%9Fenbahn/", "supports": "A July 2026 Stuttgart community post proposes a GTA-like political satire game around Stuttgart 21 under the working idea 'Grand Theft Schwaben: S21'."},
+        {"publisher": "SWR Aktuell", "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/s21-faq-pannen-inbetriebnehme-kosten-100.html", "supports": "Current factual backdrop: Stuttgart 21 is now planned around a 2031 main-station opening, with repeated delays and higher costs that make the satire angle timely."},
+        {"publisher": "tagesschau.de", "url": "https://www.tagesschau.de/wirtschaft/stuttgart-21-teurer-100.html", "supports": "Independent current reporting confirms the 2031 delay, additional costs and project-management problems around Stuttgart 21."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "sources": [
+          {"publisher": "SWR Aktuell", "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/s21-faq-pannen-inbetriebnehme-kosten-100.html", "supports": "Current 2026 status of delays, costs and project problems."},
+          {"publisher": "tagesschau.de", "url": "https://www.tagesschau.de/wirtschaft/stuttgart-21-teurer-100.html", "supports": "Independent confirmation of the 2031 opening target and three-billion-euro additional cost estimate."},
+          {"publisher": "Reddit r/stuttgart", "url": "https://www.reddit.com/r/stuttgart/comments/1uti9am/inspiriert_vom_vorherigen_post_zum_stra%C3%9Fenbahn/", "supports": "Community-origin satire-game concept 'Grand Theft Schwaben: S21'."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "In der Stuttgarter Community kursiert die Idee eines GTA-artigen Satire-Spiels rund um Stuttgart 21 – passend zu einem Projekt, dessen Inbetriebnahme erneut weit nach hinten gerückt ist.",
+          "why_happening": "Stuttgart 21 ist längst Teil der Meme-Kultur: jahrzehntelange Bauzeit, wiederholte Terminverschiebungen und Milliardenkosten liefern eine sofort verständliche satirische Vorlage.",
+          "who_is_affected": "Vor allem Menschen aus Stuttgart und Baden-Württemberg, Pendler, Bahnfahrer und alle, die die jahrelange S21-Geschichte verfolgen.",
+          "personal_impact": "Der lokale Wiedererkennungswert ist extrem hoch und lässt sich visuell wie ein Games-Trailer erzählen – mit Baustellenmissionen, Verspätungsanzeigen und schwäbischem Humor.",
+          "action_now": "Als humorvollen Short inszenieren, aber klar kennzeichnen, was Satire/Game-Idee und was realer Stuttgart-21-Faktenstand ist."
+        },
+        "factual_guardrails": ["Nicht behaupten, Rockstar Games stecke dahinter.", "Nicht behaupten, ein kommerzielles GTA-Spiel sei offiziell veröffentlicht, solange dafür keine belastbare Primärquelle vorliegt.", "Satire-Elemente deutlich von realen S21-Fakten trennen."],
+        "content_angle": "Mission 1: Finde den Eröffnungstermin. Schwierigkeit: unmöglich.",
+        "duplicate_guard": "Neuer lokaler Stuttgart-Satirewinkel; nicht als erneute reine S21-Kostenmeldung erzählen."
+      }
+    },
+    {
+      "id": "2",
+      "title": "Humanoide Roboter aus Baden-Württemberg: Bosch startet 2027 die Produktion in Bühl",
+      "score": 98,
+      "trend_scope": "technology_robotics_bw",
+      "criteria": {"aktualitaet": 99, "viralitaet": 98, "tayvoriq_passung": 99, "quellenqualitaet": 96, "visuell": 99},
+      "sources": [
+        {"publisher": "WELT / dpa", "url": "https://www.welt.de/regionales/baden-wuerttemberg/article6a883b921c4720d416547168/bosch-startet-2027-produktion-von-robotern-im-schwarzwald.html", "supports": "Bosch confirmed on 21 August 2026 that production of humanoid robots is planned to start at the Bühl site in 2027."},
+        {"publisher": "dts Nachrichtenagentur / Business Panorama", "url": "https://business-panorama.de/news.php?newsid=6708654", "supports": "Independent agency report confirms the 2027 Bühl series-production plan and intended industrial use cases."}
+      ],
+      "source_context": {"independent_news_count": 2, "sources": [{"publisher": "WELT / dpa", "url": "https://www.welt.de/regionales/baden-wuerttemberg/article6a883b921c4720d416547168/bosch-startet-2027-produktion-von-robotern-im-schwarzwald.html", "supports": "Current confirmation of Bühl robot-production plan."}, {"publisher": "dts Nachrichtenagentur / Business Panorama", "url": "https://business-panorama.de/news.php?newsid=6708654", "supports": "Independent confirmation of production timing and industrial use."}], "fallback_editorial_answers": {"what_happened": "Bosch will ab 2027 in Bühl humanoide KI-Roboter fertigen.", "why_happening": "Humanoide Robotik wechselt vom Prototypen zur Industrialisierung; Bosch bringt Produktions-Know-how ein.", "who_is_affected": "Industrie- und Logistikbetriebe, Robotik-Anbieter und Beschäftigte in automatisierbaren Tätigkeiten.", "personal_impact": "Physische KI kommt damit sichtbar in deutsche Fabriken und direkt nach Baden-Württemberg.", "action_now": "Im Short zeigen, welche Aufgaben die Roboter zuerst übernehmen sollen und warum Bühl dafür relevant ist."}, "factual_guardrails": ["Keine konkreten Arbeitsplatzverluste behaupten.", "Langfristige Haushalts- oder Pflegeeinsätze nicht als beschlossene Anwendung darstellen."], "content_angle": "Die KI bekommt Arme und Beine – und wird bald in Baden-Württemberg gebaut.", "duplicate_guard": "Nicht als generisches KI-Thema erzählen; Fokus auf Bühl 2027."}
+    },
+    {
+      "id": "3",
+      "title": "Deutschland testet Drohnenabwehr unter Realbedingungen: Neues Technologiezentrum gestartet",
+      "score": 96,
+      "trend_scope": "technology_drone_security",
+      "criteria": {"aktualitaet": 96, "viralitaet": 96, "tayvoriq_passung": 98, "quellenqualitaet": 99, "visuell": 99},
+      "sources": [
+        {"publisher": "tagesschau.de", "url": "https://www.tagesschau.de/inland/gesellschaft/drohnen-forschungszentrum-100.html", "supports": "ARD confirms the new Technology Center for Drone Security in Cochstedt for realistic detection and defence testing."},
+        {"publisher": "ZDFheute", "url": "https://www.zdfheute.de/politik/deutschland/drohnen-sicherheit-abwehrzentrum-deutschland-100.html", "supports": "Independent ZDF report explains the new centre, its realistic test infrastructure and the urgency around counter-drone technology."}
+      ],
+      "source_context": {"independent_news_count": 2, "sources": [{"publisher": "tagesschau.de", "url": "https://www.tagesschau.de/inland/gesellschaft/drohnen-forschungszentrum-100.html", "supports": "Opening and mission of the new drone-security test centre."}, {"publisher": "ZDFheute", "url": "https://www.zdfheute.de/politik/deutschland/drohnen-sicherheit-abwehrzentrum-deutschland-100.html", "supports": "Independent explanation of realistic counter-drone testing."}], "fallback_editorial_answers": {"what_happened": "In Cochstedt wurde ein neues Technologiezentrum für Drohnensicherheit eröffnet.", "why_happening": "Drohnen werden autonomer und schwieriger zu erkennen; kritische Infrastruktur braucht neue Detektions- und Abwehrmethoden.", "who_is_affected": "Sicherheitsbehörden, Flughäfen, Betreiber kritischer Infrastruktur, Forschung und Industrie.", "personal_impact": "Die Technik betrifft den Schutz von Verkehr, Energieversorgung und öffentlichen Einrichtungen.", "action_now": "Erklären, wie Erkennung und Abwehr grundsätzlich funktionieren, ohne operative Schwachstellen zu veröffentlichen."}, "factual_guardrails": ["Keine Umgehungsmethoden oder konkreten Schwachstellen von Abwehrsystemen nennen.", "Nicht als bereits flächendeckenden Schutzschild darstellen."], "content_angle": "Wie stoppt man eine gefährliche Drohne, bevor sie ihr Ziel erreicht?", "duplicate_guard": "Eigenständiger Technologie-/Sicherheitswinkel."}
+    },
+    {
+      "id": "4",
+      "title": "15,1 Prozent mehr Baugenehmigungen: Kommt Deutschlands Wohnungsbau endlich zurück?",
+      "score": 91,
+      "trend_scope": "economy_housing",
+      "criteria": {"aktualitaet": 94, "viralitaet": 90, "tayvoriq_passung": 92, "quellenqualitaet": 99, "visuell": 88},
+      "sources": [
+        {"publisher": "tagesschau.de", "url": "https://www.tagesschau.de/wirtschaft/konjunktur/baugenehmigungen-wohngebaeude-deutschland-100.html", "supports": "ARD reports 126,300 housing permits in the first half of 2026, up 15.1 percent year-on-year."},
+        {"publisher": "ZDFheute", "url": "https://www.zdfheute.de/politik/deutschland/wohnen-baugenehmigungen-anstieg-100.html", "supports": "ZDF independently confirms the increase and cautions that experts do not yet see a full housing-market turnaround."}
+      ],
+      "source_context": {"independent_news_count": 2, "sources": [{"publisher": "tagesschau.de", "url": "https://www.tagesschau.de/wirtschaft/konjunktur/baugenehmigungen-wohngebaeude-deutschland-100.html", "supports": "Permit figures and context."}, {"publisher": "ZDFheute", "url": "https://www.zdfheute.de/politik/deutschland/wohnen-baugenehmigungen-anstieg-100.html", "supports": "Independent confirmation and expert caution."}], "fallback_editorial_answers": {"what_happened": "Im ersten Halbjahr 2026 wurden rund 126.300 Wohnungen genehmigt, 15,1 Prozent mehr als im Vorjahreszeitraum.", "why_happening": "Nach sehr schwachen Vorjahren ziehen Genehmigungen wieder an, während Förderungen und Rahmenbedingungen den Bau anschieben sollen.", "who_is_affected": "Mieter, Wohnungssuchende, Bauherren, Projektentwickler und Kommunen.", "personal_impact": "Mehr Genehmigungen können langfristig mehr Angebot bedeuten, sind aber noch keine fertigen Wohnungen.", "action_now": "Im Short erklären, warum die Statistik gut klingt, Mieter davon aber noch nicht sofort profitieren."}, "factual_guardrails": ["15,1 Prozent ist ein Vorjahresvergleich, kein Rekordniveau der absoluten Zahl.", "Keine kurzfristig sinkenden Mieten versprechen."], "content_angle": "Bau-Boom auf dem Papier – aber wo bleiben die Wohnungen?", "duplicate_guard": "Aktuelle bundesweite Entwicklung, keine Kaufberatung."}
+    },
+    {
+      "id": "5",
+      "title": "Fast fünf Milliarden Euro: Warum der KI-Boom einen BW-Mittelständler zum Übernahmeziel macht",
+      "score": 89,
+      "trend_scope": "business_ai_infrastructure_bw",
+      "criteria": {"aktualitaet": 91, "viralitaet": 88, "tayvoriq_passung": 93, "quellenqualitaet": 99, "visuell": 88},
+      "sources": [
+        {"publisher": "Reuters", "url": "https://www.reuters.com/legal/transactional/madison-air-solutions-buy-germanys-ebm-papst-54-billion-deal-2026-08-17/", "supports": "Reuters reports Madison Air's $5.4 billion acquisition agreement for German fan maker ebm-papst and the relevance of data-centre cooling."},
+        {"publisher": "Handelsblatt", "url": "https://www.handelsblatt.com/unternehmen/mittelstand/familienunternehmer/industrie-ventilatorenspezialist-ebm-papst-wird-an-us-konzern-verkauft-01/100247761.html", "supports": "Independent reporting confirms the roughly 4.8 billion euro net sale price, Mulfingen headquarters and data-centre/AI cooling growth."}
+      ],
+      "source_context": {"independent_news_count": 2, "sources": [{"publisher": "Reuters", "url": "https://www.reuters.com/legal/transactional/madison-air-solutions-buy-germanys-ebm-papst-54-billion-deal-2026-08-17/", "supports": "Deal and strategic relevance of data-centre cooling."}, {"publisher": "Handelsblatt", "url": "https://www.handelsblatt.com/unternehmen/mittelstand/familienunternehmer/industrie-ventilatorenspezialist-ebm-papst-wird-an-us-konzern-verkauft-01/100247761.html", "supports": "Independent deal/value/BW context."}], "fallback_editorial_answers": {"what_happened": "Der Kühlungsspezialist ebm-papst aus Mulfingen soll an Madison Air gehen.", "why_happening": "Der Ausbau von Rechenzentren und KI-Infrastruktur treibt den Bedarf an Kühlung massiv.", "who_is_affected": "Unternehmen, Beschäftigte, Standort Mulfingen und Kunden in Rechenzentren und Industrie.", "personal_impact": "Der Deal zeigt eine unsichtbare Seite des KI-Booms: Nicht nur Chips, auch Kühlung wird zum Milliardenmarkt.", "action_now": "Den Deal über die Frage erzählen, warum KI so viel Kühlung braucht."}, "factual_guardrails": ["Transaktion als vereinbart/geplant beschreiben, solange Genehmigungen ausstehen.", "Keine Arbeitsplatzgarantien über veröffentlichte Zusagen hinaus behaupten."], "content_angle": "KI braucht nicht nur Chips – sie braucht enorme Kühlung.", "duplicate_guard": "Konkreter ebm-papst/Madison-Air-Infrastrukturwinkel."}
+    }
+  ]
+}
