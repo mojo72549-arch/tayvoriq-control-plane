@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1418-trend-1",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Stuttgart 21 wird zum Videospiel: Schaffst du in der S21-Demo Gleis 9 in 20 Minuten?",
@@ -57,7 +57,14 @@
       "state": "APPROVED",
       "at": "2026-08-21T21:55:51Z",
       "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-21T21:58:47.409359+00:00",
+      "actor": "request-dispatcher:32530961128"
     }
   ],
-  "contract_sha256": "c62e82c287ed2ad5e8b855b873779e047cac19b76d3b666f3ee23e319687dcc3"
+  "contract_sha256": "c62e82c287ed2ad5e8b855b873779e047cac19b76d3b666f3ee23e319687dcc3",
+  "dispatch_claim_run_id": 32530961128,
+  "dispatch_contract_sha256": "c62e82c287ed2ad5e8b855b873779e047cac19b76d3b666f3ee23e319687dcc3"
 }
