@@ -7,6 +7,12 @@ on:
       - tests/test_tayvoriq_recovery_policy_v1.py
       - .github/workflows/tayvoriq-delivery-watch.yml
       - .github/workflows/tayvoriq-request-continuity-watchdog.yml
+      - tools/tayvoriq_telegram_progress_v1.py
+      - tools/tayvoriq_telegram_progress_notification_policy_v2.py
+      - state/tayvoriq-notification-policy.json
+      - tests/test_tayvoriq_telegram_progress_v1.py
+      - tests/test_tayvoriq_telegram_progress_v2.py
+      - .github/workflows/tayvoriq-telegram-progress-smoke.yml
       - .github/workflows/tayvoriq-recovery-policy-smoke.yml
   push:
     branches: [main]
@@ -15,6 +21,12 @@ on:
       - tests/test_tayvoriq_recovery_policy_v1.py
       - .github/workflows/tayvoriq-delivery-watch.yml
       - .github/workflows/tayvoriq-request-continuity-watchdog.yml
+      - tools/tayvoriq_telegram_progress_v1.py
+      - tools/tayvoriq_telegram_progress_notification_policy_v2.py
+      - state/tayvoriq-notification-policy.json
+      - tests/test_tayvoriq_telegram_progress_v1.py
+      - tests/test_tayvoriq_telegram_progress_v2.py
+      - .github/workflows/tayvoriq-telegram-progress-smoke.yml
       - .github/workflows/tayvoriq-recovery-policy-smoke.yml
 
 permissions:
@@ -55,3 +67,35 @@ jobs:
           grep -q 'tayvoriq_recovery_policy_v1.py' .github/workflows/tayvoriq-request-continuity-watchdog.yml
           grep -q 'No Golden Path run was dispatched' .github/workflows/tayvoriq-request-continuity-watchdog.yml
           grep -q "steps.policy.outputs.mode == 'fresh'" .github/workflows/tayvoriq-request-continuity-watchdog.yml
+
+  telegram-progress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Telegram progress policy
+        run: |
+          python -m py_compile \
+            tools/tayvoriq_telegram_progress_v1.py \
+            tools/tayvoriq_telegram_progress_notification_policy_v2.py \
+            tests/test_tayvoriq_telegram_progress_v1.py \
+            tests/test_tayvoriq_telegram_progress_v2.py
+      - name: Run Telegram progress regressions
+        run: |
+          python -m pip install pytest -q
+          python -m pytest -q \
+            tests/test_tayvoriq_telegram_progress_v1.py \
+            tests/test_tayvoriq_telegram_progress_v2.py
+      - name: Assert quiet watchdog contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          policy=json.loads(Path('state/tayvoriq-notification-policy.json').read_text(encoding='utf-8'))
+          assert policy['watchdog_poll_interval_seconds'] == 180
+          assert policy['operator_heartbeat_notify_minutes'] == [18, 45]
+          assert policy['suppress_intermediate_liveness_polls'] is True
+          PY

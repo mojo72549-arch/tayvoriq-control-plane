@@ -53,15 +53,15 @@ class TelegramProgressUnitTests(unittest.TestCase):
             "Wenn die Erde plötzlich bricht",
             "31968359576",
             "12345",
-            elapsed_minutes=6,
+            elapsed_minutes=18,
         )
         text = payload["text"]
         self.assertIn("TAYVORIQ 45 %", text)
-        self.assertIn("seit: 6 Minuten", text)
+        self.assertIn("seit: 18 Minuten", text)
         self.assertIn("weiterhin aktiv", text)
         self.assertNotIn("84 %", text)
 
-    def test_long_render_heartbeat_is_truthful_watchdog_warning(self) -> None:
+    def test_long_render_heartbeat_is_one_time_watchdog_warning(self) -> None:
         payload = progress.build_payload(
             "render_heartbeat",
             "Wenn die Erde plötzlich bricht",
@@ -71,15 +71,15 @@ class TelegramProgressUnitTests(unittest.TestCase):
         )
         text = payload["text"]
         self.assertIn("dauert länger", text)
-        self.assertIn("Watchdog aktiv", text)
-        self.assertIn("automatisch", text)
+        self.assertIn("einmaliger Watchdog-Hinweis", text)
+        self.assertIn("Telegram bleibt bis zum nächsten echten Meilenstein ruhig", text)
         self.assertNotIn("84 %", text)
 
-    def test_heartbeat_schedule_keeps_operator_informed_every_three_minutes(self) -> None:
-        for minute in (3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33):
-            self.assertTrue(progress.heartbeat_due("render_heartbeat", minute))
-        for minute in (1, 2, 4, 5, 7):
+    def test_heartbeat_schedule_suppresses_three_minute_operator_spam(self) -> None:
+        self.assertTrue(progress.heartbeat_due("render_heartbeat", 18))
+        for minute in (3, 6, 9, 12, 15, 21, 24, 27, 30, 33, 36, 39, 42):
             self.assertFalse(progress.heartbeat_due("render_heartbeat", minute))
+        self.assertTrue(progress.heartbeat_due("render_heartbeat", 45))
         self.assertTrue(progress.heartbeat_due("master_ready", 24))
 
     def test_audio_stop_is_immediate_truthful_and_says_nothing_was_published(self) -> None:
@@ -102,12 +102,12 @@ class TelegramProgressUnitTests(unittest.TestCase):
             "Wenn die Erde plötzlich bricht",
             "31970469274",
             "12345",
-            elapsed_minutes=6,
+            elapsed_minutes=18,
         )
         text = payload["text"]
         self.assertIn("TAYVORIQ 84 %", text)
-        self.assertIn("Master und Quellen bleiben gesichert", text)
-        self.assertIn("Reparaturphase aktiv seit: 6 Minuten", text)
+        self.assertIn("Checkpoint und Quellen sind gesichert", text)
+        self.assertIn("Reparaturphase aktiv seit: 18 Minuten", text)
         self.assertNotIn("90 %", text)
 
     def test_duplicate_stop_requires_a_new_angle_and_never_claims_publication(self) -> None:
@@ -123,18 +123,19 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("vor Render und Upload blockiert", text)
         self.assertIn("Neuer Themenwinkel", text)
 
-    def test_policy_suppresses_only_same_run_source_replay_and_keeps_liveness(self) -> None:
+    def test_policy_suppresses_replays_and_intermediate_liveness_polls(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "policy.json"
             path.write_text(json.dumps({"production_progress_enabled": True}), encoding="utf-8")
             self.assertTrue(progress.should_send(path, 1, "sources_locked"))
             self.assertFalse(progress.should_send(path, 2, "sources_locked"))
             self.assertTrue(progress.should_send(path, 3, "production_active"))
-            self.assertTrue(progress.should_send(path, 3, "render_heartbeat", 6))
-            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 3))
-            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 6))
-            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 15))
-            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 24))
+            self.assertFalse(progress.should_send(path, 3, "render_heartbeat", 6))
+            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 18))
+            self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 21))
+            self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 24))
+            self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 27))
+            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 45))
             self.assertTrue(progress.should_send(path, 3, "master_ready"))
             self.assertFalse(progress.should_send(path, 3, "audio_recovery"))
             path.write_text(json.dumps({"production_progress_enabled": False}), encoding="utf-8")
@@ -197,18 +198,19 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertIn('elapsed_minutes', workflow)
         self.assertIn('STATUS_ELAPSED_MINUTES_INVALID', workflow)
 
-    def test_checked_in_policy_matches_orchestrator_owned_internal_recovery(self) -> None:
+    def test_checked_in_policy_matches_state_change_operator_feed(self) -> None:
         policy = json.loads(
             (ROOT / "state/tayvoriq-notification-policy.json").read_text(encoding="utf-8")
         )
         self.assertIs(policy["production_progress_enabled"], True)
         self.assertIs(policy["notify_only_on_real_state_change"], True)
         self.assertIs(policy["enabled_until_user_opt_out"], True)
-        self.assertEqual(policy["heartbeat_interval_seconds"], 180)
+        self.assertEqual(policy["watchdog_poll_interval_seconds"], 180)
+        self.assertEqual(policy["operator_heartbeat_notify_minutes"], [18, 45])
+        self.assertIs(policy["suppress_intermediate_liveness_polls"], True)
         self.assertIs(policy["immediate_failure_notification_enabled"], False)
-        self.assertEqual(policy["checkpoint_repair_heartbeat_interval_seconds"], 180)
         self.assertIn("checkpoint_repair", policy["milestones"])
-        self.assertIn("checkpoint_heartbeat", policy["milestones"])
+        self.assertIn("checkpoint_heartbeat", policy["long_running_threshold_stages"])
 
 
 if __name__ == "__main__":
