@@ -30,7 +30,7 @@ def test_recovery_progress_never_regresses_below_sixty():
     )
     values = [progress.effective_milestone(stage, 12).percent for stage in stages]
     assert all(value is not None and value >= 60 for value in values)
-    assert values == [60, 62, 62, 65, 65, 84, 84, 84, 90, 100]
+    assert values == [60, 62, 62, 65, 65, 75, 75, 85, 95, 100]
 
 
 def test_fresh_recovery_confirms_sources_instead_of_hiding_them():
@@ -107,7 +107,26 @@ def test_long_running_notice_promises_silent_internal_polling_afterward():
     assert "Telegram bleibt bis zum nächsten echten Meilenstein ruhig" in text
 
 
-def test_master_and_quality_are_real_gate_percentages():
-    assert progress.effective_milestone("master_ready", 0).percent == 84
-    assert progress.effective_milestone("quality_passed", 0).percent == 90
+def test_checkpoint_is_not_mislabeled_as_final_master():
+    milestone = progress.effective_milestone("checkpoint_repair", 12)
+    assert milestone.percent == 75
+    assert "Render-Zwischenstand" in milestone.title
+    assert "noch nicht freigabefähig" in milestone.completed
+    assert "Master gesichert" not in milestone.title
+
+    payload = progress.build_payload(
+        "checkpoint_repair",
+        "Testthema",
+        "32389787423",
+        "1234",
+        generation=12,
+    )
+    assert "TAYVORIQ 75 %" in payload["text"]
+    assert "noch nicht freigabefähig" in payload["text"]
+
+
+def test_master_quality_and_review_are_distinct_real_gate_percentages():
+    assert progress.effective_milestone("checkpoint_repair", 0).percent == 75
+    assert progress.effective_milestone("master_ready", 0).percent == 85
+    assert progress.effective_milestone("quality_passed", 0).percent == 95
     assert progress.effective_milestone("review_ready", 0).percent == 100
