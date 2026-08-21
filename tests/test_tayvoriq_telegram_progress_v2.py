@@ -54,13 +54,27 @@ def test_recovery_generation_is_resolved_from_workspace_not_current_directory(tm
     assert progress.recovery_generation() == 12
 
 
-def test_active_golden_path_heartbeat_is_due_every_three_minutes():
-    assert progress.heartbeat_due("render_heartbeat", 3)
-    assert progress.heartbeat_due("render_heartbeat", 6)
-    assert progress.heartbeat_due("render_heartbeat", 15)
-    assert not progress.heartbeat_due("render_heartbeat", 1)
-    assert not progress.heartbeat_due("render_heartbeat", 4)
+def test_watchdog_polling_every_three_minutes_does_not_spam_telegram():
+    # Exact regression for the operator-visible 18/21/24/27-minute spam.
+    assert progress.heartbeat_due("render_heartbeat", 18)
+    assert not progress.heartbeat_due("render_heartbeat", 21)
+    assert not progress.heartbeat_due("render_heartbeat", 24)
+    assert not progress.heartbeat_due("render_heartbeat", 27)
+    assert not progress.heartbeat_due("render_heartbeat", 30)
+    assert progress.heartbeat_due("render_heartbeat", 45)
+
+
+def test_checkpoint_watchdog_uses_same_quiet_threshold_policy():
     assert progress.heartbeat_due("checkpoint_heartbeat", 18)
+    for minute in (3, 6, 9, 12, 15, 21, 24, 27, 30, 33, 42):
+        assert not progress.heartbeat_due("checkpoint_heartbeat", minute)
+    assert progress.heartbeat_due("checkpoint_heartbeat", 45)
+
+
+def test_real_milestones_are_always_due_immediately():
+    assert progress.heartbeat_due("production_active", 1)
+    assert progress.heartbeat_due("master_ready", 24)
+    assert progress.heartbeat_due("quality_passed", 1)
 
 
 def test_recovery_payload_exposes_generation_and_no_user_action():
@@ -74,6 +88,20 @@ def test_recovery_payload_exposes_generation_and_no_user_action():
     assert "TAYVORIQ 65 %" in payload["text"]
     assert "Recovery: Generation 12" in payload["text"]
     assert "Für dich: ✅ Keine Aktion nötig." in payload["text"]
+
+
+def test_long_running_notice_promises_silent_internal_polling_afterward():
+    payload = progress.build_payload(
+        "render_heartbeat",
+        "Testthema",
+        "32389787423",
+        "1234",
+        elapsed_minutes=18,
+        generation=12,
+    )
+    text = payload["text"]
+    assert "einmaliger Watchdog-Hinweis" in text
+    assert "Telegram bleibt bis zum nächsten echten Meilenstein ruhig" in text
 
 
 def test_master_and_quality_are_real_gate_percentages():
