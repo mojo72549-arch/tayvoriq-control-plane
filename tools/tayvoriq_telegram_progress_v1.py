@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import urllib.request
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -167,8 +168,61 @@ def immediate_failure_enabled(path: Path = DEFAULT_POLICY) -> bool:
     return str(value or "").strip().casefold() in TRUE_VALUES
 
 
+def _valid_generation(value: object) -> int | None:
+    try:
+        generation = int(value)
+    except (TypeError, ValueError):
+        return None
+    return generation if 0 <= generation <= 999 else None
+
+
+def _generation_from_request(data: object, request_id: str, run_id: str) -> int | None:
+    if not isinstance(data, dict):
+        return None
+    if str(data.get("request_id") or "").strip() != request_id:
+        return None
+    if run_id:
+        try:
+            bound_run = int(data.get("golden_path_run_id") or 0)
+            current_run = int(run_id)
+        except (TypeError, ValueError):
+            return None
+        if not bound_run or bound_run != current_run:
+            return None
+    return _valid_generation(data.get("recovery_generation") or 0)
+
+
+def _live_recovery_generation(request_id: str, run_id: str) -> int | None:
+    repository = str(os.getenv("GITHUB_REPOSITORY") or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+        return None
+    url = f"https://raw.githubusercontent.com/{repository}/main/requests/{request_id}.json"
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "tayvoriq-telegram-progress/2"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return None
+    return _generation_from_request(data, request_id, run_id)
+
+
 def recovery_generation() -> int:
-    """Resolve durable recovery ownership from the repository root, never cwd."""
+    """Return only a generation proven to belong to the current run.
+
+    A recovery run can start before its durable request rebind commit reaches the
+    job's checkout. Prefer the live request on main so Telegram never reports a
+    stale generation from that frozen checkout. Local data is accepted only when
+    it is bound to the current run too.
+    """
+    pinned = str(os.getenv("TAYVORIQ_RECOVERY_GENERATION_PIN") or "").strip()
+    if pinned:
+        generation = _valid_generation(pinned)
+        return generation if generation is not None else 0
+
     request_id = str(os.getenv("SOURCE_REQUEST_ID_PIN") or "").strip()
     if (
         not request_id
@@ -177,19 +231,20 @@ def recovery_generation() -> int:
     ):
         return 0
 
+    run_id = str(os.getenv("GITHUB_RUN_ID") or "").strip()
+    live_generation = _live_recovery_generation(request_id, run_id)
+    if live_generation is not None:
+        return live_generation
+
     workspace_raw = str(os.getenv("GITHUB_WORKSPACE") or "").strip()
-    if workspace_raw:
-        repository_root = Path(workspace_raw)
-    else:
-        repository_root = Path(__file__).resolve().parents[1]
+    repository_root = Path(workspace_raw) if workspace_raw else Path(__file__).resolve().parents[1]
     path = repository_root / "requests" / f"{request_id}.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        if str(data.get("request_id") or "").strip() != request_id:
-            return 0
-        return max(0, int(data.get("recovery_generation") or 0))
     except Exception:
         return 0
+    local_generation = _generation_from_request(data, request_id, run_id)
+    return local_generation if local_generation is not None else 0
 
 
 def effective_milestone(stage: str, generation: int) -> Milestone:
