@@ -47,16 +47,16 @@ MILESTONES = {
         45,
         "Produktion läuft",
         "Preflight und Produktionsvertrag sind bestanden.",
-        "Skript, natürliche Sprecherstimme, Visuals, Untertitel und 9:16-Master werden erstellt beziehungsweise aus dem Checkpoint fortgesetzt.",
+        "Skript, natürliche Sprecherstimme, Visuals, Untertitel und 9:16-Render werden erstellt beziehungsweise aus dem Checkpoint fortgesetzt.",
     ),
     "master_ready": Milestone(
-        84,
-        "Videomaster gesichert",
-        "Ein publishbarer beziehungsweise lokal reparierter YouTube-/TikTok-Master liegt verifiziert vor.",
+        85,
+        "Finaler Videomaster verifiziert",
+        "Der lokal reparierte YouTube-/TikTok-Master ist vollständig erzeugt und als publishbarer Kandidat verifiziert.",
         "Finale Sprach-, Bild-, Fakten- und Plattform-Gates.",
     ),
     "quality_passed": Milestone(
-        90,
+        95,
         "Qualitätsprüfung bestanden",
         "Stimme, Bild, Fakten und beide Plattformpakete haben die Pflicht-Gates bestanden.",
         "Review-Seite und Telegram-Videofreigabe.",
@@ -74,16 +74,16 @@ MILESTONES = {
         "Die laufende Produktionsphase wird fortgesetzt und der nächste echte Gate-Wechsel wird sofort gemeldet.",
     ),
     "checkpoint_repair": Milestone(
-        84,
-        "Master gesichert · gezielte Reparatur",
-        "Ein wiederverwendbarer Master ist dauerhaft gesichert; es wurde noch nichts veröffentlicht.",
-        "Nur fehlgeschlagene lokale Sprach-, Bild- oder Audit-Prüfpunkte werden repariert.",
+        75,
+        "Render-Zwischenstand gesichert · Qualitätsreparatur",
+        "Ein wiederverwendbarer Render-Zwischenstand ist gesichert. Er ist noch nicht freigabefähig und wurde nicht veröffentlicht.",
+        "Nur fehlgeschlagene lokale Sprach-, Bild- oder Audit-Prüfpunkte werden repariert; erst danach wird der finale Master bestätigt.",
     ),
     "checkpoint_heartbeat": Milestone(
-        84,
-        "Checkpoint-Reparatur arbeitet weiter",
-        "Master und Quellen bleiben gesichert; seit dem Reparaturstart wurde kein neuer Fehler erkannt.",
-        "Die verbliebenen lokalen Prüfpunkte werden weiter repariert und erneut gemessen.",
+        75,
+        "Qualitätsreparatur läuft intern weiter",
+        "Render-Zwischenstand und Quellen bleiben gesichert; ein finaler Master ist noch nicht bestätigt.",
+        "Die verbliebenen lokalen Prüfpunkte werden intern repariert und erneut gemessen; Telegram meldet erst den nächsten echten Meilenstein.",
     ),
     "audio_recovery": Milestone(
         None,
@@ -101,7 +101,7 @@ MILESTONES = {
         None,
         "Technischer Stopp erkannt",
         "Der aktuelle Lauf wurde fail-closed beendet; Trendfreigabe und Quellen bleiben erhalten und es wurde nichts veröffentlicht.",
-        "Der Orchestrator übernimmt denselben freigegebenen Auftrag automatisch in einen neuen Recovery-Lauf.",
+        "Der Orchestrator übernimmt denselben freigegebenen Auftrag automatisch nach der Recovery-Policy.",
     ),
 }
 
@@ -264,19 +264,19 @@ def build_payload(
         next_step = "Der Watchdog prüft intern weiter; Telegram bleibt bis zum nächsten echten Meilenstein ruhig."
     elif stage == "checkpoint_heartbeat" and elapsed >= 45:
         icon = "🟠"
-        title = "Reparatur ungewöhnlich lange aktiv · Watchdog überwacht"
-        completed = "Checkpoint und Quellen sind gesichert; die lokale Reparatur läuft weiterhin kontrolliert."
+        title = "Qualitätsreparatur ungewöhnlich lange aktiv · Watchdog überwacht"
+        completed = "Render-Zwischenstand und Quellen sind gesichert; ein finaler Master ist noch nicht bestätigt."
         next_step = "Der Watchdog prüft weiter intern; Telegram meldet erst wieder einen echten Zustandswechsel oder einen Fehler."
     elif stage == "checkpoint_heartbeat" and elapsed >= 18:
         icon = "🟠"
-        title = "Reparatur dauert länger · einmaliger Watchdog-Hinweis"
-        completed = "Checkpoint und Quellen sind gesichert; die lokale Reparatur läuft weiterhin kontrolliert."
+        title = "Qualitätsreparatur dauert länger · einmaliger Watchdog-Hinweis"
+        completed = "Render-Zwischenstand und Quellen sind gesichert; ein finaler Master ist noch nicht bestätigt."
         next_step = "Der Watchdog prüft intern weiter; Telegram bleibt bis zum nächsten echten Meilenstein ruhig."
 
     if stage == "technical_stop":
         detail = (
-            "Automatische Recovery ist request-gebunden: Nach der Übergabe folgt "
-            "eine konkrete Meldung mit altem und neuem Run."
+            "Automatische Recovery ist request-gebunden und folgt der getesteten Recovery-Policy; "
+            "es wird nicht blind eine neue Generation gestartet."
         )
 
     lines = [
@@ -288,7 +288,7 @@ def build_payload(
     if generation > 0:
         lines.append(f"Recovery: Generation {generation}")
     if stage in HEARTBEAT_STAGES:
-        phase = "Produktionsphase" if stage == "render_heartbeat" else "Reparaturphase"
+        phase = "Produktionsphase" if stage == "render_heartbeat" else "Qualitätsreparatur"
         lines.extend(["", f"⏱️ {phase} aktiv seit: {max(1, elapsed)} Minuten"])
     if failure_state:
         lines.extend(["", f"Status: {clean_topic(failure_state)}"])

@@ -15,9 +15,9 @@ import tayvoriq_telegram_progress_v1 as progress
 
 class TelegramProgressUnitTests(unittest.TestCase):
     def test_milestones_are_strictly_increasing_and_meaningful(self) -> None:
-        names = ("sources_locked", "production_active", "master_ready", "quality_passed")
+        names = ("sources_locked", "production_active", "checkpoint_repair", "master_ready", "quality_passed", "review_ready")
         percentages = [progress.MILESTONES[name].percent for name in names]
-        self.assertEqual(percentages, [20, 45, 84, 90])
+        self.assertEqual(percentages, [20, 45, 75, 85, 95, 100])
         self.assertEqual(percentages, sorted(set(percentages)))
 
     def test_payload_is_clear_and_requires_no_action(self) -> None:
@@ -28,9 +28,10 @@ class TelegramProgressUnitTests(unittest.TestCase):
             "12345",
         )
         text = payload["text"]
-        self.assertIn("TAYVORIQ 84 %", text)
+        self.assertIn("TAYVORIQ 85 %", text)
         self.assertIn("Wenn die Erde plötzlich bricht", text)
-        self.assertIn("Videomaster", text)
+        self.assertIn("Finaler Videomaster verifiziert", text)
+        self.assertIn("publishbarer Kandidat", text)
         self.assertIn("Keine Aktion nötig", text)
         self.assertNotIn("fehlgeschlagen", text.casefold())
 
@@ -59,7 +60,7 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("TAYVORIQ 45 %", text)
         self.assertIn("seit: 18 Minuten", text)
         self.assertIn("weiterhin aktiv", text)
-        self.assertNotIn("84 %", text)
+        self.assertNotIn("85 %", text)
 
     def test_long_render_heartbeat_is_one_time_watchdog_warning(self) -> None:
         payload = progress.build_payload(
@@ -73,7 +74,7 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("dauert länger", text)
         self.assertIn("einmaliger Watchdog-Hinweis", text)
         self.assertIn("Telegram bleibt bis zum nächsten echten Meilenstein ruhig", text)
-        self.assertNotIn("84 %", text)
+        self.assertNotIn("85 %", text)
 
     def test_heartbeat_schedule_suppresses_three_minute_operator_spam(self) -> None:
         self.assertTrue(progress.heartbeat_due("render_heartbeat", 18))
@@ -96,7 +97,7 @@ class TelegramProgressUnitTests(unittest.TestCase):
         self.assertIn("nichts veröffentlicht", text)
         self.assertIn("Dublettenprüfung bleiben gültig", text)
 
-    def test_checkpoint_repair_reports_saved_master_at_verified_gate(self) -> None:
+    def test_checkpoint_repair_is_explicitly_not_a_final_master(self) -> None:
         payload = progress.build_payload(
             "checkpoint_heartbeat",
             "Wenn die Erde plötzlich bricht",
@@ -105,10 +106,12 @@ class TelegramProgressUnitTests(unittest.TestCase):
             elapsed_minutes=18,
         )
         text = payload["text"]
-        self.assertIn("TAYVORIQ 84 %", text)
-        self.assertIn("Checkpoint und Quellen sind gesichert", text)
-        self.assertIn("Reparaturphase aktiv seit: 18 Minuten", text)
-        self.assertNotIn("90 %", text)
+        self.assertIn("TAYVORIQ 75 %", text)
+        self.assertIn("Render-Zwischenstand und Quellen sind gesichert", text)
+        self.assertIn("finaler Master ist noch nicht bestätigt", text)
+        self.assertIn("Qualitätsreparatur aktiv seit: 18 Minuten", text)
+        self.assertNotIn("85 %", text)
+        self.assertNotIn("Master gesichert", text)
 
     def test_duplicate_stop_requires_a_new_angle_and_never_claims_publication(self) -> None:
         payload = progress.build_payload(
@@ -136,6 +139,8 @@ class TelegramProgressUnitTests(unittest.TestCase):
             self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 24))
             self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 27))
             self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 45))
+            self.assertFalse(progress.should_send(path, 1, "checkpoint_heartbeat", 3))
+            self.assertTrue(progress.should_send(path, 1, "checkpoint_heartbeat", 18))
             self.assertTrue(progress.should_send(path, 3, "master_ready"))
             self.assertFalse(progress.should_send(path, 3, "audio_recovery"))
             path.write_text(json.dumps({"production_progress_enabled": False}), encoding="utf-8")
