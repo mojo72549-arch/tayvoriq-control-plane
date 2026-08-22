@@ -1,0 +1,128 @@
+name: TAYVORIQ Slot Serialization Release
+
+on:
+  workflow_run:
+    workflows:
+      - TAYVORIQ-X Golden Path
+    types:
+      - completed
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: tayvoriq-slot-serialization-release
+  cancel-in-progress: false
+
+jobs:
+  release-next-evening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Find oldest held evening request
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_slot_serialization_v1.py scan-held --requests-dir requests > /tmp/held.json
+          request_file=$(python - <<'PY'
+          import json
+          items=json.load(open('/tmp/held.json',encoding='utf-8'))
+          print(items[0] if items else '')
+          PY
+          )
+          echo "request_file=$request_file" >> "$GITHUB_OUTPUT"
+          if [ -z "$request_file" ]; then
+            echo "No held evening request is waiting."
+          else
+            echo "Held evening candidate: $request_file"
+          fi
+
+      - name: Verify morning final-review completion
+        id: gate
+        if: steps.candidate.outputs.request_file != ''
+        env:
+          REQUEST_FILE: ${{ steps.candidate.outputs.request_file }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_slot_serialization_v1.py check \
+            --request "$REQUEST_FILE" \
+            --requests-dir requests \
+            --repo "$GITHUB_REPOSITORY" \
+            --token "$GH_TOKEN" > /tmp/slot-result.json
+          python - "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          d=json.load(open('/tmp/slot-result.json',encoding='utf-8'))
+          with open(sys.argv[1],'a',encoding='utf-8') as h:
+              h.write(f"released={'true' if d.get('released') else 'false'}\n")
+              h.write(f"reason={d.get('reason') or ''}\n")
+              h.write(f"predecessor_run_id={int(d.get('predecessor_run_id') or 0)}\n")
+          print(d)
+          PY
+
+      - name: Release exact evening request
+        if: steps.gate.outputs.released == 'true'
+        env:
+          REQUEST_FILE: ${{ steps.candidate.outputs.request_file }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          released=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            [ -f "$REQUEST_FILE" ] || { echo "Held request disappeared or was superseded."; exit 0; }
+
+            python tools/tayvoriq_slot_serialization_v1.py check \
+              --request "$REQUEST_FILE" \
+              --requests-dir requests \
+              --repo "$GITHUB_REPOSITORY" \
+              --token "$GH_TOKEN" > /tmp/slot-result-live.json
+            allowed=$(python - <<'PY'
+          import json
+          d=json.load(open('/tmp/slot-result-live.json',encoding='utf-8'))
+          print('true' if d.get('released') else 'false')
+          PY
+            )
+            [ "$allowed" = "true" ] || { echo "Morning completion changed; keeping evening held."; exit 0; }
+
+            python tools/tayvoriq_slot_serialization_v1.py mark-released \
+              --request "$REQUEST_FILE" \
+              --result /tmp/slot-result-live.json
+            python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+            git add "$REQUEST_FILE"
+            if git diff --cached --quiet; then
+              echo "Request already released by another owner."
+              exit 0
+            fi
+            git commit -m "ops(tayvoriq): release evening after verified morning review"
+            if git push origin HEAD:main; then
+              released=true
+              break
+            fi
+            sleep $((attempt * 2))
+          done
+          [ "$released" = "true" ] || { echo "::error title=Slot release persistence failed::Could not persist evening release"; exit 1; }
+          echo "Evening request released; request-dispatch push trigger now owns production start."
+
+      - name: Keep held without noise
+        if: steps.candidate.outputs.request_file != '' && steps.gate.outputs.released != 'true'
+        run: |
+          echo "Evening remains held: ${{ steps.gate.outputs.reason }}"
+          echo "No Golden Path dispatch and no production-start Telegram message will be emitted."
