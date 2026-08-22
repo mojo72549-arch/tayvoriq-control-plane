@@ -1,0 +1,248 @@
+name: TAYVORIQ X Replay Start Guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/run-now/tayvoriq-x-request.json
+
+permissions:
+  actions: write
+  contents: write
+
+# Serialize request rebinding with Delivery Watch / Continuity Watchdog.
+concurrency:
+  group: tayvoriq-delivery-watch
+  cancel-in-progress: false
+
+jobs:
+  verify-bind-or-fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve exact replay request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "$GITHUB_OUTPUT" <<'PY'
+          import json, re, sys
+          from pathlib import Path
+
+          pointer_path = Path('.github/run-now/tayvoriq-x-request.json')
+          if not pointer_path.is_file():
+              raise SystemExit('REPLAY_POINTER_MISSING')
+          pointer = json.loads(pointer_path.read_text(encoding='utf-8'))
+          if str(pointer.get('request') or '') != 'tayvoriq-x-production':
+              raise SystemExit('REPLAY_POINTER_TYPE_INVALID')
+          if pointer.get('approved_trend_pinned') is not True:
+              raise SystemExit('REPLAY_APPROVAL_PIN_MISSING')
+
+          request_id = str(pointer.get('source_request_id') or '').strip()
+          if not re.fullmatch(r'[A-Za-z0-9_.:-]{4,160}', request_id) or '/' in request_id or '\\' in request_id:
+              raise SystemExit('REPLAY_SOURCE_REQUEST_ID_INVALID')
+          request_path = Path('requests') / f'{request_id}.json'
+          if not request_path.is_file():
+              raise SystemExit('REPLAY_SOURCE_REQUEST_MISSING')
+          request = json.loads(request_path.read_text(encoding='utf-8'))
+
+          topic = str(pointer.get('topic') or '').strip()
+          trend_id = str(pointer.get('trend_id') or '').strip()
+          if str(request.get('request_id') or '').strip() != request_id:
+              raise SystemExit('REPLAY_SOURCE_REQUEST_IDENTITY_MISMATCH')
+          if str(request.get('source') or '').strip() != 'telegram_trend_approval':
+              raise SystemExit('REPLAY_NON_TELEGRAM_REQUEST_FORBIDDEN')
+          if str(request.get('topic') or '').strip() != topic:
+              raise SystemExit('REPLAY_TOPIC_MISMATCH')
+          if str(request.get('trend_id') or '').strip() != trend_id:
+              raise SystemExit('REPLAY_TREND_MISMATCH')
+          if str(request.get('status') or '').upper() not in {'APPROVED','DISPATCHING','DISPATCHED'}:
+              raise SystemExit('REPLAY_REQUEST_STATE_INVALID')
+          if not isinstance(request.get('source_context'), dict) or not request.get('source_context'):
+              raise SystemExit('REPLAY_SOURCE_CONTEXT_MISSING')
+
+          values = {
+              'request_id': request_id,
+              'request_file': str(request_path),
+              'topic': topic,
+              'trend_id': trend_id,
+              'old_run_id': str(int(request.get('golden_path_run_id') or 0)),
+          }
+          with open(sys.argv[1], 'a', encoding='utf-8') as handle:
+              for key, value in values.items():
+                  handle.write(f'{key}={value}\n')
+          print(values)
+          PY
+
+      - name: Verify push run or dispatch exact fallback
+        id: start
+        shell: bash
+        env:
+          TOPIC: ${{ steps.request.outputs.topic }}
+          TREND_ID: ${{ steps.request.outputs.trend_id }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+        run: |
+          set -euo pipefail
+
+          # The Golden Path should be created by the same push. Give GitHub time
+          # to register the sibling workflow before using the explicit fallback.
+          RUN_ID=""
+          for poll in $(seq 1 12); do
+            RUN_ID=$(gh run list \
+              --workflow tayvoriq-deliver-video-now.yml \
+              --branch main \
+              --event push \
+              --limit 30 \
+              --json databaseId,headSha \
+              --jq ".[] | select(.headSha == \"$GITHUB_SHA\") | .databaseId" | head -n 1)
+            [ -n "$RUN_ID" ] && break
+            sleep 5
+          done
+
+          START_MODE="push_verified"
+          if [ -z "$RUN_ID" ]; then
+            START_MODE="explicit_fallback"
+            BEFORE_IDS=$(gh run list \
+              --workflow tayvoriq-deliver-video-now.yml \
+              --event workflow_dispatch \
+              --limit 40 \
+              --json databaseId \
+              --jq '.[].databaseId' | tr '\n' ' ')
+            DISPATCH_EPOCH=$(date +%s)
+
+            gh workflow run tayvoriq-deliver-video-now.yml \
+              --ref main \
+              -f topic="$TOPIC" \
+              -f trend_id="$TREND_ID" \
+              -f source_request_id="$REQUEST_ID"
+
+            for poll in $(seq 1 24); do
+              sleep 4
+              gh run list \
+                --workflow tayvoriq-deliver-video-now.yml \
+                --branch main \
+                --event workflow_dispatch \
+                --limit 40 \
+                --json databaseId,createdAt > /tmp/replay-runs.json
+              RUN_ID=$(python - "$BEFORE_IDS" "$DISPATCH_EPOCH" <<'PY'
+          import json, sys
+          from datetime import datetime
+          before = {int(v) for v in sys.argv[1].split() if v.isdigit()}
+          epoch = int(sys.argv[2])
+          found = []
+          for item in json.load(open('/tmp/replay-runs.json', encoding='utf-8')):
+              try:
+                  rid = int(item.get('databaseId') or 0)
+                  created = datetime.fromisoformat(str(item.get('createdAt') or '').replace('Z','+00:00')).timestamp()
+              except Exception:
+                  continue
+              if rid and rid not in before and created >= epoch - 5:
+                  found.append((created, rid))
+          print(max(found)[1] if found else '')
+          PY
+              )
+              [ -n "$RUN_ID" ] && break
+            done
+          fi
+
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo 'REPLAY_START_NOT_VERIFIED'; exit 1; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "start_mode=$START_MODE" >> "$GITHUB_OUTPUT"
+          echo "REPLAY_START_VERIFIED:$RUN_ID:$START_MODE:$REQUEST_ID"
+
+      - name: Bind exact request to verified replay run
+        shell: bash
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          TOPIC: ${{ steps.request.outputs.topic }}
+          TREND_ID: ${{ steps.request.outputs.trend_id }}
+          OLD_RUN_ID: ${{ steps.request.outputs.old_run_id }}
+          NEW_RUN_ID: ${{ steps.start.outputs.run_id }}
+          START_MODE: ${{ steps.start.outputs.start_mode }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          bound=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python - "$REQUEST_FILE" <<'PY'
+          import json, os, sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          data = json.loads(path.read_text(encoding='utf-8'))
+          request_id = os.environ['REQUEST_ID']
+          topic = os.environ['TOPIC']
+          trend_id = os.environ['TREND_ID']
+          new_run = int(os.environ['NEW_RUN_ID'])
+          old_run = int(data.get('golden_path_run_id') or 0)
+
+          if str(data.get('request_id') or '').strip() != request_id:
+              raise SystemExit('REPLAY_BIND_REQUEST_CHANGED')
+          if str(data.get('topic') or '').strip() != topic:
+              raise SystemExit('REPLAY_BIND_TOPIC_CHANGED')
+          if str(data.get('trend_id') or '').strip() != trend_id:
+              raise SystemExit('REPLAY_BIND_TREND_CHANGED')
+          if old_run == new_run:
+              print('REPLAY_ALREADY_BOUND')
+              raise SystemExit(0)
+
+          previous = list(data.get('previous_golden_path_run_ids') or [])
+          if old_run and old_run not in previous:
+              previous.append(old_run)
+          data['previous_golden_path_run_ids'] = previous[-20:]
+          data['golden_path_run_id'] = new_run
+          data['status'] = 'DISPATCHED'
+          data['retry_of_run_id'] = old_run or None
+          data['replay_bound_by'] = 'tayvoriq-x-replay-start-guard'
+          data['replay_trigger_sha'] = os.environ.get('GITHUB_SHA')
+          data['replay_start_mode'] = os.environ['START_MODE']
+          data['replay_dispatched_at'] = datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print({'request_id': request_id, 'old_run': old_run, 'new_run': new_run, 'mode': os.environ['START_MODE']})
+          PY
+
+            git add -- "$REQUEST_FILE"
+            if git diff --cached --quiet; then
+              bound=true
+              break
+            fi
+            git commit -m "ops(tayvoriq): bind replay ${REQUEST_ID} to ${NEW_RUN_ID}"
+            if git push origin HEAD:main; then
+              bound=true
+              break
+            fi
+            sleep $((attempt * 2))
+          done
+          [ "$bound" = "true" ] || { echo 'REPLAY_BIND_PERSISTENCE_FAILED'; exit 1; }
+
+      - name: Assert verified request binding
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+          RUN_ID: ${{ steps.start.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git show "origin/main:${REQUEST_FILE}" > /tmp/bound-request.json
+          python - <<'PY'
+          import json, os
+          data = json.load(open('/tmp/bound-request.json', encoding='utf-8'))
+          assert str(data.get('request_id') or '') == os.environ['REQUEST_ID'], data
+          assert int(data.get('golden_path_run_id') or 0) == int(os.environ['RUN_ID']), data
+          assert str(data.get('status') or '') == 'DISPATCHED', data
+          print('REPLAY_REQUEST_BINDING_VERIFIED')
+          PY
