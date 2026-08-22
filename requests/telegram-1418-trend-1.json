@@ -79,19 +79,32 @@
         "failure_signature": "7446d3fed9efe1e3a594",
         "reason": "bounded-active-telegram-request-continuity"
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-22T08:22:02.561889Z",
+      "actor": "tayvoriq-request-continuity-watchdog",
+      "meta": {
+        "retry_of_run_id": 32535853942,
+        "golden_path_run_id": 32562085750,
+        "recovery_generation": 2,
+        "failure_signature": "7446d3fed9efe1e3a594",
+        "reason": "bounded-active-telegram-request-continuity"
+      }
     }
   ],
   "contract_sha256": "c62e82c287ed2ad5e8b855b873779e047cac19b76d3b666f3ee23e319687dcc3",
   "dispatch_claim_run_id": 32530961128,
   "dispatch_contract_sha256": "c62e82c287ed2ad5e8b855b873779e047cac19b76d3b666f3ee23e319687dcc3",
-  "golden_path_run_id": 32535853942,
+  "golden_path_run_id": 32562085750,
   "previous_golden_path_run_ids": [
-    32530973038
+    32530973038,
+    32535853942
   ],
-  "recovery_generation": 1,
-  "retry_of_run_id": 32530973038,
+  "recovery_generation": 2,
+  "retry_of_run_id": 32535853942,
   "replacement_reason": "BOUNDED_ACTIVE_TELEGRAM_CONTINUITY_RECOVERY",
   "recovery_owner": "tayvoriq-request-continuity-watchdog",
   "recovery_failure_signature": "7446d3fed9efe1e3a594",
-  "recovery_dispatched_at": "2026-08-21T23:10:01.400049Z"
+  "recovery_dispatched_at": "2026-08-22T08:22:02.561889Z"
 }
