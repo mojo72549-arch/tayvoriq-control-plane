@@ -36,7 +36,7 @@ def test_replay_push_is_verified_and_has_an_exact_request_fallback():
         "REPLAY_TOPIC_MISMATCH",
         "REPLAY_TREND_MISMATCH",
         "--event push",
-        'headSha == \\"$GITHUB_SHA\\"',
+        'headSha == \\"$GITHUB_SHA\\"'.replace('\\\\"', '\\"'),
         'gh workflow run tayvoriq-deliver-video-now.yml',
         '-f source_request_id="$REQUEST_ID"',
         "REPLAY_START_NOT_VERIFIED",
@@ -58,5 +58,5 @@ def test_same_run_retry_does_not_repeat_early_progress_milestones():
 def test_hardening_never_weakens_quality_gates():
     dispatch = DISPATCH.read_text(encoding="utf-8")
     replay = REPLAY_GUARD.read_text(encoding="utf-8")
-    assert "quality_gates_weakened" not in replay or "quality_gates_weakened: true" not in replay.casefold()
+    assert "quality_gates_weakened: true" not in replay.casefold()
     assert "source_request_id" in dispatch
