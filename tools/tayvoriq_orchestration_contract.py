@@ -18,6 +18,7 @@ ALL_STATES = CLAIMABLE | {"DISPATCHING", "DISPATCHED", "DISPATCH_FAILED"}
 SCOPES = {
     "auto_scope",
     "technology_ai",
+    "technology_robotics_bw",
     "business_economy",
     "world_society",
     "sports",
@@ -358,6 +359,8 @@ def self_test(_: argparse.Namespace) -> None:
         else:
             raise SystemExit("self-test failed: execution-mode tamper was not detected")
 
+        if "technology_robotics_bw" not in SCOPES:
+            raise SystemExit("self-test failed: verified BW robotics scope is missing")
         if "DISPATCHING" not in TRANSITIONS["APPROVED"]:
             raise SystemExit("self-test failed: APPROVED cannot enter DISPATCHING")
         if "DISPATCHED" not in TRANSITIONS["DISPATCHING"]:
