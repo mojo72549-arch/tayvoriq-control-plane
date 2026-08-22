@@ -1,0 +1,51 @@
+name: TAYVORIQ Slot Serialization Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/tayvoriq_slot_serialization_v1.py
+      - tests/test_tayvoriq_slot_serialization_v1.py
+      - .github/workflows/tayvoriq-request-dispatch.yml
+      - .github/workflows/tayvoriq-slot-serialization-release.yml
+      - .github/workflows/tayvoriq-slot-serialization-contract.yml
+  pull_request:
+    paths:
+      - tools/tayvoriq_slot_serialization_v1.py
+      - tests/test_tayvoriq_slot_serialization_v1.py
+      - .github/workflows/tayvoriq-request-dispatch.yml
+      - .github/workflows/tayvoriq-slot-serialization-release.yml
+      - .github/workflows/tayvoriq-slot-serialization-contract.yml
+
+permissions:
+  contents: read
+
+jobs:
+  slot-serialization-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile gate
+        run: python -m py_compile tools/tayvoriq_slot_serialization_v1.py
+      - name: Run FIFO unit contract
+        run: python -m unittest -q tests/test_tayvoriq_slot_serialization_v1.py
+      - name: Assert dispatcher and releaser wiring
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          dispatcher=Path('.github/workflows/tayvoriq-request-dispatch.yml').read_text(encoding='utf-8')
+          releaser=Path('.github/workflows/tayvoriq-slot-serialization-release.yml')
+          assert 'Enforce strict morning-before-evening serialization' in dispatcher
+          assert "steps.serialization.outputs.released == 'true'" in dispatcher
+          assert 'Persist serialized evening hold' in dispatcher
+          assert releaser.is_file()
+          text=releaser.read_text(encoding='utf-8')
+          assert 'TAYVORIQ-X Golden Path' in text
+          assert 'scan-held' in text
+          assert 'mark-released' in text
+          print('STRICT_SLOT_SERIALIZATION_WIRING_PASSED')
+          PY
