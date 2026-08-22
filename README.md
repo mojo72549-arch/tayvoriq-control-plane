@@ -2,6 +2,14 @@
 
 Public orchestration repository for the private TAYVORIQ implementation.
 
+## Golden Path V4 project standard
+
+The binding architecture, recovery, notification, project-reporting and morning/evening serialization standard is documented in:
+
+- [`docs/TAYVORIQ_GOLDEN_PATH_V4_PROJECT_STANDARD.md`](docs/TAYVORIQ_GOLDEN_PATH_V4_PROJECT_STANDARD.md)
+
+All future Golden Path, Recovery, Telegram notification and slot-orchestration changes must be evaluated against that standard. Quality gates must not be weakened.
+
 ## Golden Path
 
 1. Compile, Preflight and complete tests.
