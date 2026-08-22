@@ -202,7 +202,10 @@ jobs:
         run: |
           set -euo pipefail
           BEFORE=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
-          gh workflow run tayvoriq-deliver-video-now.yml --ref main -f topic="$TOPIC" -f trend_id="$TREND_ID"
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main \
+            -f topic="$TOPIC" \
+            -f trend_id="$TREND_ID" \
+            -f source_request_id="$REQUEST_ID"
 
           RUN_ID=""
           for attempt in $(seq 1 12); do

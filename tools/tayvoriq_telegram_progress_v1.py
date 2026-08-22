@@ -106,8 +106,12 @@ MILESTONES = {
 }
 
 
+# A GitHub same-run retry is the same logical production attempt. Do not send
+# the same early milestone again just because GITHUB_RUN_ATTEMPT increased.
 REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
+    "environment_active",
+    "production_active",
 }
 
 RECOVERY_REPLAY_SUPPRESSED_STAGES: set[str] = set()
