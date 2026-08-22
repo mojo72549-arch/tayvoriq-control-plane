@@ -1,5 +1,7 @@
 name: TAYVORIQ Bootstrap Bosch Evening Hold 2026-08-22
 
+# One-time safe replay after the verified BW robotics scope was added to the
+# orchestration contract. The Request Dispatcher owns the FIFO hold decision.
 on:
   push:
     branches: [main]
