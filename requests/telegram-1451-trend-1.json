@@ -53,10 +53,10 @@
   },
   "source_context_sha256": "af40f9a9ee7b33eaced599f823ec2e637cf270e0d865e509947a4ab6e4247022",
   "contract_sha256": "a71c160984b051e47e1f0c6c090bca2beb33a31914df6fb81c02b023b7a65a8a",
-  "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+  "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
   "slot_serialization_predecessor_request_id": "telegram-1418-trend-1",
   "slot_serialization_predecessor_run_id": 32568385221,
-  "slot_serialization_reason": "MORNING_RUN_FAILURE",
+  "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
   "state_history": [
     {
       "state": "APPROVED",
@@ -73,6 +73,17 @@
         "slot_serialization_predecessor_run_id": 32568385221,
         "slot_serialization_reason": "MORNING_RUN_FAILURE"
       }
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-22T20:01:13.546535Z",
+      "actor": "tayvoriq-slot-serialization-releaser",
+      "meta": {
+        "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
+        "predecessor_request_id": "telegram-1418-trend-1",
+        "predecessor_run_id": 32568385221
+      }
     }
-  ]
+  ],
+  "slot_serialization_released_at": "2026-08-22T20:01:13.546520Z"
 }
