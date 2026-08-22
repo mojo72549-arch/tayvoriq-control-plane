@@ -10,6 +10,7 @@ on:
     paths:
       - "requests/*.json"
       - "tools/tayvoriq_orchestration_contract.py"
+      - "tools/tayvoriq_slot_serialization_v1.py"
       - ".github/workflows/tayvoriq-request-dispatch.yml"
   workflow_dispatch:
 
@@ -29,12 +30,14 @@ jobs:
       - name: Checkout control plane
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 2
 
       - name: Verify orchestration contract implementation
         run: |
           set -euo pipefail
           python tools/tayvoriq_orchestration_contract.py self-test
+          python -m py_compile tools/tayvoriq_slot_serialization_v1.py
 
       - name: Resolve approved request
         id: request
@@ -55,7 +58,6 @@ jobs:
             TREND_REQUEST_FILE=$(python - <<'PY'
           import json, os, re
           from pathlib import Path
-
           selection_id=str(os.environ.get('SELECTION_ID') or '').strip()
           if not re.fullmatch(r'[A-Za-z0-9_-]{4,40}', selection_id):
               raise SystemExit(f'INVALID_SELECTION_ID: {selection_id!r}')
@@ -90,7 +92,6 @@ jobs:
           from pathlib import Path
           sys.path.insert(0, 'tools')
           import tayvoriq_orchestration_contract as contract
-
           candidates=[]
           for path in Path('requests').glob('*.json'):
               try:
@@ -118,7 +119,6 @@ jobs:
           print(str(d.get('status') or '').upper())
           PY
           )
-
           case "$STATUS" in
             APPROVED|TREND_APPROVED|READY_FOR_PRODUCTION)
               python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
@@ -155,39 +155,132 @@ jobs:
           print(values)
           PY
 
-      - name: Atomically claim approved request
-        id: claim
+      - name: Enforce strict morning-before-evening serialization
+        id: serialization
         if: steps.request.outputs.approved == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_slot_serialization_v1.py check \
+            --request "$REQUEST_FILE" \
+            --requests-dir requests \
+            --repo "$GITHUB_REPOSITORY" \
+            --token "$GH_TOKEN" > /tmp/slot-serialization.json
+          python - "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          d=json.load(open('/tmp/slot-serialization.json',encoding='utf-8'))
+          with open(sys.argv[1],'a',encoding='utf-8') as h:
+              h.write(f"released={'true' if d.get('released') else 'false'}\n")
+              h.write(f"requires_serialization={'true' if d.get('requires_serialization') else 'false'}\n")
+              h.write(f"reason={d.get('reason') or ''}\n")
+              h.write(f"predecessor_request_id={d.get('predecessor_request_id') or ''}\n")
+              h.write(f"predecessor_run_id={int(d.get('predecessor_run_id') or 0)}\n")
+          print(d)
+          PY
+
+      - name: Persist serialized evening hold
+        if: steps.request.outputs.approved == 'true' && steps.serialization.outputs.released != 'true'
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$REQUEST_FILE" /tmp/generated-request.json
+          cp /tmp/slot-serialization.json /tmp/slot-result.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          persisted=false
+          for attempt in 1 2 3 4 5; do
+            rm -f "$REQUEST_FILE"
+            git fetch origin main
+            git reset --hard origin/main
+            if [ ! -f "$REQUEST_FILE" ]; then
+              mkdir -p "$(dirname "$REQUEST_FILE")"
+              cp /tmp/generated-request.json "$REQUEST_FILE"
+            else
+              same=$(python - "$REQUEST_FILE" "$REQUEST_ID" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          status=str(d.get('status') or '').upper()
+          print('true' if str(d.get('request_id') or '') == sys.argv[2] and status in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'} else 'false')
+          PY
+              )
+              if [ "$same" != "true" ]; then
+                echo "Held request was already claimed or superseded; no overwrite."
+                exit 0
+              fi
+            fi
+            python tools/tayvoriq_slot_serialization_v1.py mark-held --request "$REQUEST_FILE" --result /tmp/slot-result.json
+            python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+            git add "$REQUEST_FILE"
+            if git diff --cached --quiet; then
+              echo "Evening request is already durably held."
+              exit 0
+            fi
+            git commit -m "ops(tayvoriq): hold evening until morning review succeeds"
+            if git push origin HEAD:main; then
+              persisted=true
+              break
+            fi
+            sleep $((attempt * 2))
+          done
+          [ "$persisted" = "true" ] || { echo "::error title=Evening hold persistence failed::Could not persist FIFO hold"; exit 1; }
+          echo "EVENING_HELD_NO_GOLDEN_PATH_DISPATCH request=$REQUEST_ID reason=${{ steps.serialization.outputs.reason }}"
+
+      - name: Atomically claim approved request
+        id: claim
+        if: steps.request.outputs.approved == 'true' && steps.serialization.outputs.released == 'true'
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+          REQUEST_ID: ${{ steps.request.outputs.request_id }}
           CONTRACT_SHA256: ${{ steps.request.outputs.contract_sha256 }}
         run: |
           set -euo pipefail
-          git pull --rebase origin main
-          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
-          python tools/tayvoriq_orchestration_contract.py transition "$REQUEST_FILE" \
-            --to DISPATCHING \
-            --actor "request-dispatcher:${GITHUB_RUN_ID}" \
-            --meta "dispatch_claim_run_id=${GITHUB_RUN_ID}" \
-            --meta "dispatch_contract_sha256=${CONTRACT_SHA256}"
-          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
-
+          cp "$REQUEST_FILE" /tmp/request-to-claim.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$REQUEST_FILE"
-          git commit -m "ops(tayvoriq): claim ${GITHUB_RUN_ID} under orchestration contract"
-
-          pushed=false
-          for attempt in 1 2 3; do
+          claimed=false
+          for attempt in 1 2 3 4 5; do
+            rm -f "$REQUEST_FILE"
+            git fetch origin main
+            git reset --hard origin/main
+            if [ ! -f "$REQUEST_FILE" ]; then
+              mkdir -p "$(dirname "$REQUEST_FILE")"
+              cp /tmp/request-to-claim.json "$REQUEST_FILE"
+            fi
+            eligible=$(python - "$REQUEST_FILE" "$REQUEST_ID" "$CONTRACT_SHA256" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          status=str(d.get('status') or '').upper()
+          same=(str(d.get('request_id') or '') == sys.argv[2] and str(d.get('contract_sha256') or '') == sys.argv[3])
+          print('true' if same and status in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'} else 'false')
+          PY
+            )
+            if [ "$eligible" != "true" ]; then
+              echo "Request already claimed or superseded; this dispatcher will not duplicate it."
+              echo "claimed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+            python tools/tayvoriq_orchestration_contract.py transition "$REQUEST_FILE" \
+              --to DISPATCHING \
+              --actor "request-dispatcher:${GITHUB_RUN_ID}" \
+              --meta "dispatch_claim_run_id=${GITHUB_RUN_ID}" \
+              --meta "dispatch_contract_sha256=${CONTRACT_SHA256}"
+            python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+            git add "$REQUEST_FILE"
+            git commit -m "ops(tayvoriq): claim ${GITHUB_RUN_ID} under orchestration contract"
             if git push origin HEAD:main; then
-              pushed=true
+              claimed=true
               break
             fi
-            echo "Push race on attempt $attempt; rebasing before retry"
             sleep $((attempt * 2))
-            git pull --rebase origin main
           done
-          [ "$pushed" = "true" ] || { echo "::error title=Atomic claim failed::Could not persist DISPATCHING state"; exit 1; }
+          [ "$claimed" = "true" ] || { echo "::error title=Atomic claim failed::Could not persist DISPATCHING state"; exit 1; }
           echo "claimed=true" >> "$GITHUB_OUTPUT"
 
       - name: Start single-owner TAYVORIQ-X Golden Path
@@ -206,7 +299,6 @@ jobs:
             -f topic="$TOPIC" \
             -f trend_id="$TREND_ID" \
             -f source_request_id="$REQUEST_ID"
-
           RUN_ID=""
           for attempt in $(seq 1 12); do
             sleep 5
@@ -232,105 +324,17 @@ jobs:
             --actor "request-dispatcher:${GITHUB_RUN_ID}" \
             --meta "golden_path_run_id=${GOLDEN_PATH_RUN_ID}"
           python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$REQUEST_FILE"
           git commit -m "ops(tayvoriq): bind request to Golden Path ${GOLDEN_PATH_RUN_ID}"
-
           pushed=false
           for attempt in 1 2 3; do
-            if git push origin HEAD:main; then
-              pushed=true
-              break
-            fi
-            echo "Push race on attempt $attempt; rebasing before retry"
+            if git push origin HEAD:main; then pushed=true; break; fi
             sleep $((attempt * 2))
             git pull --rebase origin main
           done
           [ "$pushed" = "true" ] || { echo "::error title=Dispatch persistence failed::Golden Path started but request binding could not be persisted"; exit 1; }
-
-      - name: Resolve production-start notification
-        id: start_notice
-        if: ${{ false }}
-        env:
-          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
-        run: |
-          set -euo pipefail
-          git pull --rebase origin main
-          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
-          python - "$REQUEST_FILE" "$GITHUB_OUTPUT" <<'PY'
-          import json, sys
-          from pathlib import Path
-          data=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
-          notice=data.get('notification_contract') if isinstance(data.get('notification_contract'),dict) else {}
-          already=bool(notice.get('start_message_already_emitted'))
-          with open(sys.argv[2],'a',encoding='utf-8') as h:
-              h.write(f"send={'false' if already else 'true'}\n")
-          print({'start_message_already_emitted':already})
-          PY
-
-      - name: Send verified production-start Telegram once
-        id: telegram_start
-        if: steps.start_notice.outputs.send == 'true'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          REQUEST_ID: ${{ steps.request.outputs.request_id }}
-          RUN_ID: ${{ steps.dispatch.outputs.run_id }}
-          TOPIC: ${{ steps.request.outputs.topic }}
-        run: |
-          set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN" && test -n "$TELEGRAM_CHAT_ID"
-          RESPONSE=$(curl --fail --silent --show-error --request POST \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=🟣 TAYVORIQ 10 % · Produktion gestartet\n\nThema: ${TOPIC}\n\nDu erhältst für diesen beobachteten Lauf weitere Meldungen bei echten Meilensteinen: Fakten gesichert → Produktion läuft → Videomaster erstellt → Quality-Gates bestanden → Video-Review.\n\nFür dich: ✅ Keine Aktion nötig." \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage")
-          MID=$(python - "$RESPONSE" <<'PY'
-          import json,sys
-          d=json.loads(sys.argv[1]); mid=((d.get('result') or {}).get('message_id'))
-          assert d.get('ok') is True and mid, d
-          print(mid)
-          PY
-          )
-          echo "message_id=$MID" >> "$GITHUB_OUTPUT"
-
-      - name: Persist production-start notification evidence
-        if: steps.telegram_start.outcome == 'success'
-        env:
-          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
-          REQUEST_ID: ${{ steps.request.outputs.request_id }}
-          RUN_ID: ${{ steps.dispatch.outputs.run_id }}
-          TELEGRAM_MESSAGE_ID: ${{ steps.telegram_start.outputs.message_id }}
-        run: |
-          set -euo pipefail
-          git pull --rebase origin main
-          python - "$REQUEST_FILE" <<'PY'
-          import json, os, sys
-          from datetime import datetime, timezone
-          from pathlib import Path
-          path=Path(sys.argv[1]); data=json.loads(path.read_text(encoding='utf-8'))
-          data['notification_contract']={
-              'logical_request_id': os.environ['REQUEST_ID'],
-              'start_message_already_emitted': True,
-              'start_message_run_id': int(os.environ['RUN_ID']),
-              'start_telegram_message_id': int(os.environ['TELEGRAM_MESSAGE_ID']),
-              'start_message_sent_at': datetime.now(timezone.utc).isoformat(),
-              'retry_and_repair_messages_suppressed': True,
-              'final_failure_allowed_only_for_terminal_external_blocker': True,
-              'final_review_allowed_only_after_publication_gate': True,
-          }
-          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          PY
-          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$REQUEST_FILE"
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "ops(tayvoriq): record one-time start notification ${REQUEST_ID}"
-          git push origin HEAD:main
 
       - name: Persist dispatch failure
         if: failure() && steps.claim.outputs.claimed == 'true' && steps.dispatch.outcome != 'success'
