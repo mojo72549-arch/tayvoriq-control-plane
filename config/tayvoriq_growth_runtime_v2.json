@@ -23,16 +23,37 @@
       "returning_viewer": 0.15
     },
     "promotion_test": {
+      "platform": "youtube_shorts",
+      "currency": "EUR",
+      "requested_total_budget_eur": 5.0,
+      "hard_max_total_budget_eur": 5.0,
+      "actual_spend_may_underdeliver_but_must_never_exceed_cap": true,
       "minimum_growth_score": 85,
       "minimum_subscriber_conversion_score": 80,
       "requires_observed_performance": true,
-      "auto_spend_enabled": false
+      "evaluation_checkpoint_hours_after_publish": 2,
+      "compare_against_rolling_channel_baseline": true,
+      "required_observed_signals": [
+        "engaged_or_qualified_views_at_or_above_rolling_baseline",
+        "retention_or_completion_at_or_above_rolling_baseline",
+        "subscriber_conversion_at_or_above_rolling_baseline",
+        "no_policy_or_publishability_restriction"
+      ],
+      "max_tests_per_week": 2,
+      "max_weekly_spend_eur": 10.0,
+      "max_monthly_spend_eur": 40.0,
+      "auto_spend_requested": true,
+      "auto_spend_enabled": false,
+      "enable_only_when_ads_account_credentials_are_present": true,
+      "no_credentials_behavior": "mark_boost_candidate_and_report_to_telegram_without_spending"
     },
     "principles": [
       "Every short must provide a complete standalone payoff before any next-video bridge.",
       "Follow conversion and returning-viewer potential influence trend ranking but never weaken source, duplicate, quality or publishability gates.",
       "Generic follow-for-more bait and empty cliffhangers are forbidden.",
-      "A paid promotion test may only be considered after observed post-publish performance; predicted scores alone never spend money."
+      "A paid promotion test may only be considered after observed post-publish performance; predicted scores alone never spend money.",
+      "Every paid test targets exactly 5 EUR total budget as requested, with an absolute 5 EUR cap; auction underdelivery is allowed but overspend is forbidden.",
+      "No more than two paid tests per week and 40 EUR per month may be started automatically."
     ]
   },
   "platform_native": {
@@ -57,6 +78,7 @@
     "Surface 4-5 strong candidates per editorial run; if fewer than four pass, rescan distinct angles without weakening any score or source rule.",
     "Weak fill is forbidden: if two grounded scans still produce fewer than four strong candidates, fail closed instead of surfacing a thin list.",
     "Raw views never replace engaged or qualified views silently.",
-    "10k, 20k, 50k and 100k are targets, not guarantees."
+    "10k, 20k, 50k and 100k are targets, not guarantees.",
+    "Paid promotion may never exceed its configured per-test, weekly or monthly hard caps."
   ]
 }
