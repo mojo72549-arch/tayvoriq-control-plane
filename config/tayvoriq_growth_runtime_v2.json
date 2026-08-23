@@ -16,6 +16,25 @@
     "max_grounded_scans": 2,
     "rescan_when_below_candidate_minimum": true
   },
+  "audience_growth": {
+    "selection_weights": {
+      "base_priority": 0.60,
+      "subscriber_conversion": 0.25,
+      "returning_viewer": 0.15
+    },
+    "promotion_test": {
+      "minimum_growth_score": 85,
+      "minimum_subscriber_conversion_score": 80,
+      "requires_observed_performance": true,
+      "auto_spend_enabled": false
+    },
+    "principles": [
+      "Every short must provide a complete standalone payoff before any next-video bridge.",
+      "Follow conversion and returning-viewer potential influence trend ranking but never weaken source, duplicate, quality or publishability gates.",
+      "Generic follow-for-more bait and empty cliffhangers are forbidden.",
+      "A paid promotion test may only be considered after observed post-publish performance; predicted scores alone never spend money."
+    ]
+  },
   "platform_native": {
     "youtube_shorts": {"trend_target_seconds": [28,45], "deep_target_seconds": [42,70]},
     "tiktok": {"trend_target_seconds": [65,85], "deep_target_seconds": [80,95], "hard_final_floor_seconds": 61}
