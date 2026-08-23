@@ -2,15 +2,15 @@
   "request": "tayvoriq-x-production",
   "topic": "Stuttgart 21 wird zum Videospiel: Schaffst du in der S21-Demo Gleis 9 in 20 Minuten?",
   "trend_id": "1",
-  "requested_at": "2026-08-23T08:49:00+02:00",
-  "request_nonce": "s21-official-game-media-fresh-visual-rebuild-20260823T084900CEST",
+  "requested_at": "2026-08-23T10:51:00+02:00",
+  "request_nonce": "s21-post-contract-fix-recovery-20260823T105100CEST",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
-  "implementation_merge_sha": "48cf4801f652e01efaee3dae845f801bcb7344cb",
+  "implementation_merge_sha": "8f810ea4784d3c10f1ac0cd78ed5b665a11f5d58",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-1418-trend-1",
-  "retry_of_run_id": 32597761171,
-  "replay_of_run_id": 32597761171,
+  "retry_of_run_id": 32623913344,
+  "replay_of_run_id": 32623913344,
   "technical_replay": true,
   "fresh_recovery": true,
   "reuse_exact_source_request": true,
@@ -63,6 +63,6 @@
     "reuse_visual_checkpoint": false,
     "reuse_render_master": false
   },
-  "reason": "same-request-fresh-visual-rebuild-official-s21-gameplay-media-only",
-  "recovery_generation": 37
+  "reason": "same-approved-request-post-s21-contract-idempotence-fix-recovery",
+  "recovery_generation": 38
 }
