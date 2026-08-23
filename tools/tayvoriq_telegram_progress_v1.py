@@ -108,6 +108,14 @@ MILESTONES = {
 
 REPLAY_SUPPRESSED_STAGES = {
     "sources_locked",
+    "environment_active",
+    "production_active",
+    "render_heartbeat",
+    "checkpoint_repair",
+    "checkpoint_heartbeat",
+    "master_ready",
+    "quality_passed",
+    "review_ready",
 }
 
 RECOVERY_REPLAY_SUPPRESSED_STAGES: set[str] = set()
