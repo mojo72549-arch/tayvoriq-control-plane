@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 # Compatibility entrypoint: keep the existing workflow command stable while
-# routing trend selection through Growth V2, resilient research and source-cluster dedupe.
-import tayvoriq_agent_trend_radar_v6 as growth
+# routing trend selection through audience-growth scoring, resilient research,
+# source-cluster dedupe and the existing fail-closed editorial gates.
+import tayvoriq_agent_trend_radar_v7 as growth
 
 base = growth.base
 
