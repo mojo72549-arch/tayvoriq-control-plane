@@ -57,6 +57,28 @@ def test_recovery_generation_is_resolved_from_workspace_not_current_directory(tm
     assert progress.recovery_generation() == 12
 
 
+def test_recovery_generation_suppresses_stale_workspace_snapshot(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    request_dir = workspace / "requests"
+    request_dir.mkdir(parents=True)
+    request_id = "telegram-1451-trend-1"
+    (request_dir / f"{request_id}.json").write_text(
+        json.dumps({
+            "request_id": request_id,
+            "recovery_generation": 4,
+            "golden_path_run_id": 32649570583,
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
+    monkeypatch.setenv("SOURCE_REQUEST_ID_PIN", request_id)
+    monkeypatch.setenv("GITHUB_RUN_ID", "32643433479")
+    assert progress.recovery_generation() == 0
+
+    monkeypatch.setenv("GITHUB_RUN_ID", "32649570583")
+    assert progress.recovery_generation() == 4
+
+
 def test_watchdog_polling_every_three_minutes_does_not_spam_telegram():
     # Exact regression for the operator-visible 18/21/24/27-minute spam.
     assert progress.heartbeat_due("render_heartbeat", 18)

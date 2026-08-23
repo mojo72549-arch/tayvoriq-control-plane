@@ -195,6 +195,10 @@ def recovery_generation() -> int:
         data = json.loads(path.read_text(encoding="utf-8"))
         if str(data.get("request_id") or "").strip() != request_id:
             return 0
+        current_run_id = max(0, int(os.getenv("GITHUB_RUN_ID") or 0))
+        bound_run_id = max(0, int(data.get("golden_path_run_id") or 0))
+        if current_run_id and bound_run_id != current_run_id:
+            return 0
         return max(0, int(data.get("recovery_generation") or 0))
     except Exception:
         return 0
