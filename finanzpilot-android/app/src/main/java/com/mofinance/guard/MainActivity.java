@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
                             "(function(){" +
                                     "if(!window.__advisorLoader){window.__advisorLoader=true;var a=document.createElement('script');a.src='file:///android_asset/advisor.js';document.head.appendChild(a);}" +
                                     "if(!window.__learningLoader){window.__learningLoader=true;var l=document.createElement('script');l.src='file:///android_asset/learning_coach.js?v=15';document.head.appendChild(l);}" +
-                                    "if(!window.__familyLoader){window.__familyLoader=true;var f=document.createElement('script');f.src='file:///android_asset/simple_family_mode.js?v=16';document.head.appendChild(f);}" +
+                                    "if(!window.__familyLoader){window.__familyLoader=true;var f=document.createElement('script');f.src='file:///android_asset/simple_family_mode.js?v=17';document.head.appendChild(f);}" +
                                     "})();",
                             null
                     );
