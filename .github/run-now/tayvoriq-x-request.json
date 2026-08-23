@@ -2,8 +2,8 @@
   "request": "tayvoriq-x-production",
   "topic": "Stuttgart 21 wird zum Videospiel: Schaffst du in der S21-Demo Gleis 9 in 20 Minuten?",
   "trend_id": "1",
-  "requested_at": "2026-08-23T08:38:00+02:00",
-  "request_nonce": "s21-official-game-media-recovery-20260823T083800CEST",
+  "requested_at": "2026-08-23T08:49:00+02:00",
+  "request_nonce": "s21-official-game-media-fresh-visual-rebuild-20260823T084900CEST",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "implementation_merge_sha": "48cf4801f652e01efaee3dae845f801bcb7344cb",
@@ -16,6 +16,11 @@
   "reuse_exact_source_request": true,
   "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
+  "visual_quality_rejection_repair_required": true,
+  "operator_visual_rejection_repair_required": true,
+  "force_fresh_visual_assets": true,
+  "reuse_visual_checkpoint": false,
+  "reuse_render_master": false,
   "hardening": {
     "checkpoint_source_context_required": true,
     "platform_specific_cta_required": true,
@@ -51,8 +56,13 @@
     "official_game_media_provenance_required": true,
     "generic_stock_for_gameplay_forbidden": true,
     "generated_graphic_cards_for_gameplay_forbidden": true,
-    "fail_closed_without_official_game_media": true
+    "fail_closed_without_official_game_media": true,
+    "visual_quality_rejection_repair_required": true,
+    "operator_visual_rejection_repair_required": true,
+    "force_fresh_visual_assets": true,
+    "reuse_visual_checkpoint": false,
+    "reuse_render_master": false
   },
-  "reason": "same-request-recovery-official-s21-gameplay-media-only",
-  "recovery_generation": 36
+  "reason": "same-request-fresh-visual-rebuild-official-s21-gameplay-media-only",
+  "recovery_generation": 37
 }
