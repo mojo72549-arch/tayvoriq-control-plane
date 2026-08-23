@@ -41,7 +41,7 @@
       ],
       "max_tests_per_week": 2,
       "max_weekly_spend_eur": 10.0,
-      "max_monthly_spend_eur": 40.0,
+      "max_monthly_spend_eur": 10.0,
       "auto_spend_requested": true,
       "auto_spend_enabled": false,
       "enable_only_when_ads_account_credentials_are_present": true,
@@ -53,7 +53,7 @@
       "Generic follow-for-more bait and empty cliffhangers are forbidden.",
       "A paid promotion test may only be considered after observed post-publish performance; predicted scores alone never spend money.",
       "Every paid test targets exactly 5 EUR total budget as requested, with an absolute 5 EUR cap; auction underdelivery is allowed but overspend is forbidden.",
-      "No more than two paid tests per week and 40 EUR per month may be started automatically."
+      "Automatic paid promotion may never spend more than 10 EUR in a calendar month."
     ]
   },
   "platform_native": {
@@ -79,6 +79,6 @@
     "Weak fill is forbidden: if two grounded scans still produce fewer than four strong candidates, fail closed instead of surfacing a thin list.",
     "Raw views never replace engaged or qualified views silently.",
     "10k, 20k, 50k and 100k are targets, not guarantees.",
-    "Paid promotion may never exceed its configured per-test, weekly or monthly hard caps."
+    "Paid promotion may never exceed 5 EUR per test or 10 EUR per calendar month."
   ]
 }
