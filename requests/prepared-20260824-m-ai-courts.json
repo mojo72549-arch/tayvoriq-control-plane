@@ -1,6 +1,6 @@
 {
   "request_id": "prepared-20260824-m-ai-courts",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "user_preapproved_preparation",
   "trend_id": "1",
   "topic": "KI flutet deutsche Gerichte: Warum Chatbots die Justiz plötzlich ausbremsen",
@@ -67,6 +67,11 @@
       "state": "DISPATCHING",
       "at": "2026-08-23T20:40:22.138422+00:00",
       "actor": "request-dispatcher:32665123535"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-23T20:40:31.461869+00:00",
+      "actor": "request-dispatcher:32665123535"
     }
   ],
   "telegram_only_user_path": true,
@@ -76,5 +81,6 @@
   "publication_requires_review": true,
   "contract_sha256": "751a18df04776c0a3dd50df7d2a34ac23d3a2df9d8de971e2b51f689805fe255",
   "dispatch_claim_run_id": 32665123535,
-  "dispatch_contract_sha256": "751a18df04776c0a3dd50df7d2a34ac23d3a2df9d8de971e2b51f689805fe255"
+  "dispatch_contract_sha256": "751a18df04776c0a3dd50df7d2a34ac23d3a2df9d8de971e2b51f689805fe255",
+  "golden_path_run_id": 32665130932
 }
