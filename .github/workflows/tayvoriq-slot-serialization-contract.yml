@@ -42,10 +42,16 @@ jobs:
           assert 'Enforce strict morning-before-evening serialization' in dispatcher
           assert "steps.serialization.outputs.released == 'true'" in dispatcher
           assert 'Persist serialized evening hold' in dispatcher
-          assert releaser.is_file()
-          text=releaser.read_text(encoding='utf-8')
-          assert 'TAYVORIQ-X Golden Path' in text
-          assert 'scan-held' in text
-          assert 'mark-released' in text
+          assert 'tayvoriq_trend_approved' in dispatcher
+          releaser_text=releaser.read_text(encoding='utf-8')
+          assert 'TAYVORIQ-X Golden Path' in releaser_text
+          assert 'scan-held' in releaser_text
+          assert 'mark-released' in releaser_text
+          assert 'Redispatch exact released Telegram approval' in releaser_text
+          assert "'event_type': 'tayvoriq_trend_approved'" in releaser_text
+          assert 'repos/${GITHUB_REPOSITORY}/dispatches' in releaser_text
+          assert "'source_request_id': str(data.get('request_id') or '')" in releaser_text
+          assert 'release_redispatch' in releaser_text
+          assert 'request-dispatch push trigger now owns production start' not in releaser_text
           print('STRICT_SLOT_SERIALIZATION_WIRING_PASSED')
           PY
