@@ -66,3 +66,15 @@ def test_weekly_cap_blocks_third_five_euro_test() -> None:
     assert result["eligible"] is False
     assert "weekly_test_limit" in result["reasons"]
     assert "weekly_spend_cap" in result["reasons"]
+
+
+def test_monthly_cap_never_allows_more_than_ten_euro_total_spend() -> None:
+    result = boost.evaluate(_metrics(spend_eur_this_month=5.01), _config())
+    assert result["eligible"] is False
+    assert result["action"] == "NO_BOOST"
+    assert "monthly_spend_cap" in result["reasons"]
+
+
+def test_second_five_euro_monthly_test_is_allowed_at_exactly_ten_euro_cap() -> None:
+    result = boost.evaluate(_metrics(spend_eur_this_month=5.0), _config())
+    assert "monthly_spend_cap" not in result["reasons"]
