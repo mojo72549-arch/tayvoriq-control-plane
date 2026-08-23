@@ -108,8 +108,9 @@ jobs:
             python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
             git add "$REQUEST_FILE"
             if git diff --cached --quiet; then
-              echo "Request already released by another owner."
-              exit 0
+              echo "Request already released by another owner; exact redispatch remains idempotent."
+              released=true
+              break
             fi
             git commit -m "ops(tayvoriq): release evening after verified morning review"
             if git push origin HEAD:main; then
@@ -119,7 +120,49 @@ jobs:
             sleep $((attempt * 2))
           done
           [ "$released" = "true" ] || { echo "::error title=Slot release persistence failed::Could not persist evening release"; exit 1; }
-          echo "Evening request released; request-dispatch push trigger now owns production start."
+          echo "Evening request released; explicit idempotent redispatch will start production."
+
+      - name: Redispatch exact released Telegram approval
+        if: steps.gate.outputs.released == 'true'
+        env:
+          REQUEST_FILE: ${{ steps.candidate.outputs.request_file }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git reset --hard origin/main
+          [ -f "$REQUEST_FILE" ] || { echo "::error title=Released request missing::Cannot redispatch exact evening approval"; exit 1; }
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+          python - "$REQUEST_FILE" > /tmp/tayvoriq-release-redispatch.json <<'PY'
+          import json,sys
+          from pathlib import Path
+
+          path=Path(sys.argv[1])
+          data=json.loads(path.read_text(encoding='utf-8'))
+          if str(data.get('slot_serialization_state') or '') != 'RELEASED_AFTER_MORNING_REVIEW':
+              raise SystemExit('SLOT_RELEASE_REDISPATCH_FAILED: request is not released')
+          selection_id=str(data.get('selection_id') or '').strip()
+          message_id=str(data.get('telegram_message_id') or '').strip()
+          trend_id=str(data.get('trend_id') or '').strip()
+          topic=str(data.get('topic') or '').strip()
+          approved_at=str(data.get('approved_at') or '').strip()
+          if not selection_id or not message_id.isdigit() or not trend_id or not topic or not approved_at:
+              raise SystemExit('SLOT_RELEASE_REDISPATCH_FAILED: exact Telegram approval identity is incomplete')
+          print(json.dumps({
+              'event_type': 'tayvoriq_trend_approved',
+              'client_payload': {
+                  'trend_id': trend_id,
+                  'topic': topic,
+                  'selection_id': selection_id,
+                  'telegram_message_id': int(message_id),
+                  'approved_at': approved_at,
+                  'release_redispatch': True,
+                  'source_request_id': str(data.get('request_id') or ''),
+              },
+          }, ensure_ascii=False))
+          PY
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/dispatches" --input /tmp/tayvoriq-release-redispatch.json
+          echo "Released request handed back to the single-owner dispatcher via repository_dispatch."
 
       - name: Keep held without noise
         if: steps.candidate.outputs.request_file != '' && steps.gate.outputs.released != 'true'
