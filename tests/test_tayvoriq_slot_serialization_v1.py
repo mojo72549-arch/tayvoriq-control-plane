@@ -11,11 +11,11 @@ sys.path.insert(0, str(ROOT / "tools"))
 import tayvoriq_slot_serialization_v1 as gate
 
 
-def request(selection_id: str, request_id: str, approved_at: str, run_id: int = 0) -> dict:
+def request(selection_id: str, request_id: str, approved_at: str, run_id: int = 0, source: str = "telegram_trend_approval") -> dict:
     data = {
         "request_id": request_id,
         "status": "APPROVED",
-        "source": "telegram_trend_approval",
+        "source": source,
         "selection_id": selection_id,
         "approved_at": approved_at,
         "state_history": [{"state": "APPROVED", "at": approved_at, "actor": "test"}],
@@ -43,6 +43,39 @@ class SlotSerializationTests(unittest.TestCase):
             result = gate.check_request(p, root, "repo", "token")
             self.assertFalse(result["released"])
             self.assertEqual(result["reason"], "MORNING_REQUEST_MISSING")
+
+    def test_preapproved_preparation_is_valid_same_day_morning_predecessor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            morning = root / "morning.json"
+            evening = root / "evening.json"
+            morning.write_text(json.dumps(request(
+                "20260824-m-ai-courts", "m1", "2026-08-23T20:28:00Z", 123,
+                source="user_preapproved_preparation",
+            )), encoding="utf-8")
+            evening.write_text(json.dumps(request(
+                "20260824-e-vw-crisis", "e1", "2026-08-23T20:29:00Z",
+                source="user_preapproved_preparation",
+            )), encoding="utf-8")
+            predecessor = gate.find_same_day_morning(json.loads(evening.read_text(encoding="utf-8")), root)
+            self.assertIsNotNone(predecessor)
+            self.assertEqual(predecessor[1]["request_id"], "m1")
+
+    def test_unapproved_source_is_not_accepted_as_predecessor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            morning = root / "morning.json"
+            evening = root / "evening.json"
+            morning.write_text(json.dumps(request(
+                "20260824-m-ai-courts", "m1", "2026-08-23T20:28:00Z", 123,
+                source="draft_only",
+            )), encoding="utf-8")
+            evening.write_text(json.dumps(request(
+                "20260824-e-vw-crisis", "e1", "2026-08-23T20:29:00Z",
+                source="user_preapproved_preparation",
+            )), encoding="utf-8")
+            predecessor = gate.find_same_day_morning(json.loads(evening.read_text(encoding="utf-8")), root)
+            self.assertIsNone(predecessor)
 
     def test_evening_is_held_while_morning_run_is_not_completed(self) -> None:
         run = {"status": "in_progress", "conclusion": None}
