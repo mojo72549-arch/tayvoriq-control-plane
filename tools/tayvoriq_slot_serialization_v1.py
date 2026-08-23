@@ -17,6 +17,10 @@ REQUIRED_FINAL_STEPS = (
     "Publish review page",
     "Send Telegram review",
 )
+SERIALIZABLE_APPROVAL_SOURCES = {
+    "telegram_trend_approval",
+    "user_preapproved_preparation",
+}
 HELD_STATE = "HELD_WAITING_FOR_MORNING_REVIEW"
 RELEASED_STATE = "RELEASED_AFTER_MORNING_REVIEW"
 
@@ -61,7 +65,7 @@ def find_same_day_morning(request: dict, requests_dir: Path) -> tuple[Path, dict
         candidate_parts = selection_parts(data)
         if candidate_parts != (target_date, "m"):
             continue
-        if str(data.get("source") or "") != "telegram_trend_approval":
+        if str(data.get("source") or "") not in SERIALIZABLE_APPROVAL_SOURCES:
             continue
         candidates.append((_approved_stamp(data), path, data))
     if not candidates:
