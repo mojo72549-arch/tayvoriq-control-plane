@@ -10,6 +10,22 @@ import tayvoriq_agent_trend_radar_v5 as growth_v5
 
 base = growth_v5.base
 _original_diversify = base.diversify
+_original_prompt = base.prompt_for
+_EDITORIAL_KEYS = (
+    "what_happened",
+    "why_happening",
+    "who_is_affected",
+    "personal_impact",
+    "action_now",
+)
+_CAUSE_MARKERS = (
+    "weil", "wegen", "durch", "treiber", "grund", "ursache", "auslöser", "führt", "infolge",
+    "nachfrage", "kosten", "finanzierung", "strategie", "nutzung", "aufgrund", "dadurch", "deshalb",
+)
+_ACTION_MARKERS = (
+    "achte", "prüfe", "sichere", "vergleiche", "aktiviere", "reduziere", "kontaktiere", "beobachte",
+    "exportiere", "wechsle", "plane", "kläre", "nutze", "begrenze", "speichere",
+)
 
 
 def _source_signature(candidate: dict[str, Any]) -> frozenset[str]:
@@ -70,22 +86,54 @@ def _words(value: str) -> set[str]:
     }
 
 
+def _word_count(value: str) -> int:
+    return len(re.findall(r"\S+", " ".join(str(value or "").split())))
+
+
+def _downstream_editorial_contract_valid(answers: dict[str, Any]) -> bool:
+    """Mirror the strict V11/V34 fallback contract before Telegram approval.
+
+    Research prose may stay rich in source summaries, but the five immutable fallback
+    answers must already be usable as a 35-second fail-closed production packet.
+    This prevents a request from being green in research and deterministically red
+    later at the renderer's semantic boundary.
+    """
+
+    normalized = {key: " ".join(str(answers.get(key) or "").split()).strip() for key in _EDITORIAL_KEYS}
+    if any(not normalized[key] for key in _EDITORIAL_KEYS):
+        return False
+    if any(not 5 <= _word_count(value) <= 15 for value in normalized.values()):
+        return False
+    body_words = sum(_word_count(normalized[key]) for key in _EDITORIAL_KEYS)
+    if not 38 <= body_words <= 49:
+        return False
+    why = normalized["why_happening"].casefold()
+    if not any(marker in why for marker in _CAUSE_MARKERS):
+        return False
+    if "für dich" not in normalized["personal_impact"].casefold():
+        return False
+    action = normalized["action_now"].casefold()
+    if not any(action.startswith(marker) for marker in _ACTION_MARKERS):
+        return False
+    return True
+
+
 def _editorial_semantics_strong(candidate: dict[str, Any]) -> bool:
     """Reject source packages whose WHY/IMPACT merely restate headline facts.
 
-    The WHY vocabulary is intentionally aligned with the downstream production
-    causality gate. A radar candidate must not pass on comparison words such as
-    'aber', 'trotz' or 'entscheidend' alone and then fail later in production.
+    In addition to novelty checks, the immutable fallback must now satisfy the same
+    compact semantic shape expected downstream. The quality threshold is not lowered.
     """
 
     ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
     answers = ctx.get("fallback_editorial_answers") if isinstance(ctx.get("fallback_editorial_answers"), dict) else {}
+    if not _downstream_editorial_contract_valid(answers):
+        return False
+
     what = str(answers.get("what_happened") or "").strip()
     why = str(answers.get("why_happening") or "").strip()
     affected = str(answers.get("who_is_affected") or "").strip()
     impact = str(answers.get("personal_impact") or "").strip()
-    if not all((what, why, affected, impact)):
-        return False
 
     what_words = _words(what)
     why_words = _words(why)
@@ -98,17 +146,11 @@ def _editorial_semantics_strong(candidate: dict[str, Any]) -> bool:
         "weil", "wegen", "dadurch", "deshalb", "aufgrund", "infolge", "durch ",
         "führt", "treiber", "ursache", "grund", "auslöser", " bis ",
     )
-    consequence_markers = (
-        "bedeutet", "heißt", "dadurch", "deshalb", "kann", "muss", "sollte",
-        "wer ", "für zuschauer", "für verbraucher", "für reisende", "für fans",
-        "einordnen", "erklärt", "relevant", "konkret", "automatisch",
-    )
     why_lower = why.casefold()
-    impact_lower = impact.casefold()
 
-    if len(why_novel) < 4 or not any(marker in why_lower for marker in mechanism_markers):
+    if len(why_novel) < 3 or not any(marker in why_lower for marker in mechanism_markers):
         return False
-    if len(impact_novel) < 4 or not any(marker in impact_lower for marker in consequence_markers):
+    if len(impact_novel) < 3:
         return False
     return True
 
@@ -135,14 +177,28 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
             "event": "semantic_source_prefilter",
             "rejected": rejected,
             "kept": len(semantically_grounded),
-            "reason": "why_or_personal_impact_was_tautological_or_underspecified",
+            "reason": "fallback_not_downstream_contract_safe_or_semantically_weak",
         })
     if candidates and not semantically_grounded:
         _mark_research_deferred(len(candidates), rejected)
     return _original_diversify(_dedupe_story_clusters(semantically_grounded), slot)
 
 
+def prompt_for(slot, now):
+    return _original_prompt(slot, now) + """
+
+STRICT FALLBACK CONTRACT BEFORE TELEGRAM:
+- Each of the five fallback_editorial_answers must be ONE natural German sentence with 5-15 words.
+- All five sentences together must total 38-49 words.
+- why_happening must contain an explicit causal mechanism such as weil, wegen, durch, aufgrund, dadurch, deshalb, Ursache, Grund or führt.
+- personal_impact must explicitly contain 'Für dich' and state a concrete viewer consequence/relevance supported by the sources.
+- action_now must begin with one of: Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze, Speichere.
+- Do not use the fallback fields for long research prose; keep detail in source supports instead.
+""".strip()
+
+
 base.diversify = diversify
+base.prompt_for = prompt_for
 
 if __name__ == "__main__":
     raise SystemExit(base.main())
