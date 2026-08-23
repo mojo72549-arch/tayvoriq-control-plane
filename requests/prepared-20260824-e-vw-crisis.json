@@ -62,6 +62,16 @@
       "state": "APPROVED",
       "at": "2026-08-23T20:29:00Z",
       "actor": "user_explicit_preapproval_current_chat"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-23T20:41:00Z",
+      "actor": "tayvoriq-slot-serialization-preparation",
+      "meta": {
+        "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+        "predecessor_request_id": "prepared-20260824-m-ai-courts",
+        "predecessor_run_id": 32665130932
+      }
     }
   ],
   "telegram_only_user_path": true,
@@ -69,5 +79,9 @@
   "communication_channel": "telegram",
   "auto_repair_until_review": true,
   "publication_requires_review": true,
-  "contract_sha256": "4863ceca7e16212e0dd0bb3a4cabcdfce1f47c7a21b171791a667fe4a12e6a9e"
+  "contract_sha256": "4863ceca7e16212e0dd0bb3a4cabcdfce1f47c7a21b171791a667fe4a12e6a9e",
+  "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+  "slot_serialization_predecessor_request_id": "prepared-20260824-m-ai-courts",
+  "slot_serialization_predecessor_run_id": 32665130932,
+  "slot_serialization_reason": "MORNING_RUN_NOT_COMPLETED"
 }
