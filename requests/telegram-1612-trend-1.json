@@ -1,0 +1,103 @@
+{
+  "request_id": "telegram-1612-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Warum ChatGPT jetzt Werbung in Deutschland zeigt – und wer werbefrei bleibt",
+  "trend_scope": "technology_ai",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-24T13:31:16.696Z",
+  "telegram_message_id": 1612,
+  "approval_key": "telegram:20260825-m-agentv2-g21:1612:trend:1",
+  "mode": "full",
+  "selection_id": "20260825-m-agentv2-g21",
+  "source_context": {
+    "verified_at": "2026-08-24T13:22:59.242040Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "OpenAI",
+        "url": "https://openai.com/index/chatgpt-ads-expands-across-europe/",
+        "supports": "OpenAI erweitert ChatGPT Ads auf 31 europäische Länder einschließlich Deutschland; Werbung betrifft Free und Go, während Plus, Pro, Business, Enterprise und Edu werbefrei bleiben."
+      },
+      {
+        "publisher": "Euronews",
+        "url": "https://www.euronews.com/next/2026/08/21/chatgpt-to-start-showing-ads-across-europe-next-week",
+        "supports": "Euronews bestätigt den Start ab 24. August in 31 europäischen Märkten sowie die Beschränkung auf Free- und Go-Konten."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "ChatGPT zeigt Europa nun Werbung für Free- und Go-Konten.",
+      "why_happening": "Das passiert, weil OpenAI Anzeigen auf weitere europäische Märkte ausweitet.",
+      "who_is_affected": "Betroffen sind Nutzer kostenloser und günstiger ChatGPT-Tarife in Europa.",
+      "personal_impact": "Für dich ändern sich Oberfläche und Auswahlmöglichkeiten je nach Tarif.",
+      "action_now": "Prüfe deinen Tarif und die neue werbefreie Option mit Limits."
+    },
+    "growth_v2": {
+      "growth_score": 94,
+      "binding_score": 93,
+      "priority_score": 94,
+      "tier": "breakout_preferred",
+      "series_candidate": false,
+      "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+    },
+    "claim_coherence": {
+      "passed": true,
+      "reasons": []
+    },
+    "audience_growth_v3": {
+      "subscriber_conversion_score": 88,
+      "returning_viewer_score": 90,
+      "continuation_score": 80,
+      "hook_strength_score": 63,
+      "standalone_payoff_score": 94,
+      "selection_priority_score": 92,
+      "promotion_test_candidate": true,
+      "promotion_requires_observed_performance": true,
+      "paid_boost_auto_enabled": false,
+      "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+    },
+    "duplicate_precheck": {
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "chatgpt-20260813-heat-consequences-1",
+      "nearest_prior_topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
+      "nearest_risk_score": 0.2187,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    "factual_guardrails": [
+      "Nicht behaupten, Werbung beeinflusse ChatGPT-Antworten.",
+      "Nicht behaupten, alle Tarife oder alle Nutzer sähen Werbung."
+    ],
+    "content_angle": "Werbung im Chat: in 35 Sekunden zeigen, welcher Tarif was sieht.",
+    "editorial_recovery": {
+      "source_run_id": 32729785616,
+      "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+      "recovery_mode": "agent_researched_growth_v2_1",
+      "quality_gates_weakened": false,
+      "render_started": false
+    }
+  },
+  "source_context_sha256": "4e02c8338ca31f1c2094db709b42150ad897a3744d99b7b400745a1c8dc1f57d",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-24T13:31:16.696Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-24T13:31:25.703825+00:00",
+      "actor": "request-dispatcher:32733173337"
+    }
+  ],
+  "contract_sha256": "ce06bee06d2ec4247f13ba6833d17628c5d7501012681d2de49dbb8848fe82e0",
+  "dispatch_claim_run_id": 32733173337,
+  "dispatch_contract_sha256": "ce06bee06d2ec4247f13ba6833d17628c5d7501012681d2de49dbb8848fe82e0"
+}
