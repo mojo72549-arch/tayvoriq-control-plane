@@ -118,7 +118,11 @@ REPLAY_SUPPRESSED_STAGES = {
     "review_ready",
 }
 
-RECOVERY_REPLAY_SUPPRESSED_STAGES: set[str] = set()
+RECOVERY_REPLAY_SUPPRESSED_STAGES = {
+    "render_heartbeat",
+    "checkpoint_repair",
+    "checkpoint_heartbeat",
+}
 
 RECOVERY_MILESTONES = {
     "sources_locked": Milestone(
@@ -269,21 +273,11 @@ def build_payload(
         title = "Produktion ungewöhnlich lange aktiv · Watchdog überwacht"
         completed = "Der Lauf ist weiterhin aktiv; der letzte verifizierte Produktionsstand bleibt erhalten."
         next_step = "Der Watchdog prüft weiter intern; Telegram meldet erst wieder einen echten Zustandswechsel oder einen Fehler."
-    elif stage == "render_heartbeat" and elapsed >= 18:
-        icon = "🟠"
-        title = "Produktion dauert länger · einmaliger Watchdog-Hinweis"
-        completed = "Der Lauf ist weiterhin aktiv; der letzte verifizierte Produktionsstand bleibt erhalten."
-        next_step = "Der Watchdog prüft intern weiter; Telegram bleibt bis zum nächsten echten Meilenstein ruhig."
     elif stage == "checkpoint_heartbeat" and elapsed >= 45:
         icon = "🟠"
         title = "Qualitätsreparatur ungewöhnlich lange aktiv · Watchdog überwacht"
         completed = "Render-Zwischenstand und Quellen sind gesichert; ein finaler Master ist noch nicht bestätigt."
         next_step = "Der Watchdog prüft weiter intern; Telegram meldet erst wieder einen echten Zustandswechsel oder einen Fehler."
-    elif stage == "checkpoint_heartbeat" and elapsed >= 18:
-        icon = "🟠"
-        title = "Qualitätsreparatur dauert länger · einmaliger Watchdog-Hinweis"
-        completed = "Render-Zwischenstand und Quellen sind gesichert; ein finaler Master ist noch nicht bestätigt."
-        next_step = "Der Watchdog prüft intern weiter; Telegram bleibt bis zum nächsten echten Meilenstein ruhig."
 
     if stage == "technical_stop":
         detail = (
