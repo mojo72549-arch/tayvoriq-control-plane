@@ -194,7 +194,8 @@ jobs:
           gh workflow run tayvoriq-deliver-video-now.yml --ref main \
             -f topic="$TOPIC" \
             -f trend_id="$TREND_ID" \
-            -f source_request_id="$REQUEST_ID"
+            -f source_request_id="$REQUEST_ID" \
+            -f recovery_generation="${{ steps.candidate.outputs.recovery_generation }}"
           echo "Direct Golden Path workflow_dispatch accepted for exact recovery request $REQUEST_ID."
 
       - name: Verify new Golden Path run
