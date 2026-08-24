@@ -107,6 +107,18 @@ def classify_failure(
         state = "SUPERSEDED_RECOVERY_EVENT"
         return RecoveryDecision("stale", state, False, "none", generation, None, maximum, _stable_signature(state, text), "A newer run already owns the request.")
 
+    # A final publishability handoff is authoritative. GitHub's failed-log view
+    # can include shell source such as `echo "Missing secret"` or comparisons
+    # against EXTERNAL_ACTION_REQUIRED from other steps. It can also include
+    # earlier provider quota/billing fallback text. None of those historical or
+    # source-code lines may override the terminal gate-specific state.
+    if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
+        if generation >= maximum:
+            state = "RECOVERY_CIRCUIT_OPEN"
+            return RecoveryDecision("exhausted", state, False, "none", generation, None, maximum, _stable_signature(state, text), f"Fresh recovery limit reached ({generation}/{maximum}).")
+        state = "REQUEST_BOUND_RECOVERY_REQUIRED"
+        return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "The final publishability gate requires a bounded request-bound recovery generation.")
+
     if _matches(lowered, EXTERNAL_PATTERNS):
         state = "EXTERNAL_ACTION_REQUIRED"
         return RecoveryDecision("external", state, False, "none", generation, None, maximum, _stable_signature(state, text), "Credentials, billing or permissions require external action.")
@@ -121,17 +133,6 @@ def classify_failure(
             return RecoveryDecision("deterministic", state, False, "none", generation, None, maximum, _stable_signature(state, text), "The exact approved request was incorrectly treated as a duplicate during recovery.")
         state = "DUPLICATE_CONTENT_BLOCKED"
         return RecoveryDecision("duplicate", state, False, "none", generation, None, maximum, _stable_signature(state, text), "The duplicate gate intentionally blocked this content.")
-
-    # A final publishability handoff is authoritative. Provider fallback logs may
-    # contain earlier 429/quota/billing wording even though a later provider
-    # completed successfully. Those historical lines must not override the
-    # terminal gate-specific state and strand a repairable video.
-    if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
-        if generation >= maximum:
-            state = "RECOVERY_CIRCUIT_OPEN"
-            return RecoveryDecision("exhausted", state, False, "none", generation, None, maximum, _stable_signature(state, text), f"Fresh recovery limit reached ({generation}/{maximum}).")
-        state = "REQUEST_BOUND_RECOVERY_REQUIRED"
-        return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "The final publishability gate requires a bounded request-bound recovery generation.")
 
     if attempt < 3 and _matches(lowered, TRANSIENT_PATTERNS):
         state = "SAME_RUN_TRANSIENT_RECOVERY"

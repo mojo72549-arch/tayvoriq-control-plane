@@ -116,14 +116,17 @@ def test_successful_provider_fallback_does_not_fake_external_blocker():
     assert decision.next_generation == 1
 
 
-def test_explicit_external_state_still_wins_over_publishability_text():
+def test_terminal_publishability_wins_over_runner_source_echoes():
     decision = classify_failure(
-        "EXTERNAL_ACTION_REQUIRED: Missing required secret GEMINI_API_KEY\n"
+        'test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }\n'
+        '"internal_recovery_expected": state != "EXTERNAL_ACTION_REQUIRED"\n'
+        "Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1\n"
         "recovery=PUBLISHABLE_OUTPUT_RETRY_REQUIRED/1",
         recovery_generation=1,
     )
-    assert decision.mode == "external"
-    assert decision.next_generation is None
+    assert decision.mode == "fresh"
+    assert decision.state == "REQUEST_BOUND_RECOVERY_REQUIRED"
+    assert decision.next_generation == 2
 
 
 def test_failure_signature_is_stable_for_same_failed_test_across_runs():
