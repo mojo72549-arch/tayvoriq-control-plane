@@ -1,0 +1,111 @@
+{
+  "request_id": "telegram-1613-trend-1",
+  "status": "APPROVED",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Was bedeutet Porsches MHP-Verkauf an TCS für Ludwigsburg?",
+  "trend_scope": "business_economy",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-24T13:31:19.215Z",
+  "telegram_message_id": 1613,
+  "approval_key": "telegram:20260825-e-agentv2-g21:1613:trend:1",
+  "mode": "full",
+  "selection_id": "20260825-e-agentv2-g21",
+  "source_context": {
+    "verified_at": "2026-08-24T13:22:59.242040Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "Porsche Newsroom",
+        "url": "https://newsroom.porsche.com/de/2026/unternehmen/porsche-mhp-verkauf-tata-consultancy-services-43111.html",
+        "supports": "Porsche bestätigt den vollständigen Verkauf der Ludwigsburger Management- und IT-Beratung MHP an Tata Consultancy Services, die Konzentration aufs Kerngeschäft und eine geplante Zusammenarbeit bei KI und digitalen Lösungen."
+      },
+      {
+        "publisher": "SWR Aktuell",
+        "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/porsche-verkauft-beratungstochter-mhp-an-tata-consultancy-services-100.html",
+        "supports": "SWR bestätigt den unterzeichneten Verkauf, den Sitz in Ludwigsburg und Porsches Begründung, sich stärker auf das Kerngeschäft mit Sportwagen zu konzentrieren."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Porsche verkauft die Ludwigsburger IT-Beratung MHP vollständig an Tata Consultancy Services.",
+      "why_happening": "Der Verkauf kommt, weil Porsche sich stärker auf Sportwagen konzentrieren will.",
+      "who_is_affected": "Betroffen sind MHPs Beschäftigte, Kunden und der Wirtschaftsraum Stuttgart.",
+      "personal_impact": "Für dich zeigt der Deal, wie KI Autoindustrie neu sortiert.",
+      "action_now": "Beobachte Kartellfreigabe und Aussagen zu Standorten sowie Arbeitsplätzen."
+    },
+    "growth_v2": {
+      "growth_score": 96,
+      "binding_score": 96,
+      "priority_score": 96,
+      "tier": "breakout_preferred",
+      "series_candidate": false,
+      "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+    },
+    "claim_coherence": {
+      "passed": true,
+      "reasons": []
+    },
+    "audience_growth_v3": {
+      "subscriber_conversion_score": 90,
+      "returning_viewer_score": 93,
+      "continuation_score": 86,
+      "hook_strength_score": 63,
+      "standalone_payoff_score": 94,
+      "selection_priority_score": 94,
+      "promotion_test_candidate": true,
+      "promotion_requires_observed_performance": true,
+      "paid_boost_auto_enabled": false,
+      "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+    },
+    "duplicate_precheck": {
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "telegram-1268-trend-1",
+      "nearest_prior_topic": "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?",
+      "nearest_risk_score": 0.1538,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    "factual_guardrails": [
+      "Der Vollzug steht noch unter behördlichen Genehmigungen.",
+      "Keine Arbeitsplatzverluste oder Standortschließungen ohne belastbare Bestätigung behaupten."
+    ],
+    "content_angle": "Aus einer Porsche-Tochter wird ein globales KI-Beratungsstück.",
+    "editorial_recovery": {
+      "source_run_id": 32729785616,
+      "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+      "recovery_mode": "agent_researched_growth_v2_1",
+      "quality_gates_weakened": false,
+      "render_started": false
+    }
+  },
+  "source_context_sha256": "1b98cfc3c54d35eb06e8e80d9ce0fe61a4246a905bdc6858c45f63043dbc34e5",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-24T13:31:19.215Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-24T13:31:47.849415Z",
+      "actor": "tayvoriq-slot-serialization-gate",
+      "meta": {
+        "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+        "slot_serialization_predecessor_request_id": "telegram-1612-trend-1",
+        "slot_serialization_predecessor_run_id": 32733191373,
+        "slot_serialization_reason": "MORNING_RUN_NOT_COMPLETED"
+      }
+    }
+  ],
+  "contract_sha256": "d986fd67abd4d415444cde8a8de79147e4c6fdf3e0da4e14e5de24899fbe44ff",
+  "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+  "slot_serialization_predecessor_request_id": "telegram-1612-trend-1",
+  "slot_serialization_predecessor_run_id": 32733191373,
+  "slot_serialization_reason": "MORNING_RUN_NOT_COMPLETED"
+}
