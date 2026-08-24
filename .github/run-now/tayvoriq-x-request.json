@@ -2,11 +2,11 @@
     "request": "tayvoriq-x-production",
     "topic": "VW spricht von Mega-Krise: Warum Deutschlands Auto-Riese jetzt vor einem harten Umbau steht",
     "trend_id": "1",
-    "requested_at": "2026-08-24T08:59:31Z",
-    "request_nonce": "vw-crisis-evening-targeted-g2-fix-20260824T085931Z",
+    "requested_at": "2026-08-24T09:21:51Z",
+    "request_nonce": "vw-crisis-evening-targeted-g3-cta-gate-fix-20260824T092151Z",
     "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
     "implementation_branch": "feature/multi-platform-distribution-package",
-    "implementation_merge_sha": "4dfad79737f4a2578878c36b39ea4616f7f6a210",
+    "implementation_merge_sha": "a2a15621aea9cbe00368500d825002783f37b3d7",
     "approved_trend_pinned": true,
     "source_request_id": "prepared-20260824-e-vw-crisis",
     "technical_replay": true,
@@ -47,8 +47,10 @@
         "primary_vw_visual_contract_required": true,
         "shared_primary_repair_visual_contract_required": true,
         "stale_visual_query_reuse_forbidden": true,
+        "source_bound_viewer_value_cta_gate_required": true,
+        "german_inflection_aware_cta_contract_required": true,
         "production_contract_version_required": true
     },
-    "reason": "targeted-vw-recovery-after-brand-audio-and-post-tower-root-cause-fix",
+    "reason": "targeted-vw-recovery-after-source-bound-cta-validator-root-cause-fix",
     "slot": "evening"
 }
