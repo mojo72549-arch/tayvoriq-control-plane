@@ -1,6 +1,6 @@
 {
   "request_id": "prepared-20260824-e-vw-crisis",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "user_preapproved_preparation",
   "trend_id": "1",
   "topic": "VW spricht von Mega-Krise: Warum Deutschlands Auto-Riese jetzt vor einem harten Umbau steht",
@@ -131,6 +131,11 @@
       "state": "DISPATCHING",
       "at": "2026-08-24T07:39:44.929919+00:00",
       "actor": "request-dispatcher:32702501685"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-24T07:39:56.508338+00:00",
+      "actor": "request-dispatcher:32702501685"
     }
   ],
   "telegram_only_user_path": true,
@@ -145,5 +150,6 @@
   "slot_serialization_predecessor_run_id": 32698846786,
   "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
   "dispatch_claim_run_id": 32702501685,
-  "dispatch_contract_sha256": "1b83d949b4450b48483706887ef4e7225bebd86a52a6f3e4a5967d290943f96d"
+  "dispatch_contract_sha256": "1b83d949b4450b48483706887ef4e7225bebd86a52a6f3e4a5967d290943f96d",
+  "golden_path_run_id": 32702517984
 }
