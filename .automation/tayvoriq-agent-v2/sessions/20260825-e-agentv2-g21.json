@@ -1,0 +1,107 @@
+{
+  "schema_version": "tayvoriq-growth-v2.1-editorial-recovery-v1",
+  "selection_id": "20260825-e-agentv2-g21",
+  "slot": "evening",
+  "target_date": "2026-08-25",
+  "created_at": "2026-08-24T13:22:59.242040Z",
+  "source_failed_run_id": 32729785616,
+  "source_provider_result": "GEMINI_429_THEN_HF_SEMANTIC_PREFILTER_ZERO",
+  "recovery_research_passes": 1,
+  "grounded_source_urls": [
+    "https://newsroom.porsche.com/de/2026/unternehmen/porsche-mhp-verkauf-tata-consultancy-services-43111.html",
+    "https://www.swr.de/swraktuell/baden-wuerttemberg/porsche-verkauft-beratungstochter-mhp-an-tata-consultancy-services-100.html",
+    "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-keine-lust-mehr-helge-schneider-bricht-konzert-in-ellwangen-ab-100.html",
+    "https://www.t-online.de/unterhaltung/stars/id_101401122/helge-schneider-musiker-bricht-auftritt-nach-20-minuten-ab.html",
+    "https://www.esa.int/Space_Safety/Space_Debris/Moving_satellites_to_meet_a_plane_for_rare_reentry_data",
+    "https://www.swr.de/swraktuell/baden-wuerttemberg/absturz-ueber-tonga-uni-stuttgart-erforscht-vergluehenden-weltraumschrott-100.html",
+    "https://www.dfb.de/news/jeddeloh-stun-heidenheim-with-5-2-win-in-the-dfb-pokal",
+    "https://www.zdfheute.de/sport/fussball-dfb-pokal-runde-1-jeddeloh-heidenheim-blamage-100.html",
+    "https://www.dwd.de/DE/wetter/vorhersage_aktuell/baden-wuerttemberg/vhs_bawue_node.html",
+    "https://www.stuttgarter-nachrichten.de/baden-wuerttemberg/gewitter-in-baden-wuerttemberg-an-diesen-tagen-wird-es-ungemuetlich-79407308.html"
+  ],
+  "candidate_count": 5,
+  "selected_count": 5,
+  "candidate_count_policy": "quality_driven_4_to_5",
+  "growth_scores": [
+    96,
+    96,
+    95,
+    95,
+    95
+  ],
+  "audience_selection_scores": [
+    94,
+    93,
+    92,
+    92,
+    91
+  ],
+  "duplicate_reports": [
+    {
+      "id": "1",
+      "title": "Was bedeutet Porsches MHP-Verkauf an TCS für Ludwigsburg?",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "telegram-1268-trend-1",
+      "nearest_prior_topic": "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?",
+      "nearest_risk_score": 0.1538,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "2",
+      "title": "Warum Helge Schneider sein Ellwanger Konzert stoppte – und dann zurückkam",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "prepared-20260824-e-vw-crisis",
+      "nearest_prior_topic": "VW spricht von Mega-Krise: Warum Deutschlands Auto-Riese jetzt vor einem harten Umbau steht",
+      "nearest_risk_score": 0.0828,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "3",
+      "title": "Absturz über Tonga: Warum die Uni Stuttgart zwei Satelliten beim Verglühen filmt",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "telegram-1418-trend-1",
+      "nearest_prior_topic": "Stuttgart 21 wird zum Videospiel: Schaffst du in der S21-Demo Gleis 9 in 20 Minuten?",
+      "nearest_risk_score": 0.1567,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "4",
+      "title": "5:2-Pokalschock: Warum Viertligist Jeddeloh Heidenheim zerlegt",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "prepared-20260824-m-ai-courts",
+      "nearest_prior_topic": "KI flutet deutsche Gerichte: Warum Chatbots die Justiz plötzlich ausbremsen",
+      "nearest_risk_score": 0.0878,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "5",
+      "title": "Warum Baden-Württemberg am Dienstag wieder mit Starkregen und Hagel rechnen muss",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "telegram-1451-trend-1",
+      "nearest_prior_topic": "Humanoide Roboter aus Baden-Württemberg: Bosch startet 2027 die Produktion in Bühl",
+      "nearest_risk_score": 0.1805,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    }
+  ],
+  "full_editorial_contract_passed": true,
+  "source_contract_passed": true,
+  "claim_coherence_passed": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "user_approval_required": true
+}

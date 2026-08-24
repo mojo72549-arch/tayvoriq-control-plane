@@ -1,0 +1,559 @@
+{
+  "date": "2026-08-25",
+  "target_date": "2026-08-25",
+  "slot": "evening",
+  "created_at": "2026-08-24T13:22:59.242040Z",
+  "selection_id": "20260825-e-agentv2-g21",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "growth_strategy": "Growth V2.1",
+  "mode": "editorial_recovery_after_bounded_provider_failure",
+  "superseded": false,
+  "telegram_only_user_path": true,
+  "auto_repair_until_review": true,
+  "requires_freshness_revalidation_before_render": true,
+  "production_started": false,
+  "quality_gates_weakened": false,
+  "trends": [
+    {
+      "category": "Autoindustrie und KI",
+      "trend_scope": "business_economy",
+      "title": "Was bedeutet Porsches MHP-Verkauf an TCS für Ludwigsburg?",
+      "score": 99,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 98,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 96
+      },
+      "regional_relevance": "local",
+      "sources": [
+        "https://newsroom.porsche.com/de/2026/unternehmen/porsche-mhp-verkauf-tata-consultancy-services-43111.html",
+        "https://www.swr.de/swraktuell/baden-wuerttemberg/porsche-verkauft-beratungstochter-mhp-an-tata-consultancy-services-100.html"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Porsche Newsroom",
+            "url": "https://newsroom.porsche.com/de/2026/unternehmen/porsche-mhp-verkauf-tata-consultancy-services-43111.html",
+            "supports": "Porsche bestätigt den vollständigen Verkauf der Ludwigsburger Management- und IT-Beratung MHP an Tata Consultancy Services, die Konzentration aufs Kerngeschäft und eine geplante Zusammenarbeit bei KI und digitalen Lösungen."
+          },
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/porsche-verkauft-beratungstochter-mhp-an-tata-consultancy-services-100.html",
+            "supports": "SWR bestätigt den unterzeichneten Verkauf, den Sitz in Ludwigsburg und Porsches Begründung, sich stärker auf das Kerngeschäft mit Sportwagen zu konzentrieren."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Porsche verkauft die Ludwigsburger IT-Beratung MHP vollständig an Tata Consultancy Services.",
+          "why_happening": "Der Verkauf kommt, weil Porsche sich stärker auf Sportwagen konzentrieren will.",
+          "who_is_affected": "Betroffen sind MHPs Beschäftigte, Kunden und der Wirtschaftsraum Stuttgart.",
+          "personal_impact": "Für dich zeigt der Deal, wie KI Autoindustrie neu sortiert.",
+          "action_now": "Beobachte Kartellfreigabe und Aussagen zu Standorten sowie Arbeitsplätzen."
+        },
+        "growth_v2": {
+          "growth_score": 96,
+          "binding_score": 96,
+          "priority_score": 96,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 90,
+          "returning_viewer_score": 93,
+          "continuation_score": 86,
+          "hook_strength_score": 63,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 94,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "telegram-1268-trend-1",
+          "nearest_prior_topic": "Ölpreis bei 91,62 Dollar: Was bedeutet die Hormus-Krise für Deutschlands Spritpreise?",
+          "nearest_risk_score": 0.1538,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Der Vollzug steht noch unter behördlichen Genehmigungen.",
+          "Keine Arbeitsplatzverluste oder Standortschließungen ohne belastbare Bestätigung behaupten."
+        ],
+        "content_angle": "Aus einer Porsche-Tochter wird ein globales KI-Beratungsstück.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "binding_score": 96,
+        "priority_score": 96,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 90,
+        "returning_viewer_score": 93,
+        "continuation_score": 86,
+        "hook_strength_score": 63,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 94,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "1"
+    },
+    {
+      "category": "Kultur und Live-Entertainment",
+      "trend_scope": "creator_media",
+      "title": "Warum Helge Schneider sein Ellwanger Konzert stoppte – und dann zurückkam",
+      "score": 99,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 99,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 97,
+        "visuell": 99
+      },
+      "regional_relevance": "local",
+      "sources": [
+        "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-keine-lust-mehr-helge-schneider-bricht-konzert-in-ellwangen-ab-100.html",
+        "https://www.t-online.de/unterhaltung/stars/id_101401122/helge-schneider-musiker-bricht-auftritt-nach-20-minuten-ab.html"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "tagesschau.de",
+            "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-keine-lust-mehr-helge-schneider-bricht-konzert-in-ellwangen-ab-100.html",
+            "supports": "Tagesschau und SWR berichten, dass Helge Schneider sein Konzert auf der Landesgartenschau Ellwangen wegen Tonproblemen und Lauter-Rufen nach rund 20 Minuten unterbrach, später aber zurückkehrte und weiterspielte."
+          },
+          {
+            "publisher": "t-online",
+            "url": "https://www.t-online.de/unterhaltung/stars/id_101401122/helge-schneider-musiker-bricht-auftritt-nach-20-minuten-ab.html",
+            "supports": "t-online bestätigt die Unterbrechung nach etwa 20 Minuten, Rückkopplungen, Reaktionen des Publikums und Schneiders spätere Rückkehr auf die Bühne."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Helge Schneider unterbrach sein Ellwanger Konzert, kehrte zurück und spielte weiter.",
+          "why_happening": "Er ging zunächst, weil Rückkopplungen und Lauter-Rufe den Auftritt störten.",
+          "who_is_affected": "Betroffen waren Publikum, Veranstalter und Künstler der Landesgartenschau.",
+          "personal_impact": "Für dich zeigt die Szene, wie Technik Live-Shows kippen lässt.",
+          "action_now": "Achte auf die Rückkehr: Das Konzert ging später weiter."
+        },
+        "growth_v2": {
+          "growth_score": 96,
+          "binding_score": 95,
+          "priority_score": 96,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 87,
+          "returning_viewer_score": 89,
+          "continuation_score": 74,
+          "hook_strength_score": 63,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 93,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "prepared-20260824-e-vw-crisis",
+          "nearest_prior_topic": "VW spricht von Mega-Krise: Warum Deutschlands Auto-Riese jetzt vor einem harten Umbau steht",
+          "nearest_risk_score": 0.0828,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Nicht behaupten, das Konzert sei nach 20 Minuten endgültig beendet worden.",
+          "Tonprobleme, Publikumsrufe und spätere Rückkehr in der richtigen Reihenfolge erzählen."
+        ],
+        "content_angle": "Der vermeintliche Abbruch hatte noch einen zweiten Akt.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "binding_score": 95,
+        "priority_score": 96,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 87,
+        "returning_viewer_score": 89,
+        "continuation_score": 74,
+        "hook_strength_score": 63,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 93,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "2"
+    },
+    {
+      "category": "Raumfahrtforschung Stuttgart",
+      "trend_scope": "science_future",
+      "title": "Absturz über Tonga: Warum die Uni Stuttgart zwei Satelliten beim Verglühen filmt",
+      "score": 98,
+      "criteria": {
+        "aktualitaet": 97,
+        "viralitaet": 97,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "regional_relevance": "local",
+      "sources": [
+        "https://www.esa.int/Space_Safety/Space_Debris/Moving_satellites_to_meet_a_plane_for_rare_reentry_data",
+        "https://www.swr.de/swraktuell/baden-wuerttemberg/absturz-ueber-tonga-uni-stuttgart-erforscht-vergluehenden-weltraumschrott-100.html"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "European Space Agency",
+            "url": "https://www.esa.int/Space_Safety/Space_Debris/Moving_satellites_to_meet_a_plane_for_rare_reentry_data",
+            "supports": "Die ESA beschreibt die zwei etwa 24 Stunden auseinanderliegenden, gezielten Wiedereintritte ihrer Cluster-Satelliten Samba und Tango über dem Südpazifik sowie Messungen aus einem Forschungsflugzeug für sichere Satellitenkonstruktionen."
+          },
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/absturz-ueber-tonga-uni-stuttgart-erforscht-vergluehenden-weltraumschrott-100.html",
+            "supports": "SWR berichtet, dass drei Ingenieure der Universität Stuttgart von Tonga aus die beiden ESA-Satelliten mit Spezialkameras beim Verglühen beobachten, um reale Wiedereintrittsdaten zu gewinnen."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Stuttgarter Forscher beobachten zwei ESA-Satelliten beim gezielten Verglühen über dem Südpazifik.",
+          "why_happening": "Die Messflüge starten, weil sichere Satellitenkonstruktionen echte Wiedereintrittsdaten benötigen.",
+          "who_is_affected": "Betroffen sind Raumfahrtagenturen, Satellitenbauer und Forschende aus Stuttgart.",
+          "personal_impact": "Für dich erklärt die Mission, welche Teile künftig sicherer verglühen sollen.",
+          "action_now": "Beobachte die ESA-Termine und trenne geplanten Absturz von Gefahr."
+        },
+        "growth_v2": {
+          "growth_score": 95,
+          "binding_score": 96,
+          "priority_score": 95,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 88,
+          "returning_viewer_score": 88,
+          "continuation_score": 68,
+          "hook_strength_score": 71,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 92,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "telegram-1418-trend-1",
+          "nearest_prior_topic": "Stuttgart 21 wird zum Videospiel: Schaffst du in der S21-Demo Gleis 9 in 20 Minuten?",
+          "nearest_risk_score": 0.1567,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Es handelt sich um geplante Wiedereintritte über einer abgelegenen Meeresregion.",
+          "Keine konkrete Gefahr für Tonga oder einen Einschlag bewohnter Gebiete behaupten."
+        ],
+        "content_angle": "Stuttgarter Kameras verfolgen zwei künstliche Feuerbälle über dem Pazifik.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "binding_score": 96,
+        "priority_score": 95,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 88,
+        "returning_viewer_score": 88,
+        "continuation_score": 68,
+        "hook_strength_score": 71,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 92,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "3"
+    },
+    {
+      "category": "Fußball Baden-Württemberg",
+      "trend_scope": "sports",
+      "title": "5:2-Pokalschock: Warum Viertligist Jeddeloh Heidenheim zerlegt",
+      "score": 99,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 99,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 100,
+        "visuell": 98
+      },
+      "regional_relevance": "local",
+      "sources": [
+        "https://www.dfb.de/news/jeddeloh-stun-heidenheim-with-5-2-win-in-the-dfb-pokal",
+        "https://www.zdfheute.de/sport/fussball-dfb-pokal-runde-1-jeddeloh-heidenheim-blamage-100.html"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Deutscher Fußball-Bund",
+            "url": "https://www.dfb.de/news/jeddeloh-stun-heidenheim-with-5-2-win-in-the-dfb-pokal",
+            "supports": "Der DFB bestätigt den 5:2-Sieg des Viertligisten SSV Jeddeloh gegen den Zweitligisten 1. FC Heidenheim und den erstmaligen Einzug eines Viertligisten in Runde zwei dieser Saison."
+          },
+          {
+            "publisher": "ZDFheute",
+            "url": "https://www.zdfheute.de/sport/fussball-dfb-pokal-runde-1-jeddeloh-heidenheim-blamage-100.html",
+            "supports": "ZDFheute bestätigt die 5:2-Pokalblamage und schildert, wie Jeddeloh seine Chancen konsequent nutzte, während Heidenheim das Spiel defensiv nicht kontrollierte."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Viertligist Jeddeloh schlug Zweitligist Heidenheim im DFB-Pokal überraschend mit 5:2.",
+          "why_happening": "Die Blamage entstand, weil Jeddeloh Chancen nutzte und Heidenheim kaum kontrollierte.",
+          "who_is_affected": "Betroffen sind Team, Fans und Trainerstab des FC Heidenheim.",
+          "personal_impact": "Für dich zeigt das Ergebnis, warum Pokalspiele sportlich unberechenbar bleiben.",
+          "action_now": "Beobachte Heidenheims Reaktion und mögliche Konsequenzen im nächsten Ligaspiel."
+        },
+        "growth_v2": {
+          "growth_score": 95,
+          "binding_score": 95,
+          "priority_score": 95,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 87,
+          "returning_viewer_score": 87,
+          "continuation_score": 68,
+          "hook_strength_score": 71,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 92,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "prepared-20260824-m-ai-courts",
+          "nearest_prior_topic": "KI flutet deutsche Gerichte: Warum Chatbots die Justiz plötzlich ausbremsen",
+          "nearest_risk_score": 0.0878,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Ergebnis, Vereinsklassen und Wettbewerb exakt aus den Quellen übernehmen.",
+          "Sportliche Konsequenzen nur als offene Frage, nicht als beschlossene Personalfolge darstellen."
+        ],
+        "content_angle": "Fünf Gegentore, eine Pokalnacht und die Frage nach der Kontrolle.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "binding_score": 95,
+        "priority_score": 95,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 87,
+        "returning_viewer_score": 87,
+        "continuation_score": 68,
+        "hook_strength_score": 71,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 92,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "4"
+    },
+    {
+      "category": "Wetter im Südwesten",
+      "trend_scope": "world_society",
+      "title": "Warum Baden-Württemberg am Dienstag wieder mit Starkregen und Hagel rechnen muss",
+      "score": 98,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 96,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 100,
+        "visuell": 97
+      },
+      "regional_relevance": "local",
+      "sources": [
+        "https://www.dwd.de/DE/wetter/vorhersage_aktuell/baden-wuerttemberg/vhs_bawue_node.html",
+        "https://www.stuttgarter-nachrichten.de/baden-wuerttemberg/gewitter-in-baden-wuerttemberg-an-diesen-tagen-wird-es-ungemuetlich-79407308.html"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Deutscher Wetterdienst",
+            "url": "https://www.dwd.de/DE/wetter/vorhersage_aktuell/baden-wuerttemberg/vhs_bawue_node.html",
+            "supports": "Der DWD erwartet am Dienstag in Baden-Württemberg lokale starke Gewitter mit Starkregen, kleinkörnigem Hagel und starken bis stürmischen Böen, weil feuchtwarme und labile Luft von Süden einströmt."
+          },
+          {
+            "publisher": "Stuttgarter Nachrichten",
+            "url": "https://www.stuttgarter-nachrichten.de/baden-wuerttemberg/gewitter-in-baden-wuerttemberg-an-diesen-tagen-wird-es-ungemuetlich-79407308.html",
+            "supports": "Die Stuttgarter Nachrichten bestätigen das Gewitterrisiko am Dienstag und ordnen den weiteren wechselhaften Wochenverlauf für Baden-Württemberg ein."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Am Dienstag drohen in Baden-Württemberg lokal Starkregen, Hagel und stürmische Böen.",
+          "why_happening": "Das Risiko steigt, weil feuchtwarme instabile Luft von Süden einströmt.",
+          "who_is_affected": "Betroffen sind Pendler, Veranstaltungen und Menschen im Südwesten.",
+          "personal_impact": "Für dich können Gewitter Wege und Outdoor-Pläne lokal verändern.",
+          "action_now": "Achte am Nachmittag auf DWD-Warnungen und sichere lose Gegenstände."
+        },
+        "growth_v2": {
+          "growth_score": 95,
+          "binding_score": 96,
+          "priority_score": 95,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 86,
+          "returning_viewer_score": 86,
+          "continuation_score": 62,
+          "hook_strength_score": 71,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 91,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "telegram-1451-trend-1",
+          "nearest_prior_topic": "Humanoide Roboter aus Baden-Württemberg: Bosch startet 2027 die Produktion in Bühl",
+          "nearest_risk_score": 0.1805,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Prognose und amtliche Warnung unterscheiden; lokale Gewitter sind nicht flächendeckend garantiert.",
+          "Vor Veröffentlichung die jüngste DWD-Warnlage erneut prüfen."
+        ],
+        "content_angle": "Wetterkarte, Feuchtluft und lokale Gefahren als klare Morgenplanung.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "binding_score": 96,
+        "priority_score": 95,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 86,
+        "returning_viewer_score": 86,
+        "continuation_score": 62,
+        "hook_strength_score": 71,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 91,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "5"
+    }
+  ]
+}

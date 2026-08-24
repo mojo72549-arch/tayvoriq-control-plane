@@ -1,0 +1,559 @@
+{
+  "date": "2026-08-25",
+  "target_date": "2026-08-25",
+  "slot": "morning",
+  "created_at": "2026-08-24T13:22:59.242040Z",
+  "selection_id": "20260825-m-agentv2-g21",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "growth_strategy": "Growth V2.1",
+  "mode": "editorial_recovery_after_bounded_provider_failure",
+  "superseded": false,
+  "telegram_only_user_path": true,
+  "auto_repair_until_review": true,
+  "requires_freshness_revalidation_before_render": true,
+  "production_started": false,
+  "quality_gates_weakened": false,
+  "trends": [
+    {
+      "category": "KI und digitale Alltagsdienste",
+      "trend_scope": "technology_ai",
+      "title": "Warum ChatGPT jetzt Werbung in Deutschland zeigt – und wer werbefrei bleibt",
+      "score": 98,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 98,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 99,
+        "visuell": 92
+      },
+      "regional_relevance": "germany",
+      "sources": [
+        "https://openai.com/index/chatgpt-ads-expands-across-europe/",
+        "https://www.euronews.com/next/2026/08/21/chatgpt-to-start-showing-ads-across-europe-next-week"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "OpenAI",
+            "url": "https://openai.com/index/chatgpt-ads-expands-across-europe/",
+            "supports": "OpenAI erweitert ChatGPT Ads auf 31 europäische Länder einschließlich Deutschland; Werbung betrifft Free und Go, während Plus, Pro, Business, Enterprise und Edu werbefrei bleiben."
+          },
+          {
+            "publisher": "Euronews",
+            "url": "https://www.euronews.com/next/2026/08/21/chatgpt-to-start-showing-ads-across-europe-next-week",
+            "supports": "Euronews bestätigt den Start ab 24. August in 31 europäischen Märkten sowie die Beschränkung auf Free- und Go-Konten."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "ChatGPT zeigt Europa nun Werbung für Free- und Go-Konten.",
+          "why_happening": "Das passiert, weil OpenAI Anzeigen auf weitere europäische Märkte ausweitet.",
+          "who_is_affected": "Betroffen sind Nutzer kostenloser und günstiger ChatGPT-Tarife in Europa.",
+          "personal_impact": "Für dich ändern sich Oberfläche und Auswahlmöglichkeiten je nach Tarif.",
+          "action_now": "Prüfe deinen Tarif und die neue werbefreie Option mit Limits."
+        },
+        "growth_v2": {
+          "growth_score": 94,
+          "binding_score": 93,
+          "priority_score": 94,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 88,
+          "returning_viewer_score": 90,
+          "continuation_score": 80,
+          "hook_strength_score": 63,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 92,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "chatgpt-20260813-heat-consequences-1",
+          "nearest_prior_topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
+          "nearest_risk_score": 0.2187,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Nicht behaupten, Werbung beeinflusse ChatGPT-Antworten.",
+          "Nicht behaupten, alle Tarife oder alle Nutzer sähen Werbung."
+        ],
+        "content_angle": "Werbung im Chat: in 35 Sekunden zeigen, welcher Tarif was sieht.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 94,
+        "binding_score": 93,
+        "priority_score": 94,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 88,
+        "returning_viewer_score": 90,
+        "continuation_score": 80,
+        "hook_strength_score": 63,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 92,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "1"
+    },
+    {
+      "category": "Robotik und Zukunft",
+      "trend_scope": "technology_ai",
+      "title": "9,39 Sekunden: Humanoider Roboter schlägt Bolts Rekord – und kracht ins Polster",
+      "score": 99,
+      "criteria": {
+        "aktualitaet": 98,
+        "viralitaet": 100,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 98,
+        "visuell": 100
+      },
+      "regional_relevance": "global",
+      "sources": [
+        "https://www.reuters.com/sports/chinese-humanoid-robot-lightning-beats-human-100m-world-record-state-media-says-2026-08-22/",
+        "https://www.theverge.com/tech/983688/world-humanoid-robot-games-sprint-record-2026"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/sports/chinese-humanoid-robot-lightning-beats-human-100m-world-record-state-media-says-2026-08-22/",
+            "supports": "Reuters berichtet, dass Tiangong Ultra bei den World Humanoid Robot Games 100 Meter in 9,39 Sekunden lief, Bolts 9,58 Sekunden unterbot und danach in die Polster krachte; im Vorjahr benötigte der Roboter 21,50 Sekunden."
+          },
+          {
+            "publisher": "The Verge",
+            "url": "https://www.theverge.com/tech/983688/world-humanoid-robot-games-sprint-record-2026",
+            "supports": "The Verge bestätigt Tiangong Ultras 9,39-Sekunden-Lauf, ordnet ihn als Fortschritt zweibeiniger Robotertechnik ein und zeigt die weiterhin sichtbaren Kontrollprobleme nach der Ziellinie."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Tiangong Ultra lief 100 Meter in 9,39 Sekunden.",
+          "why_happening": "Der Sprung gelang, weil zweibeinige Robotertechnik seit dem Vorjahr stark vorankam.",
+          "who_is_affected": "Betroffen sind Robotikhersteller, Industrie und Entwickler autonomer Maschinen.",
+          "personal_impact": "Für dich zeigt der Sprint Fortschritt, aber auch ungelöste Kontrolle.",
+          "action_now": "Achte auf den Unterschied zwischen Showrennen und echter Alltagstauglichkeit."
+        },
+        "growth_v2": {
+          "growth_score": 91,
+          "binding_score": 87,
+          "priority_score": 90,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 88,
+          "returning_viewer_score": 90,
+          "continuation_score": 86,
+          "hook_strength_score": 63,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 90,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "2026-08-07-evening-trend-1-ai-stocks-v7",
+          "nearest_prior_topic": "KI-Aktien unter Druck: starke Zahlen reichen plötzlich nicht mehr",
+          "nearest_risk_score": 0.157,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Den Roboterlauf nicht als offiziell anerkannten Leichtathletik-Weltrekord darstellen.",
+          "9,39 Sekunden gehören zum Wettkampflauf von Tiangong Ultra; 9,32 Sekunden waren Lightnings Testlauf."
+        ],
+        "content_angle": "Schneller als Bolt, aber noch nicht einmal kontrolliert bremsen.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 91,
+        "binding_score": 87,
+        "priority_score": 90,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 88,
+        "returning_viewer_score": 90,
+        "continuation_score": 86,
+        "hook_strength_score": 63,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 90,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "2"
+    },
+    {
+      "category": "Klima und Wetter",
+      "trend_scope": "science_future",
+      "title": "El Niño könnte historisch stark werden – was Europa davon wirklich spürt",
+      "score": 98,
+      "criteria": {
+        "aktualitaet": 98,
+        "viralitaet": 96,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 100,
+        "visuell": 98
+      },
+      "regional_relevance": "europe",
+      "sources": [
+        "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml",
+        "https://www.dwd.de/DE/wetter/thema_des_tages/2026/8/23.html"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "NOAA Climate Prediction Center",
+            "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml",
+            "supports": "NOAA meldet eine Verstärkung durch ungewöhnlich warmes Wasser im tropischen Pazifik, über 90 Prozent Wahrscheinlichkeit für ein sehr starkes Ereignis und 69 Prozent für historische Stärke von Oktober bis Dezember 2026."
+          },
+          {
+            "publisher": "Deutscher Wetterdienst",
+            "url": "https://www.dwd.de/DE/wetter/thema_des_tages/2026/8/23.html",
+            "supports": "Der DWD ordnet das sich verstärkende El-Niño-Ereignis und mögliche, aber indirekte und nicht garantierte Auswirkungen auf Europas Wetter ein."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "NOAA sieht Ende 2026 hohe Chancen auf historisches El Niño.",
+          "why_happening": "Das Risiko steigt, weil sich der tropische Pazifik stark erwärmt.",
+          "who_is_affected": "Betroffen sind Wetter, Landwirtschaft und Preise weltweit.",
+          "personal_impact": "Für dich bleiben Europas Folgen indirekt und saisonal schwer vorhersagbar.",
+          "action_now": "Beobachte offizielle Saisonprognosen statt einzelne Wetterereignisse vorschnell El Niño zuzuschreiben."
+        },
+        "growth_v2": {
+          "growth_score": 92,
+          "binding_score": 90,
+          "priority_score": 92,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 86,
+          "returning_viewer_score": 89,
+          "continuation_score": 80,
+          "hook_strength_score": 55,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 90,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "chatgpt-20260813-heat-consequences-1",
+          "nearest_prior_topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
+          "nearest_risk_score": 0.193,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "69 Prozent sind eine Prognose für historische Stärke, keine Gewissheit.",
+          "Europäische Auswirkungen als indirekt und nicht deterministisch erklären."
+        ],
+        "content_angle": "Ein Pazifik-Signal reist um die Welt, Europa bleibt aber Prognosegebiet.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 92,
+        "binding_score": 90,
+        "priority_score": 92,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 86,
+        "returning_viewer_score": 89,
+        "continuation_score": 80,
+        "hook_strength_score": 55,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 90,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "3"
+    },
+    {
+      "category": "Wirtschaft und Plattformen",
+      "trend_scope": "business_economy",
+      "title": "Von 100 auf 27 Milliarden Dollar: Warum Sheins Börsenwert so abstürzt",
+      "score": 97,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 97,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 99,
+        "visuell": 94
+      },
+      "regional_relevance": "global",
+      "sources": [
+        "https://www.reuters.com/business/retail-consumer/shein-launches-up-18-billion-hong-kong-ipo-2026-08-23/",
+        "https://www.theguardian.com/business/2026/aug/24/fashion-giant-shein-27bn-valuation-hong-kong-market-debut"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/retail-consumer/shein-launches-up-18-billion-hong-kong-ipo-2026-08-23/",
+            "supports": "Reuters berichtet, dass Shein beim Hongkonger Börsengang bis zu 1,8 Milliarden Dollar einnehmen und mit rund 27 Milliarden statt fast 100 Milliarden Dollar im Jahr 2022 bewertet werden soll; Wachstum, Konkurrenz und Handelsdruck bremsen."
+          },
+          {
+            "publisher": "The Guardian",
+            "url": "https://www.theguardian.com/business/2026/aug/24/fashion-giant-shein-27bn-valuation-hong-kong-market-debut",
+            "supports": "The Guardian bestätigt die geplante 27-Milliarden-Dollar-Bewertung, den Handelsstart im September und Belastungen durch langsameres Wachstum, Wettbewerb, Kosten und regulatorische Prüfung."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Shein strebt beim Hongkonger Börsengang nur noch 27 Milliarden Dollar Bewertung an.",
+          "why_happening": "Der Wert fällt, weil Wachstum, Wettbewerb und Handelsregeln Investoren bremsen.",
+          "who_is_affected": "Betroffen sind Shein, Anleger, Beschäftigte und die Fast-Fashion-Branche.",
+          "personal_impact": "Für dich zeigt der Absturz, wie schnell Plattformhypes wirtschaftlich kippen.",
+          "action_now": "Achte auf endgültigen Ausgabepreis und Handelsstart statt nur Schlagzeilen."
+        },
+        "growth_v2": {
+          "growth_score": 90,
+          "binding_score": 86,
+          "priority_score": 89,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 84,
+          "returning_viewer_score": 85,
+          "continuation_score": 74,
+          "hook_strength_score": 63,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 87,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "2026-08-11-afternoon-trend-1-nvidia-500b-ai-infra-v1",
+          "nearest_prior_topic": "Nvidia und Wall Street: über 500 Milliarden Dollar für die KI-Infrastruktur",
+          "nearest_risk_score": 0.2,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "27 Milliarden Dollar sind eine angestrebte IPO-Bewertung, kein bestätigter Schlusskurs.",
+          "Den Rückgang der Bewertung nicht als realisierten Geldverlust gleichsetzen."
+        ],
+        "content_angle": "Vier Jahre Plattformhype in einer einzigen fallenden Zahl.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 90,
+        "binding_score": 86,
+        "priority_score": 89,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 84,
+        "returning_viewer_score": 85,
+        "continuation_score": 74,
+        "hook_strength_score": 63,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 87,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "4"
+    },
+    {
+      "category": "Digitale Gesellschaft",
+      "trend_scope": "world_society",
+      "title": "Warum Neuseeland Social Media unter 16 verbieten will – und wie Alter geprüft wird",
+      "score": 97,
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 96,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 99,
+        "visuell": 94
+      },
+      "regional_relevance": "global",
+      "sources": [
+        "https://www.beehive.govt.nz/release/government-moves-ban-u16s-social-media",
+        "https://www.reuters.com/world/asia-pacific/new-zealand-introduce-bill-banning-social-media-children-under-16-2026-08-24/"
+      ],
+      "source_context": {
+        "verified_at": "2026-08-24T13:22:59.242040Z",
+        "independent_news_count": 2,
+        "sources": [
+          {
+            "publisher": "New Zealand Government",
+            "url": "https://www.beehive.govt.nz/release/government-moves-ban-u16s-social-media",
+            "supports": "Die neuseeländische Regierung hat einen Gesetzentwurf für ein Mindestalter von 16 Jahren bei sozialen Plattformen eingebracht; Plattformen sollen Alter prüfen, Kinder und Eltern werden nicht bestraft."
+          },
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/world/asia-pacific/new-zealand-introduce-bill-banning-social-media-children-under-16-2026-08-24/",
+            "supports": "Reuters bestätigt den am 24. August eingebrachten Gesetzentwurf, geplante Altersprüfungen und mögliche Strafen für Plattformen; die parlamentarische Mehrheit ist noch offen."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Neuseelands Regierung brachte ein Social-Media-Verbot für Unter-Sechzehnjährige ins Parlament.",
+          "why_happening": "Der Vorstoß kommt, weil Plattformrisiken für Kinder politisch begrenzt werden sollen.",
+          "who_is_affected": "Betroffen wären Minderjährige, Eltern und große soziale Plattformen.",
+          "personal_impact": "Für dich könnte Altersprüfung beim Zugang zu sozialen Netzwerken Pflicht werden.",
+          "action_now": "Beobachte das Gesetzgebungsverfahren, denn das Verbot gilt noch nicht."
+        },
+        "growth_v2": {
+          "growth_score": 90,
+          "binding_score": 86,
+          "priority_score": 89,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
+        },
+        "audience_growth_v3": {
+          "subscriber_conversion_score": 83,
+          "returning_viewer_score": 84,
+          "continuation_score": 68,
+          "hook_strength_score": 63,
+          "standalone_payoff_score": 94,
+          "selection_priority_score": 87,
+          "promotion_test_candidate": true,
+          "promotion_requires_observed_performance": true,
+          "paid_boost_auto_enabled": false,
+          "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+        },
+        "duplicate_precheck": {
+          "passed": true,
+          "checked_at": "2026-08-24T13:22:59.242040Z",
+          "history_candidates_checked": 25,
+          "nearest_prior_request_id": "prepared-20260824-m-ai-courts",
+          "nearest_prior_topic": "KI flutet deutsche Gerichte: Warum Chatbots die Justiz plötzlich ausbremsen",
+          "nearest_risk_score": 0.1149,
+          "duplicate_reasons": [],
+          "quality_gates_weakened": false
+        },
+        "factual_guardrails": [
+          "Der Entwurf ist noch kein geltendes Gesetz.",
+          "Keine Strafen für Kinder oder Eltern behaupten; Plattformpflichten sauber trennen."
+        ],
+        "content_angle": "Die Altersgrenze klingt einfach, die technische Prüfung ist der Konflikt.",
+        "editorial_recovery": {
+          "source_run_id": 32729785616,
+          "reason": "bounded grounded providers produced no contract-safe candidates after two scans",
+          "recovery_mode": "agent_researched_growth_v2_1",
+          "quality_gates_weakened": false,
+          "render_started": false
+        }
+      },
+      "growth_v2": {
+        "growth_score": 90,
+        "binding_score": 86,
+        "priority_score": 89,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
+      "audience_growth_v3": {
+        "subscriber_conversion_score": 83,
+        "returning_viewer_score": 84,
+        "continuation_score": 68,
+        "hook_strength_score": 63,
+        "standalone_payoff_score": 94,
+        "selection_priority_score": 87,
+        "promotion_test_candidate": true,
+        "promotion_requires_observed_performance": true,
+        "paid_boost_auto_enabled": false,
+        "optimization_goal": "turn qualified viewers into returning viewers and followers without weakening quality gates"
+      },
+      "id": "5"
+    }
+  ]
+}

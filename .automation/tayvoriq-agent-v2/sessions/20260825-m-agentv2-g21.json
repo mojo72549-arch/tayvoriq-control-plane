@@ -1,0 +1,107 @@
+{
+  "schema_version": "tayvoriq-growth-v2.1-editorial-recovery-v1",
+  "selection_id": "20260825-m-agentv2-g21",
+  "slot": "morning",
+  "target_date": "2026-08-25",
+  "created_at": "2026-08-24T13:22:59.242040Z",
+  "source_failed_run_id": 32729785616,
+  "source_provider_result": "GEMINI_429_THEN_HF_SEMANTIC_PREFILTER_ZERO",
+  "recovery_research_passes": 1,
+  "grounded_source_urls": [
+    "https://openai.com/index/chatgpt-ads-expands-across-europe/",
+    "https://www.euronews.com/next/2026/08/21/chatgpt-to-start-showing-ads-across-europe-next-week",
+    "https://www.reuters.com/sports/chinese-humanoid-robot-lightning-beats-human-100m-world-record-state-media-says-2026-08-22/",
+    "https://www.theverge.com/tech/983688/world-humanoid-robot-games-sprint-record-2026",
+    "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml",
+    "https://www.dwd.de/DE/wetter/thema_des_tages/2026/8/23.html",
+    "https://www.reuters.com/business/retail-consumer/shein-launches-up-18-billion-hong-kong-ipo-2026-08-23/",
+    "https://www.theguardian.com/business/2026/aug/24/fashion-giant-shein-27bn-valuation-hong-kong-market-debut",
+    "https://www.beehive.govt.nz/release/government-moves-ban-u16s-social-media",
+    "https://www.reuters.com/world/asia-pacific/new-zealand-introduce-bill-banning-social-media-children-under-16-2026-08-24/"
+  ],
+  "candidate_count": 5,
+  "selected_count": 5,
+  "candidate_count_policy": "quality_driven_4_to_5",
+  "growth_scores": [
+    94,
+    91,
+    92,
+    90,
+    90
+  ],
+  "audience_selection_scores": [
+    92,
+    90,
+    90,
+    87,
+    87
+  ],
+  "duplicate_reports": [
+    {
+      "id": "1",
+      "title": "Warum ChatGPT jetzt Werbung in Deutschland zeigt – und wer werbefrei bleibt",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "chatgpt-20260813-heat-consequences-1",
+      "nearest_prior_topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
+      "nearest_risk_score": 0.2187,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "2",
+      "title": "9,39 Sekunden: Humanoider Roboter schlägt Bolts Rekord – und kracht ins Polster",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "2026-08-07-evening-trend-1-ai-stocks-v7",
+      "nearest_prior_topic": "KI-Aktien unter Druck: starke Zahlen reichen plötzlich nicht mehr",
+      "nearest_risk_score": 0.157,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "3",
+      "title": "El Niño könnte historisch stark werden – was Europa davon wirklich spürt",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "chatgpt-20260813-heat-consequences-1",
+      "nearest_prior_topic": "Folgen der Hitze in Deutschland und Europa: Was 38 bis über 40 Grad jetzt auslösen",
+      "nearest_risk_score": 0.193,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "4",
+      "title": "Von 100 auf 27 Milliarden Dollar: Warum Sheins Börsenwert so abstürzt",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "2026-08-11-afternoon-trend-1-nvidia-500b-ai-infra-v1",
+      "nearest_prior_topic": "Nvidia und Wall Street: über 500 Milliarden Dollar für die KI-Infrastruktur",
+      "nearest_risk_score": 0.2,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    },
+    {
+      "id": "5",
+      "title": "Warum Neuseeland Social Media unter 16 verbieten will – und wie Alter geprüft wird",
+      "passed": true,
+      "checked_at": "2026-08-24T13:22:59.242040Z",
+      "history_candidates_checked": 25,
+      "nearest_prior_request_id": "prepared-20260824-m-ai-courts",
+      "nearest_prior_topic": "KI flutet deutsche Gerichte: Warum Chatbots die Justiz plötzlich ausbremsen",
+      "nearest_risk_score": 0.1149,
+      "duplicate_reasons": [],
+      "quality_gates_weakened": false
+    }
+  ],
+  "full_editorial_contract_passed": true,
+  "source_contract_passed": true,
+  "claim_coherence_passed": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "user_approval_required": true
+}
