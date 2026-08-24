@@ -149,6 +149,18 @@
         "repair_implementation_commit": "037579a2d11b4cb9b69d769c6c739396d41994b0",
         "reason": "bounded-deterministic-preflight-repair-recovery"
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-24T08:43:44.374354Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 32703181826,
+        "golden_path_run_id": 32707762050,
+        "recovery_generation": 2,
+        "failure_signature": "7446d3fed9efe1e3a594",
+        "reason": "bounded-shared-policy-recovery"
+      }
     }
   ],
   "telegram_only_user_path": true,
@@ -164,15 +176,16 @@
   "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
   "dispatch_claim_run_id": 32702501685,
   "dispatch_contract_sha256": "1b83d949b4450b48483706887ef4e7225bebd86a52a6f3e4a5967d290943f96d",
-  "golden_path_run_id": 32703181826,
+  "golden_path_run_id": 32707762050,
   "previous_golden_path_run_ids": [
-    32702517984
+    32702517984,
+    32703181826
   ],
-  "recovery_generation": 1,
-  "retry_of_run_id": 32702517984,
-  "replacement_reason": "BOUNDED_DETERMINISTIC_PREFLIGHT_REPAIR_RECOVERY",
-  "recovery_owner": "codex-targeted-repair-after-policy-stop",
-  "recovery_failure_signature": "6ac0d539406adf1c4a4e",
+  "recovery_generation": 2,
+  "retry_of_run_id": 32703181826,
+  "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
+  "recovery_owner": "tayvoriq-delivery-watch",
+  "recovery_failure_signature": "7446d3fed9efe1e3a594",
   "recovery_repair_implementation_commit": "037579a2d11b4cb9b69d769c6c739396d41994b0",
-  "recovery_dispatched_at": "2026-08-24T07:48:30Z"
+  "recovery_dispatched_at": "2026-08-24T08:43:44.374354Z"
 }
