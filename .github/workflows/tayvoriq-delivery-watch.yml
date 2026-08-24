@@ -56,7 +56,17 @@ jobs:
             run_id="$INPUT_RUN_ID"
           fi
           [[ "$run_id" =~ ^[0-9]+$ ]] || { echo "RECOVERY_RUN_ID_INVALID:$run_id"; exit 1; }
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" > /tmp/watched-run.json
+          completed=false
+          for poll in $(seq 1 24); do
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" > /tmp/watched-run.json
+            status=$(python -c 'import json; print(json.load(open("/tmp/watched-run.json", encoding="utf-8")).get("status") or "")')
+            if [ "$status" = "completed" ]; then
+              completed=true
+              break
+            fi
+            sleep 5
+          done
+          [ "$completed" = "true" ] || { echo "RECOVERY_SOURCE_RUN_NOT_TERMINAL:$run_id"; exit 1; }
           python - "$GITHUB_OUTPUT" <<'PY'
           import json, sys
           run=json.load(open('/tmp/watched-run.json', encoding='utf-8'))
@@ -115,7 +125,7 @@ jobs:
           PY
 
       - name: Capture failed-run evidence
-        if: steps.watched.outputs.conclusion != 'success'
+        if: steps.watched.outputs.conclusion != 'success' && steps.owner.outputs.found == 'true' && steps.owner.outputs.is_current == 'true'
         shell: bash
         env:
           RUN_ID: ${{ steps.watched.outputs.run_id }}
@@ -126,7 +136,7 @@ jobs:
 
       - name: Classify with shared recovery policy
         id: policy
-        if: steps.watched.outputs.conclusion != 'success'
+        if: steps.watched.outputs.conclusion != 'success' && steps.owner.outputs.found == 'true' && steps.owner.outputs.is_current == 'true'
         shell: bash
         env:
           RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
@@ -188,7 +198,8 @@ jobs:
           gh workflow run tayvoriq-deliver-video-now.yml --ref main \
             -f "topic=$TOPIC" \
             -f "trend_id=$TREND_ID" \
-            -f "source_request_id=$REQUEST_ID"
+            -f "source_request_id=$REQUEST_ID" \
+            -f "recovery_generation=$NEXT_GENERATION"
 
           new_run_id=""
           for poll in $(seq 1 30); do
