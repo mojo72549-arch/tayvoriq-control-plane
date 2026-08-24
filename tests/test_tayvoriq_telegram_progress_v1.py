@@ -54,15 +54,15 @@ class TelegramProgressUnitTests(unittest.TestCase):
             "Wenn die Erde plötzlich bricht",
             "31968359576",
             "12345",
-            elapsed_minutes=18,
+            elapsed_minutes=45,
         )
         text = payload["text"]
         self.assertIn("TAYVORIQ 45 %", text)
-        self.assertIn("seit: 18 Minuten", text)
+        self.assertIn("seit: 45 Minuten", text)
         self.assertIn("weiterhin aktiv", text)
         self.assertNotIn("85 %", text)
 
-    def test_long_render_heartbeat_is_one_time_watchdog_warning(self) -> None:
+    def test_eighteen_minutes_is_normal_runtime_not_a_watchdog_warning(self) -> None:
         payload = progress.build_payload(
             "render_heartbeat",
             "Wenn die Erde plötzlich bricht",
@@ -71,14 +71,12 @@ class TelegramProgressUnitTests(unittest.TestCase):
             elapsed_minutes=18,
         )
         text = payload["text"]
-        self.assertIn("dauert länger", text)
-        self.assertIn("einmaliger Watchdog-Hinweis", text)
-        self.assertIn("Telegram bleibt bis zum nächsten echten Meilenstein ruhig", text)
+        self.assertNotIn("dauert länger", text)
+        self.assertNotIn("Watchdog", text)
         self.assertNotIn("85 %", text)
 
     def test_heartbeat_schedule_suppresses_three_minute_operator_spam(self) -> None:
-        self.assertTrue(progress.heartbeat_due("render_heartbeat", 18))
-        for minute in (3, 6, 9, 12, 15, 21, 24, 27, 30, 33, 36, 39, 42):
+        for minute in (3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42):
             self.assertFalse(progress.heartbeat_due("render_heartbeat", minute))
         self.assertTrue(progress.heartbeat_due("render_heartbeat", 45))
         self.assertTrue(progress.heartbeat_due("master_ready", 24))
@@ -107,7 +105,7 @@ class TelegramProgressUnitTests(unittest.TestCase):
         )
         text = payload["text"]
         self.assertIn("TAYVORIQ 75 %", text)
-        self.assertIn("Render-Zwischenstand und Quellen sind gesichert", text)
+        self.assertIn("Render-Zwischenstand und Quellen bleiben gesichert", text)
         self.assertIn("finaler Master ist noch nicht bestätigt", text)
         self.assertIn("Qualitätsreparatur aktiv seit: 18 Minuten", text)
         self.assertNotIn("85 %", text)
@@ -141,13 +139,13 @@ class TelegramProgressUnitTests(unittest.TestCase):
             self.assertFalse(progress.should_send(path, 3, "quality_passed"))
             self.assertFalse(progress.should_send(path, 3, "review_ready"))
             self.assertFalse(progress.should_send(path, 3, "render_heartbeat", 6))
-            self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 18))
+            self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 18))
             self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 21))
             self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 24))
             self.assertFalse(progress.should_send(path, 1, "render_heartbeat", 27))
             self.assertTrue(progress.should_send(path, 1, "render_heartbeat", 45))
             self.assertFalse(progress.should_send(path, 1, "checkpoint_heartbeat", 3))
-            self.assertTrue(progress.should_send(path, 1, "checkpoint_heartbeat", 18))
+            self.assertFalse(progress.should_send(path, 1, "checkpoint_heartbeat", 18))
             self.assertTrue(progress.should_send(path, 1, "checkpoint_repair"))
             self.assertTrue(progress.should_send(path, 1, "master_ready"))
             self.assertTrue(progress.should_send(path, 1, "quality_passed"))
@@ -192,12 +190,12 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertIn("fail-safe-no-cancellation", workflow)
         self.assertIn("publication_performed", workflow)
 
-    def test_dispatcher_promises_real_milestones_not_silence(self) -> None:
-        workflow = (ROOT / ".github/workflows/tayvoriq-request-dispatch.yml").read_text(encoding="utf-8")
-        self.assertIn("TAYVORIQ 10 % · Produktion gestartet", workflow)
-        self.assertIn("Fakten gesichert", workflow)
-        self.assertIn("Videomaster erstellt", workflow)
-        self.assertIn("Quality-Gates bestanden", workflow)
+    def test_golden_path_promises_real_milestones_not_silence(self) -> None:
+        workflow = (ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml").read_text(encoding="utf-8")
+        self.assertIn("TAYVORIQ Produktion gestartet", workflow)
+        self.assertIn("--stage sources_locked", workflow)
+        self.assertIn("--stage master_ready", workflow)
+        self.assertIn("--stage quality_passed", workflow)
         self.assertNotIn("Nächste Nachricht erst beim fertigen Video-Review", workflow)
 
     def test_on_demand_status_bridge_is_bound_to_one_trigger_file(self) -> None:
@@ -221,9 +219,13 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertIs(policy["notify_only_on_real_state_change"], True)
         self.assertIs(policy["enabled_until_user_opt_out"], True)
         self.assertEqual(policy["watchdog_poll_interval_seconds"], 180)
-        self.assertEqual(policy["operator_heartbeat_notify_minutes"], [18, 45])
+        self.assertEqual(policy["operator_heartbeat_notify_minutes"], [45])
         self.assertIs(policy["suppress_intermediate_liveness_polls"], True)
-        self.assertIs(policy["immediate_failure_notification_enabled"], False)
+        self.assertIs(policy["immediate_failure_notification_enabled"], True)
+        self.assertEqual(
+            policy["recovery_replay_suppressed_stages"],
+            ["render_heartbeat", "checkpoint_repair", "checkpoint_heartbeat"],
+        )
         self.assertIn("checkpoint_repair", policy["milestones"])
         self.assertIn("checkpoint_heartbeat", policy["long_running_threshold_stages"])
 
