@@ -209,7 +209,8 @@ jobs:
             --ref main \
             -f "topic=$TOPIC" \
             -f "trend_id=$TREND_ID" \
-            -f "source_request_id=$REQUEST_ID"
+            -f "source_request_id=$REQUEST_ID" \
+            -f "recovery_generation=$NEXT_GENERATION"
 
           new_run_id=""
           for poll in $(seq 1 30); do
