@@ -101,7 +101,7 @@ MILESTONES = {
         None,
         "Technischer Stopp erkannt",
         "Der aktuelle Lauf wurde fail-closed beendet; Trendfreigabe und Quellen bleiben erhalten und es wurde nichts veröffentlicht.",
-        "Der Orchestrator übernimmt denselben freigegebenen Auftrag automatisch nach der Recovery-Policy.",
+        "Delivery Watch übernimmt denselben freigegebenen Auftrag und klassifiziert den Fehler. Bei freigegebenem Retry: Der Recovery Dispatcher startet und bindet den nächsten Run automatisch; Telegram zeigt die Bindung zwischen altem und neuem Run.",
     ),
 }
 
@@ -181,6 +181,17 @@ def immediate_failure_enabled(path: Path = DEFAULT_POLICY) -> bool:
 
 def recovery_generation() -> int:
     """Resolve durable recovery ownership from the repository root, never cwd."""
+    explicit = str(os.getenv("TAYVORIQ_RECOVERY_GENERATION") or "").strip()
+    if explicit:
+        try:
+            value = int(explicit)
+        except ValueError:
+            return 0
+        if 1 <= value <= 4:
+            return value
+        if value != 0:
+            return 0
+
     request_id = str(os.getenv("SOURCE_REQUEST_ID_PIN") or "").strip()
     if (
         not request_id
