@@ -72,6 +72,16 @@
         "predecessor_request_id": "prepared-20260824-m-ai-courts",
         "predecessor_run_id": 32665130932
       }
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-24T07:37:04.966442Z",
+      "actor": "tayvoriq-slot-serialization-releaser",
+      "meta": {
+        "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
+        "predecessor_request_id": "prepared-20260824-m-ai-courts",
+        "predecessor_run_id": 32698846786
+      }
     }
   ],
   "telegram_only_user_path": true,
@@ -80,8 +90,9 @@
   "auto_repair_until_review": true,
   "publication_requires_review": true,
   "contract_sha256": "4863ceca7e16212e0dd0bb3a4cabcdfce1f47c7a21b171791a667fe4a12e6a9e",
-  "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+  "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
   "slot_serialization_predecessor_request_id": "prepared-20260824-m-ai-courts",
-  "slot_serialization_predecessor_run_id": 32665130932,
-  "slot_serialization_reason": "MORNING_RUN_NOT_COMPLETED"
+  "slot_serialization_predecessor_run_id": 32698846786,
+  "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
+  "slot_serialization_released_at": "2026-08-24T07:37:04.966426Z"
 }
