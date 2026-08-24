@@ -1,18 +1,18 @@
 {
   "request": "tayvoriq-x-production",
-  "topic": "Humanoide Roboter aus Baden-Württemberg: Bosch startet 2027 die Produktion in Bühl",
+  "topic": "VW spricht von Mega-Krise: Warum Deutschlands Auto-Riese jetzt vor einem harten Umbau steht",
   "trend_id": "1",
-  "requested_at": "2026-08-23T11:24:00+02:00",
-  "request_nonce": "bosch-humanoid-evening-approved-20260823T112400CEST",
+  "requested_at": "2026-08-24T07:47:00Z",
+  "request_nonce": "vw-crisis-evening-recovery-g1-20260824T074700Z",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
-  "implementation_merge_sha": "8f810ea4784d3c10f1ac0cd78ed5b665a11f5d58",
+  "implementation_merge_sha": "037579a2d11b4cb9b69d769c6c739396d41994b0",
   "approved_trend_pinned": true,
-  "source_request_id": "telegram-1451-trend-1",
-  "technical_replay": false,
-  "fresh_recovery": false,
+  "source_request_id": "prepared-20260824-e-vw-crisis",
+  "technical_replay": true,
+  "fresh_recovery": true,
   "reuse_exact_source_request": true,
-  "suppress_start_notification": false,
+  "suppress_start_notification": true,
   "execution_backend": "github_hosted_public",
   "hardening": {
     "checkpoint_source_context_required": true,
@@ -45,6 +45,6 @@
     "contextual_cta_required": true,
     "production_contract_version_required": true
   },
-  "reason": "approved-evening-slot-bosch-humanoid-physical-ai",
+  "reason": "bounded-vw-recovery-after-source-bound-cta-test-isolation-fix",
   "slot": "evening"
 }
