@@ -45,14 +45,20 @@ def test_recovery_generation_is_resolved_from_workspace_not_current_directory(tm
     request_dir = workspace / "requests"
     request_dir.mkdir(parents=True)
     request_id = "telegram-1268-trend-1"
+    run_id = 32649570583
     (request_dir / f"{request_id}.json").write_text(
-        json.dumps({"request_id": request_id, "recovery_generation": 12}),
+        json.dumps({
+            "request_id": request_id,
+            "recovery_generation": 12,
+            "golden_path_run_id": run_id,
+        }),
         encoding="utf-8",
     )
     implementation = workspace / "implementation"
     implementation.mkdir()
     monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
     monkeypatch.setenv("SOURCE_REQUEST_ID_PIN", request_id)
+    monkeypatch.setenv("GITHUB_RUN_ID", str(run_id))
     monkeypatch.chdir(implementation)
     assert progress.recovery_generation() == 12
 
