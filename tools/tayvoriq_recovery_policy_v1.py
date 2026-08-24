@@ -10,12 +10,14 @@ from pathlib import Path
 
 EXTERNAL_PATTERNS = (
     r"external_auth_blocker",
-    r"missing secret",
+    r"external_action_required",
+    r"missing (?:required )?secret",
     r"401 client error",
     r"unauthorized",
-    r"billing",
-    r"spending limit",
-    r"payment",
+    r"credentials?[^\n]*(?:missing|invalid|expired)",
+    r"billing (?:account|status)[^\n]*(?:disabled|suspended|blocked)",
+    r"spending limit (?:reached|exceeded)",
+    r"payment required",
     r"permission denied",
 )
 
@@ -23,6 +25,12 @@ DUPLICATE_PATTERNS = (
     r"duplicate_content_blocked",
     r"dublette verhindert",
     r"duplicate blocked",
+)
+
+PUBLISHABLE_RETRY_PATTERNS = (
+    r"checkpoint handoff:\s*state=publishable_output_retry_required",
+    r"recovery=publishable_output_retry_required",
+    r'"state"\s*:\s*"publishable_output_retry_required"',
 )
 
 TRANSIENT_PATTERNS = (
@@ -113,6 +121,17 @@ def classify_failure(
             return RecoveryDecision("deterministic", state, False, "none", generation, None, maximum, _stable_signature(state, text), "The exact approved request was incorrectly treated as a duplicate during recovery.")
         state = "DUPLICATE_CONTENT_BLOCKED"
         return RecoveryDecision("duplicate", state, False, "none", generation, None, maximum, _stable_signature(state, text), "The duplicate gate intentionally blocked this content.")
+
+    # A final publishability handoff is authoritative. Provider fallback logs may
+    # contain earlier 429/quota/billing wording even though a later provider
+    # completed successfully. Those historical lines must not override the
+    # terminal gate-specific state and strand a repairable video.
+    if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
+        if generation >= maximum:
+            state = "RECOVERY_CIRCUIT_OPEN"
+            return RecoveryDecision("exhausted", state, False, "none", generation, None, maximum, _stable_signature(state, text), f"Fresh recovery limit reached ({generation}/{maximum}).")
+        state = "REQUEST_BOUND_RECOVERY_REQUIRED"
+        return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "The final publishability gate requires a bounded request-bound recovery generation.")
 
     if attempt < 3 and _matches(lowered, TRANSIENT_PATTERNS):
         state = "SAME_RUN_TRANSIENT_RECOVERY"
