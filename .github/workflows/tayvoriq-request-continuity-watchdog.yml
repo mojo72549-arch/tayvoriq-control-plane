@@ -35,7 +35,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Resolve exact active Telegram request
+      - name: Resolve newest exact Telegram-bound auto-repair request
         id: active
         shell: bash
         run: |
@@ -49,49 +49,79 @@ jobs:
               'trend_id':'', 'run_id':'', 'run_attempt':'1', 'generation':'0',
               'conclusion':''
           }
-          pointer_path = Path('.github/run-now/tayvoriq-x-request.json')
-          if pointer_path.is_file():
-              pointer = json.loads(pointer_path.read_text(encoding='utf-8'))
-              request_id = str(pointer.get('source_request_id') or '').strip()
-              if request_id and all(c not in request_id for c in '/\\\r\n') and request_id not in {'.','..'}:
-                  request_path = Path('requests') / f'{request_id}.json'
-                  if request_path.is_file():
-                      data = json.loads(request_path.read_text(encoding='utf-8'))
-                      valid = (
-                          str(data.get('request_id') or '').strip() == request_id
-                          and str(data.get('source') or '').strip() == 'telegram_trend_approval'
-                          and str(data.get('status') or '').strip() == 'DISPATCHED'
-                          and str(pointer.get('topic') or '').strip() == str(data.get('topic') or '').strip()
-                          and str(pointer.get('trend_id') or '').strip() == str(data.get('trend_id') or '').strip()
+          candidates = []
+          for request_path in sorted(Path('requests').glob('*.json')):
+              try:
+                  data = json.loads(request_path.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              request_id = str(data.get('request_id') or '').strip()
+              source_context = (
+                  data.get('source_context')
+                  if isinstance(data.get('source_context'), dict)
+                  else {}
+              )
+              telegram_bound = (
+                  str(data.get('source') or '').strip() == 'telegram_trend_approval'
+                  or data.get('telegram_only_user_path') is True
+                  or source_context.get('telegram_only_user_path') is True
+                  or str(data.get('communication_channel') or '').strip() == 'telegram'
+              )
+              auto_repair = (
+                  data.get('auto_repair_until_review') is True
+                  or source_context.get('auto_repair_until_review') is True
+                  or str(data.get('source') or '').strip() == 'telegram_trend_approval'
+              )
+              valid = (
+                  request_id
+                  and request_path.name == f'{request_id}.json'
+                  and all(c not in request_id for c in '/\\\r\n')
+                  and request_id not in {'.', '..'}
+                  and str(data.get('status') or '').strip() == 'DISPATCHED'
+                  and telegram_bound
+                  and auto_repair
+              )
+              try:
+                  run_id = int(data.get('golden_path_run_id') or 0)
+              except (TypeError, ValueError):
+                  run_id = 0
+              if valid and run_id:
+                  candidates.append((run_id, request_path, data))
+
+          # The immutable request bound to the newest Golden Path run owns
+          # continuity. A stale global pointer must never pull an older failed
+          # topic (for example the exhausted Bosch request) back into recovery.
+          if candidates:
+              run_id, request_path, data = max(candidates, key=lambda item: item[0])
+              request_id = str(data.get('request_id') or '').strip()
+              try:
+                  raw = subprocess.check_output(
+                      ['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'],
+                      text=True,
+                  )
+                  run = json.loads(raw)
+              except Exception as exc:
+                  print(f'ACTIVE_REQUEST_RUN_LOOKUP_FAILED:{exc}')
+              else:
+                  status = str(run.get('status') or '')
+                  conclusion = str(run.get('conclusion') or '')
+                  if status == 'completed' and conclusion != 'success':
+                      out.update({
+                          'found':'true',
+                          'request_file':str(request_path),
+                          'request_id':request_id,
+                          'topic':str(data.get('topic') or '').strip(),
+                          'trend_id':str(data.get('trend_id') or '').strip(),
+                          'run_id':str(run_id),
+                          'run_attempt':str(max(1, int(run.get('run_attempt') or 1))),
+                          'generation':str(max(0, int(data.get('recovery_generation') or 0))),
+                          'conclusion':conclusion,
+                      })
+                  else:
+                      print(
+                          f'NEWEST_REQUEST_NOT_RECOVERABLE_YET:'
+                          f'{request_id}:{run_id}:{status}:{conclusion}'
                       )
-                      try:
-                          run_id = int(data.get('golden_path_run_id') or 0)
-                      except (TypeError, ValueError):
-                          run_id = 0
-                      if valid and run_id:
-                          try:
-                              raw = subprocess.check_output(
-                                  ['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'],
-                                  text=True,
-                              )
-                              run = json.loads(raw)
-                          except Exception as exc:
-                              print(f'ACTIVE_REQUEST_RUN_LOOKUP_FAILED:{exc}')
-                          else:
-                              status = str(run.get('status') or '')
-                              conclusion = str(run.get('conclusion') or '')
-                              if status == 'completed' and conclusion != 'success':
-                                  out.update({
-                                      'found':'true',
-                                      'request_file':str(request_path),
-                                      'request_id':request_id,
-                                      'topic':str(data.get('topic') or '').strip(),
-                                      'trend_id':str(data.get('trend_id') or '').strip(),
-                                      'run_id':str(run_id),
-                                      'run_attempt':str(max(1, int(run.get('run_attempt') or 1))),
-                                      'generation':str(max(0, int(data.get('recovery_generation') or 0))),
-                                      'conclusion':conclusion,
-                                  })
 
           with open(sys.argv[1], 'a', encoding='utf-8') as handle:
               for key, value in out.items():
@@ -228,8 +258,24 @@ jobs:
           data=json.loads(path.read_text(encoding='utf-8'))
           if str(data.get('request_id') or '').strip() != request_id:
               raise SystemExit('REQUEST_ID_CHANGED_DURING_CONTINUITY_RECOVERY')
-          if str(data.get('source') or '').strip() != 'telegram_trend_approval':
-              raise SystemExit('NON_TELEGRAM_REQUEST_NOT_RECOVERABLE')
+          source_context=(
+              data.get('source_context')
+              if isinstance(data.get('source_context'), dict)
+              else {}
+          )
+          telegram_bound=(
+              str(data.get('source') or '').strip() == 'telegram_trend_approval'
+              or data.get('telegram_only_user_path') is True
+              or source_context.get('telegram_only_user_path') is True
+              or str(data.get('communication_channel') or '').strip() == 'telegram'
+          )
+          auto_repair=(
+              data.get('auto_repair_until_review') is True
+              or source_context.get('auto_repair_until_review') is True
+              or str(data.get('source') or '').strip() == 'telegram_trend_approval'
+          )
+          if not telegram_bound or not auto_repair:
+              raise SystemExit('REQUEST_NOT_TELEGRAM_BOUND_AUTO_REPAIR')
           if int(data.get('golden_path_run_id') or 0) != old_run:
               raise SystemExit('REQUEST_ALREADY_REBOUND_BY_OTHER_RECOVERY_OWNER')
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
@@ -241,7 +287,7 @@ jobs:
           data['status']='DISPATCHED'
           data['recovery_generation']=generation
           data['retry_of_run_id']=old_run
-          data['replacement_reason']='BOUNDED_ACTIVE_TELEGRAM_CONTINUITY_RECOVERY'
+          data['replacement_reason']='BOUNDED_ACTIVE_REVIEW_CONTINUITY_RECOVERY'
           data['recovery_owner']='tayvoriq-request-continuity-watchdog'
           data['recovery_failure_signature']=signature
           data['recovery_dispatched_at']=now
@@ -252,7 +298,7 @@ jobs:
                   'golden_path_run_id':new_run,
                   'recovery_generation':generation,
                   'failure_signature':signature,
-                  'reason':'bounded-active-telegram-request-continuity'
+                  'reason':'bounded-active-review-request-continuity'
               }
           }]
           path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

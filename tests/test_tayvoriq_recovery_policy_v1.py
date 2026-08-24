@@ -96,6 +96,36 @@ def test_external_blocker_never_consumes_recovery_generation():
     assert decision.next_generation is None
 
 
+def test_successful_provider_fallback_does_not_fake_external_blocker():
+    logs = """
+    provider_failures_before_success: Gemini HTTP 429: You exceeded your quota;
+    please check your plan and billing details.
+    selected_model: gemini-3.5-flash-lite
+    Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1
+    Production is not publishable: controller=CONTROLLER_TIMEOUT/1
+    recovery=PUBLISHABLE_OUTPUT_RETRY_REQUIRED/1
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=0,
+        max_generations=4,
+    )
+    assert decision.mode == "fresh"
+    assert decision.state == "REQUEST_BOUND_RECOVERY_REQUIRED"
+    assert decision.next_generation == 1
+
+
+def test_explicit_external_state_still_wins_over_publishability_text():
+    decision = classify_failure(
+        "EXTERNAL_ACTION_REQUIRED: Missing required secret GEMINI_API_KEY\n"
+        "recovery=PUBLISHABLE_OUTPUT_RETRY_REQUIRED/1",
+        recovery_generation=1,
+    )
+    assert decision.mode == "external"
+    assert decision.next_generation is None
+
+
 def test_failure_signature_is_stable_for_same_failed_test_across_runs():
     a = classify_failure(
         "FAILED tests/test_a.py::test_contract run=111\n1 failed",
