@@ -51,6 +51,9 @@ jobs:
           from pathlib import Path
           policy=json.loads(Path('state/tayvoriq-notification-policy.json').read_text(encoding='utf-8'))
           assert policy['watchdog_poll_interval_seconds'] == 180
-          assert policy['operator_heartbeat_notify_minutes'] == [18, 45]
+          assert policy['operator_heartbeat_notify_minutes'] == [45]
+          assert policy['recovery_replay_suppressed_stages'] == [
+              'render_heartbeat', 'checkpoint_repair', 'checkpoint_heartbeat'
+          ]
           assert policy['suppress_intermediate_liveness_polls'] is True
           PY

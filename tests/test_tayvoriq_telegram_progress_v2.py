@@ -45,14 +45,20 @@ def test_recovery_generation_is_resolved_from_workspace_not_current_directory(tm
     request_dir = workspace / "requests"
     request_dir.mkdir(parents=True)
     request_id = "telegram-1268-trend-1"
+    run_id = 32649570583
     (request_dir / f"{request_id}.json").write_text(
-        json.dumps({"request_id": request_id, "recovery_generation": 12}),
+        json.dumps({
+            "request_id": request_id,
+            "recovery_generation": 12,
+            "golden_path_run_id": run_id,
+        }),
         encoding="utf-8",
     )
     implementation = workspace / "implementation"
     implementation.mkdir()
     monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
     monkeypatch.setenv("SOURCE_REQUEST_ID_PIN", request_id)
+    monkeypatch.setenv("GITHUB_RUN_ID", str(run_id))
     monkeypatch.chdir(implementation)
     assert progress.recovery_generation() == 12
 
@@ -80,20 +86,25 @@ def test_recovery_generation_suppresses_stale_workspace_snapshot(tmp_path, monke
 
 
 def test_watchdog_polling_every_three_minutes_does_not_spam_telegram():
-    # Exact regression for the operator-visible 18/21/24/27-minute spam.
-    assert progress.heartbeat_due("render_heartbeat", 18)
-    assert not progress.heartbeat_due("render_heartbeat", 21)
-    assert not progress.heartbeat_due("render_heartbeat", 24)
-    assert not progress.heartbeat_due("render_heartbeat", 27)
-    assert not progress.heartbeat_due("render_heartbeat", 30)
+    # Premium dual-voice/render work commonly exceeds 18 minutes. The internal
+    # watchdog keeps polling, but Telegram remains silent until minute 45.
+    for minute in (3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42):
+        assert not progress.heartbeat_due("render_heartbeat", minute)
     assert progress.heartbeat_due("render_heartbeat", 45)
 
 
 def test_checkpoint_watchdog_uses_same_quiet_threshold_policy():
-    assert progress.heartbeat_due("checkpoint_heartbeat", 18)
-    for minute in (3, 6, 9, 12, 15, 21, 24, 27, 30, 33, 42):
+    for minute in (3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 42):
         assert not progress.heartbeat_due("checkpoint_heartbeat", minute)
     assert progress.heartbeat_due("checkpoint_heartbeat", 45)
+
+
+def test_recovery_generation_does_not_repeat_repair_noise():
+    assert progress.RECOVERY_REPLAY_SUPPRESSED_STAGES == {
+        "render_heartbeat",
+        "checkpoint_repair",
+        "checkpoint_heartbeat",
+    }
 
 
 def test_real_milestones_are_always_due_immediately():
@@ -121,12 +132,11 @@ def test_long_running_notice_promises_silent_internal_polling_afterward():
         "Testthema",
         "32389787423",
         "1234",
-        elapsed_minutes=18,
-        generation=12,
+        elapsed_minutes=45,
     )
     text = payload["text"]
-    assert "einmaliger Watchdog-Hinweis" in text
-    assert "Telegram bleibt bis zum nächsten echten Meilenstein ruhig" in text
+    assert "ungewöhnlich lange aktiv" in text
+    assert "Telegram meldet erst wieder einen echten Zustandswechsel oder einen Fehler" in text
 
 
 def test_checkpoint_is_not_mislabeled_as_final_master():
