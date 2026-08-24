@@ -36,11 +36,45 @@
       }
     ],
     "fallback_editorial_answers": {
-      "what_happened": "VW bereitet harten Umbau vor und warnt vor globaler Branchenkrise.",
-      "why_happening": "Weil China-Druck, Zölle und hohe Kosten die Wettbewerbsfähigkeit belasten.",
-      "who_is_affected": "Betroffen sind Beschäftigte, deutsche Werke, Zulieferer und der Industriestandort Deutschland.",
-      "personal_impact": "Für dich zeigt VW, wie tief Deutschlands Autoindustrie gerade umgebaut wird.",
-      "action_now": "Beobachte, welche Werke und Maßnahmen der Konzern tatsächlich beschließt."
+      "what_happened": "Volkswagen schlägt Alarm: Die Autoindustrie stecke in einer Mega-Krise; weitere Einschnitte bleiben offen.",
+      "why_happening": "Weil China-Druck, Zölle und Kosten den Umbau härter machen.",
+      "who_is_affected": "Betroffen sind Beschäftigte, Werke, Zulieferer und ganze Industrieregionen.",
+      "personal_impact": "Für dich ist VW ein Frühwarnsignal für Deutschlands Wirtschaft.",
+      "action_now": "Prüfe jetzt echte Werkentscheidungen, Sparziele und den tatsächlichen Stellenabbau."
+    },
+    "script_quality_contract": {
+      "version": "v1-five-beat-viewer-value",
+      "required_beats": [
+        "what_happened",
+        "why_happening",
+        "who_is_affected",
+        "personal_impact",
+        "action_now"
+      ],
+      "viewer_payoff_required": true,
+      "natural_spoken_german_required": true,
+      "generic_cta_forbidden": true
+    },
+    "audience_cta_contract": {
+      "version": "v1-source-bound-viewer-value",
+      "viewer_value": "verifizierte VW-Updates mit konkreter Einordnung ihrer Folgen",
+      "next_video_bridge": "weitere bestätigte Entscheidungen im VW-Umbau",
+      "ctas_by_platform": {
+        "youtube_shorts": "Abonniere TAYVORIQ für verifizierte VW-Updates: Wir prüfen ihre konkreten Folgen für dich.",
+        "tiktok": "Folge TAYVORIQ für verifizierte VW-Updates: Wir prüfen ihre konkreten Folgen für dich."
+      },
+      "manipulative_pressure_forbidden": true
+    },
+    "voice_quality_contract": {
+      "version": "v1-natural-german-vw",
+      "minimum_transcript_similarity": 0.94,
+      "natural_german_narrator_required": true,
+      "single_coherent_take_required": true,
+      "robotic_cadence_forbidden": true,
+      "speech_only_pronunciation_surfaces": {
+        "VW": "Fau Weh"
+      },
+      "visible_script_and_captions_unchanged": true
     },
     "factual_guardrails": [
       "Die Zahl 50.000 nicht als beschlossene zusätzliche Stellenstreichung darstellen.",
@@ -56,7 +90,7 @@
     "telegram_only_user_path": true,
     "auto_repair_until_review": true
   },
-  "source_context_sha256": "a42fa36bfc3d182c8d570446a502b57ee9365d947f1304cabd271dd3b168dedd",
+  "source_context_sha256": "0c39321fda31d8394bc1122f58c944dbdd5a9eefca7bcfe5cc776007d21cf88f",
   "state_history": [
     {
       "state": "APPROVED",
@@ -75,6 +109,16 @@
     },
     {
       "state": "APPROVED",
+      "at": "2026-08-24T07:34:00Z",
+      "actor": "user_quality_improvement_authorization",
+      "meta": {
+        "script_contract": "five-beat-viewer-value",
+        "cta_contract": "source-bound-platform-specific",
+        "voice_contract": "natural-german-vw-with-strict-transcript-floor"
+      }
+    },
+    {
+      "state": "APPROVED",
       "at": "2026-08-24T07:37:04.966442Z",
       "actor": "tayvoriq-slot-serialization-releaser",
       "meta": {
@@ -89,10 +133,10 @@
   "communication_channel": "telegram",
   "auto_repair_until_review": true,
   "publication_requires_review": true,
-  "contract_sha256": "4863ceca7e16212e0dd0bb3a4cabcdfce1f47c7a21b171791a667fe4a12e6a9e",
+  "contract_sha256": "1b83d949b4450b48483706887ef4e7225bebd86a52a6f3e4a5967d290943f96d",
   "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
+  "slot_serialization_released_at": "2026-08-24T07:37:04.966426Z",
   "slot_serialization_predecessor_request_id": "prepared-20260824-m-ai-courts",
   "slot_serialization_predecessor_run_id": 32698846786,
-  "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
-  "slot_serialization_released_at": "2026-08-24T07:37:04.966426Z"
+  "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED"
 }
