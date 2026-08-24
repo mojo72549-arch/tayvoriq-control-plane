@@ -66,6 +66,8 @@ function selectionFromCallback(callbackData) {
 }
 
 export async function selectionIsActive(env, selectionId) {
+  if (await selectionIsManifested(env, selectionId)) return true;
+
   const current = await currentSelection(env);
   const currentId = String(current?.selection_id || '').trim();
   if (!currentId || currentId === selectionId) return true;
@@ -85,6 +87,33 @@ export async function selectionIsActive(env, selectionId) {
     && ['morning', 'evening'].includes(currentSlot)
     && requestedSlot !== currentSlot
   );
+}
+
+async function selectionIsManifested(env, selectionId) {
+  const repository = env.GITHUB_REPOSITORY || 'mojo72549-arch/tayvoriq-control-plane';
+  try {
+    const response = await fetch(
+      `https://raw.githubusercontent.com/${repository}/main/state/tayvoriq-active-trend-selections.json`,
+      { headers: { 'User-Agent': 'tayvoriq-telegram-approval' } },
+    );
+    if (!response.ok) return false;
+    const manifest = await response.json();
+    const activeIds = Array.isArray(manifest?.active_selection_ids)
+      ? manifest.active_selection_ids.map(value => String(value || '').trim())
+      : [];
+    const expiresAt = Date.parse(String(manifest?.expires_at || ''));
+    if (!activeIds.includes(selectionId) || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      return false;
+    }
+    const requested = await selectionSnapshot(env, selectionId);
+    if (!requested || requested.superseded === true) return false;
+    const manifestDate = String(manifest?.target_date || '').trim();
+    const requestedDate = String(requested.target_date || requested.date || '').trim();
+    return Boolean(manifestDate && manifestDate === requestedDate);
+  } catch (error) {
+    console.error('active selection manifest lookup failed', String(error));
+    return false;
+  }
 }
 
 async function currentSelection(env) {

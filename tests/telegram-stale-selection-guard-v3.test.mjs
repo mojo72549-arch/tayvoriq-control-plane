@@ -8,6 +8,9 @@ test('stale trend callback is blocked without a chat error message', async () =>
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), options });
+    if (String(url).endsWith('/state/tayvoriq-active-trend-selections.json')) {
+      return new Response('not found', { status: 404 });
+    }
     if (String(url).endsWith('/.github/run-now/tayvoriq-trend-request.json')) {
       return new Response(JSON.stringify({
         selection_id: '20260825-e-agentv2-g21',
@@ -87,6 +90,9 @@ test('same-day morning and evening selections remain independently approvable', 
   };
   globalThis.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), options });
+    if (String(url).endsWith('/state/tayvoriq-active-trend-selections.json')) {
+      return new Response('not found', { status: 404 });
+    }
     if (String(url).endsWith('/.github/run-now/tayvoriq-trend-request.json')) {
       return new Response(JSON.stringify({
         selection_id: '20260825-e-agentv2-g21',
@@ -142,6 +148,37 @@ test('same-day morning and evening selections remain independently approvable', 
     assert.equal(await response.text(), 'ok');
     assert.equal(calls.filter(call => call.url.includes('/editMessageText')).length, 1);
     assert.equal(calls.filter(call => call.url.includes('/editMessageReplyMarkup')).length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('an unexpired manifest activates both recovery selections without replacing the canonical request', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    if (String(url).endsWith('/state/tayvoriq-active-trend-selections.json')) {
+      return new Response(JSON.stringify({
+        target_date: '2026-08-25',
+        active_selection_ids: ['20260825-m-agentv2-g21', '20260825-e-agentv2-g21'],
+        expires_at: '2999-08-26T04:00:00Z',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    if (String(url).includes('/selections/20260825-m-agentv2-g21.json')) {
+      return new Response(JSON.stringify({
+        selection_id: '20260825-m-agentv2-g21',
+        target_date: '2026-08-25',
+        slot: 'morning',
+        superseded: false,
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+
+  try {
+    const { selectionIsActive } = await import('../infra/telegram-approval-worker-v3.js');
+    assert.equal(await selectionIsActive({
+      GITHUB_REPOSITORY: 'mojo72549-arch/tayvoriq-control-plane',
+    }, '20260825-m-agentv2-g21'), true);
   } finally {
     globalThis.fetch = originalFetch;
   }
