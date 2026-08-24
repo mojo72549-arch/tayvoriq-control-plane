@@ -101,11 +101,28 @@
         "slot_serialization_predecessor_run_id": 32733191373,
         "slot_serialization_reason": "MORNING_RUN_NOT_COMPLETED"
       }
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-08-24T15:33:26.345Z",
+      "actor": "codex-verified-slot-release",
+      "meta": {
+        "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
+        "predecessor_request_id": "telegram-1612-trend-1",
+        "predecessor_run_id": 32741631552,
+        "verified_final_steps": [
+          "Assert publishable production output",
+          "Validate publication quality",
+          "Publish review page",
+          "Send Telegram review"
+        ]
+      }
     }
   ],
   "contract_sha256": "d986fd67abd4d415444cde8a8de79147e4c6fdf3e0da4e14e5de24899fbe44ff",
-  "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+  "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
   "slot_serialization_predecessor_request_id": "telegram-1612-trend-1",
-  "slot_serialization_predecessor_run_id": 32733191373,
-  "slot_serialization_reason": "MORNING_RUN_NOT_COMPLETED"
+  "slot_serialization_predecessor_run_id": 32741631552,
+  "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
+  "slot_serialization_released_at": "2026-08-24T15:33:26.345Z"
 }
