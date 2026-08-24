@@ -161,6 +161,18 @@
         "failure_signature": "7446d3fed9efe1e3a594",
         "reason": "bounded-shared-policy-recovery"
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-24T09:00:07Z",
+      "actor": "codex-targeted-root-cause-repair-supersede",
+      "meta": {
+        "retry_of_run_id": 32707762050,
+        "golden_path_run_id": 32709156446,
+        "recovery_generation": 2,
+        "repair_implementation_commit": "4dfad79737f4a2578878c36b39ea4616f7f6a210",
+        "reason": "replace-stale-code-recovery-with-brand-audio-and-vw-visual-root-cause-fix"
+      }
     }
   ],
   "telegram_only_user_path": true,
@@ -176,16 +188,21 @@
   "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
   "dispatch_claim_run_id": 32702501685,
   "dispatch_contract_sha256": "1b83d949b4450b48483706887ef4e7225bebd86a52a6f3e4a5967d290943f96d",
-  "golden_path_run_id": 32707762050,
+  "golden_path_run_id": 32709156446,
   "previous_golden_path_run_ids": [
     32702517984,
-    32703181826
+    32703181826,
+    32707762050
   ],
   "recovery_generation": 2,
-  "retry_of_run_id": 32703181826,
-  "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
-  "recovery_owner": "tayvoriq-delivery-watch",
+  "retry_of_run_id": 32707762050,
+  "replacement_reason": "TARGETED_ROOT_CAUSE_REPAIR_SUPERSEDE",
+  "recovery_owner": "codex-targeted-root-cause-repair",
   "recovery_failure_signature": "7446d3fed9efe1e3a594",
-  "recovery_repair_implementation_commit": "037579a2d11b4cb9b69d769c6c739396d41994b0",
-  "recovery_dispatched_at": "2026-08-24T08:43:44.374354Z"
+  "recovery_repair_implementation_commit": "4dfad79737f4a2578878c36b39ea4616f7f6a210",
+  "recovery_dispatched_at": "2026-08-24T09:00:07Z",
+  "replay_bound_by": "codex-targeted-root-cause-repair-supersede",
+  "replay_trigger_sha": "b8739334b38e0e8fead86e93d49802ab08e9137c",
+  "replay_start_mode": "push_verified",
+  "replay_dispatched_at": "2026-08-24T09:00:07Z"
 }
