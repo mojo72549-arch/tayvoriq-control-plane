@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1613-trend-1",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Was bedeutet Porsches MHP-Verkauf an TCS für Ludwigsburg?",
@@ -122,6 +122,11 @@
       "state": "DISPATCHING",
       "at": "2026-08-24T15:33:41.671483+00:00",
       "actor": "request-dispatcher:32745586939"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-24T15:33:52.574522+00:00",
+      "actor": "request-dispatcher:32745586939"
     }
   ],
   "contract_sha256": "d986fd67abd4d415444cde8a8de79147e4c6fdf3e0da4e14e5de24899fbe44ff",
@@ -131,5 +136,6 @@
   "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
   "slot_serialization_released_at": "2026-08-24T15:33:26.345Z",
   "dispatch_claim_run_id": 32745586939,
-  "dispatch_contract_sha256": "d986fd67abd4d415444cde8a8de79147e4c6fdf3e0da4e14e5de24899fbe44ff"
+  "dispatch_contract_sha256": "d986fd67abd4d415444cde8a8de79147e4c6fdf3e0da4e14e5de24899fbe44ff",
+  "golden_path_run_id": 32745609040
 }
