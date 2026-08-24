@@ -26,8 +26,8 @@ export default {
       return v2.fetch(request, env);
     }
 
-    const currentSelection = await currentSelectionId(env);
-    if (!currentSelection || currentSelection === selectionId) {
+    const activeSelection = await selectionIsActive(env, selectionId);
+    if (activeSelection) {
       return v2.fetch(request, env);
     }
 
@@ -65,19 +65,56 @@ function selectionFromCallback(callbackData) {
   return '';
 }
 
-async function currentSelectionId(env) {
+export async function selectionIsActive(env, selectionId) {
+  const current = await currentSelection(env);
+  const currentId = String(current?.selection_id || '').trim();
+  if (!currentId || currentId === selectionId) return true;
+
+  const requested = await selectionSnapshot(env, selectionId);
+  if (!requested || requested.superseded === true) return false;
+
+  const requestedDate = String(requested.target_date || requested.date || '').trim();
+  const currentDate = String(current.target_date || current.date || '').trim();
+  const requestedSlot = String(requested.slot || '').trim();
+  const currentSlot = String(current.slot || '').trim();
+  return Boolean(
+    requestedDate
+    && currentDate
+    && requestedDate === currentDate
+    && ['morning', 'evening'].includes(requestedSlot)
+    && ['morning', 'evening'].includes(currentSlot)
+    && requestedSlot !== currentSlot
+  );
+}
+
+async function currentSelection(env) {
   const repository = env.GITHUB_REPOSITORY || 'mojo72549-arch/tayvoriq-control-plane';
   try {
     const response = await fetch(
       `https://raw.githubusercontent.com/${repository}/main/.github/run-now/tayvoriq-trend-request.json`,
       { headers: { 'User-Agent': 'tayvoriq-telegram-approval' } },
     );
-    if (!response.ok) return '';
-    const data = await response.json();
-    return String(data?.selection_id || '').trim();
+    if (!response.ok) return null;
+    return await response.json();
   } catch (error) {
     console.error('current selection lookup failed', String(error));
-    return '';
+    return null;
+  }
+}
+
+async function selectionSnapshot(env, selectionId) {
+  const repository = env.GITHUB_REPOSITORY || 'mojo72549-arch/tayvoriq-control-plane';
+  try {
+    const response = await fetch(
+      `https://raw.githubusercontent.com/${repository}/main/.automation/tayvoriq-agent-v2/selections/${selectionId}.json`,
+      { headers: { 'User-Agent': 'tayvoriq-telegram-approval' } },
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return String(data?.selection_id || '').trim() === selectionId ? data : null;
+  } catch (error) {
+    console.error('selection snapshot lookup failed', String(error));
+    return null;
   }
 }
 
