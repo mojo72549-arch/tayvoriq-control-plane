@@ -1,0 +1,75 @@
+name: TAYVORIQ Review Pages Preservation Guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-deliver-video-now.yml
+      - .github/workflows/tayvoriq-review-pages-preservation-guard.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tayvoriq-review-pages-preservation-guard
+  cancel-in-progress: false
+
+jobs:
+  preserve-review-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce additive review publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
+          text = path.read_text(encoding='utf-8')
+          destructive = '          rm -rf pages-worktree/tayvoriq\n          mkdir -p pages-worktree/tayvoriq\n'
+          additive = (
+              '          # Keep every immutable runs/<review_id> directory. '
+              'Only latest/current files may be refreshed.\n'
+              '          mkdir -p pages-worktree/tayvoriq\n'
+          )
+          count = text.count(destructive)
+          if count > 1:
+              raise SystemExit(f'REVIEW_PRESERVATION_AMBIGUOUS: destructive block count={count}')
+          if count == 1:
+              path.write_text(text.replace(destructive, additive, 1), encoding='utf-8')
+              print('REVIEW_PRESERVATION_REPAIRED')
+          else:
+              if 'rm -rf pages-worktree/tayvoriq' in text:
+                  raise SystemExit('REVIEW_PRESERVATION_FAILED: unrecognized destructive deletion remains')
+              print('REVIEW_PRESERVATION_ALREADY_SAFE')
+          PY
+
+      - name: Commit repair when needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- .github/workflows/tayvoriq-deliver-video-now.yml; then
+            echo 'No repair commit required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/tayvoriq-deliver-video-now.yml
+          git commit -m 'fix: make TAYVORIQ review publication additive'
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Assert destructive deletion is absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Fq 'rm -rf pages-worktree/tayvoriq' .github/workflows/tayvoriq-deliver-video-now.yml
+          grep -Fq 'rsync -a implementation/site/tayvoriq/ pages-worktree/tayvoriq/' .github/workflows/tayvoriq-deliver-video-now.yml
+          echo 'TAYVORIQ_REVIEW_PRESERVATION_CONTRACT_PASSED'
