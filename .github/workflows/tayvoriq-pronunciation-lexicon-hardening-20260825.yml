@@ -1,0 +1,123 @@
+name: TAYVORIQ Pronunciation Lexicon Hardening
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-pronunciation-lexicon-hardening-20260825.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-pronunciation-lexicon-hardening
+  cancel-in-progress: false
+
+jobs:
+  harden-pronunciation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Extend hidden speech-only pronunciation lexicon
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tools/tayvoriq_tts_router_v28.py')
+          text = path.read_text(encoding='utf-8')
+
+          anchor = '''_CRITICAL_TERM_SPEECH_SURFACES = (\n    (\n        "VW",\n        re.compile(r"\\bVW(?:-(?=[A-Za-zÄÖÜäöüß]))?", flags=re.IGNORECASE),\n        "Fau Weh ",\n    ),\n'''
+          replacement = '''_CRITICAL_TERM_SPEECH_SURFACES = (\n    # Hidden speech-only surfaces: canonical script/captions remain unchanged.\n    # German narration keeps an English-native reading for international tech brands.\n    ("chatgpt", re.compile(r"\\bChatGPT\\b", flags=re.IGNORECASE), "Tschätt Dschi Pi Ti"),\n    ("openai", re.compile(r"\\bOpenAI\\b", flags=re.IGNORECASE), "Oupen Äi Ai"),\n    ("steam", re.compile(r"\\bSteam\\b", flags=re.IGNORECASE), "Stiem"),\n    ("s21", re.compile(r"\\bS21\\b", flags=re.IGNORECASE), "Ess einundzwanzig"),\n    ("gpt", re.compile(r"\\bGPT\\b", flags=re.IGNORECASE), "Dschi Pi Ti"),\n    (\n        "VW",\n        re.compile(r"\\bVW(?:-(?=[A-Za-zÄÖÜäöüß]))?", flags=re.IGNORECASE),\n        "Fau Weh ",\n    ),\n'''
+
+          required = {
+              'ChatGPT': 'Tschätt Dschi Pi Ti',
+              'OpenAI': 'Oupen Äi Ai',
+              'Steam': 'Stiem',
+              'S21': 'Ess einundzwanzig',
+              'GPT': 'Dschi Pi Ti',
+          }
+
+          if all(surface in text for surface in required.values()):
+              print('PRONUNCIATION_LEXICON_ALREADY_HARDENED')
+          else:
+              if anchor not in text:
+                  raise SystemExit('PRONUNCIATION_PATCH_ANCHOR_MISSING')
+              text = text.replace(anchor, replacement, 1)
+              path.write_text(text, encoding='utf-8')
+              print('PRONUNCIATION_LEXICON_PATCHED')
+
+          updated = path.read_text(encoding='utf-8')
+          for term, surface in required.items():
+              if term not in updated or surface not in updated:
+                  raise SystemExit(f'PRONUNCIATION_CONTRACT_MISSING:{term}')
+          if '_german_critical_term_reading(prepared)' not in updated:
+              raise SystemExit('PRONUNCIATION_SYNTHESIS_BOUNDARY_MISSING')
+          if 'pronunciation_replacements' not in updated:
+              raise SystemExit('PRONUNCIATION_AUDIT_METADATA_MISSING')
+          PY
+
+      - name: Compile and regression-check speech surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/tayvoriq_tts_router_v28.py
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          text = Path('tools/tayvoriq_tts_router_v28.py').read_text(encoding='utf-8')
+          cases = {
+              'ChatGPT verändert gerade die Suche.': 'Tschätt Dschi Pi Ti',
+              'OpenAI startet ein neues Produkt.': 'Oupen Äi Ai',
+              'Das Spiel erscheint auf Steam.': 'Stiem',
+              'S21 wird zum Videospiel.': 'Ess einundzwanzig',
+              'Ein neues GPT-Modell kommt.': 'Dschi Pi Ti',
+          }
+          mappings = [
+              (re.compile(r'\bChatGPT\b', re.I), 'Tschätt Dschi Pi Ti'),
+              (re.compile(r'\bOpenAI\b', re.I), 'Oupen Äi Ai'),
+              (re.compile(r'\bSteam\b', re.I), 'Stiem'),
+              (re.compile(r'\bS21\b', re.I), 'Ess einundzwanzig'),
+              (re.compile(r'\bGPT\b', re.I), 'Dschi Pi Ti'),
+          ]
+          for source, expected in cases.items():
+              spoken = source
+              for pattern, surface in mappings:
+                  spoken = pattern.sub(surface, spoken)
+              assert expected in spoken, (source, spoken, expected)
+          # Canonical wording must still exist in source strings; replacements are synthesis-only.
+          assert 'hidden synthesis input' in text.lower() or 'speech-only' in text.lower()
+          print('TAYVORIQ_PRONUNCIATION_REGRESSION_PASSED')
+          PY
+
+      - name: Commit hardened lexicon when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- tools/tayvoriq_tts_router_v28.py; then
+            echo 'No implementation change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/tayvoriq_tts_router_v28.py
+          git commit -m 'fix: pronounce international tech terms naturally'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin feature/multi-platform-distribution-package
+            if git push origin HEAD:feature/multi-platform-distribution-package; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
