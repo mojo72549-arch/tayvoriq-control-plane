@@ -814,7 +814,6 @@ jobs:
         if: steps.publication_gate.outcome == 'success'
         run: |
           set -euo pipefail
-          rm -rf pages-worktree/tayvoriq
           mkdir -p pages-worktree/tayvoriq
           rsync -a implementation/site/tayvoriq/ pages-worktree/tayvoriq/
           touch pages-worktree/.nojekyll
