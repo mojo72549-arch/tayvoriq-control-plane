@@ -1,278 +1,286 @@
 {
-  "date": "2026-08-22",
+  "date": "2026-08-26",
   "slot": "morning",
-  "created_at": "2026-08-21T17:06:00Z",
-  "selection_id": "20260822-morning-agentv2",
+  "created_at": "2026-08-25T11:50:00Z",
+  "selection_id": "20260826-morning-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
-  "mode": "manual_verified_ranking",
+  "mode": "manual_verified_fallback_after_provider_limits",
   "superseded": false,
-  "target_date": "2026-08-22",
+  "target_date": "2026-08-26",
   "telegram_only_user_path": true,
+  "quality_gates_weakened": false,
   "trends": [
     {
       "id": "1",
-      "title": "Humanoide Roboter aus Baden-Württemberg: Bosch startet 2027 die Produktion in Bühl",
+      "title": "gamescom startet: Warum morgen plötzlich so viele neue Spiele enthüllt werden",
+      "category": "creator_media",
+      "trend_scope": "creator_media",
+      "regional_relevance": "germany",
       "score": 98,
-      "trend_scope": "technology_robotics_bw",
       "criteria": {
         "aktualitaet": 99,
         "viralitaet": 98,
-        "tayvoriq_passung": 99,
-        "quellenqualitaet": 96,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 95,
         "visuell": 99
       },
       "sources": [
-        {
-          "publisher": "WELT / dpa",
-          "url": "https://www.welt.de/regionales/baden-wuerttemberg/article6a883b921c4720d416547168/bosch-startet-2027-produktion-von-robotern-im-schwarzwald.html",
-          "supports": "Bosch confirmed on 21 August 2026 that production of Humanoid robots is planned to start at the Bühl site in 2027; first industrial and logistics use cases are described."
-        },
-        {
-          "publisher": "dts Nachrichtenagentur / Business Panorama",
-          "url": "https://business-panorama.de/news.php?newsid=6708654",
-          "supports": "Independent agency report on 21 August 2026 says series production is planned in Bühl in 2027, with Humanoid as developer and Schaeffler among the intended industrial users."
-        }
+        "https://www.gamescom.global/de/this-is-gamescom",
+        "https://www.gamestar.de/artikel/die-gamescom-onl-2026-im-liveticker-alle-wichtigen-news-spiele-und-infos-direkt-von-der-showbuehne%2C3458562.html"
       ],
+      "growth_v2": {
+        "growth_score": 95,
+        "binding_score": 93,
+        "priority_score": 95,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
       "source_context": {
+        "verified_at": "2026-08-25T11:50:00Z",
         "independent_news_count": 2,
         "sources": [
           {
-            "publisher": "WELT / dpa",
-            "url": "https://www.welt.de/regionales/baden-wuerttemberg/article6a883b921c4720d416547168/bosch-startet-2027-produktion-von-robotern-im-schwarzwald.html",
-            "supports": "Current confirmation of the 2027 Bühl manufacturing plan and industrial/logistics focus."
+            "publisher": "gamescom",
+            "url": "https://www.gamescom.global/de/this-is-gamescom",
+            "supports": "Die gamescom startet am 26. August 2026 in Köln; die Opening Night Live am 25. August verspricht Weltpremieren, Trailer und Überraschungen."
           },
           {
-            "publisher": "dts Nachrichtenagentur / Business Panorama",
-            "url": "https://business-panorama.de/news.php?newsid=6708654",
-            "supports": "Independent confirmation of the production plan, Humanoid partnership and first planned industrial deployments."
+            "publisher": "GameStar",
+            "url": "https://www.gamestar.de/artikel/die-gamescom-onl-2026-im-liveticker-alle-wichtigen-news-spiele-und-infos-direkt-von-der-showbuehne%2C3458562.html",
+            "supports": "GameStar bestätigt die Opening Night Live am 25. August als Eröffnung mit neuen Trailern, Spiele-Reveals und Premieren vor dem Messestart."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Bosch will ab 2027 in Bühl humanoide, KI-gesteuerte Roboter des britischen Unternehmens Humanoid fertigen.",
-          "why_happening": "Humanoide Robotik entwickelt sich vom Prototypen zum Industrieprodukt; Bosch bringt Fertigungs- und Industrialisierungs-Know-how ein, während Humanoid die Robotikplattform entwickelt.",
-          "who_is_affected": "Zunächst Industrie- und Logistikbetriebe sowie deren Beschäftigte; Schaeffler zählt zu den vorgesehenen Anwendern.",
-          "personal_impact": "Der Trend zeigt, wie schnell physische KI aus Laboren in deutsche Fabriken wandert und welche Tätigkeiten künftig automatisiert werden könnten.",
-          "action_now": "Im Short konkret erklären, was in Bühl produziert werden soll, welche Aufgaben die Roboter zuerst übernehmen und warum das für Baden-Württemberg als Industriestandort relevant ist."
+          "what_happened": "Die gamescom startet Mittwoch in Köln nach der Opening Night Live.",
+          "why_happening": "Der Hype wächst, weil die Eröffnung Weltpremieren und neue Trailer verspricht.",
+          "who_is_affected": "Gamer, Entwickler, Publisher und Messebesucher sind betroffen.",
+          "personal_impact": "Für dich kommen morgen viele bestätigte Spiele-Neuigkeiten auf einmal.",
+          "action_now": "Beobachte bestätigte Reveals und ignoriere unbestätigte Leaks vorerst."
+        },
+        "growth_v2": {
+          "growth_score": 95,
+          "binding_score": 93,
+          "priority_score": 95,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
         },
         "factual_guardrails": [
-          "Keine konkrete Arbeitsplatzwirkung behaupten, solange Bosch keine belastbaren Beschäftigtenzahlen zur Roboterfertigung nennt.",
-          "Keine Haushalts- oder Pflegeeinsätze als bereits beschlossen darstellen; sie sind langfristige Einsatzmöglichkeiten."
+          "Nur bestätigte Spiele/Reveals verwenden; keine Leaks als Fakten.",
+          "Opening Night Live am 25.08., Messe 26.–30.08. zeitlich sauber trennen."
         ],
-        "content_angle": "Die KI bekommt Arme und Beine – und wird bald in Baden-Württemberg gebaut.",
-        "duplicate_guard": "Nicht als generisches KI- oder Bosch-Stellenabbau-Thema erzählen; Fokus ist die neue 2027-Humanoid-Fertigung in Bühl."
+        "content_angle": "Die gamescom öffnet – und der Neuheiten-Takt springt schlagartig hoch.",
+        "quality_gates_weakened": false
       }
     },
     {
       "id": "2",
-      "title": "David gegen Goliath im DFB-Pokal: Viertligist Trier empfängt morgen RB Leipzig",
-      "score": 95,
-      "trend_scope": "sports_dfb_pokal",
+      "title": "ChatGPT hat jetzt Werbung in Deutschland: Wer sie sieht – und wer nicht",
+      "category": "technology_ai",
+      "trend_scope": "technology_ai",
+      "regional_relevance": "germany",
+      "score": 97,
       "criteria": {
-        "aktualitaet": 99,
-        "viralitaet": 96,
-        "tayvoriq_passung": 93,
-        "quellenqualitaet": 95,
-        "visuell": 98
+        "aktualitaet": 96,
+        "viralitaet": 95,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 99,
+        "visuell": 95
       },
       "sources": [
-        {
-          "publisher": "WELT / dpa",
-          "url": "https://www.welt.de/regionales/rheinland-pfalz-saarland/article6a884f06c3692834ff6d87c2/rb-trainer-demichelis-will-serioesen-pokal-auftritt-in-trier.html",
-          "supports": "Current 21 August 2026 pre-match report confirms RB Leipzig's DFB-Pokal opener in Trier and the team's personnel situation."
-        },
-        {
-          "publisher": "Leipziger Volkszeitung",
-          "url": "https://www.lvz.de/sport/regional/rb-leipzig-in-der-ersten-runde-des-dfb-pokals-gegen-eintracht-trier-JWFGHGTZHND4ZERF6K7EG57TYE.html",
-          "supports": "Independent report confirms Regionalliga/Viertligist Eintracht Trier hosts RB Leipzig in round one and that Trier returns to the DFB-Pokal after ten years."
-        }
+        "https://openai.com/de-DE/index/chatgpt-ads-expands-across-europe/",
+        "https://www.tagesschau.de/wirtschaft/unternehmen/chat-gpt-werbung-finanzierung-ki-100.html"
       ],
+      "growth_v2": {
+        "growth_score": 92,
+        "binding_score": 94,
+        "priority_score": 92,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
       "source_context": {
+        "verified_at": "2026-08-25T11:50:00Z",
         "independent_news_count": 2,
         "sources": [
           {
-            "publisher": "WELT / dpa",
-            "url": "https://www.welt.de/regionales/rheinland-pfalz-saarland/article6a884f06c3692834ff6d87c2/rb-trainer-demichelis-will-serioesen-pokal-auftritt-in-trier.html",
-            "supports": "Fresh pre-match context for Leipzig's first competitive match of the season at Trier."
+            "publisher": "OpenAI",
+            "url": "https://openai.com/de-DE/index/chatgpt-ads-expands-across-europe/",
+            "supports": "OpenAI hat ChatGPT Ads ab 24. August 2026 auf 31 europäische Märkte einschließlich Deutschland ausgeweitet; Ads sollen kostenlosen und günstigen Zugang unterstützen."
           },
           {
-            "publisher": "Leipziger Volkszeitung",
-            "url": "https://www.lvz.de/sport/regional/rb-leipzig-in-der-ersten-runde-des-dfb-pokals-gegen-eintracht-trier-JWFGHGTZHND4ZERF6K7EG57TYE.html",
-            "supports": "Confirms fourth-tier Trier, the first-round pairing and Trier's first cup appearance in ten years."
+            "publisher": "tagesschau.de",
+            "url": "https://www.tagesschau.de/wirtschaft/unternehmen/chat-gpt-werbung-finanzierung-ki-100.html",
+            "supports": "tagesschau.de bestätigt den Start von Werbung in ChatGPT in Deutschland und weiteren europäischen Ländern und ordnet sie als Finanzierungsbaustein für KI-Kosten ein."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Am Samstag, 22. August, trifft Viertligist Eintracht Trier in der ersten DFB-Pokalrunde auf Bundesligist RB Leipzig.",
-          "why_happening": "Im DFB-Pokal erhalten unterklassige Vereine in Runde eins Heimspiele gegen höherklassige Teams – genau daraus entstehen die klassischen Pokal-Duelle David gegen Goliath.",
-          "who_is_affected": "Fans beider Vereine und Fußballfans, die auf eine Pokalüberraschung hoffen; für Leipzig ist es der Pflichtspielauftakt der Saison.",
-          "personal_impact": "Das Spiel ist ein zeitlich extrem aktueller Sport-Hook für Samstag und kann direkt vor dem Anpfiff Reichweite aufbauen.",
-          "action_now": "Short morgens veröffentlichen: zehn Jahre Pokalpause für Trier, klare Außenseiterrolle und die Frage, ob der Viertligist den Favoriten ärgern kann."
+          "what_happened": "ChatGPT zeigt in Deutschland jetzt Werbung für Free- und Go-Nutzer.",
+          "why_happening": "OpenAI führt Anzeigen ein, weil sie günstigen Zugang mitfinanzieren sollen.",
+          "who_is_affected": "Betroffen sind Free- und Go-Nutzer in europäischen Märkten.",
+          "personal_impact": "Für dich bleiben Plus, Pro und Business laut OpenAI werbefrei.",
+          "action_now": "Prüfe deinen Tarif, wenn du ChatGPT-Werbung vermeiden möchtest."
+        },
+        "growth_v2": {
+          "growth_score": 92,
+          "binding_score": 94,
+          "priority_score": 92,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
         },
         "factual_guardrails": [
-          "Kein Ergebnis oder Überraschung vorhersagen.",
-          "Trier als Viertligist/Regionalligist bezeichnen; RB Leipzig als Bundesligist."
+          "Ads betreffen Free/Go; Plus/Pro/Business/Enterprise/Edu nicht als werbefinanziert darstellen.",
+          "Nicht behaupten, Werbung beeinflusse Antworten."
         ],
-        "content_angle": "Zehn Jahre wartet Trier auf den DFB-Pokal – und bekommt sofort RB Leipzig vor die Brust.",
-        "duplicate_guard": "Nicht das bereits produzierte Leichtathletik-EM-Thema wiederholen; eigenständiger DFB-Pokal-Event-Hook für den 22. August."
+        "content_angle": "ChatGPT verändert sein Geschäftsmodell sichtbar direkt im Chat.",
+        "quality_gates_weakened": false
       }
     },
     {
       "id": "3",
-      "title": "Deutschland testet die Drohnenabwehr unter Realbedingungen: Neues Technologiezentrum gestartet",
-      "score": 93,
-      "trend_scope": "technology_drone_security",
+      "title": "Deutschlands Wirtschaft überrascht: 0,3 Prozent Wachstum – kommt die Wende?",
+      "category": "business_economy",
+      "trend_scope": "business_economy",
+      "regional_relevance": "germany",
+      "score": 92,
       "criteria": {
-        "aktualitaet": 95,
-        "viralitaet": 94,
-        "tayvoriq_passung": 96,
-        "quellenqualitaet": 98,
-        "visuell": 98
+        "aktualitaet": 98,
+        "viralitaet": 88,
+        "tayvoriq_passung": 92,
+        "quellenqualitaet": 100,
+        "visuell": 82
       },
       "sources": [
-        {
-          "publisher": "tagesschau.de",
-          "url": "https://www.tagesschau.de/inland/gesellschaft/drohnen-forschungszentrum-100.html",
-          "supports": "ARD report confirms the new Technology Center for Drone Security opened in Cochstedt on 18 August 2026 to develop and test detection and defence technologies."
-        },
-        {
-          "publisher": "ZDFheute",
-          "url": "https://www.zdfheute.de/politik/deutschland/drohnen-sicherheit-abwehrzentrum-deutschland-100.html",
-          "supports": "Independent ZDF report explains the new Cochstedt centre, realistic test infrastructure and the urgency around drone detection and defence."
-        }
+        "https://www.destatis.de/DE/Presse/Pressemitteilungen/2026/08/PD26_303_811.html",
+        "https://www.reuters.com/world/europe/german-economy-grows-by-03-q2-stats-office-says-2026-08-25/"
       ],
+      "growth_v2": {
+        "growth_score": 88,
+        "binding_score": 92,
+        "priority_score": 89,
+        "tier": "primary",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
       "source_context": {
+        "verified_at": "2026-08-25T11:50:00Z",
         "independent_news_count": 2,
         "sources": [
           {
-            "publisher": "tagesschau.de",
-            "url": "https://www.tagesschau.de/inland/gesellschaft/drohnen-forschungszentrum-100.html",
-            "supports": "Opening, mission and government rationale for the new drone-security technology centre."
+            "publisher": "Statistisches Bundesamt",
+            "url": "https://www.destatis.de/DE/Presse/Pressemitteilungen/2026/08/PD26_303_811.html",
+            "supports": "Deutschland: Das BIP stieg im zweiten Quartal 2026 um 0,3 Prozent zum Vorquartal; Destatis nennt vor allem die gute Exportentwicklung und bessere Handelsdaten."
           },
           {
-            "publisher": "ZDFheute",
-            "url": "https://www.zdfheute.de/politik/deutschland/drohnen-sicherheit-abwehrzentrum-deutschland-100.html",
-            "supports": "Independent explanation of how Cochstedt's airport infrastructure enables realistic counter-drone testing."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/world/europe/german-economy-grows-by-03-q2-stats-office-says-2026-08-25/",
+            "supports": "Reuters bestätigt für Deutschland ein BIP-Wachstum von 0,3 Prozent im zweiten Quartal 2026 und nennt stärkere Exporte als wesentlichen Treiber."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "In Cochstedt wurde ein neues Technologiezentrum für Drohnensicherheit eröffnet, in dem Erkennung und Abwehr unter realistischen Bedingungen getestet werden.",
-          "why_happening": "Drohnen werden technisch schneller, autonomer und schwieriger zu erkennen; Flughäfen und kritische Infrastruktur brauchen daher neue Detektions- und Abwehrmethoden.",
-          "who_is_affected": "Sicherheitsbehörden, Flughäfen, Betreiber kritischer Infrastruktur, Forschung und Unternehmen der Drohnentechnik.",
-          "personal_impact": "Die Forschung betrifft den Schutz von Verkehr, Energieversorgung und öffentlichen Einrichtungen – also Infrastruktur, von der jeder im Alltag abhängt.",
-          "action_now": "Im Short anhand konkreter Testumgebung erklären, wie Drohnen erkannt, verfolgt und abgewehrt werden können, ohne operative Missbrauchsanleitungen zu liefern."
+          "what_happened": "Deutschlands Wirtschaft wuchs im zweiten Quartal um 0,3 Prozent.",
+          "why_happening": "Das Plus kam vor allem durch stärkere Exporte und bessere Handelsdaten.",
+          "who_is_affected": "Betroffen sind Unternehmen, Beschäftigte, Verbraucher und Investoren in Deutschland.",
+          "personal_impact": "Für dich deutet das auf etwas mehr wirtschaftlichen Rückenwind hin.",
+          "action_now": "Beobachte Aufträge, Konsum und Investitionen, bevor du von Trendwende sprichst."
+        },
+        "growth_v2": {
+          "growth_score": 88,
+          "binding_score": 92,
+          "priority_score": 89,
+          "tier": "primary",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
         },
         "factual_guardrails": [
-          "Keine detaillierten Schwachstellen oder Umgehungsmethoden von Abwehrsystemen nennen.",
-          "Das Zentrum als Forschungs- und Testeinrichtung beschreiben, nicht als bereits flächendeckenden Schutzschild."
+          "0,3 Prozent ist Quartalswachstum, keine Aussage über persönliches Einkommen.",
+          "Nicht von sicherer Trendwende sprechen; Konsum und Investitionen bleiben gemischt."
         ],
-        "content_angle": "Wie stoppt man eine gefährliche Drohne, bevor sie ein Ziel erreicht? Deutschland baut dafür jetzt ein reales Testfeld.",
-        "duplicate_guard": "Eigenständiges Technologie-/Sicherheits-Thema; nicht mit früheren allgemeinen Drohnenmeldungen vermischen."
+        "content_angle": "Nach langer Flaute liefern BIP und Exporte ein stärkeres Signal als erwartet.",
+        "quality_gates_weakened": false
       }
     },
     {
       "id": "4",
-      "title": "15,1 Prozent mehr Baugenehmigungen: Kommt Deutschlands Wohnungsbau endlich zurück?",
-      "score": 90,
-      "trend_scope": "economy_housing",
+      "title": "Backnang: Bahnkabel durchtrennt – Staatsschutz prüft Sabotage",
+      "category": "world_society",
+      "trend_scope": "world_society",
+      "regional_relevance": "local",
+      "score": 94,
       "criteria": {
-        "aktualitaet": 94,
-        "viralitaet": 89,
-        "tayvoriq_passung": 92,
-        "quellenqualitaet": 99,
-        "visuell": 88
+        "aktualitaet": 99,
+        "viralitaet": 93,
+        "tayvoriq_passung": 95,
+        "quellenqualitaet": 92,
+        "visuell": 91
       },
       "sources": [
-        {
-          "publisher": "tagesschau.de",
-          "url": "https://www.tagesschau.de/wirtschaft/konjunktur/baugenehmigungen-wohngebaeude-deutschland-100.html",
-          "supports": "ARD reports 126,300 housing permits in the first half of 2026, up 15.1 percent year-on-year, the strongest first-half increase since 2016, while stressing the low base and cancellations."
-        },
-        {
-          "publisher": "ZDFheute",
-          "url": "https://www.zdfheute.de/politik/deutschland/wohnen-baugenehmigungen-anstieg-100.html",
-          "supports": "Independent ZDF report confirms the 15.1 percent increase and 126,300 permits and notes experts do not yet see a full housing-market turnaround."
-        }
+        "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/backnang-bahn-kabel-durchtrennt-verdacht-sabotage-100.html",
+        "https://www.stuttgarter-zeitung.de/lokales/rems-murr-kreis/polizei-sucht-zeugen-kabel-an-bahnstrecke-durchtrennt-zugverkehr-und-telefonnetz-gestoert-79410586.html"
       ],
+      "growth_v2": {
+        "growth_score": 91,
+        "binding_score": 94,
+        "priority_score": 92,
+        "tier": "breakout_preferred",
+        "series_candidate": false,
+        "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+      },
       "source_context": {
+        "verified_at": "2026-08-25T11:50:00Z",
         "independent_news_count": 2,
         "sources": [
           {
-            "publisher": "tagesschau.de",
-            "url": "https://www.tagesschau.de/wirtschaft/konjunktur/baugenehmigungen-wohngebaeude-deutschland-100.html",
-            "supports": "Current permit figures and context on low starting level and project cancellations."
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/backnang-bahn-kabel-durchtrennt-verdacht-sabotage-100.html",
+            "supports": "Bei Backnang wurden mehrere Bahnkabel mit Werkzeug durchtrennt; Zugverkehr sowie Internet und Telefon waren beeinträchtigt, der Staatsschutz prüft Sabotage."
           },
           {
-            "publisher": "ZDFheute",
-            "url": "https://www.zdfheute.de/politik/deutschland/wohnen-baugenehmigungen-anstieg-100.html",
-            "supports": "Independent confirmation and expert caution that more permits do not immediately solve the housing shortage."
+            "publisher": "Stuttgarter Zeitung",
+            "url": "https://www.stuttgarter-zeitung.de/lokales/rems-murr-kreis/polizei-sucht-zeugen-kabel-an-bahnstrecke-durchtrennt-zugverkehr-und-telefonnetz-gestoert-79410586.html",
+            "supports": "Die Stuttgarter Zeitung bestätigt durchtrennte Kabel zwischen Backnang und Maubach sowie Störungen im Bahnverkehr, Internet und Telefon; die Polizei sucht Zeugen."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Im ersten Halbjahr 2026 wurden rund 126.300 Wohnungen genehmigt – 15,1 Prozent mehr als im Vorjahreszeitraum und der stärkste Halbjahresanstieg seit 2016.",
-          "why_happening": "Nach sehr schwachen Vorjahren steigen die Genehmigungen wieder; Politik, Förderprogramme und stabilere Rahmenbedingungen sollen den Bau anschieben.",
-          "who_is_affected": "Mieter, Wohnungssuchende, Bauherren, Projektentwickler und Kommunen in angespannten Wohnungsmärkten.",
-          "personal_impact": "Mehr Genehmigungen können langfristig mehr Angebot bedeuten, aber eine Genehmigung ist noch keine fertiggestellte oder bezahlbare Wohnung.",
-          "action_now": "Im Short den Rekordanstieg mit der Gegenfrage verbinden: Warum merken Mieter davon noch kaum etwas? Genehmigung, Baustart und Fertigstellung sauber unterscheiden."
+          "what_happened": "Bei Backnang wurden Bahnkabel durchtrennt; die Polizei prüft Sabotage.",
+          "why_happening": "Ermittlungen laufen, weil Unbekannte mehrere Kabel mit Werkzeug durchtrennten.",
+          "who_is_affected": "Betroffen sind Bahnverkehr und Reisende im Raum Backnang.",
+          "personal_impact": "Für dich können solche Schäden kurzfristig Zugverbindungen erheblich stören.",
+          "action_now": "Prüfe vor Fahrten aktuelle Bahnmeldungen für die betroffene Region."
+        },
+        "growth_v2": {
+          "growth_score": 91,
+          "binding_score": 94,
+          "priority_score": 92,
+          "tier": "breakout_preferred",
+          "series_candidate": false,
+          "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+        },
+        "claim_coherence": {
+          "passed": true,
+          "reasons": []
         },
         "factual_guardrails": [
-          "15,1 Prozent ist der Anstieg gegenüber dem ersten Halbjahr 2025, nicht ein Rekordniveau der absoluten Zahl.",
-          "Nicht behaupten, die Wohnungsnot sei gelöst oder Mieten würden kurzfristig sinken."
+          "Sabotage ist ein Verdacht; nicht als endgültig bewiesen darstellen.",
+          "Keine Details liefern, die Nachahmung erleichtern."
         ],
-        "content_angle": "Die Statistik klingt nach Bau-Boom – doch warum fehlen trotzdem Wohnungen?",
-        "duplicate_guard": "Nicht als Immobilien-Kaufberatung erzählen; Fokus auf die aktuelle bundesweite Baugenehmigungsentwicklung."
-      }
-    },
-    {
-      "id": "5",
-      "title": "Fast fünf Milliarden Euro: Warum ein BW-Mittelständler wegen des KI-Booms in die USA verkauft wird",
-      "score": 88,
-      "trend_scope": "business_ai_infrastructure_bw",
-      "criteria": {
-        "aktualitaet": 91,
-        "viralitaet": 87,
-        "tayvoriq_passung": 92,
-        "quellenqualitaet": 99,
-        "visuell": 86
-      },
-      "sources": [
-        {
-          "publisher": "Reuters",
-          "url": "https://www.reuters.com/legal/transactional/madison-air-solutions-buy-germanys-ebm-papst-54-billion-deal-2026-08-17/",
-          "supports": "Reuters reports Madison Air's $5.4 billion acquisition of German fan maker ebm-papst and highlights data-centre cooling as a strategic growth area."
-        },
-        {
-          "publisher": "Handelsblatt",
-          "url": "https://www.handelsblatt.com/unternehmen/mittelstand/familienunternehmer/industrie-ventilatorenspezialist-ebm-papst-wird-an-us-konzern-verkauft-01/100247761.html",
-          "supports": "Independent German business reporting confirms the roughly 4.8 billion euro net sale price, Mulfingen headquarters and the role of data centres and AI infrastructure in the cooling-market boom."
-        }
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "sources": [
-          {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/legal/transactional/madison-air-solutions-buy-germanys-ebm-papst-54-billion-deal-2026-08-17/",
-            "supports": "Deal size, buyer/seller, headquarters continuity and strategic relevance of data-centre cooling."
-          },
-          {
-            "publisher": "Handelsblatt",
-            "url": "https://www.handelsblatt.com/unternehmen/mittelstand/familienunternehmer/industrie-ventilatorenspezialist-ebm-papst-wird-an-us-konzern-verkauft-01/100247761.html",
-            "supports": "Independent reporting on valuation, BW location, AI/data-centre cooling growth and transaction context."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Der Ventilatoren- und Kühlungsspezialist ebm-papst aus Mulfingen soll für knapp fünf Milliarden Euro netto an den US-Konzern Madison Air gehen; die Transaktion steht noch unter behördlichem Vorbehalt.",
-          "why_happening": "Der weltweite Ausbau von Rechenzentren und KI-Infrastruktur erhöht den Bedarf an leistungsfähiger Kühlung; Madison Air will mit ebm-papst Technologie und internationale Reichweite ausbauen.",
-          "who_is_affected": "Das Unternehmen und seine mehr als 13.000 Beschäftigten weltweit, der Standort Mulfingen sowie Kunden in Rechenzentren, Klima- und Industrietechnik.",
-          "personal_impact": "Der Deal zeigt eine oft unsichtbare Seite des KI-Booms: Nicht nur Chips, sondern auch Stromversorgung und Kühlung werden zu Milliardenmärkten.",
-          "action_now": "Im Short nicht den Firmenverkauf allein erzählen, sondern erklären, warum KI-Rechenzentren einen schwäbischen Ventilatorenhersteller strategisch so wertvoll machen."
-        },
-        "factual_guardrails": [
-          "Transaktion als vereinbart/geplant beschreiben, da regulatorische Genehmigungen noch ausstehen.",
-          "Keine Arbeitsplatzgarantien über die veröffentlichten Zusagen hinaus behaupten."
-        ],
-        "content_angle": "KI braucht nicht nur Chips – sie braucht enorme Kühlung. Genau deshalb wird ein BW-Spezialist zum Milliardenobjekt.",
-        "duplicate_guard": "Kein allgemeiner KI-Hype-Short; Fokus auf den konkreten ebm-papst/Madison-Air-Deal und die Infrastruktur hinter KI."
+        "content_angle": "Ein paar durchtrennte Kabel reichen, um Bahn, Internet und Telefon zu stören.",
+        "quality_gates_weakened": false
       }
     }
   ]

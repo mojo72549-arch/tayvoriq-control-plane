@@ -1,0 +1,50 @@
+{
+  "selection_id": "20260826-morning-agentv2",
+  "slot": "morning",
+  "target_date": "2026-08-26",
+  "provider": "verified_repository_fallback",
+  "model": "none",
+  "provider_failure_recovered": true,
+  "fallback_type": "preverified_source_bound",
+  "grounding_chunks": [
+    {
+      "title": "gamescom",
+      "uri": "https://www.gamescom.global/de/this-is-gamescom"
+    },
+    {
+      "title": "GameStar",
+      "uri": "https://www.gamestar.de/artikel/die-gamescom-onl-2026-im-liveticker-alle-wichtigen-news-spiele-und-infos-direkt-von-der-showbuehne%2C3458562.html"
+    },
+    {
+      "title": "OpenAI",
+      "uri": "https://openai.com/de-DE/index/chatgpt-ads-expands-across-europe/"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/wirtschaft/unternehmen/chat-gpt-werbung-finanzierung-ki-100.html"
+    },
+    {
+      "title": "Statistisches Bundesamt",
+      "uri": "https://www.destatis.de/DE/Presse/Pressemitteilungen/2026/08/PD26_303_811.html"
+    },
+    {
+      "title": "Reuters",
+      "uri": "https://www.reuters.com/world/europe/german-economy-grows-by-03-q2-stats-office-says-2026-08-25/"
+    },
+    {
+      "title": "SWR Aktuell",
+      "uri": "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/backnang-bahn-kabel-durchtrennt-verdacht-sabotage-100.html"
+    },
+    {
+      "title": "Stuttgarter Zeitung",
+      "uri": "https://www.stuttgarter-zeitung.de/lokales/rems-murr-kreis/polizei-sucht-zeugen-kabel-an-bahnstrecke-durchtrennt-zugverkehr-und-telefonnetz-gestoert-79410586.html"
+    }
+  ],
+  "candidate_count": 4,
+  "valid_count": 4,
+  "selected_count": 4,
+  "quality_gates_weakened": false,
+  "weak_fill_allowed": false,
+  "production_started": false,
+  "explicit_fresh_trend_ranking": true
+}
