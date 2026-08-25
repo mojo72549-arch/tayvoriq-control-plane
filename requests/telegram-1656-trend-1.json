@@ -1,0 +1,75 @@
+{
+  "request_id": "telegram-1656-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "gamescom startet: Warum morgen plötzlich so viele neue Spiele enthüllt werden",
+  "trend_scope": "creator_media",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-25T12:09:08.830Z",
+  "telegram_message_id": 1656,
+  "approval_key": "telegram:20260826-morning-agentv2:1656:trend:1",
+  "mode": "full",
+  "selection_id": "20260826-morning-agentv2",
+  "source_context": {
+    "verified_at": "2026-08-25T11:50:00Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "gamescom",
+        "url": "https://www.gamescom.global/de/this-is-gamescom",
+        "supports": "Die gamescom startet am 26. August 2026 in Köln; die Opening Night Live am 25. August verspricht Weltpremieren, Trailer und Überraschungen."
+      },
+      {
+        "publisher": "GameStar",
+        "url": "https://www.gamestar.de/artikel/die-gamescom-onl-2026-im-liveticker-alle-wichtigen-news-spiele-und-infos-direkt-von-der-showbuehne%2C3458562.html",
+        "supports": "GameStar bestätigt die Opening Night Live am 25. August als Eröffnung mit neuen Trailern, Spiele-Reveals und Premieren vor dem Messestart."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Die gamescom startet Mittwoch in Köln nach der Opening Night Live.",
+      "why_happening": "Der Hype wächst, weil die Eröffnung Weltpremieren und neue Trailer verspricht.",
+      "who_is_affected": "Gamer, Entwickler, Publisher und Messebesucher sind betroffen.",
+      "personal_impact": "Für dich kommen morgen viele bestätigte Spiele-Neuigkeiten auf einmal.",
+      "action_now": "Beobachte bestätigte Reveals und ignoriere unbestätigte Leaks vorerst."
+    },
+    "growth_v2": {
+      "growth_score": 95,
+      "binding_score": 93,
+      "priority_score": 95,
+      "tier": "breakout_preferred",
+      "series_candidate": false,
+      "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+    },
+    "claim_coherence": {
+      "passed": true,
+      "reasons": []
+    },
+    "factual_guardrails": [
+      "Nur bestätigte Spiele/Reveals verwenden; keine Leaks als Fakten.",
+      "Opening Night Live am 25.08., Messe 26.–30.08. zeitlich sauber trennen."
+    ],
+    "content_angle": "Die gamescom öffnet – und der Neuheiten-Takt springt schlagartig hoch.",
+    "quality_gates_weakened": false
+  },
+  "source_context_sha256": "fd0634d772e37010f13d81005a8cd1e5d8000b34cb43ee15e28fa7f7af6f78b7",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-25T12:09:08.830Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-25T12:09:19.271960+00:00",
+      "actor": "request-dispatcher:32846032255"
+    }
+  ],
+  "contract_sha256": "4758c207220bba1124f545375b02bd5a0c4fa9b28265118ca02edd7f57911120",
+  "dispatch_claim_run_id": 32846032255,
+  "dispatch_contract_sha256": "4758c207220bba1124f545375b02bd5a0c4fa9b28265118ca02edd7f57911120"
+}
