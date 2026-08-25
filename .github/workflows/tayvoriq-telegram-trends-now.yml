@@ -68,15 +68,99 @@ jobs:
           echo "needs_delivery=$needs_delivery" >> "$GITHUB_OUTPUT"
           echo "Resolved $selection_id needs_delivery=$needs_delivery"
 
-      - name: Generate fresh quality-driven ranking
+      - name: Generate or recover quality-driven ranking
         if: steps.control.outputs.needs_delivery == 'true'
+        env:
+          SLOT: ${{ steps.control.outputs.slot }}
+          TARGET_DATE: ${{ steps.control.outputs.target_date }}
+          SELECTION_ID: ${{ steps.control.outputs.selection_id }}
         shell: bash
         run: |
           set -euo pipefail
-          python tools/tayvoriq_agent_trend_radar_v3.py \
-            --slot "${{ steps.control.outputs.slot }}" \
-            --output /tmp/tayvoriq-trend-request.json \
-            --audit-output /tmp/tayvoriq-trend-audit.json
+          fallback=".automation/tayvoriq-agent-v2/selections/${SELECTION_ID}.json"
+          recovered=false
+
+          # Recovery fast-path: a source-bound, preverified snapshot may replace
+          # unavailable LLM structuring, but never the quality/source gates.
+          if [ -f "$fallback" ]; then
+            if python - "$fallback" "$SELECTION_ID" "$TARGET_DATE" "$SLOT" <<'PY'
+          import json, sys
+          p=json.load(open(sys.argv[1],encoding='utf-8'))
+          trends=p.get('trends') or []
+          ok=(
+              p.get('selection_id') == sys.argv[2]
+              and str(p.get('target_date') or p.get('date') or '') == sys.argv[3]
+              and p.get('slot') == sys.argv[4]
+              and p.get('mode') == 'manual_verified_fallback_after_provider_limits'
+              and p.get('quality_gates_weakened') is False
+              and 4 <= len(trends) <= 5
+          )
+          if ok:
+              for trend in trends:
+                  sc=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
+                  answers=sc.get('fallback_editorial_answers') if isinstance(sc.get('fallback_editorial_answers'),dict) else {}
+                  ok = ok and len(trend.get('sources') or []) >= 2
+                  ok = ok and int(sc.get('independent_news_count') or 0) >= 2
+                  ok = ok and len(sc.get('sources') or []) >= 2
+                  ok = ok and all(answers.get(k) for k in ('what_happened','why_happening','who_is_affected','personal_impact','action_now'))
+                  ok = ok and sc.get('quality_gates_weakened', False) is False
+          raise SystemExit(0 if ok else 1)
+          PY
+            then
+              cp "$fallback" /tmp/tayvoriq-trend-request.json
+              python - "$fallback" <<'PY' >/tmp/tayvoriq-trend-audit.json
+          import json, sys
+          p=json.load(open(sys.argv[1],encoding='utf-8'))
+          chunks=[]
+          seen=set()
+          for trend in p.get('trends') or []:
+              sc=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
+              for source in sc.get('sources') or []:
+                  if not isinstance(source,dict):
+                      continue
+                  url=str(source.get('url') or '').strip()
+                  if url and url not in seen:
+                      seen.add(url)
+                      chunks.append({'title':str(source.get('publisher') or url),'uri':url})
+          audit={
+              'selection_id':p.get('selection_id'),
+              'slot':p.get('slot'),
+              'target_date':p.get('target_date') or p.get('date'),
+              'provider':'verified_repository_fallback',
+              'model':'none',
+              'provider_failure_recovered':True,
+              'fallback_type':'preverified_source_bound',
+              'grounding_chunks':chunks,
+              'candidate_count':len(p.get('trends') or []),
+              'valid_count':len(p.get('trends') or []),
+              'selected_count':len(p.get('trends') or []),
+              'quality_gates_weakened':False,
+              'weak_fill_allowed':False,
+              'production_started':False,
+          }
+          print(json.dumps(audit,ensure_ascii=False,indent=2))
+          PY
+              recovered=true
+              echo "TAYVORIQ_TREND_RECOVERY=verified_repository_fallback"
+            fi
+          fi
+
+          if [ "$recovered" != true ]; then
+            set +e
+            python tools/tayvoriq_agent_trend_radar_v3.py \
+              --slot "$SLOT" \
+              --output /tmp/tayvoriq-trend-request.json \
+              --audit-output /tmp/tayvoriq-trend-audit.json
+            radar_rc=$?
+            set -e
+            if [ "$radar_rc" -ne 0 ]; then
+              echo "No contract-valid verified fallback exists for ${SELECTION_ID}; fail closed."
+              exit "$radar_rc"
+            fi
+          fi
+
+          test -s /tmp/tayvoriq-trend-request.json
+          test -s /tmp/tayvoriq-trend-audit.json
 
       - name: Bind ranking to requested target date
         if: steps.control.outputs.needs_delivery == 'true'
@@ -117,6 +201,7 @@ jobs:
           trends=d.get('trends') or []
           assert d.get('agent_orchestrator') == 'v2'
           assert d.get('slot') in {'morning','evening'}
+          assert d.get('quality_gates_weakened', False) is False
           assert 4 <= len(trends) <= 5, f'expected 4-5 strong trends, got {len(trends)}'
           assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
           for trend in trends:
@@ -124,6 +209,7 @@ jobs:
             sc=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
             assert int(sc.get('independent_news_count') or 0) >= 2
             assert len(sc.get('sources') or []) >= 2
+            assert sc.get('quality_gates_weakened', False) is False
             answers=sc.get('fallback_editorial_answers') if isinstance(sc.get('fallback_editorial_answers'),dict) else {}
             assert all(answers.get(k) for k in ['what_happened','why_happening','who_is_affected','personal_impact','action_now'])
           print({'selection_id':d['selection_id'],'trend_count':len(trends),'contract':'passed'})
@@ -145,13 +231,17 @@ jobs:
           git add .github/run-now/tayvoriq-trend-request.json \
             ".automation/tayvoriq-agent-v2/selections/${SELECTION_ID}.json" \
             ".automation/tayvoriq-agent-v2/sessions/${SELECTION_ID}.json"
-          git commit -m "agent(v2): stage ${SELECTION_ID} approval request"
-          for attempt in 1 2 3 4 5; do
-            git pull --rebase origin main
-            if git push origin HEAD:main; then exit 0; fi
-            sleep $((attempt * 2))
-          done
-          exit 1
+          if git diff --cached --quiet; then
+            echo "Canonical selection already persisted."
+          else
+            git commit -m "agent(v2): stage ${SELECTION_ID} approval request"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then break; fi
+              if [ "$attempt" -eq 5 ]; then exit 1; fi
+              sleep $((attempt * 2))
+            done
+          fi
 
       - name: Send fresh ranking to Telegram
         id: telegram
@@ -176,10 +266,14 @@ jobs:
           lines=[f"{label} · {weekday} {target:%d.%m.}",'','Frisch recherchierte Rangliste:']
           for t in d['trends']:
             growth=int((t.get('growth_v2') or {}).get('growth_score') or t.get('score') or 0)
-            lines.append(f"{t['id']}. {t['title']} — {growth} %")
+            wildcard=(t.get('source_context') or {}).get('wildcard_type')
+            marker=' 🎲' if wildcard else ''
+            lines.append(f"{t['id']}. {t['title']} — {growth} %{marker}")
           lines += [
             '',
             f"{len(d['trends'])} Trends haben die aktuellen Growth-, Quellen-, Claim- und Dubletten-Gates bestanden · mindestens 2 unabhängige Quellen je Trend.",
+            '',
+            '🎲 = verifizierter ungewöhnlicher/spielerischer Wildcard-Trend.',
             '',
             'Schritt 1: Trendnummer wählen.',
             'Schritt 2: Details prüfen und separat „Trend freigeben“ tippen.',
@@ -243,13 +337,15 @@ jobs:
         if: steps.control.outputs.needs_delivery != 'true'
         run: echo "Telegram ranking already has a verified delivery receipt; duplicate send suppressed."
 
-      - name: Notify Telegram on failed trend delivery
+      - name: Notify Telegram on unrecoverable trend failure
         if: failure()
+        env:
+          SELECTION_ID: ${{ steps.control.outputs.selection_id }}
         shell: bash
         run: |
           set +e
           if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
             curl -fsS --retry 2 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-              --data-urlencode $'text=🔴 TAYVORIQ Trend-Radar\nDie neue Telegram-Trendrangliste konnte technisch nicht vollständig zugestellt werden. Es wurde keine Produktion gestartet und nichts veröffentlicht.' >/dev/null || true
+              --data-urlencode "text=🔴 TAYVORIQ Trend-Radar\nFür ${SELECTION_ID:-diesen Slot} waren sowohl Live-Radar als auch der geprüfte Recovery-Pfad nicht contract-valid. Es wurde keine Produktion gestartet und nichts veröffentlicht." >/dev/null || true
           fi
