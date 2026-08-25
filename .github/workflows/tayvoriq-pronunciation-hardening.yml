@@ -47,6 +47,8 @@ jobs:
       - name: Install verification dependencies
         run: |
           set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
           export PIP_DISABLE_PIP_VERSION_CHECK=1
           python -m pip install -r implementation/requirements.txt pytest -q
           python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
