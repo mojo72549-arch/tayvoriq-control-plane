@@ -22,6 +22,13 @@ TAYVORIQ BRAND SAFETY — HARD REQUIREMENT:
 - Never use sexual content, sexual thumbnails, suggestive wording or innuendo as a growth lever.
 - Prefer broadly shareable curiosity, consequence, surprise, technology, business, world-event and everyday-impact hooks.
 - This brand-safety rule must not be traded off against virality, trend score or predicted follower conversion.
+
+TAYVORIQ VARIETY — VERIFIED PLAYFUL WILDCARD:
+- When the live source pool supports it, try to include ONE surprising, playful, quirky or unusual but real candidate alongside harder news.
+- Good wildcard families include games, unusual experiments, odd engineering, local curiosities, science oddities, creator phenomena and unexpected everyday stories.
+- The wildcard must pass the SAME freshness, two-independent-source, claim-coherence, duplicate, visual and Growth thresholds as every other candidate.
+- Never force a wildcard when the evidence or quality is weaker than the existing gates.
+- The wildcard remains subject to the non-sexual brand-safety boundary above.
 """.strip()
 
 
