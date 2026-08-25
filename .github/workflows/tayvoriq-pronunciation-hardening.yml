@@ -1,4 +1,4 @@
-name: TAYVORIQ Pronunciation Hardening
+name: TAYVORIQ Pronunciation and DFB Recovery Verification
 
 on:
   push:
@@ -11,12 +11,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: tayvoriq-pronunciation-hardening
+  group: tayvoriq-pronunciation-dfb-verification
   cancel-in-progress: false
 
+env:
+  PYTHONUTF8: "1"
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+
 jobs:
-  harden-pronunciation:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Validate private repository token
         env:
@@ -32,151 +37,68 @@ jobs:
           ref: feature/multi-platform-distribution-package
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Add central pronunciation lexicon
-        shell: bash
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install verification dependencies
         run: |
           set -euo pipefail
-          cat > implementation/tools/tayvoriq_pronunciation_lexicon_v1.py <<'PY'
-          from __future__ import annotations
+          export PIP_DISABLE_PIP_VERSION_CHECK=1
+          python -m pip install -r implementation/requirements.txt pytest -q
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
 
-          """Speech-only pronunciation surfaces for the German TAYVORIQ narrator.
+      - name: Compile active implementation
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools src runtime_patches tests
 
-          Visible scripts, captions and metadata stay unchanged.  This module is
-          deliberately small and deterministic: brands are rewritten only in the
-          text passed to TTS so German synthesis does not invent pronunciations.
-          """
-
-          import re
-          from dataclasses import dataclass
-
-
-          @dataclass(frozen=True)
-          class PronunciationEntry:
-              visible: str
-              spoken: str
-              note: str
-
-
-          # Longer/specific surfaces first. Add recurring names here instead of
-          # scattering one-off fixes through production and recovery code.
-          LEXICON: tuple[PronunciationEntry, ...] = (
-              PronunciationEntry("ChatGPT", "Chat GPT", "English brand boundary"),
-              PronunciationEntry("OpenAI", "Open Äi", "English AI brand pronunciation"),
-              PronunciationEntry("Steam", "Stiem", "English gaming-platform pronunciation"),
-              PronunciationEntry("S21", "Ess einundzwanzig", "German project abbreviation"),
-          )
-
-
-          def _pattern(surface: str) -> re.Pattern[str]:
-              return re.compile(rf"(?<![A-Za-z0-9]){re.escape(surface)}(?![A-Za-z0-9])", re.IGNORECASE)
-
-
-          _COMPILED = tuple((_pattern(entry.visible), entry) for entry in LEXICON)
-
-
-          def apply_spoken_surfaces(text: str) -> str:
-              """Return TTS text with only known pronunciation surfaces changed."""
-              result = str(text or "")
-              for pattern, entry in _COMPILED:
-                  result = pattern.sub(entry.spoken, result)
-              return result
-
-
-          def replacements_present(text: str) -> dict[str, str]:
-              """Report which visible terms would be rewritten, for diagnostics."""
-              source = str(text or "")
-              return {
-                  entry.visible: entry.spoken
-                  for pattern, entry in _COMPILED
-                  if pattern.search(source)
-              }
-          PY
-
-          cat > implementation/tests/test_tayvoriq_pronunciation_lexicon_v1.py <<'PY'
-          from tools.tayvoriq_pronunciation_lexicon_v1 import apply_spoken_surfaces, replacements_present
-
-
-          def test_known_brands_get_stable_speech_surfaces() -> None:
-              text = "ChatGPT und OpenAI laufen auf Steam. Das S21-Spiel ist dort verfügbar."
-              spoken = apply_spoken_surfaces(text)
-              assert spoken == "Chat GPT und Open Äi laufen auf Stiem. Das Ess einundzwanzig-Spiel ist dort verfügbar."
-
-
-          def test_visible_text_is_not_mutated_in_place() -> None:
-              text = "OpenAI auf Steam"
-              _ = apply_spoken_surfaces(text)
-              assert text == "OpenAI auf Steam"
-
-
-          def test_substrings_are_not_rewritten() -> None:
-              text = "Steamer OpenAIX ChatGPTPlus XS21"
-              assert apply_spoken_surfaces(text) == text
-
-
-          def test_diagnostics_are_data_driven() -> None:
-              assert replacements_present("OpenAI und Steam") == {"OpenAI": "Open Äi", "Steam": "Stiem"}
-          PY
-
-      - name: Wire lexicon into production voice repair
-        shell: bash
+      - name: Verify canonical pronunciation examples
+        working-directory: implementation
         run: |
           set -euo pipefail
           python - <<'PY'
-          from pathlib import Path
+          from tools.tayvoriq_pronunciation_lexicon_v1 import apply_spoken_surfaces
 
-          path = Path('implementation/tools/tayvoriq_voice_only_repair_v5.py')
-          text = path.read_text(encoding='utf-8')
-
-          import_anchor = 'import tayvoriq_production_mix_gate as production_mix\nimport tayvoriq_voice_only_repair_v5_base as base\n'
-          import_replacement = (
-              'import tayvoriq_production_mix_gate as production_mix\n'
-              'import tayvoriq_pronunciation_lexicon_v1 as pronunciation\n'
-              'import tayvoriq_voice_only_repair_v5_base as base\n'
+          source = "MHP, IT, ITW, DFB-Camp, KI, EU und USA."
+          expected = (
+              "Emm Hah Peh, Ih Teh, Ih Teh Weh, Deh Eff Beh Camp, "
+              "Kah Ih, Eh Uh und Uh Ess Ah."
           )
-          if 'import tayvoriq_pronunciation_lexicon_v1 as pronunciation' not in text:
-              if import_anchor not in text:
-                  raise SystemExit('PRONUNCIATION_IMPORT_ANCHOR_MISSING')
-              text = text.replace(import_anchor, import_replacement, 1)
-
-          old = '''def _canonical_spoken_brand_surfaces(text: str) -> str:\n    """Add only a word boundary so Chatterbox preserves the final GPT consonant."""\n\n    return _CHATGPT_VISIBLE_PATTERN.sub("Chat GPT", text)\n'''
-          new = '''def _canonical_spoken_brand_surfaces(text: str) -> str:\n    """Apply the central speech-only lexicon; visible script stays immutable."""\n\n    return pronunciation.apply_spoken_surfaces(text)\n'''
-          if old in text:
-              text = text.replace(old, new, 1)
-          elif new not in text:
-              raise SystemExit('PRONUNCIATION_FUNCTION_ANCHOR_MISSING')
-
-          path.write_text(text, encoding='utf-8')
+          actual = apply_spoken_surfaces(source)
+          if actual != expected:
+              raise SystemExit(f"PRONUNCIATION_CONTRACT_FAILED:{actual!r}")
+          print("TAYVORIQ_GERMAN_ACRONYM_CONTRACT_PASSED")
           PY
 
-      - name: Test pronunciation contract
+      - name: Run pronunciation and DFB regressions
         working-directory: implementation
-        shell: bash
         run: |
           set -euo pipefail
-          python -m pytest -q tests/test_tayvoriq_pronunciation_lexicon_v1.py
-          python -m py_compile tools/tayvoriq_pronunciation_lexicon_v1.py tools/tayvoriq_voice_only_repair_v5.py
-          python - <<'PY'
-          from pathlib import Path
-          text = Path('tools/tayvoriq_voice_only_repair_v5.py').read_text(encoding='utf-8')
-          assert 'pronunciation.apply_spoken_surfaces(text)' in text
-          assert 'import tayvoriq_pronunciation_lexicon_v1 as pronunciation' in text
-          print('TAYVORIQ_PRONUNCIATION_CONTRACT_PASSED')
-          PY
+          python -m pytest -q             tests/test_tayvoriq_pronunciation_lexicon_v1.py             tests/test_tayvoriq_pronunciation_audit_contract.py             tests/test_tayvoriq_verified_source_overflow_repair.py             tests/test_tayvoriq_tts_pacing_resilience.py             tests/test_tayvoriq_voice_v5_human_narrator.py
 
-      - name: Commit hardening when needed
+      - name: Run lightweight production contract
         working-directory: implementation
-        shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
-            echo 'Pronunciation hardening already present.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tools/tayvoriq_pronunciation_lexicon_v1.py tools/tayvoriq_voice_only_repair_v5.py tests/test_tayvoriq_pronunciation_lexicon_v1.py
-          git commit -m 'feat: centralize TAYVORIQ pronunciation surfaces'
-          git pull --rebase origin feature/multi-platform-distribution-package
-          git push origin HEAD:feature/multi-platform-distribution-package
+          python tools/tayvoriq_lightweight_preflight.py
+
+      - name: Run full production preflight
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_preflight_check.py             --report-out out/control-plane/pronunciation-dfb-preflight.json
+
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-pronunciation-dfb-verification-${{ github.run_id }}
+          path: implementation/out/control-plane/pronunciation-dfb-preflight.json
+          if-no-files-found: warn
+          retention-days: 14
