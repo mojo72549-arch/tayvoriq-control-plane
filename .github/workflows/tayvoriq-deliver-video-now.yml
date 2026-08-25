@@ -59,7 +59,7 @@ env:
   TAYVORIQ_VOICE_REPAIR_TIMEOUT_SECONDS: "1200"
   TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "2"
   TAYVORIQ_APPROVED_TREND_PINNED: "true"
-  TAYVORIQ_TELEGRAM_PROGRESS: "false"
+  TAYVORIQ_TELEGRAM_PROGRESS: "true"
   TAYVORIQ_SOURCE_CONTEXT_FILE: ${{ github.workspace }}/tayvoriq-source-context.json
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
