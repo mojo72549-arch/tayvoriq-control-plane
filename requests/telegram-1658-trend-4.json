@@ -1,0 +1,76 @@
+{
+  "request_id": "telegram-1658-trend-4",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "4",
+  "topic": "Fußball ohne Abseits und mit komischem Ball: Warum ein DFB-Camp absichtlich Regeln kaputtmacht",
+  "trend_scope": "sports",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-25T12:09:56.040Z",
+  "telegram_message_id": 1658,
+  "approval_key": "telegram:20260826-evening-agentv2:1658:trend:4",
+  "mode": "full",
+  "selection_id": "20260826-evening-agentv2",
+  "source_context": {
+    "verified_at": "2026-08-25T11:58:00Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "SWR Aktuell",
+        "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/karlsruhe/fairplay-im-fussball-jugendliche-lernen-im-sommercamp-100.html",
+        "supports": "In einer DFB-Fußballferienfreizeit an der Sportschule Schöneck werden Regeln wie Abseits bewusst verändert; mit ungewöhnlichem Ball und kurzen Spielformen sollen Jugendliche Fairplay und den Sinn von Regeln erleben."
+      },
+      {
+        "publisher": "Bayerischer Fußball-Verband",
+        "url": "https://www.bfv.de/spielbetrieb-verbandsleben/bezirke-und-kreise/unterfranken/bezirk-ufr/news/2026/junioren-der-sg-randersacker-freuen-sich-auf-die-fussball-ferienfreizeit",
+        "supports": "Der BFV bestätigt die DFB-Stiftungs-Ferienfreizeit Ende August an der Sportschule Schöneck und das Motto Fair Play & Respekt mit pädagogischen Programmpunkten."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Ein DFB-Camp verändert absichtlich Fußballregeln und sogar den Spielball.",
+      "why_happening": "Das Experiment funktioniert, weil Jugendliche dadurch den Sinn von Regeln erleben.",
+      "who_is_affected": "Mitmachen dürfen Jugendliche aus Vereinen bei der Ferienfreizeit in Karlsruhe.",
+      "personal_impact": "Für dich ist das Fußball als ungewöhnliches Sozialexperiment statt normales Training.",
+      "action_now": "Beobachte, wie Regeländerungen Verhalten und Fairplay innerhalb weniger Minuten verändern."
+    },
+    "growth_v2": {
+      "growth_score": 91,
+      "binding_score": 90,
+      "priority_score": 91,
+      "tier": "breakout_preferred",
+      "series_candidate": false,
+      "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+    },
+    "claim_coherence": {
+      "passed": true,
+      "reasons": []
+    },
+    "factual_guardrails": [
+      "Nicht behaupten, der DFB wolle Fußballregeln dauerhaft abschaffen.",
+      "Den ungewöhnlichen Ball und Regeländerungen als Trainings-/Lernexperiment erklären."
+    ],
+    "content_angle": "Was passiert, wenn man Fußball absichtlich falsch spielt? Genau das testet dieses Camp.",
+    "quality_gates_weakened": false,
+    "wildcard_type": "quirky_playful_verified"
+  },
+  "source_context_sha256": "ba7e375de35caff712e96ad3ff4eddef8aa2697d4afdef9390dfc710b853b654",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-25T12:09:56.040Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-25T12:10:04.750272+00:00",
+      "actor": "request-dispatcher:32846100276"
+    }
+  ],
+  "contract_sha256": "03580cb5ac7334984195358c710661ebf372dab8f67a6d2b3405ba6f649d4bef",
+  "dispatch_claim_run_id": 32846100276,
+  "dispatch_contract_sha256": "03580cb5ac7334984195358c710661ebf372dab8f67a6d2b3405ba6f649d4bef"
+}
