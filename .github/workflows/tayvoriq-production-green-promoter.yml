@@ -1,0 +1,122 @@
+name: TAYVORIQ Production Green Promoter
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-production-green-promoter
+  cancel-in-progress: true
+
+jobs:
+  verify-and-promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact implementation candidate
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 0
+
+      - name: Resolve immutable candidate and current green
+        id: refs
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="$(git rev-parse HEAD)"
+          current_green="$(git ls-remote origin refs/heads/tayvoriq-production-green | awk '{print $1}')"
+          test -n "$candidate" || { echo "CANDIDATE_SHA_MISSING"; exit 1; }
+          test -n "$current_green" || { echo "PRODUCTION_GREEN_REF_MISSING"; exit 1; }
+          echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
+          echo "current_green=$current_green" >> "$GITHUB_OUTPUT"
+          if [ "$candidate" = "$current_green" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "TAYVORIQ_PRODUCTION_GREEN_ALREADY_CURRENT:$candidate"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "TAYVORIQ_PRODUCTION_GREEN_CANDIDATE:$candidate current=$current_green"
+          fi
+
+      - name: Setup Python
+        if: steps.refs.outputs.changed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deterministic preflight dependencies
+        if: steps.refs.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for command in ffmpeg ffprobe rsync git; do
+            command -v "$command" >/dev/null || missing+=("$command")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg rsync git
+          fi
+          export PIP_DISABLE_PIP_VERSION_CHECK=1
+          python -m pip install -r implementation/requirements.txt pytest -q
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+
+      - name: Compile exact candidate
+        if: steps.refs.outputs.changed == 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.refs.outputs.candidate }}" || {
+            echo "CANDIDATE_SHA_CHANGED_BEFORE_PREFLIGHT"
+            exit 1
+          }
+          python -m compileall -q tools src runtime_patches tests
+          python tools/tayvoriq_lightweight_preflight.py
+
+      - name: Full production preflight
+        if: steps.refs.outputs.changed == 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_preflight_check.py --report-out out/control-plane/production-green-promotion.json
+          python -m pytest -q tests/test_tayvoriq_production_green_pin.py tests/test_tayvoriq_verified_source_budget_guard.py
+
+      - name: Re-verify candidate did not move
+        if: steps.refs.outputs.changed == 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          tested="${{ steps.refs.outputs.candidate }}"
+          local_sha="$(git rev-parse HEAD)"
+          remote_sha="$(git ls-remote origin refs/heads/feature/multi-platform-distribution-package | awk '{print $1}')"
+          test "$local_sha" = "$tested" || { echo "TESTED_SHA_CHANGED:$local_sha:$tested"; exit 1; }
+          test "$remote_sha" = "$tested" || { echo "FEATURE_BRANCH_ADVANCED_DURING_PREFLIGHT:$remote_sha:$tested"; exit 1; }
+
+      - name: Promote exact fully verified SHA
+        if: steps.refs.outputs.changed == 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="${{ steps.refs.outputs.candidate }}"
+          git fetch origin tayvoriq-production-green
+          current_green="$(git rev-parse origin/tayvoriq-production-green)"
+          git push --force-with-lease=refs/heads/tayvoriq-production-green:"$current_green" origin "$candidate:refs/heads/tayvoriq-production-green"
+          promoted="$(git ls-remote origin refs/heads/tayvoriq-production-green | awk '{print $1}')"
+          test "$promoted" = "$candidate" || {
+            echo "PRODUCTION_GREEN_PROMOTION_NOT_VERIFIED:$promoted:$candidate"
+            exit 1
+          }
+          echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$candidate"
