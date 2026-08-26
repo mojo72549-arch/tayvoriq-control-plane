@@ -1,0 +1,78 @@
+{
+  "request_id": "telegram-1737-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
+  "trend_scope": "science_future",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-26T22:05:53.104Z",
+  "telegram_message_id": 1737,
+  "approval_key": "telegram:20260827-evening-agentv2:1737:trend:1",
+  "mode": "full",
+  "selection_id": "20260827-evening-agentv2",
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "tagesschau.de",
+        "url": "https://www.tagesschau.de/wirtschaft/unternehmen/spacex-weltraumbahnhof-100.html",
+        "supports": "100-Milliarden-Plan, Zeitplan und Größenordnung."
+      },
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/business/media-telecom/spacex-build-starship-spaceport-louisiana-2026-08-25/",
+        "supports": "Unabhängige Bestätigung und Standort-/Job-Kontext."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "SpaceX will in Louisiana einen neuen riesigen Starship-Komplex bauen. Genannt werden rund 100 Milliarden US-Dollar Investition und fünf Startkomplexe mit jeweils zwei Pads.",
+      "why_happening": "SpaceX will die Starship-Startfrequenz massiv erhöhen und Infrastruktur für Mond-, Mars- und Satellitenmissionen ausbauen.",
+      "who_is_affected": "SpaceX, NASA-Programme, die Region Louisiana, Anwohner und Umweltverbände.",
+      "personal_impact": "Das Projekt zeigt, wie Raumfahrt von einzelnen Starts zu industrieller Hochfrequenz-Infrastruktur werden soll.",
+      "action_now": "Im Short sauber zwischen offiziellen Projektplänen und Musks extremen Langfristzielen unterscheiden.",
+      "facts": [
+        "Rund 100 Milliarden US-Dollar Investition angekündigt.",
+        "Fünf Startkomplexe mit insgesamt zehn Pads geplant.",
+        "Baubeginn 2027, erste Starts ab 2029 vorgesehen."
+      ]
+    },
+    "factual_guardrails": [
+      "Mehr als 30 Starts täglich als Ziel/Ankündigung von Musk markieren, nicht als gesicherte Kapazität.",
+      "Projekt ist geplant, nicht gebaut.",
+      "Umweltbedenken nicht ausblenden."
+    ],
+    "research_notes": "Story-Spine: Raumfahrt wird zur Industrieanlage -> 100 Milliarden -> zehn Pads -> tausende Starts als Ziel -> Umwelt- und Infrastrukturfrage. HASHTAG_SEEDS: #SpaceX #Starship #Louisiana #Starbase #Raumfahrt #Mars #NASA #TAYVORIQ",
+    "hashtag_seeds": [
+      "#SpaceX",
+      "#Starship",
+      "#Louisiana",
+      "#Starbase",
+      "#Raumfahrt",
+      "#Mars",
+      "#NASA",
+      "#TAYVORIQ"
+    ]
+  },
+  "source_context_sha256": "65ef914dbc2fcb7e2e757bfe54331733c9128de36dc63cc06dc59698d556aefd",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-26T22:05:53.104Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-26T22:06:02.114728+00:00",
+      "actor": "request-dispatcher:33018185622"
+    }
+  ],
+  "contract_sha256": "f9a435a0ad9b7bcf27d33dc1450166138849b86cfafb058909d37267807da2b1",
+  "dispatch_claim_run_id": 33018185622,
+  "dispatch_contract_sha256": "f9a435a0ad9b7bcf27d33dc1450166138849b86cfafb058909d37267807da2b1"
+}
