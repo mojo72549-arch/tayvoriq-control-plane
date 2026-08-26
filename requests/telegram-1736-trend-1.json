@@ -1,0 +1,78 @@
+{
+  "request_id": "telegram-1736-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Schufa-Schattendatenbank: Warum alte Kredite trotz Löschfristen weiter gespeichert worden sein sollen",
+  "trend_scope": "business_economy",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-26T22:05:28.577Z",
+  "telegram_message_id": 1736,
+  "approval_key": "telegram:20260827-morning-agentv2:1736:trend:1",
+  "mode": "full",
+  "selection_id": "20260827-morning-agentv2",
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "tagesschau.de / NDR",
+        "url": "https://www.tagesschau.de/wirtschaft/verbraucher/schufa-klage-100.html",
+        "supports": "Aktuelle Vorwürfe, Art der historischen Daten und Schufa-Reaktion."
+      },
+      {
+        "publisher": "noyb",
+        "url": "https://noyb.eu/de/shadow-database-scandal-noyb-sends-schufa-cease-and-desist-letter-interest-list-class-action",
+        "supports": "Abmahnung, mögliche Klagen und Angaben zur Größenordnung der Betroffenen."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Die Datenschutzorganisation noyb hat die Schufa wegen einer sogenannten Schattendatenbank formell abgemahnt. Darin sollen historische Daten zu alten Krediten, Pfändungen und Privatinsolvenzen weiter verarbeitet werden.",
+      "why_happening": "NDR/SZ-Recherchen hatten historische Datenbestände öffentlich gemacht. noyb hält deren Verarbeitung und mangelnde Transparenz für datenschutzwidrig und bereitet rechtliche Schritte vor.",
+      "who_is_affected": "Menschen mit Schufa-Daten, besonders wenn alte Finanzinformationen bei Bonitätsprüfungen oder Auskünften relevant werden könnten.",
+      "personal_impact": "Bonitätsdaten können bei Wohnung, Kredit, Mobilfunk und anderen Verträgen eine Rolle spielen. Deshalb ist entscheidend, welche Daten tatsächlich gespeichert und offengelegt werden.",
+      "action_now": "Im Short klar zwischen Vorwurf von noyb, belegten Recherchen und der Position der Schufa unterscheiden.",
+      "facts": [
+        "noyb hat die Schufa am 26. August 2026 formell abgemahnt.",
+        "Es geht unter anderem um alte Kredit-, Pfändungs- und Insolvenzdaten.",
+        "noyb spricht von potenziell bis zu 69 Millionen Personen mit Schufa-Daten, nicht davon, dass bei allen problematische Alt-Daten vorliegen."
+      ]
+    },
+    "factual_guardrails": [
+      "Nicht behaupten, dass bei allen 69 Millionen Menschen rechtswidrige Alt-Daten gespeichert sind.",
+      "Vorwürfe von noyb als Vorwürfe kennzeichnen.",
+      "Keine persönliche Bonitätswirkung ohne Beleg behaupten."
+    ],
+    "research_notes": "Story-Spine: Alte Finanzdaten verschwinden möglicherweise nicht so vollständig wie Verbraucher erwarten -> warum das für Kredit und Wohnung relevant ist -> was noyb jetzt juristisch fordert. HASHTAG_SEEDS: #SCHUFA #Datenschutz #DSGVO #Bonität #Kredit #Verbraucherschutz #noyb #TAYVORIQ",
+    "hashtag_seeds": [
+      "#SCHUFA",
+      "#Datenschutz",
+      "#DSGVO",
+      "#Bonität",
+      "#Kredit",
+      "#Verbraucherschutz",
+      "#noyb",
+      "#TAYVORIQ"
+    ]
+  },
+  "source_context_sha256": "abbf6c044672aeffe488b865dfeba634ab18af40eb0e4e4a220cb7eeca82529f",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-26T22:05:28.577Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-26T22:05:41.575986+00:00",
+      "actor": "request-dispatcher:33018161474"
+    }
+  ],
+  "contract_sha256": "eb9d00c4f5f302e1a1157e9b1a9e55799c87418c8370c2afa00217d13930df58",
+  "dispatch_claim_run_id": 33018161474,
+  "dispatch_contract_sha256": "eb9d00c4f5f302e1a1157e9b1a9e55799c87418c8370c2afa00217d13930df58"
+}
