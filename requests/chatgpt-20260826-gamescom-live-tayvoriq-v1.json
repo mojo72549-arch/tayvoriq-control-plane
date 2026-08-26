@@ -1,6 +1,6 @@
 {
   "request_id": "chatgpt-20260826-gamescom-live-tayvoriq-v1",
-  "status": "APPROVED",
+  "status": "DISPATCHED",
   "source": "chat_operator_authorized_freshness_continuation",
   "trend_id": "1",
   "topic": "gamescom startet heute: Warum jetzt plötzlich so viele neue Spiele und Ankündigungen auftauchen",
@@ -114,6 +114,19 @@
       "state": "APPROVED",
       "at": "2026-08-26T08:52:00Z",
       "actor": "chat_operator"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-26T18:40:33.942436Z",
+      "actor": "tayvoriq-request-pin-autorepair",
+      "meta": {
+        "golden_path_run_id": 32999634303,
+        "reason": "bind-failed-run-before-delivery-watch"
+      }
     }
-  ]
+  ],
+  "previous_golden_path_run_ids": [],
+  "golden_path_run_id": 32999634303,
+  "recovery_owner": "tayvoriq-request-pin-autorepair",
+  "owner_bound_at": "2026-08-26T18:40:33.942436Z"
 }
