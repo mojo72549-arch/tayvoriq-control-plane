@@ -18,17 +18,27 @@ _original_prompt = base.prompt_for
 
 def _editorial_hint_text(slot, now):
     """Load dated, source-backed candidate hints without bypassing live verification."""
-    path = Path("state/tayvoriq-editorial-hints.json")
-    if not path.is_file():
-        return ""
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    paths = [
+        Path(f"state/tayvoriq-editorial-hints-{slot}.json"),
+        Path("state/tayvoriq-editorial-hints.json"),
+    ]
+    data = None
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            candidate = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if str(candidate.get("slot") or "").strip() != str(slot):
+            continue
+        data = candidate
+        break
+    if not isinstance(data, dict):
         return ""
     target_date = str(data.get("target_date") or "").strip()
-    target_slot = str(data.get("slot") or "").strip()
     current_date = now.date().isoformat() if hasattr(now, "date") else str(now)[:10]
-    if target_date != current_date or target_slot != str(slot):
+    if target_date != current_date:
         return ""
     candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
     if not candidates:
@@ -67,6 +77,14 @@ TAYVORIQ BRAND SAFETY — HARD REQUIREMENT:
 - Prefer broadly shareable curiosity, consequence, surprise, technology, business, world-event and everyday-impact hooks.
 - This brand-safety rule must not be traded off against virality, trend score or predicted follower conversion.
 
+TAYVORIQ DUPLICATE EXCLUSION — HARD REQUIREMENT:
+- Do not propose any topic, event or core story that TAYVORIQ has already surfaced, selected, approved, produced or published, even if the headline or angle is rewritten.
+- Compare the candidate semantically against prior requests, selections, series episodes and publication history; same underlying event or same viewer takeaway means duplicate.
+- A follow-up is allowed only when a genuinely material new development changes the story itself, and the new development must be the hook and majority of the value.
+- Hard-exclude known recently used/surfaced families unless such a material new development exists: earthquake/tsunami/volcano series, solar eclipse, Nvidia/AI-stock pressure, Stuttgart 21 game/demo, Bosch humanoid robots in Buehl, ChatGPT ads in Germany, VW mega-crisis/restructuring, courts/chatbots, DFB camp rule experiment, oil/Hormuz/sprit prices, MHP/Porsche-TCS sale, Helge Schneider Ellwangen, ESA/Uni-Stuttgart satellite re-entry, El Nino, humanoid robot sprint record and Gamescom 2026.
+- Morning and evening on the same target date must also be semantically distinct from each other. Never recycle a morning candidate in the evening list with a different wording.
+- If duplicate status is uncertain, reject the candidate and choose a fresh story.
+
 TAYVORIQ VARIETY — VERIFIED PLAYFUL WILDCARD:
 - When the live source pool supports it, try to include ONE surprising, playful, quirky or unusual but real candidate alongside harder news.
 - Good wildcard families include games, unusual experiments, odd engineering, local curiosities, science oddities, creator phenomena and unexpected everyday stories.
@@ -81,8 +99,7 @@ TAYVORIQ CONTENT DEPTH — HARD REQUIREMENT:
 - Put the useful detail into the EXISTING schema: source_context.fallback_editorial_answers.facts; the what_happened, why_happening, personal_impact and action_now answers; source_context.factual_guardrails; and source_context.research_notes.
 - Explicitly distinguish current or confirmed facts from announced or planned items and from rumor or speculation. Never elevate rumor or expectation to confirmed fact.
 - Include at least ONE contextualizing number, comparison or date where credible and relevant.
-- Explain why the concrete detail matters to the viewer and what happens next (next date, release, decision, event step or practical consequence) when known.
-- For event coverage such as Gamescom, name concrete confirmed games, publishers, exhibitors or features and state what is playable, announced, shown or merely expected when source-backed.
+- Explain why the concrete detail matters to the viewer and what happens next when known.
 - Research must be rich enough to support a useful 45–60 second TAYVORIQ script without filler. If the evidence cannot support that depth, lower the candidate or reject it rather than padding the story.
 - Never invent details merely to satisfy these counts. Evidence beats count.
 
@@ -96,8 +113,8 @@ TAYVORIQ SCRIPT HANDOFF — HARD REQUIREMENT:
 TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 - End source_context.research_notes with a compact line starting exactly with "HASHTAG_SEEDS:" followed by 5–8 topic-specific hashtag suggestions for production metadata.
 - Prefer a deliberate mix: 1 exact event/topic tag, 1–3 concrete entity/product/person/place tags, 1 relevant category/community tag, and #TAYVORIQ when appropriate.
-- Hashtags must be semantically tied to the actual story and its strongest searchable entities. For Gamescom coverage, for example, use the confirmed event/game/publisher names that are genuinely central to that candidate rather than generic gaming bait.
-- Do NOT pad with generic reach-bait such as #fyp, #viral, #trending, #explorepage or #fürdich. Do not use #news merely because the item is a news story.
+- Hashtags must be semantically tied to the actual story and its strongest searchable entities.
+- Do NOT pad with generic reach-bait such as #fyp, #viral, #trending, #explorepage or #fuerdich. Do not use #news merely because the item is a news story.
 - Avoid duplicate synonyms and overbroad tags that do not help discovery. Strong specificity beats hashtag volume.
 - Never put an unverified claim, rumor or speculative release detail into a hashtag.
 """.strip() + (("\n\n" + editorial_hints) if editorial_hints else "")
