@@ -28,6 +28,10 @@ export default {
 
     const activeSelection = await selectionIsActive(env, selectionId);
     if (activeSelection) {
+      const selectMatch = callbackData.match(/^select_trend:([A-Za-z0-9_-]{4,40}):([1-5])$/);
+      if (selectMatch) {
+        return handleTrendPreview(env, callback, chatId, selectMatch[1], selectMatch[2]);
+      }
       return v2.fetch(request, env);
     }
 
@@ -50,6 +54,94 @@ export default {
   },
 };
 
+async function handleTrendPreview(env, callback, chatId, selectionId, trendId) {
+  const snapshot = await selectionSnapshot(env, selectionId);
+  if (!snapshot || snapshot.superseded === true) {
+    if (callback?.id) {
+      await telegramMethod(env, 'answerCallbackQuery', {
+        callback_query_id: callback.id,
+        text: 'Diese Auswahl wurde ersetzt. Nutze die neueste Rangliste.',
+        show_alert: false,
+      });
+    }
+    return new Response('stale trend selection', { status: 409 });
+  }
+
+  const trend = (Array.isArray(snapshot.trends) ? snapshot.trends : [])
+    .find(item => String(item?.id || '') === String(trendId));
+  if (!trend) return v2.fetch(new Request('https://fallback.invalid', { method: 'GET' }), env);
+
+  if (callback?.id) {
+    await telegramMethod(env, 'answerCallbackQuery', {
+      callback_query_id: callback.id,
+      text: `Trend ${trendId} ausgewählt.`,
+      show_alert: false,
+    });
+  }
+
+  const payload = {
+    chat_id: chatId,
+    text: selectedTrendBody(trend),
+    disable_web_page_preview: true,
+    reply_markup: trendConfirmationKeyboard(selectionId, trendId),
+  };
+  const messageId = callback?.message?.message_id;
+  if (messageId) payload.message_id = messageId;
+  const method = messageId ? 'editMessageText' : 'sendMessage';
+  const response = await telegramMethod(env, method, payload);
+  return response.ok ? new Response('ok') : new Response('telegram preview failed', { status: 502 });
+}
+
+function selectedTrendBody(trend) {
+  const criteria = trend?.criteria || {};
+  const labels = [
+    ['Aktualität', criteria.aktualitaet],
+    ['Viralität', criteria.viralitaet],
+    ['TAYVORIQ', criteria.tayvoriq_passung],
+    ['Quellen', criteria.quellenqualitaet],
+    ['Visuals', criteria.visuell],
+  ].filter(([, value]) => Number.isFinite(Number(value)));
+
+  const lines = [
+    '🟣 TAYVORIQ Trend ausgewählt',
+    '',
+    `Ausgewählt: ${trend?.id || ''}`,
+    `Thema: ${trend?.title || ''}`,
+    `Gesamtscore: ${trend?.score || 0} %`,
+  ];
+  if (labels.length) lines.push('', labels.map(([label, value]) => `${label} ${value}%`).join(' · '));
+
+  const sources = Array.isArray(trend?.sources) ? trend.sources.slice(0, 3) : [];
+  const sourceLines = sources.map(formatSource).filter(Boolean);
+  if (sourceLines.length) lines.push('', 'Geprüfte Quellen:', ...sourceLines);
+
+  lines.push('', 'Erst der folgende Button startet verbindlich die Produktion.');
+  return lines.join('\n');
+}
+
+function formatSource(source, index) {
+  if (typeof source === 'string') return source.trim();
+  if (!source || typeof source !== 'object') return '';
+  const publisher = String(source.publisher || source.name || `Quelle ${index + 1}`).trim();
+  const url = String(source.url || source.uri || '').trim();
+  if (publisher && url) return `• ${publisher}: ${url}`;
+  if (url) return `• ${url}`;
+  if (publisher) return `• ${publisher}`;
+  return '';
+}
+
+function trendConfirmationKeyboard(selectionId, trendId) {
+  return {
+    inline_keyboard: [
+      [{ text: '✅ Trend freigeben', callback_data: `approve_trend:${selectionId}:${trendId}` }],
+      [
+        { text: '↩️ Anderen Trend wählen', callback_data: `trend_list:${selectionId}` },
+        { text: '❌ Ablehnen', callback_data: `reject_trend:${selectionId}:${trendId}` },
+      ],
+    ],
+  };
+}
+
 function selectionFromCallback(callbackData) {
   const patterns = [
     /^select_trend:([A-Za-z0-9_-]{4,40}):[1-5]$/,
@@ -66,15 +158,16 @@ function selectionFromCallback(callbackData) {
 }
 
 export async function selectionIsActive(env, selectionId) {
+  const requested = await selectionSnapshot(env, selectionId);
+  if (requested?.superseded === true) return false;
+
   if (await selectionIsManifested(env, selectionId)) return true;
 
   const current = await currentSelection(env);
   const currentId = String(current?.selection_id || '').trim();
   if (!currentId || currentId === selectionId) return true;
 
-  const requested = await selectionSnapshot(env, selectionId);
-  if (!requested || requested.superseded === true) return false;
-
+  if (!requested) return false;
   const requestedDate = String(requested.target_date || requested.date || '').trim();
   const currentDate = String(current.target_date || current.date || '').trim();
   const requestedSlot = String(requested.slot || '').trim();
