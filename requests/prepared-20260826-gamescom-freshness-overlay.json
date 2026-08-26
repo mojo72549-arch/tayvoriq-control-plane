@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "PREPARED_NOT_DISPATCHED",
+  "prepared_for_date": "2026-08-26",
+  "base_request": {
+    "request_id": "telegram-1656-trend-1",
+    "approval_key": "telegram:20260826-morning-agentv2:1656:trend:1",
+    "contract_sha256": "4758c207220bba1124f545375b02bd5a0c4fa9b28265118ca02edd7f57911120",
+    "immutable": true,
+    "original_topic": "gamescom startet: Warum morgen plötzlich so viele neue Spiele enthüllt werden"
+  },
+  "freshness_overlay": {
+    "reason": "The original relative-time wording 'morgen' is stale on 2026-08-26. Preserve the approved Gamescom topic but update temporal framing before any further production or publication.",
+    "updated_topic": "gamescom startet heute: Warum jetzt plötzlich so viele neue Spiele und Ankündigungen auftauchen",
+    "hook": "Heute öffnet die gamescom – und plötzlich prasseln neue Spiele, Trailer und Ankündigungen im Minutentakt rein.",
+    "rehook_mid": "Und das Spannende: Die große Opening Night war erst der Start – jetzt läuft die eigentliche Messe an.",
+    "viewer_value": "In unter einer Minute verstehen, warum gerade jetzt so viele Gaming-News gleichzeitig erscheinen und was davon wirklich bestätigt ist.",
+    "cta": "Wenn du die wichtigsten bestätigten gamescom-Reveals ohne Leak-Gerüchte willst, bleib bei TAYVORIQ.",
+    "next_video_bridge": "Sobald ein bestätigter Reveal klar heraussticht, wird er als eigener Follow-up-Short priorisiert; kein konkreter Titel wird vor Bestätigung versprochen.",
+    "content_angle": "Nicht die Messe als Termin erklären, sondern den plötzlichen Nachrichten- und Reveal-Takt als überraschende Folge des offiziellen Starts.",
+    "facts": [
+      "Die gamescom 2026 findet vom 26. bis 30. August in Köln statt.",
+      "Die gamescom Opening Night Live fand am 25. August statt und ist der Ort für Neuankündigungen und Weltpremieren.",
+      "Am 26. August läuft Fach- und Medientag; das offizielle Messeprogramm ist aktiv.",
+      "Für Privatbesuchende ist am 26. August ein begrenzter Einlass ab 13:00 Uhr mit Wildcard vorgesehen."
+    ],
+    "sources": [
+      {
+        "publisher": "gamescom",
+        "url": "https://www.gamescom.global/de/info/opening-times",
+        "supports": "gamescom 26.-30.08.2026; ONL 25.08.2026; Fach-/Medientag und Öffnungszeiten am 26.08."
+      },
+      {
+        "publisher": "gamescom",
+        "url": "https://www.gamescom.global/de/info/exhibitors/shows-and-events",
+        "supports": "Opening Night Live is the official venue for announcements and world premieres."
+      },
+      {
+        "publisher": "gamescom",
+        "url": "https://www.gamescom.global/de/program",
+        "supports": "Official program is active on 26.08.2026 with live events throughout the day."
+      }
+    ],
+    "factual_guardrails": [
+      "Never use 'morgen' for the gamescom start on or after 2026-08-26.",
+      "Do not present leaks or rumors as confirmed reveals.",
+      "Keep Opening Night Live on 25.08. and the trade fair opening on 26.08. temporally distinct.",
+      "Do not invent specific new game announcements that are not confirmed by a current source at production time.",
+      "Run one final freshness check immediately before script generation because gamescom announcements are fast-moving."
+    ]
+  },
+  "growth_contract": {
+    "scroll_stop_first_1_5s": true,
+    "second_reason_to_continue_by_midpoint": true,
+    "content_specific_viewer_value": true,
+    "content_specific_cta": true,
+    "follow_up_bridge_truthful": true,
+    "visual_plan": [
+      "gamescom entrance/crowd or venue exterior",
+      "gaming showcase/stage screens without misleading unrelated branding",
+      "controller/gameplay closeups where context is clearly gaming",
+      "developer/publisher booth activity",
+      "fast visual rhythm matching reveal/news cadence"
+    ],
+    "visual_negatives": [
+      "generic office footage",
+      "finance/trading screens",
+      "unrelated esports footage presented as gamescom",
+      "fake game titles or fabricated announcement cards"
+    ]
+  },
+  "quality_gates_weakened": false,
+  "dispatch": {
+    "requested": false,
+    "note": "Preparation only. Do not start a new production from this overlay by itself; bind it to the approved base request through the existing request-continuity path when production is resumed."
+  }
+}
