@@ -5,11 +5,163 @@
   "selection_id": "20260827-morning-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
-  "mode": "superseded_duplicate_snapshot",
-  "superseded": true,
-  "superseded_at": "2026-08-26T23:40:00+02:00",
-  "superseded_reason": "Gamescom 2026 was already produced/published earlier on 2026-08-26; this pre-staged fallback bypassed the refreshed semantic duplicate policy and must never be reused.",
+  "mode": "manual_verified_fallback_after_provider_limits",
+  "superseded": false,
+  "duplicate_guard_passed": true,
+  "history_checked_at": "2026-08-26T23:48:00+02:00",
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
-  "trends": []
+  "production_started": false,
+  "trends": [
+    {
+      "id": "1",
+      "title": "Schufa-Schattendatenbank: Warum alte Kredite trotz Löschfristen weiter gespeichert worden sein sollen",
+      "score": 97,
+      "trend_scope": "business_economy",
+      "criteria": {"aktualitaet":100,"viralitaet":98,"tayvoriq_passung":98,"quellenqualitaet":99,"visuell":93},
+      "sources": [
+        {"publisher":"tagesschau.de / NDR","url":"https://www.tagesschau.de/wirtschaft/verbraucher/schufa-klage-100.html","supports":"Aktueller Bericht vom 26.08.2026 über historische Kredit-, Pfändungs- und Insolvenzdaten sowie die angekündigten rechtlichen Schritte."},
+        {"publisher":"noyb","url":"https://noyb.eu/de/shadow-database-scandal-noyb-sends-schufa-cease-and-desist-letter-interest-list-class-action","supports":"Primärquelle zur formellen Abmahnung, möglichen Sammelklage und potenziell betroffenen Schufa-Datensätzen."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"tagesschau.de / NDR","url":"https://www.tagesschau.de/wirtschaft/verbraucher/schufa-klage-100.html","supports":"Aktuelle Vorwürfe, Art der historischen Daten und Schufa-Reaktion."},
+          {"publisher":"noyb","url":"https://noyb.eu/de/shadow-database-scandal-noyb-sends-schufa-cease-and-desist-letter-interest-list-class-action","supports":"Abmahnung, mögliche Klagen und Angaben zur Größenordnung der Betroffenen."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Die Datenschutzorganisation noyb hat die Schufa wegen einer sogenannten Schattendatenbank formell abgemahnt. Darin sollen historische Daten zu alten Krediten, Pfändungen und Privatinsolvenzen weiter verarbeitet werden.",
+          "why_happening":"NDR/SZ-Recherchen hatten historische Datenbestände öffentlich gemacht. noyb hält deren Verarbeitung und mangelnde Transparenz für datenschutzwidrig und bereitet rechtliche Schritte vor.",
+          "who_is_affected":"Menschen mit Schufa-Daten, besonders wenn alte Finanzinformationen bei Bonitätsprüfungen oder Auskünften relevant werden könnten.",
+          "personal_impact":"Bonitätsdaten können bei Wohnung, Kredit, Mobilfunk und anderen Verträgen eine Rolle spielen. Deshalb ist entscheidend, welche Daten tatsächlich gespeichert und offengelegt werden.",
+          "action_now":"Im Short klar zwischen Vorwurf von noyb, belegten Recherchen und der Position der Schufa unterscheiden.",
+          "facts":["noyb hat die Schufa am 26. August 2026 formell abgemahnt.","Es geht unter anderem um alte Kredit-, Pfändungs- und Insolvenzdaten.","noyb spricht von potenziell bis zu 69 Millionen Personen mit Schufa-Daten, nicht davon, dass bei allen problematische Alt-Daten vorliegen."]
+        },
+        "factual_guardrails":["Nicht behaupten, dass bei allen 69 Millionen Menschen rechtswidrige Alt-Daten gespeichert sind.","Vorwürfe von noyb als Vorwürfe kennzeichnen.","Keine persönliche Bonitätswirkung ohne Beleg behaupten."],
+        "research_notes":"Story-Spine: Alte Finanzdaten verschwinden möglicherweise nicht so vollständig wie Verbraucher erwarten -> warum das für Kredit und Wohnung relevant ist -> was noyb jetzt juristisch fordert. HASHTAG_SEEDS: #SCHUFA #Datenschutz #DSGVO #Bonität #Kredit #Verbraucherschutz #noyb #TAYVORIQ",
+        "hashtag_seeds":["#SCHUFA","#Datenschutz","#DSGVO","#Bonität","#Kredit","#Verbraucherschutz","#noyb","#TAYVORIQ"]
+      }
+    },
+    {
+      "id": "2",
+      "title": "Lidl-Mutter wird KI-Infrastruktur-Riese: Schwarz Digits plant XXL-Rechenzentrum bei Rostock",
+      "score": 97,
+      "trend_scope": "technology_ai",
+      "criteria": {"aktualitaet":100,"viralitaet":97,"tayvoriq_passung":99,"quellenqualitaet":98,"visuell":98},
+      "sources": [
+        {"publisher":"tagesschau.de / SWR","url":"https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-milliarden-investition-schwarz-digits-baut-weiteres-xxl-rechenzentrum-100.html","supports":"Aktueller Bericht zur Schwarz-Gruppe, Dummerstorf, Milliardeninvestition und angekündigten Details am Donnerstag."},
+        {"publisher":"NDR","url":"https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html","supports":"Unabhängige Recherche zu Standort, Grundstücken, Genehmigungsstand, Energie- und Abwärmeplänen sowie möglicher Hardware-Größenordnung."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"tagesschau.de / SWR","url":"https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-milliarden-investition-schwarz-digits-baut-weiteres-xxl-rechenzentrum-100.html","supports":"BW-Verbindung, Schwarz Digits, Dummerstorf und Milliardenprojekt."},
+          {"publisher":"NDR","url":"https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html","supports":"Standortdetails, Genehmigungen, erneuerbare Energie, Abwärme und Medienangaben zur Hardware."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Die Digital-Sparte der Schwarz-Gruppe aus Baden-Württemberg plant in Dummerstorf bei Rostock ein riesiges Rechenzentrum für Cloud- und KI-Anwendungen. Am Donnerstag sollen weitere Details vorgestellt werden.",
+          "why_happening":"Schwarz Digits baut mit STACKIT europäische Cloud- und KI-Infrastruktur auf und will Unternehmen und Behörden eine Alternative zu US-Hyperscalern bieten.",
+          "who_is_affected":"Unternehmen, Behörden, Cloud-Kunden sowie die Region Rostock durch Bau, Energiebedarf, Gewerbesteuern und Infrastruktur.",
+          "personal_impact":"Hinter Lidl und Kaufland wächst ein Tech-Geschäft, das künftig beeinflussen kann, wo deutsche Unternehmensdaten und KI-Dienste betrieben werden.",
+          "action_now":"Die berichteten bis zu zwölf Milliarden Euro für Hardware als unbestätigte Medienangabe kennzeichnen; mehrere Milliarden Gesamtinvestition sind der sichere Kern.",
+          "facts":["Standort ist Dummerstorf bei Rostock.","Schwarz Digits gehört zur Schwarz-Gruppe mit Lidl und Kaufland.","NDR berichtet über Pläne für erneuerbare Energie und Nutzung der Server-Abwärme."]
+        },
+        "factual_guardrails":["Bis zu zwölf Milliarden Euro Hardware nicht als bestätigte Unternehmenszahl darstellen.","Keine konkrete Arbeitsplatzanzahl erfinden.","Cloud- und KI-Infrastruktur als geplantes Projekt beschreiben."],
+        "research_notes":"Story-Spine: Ausgerechnet die Lidl/Kaufland-Mutter baut sich zum deutschen Cloud- und KI-Infrastruktur-Player um -> Milliardenprojekt -> digitale Souveränität -> Energie und Abwärme. HASHTAG_SEEDS: #SchwarzDigits #Lidl #Kaufland #STACKIT #Rechenzentrum #KI #Cloud #TAYVORIQ",
+        "hashtag_seeds":["#SchwarzDigits","#Lidl","#Kaufland","#STACKIT","#Rechenzentrum","#KI","#Cloud","#TAYVORIQ"]
+      }
+    },
+    {
+      "id": "3",
+      "title": "SAP verliert zeitweise fast fünf Prozent: Warum der KI-Boom Europas Software-Riesen plötzlich unter Druck setzt",
+      "score": 95,
+      "trend_scope": "technology_ai",
+      "criteria": {"aktualitaet":100,"viralitaet":95,"tayvoriq_passung":97,"quellenqualitaet":98,"visuell":94},
+      "sources": [
+        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/wirtschaft/finanzen/mb-mittag-sap-100.html","supports":"Aktueller Marktbericht zu SAP-Kursverlusten, UBS-Abstufung und KI-Zweifeln."},
+        {"publisher":"Deutsche Börse / dpa-AFX","url":"https://live.deutsche-boerse.com/nachrichten/AKTIE-IM-FOKUS-3-Gewinnmitnahmen-bei-SAP-wegen-UBS-Abstufung-und-US-Vorgaben-abad8c3a-b429-4215-8bd8-089ee70a834e","supports":"Unabhängige Marktbestätigung mit Tagestief von minus 4,7 Prozent und Analystenkontext."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/wirtschaft/finanzen/mb-mittag-sap-100.html","supports":"SAP-Kursreaktion, UBS-Abstufung und KI-Risiko."},
+          {"publisher":"Deutsche Börse / dpa-AFX","url":"https://live.deutsche-boerse.com/nachrichten/AKTIE-IM-FOKUS-3-Gewinnmitnahmen-bei-SAP-wegen-UBS-Abstufung-und-US-Vorgaben-abad8c3a-b429-4215-8bd8-089ee70a834e","supports":"Kursbewegung und Markt-/Branchenkontext."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Die SAP-Aktie verlor am 26. August zeitweise 4,7 Prozent. Auslöser waren Gewinnmitnahmen, schwache US-Tech-Vorgaben und eine UBS-Abstufung von Kaufen auf Neutral.",
+          "why_happening":"Anleger fragen sich, ob agentische KI etablierte Unternehmenssoftware schneller verändert, als SAP neue KI-Funktionen monetarisieren kann. UBS sieht zudem Risiken bei der Cloud-Dynamik.",
+          "who_is_affected":"SAP-Anleger, Unternehmenskunden, Softwareanbieter und Beschäftigte in Europas Tech-Sektor.",
+          "personal_impact":"Der Fall zeigt, dass KI nicht nur neue Gewinner schafft, sondern selbst etablierte Softwarekonzerne unter Anpassungsdruck setzt.",
+          "action_now":"Kursreaktion und langfristige Unternehmenslage nicht gleichsetzen; Analystenmeinung als Einschätzung kennzeichnen.",
+          "facts":["SAP verlor im Tagestief bis zu 4,7 Prozent.","UBS stufte die Aktie von Buy auf Neutral ab.","UBS nennt schleppende Integration agentischer KI und mögliche Verlangsamung beim Cloud-Backlog als Risiken."]
+        },
+        "factual_guardrails":["Nicht behaupten, KI zerstöre SAPs Geschäftsmodell.","UBS-Aussagen als Analysteneinschätzung markieren.","Kursverlust als Tagesbewegung formulieren."],
+        "research_notes":"Story-Spine: KI gilt als Wachstumsmotor, aber bei SAP wird genau derselbe KI-Boom zum Bewertungsrisiko -> Kursreaktion -> agentische KI -> Cloud-Dynamik. HASHTAG_SEEDS: #SAP #KünstlicheIntelligenz #AgenticAI #DAX #Software #Cloud #TechAktien #TAYVORIQ",
+        "hashtag_seeds":["#SAP","#KünstlicheIntelligenz","#AgenticAI","#DAX","#Software","#Cloud","#TechAktien","#TAYVORIQ"]
+      }
+    },
+    {
+      "id": "4",
+      "title": "Deutschlands Exportstimmung springt von minus 2,8 auf plus 9,6: Ist das die erste echte Industriewende?",
+      "score": 94,
+      "trend_scope": "business_economy",
+      "criteria": {"aktualitaet":100,"viralitaet":92,"tayvoriq_passung":95,"quellenqualitaet":100,"visuell":91},
+      "sources": [
+        {"publisher":"ifo Institut","url":"https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026","supports":"Primärquelle: Exporterwartungen steigen von -2,8 auf +9,6, höchster Stand seit Februar 2022."},
+        {"publisher":"Reuters","url":"https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/","supports":"Unabhängige Bestätigung und Einordnung zu Branchen, EU-Ausfuhren und weiterhin schwachem China-Geschäft."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"ifo Institut","url":"https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026","supports":"Indexsprung, Vierjahreshoch und Branchenaufschlüsselung."},
+          {"publisher":"Reuters","url":"https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/","supports":"Unabhängige Bestätigung und makroökonomischer Kontext."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Die ifo-Exporterwartungen deutscher Unternehmen stiegen im August von minus 2,8 auf plus 9,6 Punkte – den höchsten Stand seit Februar 2022.",
+          "why_happening":"Besonders Elektroausrüstung, Datenverarbeitung, Elektronik und Autoindustrie sind optimistischer; Ausfuhren in die EU laufen besser, China bleibt schwach.",
+          "who_is_affected":"Exportorientierte Industrie, Zulieferer, Beschäftigte und Regionen mit hohem Industrieanteil.",
+          "personal_impact":"Bessere Exporterwartungen können Produktion und Investitionen stützen, sind aber noch keine Garantie für einen nachhaltigen Boom.",
+          "action_now":"Im Short klar sagen: Das ist ein Erwartungsindex, keine bereits realisierte Exportsteigerung um denselben Wert.",
+          "facts":["Index von -2,8 auf +9,6.","Höchster Stand seit Februar 2022.","Elektronik, Datenverarbeitung und Autoindustrie sind deutlich optimistischer; China bleibt schwach."]
+        },
+        "factual_guardrails":["Keine gesicherte Industriewende behaupten.","Indexpunkte nicht als Prozentwachstum der Exporte darstellen.","EU-Stärke und China-Schwäche gemeinsam erwähnen."],
+        "research_notes":"Story-Spine: Nach Jahren Krisenstimmung dreht ein wichtiger Frühindikator abrupt ins Plus -> welche Branchen treiben -> warum China trotzdem bremst -> was der Wert wirklich bedeutet. HASHTAG_SEEDS: #Deutschland #Export #Industrie #IfoInstitut #Autoindustrie #Wirtschaft #MadeInGermany #TAYVORIQ",
+        "hashtag_seeds":["#Deutschland","#Export","#Industrie","#IfoInstitut","#Autoindustrie","#Wirtschaft","#MadeInGermany","#TAYVORIQ"]
+      }
+    },
+    {
+      "id": "5",
+      "title": "Deutschland gegen Türkei vor der Heim-WM: Warum dieses Basketball-Spiel mehr als nur ein Test ist",
+      "score": 93,
+      "trend_scope": "sports",
+      "criteria": {"aktualitaet":100,"viralitaet":94,"tayvoriq_passung":93,"quellenqualitaet":96,"visuell":98},
+      "sources": [
+        {"publisher":"Deutscher Basketball Bund","url":"https://www.basketball-bund.de/in-der-lanxess-arena-double-header-der-dbb-teams/","supports":"Offizielle Bestätigung des Frauen-Testspiels Deutschland gegen Türkei am 27.08.2026 um 17 Uhr in Köln und der Heim-WM kurz danach."},
+        {"publisher":"WELT / dpa","url":"https://www.welt.de/regionales/nrw/article6a8eb242518a586e18558b82/basketball-doppelpack-in-koeln-frauen-hoffen-auf-momentum.html","supports":"Aktueller Kontext zur schwierigen Vorbereitung, Ausfällen und Bedeutung des Spiels für Momentum vor der Heim-WM."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"Deutscher Basketball Bund","url":"https://www.basketball-bund.de/in-der-lanxess-arena-double-header-der-dbb-teams/","supports":"Termin, Gegner, Arena und WM-Vorbereitung."},
+          {"publisher":"WELT / dpa","url":"https://www.welt.de/regionales/nrw/article6a8eb242518a586e18558b82/basketball-doppelpack-in-koeln-frauen-hoffen-auf-momentum.html","supports":"Aktuelle Personallage und sportliche Bedeutung."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Deutschlands Basketballerinnen spielen am Donnerstag in der Kölner Lanxess Arena gegen die Türkei. Es ist einer der letzten großen Tests vor der Heim-WM in Berlin vom 4. bis 13. September.",
+          "why_happening":"Die Vorbereitung war durch Niederlagen, Absagen und Verletzungen schwierig. Das Team will vor heimischem Publikum Momentum und Selbstvertrauen aufbauen.",
+          "who_is_affected":"DBB-Team, Fans, die türkische Auswahl und das Publikum vor der Heim-WM.",
+          "personal_impact":"Für deutsche Basketballfans ist es der letzte große Stimmungstest, bevor die WM im eigenen Land beginnt.",
+          "action_now":"Aktuelle Kader- und Verletztenlage direkt vor Skriptproduktion nochmals prüfen.",
+          "facts":["Spiel am 27. August 2026 um 17 Uhr in Köln.","Gegner ist WM-Teilnehmer Türkei.","Die Heim-WM in Berlin läuft vom 4. bis 13. September 2026."]
+        },
+        "factual_guardrails":["Keine verletzte oder fehlende Spielerin ohne aktuelle Bestätigung als sicher nennen.","Testspiel nicht als WM-Spiel bezeichnen.","Heim-WM-Termine korrekt nennen."],
+        "research_notes":"Story-Spine: Letzter großer Test vor der Heim-WM -> schwierige Vorbereitung -> Türkei als echter Gradmesser -> Köln als Stimmungstest. HASHTAG_SEEDS: #DBB #Basketball #TeamDeutschland #Türkei #LanxessArena #FIBAWomensWorldCup #Berlin2026 #TAYVORIQ",
+        "hashtag_seeds":["#DBB","#Basketball","#TeamDeutschland","#Türkei","#LanxessArena","#FIBAWomensWorldCup","#Berlin2026","#TAYVORIQ"]
+      }
+    }
+  ]
 }
