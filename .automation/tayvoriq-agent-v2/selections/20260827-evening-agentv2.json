@@ -6,147 +6,161 @@
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
   "mode": "manual_verified_fallback_after_provider_limits",
+  "superseded": false,
+  "duplicate_guard_passed": true,
+  "cross_slot_unique": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
   "production_started": false,
   "trends": [
     {
       "id": "1",
-      "title": "Namibia will Phosphat vom Meeresboden holen: Beginnt hier der weltweit erste große Tiefsee-Abbau dieser Art?",
-      "score": 95,
+      "title": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
+      "score": 98,
+      "trend_scope": "science_future",
+      "criteria": {"aktualitaet":100,"viralitaet":99,"tayvoriq_passung":98,"quellenqualitaet":99,"visuell":100},
       "sources": [
-        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html","supports":"Bericht zum umstrittenen Phosphatabbau vor Namibia und aktuellen Genehmigungsschritten."},
-        {"publisher":"tagesschau.de Archiv","url":"https://www.tagesschau.de/archiv?datum=2026-08-26&filter=nachrichten","supports":"Aktuelle Einordnung und Datierung der Berichterstattung am 26. August 2026."}
+        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/wirtschaft/unternehmen/spacex-weltraumbahnhof-100.html","supports":"Aktueller Bericht zu rund 100 Milliarden Dollar Investition, fünf Startkomplexen, Baubeginn 2027 und geplanten ersten Starship-Starts 2029."},
+        {"publisher":"Reuters","url":"https://www.reuters.com/business/media-telecom/spacex-build-starship-spaceport-louisiana-2026-08-25/","supports":"Unabhängige Bestätigung der Starbase-Louisiana-Pläne, Standortgröße, Investitionsrahmen und Starship-Ambitionen."}
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
-          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html","supports":"Projekt, Tiefe, Umweltkonflikt und Genehmigungslage."},
-          {"publisher":"tagesschau.de Archiv","url":"https://www.tagesschau.de/archiv?datum=2026-08-26&filter=nachrichten","supports":"Aktuelle Veröffentlichung und Kontext."}
+          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/wirtschaft/unternehmen/spacex-weltraumbahnhof-100.html","supports":"100-Milliarden-Plan, Zeitplan und Größenordnung."},
+          {"publisher":"Reuters","url":"https://www.reuters.com/business/media-telecom/spacex-build-starship-spaceport-louisiana-2026-08-25/","supports":"Unabhängige Bestätigung und Standort-/Job-Kontext."}
         ],
         "fallback_editorial_answers": {
-          "what_happened":"Ein seit Jahren umstrittenes Projekt für Phosphatabbau vor Namibias Küste rückt durch neue Genehmigungsschritte näher an eine mögliche Umsetzung.",
-          "why_happening":"Phosphat ist ein zentraler Rohstoff für Düngemittel; Befürworter sehen wirtschaftliches Potenzial, Kritiker warnen vor Schäden am Meeresökosystem.",
-          "who_is_affected":"Fischerei, Küstengemeinden, Umweltverbände, Rohstoffunternehmen und die namibische Wirtschaft.",
-          "personal_impact":"Der Fall zeigt, wie Rohstoffhunger und Meeresschutz direkt kollidieren können.",
-          "action_now":"Im Short sauber zwischen Genehmigung, geplantem Abbau und tatsächlich begonnenem Abbau unterscheiden.",
-          "facts":["Abbaugebiet liegt vor Namibia bei Walvis Bay.","Diskutiert wird Förderung aus etwa 200 bis 300 Metern Tiefe.","Das Projekt ist wegen möglicher Folgen für Meeresboden und Fischerei umstritten."]
+          "what_happened":"SpaceX will in Louisiana einen neuen riesigen Starship-Komplex bauen. Genannt werden rund 100 Milliarden US-Dollar Investition und fünf Startkomplexe mit jeweils zwei Pads.",
+          "why_happening":"SpaceX will die Starship-Startfrequenz massiv erhöhen und Infrastruktur für Mond-, Mars- und Satellitenmissionen ausbauen.",
+          "who_is_affected":"SpaceX, NASA-Programme, die Region Louisiana, Anwohner und Umweltverbände.",
+          "personal_impact":"Das Projekt zeigt, wie Raumfahrt von einzelnen Starts zu industrieller Hochfrequenz-Infrastruktur werden soll.",
+          "action_now":"Im Short sauber zwischen offiziellen Projektplänen und Musks extremen Langfristzielen unterscheiden.",
+          "facts":["Rund 100 Milliarden US-Dollar Investition angekündigt.","Fünf Startkomplexe mit insgesamt zehn Pads geplant.","Baubeginn 2027, erste Starts ab 2029 vorgesehen."]
         },
-        "factual_guardrails": {"must_include":["200 bis 300 Meter Tiefe","Phosphat für Düngemittel","Umwelt- und Fischereikonflikt"],"must_not_claim":["Nicht behaupten, großflächiger kommerzieller Abbau habe bereits begonnen."],"uncertainty_note":"Genehmigungs- und Umsetzungsstatus klar trennen."},
-        "research_notes":"Story spine: Rohstoff vom Meeresboden vs. Schutz eines produktiven Fischereigebiets. HASHTAG_SEEDS: #Namibia #Tiefseebergbau #Phosphat #WalvisBay #Meeresschutz #Rohstoffe #TAYVORIQ"
+        "factual_guardrails":["Mehr als 30 Starts täglich als Ziel/Ankündigung von Musk markieren, nicht als gesicherte Kapazität.","Projekt ist geplant, nicht gebaut.","Umweltbedenken nicht ausblenden."],
+        "research_notes":"Story-Spine: Raumfahrt wird zur Industrieanlage -> 100 Milliarden -> zehn Pads -> tausende Starts als Ziel -> Umwelt- und Infrastrukturfrage. HASHTAG_SEEDS: #SpaceX #Starship #Louisiana #Starbase #Raumfahrt #Mars #NASA #TAYVORIQ",
+        "hashtag_seeds":["#SpaceX","#Starship","#Louisiana","#Starbase","#Raumfahrt","#Mars","#NASA","#TAYVORIQ"]
       }
     },
     {
       "id": "2",
-      "title": "Deutschlands Exporte springen im Stimmungsindex von minus 2,8 auf plus 9,6: Ist die Industrie-Wende da?",
-      "score": 94,
+      "title": "Namibia gibt Tiefsee-Phosphat grünes Licht: Warum dieser Meeresboden-Abbau weltweit zum Präzedenzfall werden könnte",
+      "score": 96,
+      "trend_scope": "world_society",
+      "criteria": {"aktualitaet":100,"viralitaet":96,"tayvoriq_passung":97,"quellenqualitaet":98,"visuell":99},
       "sources": [
-        {"publisher":"ifo Institut","url":"https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026","supports":"ifo meldet starken Anstieg der Exporterwartungen im August 2026."},
-        {"publisher":"Reuters","url":"https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/","supports":"Reuters bestätigt den Sprung und ordnet ihn als höchsten Stand seit Februar 2022 ein."}
+        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html","supports":"Aktueller Bericht zu Genehmigungen, Protesten, 200-300 Metern Tiefe und möglichem weltweit erstem großen Phosphatabbau am Meeresboden."},
+        {"publisher":"Namib Times","url":"https://www.namibtimes.net/sandpiper-phosphate-project-receives-environmental-clearance-amid-marine-concerns/","supports":"Lokale unabhängige Bestätigung der Umweltfreigabe für das Sandpiper-Projekt und der fortbestehenden Meeres- und Fischereibedenken."}
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
-          {"publisher":"ifo Institut","url":"https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026","supports":"Index von -2,8 auf +9,6 und Branchenkontext."},
-          {"publisher":"Reuters","url":"https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/","supports":"Unabhängige Bestätigung und Vierjahresvergleich."}
+          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html","supports":"Tiefe, Größenordnung, Proteste und möglicher Präzedenzfall."},
+          {"publisher":"Namib Times","url":"https://www.namibtimes.net/sandpiper-phosphate-project-receives-environmental-clearance-amid-marine-concerns/","supports":"Genehmigungsstatus und lokale Umweltbedenken."}
         ],
         "fallback_editorial_answers": {
-          "what_happened":"Die ifo-Exporterwartungen deutscher Unternehmen sprangen im August von minus 2,8 auf plus 9,6 Punkte.",
-          "why_happening":"Mehr Unternehmen rechnen wieder mit besseren Auslandsgeschäften, besonders in Elektronik, Datenverarbeitung und Teilen der Autoindustrie.",
-          "who_is_affected":"Exportorientierte Unternehmen, Beschäftigte in Industriebranchen und Zulieferer.",
-          "personal_impact":"Mehr Exportoptimismus kann Produktion und Investitionen stützen, ist aber noch kein Beweis für einen dauerhaften Aufschwung.",
-          "action_now":"Im Short Erwartungsindex und reale Exportzahlen sauber auseinanderhalten.",
-          "facts":["Index steigt von -2,8 auf +9,6.","Höchster Stand seit Februar 2022.","Elektronik, Datenverarbeitung und Autoindustrie melden mehr Optimismus."]
+          "what_happened":"Das Sandpiper-Projekt vor Namibias Küste hat eine wichtige Umweltfreigabe erhalten. Geplant ist Phosphatabbau aus dem Meeresboden in großer Tiefe.",
+          "why_happening":"Phosphat ist ein zentraler Rohstoff für Düngemittel; das Projekt verspricht wirtschaftliche Chancen, stößt aber wegen möglicher Schäden an Meeresökosystem und Fischerei auf Widerstand.",
+          "who_is_affected":"Fischerei, Küstengemeinden, Umweltgruppen, Rohstoffunternehmen und Namibias Wirtschaft.",
+          "personal_impact":"Der Fall könnte beeinflussen, wie andere Länder künftig Rohstoffabbau am Meeresboden regulieren.",
+          "action_now":"Nicht behaupten, der kommerzielle Abbau habe bereits begonnen; Genehmigung und tatsächlicher Start sind getrennte Schritte.",
+          "facts":["Projekt liegt vor Walvis Bay.","Abbau soll in etwa 200 bis 300 Metern Tiefe stattfinden.","Eine Umweltfreigabe wurde erteilt, der kommerzielle Abbau hat damit nicht automatisch begonnen."]
         },
-        "factual_guardrails": {"must_include":["-2,8 auf +9,6","höchster Stand seit Februar 2022","Erwartungsindex statt reale Exportmenge"],"must_not_claim":["Keine gesicherte Industriewende behaupten."],"uncertainty_note":"Stimmungsindikator, keine Garantie für künftige Exporte."},
-        "research_notes":"Story spine: Deutschlands Exportstimmung dreht abrupt ins Plus – aber was bedeutet das wirklich? HASHTAG_SEEDS: #Deutschland #Export #Industrie #IfoInstitut #Wirtschaft #Autoindustrie #TAYVORIQ"
+        "factual_guardrails":["Genehmigung nicht mit laufendem Abbau gleichsetzen.","Weltweit erster großer Phosphat-Meeresbodenabbau als mögliche Folge formulieren.","Umwelt- und Fischereibedenken nennen."],
+        "research_notes":"Story-Spine: Dünger-Rohstoff unter dem Meer -> Genehmigung -> 200-300 Meter Tiefe -> Proteste -> möglicher globaler Präzedenzfall. HASHTAG_SEEDS: #Namibia #Tiefseebergbau #Phosphat #WalvisBay #Meeresschutz #Rohstoffe #Afrika #TAYVORIQ",
+        "hashtag_seeds":["#Namibia","#Tiefseebergbau","#Phosphat","#WalvisBay","#Meeresschutz","#Rohstoffe","#Afrika","#TAYVORIQ"]
       }
     },
     {
       "id": "3",
-      "title": "Fast 10.000 Furrys in Hamburg: Warum Europas größtes Treffen so stark wächst",
-      "score": 92,
+      "title": "Fast 10.000 Furrys in Hamburg: Wie aus einer Internet-Nische Europas größtes Treffen wurde",
+      "score": 94,
+      "trend_scope": "creator_media",
+      "criteria": {"aktualitaet":100,"viralitaet":97,"tayvoriq_passung":94,"quellenqualitaet":96,"visuell":100},
       "sources": [
-        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/kultur/eurofurence-100.html","supports":"Aktuelle Berichterstattung zur Eurofurence und Besucherzahl."},
-        {"publisher":"Eurofurence","url":"https://www.eurofurence.org/EF30/home","supports":"Offizielle Veranstaltungsinformationen zur Eurofurence 30."}
+        {"publisher":"tagesschau.de / NDR","url":"https://www.tagesschau.de/kultur/eurofurence-100.html","supports":"Aktueller Bericht zur Eurofurence in Hamburg, knapp 10.000 Besuchern und geschätzter Größe der deutschen Community."},
+        {"publisher":"Eurofurence","url":"https://www.eurofurence.org/EF30/","supports":"Offizielle Eventdaten zur Eurofurence 30 im CCH Hamburg vom 19. bis 23. August 2026."}
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
-          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/kultur/eurofurence-100.html","supports":"Knapp 10.000 Teilnehmer und kulturelle Einordnung."},
-          {"publisher":"Eurofurence","url":"https://www.eurofurence.org/EF30/home","supports":"Offizielle Eventdaten und Programmrahmen."}
+          {"publisher":"tagesschau.de / NDR","url":"https://www.tagesschau.de/kultur/eurofurence-100.html","supports":"Besucherzahl und kulturelle Einordnung."},
+          {"publisher":"Eurofurence","url":"https://www.eurofurence.org/EF30/","supports":"Offizielle Veranstaltungsdaten."}
         ],
         "fallback_editorial_answers": {
-          "what_happened":"Die Eurofurence in Hamburg zieht inzwischen knapp 10.000 Menschen an und zählt zu den größten Treffen der Furry-Community in Europa.",
-          "why_happening":"Die Community ist international vernetzt und verbindet Kostümbau, Kunst, Performance, Gaming und Social Media.",
-          "who_is_affected":"Teilnehmer, Künstler, Kostümbauer, Veranstalter und Hamburger Besucher.",
-          "personal_impact":"Das Thema zeigt, wie aus einer früheren Internet-Nische ein großes reales Community-Event geworden ist.",
-          "action_now":"Respektvoll erklären, was Furry-Kultur tatsächlich ist, ohne sie zu sexualisieren oder lächerlich zu machen.",
-          "facts":["Knapp 10.000 Teilnehmer.","Eurofurence 30 findet in Hamburg statt.","Kostüme sind nur ein Teil der Community; Kunst und soziale Treffen spielen ebenfalls eine große Rolle."]
+          "what_happened":"Zur Eurofurence 30 in Hamburg kamen knapp 10.000 Besucher. Das Treffen gilt als größte Furry-Convention Europas.",
+          "why_happening":"Die Community verbindet Kostümbau, Kunst, Performance, Gaming und soziale Netzwerke und ist längst international organisiert.",
+          "who_is_affected":"Teilnehmer, Künstler, Kostümbauer, Veranstalter und die Hamburger Öffentlichkeit.",
+          "personal_impact":"Das Thema zeigt, wie aus einer früheren Online-Nische eine große reale Subkultur mit eigenen Events und Märkten geworden ist.",
+          "action_now":"Respektvoll erklären und nicht sexualisieren oder lächerlich machen.",
+          "facts":["Knapp 10.000 Besucher laut aktueller NDR/tagesschau-Berichterstattung.","Eurofurence 30 fand vom 19. bis 23. August 2026 im CCH Hamburg statt.","Furry-Kultur umfasst neben Kostümen auch Kunst, Performance und Community." ]
         },
-        "factual_guardrails": {"must_include":["knapp 10.000 Teilnehmer","Eurofurence 30","Community aus Kunst, Kostüm und sozialem Austausch"],"must_not_claim":["Keine sexualisierende oder pauschalisierende Darstellung."],"uncertainty_note":"Besucherzahl als aktuelle Größenordnung formulieren."},
-        "research_notes":"Story spine: Wie wurde aus einer Online-Nische ein Event mit fast 10.000 Menschen? HASHTAG_SEEDS: #Eurofurence #Hamburg #FurryCommunity #CosplayCulture #Community #Kultur #TAYVORIQ"
+        "factual_guardrails":["Keine sexualisierende Darstellung.","Nicht behaupten, alle Besucher tragen Kostüme.","Community differenziert erklären."],
+        "research_notes":"Story-Spine: Internet-Nische wird Großevent -> fast 10.000 Menschen -> was Furry-Kultur tatsächlich umfasst -> warum die Community wächst. HASHTAG_SEEDS: #Eurofurence #Hamburg #FurryCommunity #Fursuit #Community #Kultur #Convention #TAYVORIQ",
+        "hashtag_seeds":["#Eurofurence","#Hamburg","#FurryCommunity","#Fursuit","#Community","#Kultur","#Convention","#TAYVORIQ"]
       }
     },
     {
       "id": "4",
-      "title": "Zuckersteuer: Zero soll rausbleiben – aber Smoothies, Haferdrinks und Fertigkaffee bleiben in der Debatte",
-      "score": 93,
+      "title": "SDF löst sich auf: Warum Syriens früher wichtigster US-Partner jetzt in die Staatsarmee integriert wird",
+      "score": 95,
+      "trend_scope": "world_society",
+      "criteria": {"aktualitaet":100,"viralitaet":95,"tayvoriq_passung":96,"quellenqualitaet":100,"visuell":96},
       "sources": [
-        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/inland/zuckersteuer-172.html","supports":"Aktuelle Details zur diskutierten Zuckersteuer und Produktabgrenzung."},
-        {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/finanzminister-klingbeil-schliesst-zuckersteuer-auf-getraenke-mit-suessstoff-aus-106.html","supports":"Bestätigung, dass Zero- und Light-Getränke mit Süßstoff nicht erfasst werden sollen."},
-        {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/klingbeil-will-plaene-fuer-zuckersteuer-auf-nektar-smoothies-hafermilch-ausweiten-104.html","supports":"Bericht zu Smoothies, Nektar, Hafermilch und weiteren Produktgruppen in der Debatte."}
+        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/asien/syrien-sdf-104.html","supports":"Aktueller Bericht zur Auflösung der SDF und Eingliederung in syrische staatliche Institutionen."},
+        {"publisher":"Reuters","url":"https://www.reuters.com/world/middle-east/syrias-kurdish-led-sdf-dissolves-part-integration-with-damascus-2026-08-25/","supports":"Unabhängige Bestätigung der Auflösung und des Integrationsabkommens mit Damaskus."}
       ],
       "source_context": {
-        "independent_news_count": 3,
+        "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
-          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/inland/zuckersteuer-172.html","supports":"Politische Debatte und Abgrenzung."},
-          {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/finanzminister-klingbeil-schliesst-zuckersteuer-auf-getraenke-mit-suessstoff-aus-106.html","supports":"Zero/Light ausgeschlossen."},
-          {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/klingbeil-will-plaene-fuer-zuckersteuer-auf-nektar-smoothies-hafermilch-ausweiten-104.html","supports":"Weitere Getränkegruppen in Diskussion."}
+          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/asien/syrien-sdf-104.html","supports":"Auflösung, Staatsintegration und Minderheitenrechte-Kontext."},
+          {"publisher":"Reuters","url":"https://www.reuters.com/world/middle-east/syrias-kurdish-led-sdf-dissolves-part-integration-with-damascus-2026-08-25/","supports":"Unabhängige Bestätigung und geopolitischer Kontext."}
         ],
         "fallback_editorial_answers": {
-          "what_happened":"Finanzminister Klingbeil hat präzisiert, dass Zero- und Light-Getränke mit Süßstoff von der geplanten Zuckersteuer ausgenommen werden sollen.",
-          "why_happening":"Die Steuer soll zugesetzten Zucker adressieren; gleichzeitig wird noch diskutiert, welche Getränkegruppen genau erfasst werden.",
-          "who_is_affected":"Getränkehersteller, Handel und Verbraucher.",
-          "personal_impact":"Je nach finaler Ausgestaltung könnten einzelne Getränke teurer werden, obwohl andere süß schmeckende Produkte ausgenommen bleiben.",
-          "action_now":"Im Short klar sagen: Das ist ein politischer Plan, noch keine fertige Steuerregel.",
-          "facts":["Zero und Light mit Süßstoff sollen ausgenommen werden.","Smoothies, Nektar, Haferdrinks und Fertigkaffee werden diskutiert.","Die konkrete gesetzliche Ausgestaltung steht noch nicht fest."]
+          "what_happened":"Die kurdisch geführten Syrischen Demokratischen Kräfte haben ihre Auflösung als eigenständiges Militärbündnis angekündigt und sollen in syrische Staatsstrukturen integriert werden.",
+          "why_happening":"Ein Abkommen mit der Regierung in Damaskus soll militärische Parallelstrukturen beenden und den syrischen Staat wieder vereinheitlichen.",
+          "who_is_affected":"Kurdische Gebiete, ehemalige SDF-Kämpfer, die Regierung in Damaskus, Türkei, USA und regionale Bevölkerung.",
+          "personal_impact":"Die Entwicklung kann Machtverhältnisse und Sicherheit in Nordostsyrien grundlegend verändern.",
+          "action_now":"Historischen US-Partnerstatus erklären, ohne aktuelle Bündnisverhältnisse zu vereinfachen.",
+          "facts":["SDF-Kommandeur Mazloum Abdi erklärte die Mission des Bündnisses für beendet.","Die Strukturen sollen in syrische staatliche Institutionen integriert werden.","Die SDF waren lange ein zentraler US-Partner im Kampf gegen den IS."]
         },
-        "factual_guardrails": {"must_include":["Zero/Light ausgenommen","weitere Produktgruppen noch in Debatte","noch keine fertige Steuer"],"must_not_claim":["Keine konkreten Preissteigerungen behaupten, solange Satz und Gesetz fehlen."],"uncertainty_note":"Politischer Plan; Details können sich ändern."},
-        "research_notes":"Story spine: Warum könnte ein Smoothie besteuert werden, eine Zero-Cola aber nicht? HASHTAG_SEEDS: #Zuckersteuer #Smoothie #Haferdrink #ZeroGetränke #Verbraucher #Lebensmittel #TAYVORIQ"
+        "factual_guardrails":["SDF, YPG und PKK nicht gleichsetzen.","Integration als laufenden politischen Prozess darstellen.","Minderheiten- und Sicherheitsfragen differenziert formulieren."],
+        "research_notes":"Story-Spine: Einer der wichtigsten Akteure im Syrienkrieg verschwindet als eigenständige Kraft -> Integration -> Rolle der USA und Türkei -> was das für Nordostsyrien bedeutet. HASHTAG_SEEDS: #Syrien #SDF #Kurden #Damaskus #Nahost #Geopolitik #MiddleEast #TAYVORIQ",
+        "hashtag_seeds":["#Syrien","#SDF","#Kurden","#Damaskus","#Nahost","#Geopolitik","#MiddleEast","#TAYVORIQ"]
       }
     },
     {
       "id": "5",
-      "title": "Bundesliga-Auftakt Bayern gegen VfB: Warum Stuttgart diesmal als echter Prüfstein startet",
-      "score": 94,
+      "title": "70 Jahre BRAVO: Von 1,5 Millionen Heften pro Woche zu nur noch einer Ausgabe im Monat",
+      "score": 92,
+      "trend_scope": "creator_media",
+      "criteria": {"aktualitaet":100,"viralitaet":94,"tayvoriq_passung":92,"quellenqualitaet":96,"visuell":97},
       "sources": [
-        {"publisher":"VfB Stuttgart","url":"https://www.vfb.de/de/vfb/aktuell/neues/profis/2627/vfb-eroeffnet-bundesliga-saison-in-muenchen/","supports":"Offizielle Bestätigung des Eröffnungsspiels Bayern gegen VfB."},
-        {"publisher":"FC Bayern","url":"https://fcbayern.com/de/news/2026/07/auf-diesen-gegner-trifft-der-fc-bayern-zum-start-der-bundesliga-saison","supports":"Offizielle Bayern-Einordnung des Saisonauftakts."},
-        {"publisher":"Bundesliga","url":"https://www.bundesliga.com/en/bundesliga/news/team-news-line-ups-2026-27-bayern-dortmund-fantasy-20707","supports":"Aktueller Liga-Kontext zu Kader und Aufstellungen."}
+        {"publisher":"NDR","url":"https://www.ndr.de/geschichte/chronologie/70-jahre-bravo-von-teenagern-geliebt-von-eltern-gehasst%2Cbravo152.html","supports":"Historische Einordnung: erste Ausgabe am 26.08.1956, Startauflage 30.000, Generationenwirkung und Wandel des Magazins."},
+        {"publisher":"BRAVO","url":"https://www.bravo.de/news","supports":"Offizielle Jubiläumsseite zum 70. Geburtstag am 26. August 2026 und heutige Markenpräsenz."}
       ],
       "source_context": {
-        "independent_news_count": 3,
+        "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
-          {"publisher":"VfB Stuttgart","url":"https://www.vfb.de/de/vfb/aktuell/neues/profis/2627/vfb-eroeffnet-bundesliga-saison-in-muenchen/","supports":"Spieltermin und VfB-Kontext."},
-          {"publisher":"FC Bayern","url":"https://fcbayern.com/de/news/2026/07/auf-diesen-gegner-trifft-der-fc-bayern-zum-start-der-bundesliga-saison","supports":"Gegner und Saisonstart bestätigt."},
-          {"publisher":"Bundesliga","url":"https://www.bundesliga.com/en/bundesliga/news/team-news-line-ups-2026-27-bayern-dortmund-fantasy-20707","supports":"Ligaweiter Kader- und Aufstellungskontext."}
+          {"publisher":"NDR","url":"https://www.ndr.de/geschichte/chronologie/70-jahre-bravo-von-teenagern-geliebt-von-eltern-gehasst%2Cbravo152.html","supports":"Historie, erste Ausgabe und kulturelle Wirkung."},
+          {"publisher":"BRAVO","url":"https://www.bravo.de/news","supports":"Offizielle Jubiläumsbestätigung und heutige Marke."}
         ],
         "fallback_editorial_answers": {
-          "what_happened":"Die Bundesliga 2026/27 startet mit Bayern München gegen den VfB Stuttgart.",
-          "why_happening":"Der Meister eröffnet traditionell die neue Saison; Stuttgart bekommt damit sofort den maximalen Härtetest.",
-          "who_is_affected":"Fans von Bayern, VfB und Bundesliga sowie das regionale Publikum in Baden-Württemberg.",
-          "personal_impact":"Für Stuttgart-Fans liefert der Auftakt sofort einen Maßstab dafür, wie konkurrenzfähig die Mannschaft in die neue Saison geht.",
-          "action_now":"Aktuelle Startelf und Verletztenlage vor Produktion nochmals prüfen; keine Personalie vorzeitig als sicher darstellen.",
-          "facts":["Bayern gegen VfB eröffnet die Saison 2026/27.","Das Spiel findet in München statt.","Kader- und Startelffragen liefern den aktuellen Nachrichtenwert über die reine Paarung hinaus."]
+          "what_happened":"Am 26. August 2026 wurde BRAVO 70 Jahre alt. Die erste Ausgabe erschien 1956 mit Marilyn Monroe auf dem Cover und 30.000 Exemplaren Auflage.",
+          "why_happening":"BRAVO wurde über Jahrzehnte zum Leitmedium für Jugendkultur, Stars, Musik und Aufklärung, verlor aber mit Internet und Social Media massiv an Print-Reichweite.",
+          "who_is_affected":"Mehrere Generationen ehemaliger Leser sowie heutige Jugendmedien und Creator.",
+          "personal_impact":"Der Absturz von Millionenauflagen zu monatlichem Print zeigt extrem klar, wie Social Media klassische Jugendmedien verändert hat.",
+          "action_now":"Nostalgie mit Medienwandel verbinden statt nur Jubiläumsfakten aufzuzählen.",
+          "facts":["Erste BRAVO erschien am 26. August 1956.","In den 1990ern wurden zeitweise bis zu 1,5 Millionen Exemplare pro Woche verkauft.","Heute erscheint BRAVO laut NDR nur noch einmal im Monat." ]
         },
-        "factual_guardrails": {"must_include":["Saisoneröffnung Bayern gegen VfB","München","aktuelle Kader-/Startelflage"],"must_not_claim":["Keine unbestätigte Startelf oder Verletzung als sicher darstellen."],"uncertainty_note":"Personalien unmittelbar vor Skript/Render erneut prüfen."},
-        "research_notes":"Story spine: Stuttgart startet nicht gegen irgendeinen Gegner, sondern direkt beim Meister. HASHTAG_SEEDS: #Bundesliga #VfBStuttgart #FCBayern #Stuttgart #Saisonauftakt #Fußball #TAYVORIQ"
+        "factual_guardrails":["Historische Spitzenauflage zeitlich den 1990er Jahren zuordnen.","Print-Rückgang nicht mit kompletter Markenbedeutung gleichsetzen.","Keine unbestätigten aktuellen Reichweitenzahlen nennen."],
+        "research_notes":"Story-Spine: 70 Jahre Jugendkultur -> 1,5 Mio Hefte pro Woche -> Social-Media-Bruch -> warum die Marke trotzdem überlebt. HASHTAG_SEEDS: #BRAVO #70JahreBRAVO #Jugendkultur #DrSommer #Popkultur #Medienwandel #SocialMedia #TAYVORIQ",
+        "hashtag_seeds":["#BRAVO","#70JahreBRAVO","#Jugendkultur","#DrSommer","#Popkultur","#Medienwandel","#SocialMedia","#TAYVORIQ"]
       }
     }
   ]
