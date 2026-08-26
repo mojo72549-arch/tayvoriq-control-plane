@@ -29,6 +29,25 @@ TAYVORIQ VARIETY — VERIFIED PLAYFUL WILDCARD:
 - The wildcard must pass the SAME freshness, two-independent-source, claim-coherence, duplicate, visual and Growth thresholds as every other candidate.
 - Never force a wildcard when the evidence or quality is weaker than the existing gates.
 - The wildcard remains subject to the non-sexual brand-safety boundary above.
+
+TAYVORIQ CONTENT DEPTH — HARD REQUIREMENT:
+- Never submit a candidate whose source context only restates the headline.
+- For every candidate, research and retain at least THREE concrete, source-backed facts whenever they are available.
+- Where the topic naturally permits it, retain at least TWO specific named examples or entities: games, models, companies, products, places, people, dates, features or comparable concrete details.
+- Put the useful detail into the EXISTING schema: source_context.fallback_editorial_answers.facts; the what_happened, why_happening, personal_impact and action_now answers; source_context.factual_guardrails; and source_context.research_notes.
+- Explicitly distinguish current or confirmed facts from announced or planned items and from rumor or speculation. Never elevate rumor or expectation to confirmed fact.
+- Include at least ONE contextualizing number, comparison or date where credible and relevant.
+- Explain why the concrete detail matters to the viewer and what happens next (next date, release, decision, event step or practical consequence) when known.
+- For event coverage such as Gamescom, name concrete confirmed games, publishers, exhibitors or features and state what is playable, announced, shown or merely expected when source-backed.
+- Research must be rich enough to support a useful 45–60 second TAYVORIQ script without filler. If the evidence cannot support that depth, lower the candidate or reject it rather than padding the story.
+- Never invent details merely to satisfy these counts. Evidence beats count.
+
+TAYVORIQ SCRIPT HANDOFF — HARD REQUIREMENT:
+- source_context.factual_guardrails.must_include should carry the 3–6 highest-value concrete details into production whenever the schema permits.
+- source_context.factual_guardrails.must_not_claim should explicitly capture unsupported, rumored or ambiguous claims that a script writer might otherwise overstate.
+- source_context.factual_guardrails.uncertainty_note should make timing or confirmation status explicit where necessary.
+- source_context.research_notes should identify the strongest story spine and useful examples, not merely repeat source titles or the headline.
+- The candidate should give production enough material to answer: What exactly happened? Which concrete examples prove it? Why is it relevant? What happens next?
 """.strip()
 
 
