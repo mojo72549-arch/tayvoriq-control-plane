@@ -1,394 +1,361 @@
 {
   "date": "2026-08-27",
+  "target_date": "2026-08-27",
   "slot": "morning",
-  "created_at": "2026-08-26T23:02:00+02:00",
   "selection_id": "20260827-morning-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
   "mode": "manual_verified_fallback_after_provider_limits",
   "superseded": false,
-  "target_date": "2026-08-27",
+  "duplicate_guard_passed": true,
+  "history_checked_at": "2026-08-26T23:48:00+02:00",
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
+  "production_started": false,
   "trends": [
     {
       "id": "1",
-      "title": "Gamescom 2026 bricht Rekorde: Über 1.700 Aussteller – und diese Spiele stechen jetzt heraus",
-      "score": 98,
-      "trend_scope": "gaming_gamescom_2026",
+      "title": "Schufa-Schattendatenbank: Warum alte Kredite trotz Löschfristen weiter gespeichert worden sein sollen",
+      "score": 97,
+      "trend_scope": "business_economy",
       "criteria": {
         "aktualitaet": 100,
         "viralitaet": 98,
-        "tayvoriq_passung": 97,
+        "tayvoriq_passung": 98,
         "quellenqualitaet": 99,
-        "visuell": 100
-      },
-      "sources": [
-        {
-          "publisher": "gamescom",
-          "url": "https://www.gamescom.global/en/gamescom-opening-night-live-unveils-first-highlights-more-than-1700-exhibitors-at-the-worlds-biggest-gaming-event",
-          "supports": "Official 26 August 2026 release confirms more than 1,700 exhibitors, record scale, sold-out days and Opening Night Live highlights."
-        },
-        {
-          "publisher": "gamescom award",
-          "url": "https://www.gamescom.global/de/the-nominees-for-the-gamescom-award-2026",
-          "supports": "Official award shortlist confirms METRO: 2039 leads with five nominations, Alien: Isolation 2 and Denshattack! have four each, and fan voting runs through 27 August 14:00 CEST."
-        },
-        {
-          "publisher": "gamescom games directory",
-          "url": "https://www.gamescom.global/en/games?pubDate=20260823",
-          "supports": "Official games directory lists 846 games including EA Sports FC 27, Halo: Campaign Evolved, Alien: Isolation 2, Persona 4 Revival and Nintendo Switch Sports Resort."
-        }
-      ],
-      "source_context": {
-        "independent_news_count": 3,
-        "quality_gates_weakened": false,
-        "sources": [
-          {
-            "publisher": "gamescom",
-            "url": "https://www.gamescom.global/en/gamescom-opening-night-live-unveils-first-highlights-more-than-1700-exhibitors-at-the-worlds-biggest-gaming-event",
-            "supports": "Record exhibitor count and ONL highlights."
-          },
-          {
-            "publisher": "gamescom award",
-            "url": "https://www.gamescom.global/de/the-nominees-for-the-gamescom-award-2026",
-            "supports": "Award nominees and voting window."
-          },
-          {
-            "publisher": "gamescom games directory",
-            "url": "https://www.gamescom.global/en/games?pubDate=20260823",
-            "supports": "846 listed games and concrete playable/showfloor titles."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Die Gamescom 2026 ist mit einem neuen Rekord gestartet: mehr als 1.700 Aussteller sind dabei, und das offizielle Games-Verzeichnis listet 846 Spiele. Zu den auffälligen Titeln zählen METRO: 2039, Alien: Isolation 2, Forza Horizon 6, Halo: Campaign Evolved und Nintendo Switch Sports Resort.",
-          "why_happening": "Gaming wächst wirtschaftlich und kulturell weiter; gleichzeitig wird die Messe zum Schaufenster für große Marken, Indies, neue Hardware und KI-gestützte Spieleentwicklung.",
-          "who_is_affected": "Spieler, Familien, Publisher, Entwickler, Hardware-Hersteller und Creator. Am Donnerstag öffnet die Entertainment Area regulär für das breite Publikum.",
-          "personal_impact": "Wer Games verfolgt, bekommt in wenigen Tagen hunderte Neuheiten und konkrete Kauf- oder Wishlist-Kandidaten statt nur allgemeiner Messewerbung.",
-          "action_now": "Im Short den Rekord mit 3 bis 5 konkreten Spielen verbinden und klar sagen, was nominiert, spielbar oder nur angekündigt ist. Fan-Voting für mehrere Award-Kategorien läuft bis Donnerstag, 27. August, 14 Uhr MESZ."
-        },
-        "factual_guardrails": [
-          "Nicht behaupten, alle 846 Spiele seien vor Ort spielbar; das offizielle Verzeichnis listet sie als Gamescom-Titel.",
-          "METRO: 2039 ist fünfmal nominiert; Alien: Isolation 2 und Denshattack! jeweils viermal.",
-          "Ankündigungen, Trailer und tatsächlich spielbare Titel sprachlich sauber trennen."
-        ],
-        "research_notes": "Story-Spine: Rekordgröße -> konkrete Spiele statt abstrakte Messezahlen -> Award-Favoriten -> was Besucher am Donnerstag tatsächlich sehen oder ausprobieren können.",
-        "hashtag_seeds": [
-          "#gamescom2026",
-          "#gamescom",
-          "#Metro2039",
-          "#AlienIsolation2",
-          "#ForzaHorizon6",
-          "#NintendoSwitch2",
-          "#GamingNews",
-          "#Köln"
-        ],
-        "content_angle": "Nicht einfach 'Gamescom ist gestartet', sondern: Warum diese Ausgabe rekordgroß ist und welche konkreten Spiele gerade die Aufmerksamkeit ziehen.",
-        "duplicate_guard": "Kein früheres TAYVORIQ-Thema zur Gamescom 2026 bekannt; nicht mit generischen KI-News vermischen."
-      }
-    },
-    {
-      "id": "2",
-      "title": "Lidl-Mutter baut KI-Rechenzentrum im XXL-Format: Morgen kommen die Details zur Milliarden-Ansiedlung",
-      "score": 97,
-      "trend_scope": "ai_cloud_schwarz_digits_bw",
-      "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 97,
-        "tayvoriq_passung": 99,
-        "quellenqualitaet": 98,
-        "visuell": 97
-      },
-      "sources": [
-        {
-          "publisher": "SWR",
-          "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/heilbronn/schwarz-digits-bau-rechenzentrum-100.html",
-          "supports": "26 August report: Schwarz Digits from Baden-Württemberg plans a huge data centre near Rostock; details are due Thursday; reported first-stage server hardware could reach about 12 billion euros but is not company-confirmed."
-        },
-        {
-          "publisher": "NDR",
-          "url": "https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html",
-          "supports": "Independent 26 August research confirms Dummerstorf location, acquired land, reported approvals, renewable-energy angle, waste-heat plans and Thursday announcement."
-        },
-        {
-          "publisher": "Reuters via Euronext",
-          "url": "https://live.euronext.com/en/financial-news/lidl-owner-invest-billions-data-centre-northern-germany-faz-says",
-          "supports": "Reuters confirms report that Schwarz Group plans a multi-billion-euro data centre near Rostock and positions Schwarz Digits as a digitally sovereign alternative to US tech giants."
-        }
-      ],
-      "source_context": {
-        "independent_news_count": 3,
-        "quality_gates_weakened": false,
-        "sources": [
-          {
-            "publisher": "SWR",
-            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/heilbronn/schwarz-digits-bau-rechenzentrum-100.html",
-            "supports": "BW connection, reported scale and AI/cloud purpose."
-          },
-          {
-            "publisher": "NDR",
-            "url": "https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html",
-            "supports": "Location, preparation status, energy and waste-heat context, Thursday event."
-          },
-          {
-            "publisher": "Reuters via Euronext",
-            "url": "https://live.euronext.com/en/financial-news/lidl-owner-invest-billions-data-centre-northern-germany-faz-says",
-            "supports": "Independent confirmation of multi-billion plan and digital-sovereignty framing."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Die Digital-Sparte der Neckarsulmer Schwarz-Gruppe plant in Dummerstorf bei Rostock ein riesiges Rechenzentrum für KI- und Cloud-Anwendungen. Die Landesregierung und Schwarz-Chef Gerd Chrzanowski wollen am Donnerstag Details zur Großansiedlung vorstellen.",
-          "why_happening": "Schwarz Digits baut mit STACKIT eine europäische Cloud- und KI-Infrastruktur auf und will Kunden unabhängiger von US-Cloud-Anbietern machen. Parallel entsteht in Lübbenau bereits ein Rechenzentrum mit rund elf Milliarden Euro Investitionsvolumen.",
-          "who_is_affected": "Unternehmen, Behörden und regulierte Branchen, die europäische Cloud- und KI-Infrastruktur nutzen wollen; außerdem die Region Rostock durch Bau, Energiebedarf, Gewerbesteuern und Infrastruktur.",
-          "personal_impact": "Hinter Lidl und Kaufland entsteht inzwischen ein Tech-Geschäft, das bei Cloud und KI direkt mit großen US-Anbietern konkurrieren will. Das kann langfristig beeinflussen, wo deutsche Daten und KI-Anwendungen betrieben werden.",
-          "action_now": "Im Short sauber zwischen bestätigt und berichtet unterscheiden: Mehrere Milliarden Investition sind bestätigt angekündigt; bis zu zwölf Milliarden Euro für Hardware in einer ersten Ausbaustufe stammen aus Medienrecherchen und sind vom Unternehmen noch nicht bestätigt."
-        },
-        "factual_guardrails": [
-          "Die Zahl von bis zu 12 Milliarden Euro Servertechnik ist ein Medienbericht, keine bestätigte Unternehmenszahl.",
-          "Die genaue finale Investitionssumme und Ausbaustufe werden erst am 27. August erläutert.",
-          "Keine konkrete Zahl neuer Arbeitsplätze behaupten; diese ist noch unklar."
-        ],
-        "research_notes": "Story-Spine: Lidl/Kaufland-Konzern wird zum KI-Infrastruktur-Player -> Milliardenprojekt -> digitale Souveränität -> Energie/Abwärme -> morgige offizielle Details.",
-        "hashtag_seeds": [
-          "#SchwarzDigits",
-          "#Lidl",
-          "#Kaufland",
-          "#Rechenzentrum",
-          "#KünstlicheIntelligenz",
-          "#Cloud",
-          "#STACKIT",
-          "#BadenWürttemberg"
-        ],
-        "content_angle": "Die überraschende Story ist nicht nur ein Rechenzentrum, sondern dass die Lidl-Mutter zu einem der größten deutschen KI- und Cloud-Infrastrukturinvestoren wird.",
-        "duplicate_guard": "Nicht mit Bosch-Robotik oder ChatGPT-Werbung vermischen; eigenständiges KI-Infrastruktur- und Cloud-Thema."
-      }
-    },
-    {
-      "id": "3",
-      "title": "Schufa unter Druck: Datenschützer werfen ihr eine 'Schattendatenbank' mit alten Schuldendaten vor",
-      "score": 95,
-      "trend_scope": "consumer_finance_privacy_schufa",
-      "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 96,
-        "tayvoriq_passung": 95,
-        "quellenqualitaet": 99,
-        "visuell": 92
+        "visuell": 93
       },
       "sources": [
         {
           "publisher": "tagesschau.de / NDR",
           "url": "https://www.tagesschau.de/wirtschaft/verbraucher/schufa-klage-100.html",
-          "supports": "26 August report explains allegations that old credit, garnishment and insolvency data remain stored and that NOYB is preparing collective legal action."
+          "supports": "Aktueller Bericht vom 26.08.2026 über historische Kredit-, Pfändungs- und Insolvenzdaten sowie die angekündigten rechtlichen Schritte."
         },
         {
           "publisher": "noyb",
           "url": "https://noyb.eu/de/shadow-database-scandal-noyb-sends-schufa-cease-and-desist-letter-interest-list-class-action",
-          "supports": "Primary source: NOYB says potentially all 69 million people with Schufa records may be affected, sent a cease-and-desist letter and opened an interest list for possible class-action damages claims."
-        },
-        {
-          "publisher": "Handelsblatt / dpa",
-          "url": "https://www.handelsblatt.com/politik/deutschland/kreditwuerdigkeit-schufa-droht-sammelklage-wegen-historischer-datenspeicherung/100249791.html",
-          "supports": "Independent report confirms the legal dispute and notes Schufa rejects the accusations and intends to defend its position legally."
+          "supports": "Primärquelle zur formellen Abmahnung, möglichen Sammelklage und potenziell betroffenen Schufa-Datensätzen."
         }
       ],
       "source_context": {
-        "independent_news_count": 3,
+        "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
           {
             "publisher": "tagesschau.de / NDR",
             "url": "https://www.tagesschau.de/wirtschaft/verbraucher/schufa-klage-100.html",
-            "supports": "Nature of historic data and threatened litigation."
+            "supports": "Aktuelle Vorwürfe, Art der historischen Daten und Schufa-Reaktion."
           },
           {
             "publisher": "noyb",
             "url": "https://noyb.eu/de/shadow-database-scandal-noyb-sends-schufa-cease-and-desist-letter-interest-list-class-action",
-            "supports": "NOYB's formal demands, potential affected population and interest list."
-          },
-          {
-            "publisher": "Handelsblatt / dpa",
-            "url": "https://www.handelsblatt.com/politik/deutschland/kreditwuerdigkeit-schufa-droht-sammelklage-wegen-historischer-datenspeicherung/100249791.html",
-            "supports": "Schufa response and legal posture."
+            "supports": "Abmahnung, mögliche Klagen und Angaben zur Größenordnung der Betroffenen."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Die Datenschutzorganisation noyb hat die Schufa formell abgemahnt. Streitpunkt ist eine sogenannte Schattendatenbank mit historischen Finanzdaten, die nach Auffassung der Datenschützer längst gelöscht oder zumindest bei Auskunftsersuchen offengelegt werden müssten.",
-          "why_happening": "NDR/SZ-Recherchen hatten im Juli historische Datenbestände öffentlich gemacht. noyb wirft der Schufa nun DSGVO-Verstöße vor und will notfalls gerichtlich gegen die Speicherung und mangelnde Transparenz vorgehen.",
-          "who_is_affected": "Potenziell Verbraucher mit Schufa-Daten. noyb spricht von bis zu 69 Millionen Menschen, zu denen die Schufa Daten hat; das bedeutet nicht automatisch, dass bei allen problematische historische Einträge gespeichert sind.",
-          "personal_impact": "Schufa-Daten können bei Krediten, Mobilfunk- oder Mietverträgen relevant sein. Deshalb ist die Frage wichtig, welche alten Daten gespeichert werden und welche Auskunft Betroffene darüber erhalten.",
-          "action_now": "Im Short erklären, was 'Schattendatenbank' in diesem Streit bedeutet, welche Datenarten genannt werden und dass eine Sammelklage vorbereitet beziehungsweise geprüft wird, aber noch kein abgeschlossenes Urteil vorliegt."
+          "what_happened": "Die Datenschutzorganisation noyb hat die Schufa wegen einer sogenannten Schattendatenbank formell abgemahnt. Darin sollen historische Daten zu alten Krediten, Pfändungen und Privatinsolvenzen weiter verarbeitet werden.",
+          "why_happening": "NDR/SZ-Recherchen hatten historische Datenbestände öffentlich gemacht. noyb hält deren Verarbeitung und mangelnde Transparenz für datenschutzwidrig und bereitet rechtliche Schritte vor.",
+          "who_is_affected": "Menschen mit Schufa-Daten, besonders wenn alte Finanzinformationen bei Bonitätsprüfungen oder Auskünften relevant werden könnten.",
+          "personal_impact": "Bonitätsdaten können bei Wohnung, Kredit, Mobilfunk und anderen Verträgen eine Rolle spielen. Deshalb ist entscheidend, welche Daten tatsächlich gespeichert und offengelegt werden.",
+          "action_now": "Im Short klar zwischen Vorwurf von noyb, belegten Recherchen und der Position der Schufa unterscheiden.",
+          "facts": [
+            "noyb hat die Schufa am 26. August 2026 formell abgemahnt.",
+            "Es geht unter anderem um alte Kredit-, Pfändungs- und Insolvenzdaten.",
+            "noyb spricht von potenziell bis zu 69 Millionen Personen mit Schufa-Daten, nicht davon, dass bei allen problematische Alt-Daten vorliegen."
+          ]
         },
         "factual_guardrails": [
-          "Die Vorwürfe als Vorwürfe von noyb/NDR kennzeichnen; keine Rechtsverletzung als gerichtlich festgestellt darstellen.",
-          "69 Millionen bezeichnet die Zahl der Menschen, zu denen die Schufa Daten hat, nicht die Zahl bereits nachweislich Geschädigter.",
-          "Eine Sammelklage auf Schadenersatz ist als möglicher nächster Schritt angekündigt, nicht bereits entschieden."
+          "Nicht behaupten, dass bei allen 69 Millionen Menschen rechtswidrige Alt-Daten gespeichert sind.",
+          "Vorwürfe von noyb als Vorwürfe kennzeichnen.",
+          "Keine persönliche Bonitätswirkung ohne Beleg behaupten."
         ],
-        "research_notes": "Story-Spine: alte Schulden eigentlich erledigt -> historische Daten bleiben laut Vorwurf gespeichert -> Betroffene sehen sie teils nicht -> noyb geht juristisch vor -> warum das für Kredit und Miete relevant ist.",
+        "research_notes": "Story-Spine: Alte Finanzdaten verschwinden möglicherweise nicht so vollständig wie Verbraucher erwarten -> warum das für Kredit und Wohnung relevant ist -> was noyb jetzt juristisch fordert. HASHTAG_SEEDS: #SCHUFA #Datenschutz #DSGVO #Bonität #Kredit #Verbraucherschutz #noyb #TAYVORIQ",
         "hashtag_seeds": [
-          "#Schufa",
+          "#SCHUFA",
           "#Datenschutz",
           "#DSGVO",
           "#Bonität",
-          "#Verbraucherschutz",
           "#Kredit",
-          "#Miete",
-          "#noyb"
-        ],
-        "content_angle": "Nicht juristisch trocken erzählen, sondern aus Sicht eines Verbrauchers: Was wäre, wenn längst erledigte Finanzdaten intern weiterleben?",
-        "duplicate_guard": "Kein bisheriges TAYVORIQ-Schufa-Thema bekannt."
+          "#Verbraucherschutz",
+          "#noyb",
+          "#TAYVORIQ"
+        ]
       }
     },
     {
-      "id": "4",
-      "title": "Zuckersteuer könnte auch Smoothies und Hafermilch treffen – Zero-Getränke sollen ausdrücklich rausbleiben",
-      "score": 93,
-      "trend_scope": "consumer_tax_food_policy",
+      "id": "2",
+      "title": "Lidl-Mutter wird KI-Infrastruktur-Riese: Schwarz Digits plant XXL-Rechenzentrum bei Rostock",
+      "score": 97,
+      "trend_scope": "technology_ai",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 97,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 98,
+        "visuell": 98
+      },
+      "sources": [
+        {
+          "publisher": "tagesschau.de / SWR",
+          "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-milliarden-investition-schwarz-digits-baut-weiteres-xxl-rechenzentrum-100.html",
+          "supports": "Aktueller Bericht zur Schwarz-Gruppe, Dummerstorf, Milliardeninvestition und angekündigten Details am Donnerstag."
+        },
+        {
+          "publisher": "NDR",
+          "url": "https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html",
+          "supports": "Unabhängige Recherche zu Standort, Grundstücken, Genehmigungsstand, Energie- und Abwärmeplänen sowie möglicher Hardware-Größenordnung."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "tagesschau.de / SWR",
+            "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-milliarden-investition-schwarz-digits-baut-weiteres-xxl-rechenzentrum-100.html",
+            "supports": "BW-Verbindung, Schwarz Digits, Dummerstorf und Milliardenprojekt."
+          },
+          {
+            "publisher": "NDR",
+            "url": "https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html",
+            "supports": "Standortdetails, Genehmigungen, erneuerbare Energie, Abwärme und Medienangaben zur Hardware."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Die Digital-Sparte der Schwarz-Gruppe aus Baden-Württemberg plant in Dummerstorf bei Rostock ein riesiges Rechenzentrum für Cloud- und KI-Anwendungen. Am Donnerstag sollen weitere Details vorgestellt werden.",
+          "why_happening": "Schwarz Digits baut mit STACKIT europäische Cloud- und KI-Infrastruktur auf und will Unternehmen und Behörden eine Alternative zu US-Hyperscalern bieten.",
+          "who_is_affected": "Unternehmen, Behörden, Cloud-Kunden sowie die Region Rostock durch Bau, Energiebedarf, Gewerbesteuern und Infrastruktur.",
+          "personal_impact": "Hinter Lidl und Kaufland wächst ein Tech-Geschäft, das künftig beeinflussen kann, wo deutsche Unternehmensdaten und KI-Dienste betrieben werden.",
+          "action_now": "Die berichteten bis zu zwölf Milliarden Euro für Hardware als unbestätigte Medienangabe kennzeichnen; mehrere Milliarden Gesamtinvestition sind der sichere Kern.",
+          "facts": [
+            "Standort ist Dummerstorf bei Rostock.",
+            "Schwarz Digits gehört zur Schwarz-Gruppe mit Lidl und Kaufland.",
+            "NDR berichtet über Pläne für erneuerbare Energie und Nutzung der Server-Abwärme."
+          ]
+        },
+        "factual_guardrails": [
+          "Bis zu zwölf Milliarden Euro Hardware nicht als bestätigte Unternehmenszahl darstellen.",
+          "Keine konkrete Arbeitsplatzanzahl erfinden.",
+          "Cloud- und KI-Infrastruktur als geplantes Projekt beschreiben."
+        ],
+        "research_notes": "Story-Spine: Ausgerechnet die Lidl/Kaufland-Mutter baut sich zum deutschen Cloud- und KI-Infrastruktur-Player um -> Milliardenprojekt -> digitale Souveränität -> Energie und Abwärme. HASHTAG_SEEDS: #SchwarzDigits #Lidl #Kaufland #STACKIT #Rechenzentrum #KI #Cloud #TAYVORIQ",
+        "hashtag_seeds": [
+          "#SchwarzDigits",
+          "#Lidl",
+          "#Kaufland",
+          "#STACKIT",
+          "#Rechenzentrum",
+          "#KI",
+          "#Cloud",
+          "#TAYVORIQ"
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "title": "SAP verliert zeitweise fast fünf Prozent: Warum der KI-Boom Europas Software-Riesen plötzlich unter Druck setzt",
+      "score": 95,
+      "trend_scope": "technology_ai",
       "criteria": {
         "aktualitaet": 100,
         "viralitaet": 95,
-        "tayvoriq_passung": 92,
-        "quellenqualitaet": 99,
-        "visuell": 95
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 98,
+        "visuell": 94
       },
       "sources": [
         {
           "publisher": "tagesschau.de",
-          "url": "https://www.tagesschau.de/inland/zuckersteuer-172.html",
-          "supports": "26 August report says Klingbeil explicitly rules out a tax on sugar-free drinks and confirms details of the planned levy are still being prepared."
+          "url": "https://www.tagesschau.de/wirtschaft/finanzen/mb-mittag-sap-100.html",
+          "supports": "Aktueller Marktbericht zu SAP-Kursverlusten, UBS-Abstufung und KI-Zweifeln."
         },
         {
-          "publisher": "Deutschlandfunk",
-          "url": "https://www.deutschlandfunk.de/nachrichten-index-39856.html",
-          "supports": "26 August news index reports Klingbeil wants the planned sugar levy to extend to nectars, smoothies and oat milk and says the federal government backs the plans."
-        },
-        {
-          "publisher": "ZDFheute",
-          "url": "https://www.zdfheute.de/politik/deutschland/zuckersteuer-klingbeil-zuckerfreie-getraenke-100.html",
-          "supports": "Independent report confirms Klingbeil's statement that zero/sugar-free beverages will not be taxed under the proposal."
+          "publisher": "Deutsche Börse / dpa-AFX",
+          "url": "https://live.deutsche-boerse.com/nachrichten/AKTIE-IM-FOKUS-3-Gewinnmitnahmen-bei-SAP-wegen-UBS-Abstufung-und-US-Vorgaben-abad8c3a-b429-4215-8bd8-089ee70a834e",
+          "supports": "Unabhängige Marktbestätigung mit Tagestief von minus 4,7 Prozent und Analystenkontext."
         }
       ],
       "source_context": {
-        "independent_news_count": 3,
+        "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
           {
             "publisher": "tagesschau.de",
-            "url": "https://www.tagesschau.de/inland/zuckersteuer-172.html",
-            "supports": "Zero-drink clarification and policy still under preparation."
+            "url": "https://www.tagesschau.de/wirtschaft/finanzen/mb-mittag-sap-100.html",
+            "supports": "SAP-Kursreaktion, UBS-Abstufung und KI-Risiko."
           },
           {
-            "publisher": "Deutschlandfunk",
-            "url": "https://www.deutschlandfunk.de/nachrichten-index-39856.html",
-            "supports": "Reported expansion to nectars, smoothies and oat milk."
-          },
-          {
-            "publisher": "ZDFheute",
-            "url": "https://www.zdfheute.de/politik/deutschland/zuckersteuer-klingbeil-zuckerfreie-getraenke-100.html",
-            "supports": "Independent confirmation that sugar-free drinks are excluded from the proposal."
+            "publisher": "Deutsche Börse / dpa-AFX",
+            "url": "https://live.deutsche-boerse.com/nachrichten/AKTIE-IM-FOKUS-3-Gewinnmitnahmen-bei-SAP-wegen-UBS-Abstufung-und-US-Vorgaben-abad8c3a-b429-4215-8bd8-089ee70a834e",
+            "supports": "Kursbewegung und Markt-/Branchenkontext."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Die Bundesregierung arbeitet an einer Zuckersteuer beziehungsweise Abgabe auf zuckerhaltige Getränke. Finanzminister Lars Klingbeil hat klargestellt, dass zuckerfreie Zero-Getränke nicht darunter fallen sollen; laut Deutschlandfunk wird über eine Einbeziehung von Nektar, Smoothies und Hafermilch gesprochen.",
-          "why_happening": "Die Regierung begründet das Vorhaben mit Gesundheitsfolgen hohen Zuckerkonsums, besonders bei Kindern. Die konkrete Ausgestaltung wird derzeit vorbereitet.",
-          "who_is_affected": "Getränkehersteller, Handel und Verbraucher – je nachdem, welche Produktgruppen und Zuckergrenzen am Ende tatsächlich im Gesetz stehen.",
-          "personal_impact": "Bei einer Umsetzung könnten sich Preise oder Rezepturen bestimmter Getränke ändern. Noch ist aber nicht beschlossen, welche Produkte in welcher Höhe belastet werden.",
-          "action_now": "Im Short mit dem überraschenden Produktvergleich arbeiten: Cola, Smoothie, Haferdrink, Zero – und jeweils sauber markieren, was geplant, diskutiert oder ausdrücklich ausgeschlossen ist."
+          "what_happened": "Die SAP-Aktie verlor am 26. August zeitweise 4,7 Prozent. Auslöser waren Gewinnmitnahmen, schwache US-Tech-Vorgaben und eine UBS-Abstufung von Kaufen auf Neutral.",
+          "why_happening": "Anleger fragen sich, ob agentische KI etablierte Unternehmenssoftware schneller verändert, als SAP neue KI-Funktionen monetarisieren kann. UBS sieht zudem Risiken bei der Cloud-Dynamik.",
+          "who_is_affected": "SAP-Anleger, Unternehmenskunden, Softwareanbieter und Beschäftigte in Europas Tech-Sektor.",
+          "personal_impact": "Der Fall zeigt, dass KI nicht nur neue Gewinner schafft, sondern selbst etablierte Softwarekonzerne unter Anpassungsdruck setzt.",
+          "action_now": "Kursreaktion und langfristige Unternehmenslage nicht gleichsetzen; Analystenmeinung als Einschätzung kennzeichnen.",
+          "facts": [
+            "SAP verlor im Tagestief bis zu 4,7 Prozent.",
+            "UBS stufte die Aktie von Buy auf Neutral ab.",
+            "UBS nennt schleppende Integration agentischer KI und mögliche Verlangsamung beim Cloud-Backlog als Risiken."
+          ]
         },
         "factual_guardrails": [
-          "Keine bereits geltende Steuer behaupten; die Details werden noch vorbereitet.",
-          "Zuckerfreie Getränke sollen nach Klingbeils Aussage nicht erfasst werden.",
-          "Smoothies, Nektar und Hafermilch als diskutierte beziehungsweise geplante Erweiterung darstellen, nicht als endgültig beschlossen."
+          "Nicht behaupten, KI zerstöre SAPs Geschäftsmodell.",
+          "UBS-Aussagen als Analysteneinschätzung markieren.",
+          "Kursverlust als Tagesbewegung formulieren."
         ],
-        "research_notes": "Story-Spine: überraschende Produktgrenzen -> Zero bleibt raus -> Smoothies/Hafermilch könnten rein -> warum -> was Verbraucher tatsächlich schon wissen können.",
+        "research_notes": "Story-Spine: KI gilt als Wachstumsmotor, aber bei SAP wird genau derselbe KI-Boom zum Bewertungsrisiko -> Kursreaktion -> agentische KI -> Cloud-Dynamik. HASHTAG_SEEDS: #SAP #KünstlicheIntelligenz #AgenticAI #DAX #Software #Cloud #TechAktien #TAYVORIQ",
         "hashtag_seeds": [
-          "#Zuckersteuer",
-          "#Smoothie",
-          "#Hafermilch",
-          "#ZeroGetränke",
-          "#Verbraucher",
-          "#Lebensmittel",
-          "#Deutschland",
-          "#Gesundheitspolitik"
+          "#SAP",
+          "#KünstlicheIntelligenz",
+          "#AgenticAI",
+          "#DAX",
+          "#Software",
+          "#Cloud",
+          "#TechAktien",
+          "#TAYVORIQ"
+        ]
+      }
+    },
+    {
+      "id": "4",
+      "title": "Deutschlands Exportstimmung springt von minus 2,8 auf plus 9,6: Ist das die erste echte Industriewende?",
+      "score": 94,
+      "trend_scope": "business_economy",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 92,
+        "tayvoriq_passung": 95,
+        "quellenqualitaet": 100,
+        "visuell": 91
+      },
+      "sources": [
+        {
+          "publisher": "ifo Institut",
+          "url": "https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026",
+          "supports": "Primärquelle: Exporterwartungen steigen von -2,8 auf +9,6, höchster Stand seit Februar 2022."
+        },
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/",
+          "supports": "Unabhängige Bestätigung und Einordnung zu Branchen, EU-Ausfuhren und weiterhin schwachem China-Geschäft."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "ifo Institut",
+            "url": "https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026",
+            "supports": "Indexsprung, Vierjahreshoch und Branchenaufschlüsselung."
+          },
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/",
+            "supports": "Unabhängige Bestätigung und makroökonomischer Kontext."
+          }
         ],
-        "content_angle": "Der Hook ist die unerwartete Frage: Warum könnte ein Smoothie betroffen sein, während eine Zero-Cola rausbleibt?",
-        "duplicate_guard": "Kein jüngeres TAYVORIQ-Thema zur Zuckersteuer bekannt."
+        "fallback_editorial_answers": {
+          "what_happened": "Die ifo-Exporterwartungen deutscher Unternehmen stiegen im August von minus 2,8 auf plus 9,6 Punkte – den höchsten Stand seit Februar 2022.",
+          "why_happening": "Besonders Elektroausrüstung, Datenverarbeitung, Elektronik und Autoindustrie sind optimistischer; Ausfuhren in die EU laufen besser, China bleibt schwach.",
+          "who_is_affected": "Exportorientierte Industrie, Zulieferer, Beschäftigte und Regionen mit hohem Industrieanteil.",
+          "personal_impact": "Bessere Exporterwartungen können Produktion und Investitionen stützen, sind aber noch keine Garantie für einen nachhaltigen Boom.",
+          "action_now": "Im Short klar sagen: Das ist ein Erwartungsindex, keine bereits realisierte Exportsteigerung um denselben Wert.",
+          "facts": [
+            "Index von -2,8 auf +9,6.",
+            "Höchster Stand seit Februar 2022.",
+            "Elektronik, Datenverarbeitung und Autoindustrie sind deutlich optimistischer; China bleibt schwach."
+          ]
+        },
+        "factual_guardrails": [
+          "Keine gesicherte Industriewende behaupten.",
+          "Indexpunkte nicht als Prozentwachstum der Exporte darstellen.",
+          "EU-Stärke und China-Schwäche gemeinsam erwähnen."
+        ],
+        "research_notes": "Story-Spine: Nach Jahren Krisenstimmung dreht ein wichtiger Frühindikator abrupt ins Plus -> welche Branchen treiben -> warum China trotzdem bremst -> was der Wert wirklich bedeutet. HASHTAG_SEEDS: #Deutschland #Export #Industrie #IfoInstitut #Autoindustrie #Wirtschaft #MadeInGermany #TAYVORIQ",
+        "hashtag_seeds": [
+          "#Deutschland",
+          "#Export",
+          "#Industrie",
+          "#IfoInstitut",
+          "#Autoindustrie",
+          "#Wirtschaft",
+          "#MadeInGermany",
+          "#TAYVORIQ"
+        ]
       }
     },
     {
       "id": "5",
-      "title": "Bundesliga startet mit Bayern gegen VfB: Undav ist neuer Kapitän – Pejcinovic bekommt die Startelf-Garantie",
-      "score": 91,
-      "trend_scope": "sports_vfb_bayern_opener",
+      "title": "Deutschland gegen Türkei vor der Heim-WM: Warum dieses Basketball-Spiel mehr als nur ein Test ist",
+      "score": 93,
+      "trend_scope": "sports",
       "criteria": {
-        "aktualitaet": 99,
+        "aktualitaet": 100,
         "viralitaet": 94,
-        "tayvoriq_passung": 94,
-        "quellenqualitaet": 98,
-        "visuell": 99
+        "tayvoriq_passung": 93,
+        "quellenqualitaet": 96,
+        "visuell": 98
       },
       "sources": [
         {
-          "publisher": "SWR Sport",
-          "url": "https://www.swr.de/sport/fussball/vfb-stuttgart-vor-dem-bundesligastart-gegen-bayern-muenchen-100.html",
-          "supports": "26 August preview confirms Friday 28 August 20:30 opener at Bayern, Deniz Undav as new captain, Pejcinovic start guarantee after a cup hat-trick, and Chris Führich as doubtful."
+          "publisher": "Deutscher Basketball Bund",
+          "url": "https://www.basketball-bund.de/in-der-lanxess-arena-double-header-der-dbb-teams/",
+          "supports": "Offizielle Bestätigung des Frauen-Testspiels Deutschland gegen Türkei am 27.08.2026 um 17 Uhr in Köln und der Heim-WM kurz danach."
         },
         {
           "publisher": "WELT / dpa",
-          "url": "https://www.welt.de/regionales/baden-wuerttemberg/article6a8ed9a1198bb9fbdfaffbae/wie-hoeness-auf-den-saisonstart-des-vfb-beim-fc-bayern-blickt.html",
-          "supports": "Independent current preview confirms Hoeneß' approach, Pejcinovic's start guarantee, Bayern's 14-year unbeaten opener streak and Führich's injury question."
-        },
-        {
-          "publisher": "VfB Stuttgart",
-          "url": "https://www.vfb.de/de/vfb/aktuell/neues/profis/2627/vfb-eroeffnet-bundesliga-saison-in-muenchen/",
-          "supports": "Club source confirms 28 August 20:30 season opener at Bayern and free-to-air broadcast on Sat.1 in addition to Sky."
+          "url": "https://www.welt.de/regionales/nrw/article6a8eb242518a586e18558b82/basketball-doppelpack-in-koeln-frauen-hoffen-auf-momentum.html",
+          "supports": "Aktueller Kontext zur schwierigen Vorbereitung, Ausfällen und Bedeutung des Spiels für Momentum vor der Heim-WM."
         }
       ],
       "source_context": {
-        "independent_news_count": 3,
+        "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "SWR Sport",
-            "url": "https://www.swr.de/sport/fussball/vfb-stuttgart-vor-dem-bundesligastart-gegen-bayern-muenchen-100.html",
-            "supports": "Captaincy, Pejcinovic, injury and match context."
+            "publisher": "Deutscher Basketball Bund",
+            "url": "https://www.basketball-bund.de/in-der-lanxess-arena-double-header-der-dbb-teams/",
+            "supports": "Termin, Gegner, Arena und WM-Vorbereitung."
           },
           {
             "publisher": "WELT / dpa",
-            "url": "https://www.welt.de/regionales/baden-wuerttemberg/article6a8ed9a1198bb9fbdfaffbae/wie-hoeness-auf-den-saisonstart-des-vfb-beim-fc-bayern-blickt.html",
-            "supports": "Independent current preview and Bayern opener streak."
-          },
-          {
-            "publisher": "VfB Stuttgart",
-            "url": "https://www.vfb.de/de/vfb/aktuell/neues/profis/2627/vfb-eroeffnet-bundesliga-saison-in-muenchen/",
-            "supports": "Official kickoff time and broadcast context."
+            "url": "https://www.welt.de/regionales/nrw/article6a8eb242518a586e18558b82/basketball-doppelpack-in-koeln-frauen-hoffen-auf-momentum.html",
+            "supports": "Aktuelle Personallage und sportliche Bedeutung."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Die Bundesliga-Saison 2026/27 beginnt am Freitag, 28. August, um 20:30 Uhr mit Bayern München gegen den VfB Stuttgart. Beim VfB führt Deniz Undav als neuer Kapitän die Mannschaft an; Dzenan Pejcinovic erhält nach seinem Dreierpack im DFB-Pokal eine Startelf-Garantie.",
-          "why_happening": "Der Meister eröffnet traditionell die Bundesliga-Saison. Für Stuttgart ist es zugleich ein maximaler Härtetest direkt zum Start, mit neuer Hierarchie und einem jungen Stürmer im Fokus.",
-          "who_is_affected": "VfB- und Bayern-Fans sowie Bundesliga-Zuschauer; das Eröffnungsspiel wird zusätzlich zum Pay-TV auch frei empfangbar bei Sat.1 gezeigt.",
-          "personal_impact": "Für Zuschauer aus Baden-Württemberg ist es ein stark lokales Event mit nationaler Aufmerksamkeit und einer klaren Personalstory rund um Undav und Pejcinovic.",
-          "action_now": "Im Short nicht nur 'Bayern gegen Stuttgart' sagen, sondern die drei konkreten Spannungen erzählen: neuer Kapitän Undav, Pejcinovic nach Pokal-Hattrick direkt in der Startelf, und Bayerns seit 14 Jahren ungeschlagene Serie in Bundesliga-Auftaktspielen."
+          "what_happened": "Deutschlands Basketballerinnen spielen am Donnerstag in der Kölner Lanxess Arena gegen die Türkei. Es ist einer der letzten großen Tests vor der Heim-WM in Berlin vom 4. bis 13. September.",
+          "why_happening": "Die Vorbereitung war durch Niederlagen, Absagen und Verletzungen schwierig. Das Team will vor heimischem Publikum Momentum und Selbstvertrauen aufbauen.",
+          "who_is_affected": "DBB-Team, Fans, die türkische Auswahl und das Publikum vor der Heim-WM.",
+          "personal_impact": "Für deutsche Basketballfans ist es der letzte große Stimmungstest, bevor die WM im eigenen Land beginnt.",
+          "action_now": "Aktuelle Kader- und Verletztenlage direkt vor Skriptproduktion nochmals prüfen.",
+          "facts": [
+            "Spiel am 27. August 2026 um 17 Uhr in Köln.",
+            "Gegner ist WM-Teilnehmer Türkei.",
+            "Die Heim-WM in Berlin läuft vom 4. bis 13. September 2026."
+          ]
         },
         "factual_guardrails": [
-          "Kein Ergebnis vorhersagen.",
-          "Pejcinovic erhielt laut Hoeneß eine Startelf-Garantie; Führichs Einsatz ist noch offen.",
-          "Die 14 Jahre beziehen sich auf Bayerns ungeschlagene Bundesliga-Auftaktspiele, nicht auf alle Duelle gegen Stuttgart."
+          "Keine verletzte oder fehlende Spielerin ohne aktuelle Bestätigung als sicher nennen.",
+          "Testspiel nicht als WM-Spiel bezeichnen.",
+          "Heim-WM-Termine korrekt nennen."
         ],
-        "research_notes": "Story-Spine: Bundesliga beginnt -> lokaler VfB-Hook -> neue Hierarchie mit Undav -> Pejcinovic als sofortiger Hoffnungsträger -> Bayern-Serie als Challenge.",
+        "research_notes": "Story-Spine: Letzter großer Test vor der Heim-WM -> schwierige Vorbereitung -> Türkei als echter Gradmesser -> Köln als Stimmungstest. HASHTAG_SEEDS: #DBB #Basketball #TeamDeutschland #Türkei #LanxessArena #FIBAWomensWorldCup #Berlin2026 #TAYVORIQ",
         "hashtag_seeds": [
-          "#VfBStuttgart",
-          "#FCBayern",
-          "#Bundesliga",
-          "#DenizUndav",
-          "#DzenanPejcinovic",
-          "#Saisonstart",
-          "#Stuttgart",
-          "#Fußball"
-        ],
-        "content_angle": "Der lokale Sport-Hook ist die neue VfB-Achse Undav + Pejcinovic direkt vor dem größten möglichen Auftaktgegner.",
-        "duplicate_guard": "Nicht mit dem DFB-Camp-Thema vermischen; völlig anderer Sportwinkel und Event."
+          "#DBB",
+          "#Basketball",
+          "#TeamDeutschland",
+          "#Türkei",
+          "#LanxessArena",
+          "#FIBAWomensWorldCup",
+          "#Berlin2026",
+          "#TAYVORIQ"
+        ]
       }
     }
   ]
