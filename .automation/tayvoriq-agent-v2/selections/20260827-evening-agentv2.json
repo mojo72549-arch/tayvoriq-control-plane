@@ -1,0 +1,153 @@
+{
+  "date": "2026-08-27",
+  "target_date": "2026-08-27",
+  "slot": "evening",
+  "selection_id": "20260827-evening-agentv2",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_fallback_after_provider_limits",
+  "telegram_only_user_path": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "trends": [
+    {
+      "id": "1",
+      "title": "Namibia will Phosphat vom Meeresboden holen: Beginnt hier der weltweit erste große Tiefsee-Abbau dieser Art?",
+      "score": 95,
+      "sources": [
+        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html","supports":"Bericht zum umstrittenen Phosphatabbau vor Namibia und aktuellen Genehmigungsschritten."},
+        {"publisher":"tagesschau.de Archiv","url":"https://www.tagesschau.de/archiv?datum=2026-08-26&filter=nachrichten","supports":"Aktuelle Einordnung und Datierung der Berichterstattung am 26. August 2026."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html","supports":"Projekt, Tiefe, Umweltkonflikt und Genehmigungslage."},
+          {"publisher":"tagesschau.de Archiv","url":"https://www.tagesschau.de/archiv?datum=2026-08-26&filter=nachrichten","supports":"Aktuelle Veröffentlichung und Kontext."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Ein seit Jahren umstrittenes Projekt für Phosphatabbau vor Namibias Küste rückt durch neue Genehmigungsschritte näher an eine mögliche Umsetzung.",
+          "why_happening":"Phosphat ist ein zentraler Rohstoff für Düngemittel; Befürworter sehen wirtschaftliches Potenzial, Kritiker warnen vor Schäden am Meeresökosystem.",
+          "who_is_affected":"Fischerei, Küstengemeinden, Umweltverbände, Rohstoffunternehmen und die namibische Wirtschaft.",
+          "personal_impact":"Der Fall zeigt, wie Rohstoffhunger und Meeresschutz direkt kollidieren können.",
+          "action_now":"Im Short sauber zwischen Genehmigung, geplantem Abbau und tatsächlich begonnenem Abbau unterscheiden.",
+          "facts":["Abbaugebiet liegt vor Namibia bei Walvis Bay.","Diskutiert wird Förderung aus etwa 200 bis 300 Metern Tiefe.","Das Projekt ist wegen möglicher Folgen für Meeresboden und Fischerei umstritten."]
+        },
+        "factual_guardrails": {"must_include":["200 bis 300 Meter Tiefe","Phosphat für Düngemittel","Umwelt- und Fischereikonflikt"],"must_not_claim":["Nicht behaupten, großflächiger kommerzieller Abbau habe bereits begonnen."],"uncertainty_note":"Genehmigungs- und Umsetzungsstatus klar trennen."},
+        "research_notes":"Story spine: Rohstoff vom Meeresboden vs. Schutz eines produktiven Fischereigebiets. HASHTAG_SEEDS: #Namibia #Tiefseebergbau #Phosphat #WalvisBay #Meeresschutz #Rohstoffe #TAYVORIQ"
+      }
+    },
+    {
+      "id": "2",
+      "title": "Deutschlands Exporte springen im Stimmungsindex von minus 2,8 auf plus 9,6: Ist die Industrie-Wende da?",
+      "score": 94,
+      "sources": [
+        {"publisher":"ifo Institut","url":"https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026","supports":"ifo meldet starken Anstieg der Exporterwartungen im August 2026."},
+        {"publisher":"Reuters","url":"https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/","supports":"Reuters bestätigt den Sprung und ordnet ihn als höchsten Stand seit Februar 2022 ein."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"ifo Institut","url":"https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026","supports":"Index von -2,8 auf +9,6 und Branchenkontext."},
+          {"publisher":"Reuters","url":"https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/","supports":"Unabhängige Bestätigung und Vierjahresvergleich."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Die ifo-Exporterwartungen deutscher Unternehmen sprangen im August von minus 2,8 auf plus 9,6 Punkte.",
+          "why_happening":"Mehr Unternehmen rechnen wieder mit besseren Auslandsgeschäften, besonders in Elektronik, Datenverarbeitung und Teilen der Autoindustrie.",
+          "who_is_affected":"Exportorientierte Unternehmen, Beschäftigte in Industriebranchen und Zulieferer.",
+          "personal_impact":"Mehr Exportoptimismus kann Produktion und Investitionen stützen, ist aber noch kein Beweis für einen dauerhaften Aufschwung.",
+          "action_now":"Im Short Erwartungsindex und reale Exportzahlen sauber auseinanderhalten.",
+          "facts":["Index steigt von -2,8 auf +9,6.","Höchster Stand seit Februar 2022.","Elektronik, Datenverarbeitung und Autoindustrie melden mehr Optimismus."]
+        },
+        "factual_guardrails": {"must_include":["-2,8 auf +9,6","höchster Stand seit Februar 2022","Erwartungsindex statt reale Exportmenge"],"must_not_claim":["Keine gesicherte Industriewende behaupten."],"uncertainty_note":"Stimmungsindikator, keine Garantie für künftige Exporte."},
+        "research_notes":"Story spine: Deutschlands Exportstimmung dreht abrupt ins Plus – aber was bedeutet das wirklich? HASHTAG_SEEDS: #Deutschland #Export #Industrie #IfoInstitut #Wirtschaft #Autoindustrie #TAYVORIQ"
+      }
+    },
+    {
+      "id": "3",
+      "title": "Fast 10.000 Furrys in Hamburg: Warum Europas größtes Treffen so stark wächst",
+      "score": 92,
+      "sources": [
+        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/kultur/eurofurence-100.html","supports":"Aktuelle Berichterstattung zur Eurofurence und Besucherzahl."},
+        {"publisher":"Eurofurence","url":"https://www.eurofurence.org/EF30/home","supports":"Offizielle Veranstaltungsinformationen zur Eurofurence 30."}
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/kultur/eurofurence-100.html","supports":"Knapp 10.000 Teilnehmer und kulturelle Einordnung."},
+          {"publisher":"Eurofurence","url":"https://www.eurofurence.org/EF30/home","supports":"Offizielle Eventdaten und Programmrahmen."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Die Eurofurence in Hamburg zieht inzwischen knapp 10.000 Menschen an und zählt zu den größten Treffen der Furry-Community in Europa.",
+          "why_happening":"Die Community ist international vernetzt und verbindet Kostümbau, Kunst, Performance, Gaming und Social Media.",
+          "who_is_affected":"Teilnehmer, Künstler, Kostümbauer, Veranstalter und Hamburger Besucher.",
+          "personal_impact":"Das Thema zeigt, wie aus einer früheren Internet-Nische ein großes reales Community-Event geworden ist.",
+          "action_now":"Respektvoll erklären, was Furry-Kultur tatsächlich ist, ohne sie zu sexualisieren oder lächerlich zu machen.",
+          "facts":["Knapp 10.000 Teilnehmer.","Eurofurence 30 findet in Hamburg statt.","Kostüme sind nur ein Teil der Community; Kunst und soziale Treffen spielen ebenfalls eine große Rolle."]
+        },
+        "factual_guardrails": {"must_include":["knapp 10.000 Teilnehmer","Eurofurence 30","Community aus Kunst, Kostüm und sozialem Austausch"],"must_not_claim":["Keine sexualisierende oder pauschalisierende Darstellung."],"uncertainty_note":"Besucherzahl als aktuelle Größenordnung formulieren."},
+        "research_notes":"Story spine: Wie wurde aus einer Online-Nische ein Event mit fast 10.000 Menschen? HASHTAG_SEEDS: #Eurofurence #Hamburg #FurryCommunity #CosplayCulture #Community #Kultur #TAYVORIQ"
+      }
+    },
+    {
+      "id": "4",
+      "title": "Zuckersteuer: Zero soll rausbleiben – aber Smoothies, Haferdrinks und Fertigkaffee bleiben in der Debatte",
+      "score": 93,
+      "sources": [
+        {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/inland/zuckersteuer-172.html","supports":"Aktuelle Details zur diskutierten Zuckersteuer und Produktabgrenzung."},
+        {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/finanzminister-klingbeil-schliesst-zuckersteuer-auf-getraenke-mit-suessstoff-aus-106.html","supports":"Bestätigung, dass Zero- und Light-Getränke mit Süßstoff nicht erfasst werden sollen."},
+        {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/klingbeil-will-plaene-fuer-zuckersteuer-auf-nektar-smoothies-hafermilch-ausweiten-104.html","supports":"Bericht zu Smoothies, Nektar, Hafermilch und weiteren Produktgruppen in der Debatte."}
+      ],
+      "source_context": {
+        "independent_news_count": 3,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"tagesschau.de","url":"https://www.tagesschau.de/inland/zuckersteuer-172.html","supports":"Politische Debatte und Abgrenzung."},
+          {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/finanzminister-klingbeil-schliesst-zuckersteuer-auf-getraenke-mit-suessstoff-aus-106.html","supports":"Zero/Light ausgeschlossen."},
+          {"publisher":"Deutschlandfunk","url":"https://www.deutschlandfunk.de/klingbeil-will-plaene-fuer-zuckersteuer-auf-nektar-smoothies-hafermilch-ausweiten-104.html","supports":"Weitere Getränkegruppen in Diskussion."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Finanzminister Klingbeil hat präzisiert, dass Zero- und Light-Getränke mit Süßstoff von der geplanten Zuckersteuer ausgenommen werden sollen.",
+          "why_happening":"Die Steuer soll zugesetzten Zucker adressieren; gleichzeitig wird noch diskutiert, welche Getränkegruppen genau erfasst werden.",
+          "who_is_affected":"Getränkehersteller, Handel und Verbraucher.",
+          "personal_impact":"Je nach finaler Ausgestaltung könnten einzelne Getränke teurer werden, obwohl andere süß schmeckende Produkte ausgenommen bleiben.",
+          "action_now":"Im Short klar sagen: Das ist ein politischer Plan, noch keine fertige Steuerregel.",
+          "facts":["Zero und Light mit Süßstoff sollen ausgenommen werden.","Smoothies, Nektar, Haferdrinks und Fertigkaffee werden diskutiert.","Die konkrete gesetzliche Ausgestaltung steht noch nicht fest."]
+        },
+        "factual_guardrails": {"must_include":["Zero/Light ausgenommen","weitere Produktgruppen noch in Debatte","noch keine fertige Steuer"],"must_not_claim":["Keine konkreten Preissteigerungen behaupten, solange Satz und Gesetz fehlen."],"uncertainty_note":"Politischer Plan; Details können sich ändern."},
+        "research_notes":"Story spine: Warum könnte ein Smoothie besteuert werden, eine Zero-Cola aber nicht? HASHTAG_SEEDS: #Zuckersteuer #Smoothie #Haferdrink #ZeroGetränke #Verbraucher #Lebensmittel #TAYVORIQ"
+      }
+    },
+    {
+      "id": "5",
+      "title": "Bundesliga-Auftakt Bayern gegen VfB: Warum Stuttgart diesmal als echter Prüfstein startet",
+      "score": 94,
+      "sources": [
+        {"publisher":"VfB Stuttgart","url":"https://www.vfb.de/de/vfb/aktuell/neues/profis/2627/vfb-eroeffnet-bundesliga-saison-in-muenchen/","supports":"Offizielle Bestätigung des Eröffnungsspiels Bayern gegen VfB."},
+        {"publisher":"FC Bayern","url":"https://fcbayern.com/de/news/2026/07/auf-diesen-gegner-trifft-der-fc-bayern-zum-start-der-bundesliga-saison","supports":"Offizielle Bayern-Einordnung des Saisonauftakts."},
+        {"publisher":"Bundesliga","url":"https://www.bundesliga.com/en/bundesliga/news/team-news-line-ups-2026-27-bayern-dortmund-fantasy-20707","supports":"Aktueller Liga-Kontext zu Kader und Aufstellungen."}
+      ],
+      "source_context": {
+        "independent_news_count": 3,
+        "quality_gates_weakened": false,
+        "sources": [
+          {"publisher":"VfB Stuttgart","url":"https://www.vfb.de/de/vfb/aktuell/neues/profis/2627/vfb-eroeffnet-bundesliga-saison-in-muenchen/","supports":"Spieltermin und VfB-Kontext."},
+          {"publisher":"FC Bayern","url":"https://fcbayern.com/de/news/2026/07/auf-diesen-gegner-trifft-der-fc-bayern-zum-start-der-bundesliga-saison","supports":"Gegner und Saisonstart bestätigt."},
+          {"publisher":"Bundesliga","url":"https://www.bundesliga.com/en/bundesliga/news/team-news-line-ups-2026-27-bayern-dortmund-fantasy-20707","supports":"Ligaweiter Kader- und Aufstellungskontext."}
+        ],
+        "fallback_editorial_answers": {
+          "what_happened":"Die Bundesliga 2026/27 startet mit Bayern München gegen den VfB Stuttgart.",
+          "why_happening":"Der Meister eröffnet traditionell die neue Saison; Stuttgart bekommt damit sofort den maximalen Härtetest.",
+          "who_is_affected":"Fans von Bayern, VfB und Bundesliga sowie das regionale Publikum in Baden-Württemberg.",
+          "personal_impact":"Für Stuttgart-Fans liefert der Auftakt sofort einen Maßstab dafür, wie konkurrenzfähig die Mannschaft in die neue Saison geht.",
+          "action_now":"Aktuelle Startelf und Verletztenlage vor Produktion nochmals prüfen; keine Personalie vorzeitig als sicher darstellen.",
+          "facts":["Bayern gegen VfB eröffnet die Saison 2026/27.","Das Spiel findet in München statt.","Kader- und Startelffragen liefern den aktuellen Nachrichtenwert über die reine Paarung hinaus."]
+        },
+        "factual_guardrails": {"must_include":["Saisoneröffnung Bayern gegen VfB","München","aktuelle Kader-/Startelflage"],"must_not_claim":["Keine unbestätigte Startelf oder Verletzung als sicher darstellen."],"uncertainty_note":"Personalien unmittelbar vor Skript/Render erneut prüfen."},
+        "research_notes":"Story spine: Stuttgart startet nicht gegen irgendeinen Gegner, sondern direkt beim Meister. HASHTAG_SEEDS: #Bundesliga #VfBStuttgart #FCBayern #Stuttgart #Saisonauftakt #Fußball #TAYVORIQ"
+      }
+    }
+  ]
+}
