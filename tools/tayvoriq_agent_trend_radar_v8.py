@@ -7,13 +7,57 @@ Keeps the current Growth V7 scoring and quality gates unchanged while making the
 channel's non-sexual growth boundary explicit at the research/prompt layer.
 """
 
+import json
+from pathlib import Path
+
 import tayvoriq_agent_trend_radar_v7 as growth_v7
 
 base = growth_v7.base
 _original_prompt = base.prompt_for
 
 
+def _editorial_hint_text(slot, now):
+    """Load dated, source-backed candidate hints without bypassing live verification."""
+    path = Path("state/tayvoriq-editorial-hints.json")
+    if not path.is_file():
+        return ""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    target_date = str(data.get("target_date") or "").strip()
+    target_slot = str(data.get("slot") or "").strip()
+    current_date = now.date().isoformat() if hasattr(now, "date") else str(now)[:10]
+    if target_date != current_date or target_slot != str(slot):
+        return ""
+    candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
+    if not candidates:
+        return ""
+    lines = [
+        "TAYVORIQ PRE-RESEARCHED EDITORIAL HINTS — VERIFY LIVE, NEVER FORCE:",
+        "- These candidates were researched in advance for this exact date and slot.",
+        "- Re-check freshness, source coherence, duplicate status, factual status and trend strength now.",
+        "- Prefer candidates that still pass all normal gates; replace any item that is stale, superseded, weak or contradicted.",
+        "- These hints NEVER weaken source, duplicate, brand-safety, quality or claim-verification gates.",
+    ]
+    for i, item in enumerate(candidates[:8], 1):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "").strip()
+        why = str(item.get("why_now") or "").strip()
+        sources = [str(x).strip() for x in (item.get("sources") or []) if str(x).strip()]
+        if not title:
+            continue
+        lines.append(f"{i}. {title}")
+        if why:
+            lines.append(f"   Why now: {why}")
+        if sources:
+            lines.append("   Pre-researched sources: " + " | ".join(sources[:4]))
+    return "\n".join(lines)
+
+
 def prompt_for(slot, now):
+    editorial_hints = _editorial_hint_text(slot, now)
     return _original_prompt(slot, now) + """
 
 TAYVORIQ BRAND SAFETY — HARD REQUIREMENT:
@@ -56,7 +100,7 @@ TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 - Do NOT pad with generic reach-bait such as #fyp, #viral, #trending, #explorepage or #fürdich. Do not use #news merely because the item is a news story.
 - Avoid duplicate synonyms and overbroad tags that do not help discovery. Strong specificity beats hashtag volume.
 - Never put an unverified claim, rumor or speculative release detail into a hashtag.
-""".strip()
+""".strip() + (("\n\n" + editorial_hints) if editorial_hints else "")
 
 
 base.prompt_for = prompt_for
