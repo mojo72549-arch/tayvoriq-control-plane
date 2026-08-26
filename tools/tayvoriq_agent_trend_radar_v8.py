@@ -48,6 +48,14 @@ TAYVORIQ SCRIPT HANDOFF — HARD REQUIREMENT:
 - source_context.factual_guardrails.uncertainty_note should make timing or confirmation status explicit where necessary.
 - source_context.research_notes should identify the strongest story spine and useful examples, not merely repeat source titles or the headline.
 - The candidate should give production enough material to answer: What exactly happened? Which concrete examples prove it? Why is it relevant? What happens next?
+
+TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
+- End source_context.research_notes with a compact line starting exactly with "HASHTAG_SEEDS:" followed by 5–8 topic-specific hashtag suggestions for production metadata.
+- Prefer a deliberate mix: 1 exact event/topic tag, 1–3 concrete entity/product/person/place tags, 1 relevant category/community tag, and #TAYVORIQ when appropriate.
+- Hashtags must be semantically tied to the actual story and its strongest searchable entities. For Gamescom coverage, for example, use the confirmed event/game/publisher names that are genuinely central to that candidate rather than generic gaming bait.
+- Do NOT pad with generic reach-bait such as #fyp, #viral, #trending, #explorepage or #fürdich. Do not use #news merely because the item is a news story.
+- Avoid duplicate synonyms and overbroad tags that do not help discovery. Strong specificity beats hashtag volume.
+- Never put an unverified claim, rumor or speculative release detail into a hashtag.
 """.strip()
 
 
