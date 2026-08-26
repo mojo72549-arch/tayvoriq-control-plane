@@ -123,10 +123,29 @@
         "golden_path_run_id": 32999634303,
         "reason": "bind-failed-run-before-delivery-watch"
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-26T18:40:55.846273Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 32999634303,
+        "golden_path_run_id": 33001013557,
+        "recovery_generation": 1,
+        "failure_signature": "7446d3fed9efe1e3a594",
+        "reason": "bounded-shared-policy-recovery"
+      }
     }
   ],
-  "previous_golden_path_run_ids": [],
-  "golden_path_run_id": 32999634303,
-  "recovery_owner": "tayvoriq-request-pin-autorepair",
-  "owner_bound_at": "2026-08-26T18:40:33.942436Z"
+  "previous_golden_path_run_ids": [
+    32999634303
+  ],
+  "golden_path_run_id": 33001013557,
+  "recovery_owner": "tayvoriq-delivery-watch",
+  "owner_bound_at": "2026-08-26T18:40:33.942436Z",
+  "recovery_generation": 1,
+  "retry_of_run_id": 32999634303,
+  "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
+  "recovery_failure_signature": "7446d3fed9efe1e3a594",
+  "recovery_dispatched_at": "2026-08-26T18:40:55.846273Z"
 }
