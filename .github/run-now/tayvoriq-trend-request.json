@@ -1,178 +1,40 @@
 {
   "date": "2026-08-27",
   "target_date": "2026-08-27",
-  "slot": "morning",
-  "selection_id": "20260827-morning-agentv2",
+  "slot": "evening",
+  "selection_id": "20260827-evening-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
   "mode": "manual_verified_fallback_after_provider_limits",
   "superseded": false,
   "duplicate_guard_passed": true,
-  "history_checked_at": "2026-08-26T23:48:00+02:00",
+  "cross_slot_unique": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
   "production_started": false,
   "trends": [
     {
       "id": "1",
-      "title": "Schufa-Schattendatenbank: Warum alte Kredite trotz Löschfristen weiter gespeichert worden sein sollen",
-      "score": 97,
-      "trend_scope": "business_economy",
+      "title": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
+      "score": 98,
+      "trend_scope": "science_future",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 98,
+        "viralitaet": 99,
         "tayvoriq_passung": 98,
         "quellenqualitaet": 99,
-        "visuell": 93
-      },
-      "sources": [
-        {
-          "publisher": "tagesschau.de / NDR",
-          "url": "https://www.tagesschau.de/wirtschaft/verbraucher/schufa-klage-100.html",
-          "supports": "Aktueller Bericht vom 26.08.2026 über historische Kredit-, Pfändungs- und Insolvenzdaten sowie die angekündigten rechtlichen Schritte."
-        },
-        {
-          "publisher": "noyb",
-          "url": "https://noyb.eu/de/shadow-database-scandal-noyb-sends-schufa-cease-and-desist-letter-interest-list-class-action",
-          "supports": "Primärquelle zur formellen Abmahnung, möglichen Sammelklage und potenziell betroffenen Schufa-Datensätzen."
-        }
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "sources": [
-          {
-            "publisher": "tagesschau.de / NDR",
-            "url": "https://www.tagesschau.de/wirtschaft/verbraucher/schufa-klage-100.html",
-            "supports": "Aktuelle Vorwürfe, Art der historischen Daten und Schufa-Reaktion."
-          },
-          {
-            "publisher": "noyb",
-            "url": "https://noyb.eu/de/shadow-database-scandal-noyb-sends-schufa-cease-and-desist-letter-interest-list-class-action",
-            "supports": "Abmahnung, mögliche Klagen und Angaben zur Größenordnung der Betroffenen."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Die Datenschutzorganisation noyb hat die Schufa wegen einer sogenannten Schattendatenbank formell abgemahnt. Darin sollen historische Daten zu alten Krediten, Pfändungen und Privatinsolvenzen weiter verarbeitet werden.",
-          "why_happening": "NDR/SZ-Recherchen hatten historische Datenbestände öffentlich gemacht. noyb hält deren Verarbeitung und mangelnde Transparenz für datenschutzwidrig und bereitet rechtliche Schritte vor.",
-          "who_is_affected": "Menschen mit Schufa-Daten, besonders wenn alte Finanzinformationen bei Bonitätsprüfungen oder Auskünften relevant werden könnten.",
-          "personal_impact": "Bonitätsdaten können bei Wohnung, Kredit, Mobilfunk und anderen Verträgen eine Rolle spielen. Deshalb ist entscheidend, welche Daten tatsächlich gespeichert und offengelegt werden.",
-          "action_now": "Im Short klar zwischen Vorwurf von noyb, belegten Recherchen und der Position der Schufa unterscheiden.",
-          "facts": [
-            "noyb hat die Schufa am 26. August 2026 formell abgemahnt.",
-            "Es geht unter anderem um alte Kredit-, Pfändungs- und Insolvenzdaten.",
-            "noyb spricht von potenziell bis zu 69 Millionen Personen mit Schufa-Daten, nicht davon, dass bei allen problematische Alt-Daten vorliegen."
-          ]
-        },
-        "factual_guardrails": [
-          "Nicht behaupten, dass bei allen 69 Millionen Menschen rechtswidrige Alt-Daten gespeichert sind.",
-          "Vorwürfe von noyb als Vorwürfe kennzeichnen.",
-          "Keine persönliche Bonitätswirkung ohne Beleg behaupten."
-        ],
-        "research_notes": "Story-Spine: Alte Finanzdaten verschwinden möglicherweise nicht so vollständig wie Verbraucher erwarten -> warum das für Kredit und Wohnung relevant ist -> was noyb jetzt juristisch fordert. HASHTAG_SEEDS: #SCHUFA #Datenschutz #DSGVO #Bonität #Kredit #Verbraucherschutz #noyb #TAYVORIQ",
-        "hashtag_seeds": [
-          "#SCHUFA",
-          "#Datenschutz",
-          "#DSGVO",
-          "#Bonität",
-          "#Kredit",
-          "#Verbraucherschutz",
-          "#noyb",
-          "#TAYVORIQ"
-        ]
-      }
-    },
-    {
-      "id": "2",
-      "title": "Lidl-Mutter wird KI-Infrastruktur-Riese: Schwarz Digits plant XXL-Rechenzentrum bei Rostock",
-      "score": 97,
-      "trend_scope": "technology_ai",
-      "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 97,
-        "tayvoriq_passung": 99,
-        "quellenqualitaet": 98,
-        "visuell": 98
-      },
-      "sources": [
-        {
-          "publisher": "tagesschau.de / SWR",
-          "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-milliarden-investition-schwarz-digits-baut-weiteres-xxl-rechenzentrum-100.html",
-          "supports": "Aktueller Bericht zur Schwarz-Gruppe, Dummerstorf, Milliardeninvestition und angekündigten Details am Donnerstag."
-        },
-        {
-          "publisher": "NDR",
-          "url": "https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html",
-          "supports": "Unabhängige Recherche zu Standort, Grundstücken, Genehmigungsstand, Energie- und Abwärmeplänen sowie möglicher Hardware-Größenordnung."
-        }
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "sources": [
-          {
-            "publisher": "tagesschau.de / SWR",
-            "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-milliarden-investition-schwarz-digits-baut-weiteres-xxl-rechenzentrum-100.html",
-            "supports": "BW-Verbindung, Schwarz Digits, Dummerstorf und Milliardenprojekt."
-          },
-          {
-            "publisher": "NDR",
-            "url": "https://www.ndr.de/nachrichten/mecklenburg-vorpommern/rechenzentrum-milliarden-investition-fuer-mv-in-dummerstorf%2Cdummerstorf-104.html",
-            "supports": "Standortdetails, Genehmigungen, erneuerbare Energie, Abwärme und Medienangaben zur Hardware."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Die Digital-Sparte der Schwarz-Gruppe aus Baden-Württemberg plant in Dummerstorf bei Rostock ein riesiges Rechenzentrum für Cloud- und KI-Anwendungen. Am Donnerstag sollen weitere Details vorgestellt werden.",
-          "why_happening": "Schwarz Digits baut mit STACKIT europäische Cloud- und KI-Infrastruktur auf und will Unternehmen und Behörden eine Alternative zu US-Hyperscalern bieten.",
-          "who_is_affected": "Unternehmen, Behörden, Cloud-Kunden sowie die Region Rostock durch Bau, Energiebedarf, Gewerbesteuern und Infrastruktur.",
-          "personal_impact": "Hinter Lidl und Kaufland wächst ein Tech-Geschäft, das künftig beeinflussen kann, wo deutsche Unternehmensdaten und KI-Dienste betrieben werden.",
-          "action_now": "Die berichteten bis zu zwölf Milliarden Euro für Hardware als unbestätigte Medienangabe kennzeichnen; mehrere Milliarden Gesamtinvestition sind der sichere Kern.",
-          "facts": [
-            "Standort ist Dummerstorf bei Rostock.",
-            "Schwarz Digits gehört zur Schwarz-Gruppe mit Lidl und Kaufland.",
-            "NDR berichtet über Pläne für erneuerbare Energie und Nutzung der Server-Abwärme."
-          ]
-        },
-        "factual_guardrails": [
-          "Bis zu zwölf Milliarden Euro Hardware nicht als bestätigte Unternehmenszahl darstellen.",
-          "Keine konkrete Arbeitsplatzanzahl erfinden.",
-          "Cloud- und KI-Infrastruktur als geplantes Projekt beschreiben."
-        ],
-        "research_notes": "Story-Spine: Ausgerechnet die Lidl/Kaufland-Mutter baut sich zum deutschen Cloud- und KI-Infrastruktur-Player um -> Milliardenprojekt -> digitale Souveränität -> Energie und Abwärme. HASHTAG_SEEDS: #SchwarzDigits #Lidl #Kaufland #STACKIT #Rechenzentrum #KI #Cloud #TAYVORIQ",
-        "hashtag_seeds": [
-          "#SchwarzDigits",
-          "#Lidl",
-          "#Kaufland",
-          "#STACKIT",
-          "#Rechenzentrum",
-          "#KI",
-          "#Cloud",
-          "#TAYVORIQ"
-        ]
-      }
-    },
-    {
-      "id": "3",
-      "title": "SAP verliert zeitweise fast fünf Prozent: Warum der KI-Boom Europas Software-Riesen plötzlich unter Druck setzt",
-      "score": 95,
-      "trend_scope": "technology_ai",
-      "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 95,
-        "tayvoriq_passung": 97,
-        "quellenqualitaet": 98,
-        "visuell": 94
+        "visuell": 100
       },
       "sources": [
         {
           "publisher": "tagesschau.de",
-          "url": "https://www.tagesschau.de/wirtschaft/finanzen/mb-mittag-sap-100.html",
-          "supports": "Aktueller Marktbericht zu SAP-Kursverlusten, UBS-Abstufung und KI-Zweifeln."
+          "url": "https://www.tagesschau.de/wirtschaft/unternehmen/spacex-weltraumbahnhof-100.html",
+          "supports": "Aktueller Bericht zu rund 100 Milliarden Dollar Investition, fünf Startkomplexen, Baubeginn 2027 und geplanten ersten Starship-Starts 2029."
         },
         {
-          "publisher": "Deutsche Börse / dpa-AFX",
-          "url": "https://live.deutsche-boerse.com/nachrichten/AKTIE-IM-FOKUS-3-Gewinnmitnahmen-bei-SAP-wegen-UBS-Abstufung-und-US-Vorgaben-abad8c3a-b429-4215-8bd8-089ee70a834e",
-          "supports": "Unabhängige Marktbestätigung mit Tagestief von minus 4,7 Prozent und Analystenkontext."
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/media-telecom/spacex-build-starship-spaceport-louisiana-2026-08-25/",
+          "supports": "Unabhängige Bestätigung der Starbase-Louisiana-Pläne, Standortgröße, Investitionsrahmen und Starship-Ambitionen."
         }
       ],
       "source_context": {
@@ -181,67 +43,205 @@
         "sources": [
           {
             "publisher": "tagesschau.de",
-            "url": "https://www.tagesschau.de/wirtschaft/finanzen/mb-mittag-sap-100.html",
-            "supports": "SAP-Kursreaktion, UBS-Abstufung und KI-Risiko."
+            "url": "https://www.tagesschau.de/wirtschaft/unternehmen/spacex-weltraumbahnhof-100.html",
+            "supports": "100-Milliarden-Plan, Zeitplan und Größenordnung."
           },
           {
-            "publisher": "Deutsche Börse / dpa-AFX",
-            "url": "https://live.deutsche-boerse.com/nachrichten/AKTIE-IM-FOKUS-3-Gewinnmitnahmen-bei-SAP-wegen-UBS-Abstufung-und-US-Vorgaben-abad8c3a-b429-4215-8bd8-089ee70a834e",
-            "supports": "Kursbewegung und Markt-/Branchenkontext."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/media-telecom/spacex-build-starship-spaceport-louisiana-2026-08-25/",
+            "supports": "Unabhängige Bestätigung und Standort-/Job-Kontext."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Die SAP-Aktie verlor am 26. August zeitweise 4,7 Prozent. Auslöser waren Gewinnmitnahmen, schwache US-Tech-Vorgaben und eine UBS-Abstufung von Kaufen auf Neutral.",
-          "why_happening": "Anleger fragen sich, ob agentische KI etablierte Unternehmenssoftware schneller verändert, als SAP neue KI-Funktionen monetarisieren kann. UBS sieht zudem Risiken bei der Cloud-Dynamik.",
-          "who_is_affected": "SAP-Anleger, Unternehmenskunden, Softwareanbieter und Beschäftigte in Europas Tech-Sektor.",
-          "personal_impact": "Der Fall zeigt, dass KI nicht nur neue Gewinner schafft, sondern selbst etablierte Softwarekonzerne unter Anpassungsdruck setzt.",
-          "action_now": "Kursreaktion und langfristige Unternehmenslage nicht gleichsetzen; Analystenmeinung als Einschätzung kennzeichnen.",
+          "what_happened": "SpaceX will in Louisiana einen neuen riesigen Starship-Komplex bauen. Genannt werden rund 100 Milliarden US-Dollar Investition und fünf Startkomplexe mit jeweils zwei Pads.",
+          "why_happening": "SpaceX will die Starship-Startfrequenz massiv erhöhen und Infrastruktur für Mond-, Mars- und Satellitenmissionen ausbauen.",
+          "who_is_affected": "SpaceX, NASA-Programme, die Region Louisiana, Anwohner und Umweltverbände.",
+          "personal_impact": "Das Projekt zeigt, wie Raumfahrt von einzelnen Starts zu industrieller Hochfrequenz-Infrastruktur werden soll.",
+          "action_now": "Im Short sauber zwischen offiziellen Projektplänen und Musks extremen Langfristzielen unterscheiden.",
           "facts": [
-            "SAP verlor im Tagestief bis zu 4,7 Prozent.",
-            "UBS stufte die Aktie von Buy auf Neutral ab.",
-            "UBS nennt schleppende Integration agentischer KI und mögliche Verlangsamung beim Cloud-Backlog als Risiken."
+            "Rund 100 Milliarden US-Dollar Investition angekündigt.",
+            "Fünf Startkomplexe mit insgesamt zehn Pads geplant.",
+            "Baubeginn 2027, erste Starts ab 2029 vorgesehen."
           ]
         },
         "factual_guardrails": [
-          "Nicht behaupten, KI zerstöre SAPs Geschäftsmodell.",
-          "UBS-Aussagen als Analysteneinschätzung markieren.",
-          "Kursverlust als Tagesbewegung formulieren."
+          "Mehr als 30 Starts täglich als Ziel/Ankündigung von Musk markieren, nicht als gesicherte Kapazität.",
+          "Projekt ist geplant, nicht gebaut.",
+          "Umweltbedenken nicht ausblenden."
         ],
-        "research_notes": "Story-Spine: KI gilt als Wachstumsmotor, aber bei SAP wird genau derselbe KI-Boom zum Bewertungsrisiko -> Kursreaktion -> agentische KI -> Cloud-Dynamik. HASHTAG_SEEDS: #SAP #KünstlicheIntelligenz #AgenticAI #DAX #Software #Cloud #TechAktien #TAYVORIQ",
+        "research_notes": "Story-Spine: Raumfahrt wird zur Industrieanlage -> 100 Milliarden -> zehn Pads -> tausende Starts als Ziel -> Umwelt- und Infrastrukturfrage. HASHTAG_SEEDS: #SpaceX #Starship #Louisiana #Starbase #Raumfahrt #Mars #NASA #TAYVORIQ",
         "hashtag_seeds": [
-          "#SAP",
-          "#KünstlicheIntelligenz",
-          "#AgenticAI",
-          "#DAX",
-          "#Software",
-          "#Cloud",
-          "#TechAktien",
+          "#SpaceX",
+          "#Starship",
+          "#Louisiana",
+          "#Starbase",
+          "#Raumfahrt",
+          "#Mars",
+          "#NASA",
+          "#TAYVORIQ"
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "title": "Namibia gibt Tiefsee-Phosphat grünes Licht: Warum dieser Meeresboden-Abbau weltweit zum Präzedenzfall werden könnte",
+      "score": 96,
+      "trend_scope": "world_society",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 96,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 98,
+        "visuell": 99
+      },
+      "sources": [
+        {
+          "publisher": "tagesschau.de",
+          "url": "https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html",
+          "supports": "Aktueller Bericht zu Genehmigungen, Protesten, 200-300 Metern Tiefe und möglichem weltweit erstem großen Phosphatabbau am Meeresboden."
+        },
+        {
+          "publisher": "Namib Times",
+          "url": "https://www.namibtimes.net/sandpiper-phosphate-project-receives-environmental-clearance-amid-marine-concerns/",
+          "supports": "Lokale unabhängige Bestätigung der Umweltfreigabe für das Sandpiper-Projekt und der fortbestehenden Meeres- und Fischereibedenken."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "tagesschau.de",
+            "url": "https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html",
+            "supports": "Tiefe, Größenordnung, Proteste und möglicher Präzedenzfall."
+          },
+          {
+            "publisher": "Namib Times",
+            "url": "https://www.namibtimes.net/sandpiper-phosphate-project-receives-environmental-clearance-amid-marine-concerns/",
+            "supports": "Genehmigungsstatus und lokale Umweltbedenken."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Das Sandpiper-Projekt vor Namibias Küste hat eine wichtige Umweltfreigabe erhalten. Geplant ist Phosphatabbau aus dem Meeresboden in großer Tiefe.",
+          "why_happening": "Phosphat ist ein zentraler Rohstoff für Düngemittel; das Projekt verspricht wirtschaftliche Chancen, stößt aber wegen möglicher Schäden an Meeresökosystem und Fischerei auf Widerstand.",
+          "who_is_affected": "Fischerei, Küstengemeinden, Umweltgruppen, Rohstoffunternehmen und Namibias Wirtschaft.",
+          "personal_impact": "Der Fall könnte beeinflussen, wie andere Länder künftig Rohstoffabbau am Meeresboden regulieren.",
+          "action_now": "Nicht behaupten, der kommerzielle Abbau habe bereits begonnen; Genehmigung und tatsächlicher Start sind getrennte Schritte.",
+          "facts": [
+            "Projekt liegt vor Walvis Bay.",
+            "Abbau soll in etwa 200 bis 300 Metern Tiefe stattfinden.",
+            "Eine Umweltfreigabe wurde erteilt, der kommerzielle Abbau hat damit nicht automatisch begonnen."
+          ]
+        },
+        "factual_guardrails": [
+          "Genehmigung nicht mit laufendem Abbau gleichsetzen.",
+          "Weltweit erster großer Phosphat-Meeresbodenabbau als mögliche Folge formulieren.",
+          "Umwelt- und Fischereibedenken nennen."
+        ],
+        "research_notes": "Story-Spine: Dünger-Rohstoff unter dem Meer -> Genehmigung -> 200-300 Meter Tiefe -> Proteste -> möglicher globaler Präzedenzfall. HASHTAG_SEEDS: #Namibia #Tiefseebergbau #Phosphat #WalvisBay #Meeresschutz #Rohstoffe #Afrika #TAYVORIQ",
+        "hashtag_seeds": [
+          "#Namibia",
+          "#Tiefseebergbau",
+          "#Phosphat",
+          "#WalvisBay",
+          "#Meeresschutz",
+          "#Rohstoffe",
+          "#Afrika",
+          "#TAYVORIQ"
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "title": "Fast 10.000 Furrys in Hamburg: Wie aus einer Internet-Nische Europas größtes Treffen wurde",
+      "score": 94,
+      "trend_scope": "creator_media",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 97,
+        "tayvoriq_passung": 94,
+        "quellenqualitaet": 96,
+        "visuell": 100
+      },
+      "sources": [
+        {
+          "publisher": "tagesschau.de / NDR",
+          "url": "https://www.tagesschau.de/kultur/eurofurence-100.html",
+          "supports": "Aktueller Bericht zur Eurofurence in Hamburg, knapp 10.000 Besuchern und geschätzter Größe der deutschen Community."
+        },
+        {
+          "publisher": "Eurofurence",
+          "url": "https://www.eurofurence.org/EF30/",
+          "supports": "Offizielle Eventdaten zur Eurofurence 30 im CCH Hamburg vom 19. bis 23. August 2026."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "tagesschau.de / NDR",
+            "url": "https://www.tagesschau.de/kultur/eurofurence-100.html",
+            "supports": "Besucherzahl und kulturelle Einordnung."
+          },
+          {
+            "publisher": "Eurofurence",
+            "url": "https://www.eurofurence.org/EF30/",
+            "supports": "Offizielle Veranstaltungsdaten."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Zur Eurofurence 30 in Hamburg kamen knapp 10.000 Besucher. Das Treffen gilt als größte Furry-Convention Europas.",
+          "why_happening": "Die Community verbindet Kostümbau, Kunst, Performance, Gaming und soziale Netzwerke und ist längst international organisiert.",
+          "who_is_affected": "Teilnehmer, Künstler, Kostümbauer, Veranstalter und die Hamburger Öffentlichkeit.",
+          "personal_impact": "Das Thema zeigt, wie aus einer früheren Online-Nische eine große reale Subkultur mit eigenen Events und Märkten geworden ist.",
+          "action_now": "Respektvoll erklären und nicht sexualisieren oder lächerlich machen.",
+          "facts": [
+            "Knapp 10.000 Besucher laut aktueller NDR/tagesschau-Berichterstattung.",
+            "Eurofurence 30 fand vom 19. bis 23. August 2026 im CCH Hamburg statt.",
+            "Furry-Kultur umfasst neben Kostümen auch Kunst, Performance und Community."
+          ]
+        },
+        "factual_guardrails": [
+          "Keine sexualisierende Darstellung.",
+          "Nicht behaupten, alle Besucher tragen Kostüme.",
+          "Community differenziert erklären."
+        ],
+        "research_notes": "Story-Spine: Internet-Nische wird Großevent -> fast 10.000 Menschen -> was Furry-Kultur tatsächlich umfasst -> warum die Community wächst. HASHTAG_SEEDS: #Eurofurence #Hamburg #FurryCommunity #Fursuit #Community #Kultur #Convention #TAYVORIQ",
+        "hashtag_seeds": [
+          "#Eurofurence",
+          "#Hamburg",
+          "#FurryCommunity",
+          "#Fursuit",
+          "#Community",
+          "#Kultur",
+          "#Convention",
           "#TAYVORIQ"
         ]
       }
     },
     {
       "id": "4",
-      "title": "Deutschlands Exportstimmung springt von minus 2,8 auf plus 9,6: Ist das die erste echte Industriewende?",
-      "score": 94,
-      "trend_scope": "business_economy",
+      "title": "SDF löst sich auf: Warum Syriens früher wichtigster US-Partner jetzt in die Staatsarmee integriert wird",
+      "score": 95,
+      "trend_scope": "world_society",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 92,
-        "tayvoriq_passung": 95,
+        "viralitaet": 95,
+        "tayvoriq_passung": 96,
         "quellenqualitaet": 100,
-        "visuell": 91
+        "visuell": 96
       },
       "sources": [
         {
-          "publisher": "ifo Institut",
-          "url": "https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026",
-          "supports": "Primärquelle: Exporterwartungen steigen von -2,8 auf +9,6, höchster Stand seit Februar 2022."
+          "publisher": "tagesschau.de",
+          "url": "https://www.tagesschau.de/ausland/asien/syrien-sdf-104.html",
+          "supports": "Aktueller Bericht zur Auflösung der SDF und Eingliederung in syrische staatliche Institutionen."
         },
         {
           "publisher": "Reuters",
-          "url": "https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/",
-          "supports": "Unabhängige Bestätigung und Einordnung zu Branchen, EU-Ausfuhren und weiterhin schwachem China-Geschäft."
+          "url": "https://www.reuters.com/world/middle-east/syrias-kurdish-led-sdf-dissolves-part-integration-with-damascus-2026-08-25/",
+          "supports": "Unabhängige Bestätigung der Auflösung und des Integrationsabkommens mit Damaskus."
         }
       ],
       "source_context": {
@@ -249,68 +249,68 @@
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "ifo Institut",
-            "url": "https://www.ifo.de/pressemitteilung/2026-08-26/ifo-exporterwartungen-stark-gestiegen-august-2026",
-            "supports": "Indexsprung, Vierjahreshoch und Branchenaufschlüsselung."
+            "publisher": "tagesschau.de",
+            "url": "https://www.tagesschau.de/ausland/asien/syrien-sdf-104.html",
+            "supports": "Auflösung, Staatsintegration und Minderheitenrechte-Kontext."
           },
           {
             "publisher": "Reuters",
-            "url": "https://www.reuters.com/business/germanys-export-expectations-reach-4-year-high-august-ifo-says-2026-08-26/",
-            "supports": "Unabhängige Bestätigung und makroökonomischer Kontext."
+            "url": "https://www.reuters.com/world/middle-east/syrias-kurdish-led-sdf-dissolves-part-integration-with-damascus-2026-08-25/",
+            "supports": "Unabhängige Bestätigung und geopolitischer Kontext."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Die ifo-Exporterwartungen deutscher Unternehmen stiegen im August von minus 2,8 auf plus 9,6 Punkte – den höchsten Stand seit Februar 2022.",
-          "why_happening": "Besonders Elektroausrüstung, Datenverarbeitung, Elektronik und Autoindustrie sind optimistischer; Ausfuhren in die EU laufen besser, China bleibt schwach.",
-          "who_is_affected": "Exportorientierte Industrie, Zulieferer, Beschäftigte und Regionen mit hohem Industrieanteil.",
-          "personal_impact": "Bessere Exporterwartungen können Produktion und Investitionen stützen, sind aber noch keine Garantie für einen nachhaltigen Boom.",
-          "action_now": "Im Short klar sagen: Das ist ein Erwartungsindex, keine bereits realisierte Exportsteigerung um denselben Wert.",
+          "what_happened": "Die kurdisch geführten Syrischen Demokratischen Kräfte haben ihre Auflösung als eigenständiges Militärbündnis angekündigt und sollen in syrische Staatsstrukturen integriert werden.",
+          "why_happening": "Ein Abkommen mit der Regierung in Damaskus soll militärische Parallelstrukturen beenden und den syrischen Staat wieder vereinheitlichen.",
+          "who_is_affected": "Kurdische Gebiete, ehemalige SDF-Kämpfer, die Regierung in Damaskus, Türkei, USA und regionale Bevölkerung.",
+          "personal_impact": "Die Entwicklung kann Machtverhältnisse und Sicherheit in Nordostsyrien grundlegend verändern.",
+          "action_now": "Historischen US-Partnerstatus erklären, ohne aktuelle Bündnisverhältnisse zu vereinfachen.",
           "facts": [
-            "Index von -2,8 auf +9,6.",
-            "Höchster Stand seit Februar 2022.",
-            "Elektronik, Datenverarbeitung und Autoindustrie sind deutlich optimistischer; China bleibt schwach."
+            "SDF-Kommandeur Mazloum Abdi erklärte die Mission des Bündnisses für beendet.",
+            "Die Strukturen sollen in syrische staatliche Institutionen integriert werden.",
+            "Die SDF waren lange ein zentraler US-Partner im Kampf gegen den IS."
           ]
         },
         "factual_guardrails": [
-          "Keine gesicherte Industriewende behaupten.",
-          "Indexpunkte nicht als Prozentwachstum der Exporte darstellen.",
-          "EU-Stärke und China-Schwäche gemeinsam erwähnen."
+          "SDF, YPG und PKK nicht gleichsetzen.",
+          "Integration als laufenden politischen Prozess darstellen.",
+          "Minderheiten- und Sicherheitsfragen differenziert formulieren."
         ],
-        "research_notes": "Story-Spine: Nach Jahren Krisenstimmung dreht ein wichtiger Frühindikator abrupt ins Plus -> welche Branchen treiben -> warum China trotzdem bremst -> was der Wert wirklich bedeutet. HASHTAG_SEEDS: #Deutschland #Export #Industrie #IfoInstitut #Autoindustrie #Wirtschaft #MadeInGermany #TAYVORIQ",
+        "research_notes": "Story-Spine: Einer der wichtigsten Akteure im Syrienkrieg verschwindet als eigenständige Kraft -> Integration -> Rolle der USA und Türkei -> was das für Nordostsyrien bedeutet. HASHTAG_SEEDS: #Syrien #SDF #Kurden #Damaskus #Nahost #Geopolitik #MiddleEast #TAYVORIQ",
         "hashtag_seeds": [
-          "#Deutschland",
-          "#Export",
-          "#Industrie",
-          "#IfoInstitut",
-          "#Autoindustrie",
-          "#Wirtschaft",
-          "#MadeInGermany",
+          "#Syrien",
+          "#SDF",
+          "#Kurden",
+          "#Damaskus",
+          "#Nahost",
+          "#Geopolitik",
+          "#MiddleEast",
           "#TAYVORIQ"
         ]
       }
     },
     {
       "id": "5",
-      "title": "Deutschland gegen Türkei vor der Heim-WM: Warum dieses Basketball-Spiel mehr als nur ein Test ist",
-      "score": 93,
-      "trend_scope": "sports",
+      "title": "70 Jahre BRAVO: Von 1,5 Millionen Heften pro Woche zu nur noch einer Ausgabe im Monat",
+      "score": 92,
+      "trend_scope": "creator_media",
       "criteria": {
         "aktualitaet": 100,
         "viralitaet": 94,
-        "tayvoriq_passung": 93,
+        "tayvoriq_passung": 92,
         "quellenqualitaet": 96,
-        "visuell": 98
+        "visuell": 97
       },
       "sources": [
         {
-          "publisher": "Deutscher Basketball Bund",
-          "url": "https://www.basketball-bund.de/in-der-lanxess-arena-double-header-der-dbb-teams/",
-          "supports": "Offizielle Bestätigung des Frauen-Testspiels Deutschland gegen Türkei am 27.08.2026 um 17 Uhr in Köln und der Heim-WM kurz danach."
+          "publisher": "NDR",
+          "url": "https://www.ndr.de/geschichte/chronologie/70-jahre-bravo-von-teenagern-geliebt-von-eltern-gehasst%2Cbravo152.html",
+          "supports": "Historische Einordnung: erste Ausgabe am 26.08.1956, Startauflage 30.000, Generationenwirkung und Wandel des Magazins."
         },
         {
-          "publisher": "WELT / dpa",
-          "url": "https://www.welt.de/regionales/nrw/article6a8eb242518a586e18558b82/basketball-doppelpack-in-koeln-frauen-hoffen-auf-momentum.html",
-          "supports": "Aktueller Kontext zur schwierigen Vorbereitung, Ausfällen und Bedeutung des Spiels für Momentum vor der Heim-WM."
+          "publisher": "BRAVO",
+          "url": "https://www.bravo.de/news",
+          "supports": "Offizielle Jubiläumsseite zum 70. Geburtstag am 26. August 2026 und heutige Markenpräsenz."
         }
       ],
       "source_context": {
@@ -318,42 +318,42 @@
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "Deutscher Basketball Bund",
-            "url": "https://www.basketball-bund.de/in-der-lanxess-arena-double-header-der-dbb-teams/",
-            "supports": "Termin, Gegner, Arena und WM-Vorbereitung."
+            "publisher": "NDR",
+            "url": "https://www.ndr.de/geschichte/chronologie/70-jahre-bravo-von-teenagern-geliebt-von-eltern-gehasst%2Cbravo152.html",
+            "supports": "Historie, erste Ausgabe und kulturelle Wirkung."
           },
           {
-            "publisher": "WELT / dpa",
-            "url": "https://www.welt.de/regionales/nrw/article6a8eb242518a586e18558b82/basketball-doppelpack-in-koeln-frauen-hoffen-auf-momentum.html",
-            "supports": "Aktuelle Personallage und sportliche Bedeutung."
+            "publisher": "BRAVO",
+            "url": "https://www.bravo.de/news",
+            "supports": "Offizielle Jubiläumsbestätigung und heutige Marke."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Deutschlands Basketballerinnen spielen am Donnerstag in der Kölner Lanxess Arena gegen die Türkei. Es ist einer der letzten großen Tests vor der Heim-WM in Berlin vom 4. bis 13. September.",
-          "why_happening": "Die Vorbereitung war durch Niederlagen, Absagen und Verletzungen schwierig. Das Team will vor heimischem Publikum Momentum und Selbstvertrauen aufbauen.",
-          "who_is_affected": "DBB-Team, Fans, die türkische Auswahl und das Publikum vor der Heim-WM.",
-          "personal_impact": "Für deutsche Basketballfans ist es der letzte große Stimmungstest, bevor die WM im eigenen Land beginnt.",
-          "action_now": "Aktuelle Kader- und Verletztenlage direkt vor Skriptproduktion nochmals prüfen.",
+          "what_happened": "Am 26. August 2026 wurde BRAVO 70 Jahre alt. Die erste Ausgabe erschien 1956 mit Marilyn Monroe auf dem Cover und 30.000 Exemplaren Auflage.",
+          "why_happening": "BRAVO wurde über Jahrzehnte zum Leitmedium für Jugendkultur, Stars, Musik und Aufklärung, verlor aber mit Internet und Social Media massiv an Print-Reichweite.",
+          "who_is_affected": "Mehrere Generationen ehemaliger Leser sowie heutige Jugendmedien und Creator.",
+          "personal_impact": "Der Absturz von Millionenauflagen zu monatlichem Print zeigt extrem klar, wie Social Media klassische Jugendmedien verändert hat.",
+          "action_now": "Nostalgie mit Medienwandel verbinden statt nur Jubiläumsfakten aufzuzählen.",
           "facts": [
-            "Spiel am 27. August 2026 um 17 Uhr in Köln.",
-            "Gegner ist WM-Teilnehmer Türkei.",
-            "Die Heim-WM in Berlin läuft vom 4. bis 13. September 2026."
+            "Erste BRAVO erschien am 26. August 1956.",
+            "In den 1990ern wurden zeitweise bis zu 1,5 Millionen Exemplare pro Woche verkauft.",
+            "Heute erscheint BRAVO laut NDR nur noch einmal im Monat."
           ]
         },
         "factual_guardrails": [
-          "Keine verletzte oder fehlende Spielerin ohne aktuelle Bestätigung als sicher nennen.",
-          "Testspiel nicht als WM-Spiel bezeichnen.",
-          "Heim-WM-Termine korrekt nennen."
+          "Historische Spitzenauflage zeitlich den 1990er Jahren zuordnen.",
+          "Print-Rückgang nicht mit kompletter Markenbedeutung gleichsetzen.",
+          "Keine unbestätigten aktuellen Reichweitenzahlen nennen."
         ],
-        "research_notes": "Story-Spine: Letzter großer Test vor der Heim-WM -> schwierige Vorbereitung -> Türkei als echter Gradmesser -> Köln als Stimmungstest. HASHTAG_SEEDS: #DBB #Basketball #TeamDeutschland #Türkei #LanxessArena #FIBAWomensWorldCup #Berlin2026 #TAYVORIQ",
+        "research_notes": "Story-Spine: 70 Jahre Jugendkultur -> 1,5 Mio Hefte pro Woche -> Social-Media-Bruch -> warum die Marke trotzdem überlebt. HASHTAG_SEEDS: #BRAVO #70JahreBRAVO #Jugendkultur #DrSommer #Popkultur #Medienwandel #SocialMedia #TAYVORIQ",
         "hashtag_seeds": [
-          "#DBB",
-          "#Basketball",
-          "#TeamDeutschland",
-          "#Türkei",
-          "#LanxessArena",
-          "#FIBAWomensWorldCup",
-          "#Berlin2026",
+          "#BRAVO",
+          "#70JahreBRAVO",
+          "#Jugendkultur",
+          "#DrSommer",
+          "#Popkultur",
+          "#Medienwandel",
+          "#SocialMedia",
           "#TAYVORIQ"
         ]
       }
