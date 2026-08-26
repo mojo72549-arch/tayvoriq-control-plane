@@ -1,0 +1,136 @@
+{
+  "request_id": "chatgpt-20260826-gamescom-live-tayvoriq-v2",
+  "status": "APPROVED",
+  "source": "chat_operator_authorized_semantic_repair",
+  "trend_id": "1",
+  "topic": "gamescom startet heute: Warum jetzt plötzlich so viele neue Spiele und Ankündigungen auftauchen",
+  "trend_scope": "creator_media",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-26T18:47:00Z",
+  "approval_key": "chat:agent-short:20260826:gamescom-live:semantic-repair-v2",
+  "mode": "full",
+  "selection_id": "20260826-evening-gamescom-live-semantic-repair-v2",
+  "repair_of_request_id": "chatgpt-20260826-gamescom-live-tayvoriq-v1",
+  "parent_request_id": "chatgpt-20260826-gamescom-live-tayvoriq-v1",
+  "continuation_reason": "Repeated PUBLISHABLE_OUTPUT_RETRY_REQUIRED was traced to semantic voice rendering of 'Reveals' and 'ignoriere Leaks'. The operator requested immediate autonomous intervention and a corrected alternative output. Facts and quality gates stay unchanged; narrator-facing wording is made German and speech-stable.",
+  "source_context": {
+    "verified_at": "2026-08-26T08:52:00Z",
+    "independent_news_count": 2,
+    "sources": [
+      {
+        "publisher": "gamescom",
+        "url": "https://www.gamescom.global/de/info/opening-times",
+        "supports": "Die gamescom 2026 läuft vom 26. bis 30. August in Köln; die Opening Night Live fand am 25. August statt. Am 26. August beginnt der Messebetrieb."
+      },
+      {
+        "publisher": "GameStar",
+        "url": "https://www.gamestar.de/artikel/die-gamescom-onl-2026-im-liveticker-alle-wichtigen-news-spiele-und-infos-direkt-von-der-showbuehne%2C3458562.html",
+        "supports": "GameStar dokumentiert die Opening Night Live vom 25. August mit neuen Trailern, Spiele-Reveals und Premieren und bestätigt damit den hohen Neuheiten-Takt zum Messeauftakt."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Die gamescom startet heute in Köln, nachdem die Opening Night Live gestern bereits ein Trailer- und Ankündigungsfeuerwerk geliefert hat.",
+      "why_happening": "Zum offiziellen Messestart bündeln Publisher, Entwickler und Showformate ihre Neuigkeiten, weshalb jetzt viele bestätigte Gaming-News gleichzeitig auftauchen.",
+      "who_is_affected": "Gamer, Entwickler, Publisher, Creator und Messebesucher weltweit bekommen in kurzer Zeit sehr viele neue Ankündigungen.",
+      "personal_impact": "Für dich heißt das: Dein Gaming-Backlog war wahrscheinlich schon voll – die gamescom hat das offenbar als persönliche Herausforderung verstanden.",
+      "action_now": "Konzentriere dich auf bestätigte Ankündigungen und Trailer und lass Leaks oder Gerüchte außen vor, bis sie offiziell bestätigt sind."
+    },
+    "growth_v2": {
+      "growth_score": 96,
+      "binding_score": 95,
+      "priority_score": 96,
+      "tier": "breakout_preferred",
+      "series_candidate": true,
+      "targets": "10k/20k/50k/100k are optimization targets, never guarantees"
+    },
+    "claim_coherence": {
+      "passed": true,
+      "reasons": []
+    },
+    "factual_guardrails": [
+      "Nie 'morgen' für den gamescom-Start am oder nach dem 26.08.2026 verwenden.",
+      "Opening Night Live am 25.08. und den Messebetrieb ab 26.08. zeitlich sauber trennen.",
+      "Leaks oder Gerüchte niemals als bestätigte Ankündigungen darstellen.",
+      "Keine konkreten Spielankündigungen erfinden; nur am Produktionszeitpunkt bestätigte Titel nennen.",
+      "Humor darf Fakten nicht verändern oder überdecken."
+    ],
+    "content_angle": "Die gamescom öffnet heute und der Gaming-News-Takt explodiert. TAYVORIQ erklärt in unter einer Minute, warum gerade jetzt so viele Meldungen gleichzeitig kommen – mit trockenem, wiedererkennbarem Humor.",
+    "viewer_value": "In unter einer Minute verstehen, warum gerade jetzt so viele Gaming-News gleichzeitig erscheinen und was davon wirklich bestätigt ist.",
+    "next_video_bridge": "Sobald eine bestätigte Ankündigung klar heraussticht, kann sie als eigener TAYVORIQ-Follow-up-Short priorisiert werden; kein konkreter Titel wird vor Bestätigung versprochen.",
+    "tayvoriq_brand_voice": {
+      "version": "v1-dry-witty-news",
+      "required": true,
+      "tone": "schnell, neugierig, trocken-witzig, selbstbewusst, nicht albern",
+      "humor_beats": [
+        "Dein Gaming-Backlog war wahrscheinlich schon voll. Die gamescom hat das offenbar als Herausforderung verstanden.",
+        "Zwei Minuten nicht hingeschaut? Glückwunsch, du hast vermutlich drei Trailer verpasst.",
+        "Wir sortieren das Chaos. Dein Speicherplatz muss das leider selbst regeln."
+      ],
+      "max_humor_beats": 3,
+      "rules": [
+        "Jokes kurz halten und sofort zur Information zurückkehren.",
+        "Keine Witze auf Kosten realer Personen.",
+        "Keine erfundenen Zahlen, Titel oder Ereignisse für einen Gag.",
+        "Keine Meme-Sprache oder erzwungene Jugendsprache.",
+        "Humor soll TAYVORIQ wiedererkennbar machen, nicht den Faktenanteil senken."
+      ]
+    },
+    "growth_contract": {
+      "hook_max_seconds": 1.5,
+      "hook": "Heute öffnet die gamescom – und dein Gaming-Backlog bekommt gerade ein Problem.",
+      "mid_rehook": "Und das war nur der Start: Ab jetzt läuft die eigentliche Messe – und der News-Takt zieht weiter an.",
+      "content_specific_cta": "Wenn du die wichtigsten bestätigten gamescom-Ankündigungen ohne Leak-Gerüchte willst, bleib bei TAYVORIQ.",
+      "short_sentence_rhythm_required": true,
+      "second_reason_to_continue_required": true,
+      "no_newsreader_lead": true
+    },
+    "visual_contract": {
+      "positive": [
+        "gamescom/Koelnmesse exterior or crowd context",
+        "gaming showcase stage or screens",
+        "controller/gameplay closeups clearly in gaming context",
+        "developer/publisher booth activity",
+        "fast visual rhythm matching reveal cadence"
+      ],
+      "negative": [
+        "generic office footage",
+        "finance or trading screens",
+        "unrelated esports footage presented as gamescom",
+        "fake game titles",
+        "fabricated announcement cards"
+      ],
+      "strict_actual_frame_audit_required": true
+    },
+    "quality_gates_weakened": false,
+    "repair_contract": {
+      "reason": "semantic_voice_fallback_after_repeated_publishable_retry",
+      "avoid_unstable_spoken_terms": [
+        "Reveals",
+        "ignoriere Leaks"
+      ],
+      "preferred_spoken_terms": [
+        "bestätigte Ankündigungen",
+        "lass Leaks außen vor"
+      ],
+      "same_topic": true,
+      "quality_gates_weakened": false
+    }
+  },
+  "source_context_sha256": "f8f6f54596b95991dde8f9cba7da6a0e4ac9ab48b2bed71c1628d943fe10ba2c",
+  "quality_gates_weakened": false,
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-26T18:47:00Z",
+      "actor": "chat_operator",
+      "meta": {
+        "repair_of_run_id": 33001013557,
+        "reason": "semantic-voice-fallback"
+      }
+    }
+  ]
+}
