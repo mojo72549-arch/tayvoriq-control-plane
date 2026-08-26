@@ -10,10 +10,10 @@ from dataclasses import dataclass
 
 
 HEARTBEAT_STAGES = {"render_heartbeat", "checkpoint_heartbeat"}
-# Premium voice/render runs regularly need more than 18 minutes. Treating that
-# normal runtime as an operator-visible warning creates a false incident. Keep
-# the three-minute internal poll, but surface a heartbeat only after 45 minutes.
-HEARTBEAT_NOTIFY_MINUTES = (45,)
+# Keep internal polling quiet, but do not leave the operator blind for too long.
+# 18 minutes provides an early verified liveness signal; 45 minutes escalates
+# unusually long production without inventing progress.
+HEARTBEAT_NOTIFY_MINUTES = (18, 45)
 
 
 @dataclass(frozen=True)
