@@ -17,24 +17,36 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: 'lab/wan-blitz-open-source'
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install open-source clients and TTS
         run: |
           pip install -U gradio_client huggingface_hub piper-tts
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
+
+      - name: Restore scene checkpoints
+        uses: actions/cache/restore@v4
+        with:
+          path: lab/work
+          key: wan-blitz-scenes-v2-${{ github.run_id }}
+          restore-keys: |
+            wan-blitz-scenes-v2-
+
       - name: Generate continuous AI scenes
+        id: scenes
+        continue-on-error: true
         run: |
           mkdir -p lab/output lab/work
           python - <<'PY'
-          import os, shutil, subprocess, time
+          import shutil, subprocess, time
           from pathlib import Path
           from gradio_client import Client, handle_file
 
           WORK = Path('lab/work')
-          OUT = Path('lab/output')
           client = Client('Lightricks/ltx-video-distilled', verbose=False)
           neg = 'worst quality, inconsistent identity, inconsistent clothing, inconsistent face, duplicate people, extra limbs, deformed hands, blurry, jittery, distorted, text, subtitles, watermark, logo, cartoon, anime, still image'
           seed = 614273
@@ -64,6 +76,10 @@ jobs:
                   raise RuntimeError(f'Cannot resolve video path from {obj!r}')
               return x
 
+          def is_quota_error(exc):
+              msg = repr(exc).lower()
+              return ('zerogpu' in msg and 'quota' in msg) or 'exceeded your zerogpu quota' in msg
+
           def run_predict(scene_no, prompt, image=None):
               last_err = None
               for attempt in range(1, 4):
@@ -87,13 +103,21 @@ jobs:
                   except Exception as e:
                       last_err = e
                       print(f'SCENE {scene_no} attempt {attempt} failed: {e!r}', flush=True)
-                      time.sleep(25 * attempt)
+                      if is_quota_error(e):
+                          raise RuntimeError(f'ZEROGPU_QUOTA_EXHAUSTED at scene {scene_no}; checkpoint will be preserved: {e!r}') from e
+                      if attempt < 3:
+                          time.sleep(25 * attempt)
               raise RuntimeError(f'Scene {scene_no} failed after retries: {last_err!r}')
 
           clips = []
           last_frame = None
           for i, prompt in enumerate(prompts, 1):
-              clip = run_predict(i, prompt, last_frame)
+              checkpoint = WORK / f'scene_{i:02d}.mp4'
+              if checkpoint.exists() and checkpoint.stat().st_size > 0:
+                  clip = checkpoint
+                  print(f'REUSING scene {i}: {checkpoint}', flush=True)
+              else:
+                  clip = run_predict(i, prompt, last_frame)
               clips.append(clip)
               last_frame = WORK / f'last_{i:02d}.png'
               subprocess.run([
@@ -110,6 +134,20 @@ jobs:
           ], check=True)
           print('CONTINUOUS VIDEO READY', silent)
           PY
+
+      - name: Save scene checkpoints
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: lab/work
+          key: wan-blitz-scenes-v2-${{ github.run_id }}
+
+      - name: Stop cleanly after scene-generation failure
+        if: steps.scenes.outcome == 'failure'
+        run: |
+          echo 'Scene generation stopped. Existing scene checkpoints were saved for the next run.'
+          exit 1
+
       - name: Generate German open-source narration
         run: |
           python - <<'PY'
@@ -124,6 +162,7 @@ jobs:
           Ein Blitz schlägt direkt neben ihm ein. In Sekunden können Herz, Atmung und Nervensystem aus dem Takt geraten. Wichtig: Ein Blitzopfer bleibt nicht elektrisch geladen. Du kannst es sofort berühren und helfen. Ruf einhundertzwölf, prüfe die Atmung und beginne, wenn nötig, mit der Wiederbelebung. Schnelle Hilfe kann Leben retten. TAYVORIQ.
           TXT
           cat lab/work/narration.txt | piper --model lab/work/voice.onnx --config lab/work/voice.onnx.json --output_file lab/work/narration.wav
+
       - name: Mix final master
         run: |
           ffmpeg -y -i lab/work/continuous_silent.mp4 -i lab/work/narration.wav \
@@ -131,6 +170,7 @@ jobs:
             -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart \
             lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
           ffprobe -v error -show_entries format=duration,size -of default=nw=1 lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
+
       - name: Publish lab result to isolated branch
         run: |
           git config user.name "TAYVORIQ Lab Bot"
@@ -138,6 +178,7 @@ jobs:
           git add lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
           git commit -m "lab: add open-source Blitz AI video [skip ci]" || exit 0
           git push origin HEAD:lab/wan-blitz-open-source
+
       - name: Upload downloadable artifact
         uses: actions/upload-artifact@v4
         with:
