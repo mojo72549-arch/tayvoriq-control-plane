@@ -14,7 +14,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: tayvoriq-production-green-promoter
@@ -31,6 +31,13 @@ jobs:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
     steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ github.token }}
+          fetch-depth: 0
+
       - name: Checkout exact implementation candidate
         uses: actions/checkout@v4
         with:
@@ -47,9 +54,25 @@ jobs:
         run: |
           set -euo pipefail
           candidate="$(git rev-parse HEAD)"
-          current_green="$(git ls-remote origin refs/heads/tayvoriq-production-green | awk '{print $1}')"
+          current_green="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('../.github/state/tayvoriq-production-green.json')
+          if not path.is_file():
+              raise SystemExit('PRODUCTION_GREEN_POINTER_MISSING')
+          data=json.loads(path.read_text(encoding='utf-8'))
+          if data.get('schema') != 'tayvoriq-production-green-v1':
+              raise SystemExit('PRODUCTION_GREEN_POINTER_SCHEMA_INVALID')
+          sha=str(data.get('implementation_sha') or '').strip().lower()
+          if len(sha) != 40 or any(c not in '0123456789abcdef' for c in sha):
+              raise SystemExit('PRODUCTION_GREEN_POINTER_SHA_INVALID')
+          if data.get('full_preflight_passed') is not True or data.get('quality_gates_weakened') is not False:
+              raise SystemExit('PRODUCTION_GREEN_POINTER_INTEGRITY_INVALID')
+          print(sha)
+          PY
+          )"
           test -n "$candidate" || { echo "CANDIDATE_SHA_MISSING"; exit 1; }
-          test -n "$current_green" || { echo "PRODUCTION_GREEN_REF_MISSING"; exit 1; }
+          test -n "$current_green" || { echo "PRODUCTION_GREEN_POINTER_MISSING"; exit 1; }
           echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
           echo "current_green=$current_green" >> "$GITHUB_OUTPUT"
           if [ "$candidate" = "$current_green" ]; then
@@ -118,19 +141,43 @@ jobs:
           test "$local_sha" = "$tested" || { echo "TESTED_SHA_CHANGED:$local_sha:$tested"; exit 1; }
           test "$remote_sha" = "$tested" || { echo "FEATURE_BRANCH_ADVANCED_DURING_PREFLIGHT:$remote_sha:$tested"; exit 1; }
 
-      - name: Promote exact fully verified SHA
+      - name: Promote exact fully verified SHA in control plane
         if: steps.refs.outputs.changed == 'true'
-        working-directory: implementation
         shell: bash
+        env:
+          CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
         run: |
           set -euo pipefail
-          candidate="${{ steps.refs.outputs.candidate }}"
-          git fetch origin tayvoriq-production-green
-          current_green="$(git rev-parse origin/tayvoriq-production-green)"
-          git push --force-with-lease=refs/heads/tayvoriq-production-green:"$current_green" origin "$candidate:refs/heads/tayvoriq-production-green"
-          promoted="$(git ls-remote origin refs/heads/tayvoriq-production-green | awk '{print $1}')"
-          test "$promoted" = "$candidate" || {
-            echo "PRODUCTION_GREEN_PROMOTION_NOT_VERIFIED:$promoted:$candidate"
+          git pull --rebase origin main
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          sha=str(os.environ['CANDIDATE_SHA']).strip().lower()
+          if len(sha) != 40 or any(c not in '0123456789abcdef' for c in sha):
+              raise SystemExit('CANDIDATE_SHA_INVALID_BEFORE_PROMOTION')
+          payload={
+              'schema':'tayvoriq-production-green-v1',
+              'implementation_repository':'mojo72549-arch/shorts-agent-studio',
+              'implementation_sha':sha,
+              'verified_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
+              'verification_run_id':str(os.environ.get('GITHUB_RUN_ID') or ''),
+              'full_preflight_passed':True,
+              'quality_gates_weakened':False,
+          }
+          path=Path('.github/state/tayvoriq-production-green.json')
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(payload, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/state/tayvoriq-production-green.json
+          git diff --cached --quiet && { echo "PRODUCTION_GREEN_POINTER_ALREADY_CURRENT:$CANDIDATE_SHA"; exit 0; }
+          git commit -m "ops(tayvoriq): promote verified production green ${CANDIDATE_SHA:0:12}"
+          git push origin HEAD:main
+          promoted="$(python -c 'import json; print(json.load(open(".github/state/tayvoriq-production-green.json"))["implementation_sha"])')"
+          test "$promoted" = "$CANDIDATE_SHA" || {
+            echo "PRODUCTION_GREEN_PROMOTION_NOT_VERIFIED:$promoted:$CANDIDATE_SHA"
             exit 1
           }
-          echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$candidate"
+          echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$CANDIDATE_SHA"
