@@ -96,11 +96,13 @@ TAYVORIQ CONTENT DEPTH — HARD REQUIREMENT:
 - Never submit a candidate whose source context only restates the headline.
 - For every candidate, research and retain at least THREE concrete, source-backed facts whenever they are available.
 - Where the topic naturally permits it, retain at least TWO specific named examples or entities: games, models, companies, products, places, people, dates, features or comparable concrete details.
-- Put the useful detail into the EXISTING schema: source_context.fallback_editorial_answers.facts; the what_happened, why_happening, personal_impact and action_now answers; source_context.factual_guardrails; and source_context.research_notes.
+- IMPORTANT CONTRACT SEPARATION: deep research belongs in source supports, factual_guardrails and research_notes. Do NOT stuff long-form research prose into the five fallback_editorial_answers.
+- The five fallback_editorial_answers are a compact 35-second fail-closed render contract and MUST continue to obey the inherited STRICT FALLBACK CONTRACT: one natural sentence per field, 5–15 words each, 38–49 words total, explicit causal why, explicit 'Für dich' relevance and a viewer-facing concrete action verb.
+- Use source_context.research_notes and source support fields for extra examples, names, dates, numbers and context that production may draw on when building a richer story without invalidating the render contract.
 - Explicitly distinguish current or confirmed facts from announced or planned items and from rumor or speculation. Never elevate rumor or expectation to confirmed fact.
-- Include at least ONE contextualizing number, comparison or date where credible and relevant.
+- Include at least ONE contextualizing number, comparison or date where credible and relevant in the research evidence; it does not need to be forced into the compact five-answer fallback if doing so breaks its contract.
 - Explain why the concrete detail matters to the viewer and what happens next when known.
-- Research must be rich enough to support a useful 45–60 second TAYVORIQ script without filler. If the evidence cannot support that depth, lower the candidate or reject it rather than padding the story.
+- Research must be rich enough to support a useful TAYVORIQ story, while the immutable fallback itself remains safely renderable at the configured 35-second target. If the evidence cannot support both, lower the candidate or reject it rather than padding the fallback.
 - Never invent details merely to satisfy these counts. Evidence beats count.
 
 TAYVORIQ SCRIPT HANDOFF — HARD REQUIREMENT:
@@ -108,7 +110,8 @@ TAYVORIQ SCRIPT HANDOFF — HARD REQUIREMENT:
 - source_context.factual_guardrails.must_not_claim should explicitly capture unsupported, rumored or ambiguous claims that a script writer might otherwise overstate.
 - source_context.factual_guardrails.uncertainty_note should make timing or confirmation status explicit where necessary.
 - source_context.research_notes should identify the strongest story spine and useful examples, not merely repeat source titles or the headline.
-- The candidate should give production enough material to answer: What exactly happened? Which concrete examples prove it? Why is it relevant? What happens next?
+- fallback_editorial_answers must remain downstream-contract-safe; never place editor instructions such as 'Im Short ...' in action_now. action_now is always a concrete viewer action.
+- The candidate should give production enough evidence to answer: What exactly happened? Which concrete examples prove it? Why is it relevant? What happens next?
 
 TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 - End source_context.research_notes with a compact line starting exactly with "HASHTAG_SEEDS:" followed by 5–8 topic-specific hashtag suggestions for production metadata.
