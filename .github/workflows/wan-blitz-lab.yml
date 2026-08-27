@@ -6,30 +6,142 @@ on:
       - 'lab/wan-blitz-open-source'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  inspect-zero-gpu:
+  generate-blitz:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: 'lab/wan-blitz-open-source'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install Gradio client
-        run: pip install -U gradio_client huggingface_hub
-      - name: Inspect candidate ZeroGPU video APIs
+      - name: Install open-source clients and TTS
+        run: |
+          pip install -U gradio_client huggingface_hub piper-tts
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Generate continuous AI scenes
+        run: |
+          mkdir -p lab/output lab/work
+          python - <<'PY'
+          import os, shutil, subprocess, time
+          from pathlib import Path
+          from gradio_client import Client, handle_file
+
+          WORK = Path('lab/work')
+          OUT = Path('lab/output')
+          client = Client('Lightricks/ltx-video-distilled', verbose=False)
+          neg = 'worst quality, inconsistent identity, inconsistent clothing, inconsistent face, duplicate people, extra limbs, deformed hands, blurry, jittery, distorted, text, subtitles, watermark, logo, cartoon, anime, still image'
+          seed = 614273
+          H, W = 896, 512
+          DUR = 3.5
+
+          prompts = [
+            'Cinematic photorealistic vertical film. Night on a rain-soaked rooftop in a modern European city. A 30-year-old man with short dark wet hair, light stubble, black waterproof rain jacket, dark trousers and black shoes stands alone near the center of the rooftop. Heavy rain and wind visibly move his jacket and hair. He looks up nervously at dark storm clouds. Camera slowly tracks toward him at chest height. Real human motion, realistic rain, realistic city lights, natural proportions, one continuous movie scene, no presenter.',
+            'Continue the exact same movie, same man, same black rain jacket, same rooftop, same night, same city and same camera language. A violent lightning bolt strikes the rooftop several meters beside him with a blinding white-blue flash and sparks. The man visibly flinches, his whole body jerks from the shock wave, he loses his balance and takes an uncontrolled step backward. Heavy rain and wind continue. Real-time physical movement, cinematic photorealism, no gore.',
+            'Continue immediately from the previous frame with the identical man and rooftop. The disoriented man stumbles backward on the wet surface, tries to regain balance with his arms, then falls hard onto the rain-soaked rooftop and remains motionless. Camera follows the fall naturally without cutting away. Realistic body physics, rain splashes, city background unchanged, no gore.',
+            'Continue the exact same rooftop incident. The fallen man remains on the ground in the same clothes and position. A second adult man wearing a dark hooded rain jacket runs urgently into frame from the rooftop access door, crosses the wet rooftop, drops to his knees beside the victim and speaks to him while checking for a response. Both people move naturally, heavy rain, same lighting and city, documentary-cinematic realism.',
+            'Continue without changing the people or location. The helper stays kneeling beside the same unconscious man, clearly takes a smartphone from his pocket, calls emergency services, places the phone on speaker beside him and checks the victim breathing while watching the chest and positioning the head carefully. Real first-aid action, natural hands, rain falling, no gore, same cinematic scene.',
+            'Continue the same incident moments later. Blue emergency light reflections appear across the wet rooftop. Two paramedics in realistic European emergency clothing run through the access door carrying a medical bag, approach the same victim and helper, kneel and take over assessment while the helper moves aside. Camera slowly pulls back, rain continues, the same city skyline remains visible. Photorealistic cinematic ending, no logos, no text.'
+          ]
+
+          def video_path(obj):
+              x = obj
+              if isinstance(x, (tuple, list)):
+                  x = x[0]
+              if isinstance(x, dict):
+                  x = x.get('video', x.get('path', x))
+              if isinstance(x, dict):
+                  x = x.get('path')
+              if hasattr(x, 'path'):
+                  x = x.path
+              if not isinstance(x, str):
+                  raise RuntimeError(f'Cannot resolve video path from {obj!r}')
+              return x
+
+          def run_predict(scene_no, prompt, image=None):
+              last_err = None
+              for attempt in range(1, 4):
+                  try:
+                      print(f'GENERATING scene {scene_no}, attempt {attempt}', flush=True)
+                      if image is None:
+                          result = client.predict(
+                              prompt, neg, None, None, H, W, 'text-to-video', DUR, 9,
+                              seed, False, 1.0, True, api_name='/text_to_video'
+                          )
+                      else:
+                          result = client.predict(
+                              prompt, neg, handle_file(str(image)), None, H, W, 'image-to-video', DUR, 9,
+                              seed, False, 1.0, True, api_name='/image_to_video'
+                          )
+                      src = video_path(result)
+                      dst = WORK / f'scene_{scene_no:02d}.mp4'
+                      shutil.copy2(src, dst)
+                      print(f'SCENE {scene_no} OK: {dst}', flush=True)
+                      return dst
+                  except Exception as e:
+                      last_err = e
+                      print(f'SCENE {scene_no} attempt {attempt} failed: {e!r}', flush=True)
+                      time.sleep(25 * attempt)
+              raise RuntimeError(f'Scene {scene_no} failed after retries: {last_err!r}')
+
+          clips = []
+          last_frame = None
+          for i, prompt in enumerate(prompts, 1):
+              clip = run_predict(i, prompt, last_frame)
+              clips.append(clip)
+              last_frame = WORK / f'last_{i:02d}.png'
+              subprocess.run([
+                  'ffmpeg','-y','-sseof','-0.08','-i',str(clip),'-frames:v','1','-q:v','2',str(last_frame)
+              ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+          concat = WORK / 'concat.txt'
+          concat.write_text(''.join(f"file '{p.resolve()}'\n" for p in clips))
+          silent = WORK / 'continuous_silent.mp4'
+          subprocess.run([
+              'ffmpeg','-y','-f','concat','-safe','0','-i',str(concat),
+              '-vf','scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=24',
+              '-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p',str(silent)
+          ], check=True)
+          print('CONTINUOUS VIDEO READY', silent)
+          PY
+      - name: Generate German open-source narration
         run: |
           python - <<'PY'
-          from gradio_client import Client
-          spaces = [
-              'zerogpu-aoti/wan2-2-fp8da-aoti-faster',
-              'Lightricks/ltx-video-distilled',
-          ]
-          for space in spaces:
-              print('\n===== SPACE', space, '=====')
-              try:
-                  c = Client(space, verbose=False)
-                  print(c.view_api())
-              except Exception as e:
-                  print('ERROR:', type(e).__name__, repr(e))
+          from huggingface_hub import hf_hub_download
+          import shutil
+          model = hf_hub_download('rhasspy/piper-voices', 'de/de_DE/thorsten/high/de_DE-thorsten-high.onnx')
+          config = hf_hub_download('rhasspy/piper-voices', 'de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json')
+          shutil.copy2(model, 'lab/work/voice.onnx')
+          shutil.copy2(config, 'lab/work/voice.onnx.json')
           PY
+          cat > lab/work/narration.txt <<'TXT'
+          Ein Blitz schlägt direkt neben ihm ein. In Sekunden können Herz, Atmung und Nervensystem aus dem Takt geraten. Wichtig: Ein Blitzopfer bleibt nicht elektrisch geladen. Du kannst es sofort berühren und helfen. Ruf einhundertzwölf, prüfe die Atmung und beginne, wenn nötig, mit der Wiederbelebung. Schnelle Hilfe kann Leben retten. TAYVORIQ.
+          TXT
+          cat lab/work/narration.txt | piper --model lab/work/voice.onnx --config lab/work/voice.onnx.json --output_file lab/work/narration.wav
+      - name: Mix final master
+        run: |
+          ffmpeg -y -i lab/work/continuous_silent.mp4 -i lab/work/narration.wav \
+            -filter_complex "[1:a]volume=1.15[a]" -map 0:v -map "[a]" \
+            -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart \
+            lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
+          ffprobe -v error -show_entries format=duration,size -of default=nw=1 lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
+      - name: Publish lab result to isolated branch
+        run: |
+          git config user.name "TAYVORIQ Lab Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
+          git commit -m "lab: add open-source Blitz AI video [skip ci]" || exit 0
+          git push origin HEAD:lab/wan-blitz-open-source
+      - name: Upload downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-blitz-open-source-ai
+          path: lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
+          if-no-files-found: error
+          retention-days: 7
