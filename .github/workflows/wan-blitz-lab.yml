@@ -1,0 +1,35 @@
+name: WAN Blitz Open Source Lab
+
+on:
+  push:
+    branches:
+      - 'lab/wan-blitz-open-source'
+  workflow_dispatch:
+
+jobs:
+  inspect-zero-gpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Gradio client
+        run: pip install -U gradio_client huggingface_hub
+      - name: Inspect candidate ZeroGPU video APIs
+        run: |
+          python - <<'PY'
+          from gradio_client import Client
+          spaces = [
+              'zerogpu-aoti/wan2-2-fp8da-aoti-faster',
+              'Lightricks/ltx-video-distilled',
+          ]
+          for space in spaces:
+              print('\n===== SPACE', space, '=====')
+              try:
+                  c = Client(space, verbose=False)
+                  print(c.view_api())
+              except Exception as e:
+                  print('ERROR:', type(e).__name__, repr(e))
+          PY
