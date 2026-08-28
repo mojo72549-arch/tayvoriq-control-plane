@@ -1,0 +1,59 @@
+name: SkyReels ZeroGPU Duration Tune
+
+on:
+  push:
+    branches:
+      - lab/skyreels-v3-engine
+    paths:
+      - '.github/workflows/skyreels-space-duration-tune.yml'
+      - 'lab/skyreels_v3_engine/duration-trigger/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HF_TOKEN: ${{ secrets.HF_SKYREELS_TOKEN }}
+      HF_SPACE_ID: Mo6161/tayvoriq-skyreels-lab
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Set exact ZeroGPU reservation for short proof
+        shell: bash
+        run: |
+          python -m pip install -q -U huggingface_hub
+          python - <<'PY'
+          import os, re, tempfile
+          from pathlib import Path
+          from huggingface_hub import HfApi, hf_hub_download
+
+          token=os.environ['HF_TOKEN']
+          repo_id=os.environ['HF_SPACE_ID']
+          api=HfApi(token=token)
+          tmp=Path(tempfile.mkdtemp())
+          p=Path(hf_hub_download(repo_id=repo_id, filename='app_df.py', repo_type='space', token=token, local_dir=tmp, force_download=True))
+          text=p.read_text(encoding='utf-8')
+          # Normalize any existing decorator directly attached to the generator.
+          pattern=r'(?m)^\s*@spaces\.GPU(?:\([^\n]*\))?\s*\n(?=def generate_diffusion_forced_video\()'
+          text,n=re.subn(pattern,'@spaces.GPU(duration=110)\n',text,count=1)
+          if n==0:
+              marker='def generate_diffusion_forced_video(\n'
+              if marker not in text:
+                  raise SystemExit('GENERATOR_NOT_FOUND')
+              text=text.replace(marker,'@spaces.GPU(duration=110)\n'+marker,1)
+          # Safety check: exactly one 110s decorator is directly before the generator.
+          if '@spaces.GPU(duration=110)\ndef generate_diffusion_forced_video(' not in text:
+              raise SystemExit('DURATION_PATCH_NOT_APPLIED')
+          p.write_text(text,encoding='utf-8')
+          api.upload_file(path_or_fileobj=str(p), path_in_repo='app_df.py', repo_id=repo_id, repo_type='space', token=token, commit_message='TAYVORIQ: tune ZeroGPU short-proof reservation to 110s')
+          try:
+              api.restart_space(repo_id=repo_id, token=token)
+          except Exception as e:
+              print('RESTART_NOTE',type(e).__name__,str(e)[:300])
+          print('DURATION_TUNED_110S')
+          PY
