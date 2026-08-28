@@ -19,116 +19,62 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Install autonomous recovery and voice non-regression
+      - name: Install resilient audit provider routing
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
 
-          gh_open = '${' + '{'
-          owner_found = gh_open + ' steps.owner.outputs.found }}'
-          owner_request = gh_open + ' steps.owner.outputs.request_id }}'
-          verify_run = gh_open + ' steps.verify.outputs.new_run_id }}'
-          classify_state = gh_open + ' steps.classify.outputs.recovery_state }}'
-          owner_topic = gh_open + ' steps.owner.outputs.topic }}'
+          path = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
+          text = path.read_text(encoding='utf-8')
+          lines = text.splitlines()
 
-          golden = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
-          text = golden.read_text(encoding='utf-8')
+          wanted = {
+              'GEMINI_MODEL': '  GEMINI_MODEL: "gemini-2.5-flash-lite"',
+              'GROQ_MODEL': '  GROQ_MODEL: "openai/gpt-oss-20b"',
+          }
 
-          old_pitch = '  TAYVORIQ_NARRATOR_PITCH_FACTOR: "0.90"'
-          new_pitch = '  TAYVORIQ_NARRATOR_PITCH_FACTOR: "1.0"'
-          if old_pitch in text:
-              if text.count(old_pitch) != 1:
-                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:pitch-factor-shape')
-              text = text.replace(old_pitch, new_pitch, 1)
-          elif new_pitch not in text:
-              raise SystemExit('AUTONOMY_HARDEN_REFUSED:pitch-factor-marker-missing')
+          seen = set()
+          out = []
+          insert_after = None
+          for line in lines:
+              stripped = line.strip()
+              if stripped.startswith('GEMINI_MODEL:'):
+                  out.append(wanted['GEMINI_MODEL'])
+                  seen.add('GEMINI_MODEL')
+                  continue
+              if stripped.startswith('GROQ_MODEL:'):
+                  out.append(wanted['GROQ_MODEL'])
+                  seen.add('GROQ_MODEL')
+                  continue
+              out.append(line)
+              if stripped.startswith('TAYVORIQ_AUDIT_RETRY_DELAYS:'):
+                  insert_after = len(out)
 
-          old_detail = '          detail = "Der technische Teilpfad wird automatisch untersucht."'
-          new_detail = '          detail = "Technischer Stopp vor dem Render. Nach Laufende übernimmt Delivery Watch denselben freigegebenen Auftrag automatisch und setzt die Recovery fort."'
-          if old_detail in text:
-              if text.count(old_detail) != 1:
-                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:telegram-detail-shape')
-              text = text.replace(old_detail, new_detail, 1)
+          missing = [key for key in ('GEMINI_MODEL', 'GROQ_MODEL') if key not in seen]
+          if missing:
+              if insert_after is None:
+                  raise SystemExit('AUDIT_PROVIDER_ROUTING_REFUSED:anchor-missing')
+              additions = [wanted[key] for key in missing]
+              out[insert_after:insert_after] = additions
 
-          old_default = '${status_fields[2]:-Der technische Teilpfad wird automatisch untersucht.}'
-          new_default = '${status_fields[2]:-Technischer Stopp vor dem Render. Delivery Watch übernimmt danach automatisch die Recovery.}'
-          if old_default in text:
-              text = text.replace(old_default, new_default, 1)
-
-          golden.write_text(text, encoding='utf-8')
-
-          watch = Path('.github/workflows/tayvoriq-delivery-watch.yml')
-          text = watch.read_text(encoding='utf-8')
-
-          old_branch = '''            elif printf '%s' "$lowered" | grep -Eq 'content_rejected:|semantic-repair-missing|quellenkontext enthält keine belastbare erklärung|code_repair_required|no safe patch passed validation|weder provider noch quellen-fallback konnten einen erklärenden text liefern'; then
-              # Deterministic editorial/evidence/code failures do not change on a blind rerun.
-              # They may only continue after source/code/repair input actually changes.
-              recovery_state=DETERMINISTIC_REPAIR_INPUT_REQUIRED
-'''
-          new_branch = '''            elif printf '%s' "$lowered" | grep -Eq 'content_rejected:|semantic-repair-missing|quellenkontext enthält keine belastbare erklärung|code_repair_required|no safe patch passed validation|weder provider noch quellen-fallback konnten einen erklärenden text liefern'; then
-              # Never orphan an already approved request. Re-dispatch the exact
-              # durable request on current main/implementation after a bounded
-              # technical/editorial repair. Generation limits below prevent loops;
-              # publication thresholds remain unchanged.
-              if [ "''' + owner_found + '''" = "true" ]; then
-                needs_fresh_generation=true
-                recovery_state=REQUEST_BOUND_RECOVERY_REQUIRED
-              else
-                recovery_state=DETERMINISTIC_REPAIR_INPUT_REQUIRED
-              fi
-'''
-          if old_branch in text:
-              if text.count(old_branch) != 1:
-                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:deterministic-branch-shape')
-              text = text.replace(old_branch, new_branch, 1)
-          elif new_branch not in text:
-              raise SystemExit('AUTONOMY_HARDEN_REFUSED:deterministic-branch-marker-missing')
-
-          old_silent = '''      - name: Record silent autonomous continuation
-        if: steps.guard.outputs.ignore != 'true' && (steps.classify.outputs.should_retry == 'true' || steps.fresh.outputs.requeued == 'true')
-        run: |
-          echo "Autonomous continuation active for request=''' + owner_request + ''' run=$RUN_ID; no technical-error Telegram spam emitted."
-'''
-          new_visible = '''      - name: Telegram autonomous recovery resumed
-        if: steps.guard.outputs.ignore != 'true' && steps.fresh.outputs.requeued == 'true' && steps.verify.outputs.started == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$TELEGRAM_BOT_TOKEN"
-          test -n "$TELEGRAM_CHAT_ID"
-          new_run="''' + verify_run + '''"
-          state="''' + classify_state + '''"
-          message="🔧 TAYVORIQ · Recovery übernommen%0A%0AThema: ''' + owner_topic + '''%0AAlter Run: ${RUN_ID}%0ANeuer Run: ${new_run}%0A%0A✅ Trendfreigabe und Quellen bleiben erhalten.%0A➡️ Der technische Stopp wurde aufgegriffen; die Produktion läuft im neuen Recovery-Run weiter.%0AStatus: ${state}%0A%0AFür dich: ✅ Keine Aktion nötig."
-          curl -fsS --retry 3 --retry-all-errors -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${message}" >/dev/null
-
-      - name: Record same-run transient continuation
-        if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.should_retry == 'true'
-        run: |
-          echo "Same-run transient recovery active for request=''' + owner_request + ''' run=$RUN_ID."
-'''
-          if old_silent in text:
-              if text.count(old_silent) != 1:
-                  raise SystemExit('AUTONOMY_HARDEN_REFUSED:silent-continuation-shape')
-              text = text.replace(old_silent, new_visible, 1)
-          elif '      - name: Telegram autonomous recovery resumed\n' not in text:
-              raise SystemExit('AUTONOMY_HARDEN_REFUSED:continuation-marker-missing')
-
-          watch.write_text(text, encoding='utf-8')
+          new_text = '\n'.join(out) + '\n'
+          if new_text == text:
+              print('Audit provider routing already installed.')
+          else:
+              path.write_text(new_text, encoding='utf-8')
+              print('Installed audit provider routing.')
           PY
 
           git diff --check
-          git diff -- .github/workflows/tayvoriq-deliver-video-now.yml .github/workflows/tayvoriq-delivery-watch.yml
+          git diff -- .github/workflows/tayvoriq-deliver-video-now.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/tayvoriq-deliver-video-now.yml .github/workflows/tayvoriq-delivery-watch.yml
+          git add .github/workflows/tayvoriq-deliver-video-now.yml
           if git diff --cached --quiet; then
-            echo 'Autonomous recovery hardening already installed.'
+            echo 'No Golden Path provider change required.'
             exit 0
           fi
-          git commit -m 'fix(tayvoriq): auto-resume technical stops and restore natural pitch'
+          git commit -m 'fix(tayvoriq): route strict audit through resilient providers'
           git push origin HEAD:main
