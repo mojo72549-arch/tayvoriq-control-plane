@@ -2,8 +2,8 @@
   "request": "tayvoriq-x-production",
   "topic": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
   "trend_id": "1",
-  "requested_at": "2026-08-28T07:31:00Z",
-  "request_nonce": "spacex-request-bound-recovery-g3-provider-route-20260828T073100Z",
+  "requested_at": "2026-08-28T07:34:00Z",
+  "request_nonce": "spacex-request-bound-recovery-g3b-xv3-20260828T073400Z",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
@@ -18,6 +18,11 @@
   "recovery_strategy": "request-bound-provider-resilient-strict-reaudit",
   "hardening": {
     "checkpoint_source_context_required": true,
+    "platform_specific_cta_required": true,
+    "platform_specific_voice_repair_required": true,
+    "validated_voice_candidate_required": true,
+    "premium_voice_required": true,
+    "concrete_failure_state_required": true,
     "post_repair_checkpoint_required": true,
     "fresh_post_repair_audit_required": true,
     "topic_aware_visual_repair_required": true,
@@ -31,6 +36,6 @@
     "strict_visual_audit_required": true,
     "strict_pronunciation_audit_required": true
   },
-  "reason": "generation-2 repair completed but strict re-audit provider failed; retry exact approved checkpoint with resilient provider routing",
+  "reason": "generation-2 localized repair completed but strict re-audit provider failed; resume exact approved checkpoint with resilient provider routing and complete X-v3 hardening contract",
   "slot": "evening"
 }
