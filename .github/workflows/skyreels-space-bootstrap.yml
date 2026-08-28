@@ -1,0 +1,64 @@
+name: SkyReels Space Bootstrap
+
+on:
+  push:
+    branches:
+      - lab/skyreels-v3-engine
+    paths:
+      - '.github/workflows/skyreels-space-bootstrap.yml'
+      - 'lab/skyreels_v3_engine/bootstrap-trigger/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE_ID: Mo6161/tayvoriq-skyreels-lab
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Create controlled SkyReels ZeroGPU Space
+        shell: bash
+        run: |
+          python -m pip install -q -U huggingface_hub
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          token=os.environ['HF_TOKEN']
+          repo_id=os.environ['HF_SPACE_ID']
+          api=HfApi(token=token)
+          who=api.whoami(token=token)
+          print('HF_AUTH_OK', who.get('name','unknown'))
+          try:
+              url=api.duplicate_repo(
+                  from_id='fffiloni/SkyReels-V2',
+                  to_id=repo_id,
+                  repo_type='space',
+                  private=False,
+                  exist_ok=True,
+                  space_hardware='zero-a10g',
+                  space_secrets=[{'key':'HF_TOKEN','value':token}],
+              )
+              print('SPACE_DUPLICATE_OK', url)
+          except TypeError:
+              # Compatibility path for huggingface_hub versions whose Python signature differs.
+              api.create_repo(repo_id=repo_id, repo_type='space', space_sdk='gradio', exist_ok=True, token=token)
+              api.add_space_secret(repo_id=repo_id, key='HF_TOKEN', value=token, token=token)
+              try:
+                  api.request_space_hardware(repo_id=repo_id, hardware='zero-a10g', token=token)
+              except Exception as e:
+                  print('ZERO_GPU_REQUEST_NOTE', type(e).__name__, str(e)[:500])
+              print('SPACE_CREATED_FALLBACK', repo_id)
+          try:
+              rt=api.get_space_runtime(repo_id=repo_id, token=token)
+              print('SPACE_RUNTIME', rt.stage, rt.hardware, rt.requested_hardware)
+          except Exception as e:
+              print('RUNTIME_PENDING', type(e).__name__, str(e)[:500])
+          print('SPACE_URL=https://huggingface.co/spaces/'+repo_id)
+          PY
