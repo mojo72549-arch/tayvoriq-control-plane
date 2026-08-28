@@ -1,0 +1,60 @@
+name: SkyReels Space API Readiness
+
+on:
+  push:
+    branches:
+      - lab/skyreels-v3-engine
+    paths:
+      - '.github/workflows/skyreels-space-api-ready.yml'
+      - 'lab/skyreels_v3_engine/api-ready-trigger/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HF_TOKEN: ${{ secrets.HF_SKYREELS_TOKEN }}
+      HF_SPACE_ID: Mo6161/tayvoriq-skyreels-lab
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Wait for Space and verify public generate API
+        shell: bash
+        run: |
+          python -m pip install -q -U huggingface_hub gradio_client
+          python - <<'PY'
+          import os, time
+          from huggingface_hub import HfApi
+          from gradio_client import Client
+
+          token = os.environ.get('HF_TOKEN','').strip()
+          space_id = os.environ['HF_SPACE_ID']
+          if not token:
+              raise SystemExit('HF_SKYREELS_TOKEN_SECRET_NOT_AVAILABLE')
+          api = HfApi(token=token)
+          final = None
+          for i in range(48):
+              rt = api.get_space_runtime(repo_id=space_id, token=token)
+              stage = str(rt.stage)
+              print('SPACE_STAGE', i, stage, rt.hardware, rt.requested_hardware, flush=True)
+              final = stage
+              if stage == 'RUNNING':
+                  break
+              if stage in {'BUILD_ERROR','RUNTIME_ERROR','CONFIG_ERROR'}:
+                  raise SystemExit('SPACE_NOT_READY_'+stage)
+              time.sleep(15)
+          else:
+              raise SystemExit('SPACE_BUILD_TIMEOUT_LAST_STAGE_'+str(final))
+
+          client = Client(space_id, hf_token=token, verbose=False)
+          cfg = client.view_api(return_format='dict')
+          print('NAMED_ENDPOINTS', list((cfg.get('named_endpoints') or {}).keys()))
+          if '/generate_video' not in (cfg.get('named_endpoints') or {}):
+              raise SystemExit('GENERATE_VIDEO_API_NOT_EXPOSED')
+          print('SKYREELS_GENERATE_VIDEO_API_READY')
+          PY
