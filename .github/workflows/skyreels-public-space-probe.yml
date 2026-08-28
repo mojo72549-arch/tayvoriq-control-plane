@@ -1,0 +1,27 @@
+name: SkyReels Public Space Probe
+
+on:
+  push:
+    branches:
+      - 'lab/skyreels-v3-engine'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Probe public SkyReels space without rendering
+        run: |
+          pip install -q -U gradio_client
+          python - <<'PY'
+          from gradio_client import Client
+          c = Client('fffiloni/SkyReels-V2', verbose=False)
+          cfg = c.view_api(return_format='dict')
+          print(cfg)
+          print('SKYREELS_PUBLIC_SPACE_API_OK')
+          PY
