@@ -28,125 +28,128 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
-      - name: Restore scene checkpoints
-        uses: actions/cache/restore@v4
-        with:
-          path: lab/work
-          key: wan-blitz-scenes-v2-${{ github.run_id }}
-          restore-keys: |
-            wan-blitz-scenes-v2-
-
-      - name: Generate continuous AI scenes
-        id: scenes
-        continue-on-error: true
+      - name: Generate two continuous LTX 2.5 sequences
         run: |
           mkdir -p lab/output lab/work
           python - <<'PY'
-          import shutil, subprocess, time
+          import json, shutil, subprocess, time
           from pathlib import Path
           from gradio_client import Client, handle_file
 
           WORK = Path('lab/work')
-          client = Client('Lightricks/ltx-video-distilled', verbose=False)
-          neg = 'worst quality, inconsistent identity, inconsistent clothing, inconsistent face, duplicate people, extra limbs, deformed hands, blurry, jittery, distorted, text, subtitles, watermark, logo, cartoon, anime, still image'
+          client = Client('RioShiina/LTX-2.5', verbose=False)
           seed = 614273
-          H, W = 896, 512
-          DUR = 3.5
+          negative = 'cartoon, anime, game render, low quality, inconsistent identity, inconsistent clothing, duplicate people, extra limbs, deformed hands, blurry, jittery, distorted, text, subtitles, watermark, logo, still image'
 
-          prompts = [
-            'Cinematic photorealistic vertical film. Night on a rain-soaked rooftop in a modern European city. A 30-year-old man with short dark wet hair, light stubble, black waterproof rain jacket, dark trousers and black shoes stands alone near the center of the rooftop. Heavy rain and wind visibly move his jacket and hair. He looks up nervously at dark storm clouds. Camera slowly tracks toward him at chest height. Real human motion, realistic rain, realistic city lights, natural proportions, one continuous movie scene, no presenter.',
-            'Continue the exact same movie, same man, same black rain jacket, same rooftop, same night, same city and same camera language. A violent lightning bolt strikes the rooftop several meters beside him with a blinding white-blue flash and sparks. The man visibly flinches, his whole body jerks from the shock wave, he loses his balance and takes an uncontrolled step backward. Heavy rain and wind continue. Real-time physical movement, cinematic photorealism, no gore.',
-            'Continue immediately from the previous frame with the identical man and rooftop. The disoriented man stumbles backward on the wet surface, tries to regain balance with his arms, then falls hard onto the rain-soaked rooftop and remains motionless. Camera follows the fall naturally without cutting away. Realistic body physics, rain splashes, city background unchanged, no gore.',
-            'Continue the exact same rooftop incident. The fallen man remains on the ground in the same clothes and position. A second adult man wearing a dark hooded rain jacket runs urgently into frame from the rooftop access door, crosses the wet rooftop, drops to his knees beside the victim and speaks to him while checking for a response. Both people move naturally, heavy rain, same lighting and city, documentary-cinematic realism.',
-            'Continue without changing the people or location. The helper stays kneeling beside the same unconscious man, clearly takes a smartphone from his pocket, calls emergency services, places the phone on speaker beside him and checks the victim breathing while watching the chest and positioning the head carefully. Real first-aid action, natural hands, rain falling, no gore, same cinematic scene.',
-            'Continue the same incident moments later. Blue emergency light reflections appear across the wet rooftop. Two paramedics in realistic European emergency clothing run through the access door carrying a medical bag, approach the same victim and helper, kneel and take over assessment while the helper moves aside. Camera slowly pulls back, rain continues, the same city skyline remains visible. Photorealistic cinematic ending, no logos, no text.'
-          ]
-
-          def video_path(obj):
-              x = obj
-              if isinstance(x, (tuple, list)):
-                  x = x[0]
-              if isinstance(x, dict):
-                  x = x.get('video', x.get('path', x))
-              if isinstance(x, dict):
-                  x = x.get('path')
-              if hasattr(x, 'path'):
-                  x = x.path
-              if not isinstance(x, str):
-                  raise RuntimeError(f'Cannot resolve video path from {obj!r}')
-              return x
-
-          def is_quota_error(exc):
-              msg = repr(exc).lower()
-              return ('zerogpu' in msg and 'quota' in msg) or 'exceeded your zerogpu quota' in msg
-
-          def run_predict(scene_no, prompt, image=None):
-              last_err = None
-              for attempt in range(1, 4):
+          def extract_task_id(obj):
+              if isinstance(obj, str):
                   try:
-                      print(f'GENERATING scene {scene_no}, attempt {attempt}', flush=True)
-                      if image is None:
-                          result = client.predict(
-                              prompt, neg, None, None, H, W, 'text-to-video', DUR, 9,
-                              seed, False, 1.0, True, api_name='/text_to_video'
-                          )
-                      else:
-                          result = client.predict(
-                              prompt, neg, handle_file(str(image)), None, H, W, 'image-to-video', DUR, 9,
-                              seed, False, 1.0, True, api_name='/image_to_video'
-                          )
-                      src = video_path(result)
-                      dst = WORK / f'scene_{scene_no:02d}.mp4'
-                      shutil.copy2(src, dst)
-                      print(f'SCENE {scene_no} OK: {dst}', flush=True)
-                      return dst
-                  except Exception as e:
-                      last_err = e
-                      print(f'SCENE {scene_no} attempt {attempt} failed: {e!r}', flush=True)
-                      if is_quota_error(e):
-                          raise RuntimeError(f'ZEROGPU_QUOTA_EXHAUSTED at scene {scene_no}; checkpoint will be preserved: {e!r}') from e
-                      if attempt < 3:
-                          time.sleep(25 * attempt)
-              raise RuntimeError(f'Scene {scene_no} failed after retries: {last_err!r}')
+                      obj = json.loads(obj)
+                  except Exception:
+                      return obj if obj.strip() else None
+              if isinstance(obj, dict):
+                  for key in ('task_id','id','taskId'):
+                      if obj.get(key): return str(obj[key])
+                  for value in obj.values():
+                      found = extract_task_id(value)
+                      if found: return found
+              if isinstance(obj, (list, tuple)):
+                  for value in obj:
+                      found = extract_task_id(value)
+                      if found: return found
+              return None
 
-          clips = []
-          last_frame = None
-          for i, prompt in enumerate(prompts, 1):
-              checkpoint = WORK / f'scene_{i:02d}.mp4'
-              if checkpoint.exists() and checkpoint.stat().st_size > 0:
-                  clip = checkpoint
-                  print(f'REUSING scene {i}: {checkpoint}', flush=True)
+          def poll(task_id, timeout=900):
+              start = time.time()
+              while time.time() - start < timeout:
+                  status = client.predict(task_id, api_name='/get_task_status')
+                  if isinstance(status, str):
+                      try: status = json.loads(status)
+                      except Exception: pass
+                  print('STATUS', status, flush=True)
+                  if isinstance(status, dict):
+                      state = str(status.get('status','')).lower()
+                      if state == 'completed': return status
+                      if state == 'failed': raise RuntimeError(f'LTX task failed: {status}')
+                      result = status.get('result')
+                      if isinstance(result, dict) and result.get('videos'):
+                          return status
+                  time.sleep(5)
+              raise TimeoutError(f'LTX task timeout: {task_id}')
+
+          def resolve_video(status):
+              result = status.get('result', status) if isinstance(status, dict) else status
+              candidates = []
+              if isinstance(result, dict):
+                  if result.get('video_path'): candidates.append(result['video_path'])
+                  vids = result.get('videos') or []
+                  if isinstance(vids, str): vids = [vids]
+                  candidates.extend(vids)
+              elif isinstance(result, str):
+                  candidates.append(result)
+              for item in candidates:
+                  if isinstance(item, str) and item:
+                      return item
+              raise RuntimeError(f'Cannot resolve generated video: {status!r}')
+
+          def run_task(params, out_path):
+              print('RUN PARAMS', json.dumps(params, ensure_ascii=False), flush=True)
+              submitted = client.predict(json.dumps(params), api_name='/run')
+              print('SUBMITTED', submitted, flush=True)
+              task_id = extract_task_id(submitted)
+              if not task_id:
+                  raise RuntimeError(f'No task id returned: {submitted!r}')
+              status = poll(task_id)
+              src = resolve_video(status)
+              if src.startswith('http://') or src.startswith('https://'):
+                  import urllib.request
+                  urllib.request.urlretrieve(src, out_path)
               else:
-                  clip = run_predict(i, prompt, last_frame)
-              clips.append(clip)
-              last_frame = WORK / f'last_{i:02d}.png'
-              subprocess.run([
-                  'ffmpeg','-y','-sseof','-0.08','-i',str(clip),'-frames:v','1','-q:v','2',str(last_frame)
-              ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  shutil.copy2(src, out_path)
+              print('VIDEO READY', out_path, flush=True)
 
-          concat = WORK / 'concat.txt'
-          concat.write_text(''.join(f"file '{p.resolve()}'\n" for p in clips))
-          silent = WORK / 'continuous_silent.mp4'
+          prompt_a = '''One continuous cinematic photorealistic 9:16 movie shot at night on a rain-soaked rooftop in a modern European city. The SAME 30-year-old man throughout: short dark wet hair, light stubble, black waterproof rain jacket, dark trousers, black shoes. Heavy rain and wind visibly move his jacket and hair. He looks nervously at the storm clouds. The camera slowly tracks toward him. A violent white-blue lightning bolt suddenly strikes the rooftop several meters beside him. He visibly flinches, his entire body jerks, he loses balance, stumbles backward on the wet concrete, reaches out with both arms trying to recover, then falls hard onto the rooftop and remains motionless. Camera naturally follows the action without cutting away. Real human motion, realistic body physics, realistic rain splashes and city lights, serious documentary-cinematic realism, no gore, no presenter.'''
+
+          params_a = {
+              'task_type':'t2v', 'prompt':prompt_a, 'negative_prompt':negative,
+              'resolution':'544p', 'aspect_ratio':'9:16 (Portrait)',
+              'duration':9.0, 'fps':'24fps', 'seed':seed,
+              'use_spatial_upscaler':False, 'use_temporal_upscaler':False,
+              'zero_gpu_duration':60
+          }
+          clip_a = WORK/'sequence_a.mp4'
+          run_task(params_a, clip_a)
+
+          last = WORK/'continuation.png'
+          subprocess.run(['ffmpeg','-y','-sseof','-0.08','-i',str(clip_a),'-frames:v','1',str(last)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+          prompt_b = '''Continue immediately from this exact frame as the SAME movie, SAME rooftop, SAME fallen man, SAME black rain jacket, SAME rain, SAME city skyline and SAME cinematic visual language. The fallen man remains on the wet rooftop. A second adult man in a dark hooded rain jacket urgently runs out of the rooftop access door into frame, crosses the wet roof, drops to his knees beside the victim, speaks to him and checks for a response. He clearly takes a smartphone from his pocket, calls emergency services on speaker and checks the victim's breathing. Moments later blue emergency-light reflections appear across the wet roof. Two realistic European paramedics run through the access door carrying a medical bag, kneel beside the same victim and take over while the helper moves aside. Camera slowly pulls back at the end. Real human movement, natural hands and body physics, continuous rain, documentary-cinematic photorealism, no gore, no logos, no text.'''
+
+          params_b = {
+              'task_type':'i2v', 'prompt':prompt_b, 'start_image':str(last.resolve()),
+              'negative_prompt':negative, 'resolution':'544p', 'aspect_ratio':'9:16 (Portrait)',
+              'duration':9.0, 'fps':'24fps', 'seed':seed,
+              'use_spatial_upscaler':False, 'use_temporal_upscaler':False,
+              'zero_gpu_duration':60
+          }
+          clip_b = WORK/'sequence_b.mp4'
+          # Some Gradio high-level APIs accept uploaded file handles rather than plain paths.
+          try:
+              params_b['start_image'] = handle_file(str(last))
+              run_task(params_b, clip_b)
+          except Exception as first_error:
+              print('I2V handle fallback after:', repr(first_error), flush=True)
+              params_b['start_image'] = str(last.resolve())
+              run_task(params_b, clip_b)
+
+          concat = WORK/'concat.txt'
+          concat.write_text(f"file '{clip_a.resolve()}'\nfile '{clip_b.resolve()}'\n")
           subprocess.run([
               'ffmpeg','-y','-f','concat','-safe','0','-i',str(concat),
               '-vf','scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=24',
-              '-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p',str(silent)
+              '-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p',str(WORK/'continuous_silent.mp4')
           ], check=True)
-          print('CONTINUOUS VIDEO READY', silent)
           PY
-
-      - name: Save scene checkpoints
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: lab/work
-          key: wan-blitz-scenes-v2-${{ github.run_id }}
-
-      - name: Stop cleanly after scene-generation failure
-        if: steps.scenes.outcome == 'failure'
-        run: |
-          echo 'Scene generation stopped. Existing scene checkpoints were saved for the next run.'
-          exit 1
 
       - name: Generate German open-source narration
         run: |
@@ -176,7 +179,7 @@ jobs:
           git config user.name "TAYVORIQ Lab Bot"
           git config user.email "actions@users.noreply.github.com"
           git add lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
-          git commit -m "lab: add open-source Blitz AI video [skip ci]" || exit 0
+          git commit -m "lab: add LTX 2.5 Blitz AI video [skip ci]" || exit 0
           git push origin HEAD:lab/wan-blitz-open-source
 
       - name: Upload downloadable artifact
