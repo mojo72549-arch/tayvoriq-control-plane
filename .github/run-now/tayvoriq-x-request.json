@@ -2,11 +2,11 @@
   "request": "tayvoriq-x-production",
   "topic": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
   "trend_id": "1",
-  "requested_at": "2026-08-28T18:09:00Z",
-  "request_nonce": "spacex-g4-semantic-visual-guard-b994e130-20260828",
+  "requested_at": "2026-08-28T18:19:00Z",
+  "request_nonce": "spacex-g4-nasa-manifest-fix-89fcf233-20260828",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
-  "implementation_sha_expected": "b994e13006e3231d73554eea72bd03fa48609621",
+  "implementation_sha_expected": "89fcf233d566e28159895d58f5238e9540bbef55",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-1737-trend-1",
   "technical_replay": true,
@@ -14,7 +14,7 @@
   "reuse_exact_source_request": true,
   "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
-  "retry_of_run_id": 33174120101,
+  "retry_of_run_id": 33197999349,
   "recovery_generation": 4,
   "recovery_strategy": "same-generation-deterministic-codefix-replay",
   "hardening": {
@@ -37,8 +37,9 @@
     "strict_visual_audit_required": true,
     "strict_pronunciation_audit_required": true,
     "generic_visual_fallback_forbidden": true,
-    "spacex_entity_visual_anchor_required": true
+    "spacex_entity_visual_anchor_required": true,
+    "nasa_manifest_shape_regression_test_required": true
   },
-  "reason": "same approved SpaceX request after deterministic implementation codefix b994e130: SpaceX/Starship scenes are forcibly rebound to entity-anchored rocket queries; rocket asset lookup accepts semantically matching NASA catalogue video only and no longer falls back to generic Pexels/news/city/tree footage; if no matching asset exists visual repair fails closed; keep recovery generation 4, exact source request, evidence, voice contracts and all quality gates unchanged",
+  "reason": "same approved SpaceX request after deterministic implementation codefix 89fcf233: normalize NASA asset manifests returned as URL lists or Collection+JSON, retain SpaceX/rocket semantic metadata filtering, allow official NASA SpaceX Falcon 9/Crew search anchors, forbid generic Pexels/news/city/tree fallback, and add regression coverage; keep recovery generation 4, exact source request, sources and quality gates unchanged",
   "slot": "evening"
 }
