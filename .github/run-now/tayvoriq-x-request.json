@@ -2,10 +2,11 @@
   "request": "tayvoriq-x-production",
   "topic": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
   "trend_id": "1",
-  "requested_at": "2026-08-28T09:40:00Z",
-  "request_nonce": "spacex-g4-visual-network-resilience-b43d5cf5-20260828",
+  "requested_at": "2026-08-28T18:09:00Z",
+  "request_nonce": "spacex-g4-semantic-visual-guard-b994e130-20260828",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
+  "implementation_sha_expected": "b994e13006e3231d73554eea72bd03fa48609621",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-1737-trend-1",
   "technical_replay": true,
@@ -13,7 +14,7 @@
   "reuse_exact_source_request": true,
   "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
-  "retry_of_run_id": 33171660285,
+  "retry_of_run_id": 33174120101,
   "recovery_generation": 4,
   "recovery_strategy": "same-generation-deterministic-codefix-replay",
   "hardening": {
@@ -34,8 +35,10 @@
     "quality_gates_weakened": false,
     "provider_failure_must_not_reuse_stale_audit": true,
     "strict_visual_audit_required": true,
-    "strict_pronunciation_audit_required": true
+    "strict_pronunciation_audit_required": true,
+    "generic_visual_fallback_forbidden": true,
+    "spacex_entity_visual_anchor_required": true
   },
-  "reason": "same approved SpaceX request after preflight passed 338 tests and the real blocker was isolated to a Pexels ReadTimeout during local visual repair; implementation b43d5cf5 now prefers credential-free NASA real rocket footage for rocket topics and treats Pexels/NASA network errors as local soft failures; keep recovery generation 4, exact source context and all quality gates unchanged",
+  "reason": "same approved SpaceX request after deterministic implementation codefix b994e130: SpaceX/Starship scenes are forcibly rebound to entity-anchored rocket queries; rocket asset lookup accepts semantically matching NASA catalogue video only and no longer falls back to generic Pexels/news/city/tree footage; if no matching asset exists visual repair fails closed; keep recovery generation 4, exact source request, evidence, voice contracts and all quality gates unchanged",
   "slot": "evening"
 }
