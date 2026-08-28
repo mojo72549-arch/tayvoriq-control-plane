@@ -91,10 +91,7 @@ jobs:
               )
               if request_id and telegram_bound and auto_repair:
                   matches.append((path, data))
-          if not matches:
-              print('')
-          else:
-              print(str(matches[0][0]))
+          print(str(matches[0][0]) if matches else '')
           PY
           )
           if [ -z "$owner" ]; then
@@ -134,11 +131,11 @@ jobs:
           mkdir -p /tmp/codefix-diag
           artifact_name="tayvoriq-x-diagnostics-${run_id}-attempt-${run_attempt}"
           gh run download "$run_id" -n "$artifact_name" -D /tmp/codefix-diag >/dev/null 2>&1 || true
-
           manifest=$(find /tmp/codefix-diag -type f -path '*/control-plane/production-manifest.json' -print -quit 2>/dev/null || true)
           if [ -z "$manifest" ] && [ -f /tmp/codefix-diag/control-plane/production-manifest.json ]; then
             manifest=/tmp/codefix-diag/control-plane/production-manifest.json
           fi
+
           failed_control_sha=$(python - "$manifest" <<'PY'
           import json, sys
           from pathlib import Path
@@ -166,7 +163,6 @@ jobs:
           PY
             )
           fi
-
           failure_signature=$(python - <<'PY'
           import json
           print(str(json.load(open('/tmp/codefix-policy.json',encoding='utf-8')).get('failure_signature') or ''))
@@ -192,19 +188,20 @@ jobs:
           from pathlib import Path
           path=Path(sys.argv[1]); run_id=int(sys.argv[2]); signature=sys.argv[3]; state=sys.argv[4]
           failed_control=sys.argv[5]; failed_impl=sys.argv[6]
-          if not path.is_file():
-              raise SystemExit('CODEFIX_REQUEST_FILE_MISSING')
+          if not path.is_file(): raise SystemExit('CODEFIX_REQUEST_FILE_MISSING')
           data=json.loads(path.read_text(encoding='utf-8'))
           if int(data.get('golden_path_run_id') or 0) != run_id:
-              print('STALE')
-              raise SystemExit(0)
+              print('STALE'); raise SystemExit(0)
           request_id=str(data.get('request_id') or '').strip()
           topic=str(data.get('topic') or '').strip()
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           generation=max(0,int(data.get('recovery_generation') or 0))
-          data['status']='AWAITING_CODEFIX'
+          # Keep the source request dispatchable. AWAITING_CODEFIX is a recovery
+          # substate; Golden Path's immutable source contract remains DISPATCHED.
+          data['status']='DISPATCHED'
           data['codefix_recovery']={
               'status':'ARMED',
+              'request_substate':'AWAITING_CODEFIX',
               'failed_run_id':run_id,
               'failure_signature':signature,
               'failure_state':state,
@@ -219,11 +216,8 @@ jobs:
           data['state_history']=list(data.get('state_history') or []) + [{
               'state':'AWAITING_CODEFIX','at':now,'actor':'tayvoriq-deterministic-codefix-continuity',
               'meta':{
-                  'failed_run_id':run_id,
-                  'failure_signature':signature,
-                  'failure_state':state,
-                  'failed_control_plane_sha':failed_control,
-                  'failed_implementation_sha':failed_impl,
+                  'failed_run_id':run_id,'failure_signature':signature,'failure_state':state,
+                  'failed_control_plane_sha':failed_control,'failed_implementation_sha':failed_impl,
                   'recovery_generation':generation,
                   'reason':'deterministic-failure-armed-for-verified-codefix-replay'
               }
@@ -246,10 +240,7 @@ jobs:
               exit 0
             fi
             git commit -m "ops: arm deterministic codefix continuity ${request_id} run ${run_id}"
-            if git push origin HEAD:main; then
-              armed=true
-              break
-            fi
+            if git push origin HEAD:main; then armed=true; break; fi
             sleep $((attempt * 2))
           done
           [ "$armed" = "true" ] || { echo 'CODEFIX_ARM_PUSH_FAILED'; exit 1; }
@@ -285,8 +276,9 @@ jobs:
               try: data=json.loads(path.read_text(encoding='utf-8'))
               except Exception: continue
               codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
-              if str(data.get('status') or '') != 'AWAITING_CODEFIX': continue
+              if str(data.get('status') or '') != 'DISPATCHED': continue
               if str(codefix.get('status') or '') != 'ARMED': continue
+              if str(codefix.get('request_substate') or '') != 'AWAITING_CODEFIX': continue
               try: run_id=int(codefix.get('failed_run_id') or data.get('golden_path_run_id') or 0)
               except (TypeError,ValueError): run_id=0
               if not run_id or int(data.get('golden_path_run_id') or 0) != run_id: continue
@@ -351,11 +343,9 @@ jobs:
           detected=false
           reason=''
           if [ "$implementation_changed" = "true" ]; then
-            detected=true
-            reason='implementation-sha-changed'
+            detected=true; reason='implementation-sha-changed'
           elif [ "$relevant_control" = "true" ]; then
-            detected=true
-            reason='relevant-control-code-changed'
+            detected=true; reason='relevant-control-code-changed'
           fi
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
@@ -430,8 +420,9 @@ jobs:
           data=json.loads(path.read_text(encoding='utf-8'))
           codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
           if str(data.get('request_id') or '').strip()!=request_id: raise SystemExit('CODEFIX_REPLAY_REQUEST_ID_CHANGED')
-          if str(data.get('status') or '')!='AWAITING_CODEFIX': raise SystemExit('CODEFIX_REPLAY_REQUEST_NOT_ARMED')
+          if str(data.get('status') or '')!='DISPATCHED': raise SystemExit('CODEFIX_REPLAY_REQUEST_NOT_DISPATCHABLE')
           if str(codefix.get('status') or '')!='ARMED': raise SystemExit('CODEFIX_REPLAY_STATE_NOT_ARMED')
+          if str(codefix.get('request_substate') or '')!='AWAITING_CODEFIX': raise SystemExit('CODEFIX_REPLAY_SUBSTATE_NOT_ARMED')
           if int(data.get('golden_path_run_id') or 0)!=old_run: raise SystemExit('CODEFIX_REPLAY_REQUEST_ALREADY_REBOUND')
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           previous=list(data.get('previous_golden_path_run_ids') or [])
@@ -446,7 +437,8 @@ jobs:
           data['recovery_failure_signature']=signature
           data['recovery_dispatched_at']=now
           codefix.update({
-              'status':'REPLAY_DISPATCHED','replay_run_id':new_run,'replayed_at':now,
+              'status':'REPLAY_DISPATCHED','request_substate':'DISPATCHED',
+              'replay_run_id':new_run,'replayed_at':now,
               'replay_control_plane_sha':control_sha,'replay_implementation_sha':impl_sha,
               'codefix_detection_reason':reason,'quality_gates_weakened':False
           })
