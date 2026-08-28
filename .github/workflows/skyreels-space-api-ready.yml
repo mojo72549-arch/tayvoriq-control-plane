@@ -51,7 +51,8 @@ jobs:
           else:
               raise SystemExit('SPACE_BUILD_TIMEOUT_LAST_STAGE_'+str(final))
 
-          client = Client(space_id, hf_token=token, verbose=False)
+          # The Space is public. Current gradio_client no longer accepts the old hf_token kwarg.
+          client = Client(space_id, verbose=False)
           cfg = client.view_api(return_format='dict')
           print('NAMED_ENDPOINTS', list((cfg.get('named_endpoints') or {}).keys()))
           if '/generate_video' not in (cfg.get('named_endpoints') or {}):
