@@ -61,9 +61,6 @@ TRANSIENT_PATTERNS = (
     r"circuit already open",
 )
 
-# These failures are produced by deterministic repository code/tests. Re-running
-# the exact same SHA cannot repair them and must never create a fresh production
-# generation.
 DETERMINISTIC_PREFLIGHT_PATTERNS = (
     r"\bprefLIGHT_failed\b",
     r"production blocked before render:\s*preflight outcome=failure",
@@ -134,11 +131,6 @@ def classify_failure(
             "Bounded local repair already ran and the strict audit still failed; keep the exact request armed for a verified codefix replay in the same recovery generation.",
         )
 
-    # A final publishability handoff is authoritative. GitHub's failed-log view
-    # can include shell source such as `echo "Missing secret"` or comparisons
-    # against EXTERNAL_ACTION_REQUIRED from other steps. It can also include
-    # earlier provider quota/billing fallback text. None of those historical or
-    # source-code lines may override the terminal gate-specific state.
     if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
         if generation >= maximum:
             state = "PUBLISHABLE_CODEFIX_REQUIRED"
@@ -176,8 +168,18 @@ def classify_failure(
         return RecoveryDecision("rerun", state, True, "same-run", generation, generation, maximum, _stable_signature(state, text), "The failure is transient; retry the same run without creating a new generation.")
 
     if generation >= maximum:
-        state = "RECOVERY_CIRCUIT_OPEN"
-        return RecoveryDecision("exhausted", state, False, "none", generation, None, maximum, _stable_signature(state, text), f"Fresh recovery limit reached ({generation}/{maximum}).")
+        state = "RECOVERY_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic",
+            state,
+            False,
+            "verified-codefix-replay",
+            generation,
+            generation,
+            maximum,
+            _stable_signature(state, text),
+            "The owned internal request reached the fresh-generation ceiling. Preserve it and resume only after a verified relevant code revision instead of opening a dead recovery circuit.",
+        )
 
     state = "REQUEST_BOUND_RECOVERY_REQUIRED"
     return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "A bounded request-bound recovery generation may be started.")
