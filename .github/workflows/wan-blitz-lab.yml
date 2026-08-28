@@ -13,6 +13,8 @@ jobs:
   generate-blitz:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,128 +30,277 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
-      - name: Generate two continuous LTX 2.5 sequences
+      - name: Restore video checkpoints
+        uses: actions/cache/restore@v4
+        with:
+          path: lab/work
+          key: blitz-multiprovider-v1-${{ github.run_id }}
+          restore-keys: |
+            blitz-multiprovider-v1-
+
+      - name: Multi-provider health preflight
+        run: |
+          python - <<'PY'
+          import os
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from gradio_client import Client
+
+          token = os.getenv('HF_TOKEN') or None
+          spaces = [
+              'Lightricks/LTX-2.5',
+              'Lightricks/ltx-video-distilled',
+              'zerogpu-aoti/wan2-2-fp8da-aoti-faster',
+          ]
+          if token:
+              spaces += ['kaidjuric/cogvideox-5b-text-to-video', 'efecelik/video-generator']
+
+          def probe(space):
+              try:
+                  c = Client(space, token=token, verbose=False)
+                  c.view_api()
+                  return space, 'READY'
+              except Exception as e:
+                  return space, f'DOWN: {type(e).__name__}: {e}'
+
+          with ThreadPoolExecutor(max_workers=len(spaces)) as ex:
+              futs = [ex.submit(probe, s) for s in spaces]
+              for fut in as_completed(futs):
+                  space, state = fut.result()
+                  print(f'PROVIDER {space}: {state}', flush=True)
+          PY
+
+      - name: Generate resilient continuous AI sequences
+        id: scenes
+        continue-on-error: true
         run: |
           mkdir -p lab/output lab/work
           python - <<'PY'
-          import json, shutil, subprocess, time
+          import json, os, shutil, subprocess, time, urllib.request
           from pathlib import Path
           from gradio_client import Client, handle_file
+          from huggingface_hub import HfApi
 
           WORK = Path('lab/work')
-          client = Client('RioShiina/LTX-2.5', verbose=False)
+          token = os.getenv('HF_TOKEN') or None
           seed = 614273
-          negative = 'cartoon, anime, game render, low quality, inconsistent identity, inconsistent clothing, duplicate people, extra limbs, deformed hands, blurry, jittery, distorted, text, subtitles, watermark, logo, still image'
+          negative = ('cartoon, anime, game render, low quality, inconsistent identity, inconsistent clothing, '
+                      'duplicate people, extra limbs, deformed hands, blurry, jittery, distorted, text, subtitles, '
+                      'watermark, logo, still image')
 
-          def extract_task_id(obj):
-              if isinstance(obj, str):
-                  try:
-                      obj = json.loads(obj)
-                  except Exception:
-                      return obj if obj.strip() else None
-              if isinstance(obj, dict):
-                  for key in ('task_id','id','taskId'):
-                      if obj.get(key): return str(obj[key])
-                  for value in obj.values():
-                      found = extract_task_id(value)
-                      if found: return found
-              if isinstance(obj, (list, tuple)):
-                  for value in obj:
-                      found = extract_task_id(value)
-                      if found: return found
-              return None
+          class GlobalQuota(RuntimeError): pass
 
-          def poll(task_id, timeout=900):
-              start = time.time()
-              while time.time() - start < timeout:
-                  status = client.predict(task_id, api_name='/get_task_status')
-                  if isinstance(status, str):
-                      try: status = json.loads(status)
-                      except Exception: pass
-                  print('STATUS', status, flush=True)
-                  if isinstance(status, dict):
-                      state = str(status.get('status','')).lower()
-                      if state == 'completed': return status
-                      if state == 'failed': raise RuntimeError(f'LTX task failed: {status}')
-                      result = status.get('result')
-                      if isinstance(result, dict) and result.get('videos'):
-                          return status
-                  time.sleep(5)
-              raise TimeoutError(f'LTX task timeout: {task_id}')
+          def quota_error(exc):
+              m = repr(exc).lower()
+              return ('zerogpu' in m and 'quota' in m) or 'exceeded your zerogpu quota' in m
 
-          def resolve_video(status):
-              result = status.get('result', status) if isinstance(status, dict) else status
-              candidates = []
-              if isinstance(result, dict):
-                  if result.get('video_path'): candidates.append(result['video_path'])
-                  vids = result.get('videos') or []
-                  if isinstance(vids, str): vids = [vids]
-                  candidates.extend(vids)
-              elif isinstance(result, str):
-                  candidates.append(result)
-              for item in candidates:
-                  if isinstance(item, str) and item:
-                      return item
-              raise RuntimeError(f'Cannot resolve generated video: {status!r}')
+          def client(space):
+              return Client(space, token=token, verbose=False)
 
-          def run_task(params, out_path):
-              print('RUN PARAMS', json.dumps(params, ensure_ascii=False), flush=True)
-              submitted = client.predict(json.dumps(params), api_name='/run')
-              print('SUBMITTED', submitted, flush=True)
-              task_id = extract_task_id(submitted)
-              if not task_id:
-                  raise RuntimeError(f'No task id returned: {submitted!r}')
-              status = poll(task_id)
-              src = resolve_video(status)
+          def resolve_path(obj):
+              x = obj
+              if isinstance(x, (tuple, list)) and x:
+                  x = x[0]
+              if isinstance(x, dict):
+                  x = x.get('video') or x.get('path') or x.get('video_path') or x
+              if isinstance(x, dict):
+                  x = x.get('path') or x.get('video')
+              if hasattr(x, 'path'):
+                  x = x.path
+              if not isinstance(x, str):
+                  raise RuntimeError(f'Cannot resolve video output: {obj!r}')
+              return x
+
+          def materialize(src, dst):
+              src = str(src)
               if src.startswith('http://') or src.startswith('https://'):
-                  import urllib.request
-                  urllib.request.urlretrieve(src, out_path)
+                  urllib.request.urlretrieve(src, dst)
               else:
-                  shutil.copy2(src, out_path)
-              print('VIDEO READY', out_path, flush=True)
+                  shutil.copy2(src, dst)
+
+          def quality_gate(path, label):
+              if not path.exists() or path.stat().st_size < 150_000:
+                  raise RuntimeError(f'{label}: output missing/too small')
+              raw = subprocess.check_output([
+                  'ffprobe','-v','error','-select_streams','v:0',
+                  '-show_entries','stream=width,height,duration:format=duration',
+                  '-of','json',str(path)
+              ], text=True)
+              data = json.loads(raw)
+              stream = (data.get('streams') or [{}])[0]
+              duration = float(stream.get('duration') or (data.get('format') or {}).get('duration') or 0)
+              width, height = int(stream.get('width') or 0), int(stream.get('height') or 0)
+              if duration < 2.0 or width < 400 or height < 400:
+                  raise RuntimeError(f'{label}: quality gate failed duration={duration} size={width}x{height}')
+              print(f'QUALITY PASS {label}: {duration:.2f}s {width}x{height} {path.stat().st_size} bytes', flush=True)
+
+          def last_frame(video, image):
+              subprocess.run([
+                  'ffmpeg','-y','-sseof','-0.08','-i',str(video),'-frames:v','1','-q:v','2',str(image)
+              ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+          # ---------- LTX 2.5 official ----------
+          def ltx25(prompt, image, out):
+              c = client('Lightricks/LTX-2.5')
+              img = handle_file(str(image)) if image else None
+              try:
+                  result = c.predict(
+                      prompt, img, 1472, 832, 5.0, seed, 'conv', False, False, False,
+                      api_name='/run'
+                  )
+              except Exception as e:
+                  if quota_error(e): raise GlobalQuota(str(e)) from e
+                  raise
+              materialize(resolve_path(result), out)
+              quality_gate(out, 'LTX-2.5')
+
+          # ---------- LTX Fast legacy ----------
+          def ltx_fast(prompt, image, out):
+              c = client('Lightricks/ltx-video-distilled')
+              try:
+                  if image is None:
+                      result = c.predict(
+                          prompt, negative, None, None, 896, 512, 'text-to-video', 3.5, 9,
+                          seed, False, 1.0, True, api_name='/text_to_video'
+                      )
+                  else:
+                      result = c.predict(
+                          prompt, negative, handle_file(str(image)), None, 896, 512, 'image-to-video', 3.5, 9,
+                          seed, False, 1.0, True, api_name='/image_to_video'
+                      )
+              except Exception as e:
+                  if quota_error(e): raise GlobalQuota(str(e)) from e
+                  raise
+              materialize(resolve_path(result), out)
+              quality_gate(out, 'LTX-Fast')
+
+          # ---------- Wan2.2 mirror pool (I2V) ----------
+          def wan_spaces():
+              ids = ['zerogpu-aoti/wan2-2-fp8da-aoti-faster']
+              try:
+                  api = HfApi(token=token)
+                  for s in api.list_spaces(search='Wan2.2 14B Fast', limit=12):
+                      sid = getattr(s, 'id', None)
+                      if sid and sid not in ids:
+                          ids.append(sid)
+              except Exception as e:
+                  print('WAN discovery warning:', repr(e), flush=True)
+              return ids[:8]
+
+          def wan(prompt, image, out):
+              if image is None:
+                  raise RuntimeError('Wan fallback requires continuation image')
+              errors = []
+              for space in wan_spaces():
+                  try:
+                      print('TRY WAN', space, flush=True)
+                      c = client(space)
+                      result = c.predict(
+                          handle_file(str(image)), prompt, 6, negative, 3.5, 1.0, 1.0,
+                          seed, False, api_name='/generate_video'
+                      )
+                      materialize(resolve_path(result), out)
+                      quality_gate(out, f'WAN {space}')
+                      return
+                  except Exception as e:
+                      if quota_error(e): raise GlobalQuota(str(e)) from e
+                      errors.append(f'{space}: {type(e).__name__}: {e}')
+                      print('WAN failed', errors[-1], flush=True)
+              raise RuntimeError('All Wan mirrors failed: ' + ' | '.join(errors))
+
+          # ---------- CogVideoX emergency reserve (only with free HF token) ----------
+          def cog_t2v(prompt, out):
+              if not token:
+                  raise RuntimeError('CogVideoX skipped without HF_TOKEN because its ZeroGPU reservation is too large for anonymous quota')
+              c = client('kaidjuric/cogvideox-5b-text-to-video')
+              try:
+                  result = c.predict(prompt, 25, 33, 6.0, negative, seed, api_name='/generate')
+              except Exception as e:
+                  if quota_error(e): raise GlobalQuota(str(e)) from e
+                  raise
+              materialize(resolve_path(result), out)
+              quality_gate(out, 'CogVideoX-T2V')
+
+          def cog_i2v(prompt, image, out):
+              if not token:
+                  raise RuntimeError('CogVideoX I2V skipped without HF_TOKEN')
+              c = client('efecelik/video-generator')
+              try:
+                  result = c.predict(handle_file(str(image)), prompt, negative, 33, 6.0, 25, seed, api_name='/generate_video')
+              except Exception as e:
+                  if quota_error(e): raise GlobalQuota(str(e)) from e
+                  raise
+              materialize(resolve_path(result), out)
+              quality_gate(out, 'CogVideoX-I2V')
+
+          def generate_segment(name, prompt, image=None):
+              out = WORK / f'{name}.mp4'
+              if out.exists() and out.stat().st_size > 150_000:
+                  try:
+                      quality_gate(out, f'CHECKPOINT {name}')
+                      print('REUSE CHECKPOINT', out, flush=True)
+                      return out
+                  except Exception:
+                      out.unlink(missing_ok=True)
+
+              attempts = [('LTX-2.5', ltx25), ('LTX-Fast', ltx_fast)]
+              if image is not None:
+                  attempts += [('Wan2.2', wan)]
+                  if token: attempts += [('CogVideoX-I2V', cog_i2v)]
+              elif token:
+                  attempts += [('CogVideoX-T2V', cog_t2v)]
+
+              errors = []
+              for label, fn in attempts:
+                  try:
+                      print(f'PROVIDER TRY {name}: {label}', flush=True)
+                      if label == 'CogVideoX-T2V':
+                          fn(prompt, out)
+                      else:
+                          fn(prompt, image, out)
+                      print(f'PROVIDER WIN {name}: {label}', flush=True)
+                      return out
+                  except GlobalQuota:
+                      raise
+                  except Exception as e:
+                      msg = f'{label}: {type(e).__name__}: {e}'
+                      errors.append(msg)
+                      print('PROVIDER FAIL', msg, flush=True)
+              raise RuntimeError(f'No provider could generate {name}: ' + ' | '.join(errors))
 
           prompt_a = '''One continuous cinematic photorealistic 9:16 movie shot at night on a rain-soaked rooftop in a modern European city. The SAME 30-year-old man throughout: short dark wet hair, light stubble, black waterproof rain jacket, dark trousers, black shoes. Heavy rain and wind visibly move his jacket and hair. He looks nervously at the storm clouds. The camera slowly tracks toward him. A violent white-blue lightning bolt suddenly strikes the rooftop several meters beside him. He visibly flinches, his entire body jerks, he loses balance, stumbles backward on the wet concrete, reaches out with both arms trying to recover, then falls hard onto the rooftop and remains motionless. Camera naturally follows the action without cutting away. Real human motion, realistic body physics, realistic rain splashes and city lights, serious documentary-cinematic realism, no gore, no presenter.'''
 
-          params_a = {
-              'task_type':'t2v', 'prompt':prompt_a, 'negative_prompt':negative,
-              'resolution':'544p', 'aspect_ratio':'9:16 (Portrait)',
-              'duration':9.0, 'fps':'24fps', 'seed':seed,
-              'use_spatial_upscaler':False, 'use_temporal_upscaler':False,
-              'zero_gpu_duration':60
-          }
-          clip_a = WORK/'sequence_a.mp4'
-          run_task(params_a, clip_a)
-
-          last = WORK/'continuation.png'
-          subprocess.run(['ffmpeg','-y','-sseof','-0.08','-i',str(clip_a),'-frames:v','1',str(last)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
           prompt_b = '''Continue immediately from this exact frame as the SAME movie, SAME rooftop, SAME fallen man, SAME black rain jacket, SAME rain, SAME city skyline and SAME cinematic visual language. The fallen man remains on the wet rooftop. A second adult man in a dark hooded rain jacket urgently runs out of the rooftop access door into frame, crosses the wet roof, drops to his knees beside the victim, speaks to him and checks for a response. He clearly takes a smartphone from his pocket, calls emergency services on speaker and checks the victim's breathing. Moments later blue emergency-light reflections appear across the wet roof. Two realistic European paramedics run through the access door carrying a medical bag, kneel beside the same victim and take over while the helper moves aside. Camera slowly pulls back at the end. Real human movement, natural hands and body physics, continuous rain, documentary-cinematic photorealism, no gore, no logos, no text.'''
 
-          params_b = {
-              'task_type':'i2v', 'prompt':prompt_b, 'start_image':str(last.resolve()),
-              'negative_prompt':negative, 'resolution':'544p', 'aspect_ratio':'9:16 (Portrait)',
-              'duration':9.0, 'fps':'24fps', 'seed':seed,
-              'use_spatial_upscaler':False, 'use_temporal_upscaler':False,
-              'zero_gpu_duration':60
-          }
-          clip_b = WORK/'sequence_b.mp4'
-          # Some Gradio high-level APIs accept uploaded file handles rather than plain paths.
           try:
-              params_b['start_image'] = handle_file(str(last))
-              run_task(params_b, clip_b)
-          except Exception as first_error:
-              print('I2V handle fallback after:', repr(first_error), flush=True)
-              params_b['start_image'] = str(last.resolve())
-              run_task(params_b, clip_b)
+              a = generate_segment('sequence_a', prompt_a, None)
+              anchor = WORK/'continuation.png'
+              last_frame(a, anchor)
+              b = generate_segment('sequence_b', prompt_b, anchor)
+          except GlobalQuota as e:
+              raise RuntimeError('GLOBAL_HF_ZEROGPU_QUOTA_EXHAUSTED; checkpoints preserved; do not burn retries: ' + str(e)) from e
 
           concat = WORK/'concat.txt'
-          concat.write_text(f"file '{clip_a.resolve()}'\nfile '{clip_b.resolve()}'\n")
+          concat.write_text(f"file '{a.resolve()}'\nfile '{b.resolve()}'\n")
           subprocess.run([
               'ffmpeg','-y','-f','concat','-safe','0','-i',str(concat),
               '-vf','scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=24',
               '-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p',str(WORK/'continuous_silent.mp4')
           ], check=True)
+          quality_gate(WORK/'continuous_silent.mp4', 'CONTINUOUS MASTER')
           PY
+
+      - name: Save video checkpoints
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: lab/work
+          key: blitz-multiprovider-v1-${{ github.run_id }}
+
+      - name: Stop cleanly if all free providers are unavailable
+        if: steps.scenes.outcome == 'failure'
+        run: |
+          echo 'No usable provider completed the sequence. Checkpoints were preserved. No paid fallback was used.'
+          exit 1
 
       - name: Generate German open-source narration
         run: |
@@ -179,7 +330,7 @@ jobs:
           git config user.name "TAYVORIQ Lab Bot"
           git config user.email "actions@users.noreply.github.com"
           git add lab/output/TAYVORIQ_Blitz_OpenSource_AI.mp4
-          git commit -m "lab: add LTX 2.5 Blitz AI video [skip ci]" || exit 0
+          git commit -m "lab: add resilient multi-provider Blitz AI video [skip ci]" || exit 0
           git push origin HEAD:lab/wan-blitz-open-source
 
       - name: Upload downloadable artifact
