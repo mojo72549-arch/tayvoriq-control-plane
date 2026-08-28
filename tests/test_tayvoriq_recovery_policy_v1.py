@@ -37,19 +37,21 @@ def test_transient_failure_uses_same_run_before_fresh_generation():
     assert decision.next_generation == 2
 
 
-def test_transient_failure_stops_same_run_retry_after_two_attempts():
+def test_transient_failure_after_same_run_budget_enters_codefix_continuity_at_ceiling():
     decision = classify_failure(
         "HTTP 503 temporarily unavailable",
         run_attempt=3,
         recovery_generation=4,
         max_generations=4,
     )
-    assert decision.mode == "exhausted"
-    assert decision.state == "RECOVERY_CIRCUIT_OPEN"
+    assert decision.mode == "deterministic"
+    assert decision.state == "RECOVERY_CODEFIX_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
     assert decision.retry_allowed is False
+    assert decision.next_generation == 4
 
 
-def test_fresh_internal_recovery_is_bounded():
+def test_fresh_internal_recovery_is_bounded_then_preserved_for_codefix():
     decision = classify_failure(
         "internal render checkpoint failed",
         recovery_generation=3,
@@ -63,8 +65,34 @@ def test_fresh_internal_recovery_is_bounded():
         recovery_generation=4,
         max_generations=4,
     )
-    assert stopped.mode == "exhausted"
-    assert stopped.next_generation is None
+    assert stopped.mode == "deterministic"
+    assert stopped.state == "RECOVERY_CODEFIX_REQUIRED"
+    assert stopped.retry_kind == "verified-codefix-replay"
+    assert stopped.next_generation == 4
+
+
+def test_publishability_failure_at_ceiling_is_codefix_not_dead_circuit():
+    decision = classify_failure(
+        "Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1",
+        recovery_generation=4,
+        max_generations=4,
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "PUBLISHABLE_CODEFIX_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.next_generation == 4
+
+
+def test_exhausted_local_checkpoint_repair_is_armed_for_codefix_immediately():
+    decision = classify_failure(
+        "Bounded localized repair exhausted after 3 audit-driven rounds with residual blockers",
+        recovery_generation=2,
+        max_generations=4,
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.next_generation == 2
 
 
 def test_exact_request_duplicate_during_recovery_is_contract_failure_not_new_angle():
