@@ -3,6 +3,11 @@ name: SkyReels Kaggle Fallback
 on:
   workflow_dispatch:
   workflow_call:
+  push:
+    branches:
+      - 'lab/skyreels-v3-engine'
+    paths:
+      - 'lab/kaggle_skyreels/trigger.txt'
 
 permissions:
   contents: read
