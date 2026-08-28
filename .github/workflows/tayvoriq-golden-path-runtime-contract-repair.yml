@@ -26,6 +26,13 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
+          gh_open = '${' + '{'
+          owner_found = gh_open + ' steps.owner.outputs.found }}'
+          owner_request = gh_open + ' steps.owner.outputs.request_id }}'
+          verify_run = gh_open + ' steps.verify.outputs.new_run_id }}'
+          classify_state = gh_open + ' steps.classify.outputs.recovery_state }}'
+          owner_topic = gh_open + ' steps.owner.outputs.topic }}'
+
           golden = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
           text = golden.read_text(encoding='utf-8')
 
@@ -65,7 +72,7 @@ jobs:
               # durable request on current main/implementation after a bounded
               # technical/editorial repair. Generation limits below prevent loops;
               # publication thresholds remain unchanged.
-              if [ "${{ steps.owner.outputs.found }}" = "true" ]; then
+              if [ "''' + owner_found + '''" = "true" ]; then
                 needs_fresh_generation=true
                 recovery_state=REQUEST_BOUND_RECOVERY_REQUIRED
               else
@@ -82,7 +89,7 @@ jobs:
           old_silent = '''      - name: Record silent autonomous continuation
         if: steps.guard.outputs.ignore != 'true' && (steps.classify.outputs.should_retry == 'true' || steps.fresh.outputs.requeued == 'true')
         run: |
-          echo "Autonomous continuation active for request=${{ steps.owner.outputs.request_id }} run=$RUN_ID; no technical-error Telegram spam emitted."
+          echo "Autonomous continuation active for request=''' + owner_request + ''' run=$RUN_ID; no technical-error Telegram spam emitted."
 '''
           new_visible = '''      - name: Telegram autonomous recovery resumed
         if: steps.guard.outputs.ignore != 'true' && steps.fresh.outputs.requeued == 'true' && steps.verify.outputs.started == 'true'
@@ -91,9 +98,9 @@ jobs:
           set -euo pipefail
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
-          new_run="${{ steps.verify.outputs.new_run_id }}"
-          state="${{ steps.classify.outputs.recovery_state }}"
-          message="🔧 TAYVORIQ · Recovery übernommen%0A%0AThema: ${{ steps.owner.outputs.topic }}%0AAlter Run: ${RUN_ID}%0ANeuer Run: ${new_run}%0A%0A✅ Trendfreigabe und Quellen bleiben erhalten.%0A➡️ Der technische Stopp wurde aufgegriffen; die Produktion läuft im neuen Recovery-Run weiter.%0AStatus: ${state}%0A%0AFür dich: ✅ Keine Aktion nötig."
+          new_run="''' + verify_run + '''"
+          state="''' + classify_state + '''"
+          message="🔧 TAYVORIQ · Recovery übernommen%0A%0AThema: ''' + owner_topic + '''%0AAlter Run: ${RUN_ID}%0ANeuer Run: ${new_run}%0A%0A✅ Trendfreigabe und Quellen bleiben erhalten.%0A➡️ Der technische Stopp wurde aufgegriffen; die Produktion läuft im neuen Recovery-Run weiter.%0AStatus: ${state}%0A%0AFür dich: ✅ Keine Aktion nötig."
           curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
@@ -102,7 +109,7 @@ jobs:
       - name: Record same-run transient continuation
         if: steps.guard.outputs.ignore != 'true' && steps.classify.outputs.should_retry == 'true'
         run: |
-          echo "Same-run transient recovery active for request=${{ steps.owner.outputs.request_id }} run=$RUN_ID."
+          echo "Same-run transient recovery active for request=''' + owner_request + ''' run=$RUN_ID."
 '''
           if old_silent in text:
               if text.count(old_silent) != 1:
