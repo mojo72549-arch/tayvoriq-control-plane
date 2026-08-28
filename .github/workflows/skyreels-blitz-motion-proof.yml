@@ -1,0 +1,102 @@
+name: SkyReels Blitz Motion Proof
+
+on:
+  push:
+    branches:
+      - lab/skyreels-v3-engine
+    paths:
+      - '.github/workflows/skyreels-blitz-motion-proof.yml'
+      - 'lab/skyreels_v3_engine/render-trigger/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_TOKEN: ${{ secrets.HF_SKYREELS_TOKEN }}
+      HF_SPACE_ID: Mo6161/tayvoriq-skyreels-lab
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install client and ffmpeg
+        shell: bash
+        run: |
+          python -m pip install -q -U gradio_client huggingface_hub
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Generate real SkyReels motion
+        shell: bash
+        run: |
+          mkdir -p lab/output/skyreels_motion_proof
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          from gradio_client import Client
+
+          space = os.environ['HF_SPACE_ID']
+          c = Client(space, verbose=False)
+          prompt = (
+              'A single continuous photorealistic cinematic shot at night on a rain-soaked rooftop in a modern European city. '
+              'A 30-year-old man with short dark wet hair, light stubble, black waterproof jacket, dark trousers and dark shoes '
+              'walks toward camera through heavy wind-driven rain, his jacket and hair physically moving. He suddenly looks up. '
+              'A violent white-blue lightning bolt strikes the wet rooftop several meters beside him, throwing bright sparks and rain spray. '
+              'The man visibly flinches with his whole body, jerks his shoulders and arms, loses his balance and stumbles backward trying to stay upright. '
+              'Real human body motion and realistic physics, natural facial reaction, handheld cinema camera follows him, dramatic reflected city lights, '
+              'no cuts, no montage, no still image, no freeze frame, no text, no subtitles, no logo, no gore.'
+          )
+          result = c.predict(
+              prompt=prompt,
+              image=None,
+              target_length='4',
+              model_id='Skywork/SkyReels-V2-DF-1.3B-540P',
+              resolution='540P',
+              num_frames=97,
+              ar_step=0,
+              causal_attention=False,
+              causal_block_size=1,
+              base_num_frames=97,
+              overlap_history=17,
+              addnoise_condition=0,
+              guidance_scale=6.0,
+              shift=8.0,
+              inference_steps=30,
+              use_usp=False,
+              offload=True,
+              fps=24,
+              seed=614273,
+              prompt_enhancer=False,
+              teacache=True,
+              teacache_thresh=0.2,
+              use_ret_steps=True,
+              api_name='/generate_video',
+          )
+          print('RAW_RESULT', result)
+          if isinstance(result, dict):
+              src = result.get('path') or result.get('video')
+          else:
+              src = str(result)
+          if not src or not Path(src).exists():
+              raise SystemExit('SKYREELS_OUTPUT_NOT_FOUND')
+          dst = Path('lab/output/skyreels_motion_proof/skyreels_blitz_raw.mp4')
+          shutil.copy2(src, dst)
+          print('RAW_VIDEO', dst, dst.stat().st_size)
+          PY
+      - name: Create 9x16 proof master and verify video
+        shell: bash
+        run: |
+          RAW=lab/output/skyreels_motion_proof/skyreels_blitz_raw.mp4
+          OUT=lab/output/skyreels_motion_proof/TAYVORIQ_Blitz_SkyReels_MotionProof.mp4
+          ffmpeg -y -i "$RAW" -vf "crop=ih*9/16:ih:(iw-ih*9/16)/2:0,scale=1080:1920:flags=lanczos,fps=24" -c:v libx264 -preset medium -crf 20 -an -movflags +faststart "$OUT"
+          ffprobe -v error -show_entries stream=width,height,r_frame_rate -show_entries format=duration,size -of json "$OUT"
+          test -s "$OUT"
+      - name: Upload motion proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-skyreels-blitz-motion-proof
+          path: lab/output/skyreels_motion_proof/TAYVORIQ_Blitz_SkyReels_MotionProof.mp4
+          retention-days: 7
