@@ -104,15 +104,20 @@
   "contract_sha256": "f9a435a0ad9b7bcf27d33dc1450166138849b86cfafb058909d37267807da2b1",
   "dispatch_claim_run_id": 33018185622,
   "dispatch_contract_sha256": "f9a435a0ad9b7bcf27d33dc1450166138849b86cfafb058909d37267807da2b1",
-  "golden_path_run_id": 33144424029,
+  "golden_path_run_id": 33151768225,
   "previous_golden_path_run_ids": [
     33018195818,
-    33116102638
+    33116102638,
+    33144424029
   ],
   "recovery_generation": 2,
-  "retry_of_run_id": 33116102638,
+  "retry_of_run_id": 33144424029,
   "replacement_reason": "BOUNDED_ACTIVE_REVIEW_CONTINUITY_RECOVERY",
   "recovery_owner": "tayvoriq-request-continuity-watchdog",
   "recovery_failure_signature": "7446d3fed9efe1e3a594",
-  "recovery_dispatched_at": "2026-08-28T05:19:46.924558Z"
+  "recovery_dispatched_at": "2026-08-28T05:19:46.924558Z",
+  "replay_bound_by": "tayvoriq-x-replay-start-guard",
+  "replay_trigger_sha": "0527ec6d6fbba5470732470417af4d6f5922d5c2",
+  "replay_start_mode": "push_verified",
+  "replay_dispatched_at": "2026-08-28T07:31:28.388474Z"
 }
