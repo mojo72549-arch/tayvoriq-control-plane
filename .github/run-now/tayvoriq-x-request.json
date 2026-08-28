@@ -2,8 +2,8 @@
   "request": "tayvoriq-x-production",
   "topic": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
   "trend_id": "1",
-  "requested_at": "2026-08-28T10:50:00Z",
-  "request_nonce": "spacex-g4-nasa-natural-pronunciation-replay-20260828T105000Z",
+  "requested_at": "2026-08-28T09:40:00Z",
+  "request_nonce": "spacex-g4-audit-driven-recovery-hardening-20260828T094000Z",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "approved_trend_pinned": true,
@@ -13,7 +13,7 @@
   "reuse_exact_source_request": true,
   "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
-  "retry_of_run_id": 33160038058,
+  "retry_of_run_id": 33165116549,
   "recovery_generation": 4,
   "recovery_strategy": "same-generation-deterministic-codefix-replay",
   "hardening": {
@@ -36,6 +36,6 @@
     "strict_visual_audit_required": true,
     "strict_pronunciation_audit_required": true
   },
-  "reason": "same approved SpaceX checkpoint replay after canonical German pronunciation fix NASA=>Nasa on implementation commit 6d2a22eff13c087af68a3b886ef7ad535ebe919a; keep recovery generation 4 and all quality gates unchanged",
+  "reason": "same approved SpaceX request after audit-driven bounded local repair commit 94140f571fbfdde6ae711c4745d580ceb0455474, rotating real-footage visual recovery commit f24cae1cb60fda809451a89e5a86e5e454b77938 and publishability-to-codefix continuity commit 4712a96d4ae293386e95232195116f67c59f9d83; keep recovery generation 4 and all quality gates unchanged",
   "slot": "evening"
 }
