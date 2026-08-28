@@ -1,0 +1,486 @@
+name: TAYVORIQ Deterministic Codefix Continuity
+
+on:
+  workflow_run:
+    workflows:
+      - TAYVORIQ-X Golden Path
+    types:
+      - completed
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+# Serialize request mutation with Delivery Watch and the regular continuity
+# watchdog. A deterministic failure is armed once and can only resume after a
+# verified code revision; no blind production retry is allowed.
+concurrency:
+  group: tayvoriq-delivery-watch
+  cancel-in-progress: false
+
+jobs:
+  protect-deterministic-request:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      IMPLEMENTATION_REPO: mojo72549-arch/shorts-agent-studio
+      IMPLEMENTATION_BRANCH: feature/multi-platform-distribution-package
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Arm deterministic failure for codefix continuation
+        id: arm
+        if: github.event_name == 'workflow_run'
+        shell: bash
+        env:
+          FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          run_id="$FAILED_RUN_ID"
+          [[ "$run_id" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_ARM_RUN_ID_INVALID'; exit 1; }
+
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" > /tmp/codefix-run.json
+          run_attempt=$(python - <<'PY'
+          import json
+          run=json.load(open('/tmp/codefix-run.json', encoding='utf-8'))
+          print(max(1, int(run.get('run_attempt') or 1)))
+          PY
+          )
+          gh run view "$run_id" --log-failed > /tmp/codefix-failed.log 2>&1 || true
+          test -f /tmp/codefix-failed.log
+
+          owner=$(python - "$run_id" <<'PY'
+          import json, sys
+          from pathlib import Path
+          run_id=int(sys.argv[1])
+          matches=[]
+          for path in sorted(Path('requests').glob('*.json')):
+              try:
+                  data=json.loads(path.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              try:
+                  current=int(data.get('golden_path_run_id') or 0)
+              except (TypeError, ValueError):
+                  current=0
+              if current != run_id:
+                  continue
+              request_id=str(data.get('request_id') or '').strip()
+              source_context=data.get('source_context') if isinstance(data.get('source_context'),dict) else {}
+              telegram_bound=(
+                  str(data.get('source') or '').strip() == 'telegram_trend_approval'
+                  or data.get('telegram_only_user_path') is True
+                  or source_context.get('telegram_only_user_path') is True
+                  or str(data.get('communication_channel') or '').strip() == 'telegram'
+              )
+              auto_repair=(
+                  data.get('auto_repair_until_review') is True
+                  or source_context.get('auto_repair_until_review') is True
+                  or str(data.get('source') or '').strip() == 'telegram_trend_approval'
+              )
+              if request_id and telegram_bound and auto_repair:
+                  matches.append((path, data))
+          if not matches:
+              print('')
+          else:
+              print(str(matches[0][0]))
+          PY
+          )
+          if [ -z "$owner" ]; then
+            echo 'CODEFIX_ARM_NO_CURRENT_TELEGRAM_OWNER'
+            echo 'armed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          generation=$(python - "$owner" <<'PY'
+          import json, sys
+          data=json.load(open(sys.argv[1], encoding='utf-8'))
+          print(max(0, int(data.get('recovery_generation') or 0)))
+          PY
+          )
+          python tools/tayvoriq_recovery_policy_v1.py \
+            --logs-file /tmp/codefix-failed.log \
+            --run-attempt "$run_attempt" \
+            --recovery-generation "$generation" \
+            --max-generations 4 \
+            --owner-found true \
+            --owner-current true \
+            --exact-request-retry true \
+            --output-json /tmp/codefix-policy.json
+
+          mode=$(python - <<'PY'
+          import json
+          print(str(json.load(open('/tmp/codefix-policy.json',encoding='utf-8')).get('mode') or ''))
+          PY
+          )
+          if [ "$mode" != "deterministic" ]; then
+            echo "CODEFIX_ARM_NOT_DETERMINISTIC:$mode"
+            echo 'armed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          rm -rf /tmp/codefix-diag
+          mkdir -p /tmp/codefix-diag
+          artifact_name="tayvoriq-x-diagnostics-${run_id}-attempt-${run_attempt}"
+          gh run download "$run_id" -n "$artifact_name" -D /tmp/codefix-diag >/dev/null 2>&1 || true
+
+          manifest=$(find /tmp/codefix-diag -type f -path '*/control-plane/production-manifest.json' -print -quit 2>/dev/null || true)
+          if [ -z "$manifest" ] && [ -f /tmp/codefix-diag/control-plane/production-manifest.json ]; then
+            manifest=/tmp/codefix-diag/control-plane/production-manifest.json
+          fi
+          failed_control_sha=$(python - "$manifest" <<'PY'
+          import json, sys
+          from pathlib import Path
+          path=Path(sys.argv[1]) if len(sys.argv)>1 and sys.argv[1] else None
+          if path and path.is_file():
+              try: print(str(json.loads(path.read_text(encoding='utf-8')).get('control_plane_sha') or ''))
+              except Exception: print('')
+          else: print('')
+          PY
+          )
+          failed_implementation_sha=$(python - "$manifest" <<'PY'
+          import json, sys
+          from pathlib import Path
+          path=Path(sys.argv[1]) if len(sys.argv)>1 and sys.argv[1] else None
+          if path and path.is_file():
+              try: print(str(json.loads(path.read_text(encoding='utf-8')).get('implementation_sha') or ''))
+              except Exception: print('')
+          else: print('')
+          PY
+          )
+          if [ -z "$failed_control_sha" ]; then
+            failed_control_sha=$(python - <<'PY'
+          import json
+          print(str(json.load(open('/tmp/codefix-run.json',encoding='utf-8')).get('head_sha') or ''))
+          PY
+            )
+          fi
+
+          failure_signature=$(python - <<'PY'
+          import json
+          print(str(json.load(open('/tmp/codefix-policy.json',encoding='utf-8')).get('failure_signature') or ''))
+          PY
+          )
+          failure_state=$(python - <<'PY'
+          import json
+          print(str(json.load(open('/tmp/codefix-policy.json',encoding='utf-8')).get('state') or 'CODE_REPAIR_REQUIRED'))
+          PY
+          )
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          armed=false
+          topic=''
+          request_id=''
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            result=$(python - "$owner" "$run_id" "$failure_signature" "$failure_state" "$failed_control_sha" "$failed_implementation_sha" <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path(sys.argv[1]); run_id=int(sys.argv[2]); signature=sys.argv[3]; state=sys.argv[4]
+          failed_control=sys.argv[5]; failed_impl=sys.argv[6]
+          if not path.is_file():
+              raise SystemExit('CODEFIX_REQUEST_FILE_MISSING')
+          data=json.loads(path.read_text(encoding='utf-8'))
+          if int(data.get('golden_path_run_id') or 0) != run_id:
+              print('STALE')
+              raise SystemExit(0)
+          request_id=str(data.get('request_id') or '').strip()
+          topic=str(data.get('topic') or '').strip()
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          generation=max(0,int(data.get('recovery_generation') or 0))
+          data['status']='AWAITING_CODEFIX'
+          data['codefix_recovery']={
+              'status':'ARMED',
+              'failed_run_id':run_id,
+              'failure_signature':signature,
+              'failure_state':state,
+              'failed_control_plane_sha':failed_control,
+              'failed_implementation_sha':failed_impl,
+              'recovery_generation':generation,
+              'armed_at':now,
+              'same_generation_replay_required':True,
+              'exact_source_request_required':True,
+              'quality_gates_weakened':False,
+          }
+          data['state_history']=list(data.get('state_history') or []) + [{
+              'state':'AWAITING_CODEFIX','at':now,'actor':'tayvoriq-deterministic-codefix-continuity',
+              'meta':{
+                  'failed_run_id':run_id,
+                  'failure_signature':signature,
+                  'failure_state':state,
+                  'failed_control_plane_sha':failed_control,
+                  'failed_implementation_sha':failed_impl,
+                  'recovery_generation':generation,
+                  'reason':'deterministic-failure-armed-for-verified-codefix-replay'
+              }
+          }]
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({'request_id':request_id,'topic':topic},ensure_ascii=False))
+          PY
+            )
+            if [ "$result" = "STALE" ]; then
+              echo 'CODEFIX_ARM_REQUEST_ALREADY_REBOUND'
+              echo 'armed=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            request_id=$(python -c 'import json,sys; print(json.loads(sys.argv[1])["request_id"])' "$result")
+            topic=$(python -c 'import json,sys; print(json.loads(sys.argv[1])["topic"])' "$result")
+            git add -- "$owner"
+            if git diff --cached --quiet; then
+              echo 'CODEFIX_ARM_NO_CHANGE'
+              echo 'armed=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git commit -m "ops: arm deterministic codefix continuity ${request_id} run ${run_id}"
+            if git push origin HEAD:main; then
+              armed=true
+              break
+            fi
+            sleep $((attempt * 2))
+          done
+          [ "$armed" = "true" ] || { echo 'CODEFIX_ARM_PUSH_FAILED'; exit 1; }
+          echo 'armed=true' >> "$GITHUB_OUTPUT"
+          echo "request_id=$request_id" >> "$GITHUB_OUTPUT"
+          echo "topic=$topic" >> "$GITHUB_OUTPUT"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "generation=$generation" >> "$GITHUB_OUTPUT"
+
+      - name: Telegram codefix continuity armed
+        if: steps.arm.outputs.armed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🧰 TAYVORIQ · Codefix-Recovery ist aktiv\n\nThema: %s\nFehlgeschlagener Run: %s\nRecovery: Generation %s\n\n✅ Auftrag, Trendfreigabe und geprüfte Quellen bleiben gebunden.\n✅ Es wird NICHT blind erneut produziert.\n➡️ Sobald ein neuer relevanter Control- oder Produktionscode erkannt wird, startet derselbe Auftrag automatisch in derselben Recovery-Generation weiter.' \
+            "${{ steps.arm.outputs.topic }}" "${{ steps.arm.outputs.run_id }}" "${{ steps.arm.outputs.generation }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
+
+      - name: Resolve armed codefix request
+        id: pending
+        if: github.event_name != 'workflow_run'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          from pathlib import Path
+          candidates=[]
+          for path in sorted(Path('requests').glob('*.json')):
+              try: data=json.loads(path.read_text(encoding='utf-8'))
+              except Exception: continue
+              codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+              if str(data.get('status') or '') != 'AWAITING_CODEFIX': continue
+              if str(codefix.get('status') or '') != 'ARMED': continue
+              try: run_id=int(codefix.get('failed_run_id') or data.get('golden_path_run_id') or 0)
+              except (TypeError,ValueError): run_id=0
+              if not run_id or int(data.get('golden_path_run_id') or 0) != run_id: continue
+              candidates.append((run_id,path,data,codefix))
+          out={'found':'false','request_file':'','request_id':'','topic':'','trend_id':'','run_id':'','generation':'0','failed_control_sha':'','failed_impl_sha':'','failure_signature':''}
+          if candidates:
+              run_id,path,data,codefix=max(candidates,key=lambda item:item[0])
+              out.update({
+                  'found':'true','request_file':str(path),'request_id':str(data.get('request_id') or '').strip(),
+                  'topic':str(data.get('topic') or '').strip(),'trend_id':str(data.get('trend_id') or '').strip(),
+                  'run_id':str(run_id),'generation':str(max(0,int(data.get('recovery_generation') or 0))),
+                  'failed_control_sha':str(codefix.get('failed_control_plane_sha') or ''),
+                  'failed_impl_sha':str(codefix.get('failed_implementation_sha') or ''),
+                  'failure_signature':str(codefix.get('failure_signature') or ''),
+              })
+          with open(sys.argv[1],'a',encoding='utf-8') as h:
+              for k,v in out.items(): h.write(f'{k}={v}\n')
+          print(out)
+          PY
+
+      - name: Detect verified code revision
+        id: revision
+        if: steps.pending.outputs.found == 'true'
+        shell: bash
+        env:
+          FAILED_CONTROL_SHA: ${{ steps.pending.outputs.failed_control_sha }}
+          FAILED_IMPL_SHA: ${{ steps.pending.outputs.failed_impl_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          current_control=$(git rev-parse origin/main)
+          current_impl=$(git ls-remote "https://github.com/${IMPLEMENTATION_REPO}.git" "refs/heads/${IMPLEMENTATION_BRANCH}" | awk '{print $1}' | head -1)
+          relevant_control=false
+          if [[ "$FAILED_CONTROL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]] && git cat-file -e "${FAILED_CONTROL_SHA}^{commit}" 2>/dev/null; then
+            git diff --name-only "$FAILED_CONTROL_SHA"..origin/main > /tmp/codefix-control-files.txt || true
+            if python - /tmp/codefix-control-files.txt <<'PY'
+          import sys
+          paths=[line.strip() for line in open(sys.argv[1],encoding='utf-8') if line.strip()]
+          relevant=[]
+          for path in paths:
+              if path.startswith('.github/run-now/') or path.startswith('requests/') or path.startswith('state/'):
+                  continue
+              if path.startswith('tools/tayvoriq_') or path.startswith('scripts/'):
+                  relevant.append(path); continue
+              if path.startswith('.github/workflows/tayvoriq-'):
+                  relevant.append(path); continue
+          print('\n'.join(relevant))
+          raise SystemExit(0 if relevant else 1)
+          PY
+            then
+              relevant_control=true
+            fi
+          fi
+
+          implementation_changed=false
+          if [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]] && [[ "$current_impl" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            if [[ "$current_impl" != "$FAILED_IMPL_SHA" && "$current_impl" != "$FAILED_IMPL_SHA"* ]]; then
+              implementation_changed=true
+            fi
+          fi
+
+          detected=false
+          reason=''
+          if [ "$implementation_changed" = "true" ]; then
+            detected=true
+            reason='implementation-sha-changed'
+          elif [ "$relevant_control" = "true" ]; then
+            detected=true
+            reason='relevant-control-code-changed'
+          fi
+          echo "detected=$detected" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "current_control_sha=$current_control" >> "$GITHUB_OUTPUT"
+          echo "current_impl_sha=$current_impl" >> "$GITHUB_OUTPUT"
+          if [ "$detected" != "true" ]; then
+            echo 'CODEFIX_NOT_DETECTED_YET: request remains armed; no retry dispatched.'
+          else
+            echo "CODEFIX_DETECTED:$reason control=$current_control impl=$current_impl"
+          fi
+
+      - name: Replay exact request after verified codefix
+        id: replay
+        if: steps.revision.outputs.detected == 'true'
+        shell: bash
+        env:
+          OLD_RUN_ID: ${{ steps.pending.outputs.run_id }}
+          REQUEST_FILE: ${{ steps.pending.outputs.request_file }}
+          REQUEST_ID: ${{ steps.pending.outputs.request_id }}
+          TOPIC: ${{ steps.pending.outputs.topic }}
+          TREND_ID: ${{ steps.pending.outputs.trend_id }}
+          GENERATION: ${{ steps.pending.outputs.generation }}
+          FAILURE_SIGNATURE: ${{ steps.pending.outputs.failure_signature }}
+          CURRENT_CONTROL_SHA: ${{ steps.revision.outputs.current_control_sha }}
+          CURRENT_IMPL_SHA: ${{ steps.revision.outputs.current_impl_sha }}
+          CODEFIX_REASON: ${{ steps.revision.outputs.reason }}
+        run: |
+          set -euo pipefail
+          [[ "$OLD_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_REPLAY_OLD_RUN_INVALID'; exit 1; }
+          [[ "$GENERATION" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_REPLAY_GENERATION_INVALID'; exit 1; }
+
+          before_ids=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')
+          dispatch_epoch=$(date +%s)
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main \
+            -f "topic=$TOPIC" \
+            -f "trend_id=$TREND_ID" \
+            -f "source_request_id=$REQUEST_ID"
+
+          new_run_id=''
+          for poll in $(seq 1 30); do
+            sleep 4
+            gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId,createdAt > /tmp/codefix-replay-runs.json
+            candidate=$(python - "$before_ids" "$dispatch_epoch" <<'PY'
+          import json,sys
+          from datetime import datetime
+          before={int(v) for v in sys.argv[1].split() if v.isdigit()}; epoch=int(sys.argv[2]); found=[]
+          for item in json.load(open('/tmp/codefix-replay-runs.json',encoding='utf-8')):
+              try:
+                  rid=int(item.get('databaseId') or 0)
+                  created=datetime.fromisoformat(str(item.get('createdAt') or '').replace('Z','+00:00')).timestamp()
+              except Exception: continue
+              if rid and rid not in before and created >= epoch-5: found.append((created,rid))
+          print(max(found)[1] if found else '')
+          PY
+            )
+            if [[ "$candidate" =~ ^[0-9]+$ ]] && [ "$candidate" != "$OLD_RUN_ID" ]; then new_run_id="$candidate"; break; fi
+          done
+          [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_REPLAY_DISPATCH_NOT_VERIFIED'; exit 1; }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rebound=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python - "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" "$new_run_id" "$GENERATION" "$FAILURE_SIGNATURE" "$CURRENT_CONTROL_SHA" "$CURRENT_IMPL_SHA" "$CODEFIX_REASON" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          path=Path(sys.argv[1]); request_id=sys.argv[2]; old_run=int(sys.argv[3]); new_run=int(sys.argv[4]); generation=int(sys.argv[5])
+          signature=sys.argv[6]; control_sha=sys.argv[7]; impl_sha=sys.argv[8]; reason=sys.argv[9]
+          data=json.loads(path.read_text(encoding='utf-8'))
+          codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+          if str(data.get('request_id') or '').strip()!=request_id: raise SystemExit('CODEFIX_REPLAY_REQUEST_ID_CHANGED')
+          if str(data.get('status') or '')!='AWAITING_CODEFIX': raise SystemExit('CODEFIX_REPLAY_REQUEST_NOT_ARMED')
+          if str(codefix.get('status') or '')!='ARMED': raise SystemExit('CODEFIX_REPLAY_STATE_NOT_ARMED')
+          if int(data.get('golden_path_run_id') or 0)!=old_run: raise SystemExit('CODEFIX_REPLAY_REQUEST_ALREADY_REBOUND')
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          previous=list(data.get('previous_golden_path_run_ids') or [])
+          if old_run not in previous: previous.append(old_run)
+          data['previous_golden_path_run_ids']=previous[-20:]
+          data['golden_path_run_id']=new_run
+          data['status']='DISPATCHED'
+          data['recovery_generation']=generation
+          data['retry_of_run_id']=old_run
+          data['replacement_reason']='SAME_GENERATION_CODEFIX_REPLAY'
+          data['recovery_owner']='tayvoriq-deterministic-codefix-continuity'
+          data['recovery_failure_signature']=signature
+          data['recovery_dispatched_at']=now
+          codefix.update({
+              'status':'REPLAY_DISPATCHED','replay_run_id':new_run,'replayed_at':now,
+              'replay_control_plane_sha':control_sha,'replay_implementation_sha':impl_sha,
+              'codefix_detection_reason':reason,'quality_gates_weakened':False
+          })
+          data['codefix_recovery']=codefix
+          data['state_history']=list(data.get('state_history') or []) + [{
+              'state':'DISPATCHED','at':now,'actor':'tayvoriq-deterministic-codefix-continuity',
+              'meta':{
+                  'retry_of_run_id':old_run,'golden_path_run_id':new_run,
+                  'recovery_generation':generation,'failure_signature':signature,
+                  'reason':'same-generation-verified-codefix-replay',
+                  'codefix_detection_reason':reason,
+                  'replay_control_plane_sha':control_sha,
+                  'replay_implementation_sha':impl_sha
+              }
+          }]
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add -- "$REQUEST_FILE"
+            git commit -m "ops: same-generation codefix replay ${REQUEST_ID} g${GENERATION} to ${new_run_id}"
+            if git push origin HEAD:main; then rebound=true; break; fi
+            sleep $((attempt * 2))
+          done
+          [ "$rebound" = "true" ] || { echo 'CODEFIX_REPLAY_BIND_FAILED'; exit 1; }
+          echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
+          echo "generation=$GENERATION" >> "$GITHUB_OUTPUT"
+
+      - name: Telegram codefix recovery resumed
+        if: steps.replay.outputs.new_run_id != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🔧 TAYVORIQ · Codefix erkannt – Recovery automatisch fortgesetzt\n\nThema: %s\nAlter Run: %s\nNeuer Run: %s\nRecovery: Generation %s\n\n✅ Derselbe freigegebene Auftrag und dieselben Quellen bleiben gebunden.\n✅ Die Recovery-Generation wurde NICHT erhöht.\n✅ Erst eine echte Codeänderung hat diesen Replay freigegeben.\n➡️ Produktion und Qualitätsprüfungen laufen autonom weiter.' \
+            "${{ steps.pending.outputs.topic }}" "${{ steps.pending.outputs.run_id }}" "${{ steps.replay.outputs.new_run_id }}" "${{ steps.replay.outputs.generation }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
