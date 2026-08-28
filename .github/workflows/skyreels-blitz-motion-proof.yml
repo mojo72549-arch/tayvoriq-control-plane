@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      HF_TOKEN: ${{ secrets.HF_SKYREELS_TOKEN }}
       HF_SPACE_ID: Mo6161/tayvoriq-skyreels-lab
     steps:
       - uses: actions/setup-python@v5
@@ -29,17 +28,19 @@ jobs:
           python -m pip install -q -U gradio_client huggingface_hub
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-      - name: Generate real SkyReels motion
+      - name: Generate real SkyReels motion anonymously
         shell: bash
         run: |
           mkdir -p lab/output/skyreels_motion_proof
           python - <<'PY'
-          import os, shutil
+          import os, shutil, time
           from pathlib import Path
           from gradio_client import Client
 
+          # Important: deliberately anonymous call. Do not consume Agent Shorts or SkyReels authenticated quota.
+          for key in ('HF_TOKEN','HUGGING_FACE_HUB_TOKEN','HUGGINGFACE_HUB_TOKEN'):
+              os.environ.pop(key, None)
           space = os.environ['HF_SPACE_ID']
-          c = Client(space, verbose=False)
           prompt = (
               'A single continuous photorealistic cinematic shot at night on a rain-soaked rooftop in a modern European city. '
               'A 30-year-old man with short dark wet hair, light stubble, black waterproof jacket, dark trousers and dark shoes '
@@ -49,32 +50,47 @@ jobs:
               'Real human body motion and realistic physics, natural facial reaction, handheld cinema camera follows him, dramatic reflected city lights, '
               'no cuts, no montage, no still image, no freeze frame, no text, no subtitles, no logo, no gore.'
           )
-          result = c.predict(
-              prompt=prompt,
-              image=None,
-              target_length='4',
-              model_id='Skywork/SkyReels-V2-DF-1.3B-540P',
-              resolution='540P',
-              num_frames=97,
-              ar_step=0,
-              causal_attention=False,
-              causal_block_size=1,
-              base_num_frames=97,
-              overlap_history=17,
-              addnoise_condition=0,
-              guidance_scale=6.0,
-              shift=8.0,
-              inference_steps=30,
-              use_usp=False,
-              offload=True,
-              fps=24,
-              seed=614273,
-              prompt_enhancer=False,
-              teacache=True,
-              teacache_thresh=0.2,
-              use_ret_steps=True,
-              api_name='/generate_video',
-          )
+          last = None
+          for attempt in range(3):
+              try:
+                  c = Client(space, verbose=False)
+                  result = c.predict(
+                      prompt=prompt,
+                      image=None,
+                      target_length='4',
+                      model_id='Skywork/SkyReels-V2-DF-1.3B-540P',
+                      resolution='540P',
+                      num_frames=97,
+                      ar_step=0,
+                      causal_attention=False,
+                      causal_block_size=1,
+                      base_num_frames=97,
+                      overlap_history=17,
+                      addnoise_condition=0,
+                      guidance_scale=6.0,
+                      shift=8.0,
+                      inference_steps=30,
+                      use_usp=False,
+                      offload=True,
+                      fps=24,
+                      seed=614273,
+                      prompt_enhancer=False,
+                      teacache=True,
+                      teacache_thresh=0.2,
+                      use_ret_steps=True,
+                      api_name='/generate_video',
+                  )
+                  break
+              except Exception as e:
+                  last = e
+                  print('ANON_ATTEMPT_FAILED', attempt + 1, type(e).__name__, str(e)[:800], flush=True)
+                  if 'quota' in str(e).lower():
+                      raise
+                  if attempt == 2:
+                      raise
+                  time.sleep(15 * (attempt + 1))
+          else:
+              raise last
           print('RAW_RESULT', result)
           if isinstance(result, dict):
               src = result.get('path') or result.get('video')
