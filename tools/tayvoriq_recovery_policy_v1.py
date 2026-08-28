@@ -33,6 +33,19 @@ PUBLISHABLE_RETRY_PATTERNS = (
     r'"state"\s*:\s*"publishable_output_retry_required"',
 )
 
+# These messages mean the bounded in-run repair mechanism itself has already
+# tried the safe local path and still cannot converge. A fresh generation with
+# unchanged code is not a meaningful recovery; keep the exact request armed for
+# verified codefix continuity instead of opening a dead circuit.
+LOCAL_REPAIR_CODEFIX_PATTERNS = (
+    r"bounded localized repair exhausted",
+    r"localized checkpoint repair failed safely",
+    r"checkpoint repair completed but .* residual blockers",
+    r"fresh strict audit after localized repair still contains",
+    r"visual checkpoint topic-aware repair failed",
+    r"voice checkpoint v5 natural narrator repair failed",
+)
+
 TRANSIENT_PATTERNS = (
     r"\b429\b",
     r"too many requests",
@@ -107,6 +120,20 @@ def classify_failure(
         state = "SUPERSEDED_RECOVERY_EVENT"
         return RecoveryDecision("stale", state, False, "none", generation, None, maximum, _stable_signature(state, text), "A newer run already owns the request.")
 
+    if _matches(lowered, LOCAL_REPAIR_CODEFIX_PATTERNS):
+        state = "LOCAL_REPAIR_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic",
+            state,
+            False,
+            "verified-codefix-replay",
+            generation,
+            generation,
+            maximum,
+            _stable_signature(state, text),
+            "Bounded local repair already ran and the strict audit still failed; keep the exact request armed for a verified codefix replay in the same recovery generation.",
+        )
+
     # A final publishability handoff is authoritative. GitHub's failed-log view
     # can include shell source such as `echo "Missing secret"` or comparisons
     # against EXTERNAL_ACTION_REQUIRED from other steps. It can also include
@@ -114,8 +141,18 @@ def classify_failure(
     # source-code lines may override the terminal gate-specific state.
     if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
         if generation >= maximum:
-            state = "RECOVERY_CIRCUIT_OPEN"
-            return RecoveryDecision("exhausted", state, False, "none", generation, None, maximum, _stable_signature(state, text), f"Fresh recovery limit reached ({generation}/{maximum}).")
+            state = "PUBLISHABLE_CODEFIX_REQUIRED"
+            return RecoveryDecision(
+                "deterministic",
+                state,
+                False,
+                "verified-codefix-replay",
+                generation,
+                generation,
+                maximum,
+                _stable_signature(state, text),
+                "The publishability gate is still failing at the generation ceiling; preserve the exact request and continue only after a verified relevant code revision.",
+            )
         state = "REQUEST_BOUND_RECOVERY_REQUIRED"
         return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "The final publishability gate requires a bounded request-bound recovery generation.")
 
