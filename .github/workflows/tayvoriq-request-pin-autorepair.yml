@@ -163,12 +163,12 @@ jobs:
           echo "::error::PIN_AUTOREPAIR_BIND_PUSH_FAILED"
           exit 1
 
-      - name: Re-enter Delivery Watch after owner binding
+      - name: Confirm canonical Delivery Watch handoff
         if: steps.bind.outputs.recover == 'true'
         shell: bash
         env:
           RUN_ID: ${{ steps.resolve.outputs.run_id }}
         run: |
           set -euo pipefail
-          gh workflow run tayvoriq-delivery-watch.yml --ref main -f "run_id=$RUN_ID"
-          echo "PIN_AUTOREPAIR_DELIVERY_WATCH_DISPATCHED:$RUN_ID"
+          echo "PIN_AUTOREPAIR_OWNER_BOUND_FOR_CANONICAL_DELIVERY_WATCH:$RUN_ID"
+          echo "The workflow_run-triggered Delivery Watch is the single recovery classifier."

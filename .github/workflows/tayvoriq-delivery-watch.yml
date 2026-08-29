@@ -78,6 +78,29 @@ jobs:
           RUN_ID: ${{ steps.watched.outputs.run_id }}
         run: |
           set -euo pipefail
+          # Request Pin and Delivery Watch are both emitted from workflow_run.
+          # Give the binder a bounded window to persist the exact owner so this
+          # canonical watch invocation never needs a second workflow dispatch.
+          for poll in $(seq 1 20); do
+            if python - <<'PY'
+          import json, os
+          from pathlib import Path
+          run_id=int(os.environ['RUN_ID'])
+          for path in Path('requests').glob('*.json'):
+              try: data=json.loads(path.read_text(encoding='utf-8'))
+              except Exception: continue
+              ids=[data.get('golden_path_run_id'), *(data.get('previous_golden_path_run_ids') or [])]
+              if any(str(value or '') == str(run_id) for value in ids):
+                  raise SystemExit(0)
+          raise SystemExit(1)
+          PY
+            then
+              break
+            fi
+            sleep 2
+            git fetch origin main --quiet || true
+            git reset --hard origin/main >/dev/null 2>&1 || true
+          done
           python - "$GITHUB_OUTPUT" <<'PY'
           import json, os, sys
           from pathlib import Path
