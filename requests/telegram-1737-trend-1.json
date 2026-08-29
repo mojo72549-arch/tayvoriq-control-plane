@@ -151,6 +151,20 @@
         "recovery_generation": 4,
         "reason": "deterministic-failure-armed-for-verified-codefix-replay"
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-08-29T21:41:14.979896Z",
+      "actor": "tayvoriq-deterministic-codefix-continuity",
+      "meta": {
+        "failed_run_id": 33274196097,
+        "failure_signature": "d68ac00bac2757f0e555",
+        "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "2acba1406a59a7b3194890349eb0ddb542f65efe",
+        "failed_implementation_sha": "dce76928ff3a9e8972df7f1b34319035d633317f",
+        "recovery_generation": 4,
+        "reason": "deterministic-failure-armed-for-verified-codefix-replay"
+      }
     }
   ],
   "contract_sha256": "f9a435a0ad9b7bcf27d33dc1450166138849b86cfafb058909d37267807da2b1",
@@ -189,13 +203,13 @@
   "codefix_recovery": {
     "status": "ARMED",
     "request_substate": "AWAITING_CODEFIX",
-    "failed_run_id": 33174120101,
+    "failed_run_id": 33274196097,
     "failure_signature": "d68ac00bac2757f0e555",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_control_plane_sha": "b504e2764725f6ed4d518eaed0e0970dd8281fd8",
-    "failed_implementation_sha": "b43d5cf5ac7240d2fe3cb6ea639e0f7734d3f890",
+    "failed_control_plane_sha": "2acba1406a59a7b3194890349eb0ddb542f65efe",
+    "failed_implementation_sha": "dce76928ff3a9e8972df7f1b34319035d633317f",
     "recovery_generation": 4,
-    "armed_at": "2026-08-28T13:49:16.673490Z",
+    "armed_at": "2026-08-29T21:41:14.979896Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false
