@@ -10,10 +10,9 @@ from dataclasses import dataclass
 
 
 HEARTBEAT_STAGES = {"render_heartbeat", "checkpoint_heartbeat"}
-# Keep internal polling quiet, but do not leave the operator blind for too long.
-# 18 minutes provides an early verified liveness signal; 45 minutes escalates
-# unusually long production without inventing progress.
-HEARTBEAT_NOTIFY_MINUTES = (18, 45)
+# Keep internal polling quiet. One 45-minute threshold reports a genuinely long
+# production without turning regular liveness checks into operator noise.
+HEARTBEAT_NOTIFY_MINUTES = (45,)
 
 
 @dataclass(frozen=True)

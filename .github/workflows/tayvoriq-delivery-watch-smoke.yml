@@ -35,7 +35,9 @@ jobs:
           assert 'newer-golden-path-' not in text, 'global unrelated-run supersession guard must stay removed'
           assert '.github/run-now/tayvoriq-x-request.json' not in text, 'fresh recovery must not use stale global X request'
           assert 'golden_path_run_id' in text, 'recovery must resolve exact durable request owner'
-          assert "data['status']='APPROVED'" in text, 'exact request must be requeueable'
-          assert 'REQUEST_BOUND_RECOVERY_RUNNING' in text, 'verified request-bound recovery state missing'
+          assert 'for poll in $(seq 1 20)' in text, 'canonical watch must wait for exact owner binding'
+          assert "data['status']='DISPATCHED'" in text, 'verified replacement run must remain bound'
+          assert "data['replacement_reason']='BOUNDED_REQUEST_RECOVERY'" in text, 'bounded recovery marker missing'
+          assert 'tayvoriq_recovery_policy_v1.py' in text, 'shared recovery policy missing'
           print('TAYVORIQ request-bound delivery-watch smoke: PASS')
           PY
