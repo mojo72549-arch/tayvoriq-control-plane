@@ -1,6 +1,6 @@
 name: TAYVORIQ Production Green Promoter
 
-# recovery-verification-request: studio-7512bc8643fa32b3
+# recovery-verification-request: studio-14fd81574a295ad5
 
 on:
   push:
@@ -27,9 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      # The production preflight must exercise the same primary voice contract
-      # every time. Without these values the test suite depended on the runner's
-      # ambient environment and could reject an otherwise identical candidate.
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
     steps:
