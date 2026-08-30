@@ -1,0 +1,81 @@
+name: TAYVORIQ SpaceX Visual Guard Hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-spacex-visual-guard-hotfix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-spacex-visual-guard-hotfix
+  cancel-in-progress: false
+
+jobs:
+  patch-implementation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout implementation feature branch
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Apply safe catalogue fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('usercustomize.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    def _metadata_matches(item: dict, require_entity: bool) -> bool:\n        text = _catalogue_text(item)\n        identity = _identity_text(item)\n        if not text or not identity:\n            return False\n        if any(marker in text for marker in generic_negative_markers + hard_reject_markers):\n            return False\n        rocket_ok = any(marker in text for marker in rocket_markers)\n        strong_identity_ok = any(marker in identity for marker in strong_identity_markers)\n        return rocket_ok and (strong_identity_ok if require_entity else True)\n\n    def _metadata_score(item: dict, require_entity: bool) -> int:\n        if not _metadata_matches(item, require_entity=require_entity):\n            return -1\n        text = _catalogue_text(item)\n        identity = _identity_text(item)\n        score = 120 * sum(marker in identity for marker in strong_identity_markers)\n        score += 10 * sum(marker in text for marker in rocket_markers)\n        score += 8 * sum(marker in text for marker in ("b-roll", "raw", "footage", "test flight"))\n        return score\n'''
+          new = '''    def _metadata_matches(item: dict, require_entity: bool) -> bool:\n        text = _catalogue_text(item)\n        identity = _identity_text(item)\n        if not text:\n            return False\n        if any(marker in text for marker in generic_negative_markers + hard_reject_markers):\n            return False\n        rocket_ok = any(marker in text for marker in rocket_markers)\n        strong_identity_ok = any(marker in identity for marker in strong_identity_markers)\n        # Some NASA video records expose a usable Starship MP4 through href while\n        # title/nasa_id are absent. Accept that shape only when the complete\n        # catalogue metadata independently proves SpaceX + a strong Starship\n        # entity + launch context. Hard-reject markers above still win first.\n        safe_catalogue_entity_ok = (\n            ("spacex" in text or "space x" in text)\n            and any(marker in text for marker in strong_identity_markers)\n        )\n        return rocket_ok and ((strong_identity_ok or safe_catalogue_entity_ok) if require_entity else True)\n\n    def _metadata_score(item: dict, require_entity: bool) -> int:\n        if not _metadata_matches(item, require_entity=require_entity):\n            return -1\n        text = _catalogue_text(item)\n        identity = _identity_text(item)\n        score = 120 * sum(marker in identity for marker in strong_identity_markers)\n        safe_catalogue_entity_ok = (\n            ("spacex" in text or "space x" in text)\n            and any(marker in text for marker in strong_identity_markers)\n        )\n        if safe_catalogue_entity_ok and not any(marker in identity for marker in strong_identity_markers):\n            score += 90\n        score += 10 * sum(marker in text for marker in rocket_markers)\n        score += 8 * sum(marker in text for marker in ("b-roll", "raw", "footage", "test flight"))\n        return score\n'''
+          if old not in text:
+              raise SystemExit('SPACEX_HOTFIX_TARGET_NOT_FOUND')
+          text = text.replace(old, new, 1)
+          text = text.replace(
+              'report["spacex_visual_guard"] = "v4-title-id-starship-lock-persistent-history"',
+              'report["spacex_visual_guard"] = "v5-safe-catalogue-starship-fallback-persistent-history"',
+              1,
+          )
+          text = text.replace(
+              '"spacex_visual_guard": "fail-closed-no-title-id-starship-asset",',
+              '"spacex_visual_guard": "fail-closed-no-safe-starship-asset",',
+              1,
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+          python -m py_compile usercustomize.py
+          python - <<'PY'
+          from pathlib import Path
+          text=Path('usercustomize.py').read_text(encoding='utf-8')
+          required=(
+              'safe_catalogue_entity_ok',
+              '"intuitive machines"',
+              '"live event"',
+              'persistent_duplicate_assets_rejected',
+              'v5-safe-catalogue-starship-fallback-persistent-history',
+          )
+          missing=[x for x in required if x not in text]
+          if missing: raise SystemExit('SPACEX_HOTFIX_SANITY_FAILED:'+','.join(missing))
+          print('SPACEX_HOTFIX_SANITY_OK')
+          PY
+
+      - name: Commit exact implementation fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add usercustomize.py
+          git diff --cached --quiet && { echo 'SPACEX_HOTFIX_ALREADY_APPLIED'; exit 0; }
+          git commit -m "fix(tayvoriq): accept safe Starship catalogue assets"
+          git push origin HEAD:feature/multi-platform-distribution-package
+          echo "SPACEX_HOTFIX_SHA=$(git rev-parse HEAD)"
