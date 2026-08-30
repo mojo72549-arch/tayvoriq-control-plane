@@ -2,11 +2,11 @@
   "request": "tayvoriq-x-production",
   "topic": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
   "trend_id": "1",
-  "requested_at": "2026-08-29T20:42:34Z",
-  "request_nonce": "spacex-g4-production-green-dce76928-20260829T204234Z",
+  "requested_at": "2026-08-30T08:21:30Z",
+  "request_nonce": "spacex-g4-production-green-12993d34-20260830T082130Z",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
-  "implementation_sha_expected": "dce76928ff3a9e8972df7f1b34319035d633317f",
+  "implementation_sha_expected": "12993d34704bb282697882c6536aa33a0a358f70",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-1737-trend-1",
   "technical_replay": true,
@@ -14,7 +14,7 @@
   "reuse_exact_source_request": true,
   "suppress_start_notification": false,
   "execution_backend": "github_hosted_public",
-  "retry_of_run_id": 33257722321,
+  "retry_of_run_id": 33274196097,
   "recovery_generation": 4,
   "recovery_strategy": "same-generation-production-green-codefix-replay",
   "hardening": {
@@ -40,6 +40,6 @@
     "spacex_entity_visual_anchor_required": true,
     "nasa_manifest_shape_regression_test_required": true
   },
-  "reason": "same approved SpaceX request after Production Green verification of implementation dce76928ff3a9e8972df7f1b34319035d633317f; deterministic project-runtime import plus hardened SpaceX/NASA visual selection are fully preflight-verified; preserve exact approved topic, source request, source evidence, recovery generation and all quality gates",
+  "reason": "same approved SpaceX request after Production Green verification of implementation 12993d34704bb282697882c6536aa33a0a358f70; hard-reject wrong NASA/Intuitive Machines/live-webcast/press assets and prevent duplicate visual reuse; preserve exact approved topic, source request, source evidence, recovery generation 4 and all quality gates",
   "slot": "evening"
 }
