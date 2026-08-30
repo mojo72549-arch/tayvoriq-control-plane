@@ -4,8 +4,14 @@ on:
   workflow_run:
     workflows:
       - TAYVORIQ-X Golden Path
+      - TAYVORIQ Production Green Promoter
     types:
       - completed
+  push:
+    branches: [main]
+    paths:
+      - .github/state/tayvoriq-production-green.json
+      - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
@@ -14,16 +20,20 @@ permissions:
   actions: write
   contents: write
 
-# Serialize request mutation with Delivery Watch and the regular continuity
-# watchdog. A deterministic failure is armed once and can only resume after a
-# verified code revision; no blind production retry is allowed.
+# One owner mutates a request at a time. A deterministic failure remains bound to
+# the same approved request and recovery generation until a verified revision is
+# available. Implementation revisions are accepted ONLY from the Production Green
+# pointer, never from an unverified branch head.
 concurrency:
   group: tayvoriq-delivery-watch
   cancel-in-progress: false
 
 jobs:
   protect-deterministic-request:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'success'
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.name == 'TAYVORIQ Production Green Promoter' ||
+      github.event.workflow_run.conclusion != 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -31,7 +41,7 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       IMPLEMENTATION_REPO: mojo72549-arch/shorts-agent-studio
-      IMPLEMENTATION_BRANCH: feature/multi-platform-distribution-package
+      PRODUCTION_GREEN_POINTER: .github/state/tayvoriq-production-green.json
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -39,9 +49,12 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Arm deterministic failure for codefix continuation
+      - name: Arm deterministic Golden Path failure
         id: arm
-        if: github.event_name == 'workflow_run'
+        if: >-
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.name == 'TAYVORIQ-X Golden Path' &&
+          github.event.workflow_run.conclusion != 'success'
         shell: bash
         env:
           FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
@@ -66,16 +79,11 @@ jobs:
           run_id=int(sys.argv[1])
           matches=[]
           for path in sorted(Path('requests').glob('*.json')):
-              try:
-                  data=json.loads(path.read_text(encoding='utf-8'))
-              except Exception:
-                  continue
-              try:
-                  current=int(data.get('golden_path_run_id') or 0)
-              except (TypeError, ValueError):
-                  current=0
-              if current != run_id:
-                  continue
+              try: data=json.loads(path.read_text(encoding='utf-8'))
+              except Exception: continue
+              try: current=int(data.get('golden_path_run_id') or 0)
+              except (TypeError, ValueError): current=0
+              if current != run_id: continue
               request_id=str(data.get('request_id') or '').strip()
               source_context=data.get('source_context') if isinstance(data.get('source_context'),dict) else {}
               telegram_bound=(
@@ -90,8 +98,8 @@ jobs:
                   or str(data.get('source') or '').strip() == 'telegram_trend_approval'
               )
               if request_id and telegram_bound and auto_repair:
-                  matches.append((path, data))
-          print(str(matches[0][0]) if matches else '')
+                  matches.append(path)
+          print(str(matches[0]) if matches else '')
           PY
           )
           if [ -z "$owner" ]; then
@@ -177,10 +185,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           armed=false
-          topic=''
-          request_id=''
+          result=''
           for attempt in 1 2 3 4 5; do
-            git fetch origin main
+            git fetch origin main --quiet
             git reset --hard origin/main
             result=$(python - "$owner" "$run_id" "$failure_signature" "$failure_state" "$failed_control_sha" "$failed_implementation_sha" <<'PY'
           import json, sys
@@ -192,25 +199,24 @@ jobs:
           data=json.loads(path.read_text(encoding='utf-8'))
           if int(data.get('golden_path_run_id') or 0) != run_id:
               print('STALE'); raise SystemExit(0)
+          existing=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+          if (
+              str(existing.get('status') or '') == 'ARMED'
+              and str(existing.get('request_substate') or '') == 'AWAITING_CODEFIX'
+              and int(existing.get('failed_run_id') or 0) == run_id
+          ):
+              print('ALREADY_ARMED'); raise SystemExit(0)
           request_id=str(data.get('request_id') or '').strip()
           topic=str(data.get('topic') or '').strip()
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           generation=max(0,int(data.get('recovery_generation') or 0))
-          # Keep the source request dispatchable. AWAITING_CODEFIX is a recovery
-          # substate; Golden Path's immutable source contract remains DISPATCHED.
           data['status']='DISPATCHED'
           data['codefix_recovery']={
-              'status':'ARMED',
-              'request_substate':'AWAITING_CODEFIX',
-              'failed_run_id':run_id,
-              'failure_signature':signature,
-              'failure_state':state,
-              'failed_control_plane_sha':failed_control,
-              'failed_implementation_sha':failed_impl,
-              'recovery_generation':generation,
-              'armed_at':now,
-              'same_generation_replay_required':True,
-              'exact_source_request_required':True,
+              'status':'ARMED','request_substate':'AWAITING_CODEFIX','failed_run_id':run_id,
+              'failure_signature':signature,'failure_state':state,
+              'failed_control_plane_sha':failed_control,'failed_implementation_sha':failed_impl,
+              'recovery_generation':generation,'armed_at':now,
+              'same_generation_replay_required':True,'exact_source_request_required':True,
               'quality_gates_weakened':False,
           }
           data['state_history']=list(data.get('state_history') or []) + [{
@@ -226,19 +232,17 @@ jobs:
           print(json.dumps({'request_id':request_id,'topic':topic},ensure_ascii=False))
           PY
             )
-            if [ "$result" = "STALE" ]; then
-              echo 'CODEFIX_ARM_REQUEST_ALREADY_REBOUND'
+            if [ "$result" = "STALE" ] || [ "$result" = "ALREADY_ARMED" ]; then
+              echo 'armed=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git add -- "$owner"
+            if git diff --cached --quiet; then
               echo 'armed=false' >> "$GITHUB_OUTPUT"
               exit 0
             fi
             request_id=$(python -c 'import json,sys; print(json.loads(sys.argv[1])["request_id"])' "$result")
             topic=$(python -c 'import json,sys; print(json.loads(sys.argv[1])["topic"])' "$result")
-            git add -- "$owner"
-            if git diff --cached --quiet; then
-              echo 'CODEFIX_ARM_NO_CHANGE'
-              echo 'armed=false' >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
             git commit -m "ops: arm deterministic codefix continuity ${request_id} run ${run_id}"
             if git push origin HEAD:main; then armed=true; break; fi
             sleep $((attempt * 2))
@@ -255,7 +259,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          text=$(printf '🧰 TAYVORIQ · Codefix-Recovery ist aktiv\n\nThema: %s\nFehlgeschlagener Run: %s\nRecovery: Generation %s\n\n✅ Auftrag, Trendfreigabe und geprüfte Quellen bleiben gebunden.\n✅ Es wird NICHT blind erneut produziert.\n➡️ Sobald ein neuer relevanter Control- oder Produktionscode erkannt wird, startet derselbe Auftrag automatisch in derselben Recovery-Generation weiter.' \
+          text=$(printf '🧰 TAYVORIQ · Codefix-Recovery ist aktiv\n\nThema: %s\nFehlgeschlagener Run: %s\nRecovery: Generation %s\n\n✅ Auftrag, Trendfreigabe und geprüfte Quellen bleiben gebunden.\n✅ Es wird NICHT blind erneut produziert.\n➡️ Sobald ein Production-Green-Codefix bestätigt ist, startet derselbe Auftrag automatisch in derselben Recovery-Generation weiter.' \
             "${{ steps.arm.outputs.topic }}" "${{ steps.arm.outputs.run_id }}" "${{ steps.arm.outputs.generation }}")
           curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
@@ -264,7 +268,9 @@ jobs:
 
       - name: Resolve armed codefix request
         id: pending
-        if: github.event_name != 'workflow_run'
+        if: >-
+          github.event_name != 'workflow_run' ||
+          (github.event.workflow_run.name == 'TAYVORIQ Production Green Promoter' && github.event.workflow_run.conclusion == 'success')
         shell: bash
         run: |
           set -euo pipefail
@@ -299,7 +305,7 @@ jobs:
           print(out)
           PY
 
-      - name: Detect verified code revision
+      - name: Detect verified revision from Production Green
         id: revision
         if: steps.pending.outputs.found == 'true'
         shell: bash
@@ -310,7 +316,22 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           current_control=$(git rev-parse origin/main)
-          current_impl=$(git ls-remote "https://x-access-token:${GH_TOKEN}@github.com/${IMPLEMENTATION_REPO}.git" "refs/heads/${IMPLEMENTATION_BRANCH}" | awk '{print $1}' | head -1)
+          current_impl=$(python - "$PRODUCTION_GREEN_POINTER" "$IMPLEMENTATION_REPO" <<'PY'
+          import json, sys
+          from pathlib import Path
+          path=Path(sys.argv[1]); expected_repo=sys.argv[2]
+          if not path.is_file(): raise SystemExit('PRODUCTION_GREEN_POINTER_MISSING')
+          data=json.loads(path.read_text(encoding='utf-8'))
+          if data.get('schema') != 'tayvoriq-production-green-v1': raise SystemExit('PRODUCTION_GREEN_POINTER_SCHEMA_INVALID')
+          if str(data.get('implementation_repository') or '') != expected_repo: raise SystemExit('PRODUCTION_GREEN_REPO_MISMATCH')
+          sha=str(data.get('implementation_sha') or '').strip().lower()
+          if len(sha) != 40 or any(c not in '0123456789abcdef' for c in sha): raise SystemExit('PRODUCTION_GREEN_SHA_INVALID')
+          if data.get('full_preflight_passed') is not True: raise SystemExit('PRODUCTION_GREEN_PREFLIGHT_NOT_PASSED')
+          if data.get('quality_gates_weakened') is not False: raise SystemExit('PRODUCTION_GREEN_QUALITY_GATE_INTEGRITY_FAILED')
+          print(sha)
+          PY
+          )
+
           relevant_control=false
           if [[ "$FAILED_CONTROL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]] && git cat-file -e "${FAILED_CONTROL_SHA}^{commit}" 2>/dev/null; then
             git diff --name-only "$FAILED_CONTROL_SHA"..origin/main > /tmp/codefix-control-files.txt || true
@@ -321,16 +342,14 @@ jobs:
           for path in paths:
               if path.startswith('.github/run-now/') or path.startswith('requests/') or path.startswith('state/'):
                   continue
-              if path.startswith('tools/tayvoriq_') or path.startswith('scripts/'):
-                  relevant.append(path); continue
-              if path.startswith('.github/workflows/tayvoriq-'):
-                  relevant.append(path); continue
+              if path == '.github/state/tayvoriq-production-green.json':
+                  continue
+              if path.startswith('tools/tayvoriq_') or path.startswith('scripts/') or path.startswith('.github/workflows/tayvoriq-'):
+                  relevant.append(path)
           print('\n'.join(relevant))
           raise SystemExit(0 if relevant else 1)
           PY
-            then
-              relevant_control=true
-            fi
+            then relevant_control=true; fi
           fi
 
           implementation_changed=false
@@ -343,7 +362,7 @@ jobs:
           detected=false
           reason=''
           if [ "$implementation_changed" = "true" ]; then
-            detected=true; reason='implementation-sha-changed'
+            detected=true; reason='production-green-implementation-changed'
           elif [ "$relevant_control" = "true" ]; then
             detected=true; reason='relevant-control-code-changed'
           fi
@@ -351,10 +370,10 @@ jobs:
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
           echo "current_control_sha=$current_control" >> "$GITHUB_OUTPUT"
           echo "current_impl_sha=$current_impl" >> "$GITHUB_OUTPUT"
-          if [ "$detected" != "true" ]; then
-            echo 'CODEFIX_NOT_DETECTED_YET: request remains armed; no retry dispatched.'
+          if [ "$detected" = "true" ]; then
+            echo "CODEFIX_VERIFIED:$reason control=$current_control production_green_impl=$current_impl"
           else
-            echo "CODEFIX_DETECTED:$reason control=$current_control impl=$current_impl"
+            echo 'CODEFIX_NOT_VERIFIED_YET: request remains armed; no retry dispatched.'
           fi
 
       - name: Replay exact request after verified codefix
@@ -376,6 +395,8 @@ jobs:
           set -euo pipefail
           [[ "$OLD_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_REPLAY_OLD_RUN_INVALID'; exit 1; }
           [[ "$GENERATION" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_REPLAY_GENERATION_INVALID'; exit 1; }
+          [ "$GENERATION" -le 4 ] || { echo 'CODEFIX_REPLAY_GENERATION_LIMIT_EXCEEDED'; exit 1; }
+          [[ "$CURRENT_IMPL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'CODEFIX_REPLAY_PRODUCTION_GREEN_SHA_INVALID'; exit 1; }
 
           before_ids=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')
           dispatch_epoch=$(date +%s)
@@ -409,7 +430,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rebound=false
           for attempt in 1 2 3 4 5; do
-            git fetch origin main
+            git fetch origin main --quiet
             git reset --hard origin/main
             python - "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" "$new_run_id" "$GENERATION" "$FAILURE_SIGNATURE" "$CURRENT_CONTROL_SHA" "$CURRENT_IMPL_SHA" "$CODEFIX_REASON" <<'PY'
           import json,sys
@@ -424,6 +445,7 @@ jobs:
           if str(codefix.get('status') or '')!='ARMED': raise SystemExit('CODEFIX_REPLAY_STATE_NOT_ARMED')
           if str(codefix.get('request_substate') or '')!='AWAITING_CODEFIX': raise SystemExit('CODEFIX_REPLAY_SUBSTATE_NOT_ARMED')
           if int(data.get('golden_path_run_id') or 0)!=old_run: raise SystemExit('CODEFIX_REPLAY_REQUEST_ALREADY_REBOUND')
+          if int(data.get('recovery_generation') or 0)!=generation: raise SystemExit('CODEFIX_REPLAY_GENERATION_CHANGED')
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           previous=list(data.get('previous_golden_path_run_ids') or [])
           if old_run not in previous: previous.append(old_run)
@@ -448,10 +470,11 @@ jobs:
               'meta':{
                   'retry_of_run_id':old_run,'golden_path_run_id':new_run,
                   'recovery_generation':generation,'failure_signature':signature,
-                  'reason':'same-generation-verified-codefix-replay',
+                  'reason':'same-generation-production-green-codefix-replay',
                   'codefix_detection_reason':reason,
                   'replay_control_plane_sha':control_sha,
-                  'replay_implementation_sha':impl_sha
+                  'replay_implementation_sha':impl_sha,
+                  'quality_gates_weakened':False
               }
           }]
           path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
@@ -470,7 +493,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          text=$(printf '🔧 TAYVORIQ · Codefix erkannt – Recovery automatisch fortgesetzt\n\nThema: %s\nAlter Run: %s\nNeuer Run: %s\nRecovery: Generation %s\n\n✅ Derselbe freigegebene Auftrag und dieselben Quellen bleiben gebunden.\n✅ Die Recovery-Generation wurde NICHT erhöht.\n✅ Erst eine echte Codeänderung hat diesen Replay freigegeben.\n➡️ Produktion und Qualitätsprüfungen laufen autonom weiter.' \
+          text=$(printf '🔧 TAYVORIQ · Production-Green-Codefix erkannt – Recovery automatisch fortgesetzt\n\nThema: %s\nAlter Run: %s\nNeuer Run: %s\nRecovery: Generation %s\n\n✅ Derselbe freigegebene Auftrag und dieselben Quellen bleiben gebunden.\n✅ Die Recovery-Generation wurde NICHT erhöht.\n✅ Nur Production-Green-Produktionscode oder relevanter Control-Code gibt den Replay frei.\n➡️ Produktion und Qualitätsprüfungen laufen autonom weiter.' \
             "${{ steps.pending.outputs.topic }}" "${{ steps.pending.outputs.run_id }}" "${{ steps.replay.outputs.new_run_id }}" "${{ steps.replay.outputs.generation }}")
           curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
