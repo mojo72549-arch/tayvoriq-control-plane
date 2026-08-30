@@ -310,7 +310,7 @@ jobs:
           set -euo pipefail
           git fetch origin main --quiet
           current_control=$(git rev-parse origin/main)
-          current_impl=$(git ls-remote "https://github.com/${IMPLEMENTATION_REPO}.git" "refs/heads/${IMPLEMENTATION_BRANCH}" | awk '{print $1}' | head -1)
+          current_impl=$(git ls-remote "https://x-access-token:${GH_TOKEN}@github.com/${IMPLEMENTATION_REPO}.git" "refs/heads/${IMPLEMENTATION_BRANCH}" | awk '{print $1}' | head -1)
           relevant_control=false
           if [[ "$FAILED_CONTROL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]] && git cat-file -e "${FAILED_CONTROL_SHA}^{commit}" 2>/dev/null; then
             git diff --name-only "$FAILED_CONTROL_SHA"..origin/main > /tmp/codefix-control-files.txt || true
