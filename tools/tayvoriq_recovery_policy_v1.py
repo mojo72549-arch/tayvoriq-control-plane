@@ -42,10 +42,6 @@ LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"voice checkpoint v5 natural narrator repair failed",
 )
 
-# A terminal controller handoff is authoritative over earlier provider messages
-# and over shell/source text echoed by GitHub Actions. A real missing-secret or
-# permission failure exits before this terminal production handoff is emitted,
-# so genuine external blockers still fall through to EXTERNAL_PATTERNS below.
 TERMINAL_CODE_REPAIR_PATTERNS = (
     r"controller handoff:\s*state=code_repair_required\b",
     r"production is not publishable:\s*controller=code_repair_required/",
@@ -74,6 +70,10 @@ DETERMINISTIC_PREFLIGHT_PATTERNS = (
     r"=+ failures =+",
     r"failed tests/[^\s]+",
     r"pytest[^\n]*returncode[^\n]*1",
+    r"modulenotfounderror:\s*no module named",
+    r"\bimporterror:\b",
+    r"\bsyntaxerror:\b",
+    r"lightweight-preflight-[a-z0-9_-]+",
 )
 
 
@@ -143,13 +143,13 @@ def classify_failure(
         state = "REQUEST_BOUND_RECOVERY_REQUIRED"
         return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "The final publishability gate requires a bounded request-bound recovery generation.")
 
+    # Bootstrap/import/test failures are deterministic code defects. They must be
+    # classified before generic timeout/circuit words from the complete Actions
+    # log, otherwise harmless echoed source text can misroute recovery.
     if _matches(lowered, DETERMINISTIC_PREFLIGHT_PATTERNS):
         state = "DETERMINISTIC_PREFLIGHT_FAILURE"
-        return RecoveryDecision("deterministic", state, False, "none", generation, None, maximum, _stable_signature(state, text), "Repository tests or the deterministic preflight failed; an identical retry cannot repair code.")
+        return RecoveryDecision("deterministic", state, False, "verified-codefix-replay", generation, generation, maximum, _stable_signature(state, text), "Repository tests, imports or the deterministic preflight failed; preserve the exact request for a verified codefix replay.")
 
-    # Terminal production truth must win over incidental strings in the complete
-    # Actions log (for example an echoed `echo Missing secret` guard or an earlier
-    # provider circuit message). This is the authoritative handoff from runtime.
     if _matches(lowered, TERMINAL_CODE_REPAIR_PATTERNS):
         state = "CODE_REPAIR_REQUIRED"
         return RecoveryDecision(
