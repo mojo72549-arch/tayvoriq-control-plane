@@ -46,6 +46,18 @@ LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"voice checkpoint v5 natural narrator repair failed",
 )
 
+# A terminal controller handoff is authoritative over provider-level noise that
+# happened earlier in the same run. In particular, CODE_REPAIR_REQUIRED must not
+# be downgraded to a transient same-run retry just because a provider logged a
+# timeout/circuit-open message before the controller exhausted its safe repair
+# path. This is what makes deterministic codefix continuity actually reachable.
+TERMINAL_CODE_REPAIR_PATTERNS = (
+    r"controller handoff:\s*state=code_repair_required\b",
+    r"production is not publishable:\s*controller=code_repair_required/",
+    r'"state"\s*:\s*"code_repair_required"',
+    r"tayvoriq_autonomous_recovery:\s*no safe patch passed validation",
+)
+
 TRANSIENT_PATTERNS = (
     r"\b429\b",
     r"too many requests",
@@ -62,7 +74,7 @@ TRANSIENT_PATTERNS = (
 )
 
 DETERMINISTIC_PREFLIGHT_PATTERNS = (
-    r"\bprefLIGHT_failed\b",
+    r"\bpreflight_failed\b",
     r"production blocked before render:\s*preflight outcome=failure",
     r"=+ failures =+",
     r"failed tests/[^\s]+",
@@ -155,6 +167,20 @@ def classify_failure(
     if _matches(lowered, DETERMINISTIC_PREFLIGHT_PATTERNS):
         state = "DETERMINISTIC_PREFLIGHT_FAILURE"
         return RecoveryDecision("deterministic", state, False, "none", generation, None, maximum, _stable_signature(state, text), "Repository tests or the deterministic preflight failed; an identical retry cannot repair code.")
+
+    if _matches(lowered, TERMINAL_CODE_REPAIR_PATTERNS):
+        state = "CODE_REPAIR_REQUIRED"
+        return RecoveryDecision(
+            "deterministic",
+            state,
+            False,
+            "verified-codefix-replay",
+            generation,
+            generation,
+            maximum,
+            _stable_signature(state, text),
+            "The controller exhausted its bounded safe repair path and handed off CODE_REPAIR_REQUIRED; preserve the exact request for verified codefix replay instead of treating earlier provider noise as transient.",
+        )
 
     if _matches(lowered, DUPLICATE_PATTERNS):
         if exact_request_retry:
