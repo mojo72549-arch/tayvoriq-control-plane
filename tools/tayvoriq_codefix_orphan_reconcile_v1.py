@@ -31,6 +31,13 @@ def _run(args: list[str], *, check: bool = True, cwd: Path = ROOT) -> subprocess
     )
 
 
+def _int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _parse_time(value: Any) -> datetime | None:
     text = str(value or "").strip()
     if not text:
@@ -64,12 +71,7 @@ def _auto_repair(data: dict[str, Any]) -> bool:
 
 
 def _active_pointer() -> dict[str, Any] | None:
-    """Return the single canonical production owner or fail closed.
-
-    Durable request files are an audit log, not a work queue. Automatic recovery
-    must never rediscover work by scanning historical requests. The active pointer
-    is updated when a Telegram-approved request is durably bound to Golden Path.
-    """
+    """Return the single canonical production owner or fail closed."""
     if not ACTIVE_POINTER.is_file():
         print("CODEFIX_ACTIVE_POINTER_MISSING")
         return None
@@ -88,14 +90,33 @@ def _active_pointer() -> dict[str, Any] | None:
     if not request_id or any(char in request_id for char in "/\\\r\n"):
         print("CODEFIX_ACTIVE_POINTER_REQUEST_ID_INVALID")
         return None
-    try:
-        run_id = int(data.get("golden_path_run_id") or 0)
-    except (TypeError, ValueError):
-        run_id = 0
-    if run_id <= 0:
+    if _int(data.get("golden_path_run_id")) <= 0:
         print("CODEFIX_ACTIVE_POINTER_RUN_ID_INVALID")
         return None
     return data
+
+
+def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int) -> bool:
+    """Allow a completed failed replay to become the next codefix owner.
+
+    ARMED already owns its failed run and must never be duplicated. A
+    REPLAY_DISPATCHED record is different: if its replay_run_id is exactly the
+    canonical active run that has now failed, the replay itself needs a new
+    deterministic codefix handoff. Any other binding is treated as stale and is
+    rejected fail-closed.
+    """
+    status = str(codefix.get("status") or "").strip()
+    if not status:
+        return True
+    if status == "ARMED":
+        return False
+    if status == "REPLAY_DISPATCHED":
+        replay_run = _int(codefix.get("replay_run_id"))
+        if replay_run == run_id:
+            return True
+        print(f"CODEFIX_REPLAY_BINDING_MISMATCH:replay={replay_run}:active={run_id}")
+        return False
+    return True
 
 
 def _candidate_requests() -> list[tuple[datetime, int, Path]]:
@@ -110,9 +131,7 @@ def _candidate_requests() -> list[tuple[datetime, int, Path]]:
         if any(char in explicit_target for char in "/\\\r\n"):
             raise RuntimeError("CODEFIX_ORPHAN_TARGET_REQUEST_ID_INVALID")
         if explicit_target != active_request_id:
-            print(
-                f"CODEFIX_TARGET_NOT_ACTIVE:target={explicit_target}:active={active_request_id}"
-            )
+            print(f"CODEFIX_TARGET_NOT_ACTIVE:target={explicit_target}:active={active_request_id}")
             return []
 
     path = REQUESTS / f"{active_request_id}.json"
@@ -132,23 +151,19 @@ def _candidate_requests() -> list[tuple[datetime, int, Path]]:
         return []
     if not _telegram_bound(data) or not _auto_repair(data):
         return []
-    codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
-    if str(codefix.get("status") or "") in {"ARMED", "REPLAY_DISPATCHED"}:
-        return []
 
     approved_at = _parse_time(data.get("approved_at"))
     if approved_at is None:
         print("CODEFIX_ACTIVE_REQUEST_APPROVAL_TIME_INVALID")
         return []
-    try:
-        run_id = int(data.get("golden_path_run_id") or 0)
-        pointer_run_id = int(pointer.get("golden_path_run_id") or 0)
-    except (TypeError, ValueError):
-        return []
+    run_id = _int(data.get("golden_path_run_id"))
+    pointer_run_id = _int(pointer.get("golden_path_run_id"))
     if run_id <= 0 or run_id != pointer_run_id:
-        print(
-            f"CODEFIX_ACTIVE_RUN_MISMATCH:request={run_id}:pointer={pointer_run_id}"
-        )
+        print(f"CODEFIX_ACTIVE_RUN_MISMATCH:request={run_id}:pointer={pointer_run_id}")
+        return []
+
+    codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
+    if not _replay_status_allows_rearm(codefix, run_id):
         return []
 
     for field in ("approval_key", "source_context_sha256", "contract_sha256"):
@@ -242,11 +257,10 @@ def _still_active(request_id: str, run_id: int) -> bool:
     pointer = _active_pointer()
     if pointer is None:
         return False
-    try:
-        pointer_run_id = int(pointer.get("golden_path_run_id") or 0)
-    except (TypeError, ValueError):
-        return False
-    return str(pointer.get("request_id") or "").strip() == request_id and pointer_run_id == run_id
+    return (
+        str(pointer.get("request_id") or "").strip() == request_id
+        and _int(pointer.get("golden_path_run_id")) == run_id
+    )
 
 
 def _arm_request(
@@ -273,14 +287,22 @@ def _arm_request(
             return False, "", "", 0
         if str(data.get("status") or "") != "DISPATCHED":
             return False, "", "", 0
-        if int(data.get("golden_path_run_id") or 0) != run_id:
-            return False, "", "", 0
-        existing = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
-        if str(existing.get("status") or "") in {"ARMED", "REPLAY_DISPATCHED"}:
+        if _int(data.get("golden_path_run_id")) != run_id:
             return False, "", "", 0
 
+        existing = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
+        if not _replay_status_allows_rearm(existing, run_id):
+            return False, "", "", 0
+
+        replay_rearm = str(existing.get("status") or "") == "REPLAY_DISPATCHED" and _int(existing.get("replay_run_id")) == run_id
+        effective_failed_control = str(failed_control or "").strip()
+        effective_failed_impl = str(failed_impl or "").strip()
+        if replay_rearm:
+            effective_failed_control = effective_failed_control or str(existing.get("replay_control_plane_sha") or "").strip()
+            effective_failed_impl = effective_failed_impl or str(existing.get("replay_implementation_sha") or "").strip()
+
         topic = str(data.get("topic") or "").strip()
-        generation = max(0, int(data.get("recovery_generation") or 0))
+        generation = max(0, _int(data.get("recovery_generation")))
         now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         data["codefix_recovery"] = {
             "status": "ARMED",
@@ -288,8 +310,8 @@ def _arm_request(
             "failed_run_id": run_id,
             "failure_signature": signature,
             "failure_state": state,
-            "failed_control_plane_sha": failed_control,
-            "failed_implementation_sha": failed_impl,
+            "failed_control_plane_sha": effective_failed_control,
+            "failed_implementation_sha": effective_failed_impl,
             "recovery_generation": generation,
             "armed_at": now,
             "same_generation_replay_required": True,
@@ -297,6 +319,9 @@ def _arm_request(
             "quality_gates_weakened": False,
             "orphan_reconciled": True,
             "active_pointer_verified": True,
+            "rearmed_after_failed_replay": replay_rearm,
+            "previous_codefix_failed_run_id": _int(existing.get("failed_run_id")) if replay_rearm else 0,
+            "previous_codefix_failure_signature": str(existing.get("failure_signature") or "") if replay_rearm else "",
         }
         data["state_history"] = list(data.get("state_history") or []) + [
             {
@@ -307,10 +332,10 @@ def _arm_request(
                     "failed_run_id": run_id,
                     "failure_signature": signature,
                     "failure_state": state,
-                    "failed_control_plane_sha": failed_control,
-                    "failed_implementation_sha": failed_impl,
+                    "failed_control_plane_sha": effective_failed_control,
+                    "failed_implementation_sha": effective_failed_impl,
                     "recovery_generation": generation,
-                    "reason": "active-request-deterministic-failure-reconciled",
+                    "reason": "failed-codefix-replay-rearmed" if replay_rearm else "active-request-deterministic-failure-reconciled",
                     "quality_gates_weakened": False,
                     "active_pointer_verified": True,
                 },
@@ -367,7 +392,7 @@ def main() -> int:
         if run_meta is None:
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
-        generation = max(0, int(data.get("recovery_generation") or 0))
+        generation = max(0, _int(data.get("recovery_generation")))
         with tempfile.TemporaryDirectory(prefix="tayvoriq-codefix-orphan-") as raw_temp:
             temp = Path(raw_temp)
             logs = temp / "failed.log"
@@ -375,7 +400,7 @@ def main() -> int:
                 print(f"CODEFIX_ORPHAN_NO_FAILED_LOGS:{run_id}")
                 continue
             policy_path = temp / "policy.json"
-            policy = _policy(logs, int(run_meta.get("run_attempt") or 1), generation, policy_path)
+            policy = _policy(logs, _int(run_meta.get("run_attempt")) or 1, generation, policy_path)
             if not policy:
                 print(f"CODEFIX_ORPHAN_POLICY_UNAVAILABLE:{run_id}")
                 continue
@@ -384,9 +409,7 @@ def main() -> int:
             print(f"CODEFIX_ORPHAN_POLICY_DECISION:{run_id}:mode={mode}:state={state}")
             if mode != "deterministic":
                 continue
-            failed_control, failed_impl = _diagnostic_shas(
-                run_id, int(run_meta.get("run_attempt") or 1), run_meta, temp
-            )
+            failed_control, failed_impl = _diagnostic_shas(run_id, _int(run_meta.get("run_attempt")) or 1, run_meta, temp)
             relative = path.relative_to(ROOT)
             armed, request_id, topic, armed_generation = _arm_request(
                 relative,
@@ -397,6 +420,8 @@ def main() -> int:
                 failed_impl,
             )
             if armed:
+                refreshed = json.loads((ROOT / relative).read_text(encoding="utf-8"))
+                codefix = refreshed.get("codefix_recovery") if isinstance(refreshed.get("codefix_recovery"), dict) else {}
                 print(
                     json.dumps(
                         {
@@ -404,7 +429,8 @@ def main() -> int:
                             "request_id": request_id,
                             "run_id": run_id,
                             "recovery_generation": armed_generation,
-                            "failed_implementation_sha": failed_impl,
+                            "failed_implementation_sha": str(codefix.get("failed_implementation_sha") or failed_impl),
+                            "rearmed_after_failed_replay": codefix.get("rearmed_after_failed_replay") is True,
                             "quality_gates_weakened": False,
                             "active_pointer_verified": True,
                         },
