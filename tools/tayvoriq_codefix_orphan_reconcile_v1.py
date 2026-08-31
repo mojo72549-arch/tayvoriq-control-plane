@@ -16,7 +16,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 REQUESTS = ROOT / "requests"
 POLICY = ROOT / "tools" / "tayvoriq_recovery_policy_v1.py"
-DEFAULT_MAX_AGE_HOURS = 48
+ACTIVE_POINTER = ROOT / ".github" / "state" / "tayvoriq-active-production-request.json"
+ACTIVE_POINTER_SCHEMA = "tayvoriq-active-production-request-v1"
 
 
 def _run(args: list[str], *, check: bool = True, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
@@ -62,61 +63,104 @@ def _auto_repair(data: dict[str, Any]) -> bool:
     )
 
 
-def _candidate_requests() -> list[tuple[datetime, int, Path]]:
-    """Return only the exact pinned request or genuinely recent orphan requests.
+def _active_pointer() -> dict[str, Any] | None:
+    """Return the single canonical production owner or fail closed.
 
-    Historical DISPATCHED files are durable audit records and must never become
-    eligible merely because their old run id sorts high. When no explicit target
-    is supplied, approvals older than the bounded freshness window are ignored
-    and candidates are ordered by approval time, newest first.
+    Durable request files are an audit log, not a work queue. Automatic recovery
+    must never rediscover work by scanning historical requests. The active pointer
+    is updated when a Telegram-approved request is durably bound to Golden Path.
     """
-
-    target = str(os.environ.get("TAYVORIQ_RECOVERY_TARGET_REQUEST_ID") or "").strip()
-    max_age_raw = str(os.environ.get("TAYVORIQ_ORPHAN_MAX_AGE_HOURS") or DEFAULT_MAX_AGE_HOURS).strip()
+    if not ACTIVE_POINTER.is_file():
+        print("CODEFIX_ACTIVE_POINTER_MISSING")
+        return None
     try:
-        max_age_hours = max(1, min(168, int(max_age_raw)))
-    except ValueError:
-        max_age_hours = DEFAULT_MAX_AGE_HOURS
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+        data = json.loads(ACTIVE_POINTER.read_text(encoding="utf-8"))
+    except Exception:
+        print("CODEFIX_ACTIVE_POINTER_INVALID_JSON")
+        return None
+    if str(data.get("schema") or "") != ACTIVE_POINTER_SCHEMA:
+        print("CODEFIX_ACTIVE_POINTER_SCHEMA_INVALID")
+        return None
+    if str(data.get("state") or "") != "ACTIVE":
+        print("CODEFIX_ACTIVE_POINTER_NOT_ACTIVE")
+        return None
+    request_id = str(data.get("request_id") or "").strip()
+    if not request_id or any(char in request_id for char in "/\\\r\n"):
+        print("CODEFIX_ACTIVE_POINTER_REQUEST_ID_INVALID")
+        return None
+    try:
+        run_id = int(data.get("golden_path_run_id") or 0)
+    except (TypeError, ValueError):
+        run_id = 0
+    if run_id <= 0:
+        print("CODEFIX_ACTIVE_POINTER_RUN_ID_INVALID")
+        return None
+    return data
 
-    if target:
-        if any(char in target for char in "/\\\r\n"):
+
+def _candidate_requests() -> list[tuple[datetime, int, Path]]:
+    """Return exactly the active production request; never scan history."""
+    pointer = _active_pointer()
+    if pointer is None:
+        return []
+
+    active_request_id = str(pointer["request_id"]).strip()
+    explicit_target = str(os.environ.get("TAYVORIQ_RECOVERY_TARGET_REQUEST_ID") or "").strip()
+    if explicit_target:
+        if any(char in explicit_target for char in "/\\\r\n"):
             raise RuntimeError("CODEFIX_ORPHAN_TARGET_REQUEST_ID_INVALID")
-        paths = [REQUESTS / f"{target}.json"]
-    else:
-        paths = sorted(REQUESTS.glob("*.json"))
+        if explicit_target != active_request_id:
+            print(
+                f"CODEFIX_TARGET_NOT_ACTIVE:target={explicit_target}:active={active_request_id}"
+            )
+            return []
 
-    candidates: list[tuple[datetime, int, Path]] = []
-    for path in paths:
-        if not path.is_file():
-            continue
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        request_id = str(data.get("request_id") or "").strip()
-        if target and request_id != target:
-            continue
-        if str(data.get("status") or "") != "DISPATCHED":
-            continue
-        if not _telegram_bound(data) or not _auto_repair(data):
-            continue
-        codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
-        if str(codefix.get("status") or "") in {"ARMED", "REPLAY_DISPATCHED"}:
-            continue
-        approved_at = _parse_time(data.get("approved_at"))
-        if approved_at is None:
-            continue
-        if not target and approved_at < cutoff:
-            continue
-        try:
-            run_id = int(data.get("golden_path_run_id") or 0)
-        except (TypeError, ValueError):
-            run_id = 0
-        if run_id > 0:
-            candidates.append((approved_at, run_id, path))
+    path = REQUESTS / f"{active_request_id}.json"
+    if not path.is_file():
+        print(f"CODEFIX_ACTIVE_REQUEST_FILE_MISSING:{active_request_id}")
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        print(f"CODEFIX_ACTIVE_REQUEST_INVALID_JSON:{active_request_id}")
+        return []
 
-    return sorted(candidates, key=lambda item: (item[0], item[1]), reverse=True)
+    if str(data.get("request_id") or "").strip() != active_request_id:
+        print("CODEFIX_ACTIVE_REQUEST_ID_MISMATCH")
+        return []
+    if str(data.get("status") or "") != "DISPATCHED":
+        return []
+    if not _telegram_bound(data) or not _auto_repair(data):
+        return []
+    codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
+    if str(codefix.get("status") or "") in {"ARMED", "REPLAY_DISPATCHED"}:
+        return []
+
+    approved_at = _parse_time(data.get("approved_at"))
+    if approved_at is None:
+        print("CODEFIX_ACTIVE_REQUEST_APPROVAL_TIME_INVALID")
+        return []
+    try:
+        run_id = int(data.get("golden_path_run_id") or 0)
+        pointer_run_id = int(pointer.get("golden_path_run_id") or 0)
+    except (TypeError, ValueError):
+        return []
+    if run_id <= 0 or run_id != pointer_run_id:
+        print(
+            f"CODEFIX_ACTIVE_RUN_MISMATCH:request={run_id}:pointer={pointer_run_id}"
+        )
+        return []
+
+    # Bind the pointer to the immutable approval/source contract as another
+    # independent guard against an accidentally reused request id.
+    for field in ("approval_key", "source_context_sha256", "contract_sha256"):
+        pointer_value = str(pointer.get(field) or "").strip()
+        request_value = str(data.get(field) or "").strip()
+        if pointer_value and pointer_value != request_value:
+            print(f"CODEFIX_ACTIVE_POINTER_{field.upper()}_MISMATCH")
+            return []
+
+    return [(approved_at, run_id, path)]
 
 
 def _run_metadata(repo: str, run_id: int, approved_at: datetime) -> dict[str, Any] | None:
@@ -133,9 +177,6 @@ def _run_metadata(repo: str, run_id: int, approved_at: datetime) -> dict[str, An
     if str(data.get("conclusion") or "") == "success":
         return None
     run_created = _parse_time(data.get("created_at"))
-    # Prevent a malformed durable request from binding an unrelated historical
-    # run. The Golden Path must have been created at or after this approval,
-    # allowing only a small clock/order tolerance.
     if run_created is None or run_created < approved_at - timedelta(minutes=5):
         print(f"CODEFIX_ORPHAN_RUN_PRECEDES_APPROVAL:{run_id}")
         return None
@@ -199,6 +240,17 @@ def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], te
     return failed_control, failed_impl
 
 
+def _still_active(request_id: str, run_id: int) -> bool:
+    pointer = _active_pointer()
+    if pointer is None:
+        return False
+    try:
+        pointer_run_id = int(pointer.get("golden_path_run_id") or 0)
+    except (TypeError, ValueError):
+        return False
+    return str(pointer.get("request_id") or "").strip() == request_id and pointer_run_id == run_id
+
+
 def _arm_request(
     relative_path: Path,
     run_id: int,
@@ -217,6 +269,10 @@ def _arm_request(
         if not path.is_file():
             return False, "", "", 0
         data = json.loads(path.read_text(encoding="utf-8"))
+        request_id = str(data.get("request_id") or "").strip()
+        if not _still_active(request_id, run_id):
+            print(f"CODEFIX_ARM_ABORTED_NOT_ACTIVE:{request_id}:{run_id}")
+            return False, "", "", 0
         if str(data.get("status") or "") != "DISPATCHED":
             return False, "", "", 0
         if int(data.get("golden_path_run_id") or 0) != run_id:
@@ -225,7 +281,6 @@ def _arm_request(
         if str(existing.get("status") or "") in {"ARMED", "REPLAY_DISPATCHED"}:
             return False, "", "", 0
 
-        request_id = str(data.get("request_id") or "").strip()
         topic = str(data.get("topic") or "").strip()
         generation = max(0, int(data.get("recovery_generation") or 0))
         now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -243,6 +298,7 @@ def _arm_request(
             "exact_source_request_required": True,
             "quality_gates_weakened": False,
             "orphan_reconciled": True,
+            "active_pointer_verified": True,
         }
         data["state_history"] = list(data.get("state_history") or []) + [
             {
@@ -256,8 +312,9 @@ def _arm_request(
                     "failed_control_plane_sha": failed_control,
                     "failed_implementation_sha": failed_impl,
                     "recovery_generation": generation,
-                    "reason": "recent-or-explicit-deterministic-failure-reconciled",
+                    "reason": "active-request-deterministic-failure-reconciled",
                     "quality_gates_weakened": False,
+                    "active_pointer_verified": True,
                 },
             }
         ]
@@ -266,7 +323,7 @@ def _arm_request(
         diff = _run(["git", "diff", "--cached", "--quiet"], check=False)
         if diff.returncode == 0:
             return False, "", "", 0
-        _run(["git", "commit", "-m", f"ops: reconcile deterministic codefix orphan {request_id} run {run_id}"])
+        _run(["git", "commit", "-m", f"ops: reconcile active deterministic codefix {request_id} run {run_id}"])
         pushed = _run(["git", "push", "origin", "HEAD:main"], check=False)
         if pushed.returncode == 0:
             return True, request_id, topic, generation
@@ -285,9 +342,9 @@ def _send_telegram(topic: str, run_id: int, generation: int) -> None:
         f"Thema: {topic[:180]}\n"
         f"Fehlgeschlagener Run: {run_id}\n"
         f"Recovery: Generation {generation}\n\n"
-        "✅ Dieser aktuelle Telegram-Auftrag wurde automatisch wieder aufgenommen.\n"
+        "✅ Ausschließlich der aktuell freigegebene Telegram-Auftrag wurde übernommen.\n"
         "✅ Auftrag, Trendfreigabe und geprüfte Quellen bleiben gebunden.\n"
-        "✅ Es wird NICHT blind erneut produziert.\n"
+        "✅ Historische Requests werden nicht automatisch reaktiviert.\n"
         "➡️ Derselbe Auftrag läuft weiter, sobald ein passender Production-Green-Codefix bestätigt ist."
     )
     payload = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode("utf-8")
@@ -339,12 +396,13 @@ def main() -> int:
                 print(
                     json.dumps(
                         {
-                            "state": "ORPHAN_CODEFIX_ARMED",
+                            "state": "ACTIVE_CODEFIX_ARMED",
                             "request_id": request_id,
                             "run_id": run_id,
                             "recovery_generation": armed_generation,
                             "failed_implementation_sha": failed_impl,
                             "quality_gates_weakened": False,
+                            "active_pointer_verified": True,
                         },
                         ensure_ascii=False,
                     )
