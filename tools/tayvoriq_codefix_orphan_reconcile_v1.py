@@ -151,8 +151,6 @@ def _candidate_requests() -> list[tuple[datetime, int, Path]]:
         )
         return []
 
-    # Bind the pointer to the immutable approval/source contract as another
-    # independent guard against an accidentally reused request id.
     for field in ("approval_key", "source_context_sha256", "contract_sha256"):
         pointer_value = str(pointer.get(field) or "").strip()
         request_value = str(data.get(field) or "").strip()
@@ -378,7 +376,13 @@ def main() -> int:
                 continue
             policy_path = temp / "policy.json"
             policy = _policy(logs, int(run_meta.get("run_attempt") or 1), generation, policy_path)
-            if not policy or str(policy.get("mode") or "") != "deterministic":
+            if not policy:
+                print(f"CODEFIX_ORPHAN_POLICY_UNAVAILABLE:{run_id}")
+                continue
+            mode = str(policy.get("mode") or "")
+            state = str(policy.get("state") or "")
+            print(f"CODEFIX_ORPHAN_POLICY_DECISION:{run_id}:mode={mode}:state={state}")
+            if mode != "deterministic":
                 continue
             failed_control, failed_impl = _diagnostic_shas(
                 run_id, int(run_meta.get("run_attempt") or 1), run_meta, temp
@@ -388,7 +392,7 @@ def main() -> int:
                 relative,
                 run_id,
                 str(policy.get("failure_signature") or ""),
-                str(policy.get("state") or "CODE_REPAIR_REQUIRED"),
+                state or "CODE_REPAIR_REQUIRED",
                 failed_control,
                 failed_impl,
             )
