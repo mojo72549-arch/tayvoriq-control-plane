@@ -32,13 +32,13 @@
     ],
     "fallback_editorial_answers": {
       "what_happened": "Ein Gletscherkollaps löste an der Nepal-Tibet-Grenze tödliche Fluten aus.",
-      "why_happening": "Eis und Gestein stürzten ins Flusssystem und erzeugten eine massive Flutwelle.",
+      "why_happening": "Weil Eis und Gestein ins Flusssystem stürzten, entstand eine massive Flutwelle.",
       "who_is_affected": "Betroffen sind Anwohner, Reisende, Arbeiter und Rettungskräfte beiderseits der Grenze.",
       "personal_impact": "Die Katastrophe zeigt, wie schnell Hochgebirgsflüsse lebensgefährlich anschwellen können.",
       "action_now": "Prüfe aktuelle Opferzahlen und berichte sachlich ohne Spekulationen."
     }
   },
-  "source_context_sha256": "927f04082e0603e210806bde36ed0dcb9ba49aa78a220c3d2781053c02d05910",
+  "source_context_sha256": "d55fae6333765afde6f1459efe6f8f98c6b0366ba72c74c9b4c4c38eff1fd1f1",
   "state_history": [
     {
       "state": "APPROVED",
@@ -54,6 +54,12 @@
       "state": "DISPATCHED",
       "at": "2026-08-31T08:54:08.413939+00:00",
       "actor": "request-bound-resume:33375042106"
+    },
+    {
+      "state": "SOURCE_CONTRACT_REPAIRED",
+      "at": "2026-08-31T09:30:00Z",
+      "actor": "request-bound-validator-repair",
+      "detail": "why_happening made explicitly causal for unchanged v34 quality gate"
     }
   ],
   "contract_sha256": "d5e197ac810a6fa97005ab857b646b386b811d1de52c7fc1c9c995ff234e6727",
