@@ -70,6 +70,13 @@ def prompt_for(slot, now):
     editorial_hints = _editorial_hint_text(slot, now)
     return _original_prompt(slot, now) + """
 
+TAYVORIQ STRATEGIC ENTITY SWEEP — DISCOVERY REQUIREMENT:
+- Before finalizing candidates, explicitly check current high-impact developments around Microsoft, OpenAI, Google/Alphabet, Apple, Meta, Amazon/AWS and Nvidia when they are relevant to Germany/Europe or the broad TAYVORIQ audience.
+- For Microsoft, actively check Azure, Windows, Copilot, Microsoft 365, GitHub, Xbox and major AI/cloud/business moves instead of relying on generic AI or technology searches to surface them accidentally.
+- This is a discovery-coverage rule, NOT a quota: never force Microsoft or any named company into the final five when its story is weaker, stale, duplicated or insufficiently sourced.
+- Do not suppress a strong company story merely because another AI/technology candidate already exists. Deduplicate by the underlying event and viewer takeaway, not by the broad category or company size.
+- A strategically watched entity that has a fresh, independently verified story competing on the normal scores must be allowed into the candidate pool and ranked normally.
+
 TAYVORIQ BRAND SAFETY — HARD REQUIREMENT:
 - Reject sexualized, erotic, sexually suggestive, fetishized or pornographic topics and angles.
 - Reject sexual or body-focused shock bait even when it appears to have high click or viral potential.
