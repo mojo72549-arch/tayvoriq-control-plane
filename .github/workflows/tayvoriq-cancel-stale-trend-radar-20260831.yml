@@ -1,0 +1,25 @@
+name: TAYVORIQ Cancel Stale Trend Radar 2026-08-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-cancel-stale-trend-radar-20260831.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel-stale-radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Cancel superseded radar run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run cancel 33364854541 --repo "$GITHUB_REPOSITORY" || true
+          echo "Superseded radar run cancellation requested after Telegram message 1906 was verified."
