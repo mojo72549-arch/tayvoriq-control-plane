@@ -42,6 +42,16 @@ LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"voice checkpoint v5 natural narrator repair failed",
 )
 
+# Explicit semantic/runtime contract failures are code defects, not content
+# freshness problems. They must win over the generic publishability handoff that
+# the parent workflow emits after the renderer exits. Otherwise an unchanged
+# broken implementation would be sent into a fresh request generation.
+SEMANTIC_CODEFIX_PATTERNS = (
+    r"content_rejected:v34-semantic-repair-missing:",
+    r"content_rejected:v34-semantic-contract",
+    r"v34-semantic-repair-missing:",
+)
+
 TERMINAL_CODE_REPAIR_PATTERNS = (
     r"controller handoff:\s*state=code_repair_required\b",
     r"production is not publishable:\s*controller=code_repair_required/",
@@ -130,6 +140,14 @@ def classify_failure(
             "deterministic", state, False, "verified-codefix-replay", generation, generation,
             maximum, _stable_signature(state, text),
             "Bounded local repair already ran and the strict audit still failed; keep the exact request armed for a verified codefix replay in the same recovery generation.",
+        )
+
+    if _matches(lowered, SEMANTIC_CODEFIX_PATTERNS):
+        state = "SEMANTIC_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
+            "The renderer exposed an explicit semantic contract defect. Preserve the exact approved request and resume only after a verified relevant code revision; do not consume a fresh content-recovery generation.",
         )
 
     if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
