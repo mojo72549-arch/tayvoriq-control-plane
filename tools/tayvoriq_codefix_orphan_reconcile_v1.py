@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +16,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 REQUESTS = ROOT / "requests"
 POLICY = ROOT / "tools" / "tayvoriq_recovery_policy_v1.py"
+DEFAULT_MAX_AGE_HOURS = 48
 
 
 def _run(args: list[str], *, check: bool = True, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
@@ -28,6 +28,19 @@ def _run(args: list[str], *, check: bool = True, cwd: Path = ROOT) -> subprocess
         stderr=subprocess.STDOUT,
         check=check,
     )
+
+
+def _parse_time(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _telegram_bound(data: dict[str, Any]) -> bool:
@@ -49,12 +62,40 @@ def _auto_repair(data: dict[str, Any]) -> bool:
     )
 
 
-def _candidate_requests() -> list[tuple[int, Path]]:
-    candidates: list[tuple[int, Path]] = []
-    for path in sorted(REQUESTS.glob("*.json")):
+def _candidate_requests() -> list[tuple[datetime, int, Path]]:
+    """Return only the exact pinned request or genuinely recent orphan requests.
+
+    Historical DISPATCHED files are durable audit records and must never become
+    eligible merely because their old run id sorts high. When no explicit target
+    is supplied, approvals older than the bounded freshness window are ignored
+    and candidates are ordered by approval time, newest first.
+    """
+
+    target = str(os.environ.get("TAYVORIQ_RECOVERY_TARGET_REQUEST_ID") or "").strip()
+    max_age_raw = str(os.environ.get("TAYVORIQ_ORPHAN_MAX_AGE_HOURS") or DEFAULT_MAX_AGE_HOURS).strip()
+    try:
+        max_age_hours = max(1, min(168, int(max_age_raw)))
+    except ValueError:
+        max_age_hours = DEFAULT_MAX_AGE_HOURS
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+
+    if target:
+        if any(char in target for char in "/\\\r\n"):
+            raise RuntimeError("CODEFIX_ORPHAN_TARGET_REQUEST_ID_INVALID")
+        paths = [REQUESTS / f"{target}.json"]
+    else:
+        paths = sorted(REQUESTS.glob("*.json"))
+
+    candidates: list[tuple[datetime, int, Path]] = []
+    for path in paths:
+        if not path.is_file():
+            continue
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
+            continue
+        request_id = str(data.get("request_id") or "").strip()
+        if target and request_id != target:
             continue
         if str(data.get("status") or "") != "DISPATCHED":
             continue
@@ -63,16 +104,22 @@ def _candidate_requests() -> list[tuple[int, Path]]:
         codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
         if str(codefix.get("status") or "") in {"ARMED", "REPLAY_DISPATCHED"}:
             continue
+        approved_at = _parse_time(data.get("approved_at"))
+        if approved_at is None:
+            continue
+        if not target and approved_at < cutoff:
+            continue
         try:
             run_id = int(data.get("golden_path_run_id") or 0)
         except (TypeError, ValueError):
             run_id = 0
         if run_id > 0:
-            candidates.append((run_id, path))
-    return sorted(candidates, reverse=True)
+            candidates.append((approved_at, run_id, path))
+
+    return sorted(candidates, key=lambda item: (item[0], item[1]), reverse=True)
 
 
-def _run_metadata(repo: str, run_id: int) -> dict[str, Any] | None:
+def _run_metadata(repo: str, run_id: int, approved_at: datetime) -> dict[str, Any] | None:
     try:
         result = _run(["gh", "api", f"repos/{repo}/actions/runs/{run_id}"])
         data = json.loads(result.stdout)
@@ -84,6 +131,13 @@ def _run_metadata(repo: str, run_id: int) -> dict[str, Any] | None:
     if str(data.get("status") or "") != "completed":
         return None
     if str(data.get("conclusion") or "") == "success":
+        return None
+    run_created = _parse_time(data.get("created_at"))
+    # Prevent a malformed durable request from binding an unrelated historical
+    # run. The Golden Path must have been created at or after this approval,
+    # allowing only a small clock/order tolerance.
+    if run_created is None or run_created < approved_at - timedelta(minutes=5):
+        print(f"CODEFIX_ORPHAN_RUN_PRECEDES_APPROVAL:{run_id}")
         return None
     return data
 
@@ -202,7 +256,7 @@ def _arm_request(
                     "failed_control_plane_sha": failed_control,
                     "failed_implementation_sha": failed_impl,
                     "recovery_generation": generation,
-                    "reason": "orphaned-deterministic-failure-reconciled",
+                    "reason": "recent-or-explicit-deterministic-failure-reconciled",
                     "quality_gates_weakened": False,
                 },
             }
@@ -231,7 +285,7 @@ def _send_telegram(topic: str, run_id: int, generation: int) -> None:
         f"Thema: {topic[:180]}\n"
         f"Fehlgeschlagener Run: {run_id}\n"
         f"Recovery: Generation {generation}\n\n"
-        "✅ Der verwaiste Fehlerlauf wurde automatisch wieder aufgenommen.\n"
+        "✅ Dieser aktuelle Telegram-Auftrag wurde automatisch wieder aufgenommen.\n"
         "✅ Auftrag, Trendfreigabe und geprüfte Quellen bleiben gebunden.\n"
         "✅ Es wird NICHT blind erneut produziert.\n"
         "➡️ Derselbe Auftrag läuft weiter, sobald ein passender Production-Green-Codefix bestätigt ist."
@@ -253,8 +307,8 @@ def main() -> int:
     if not repo:
         raise RuntimeError("CODEFIX_ORPHAN_GITHUB_REPOSITORY_MISSING")
 
-    for run_id, path in _candidate_requests():
-        run_meta = _run_metadata(repo, run_id)
+    for approved_at, run_id, path in _candidate_requests():
+        run_meta = _run_metadata(repo, run_id, approved_at)
         if run_meta is None:
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
