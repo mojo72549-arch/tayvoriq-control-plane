@@ -37,6 +37,28 @@ def test_transient_failure_uses_same_run_before_fresh_generation():
     assert decision.next_generation == 2
 
 
+def test_terminal_code_repair_wins_over_provider_circuit_noise():
+    logs = """
+    gemini:RuntimeError:Gemini circuit already open for this workflow
+    groq:RuntimeError:Groq circuit already open for this workflow
+    TAYVORIQ_AUTONOMOUS_RECOVERY: no safe patch passed validation.
+    Controller handoff: state=CODE_REPAIR_REQUIRED reusable_master=false process_exit=1
+    Production is not publishable: controller=CODE_REPAIR_REQUIRED/1 recovery=/
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=0,
+        max_generations=4,
+        exact_request_retry=True,
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "CODE_REPAIR_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.retry_allowed is False
+    assert decision.next_generation == 0
+
+
 def test_transient_failure_after_same_run_budget_enters_codefix_continuity_at_ceiling():
     decision = classify_failure(
         "HTTP 503 temporarily unavailable",
