@@ -1,6 +1,6 @@
 name: TAYVORIQ Production Green Promoter
 
-# recovery-verification-request: studio-407d9e64e2bd2f1c
+# recovery-verification-request: studio-350335f529768909
 
 on:
   push:
@@ -126,7 +126,10 @@ jobs:
         run: |
           set -euo pipefail
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/production-green-promotion.json
-          python -m pytest -q tests/test_tayvoriq_production_green_pin.py tests/test_tayvoriq_verified_source_budget_guard.py
+          python -m pytest -q \
+            tests/test_tayvoriq_production_green_pin.py \
+            tests/test_tayvoriq_verified_source_budget_guard.py \
+            tests/test_tayvoriq_verified_request_causal_alignment.py
 
       - name: Re-verify candidate did not move
         if: steps.refs.outputs.changed == 'true'
