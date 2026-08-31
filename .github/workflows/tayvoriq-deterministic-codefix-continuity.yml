@@ -12,6 +12,7 @@ on:
     paths:
       - .github/state/tayvoriq-production-green.json
       - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
+      - tools/tayvoriq_codefix_orphan_reconcile_v1.py
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
@@ -274,6 +275,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Reconcile a durable Telegram request whose Golden Path has already
+          # failed but whose original workflow_run handoff never persisted.
+          python tools/tayvoriq_codefix_orphan_reconcile_v1.py
+          git fetch origin main --quiet
+          git reset --hard origin/main
+
           python - "$GITHUB_OUTPUT" <<'PY'
           import json, sys
           from pathlib import Path
@@ -344,6 +351,10 @@ jobs:
                   continue
               if path == '.github/state/tayvoriq-production-green.json':
                   continue
+              if path == '.github/workflows/tayvoriq-deterministic-codefix-continuity.yml':
+                  continue
+              if path == 'tools/tayvoriq_codefix_orphan_reconcile_v1.py':
+                  continue
               if path.startswith('tools/tayvoriq_') or path.startswith('scripts/') or path.startswith('.github/workflows/tayvoriq-'):
                   relevant.append(path)
           print('\n'.join(relevant))
@@ -361,10 +372,15 @@ jobs:
 
           detected=false
           reason=''
-          if [ "$implementation_changed" = "true" ]; then
-            detected=true; reason='production-green-implementation-changed'
+          # If the failed production manifest identifies the implementation SHA,
+          # only a different verified Production-Green implementation may unlock
+          # replay. Unrelated control-plane edits must never masquerade as a fix.
+          if [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+            if [ "$implementation_changed" = "true" ]; then
+              detected=true; reason='production-green-implementation-changed'
+            fi
           elif [ "$relevant_control" = "true" ]; then
-            detected=true; reason='relevant-control-code-changed'
+            detected=true; reason='relevant-control-code-changed-without-implementation-pin'
           fi
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
