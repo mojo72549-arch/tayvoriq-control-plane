@@ -22,7 +22,31 @@ def test_preflight_test_failure_never_starts_new_generation():
     assert decision.mode == "deterministic"
     assert decision.state == "DETERMINISTIC_PREFLIGHT_FAILURE"
     assert decision.retry_allowed is False
-    assert decision.next_generation is None
+    assert decision.next_generation == 30
+
+
+def test_bootstrap_import_failure_wins_over_incidental_timeout_text():
+    logs = """
+    request = urllib.request.urlopen(url, timeout=20)
+    Traceback (most recent call last):
+      File "tools/tayvoriq_lightweight_preflight.py", line 79, in _request_source_editorial_contract
+        import tayvoriq_dual_platform_render_v11 as editorial
+      File "tools/tayvoriq_dual_platform_render_v8.py", line 9, in <module>
+        import requests
+    ModuleNotFoundError: No module named 'requests'
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=0,
+        max_generations=4,
+        exact_request_retry=True,
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "DETERMINISTIC_PREFLIGHT_FAILURE"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.retry_allowed is False
+    assert decision.next_generation == 0
 
 
 def test_transient_failure_uses_same_run_before_fresh_generation():
