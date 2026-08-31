@@ -6,6 +6,7 @@ on:
     types: [completed]
 
 permissions:
+  actions: read
   contents: read
 
 env:
@@ -21,8 +22,54 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Suppress superseded cancelled attempt
+        id: stale_guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          suppress=false
+          reason=""
+
+          if [ "$SOURCE_RUN_CONCLUSION" = "cancelled" ]; then
+            git fetch origin main --quiet || true
+            old_request=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('.github/run-now/tayvoriq-x-request.json')
+          try:
+              data=json.loads(path.read_text(encoding='utf-8'))
+          except Exception:
+              data={}
+          print(str(data.get('source_request_id') or '').strip())
+          PY
+            )
+            current_request=$(git show origin/main:.github/run-now/tayvoriq-x-request.json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); print(str(d.get("source_request_id") or "").strip())' 2>/dev/null || true)
+
+            newer_active=$(gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow tayvoriq-deliver-video-now.yml \
+              --limit 30 \
+              --json databaseId,status \
+              --jq '[.[] | select(.databaseId > ('"$SOURCE_RUN_ID"') and (.status == "queued" or .status == "in_progress"))] | length' 2>/dev/null || echo 0)
+
+            if [ -n "$old_request" ] && [ "$old_request" = "$current_request" ] && [ "${newer_active:-0}" -gt 0 ]; then
+              suppress=true
+              reason="superseded_by_newer_active_same_request"
+            fi
+          fi
+
+          echo "suppress=$suppress" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "TAYVORIQ failure notification guard: suppress=$suppress reason=$reason"
 
       - name: Send mandatory Telegram failure status
+        if: steps.stale_guard.outputs.suppress != 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -103,3 +150,8 @@ jobs:
           }
           print(json.dumps(receipt, ensure_ascii=False))
           PY
+
+      - name: Record superseded cancellation internally
+        if: steps.stale_guard.outputs.suppress == 'true'
+        run: |
+          echo "SUPSERSEDED_CANCELLED_RUN_SUPPRESSED source_run=${{ github.event.workflow_run.id }} reason=${{ steps.stale_guard.outputs.reason }}"
