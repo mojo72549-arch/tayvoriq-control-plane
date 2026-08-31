@@ -49,6 +49,39 @@ def test_bootstrap_import_failure_wins_over_incidental_timeout_text():
     assert decision.next_generation == 0
 
 
+def test_semantic_contract_failure_wins_over_publishable_retry_handoff():
+    logs = """
+    RuntimeError: CONTENT_REJECTED:v34-semantic-repair-missing:why_happening
+    RuntimeError: Keiner der geprüften Trendkandidaten bestand Skript-, Sprach- und Render-Gates.
+    Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1
+    recovery=PUBLISHABLE_OUTPUT_RETRY_REQUIRED/1
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=0,
+        max_generations=4,
+        exact_request_retry=True,
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "SEMANTIC_CODEFIX_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.retry_allowed is False
+    assert decision.next_generation == 0
+
+
+def test_plain_publishability_failure_still_uses_bounded_fresh_recovery():
+    decision = classify_failure(
+        "Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1",
+        recovery_generation=1,
+        max_generations=4,
+        exact_request_retry=True,
+    )
+    assert decision.mode == "fresh"
+    assert decision.state == "REQUEST_BOUND_RECOVERY_REQUIRED"
+    assert decision.next_generation == 2
+
+
 def test_transient_failure_uses_same_run_before_fresh_generation():
     decision = classify_failure(
         "HTTP 503 temporarily unavailable while synthesizing voice",
