@@ -1,0 +1,71 @@
+{
+  "request_id": "telegram-1965-trend-2",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "2",
+  "topic": "Europa bestellt einen neuen KI-Supercomputer: Warum LUMI-AI Europas Rechenleistung verzehnfachen soll",
+  "trend_scope": "technology_ai",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-08-31T18:41:18.605Z",
+  "telegram_message_id": 1965,
+  "approval_key": "telegram:20260901-morning-agentv2:1965:trend:2",
+  "mode": "full",
+  "selection_id": "20260901-morning-agentv2",
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/world/europe/europe-expands-ai-computing-network-with-390-million-order-frances-bull-2026-08-31/",
+        "supports": "Auftrag an Bull, Vertragswert, Standort Finnland und Europas wachsende Nachfrage nach KI-Rechenleistung."
+      },
+      {
+        "publisher": "EuroHPC JU",
+        "url": "https://www.eurohpc-ju.europa.eu/eurohpc-ju-signs-contract-deploy-lumi-ai-supercomputer-2026-08-31_en",
+        "supports": "Offizielle Bestätigung von LUMI-AI, 387,8 Millionen Euro Gesamtbudget und geplanter Verfügbarkeit 2027."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Europa hat den 387,8-Millionen-Euro-Supercomputer LUMI-AI für Finnland verbindlich beauftragt.",
+      "why_happening": "Die Nachfrage nach europäischer KI-Rechenleistung übersteigt bereits die vorhandenen Kapazitäten.",
+      "who_is_affected": "Start-ups, Unternehmen und Forschende in Europa sollen zusätzliche Rechenkapazität erhalten.",
+      "personal_impact": "Für dich bedeutet das mehr europäische Infrastruktur für neue KI-Dienste und Forschung.",
+      "action_now": "Achte darauf, welche europäischen KI-Projekte künftig Zugang zu LUMI-AI bekommen."
+    },
+    "factual_guardrails": {
+      "must_include": [
+        "387,8 Millionen Euro",
+        "Standort Kajaani in Finnland",
+        "geplante Nutzung ab 2027",
+        "bis zu zehnfach höhere KI-Kapazität gegenüber LUMI"
+      ],
+      "must_not_claim": [
+        "LUMI-AI ist bereits in Betrieb",
+        "Europa besitzt damit den schnellsten Supercomputer der Welt"
+      ],
+      "uncertainty_note": "Das System ist beauftragt und für 2027 vorgesehen; es ist noch nicht verfügbar."
+    },
+    "research_notes": "Story-Spine: Europa reagiert auf knappe KI-Rechenkapazität mit einem großen neuen EuroHPC-System. Vertrag, Finanzierung und 2027-Zeitplan sind bestätigt. HASHTAG_SEEDS: #LUMIAI #EuroHPC #Supercomputer #Europa #ArtificialIntelligence #Finland #TAYVORIQ"
+  },
+  "source_context_sha256": "f25567f753d5a650c54c0a5d6d8a1171e479134105bd184f0ebb735124e6e0fe",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-08-31T18:41:18.605Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-31T18:41:28.740830+00:00",
+      "actor": "request-dispatcher:33426400349"
+    }
+  ],
+  "contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
+  "dispatch_claim_run_id": 33426400349,
+  "dispatch_contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b"
+}
