@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1906-trend-4",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "telegram_trend_approval",
   "trend_id": "4",
   "topic": "Gletscher-Kollaps im Himalaya: Warum die Katastrophe an der Nepal-China-Grenze immer größere Ausmaße annimmt",
@@ -44,7 +44,15 @@
       "state": "APPROVED",
       "at": "2026-08-31T06:46:51.635Z",
       "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-08-31T08:53:58.320993+00:00",
+      "actor": "request-bound-resume:33375042106"
     }
   ],
-  "contract_sha256": "d5e197ac810a6fa97005ab857b646b386b811d1de52c7fc1c9c995ff234e6727"
+  "contract_sha256": "d5e197ac810a6fa97005ab857b646b386b811d1de52c7fc1c9c995ff234e6727",
+  "dispatch_claim_run_id": 33375042106,
+  "dispatch_contract_sha256": "d5e197ac810a6fa97005ab857b646b386b811d1de52c7fc1c9c995ff234e6727",
+  "recovery_of_telegram_message_id": 1906
 }
