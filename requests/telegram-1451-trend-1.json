@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-1451-trend-1",
-  "status": "DISPATCHED",
+  "status": "CANCELLED_STALE_RECOVERY_BUG",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Humanoide Roboter aus Baden-Württemberg: Bosch startet 2027 die Produktion in Bühl",
@@ -162,6 +162,16 @@
         "replay_implementation_sha": "0d4303788de99523682ff0dc1691a29455866e71",
         "quality_gates_weakened": false
       }
+    },
+    {
+      "state": "CANCELLED_STALE_RECOVERY_BUG",
+      "actor": "manual-root-cause-correction",
+      "meta": {
+        "reason": "historical request was incorrectly selected by orphan reconciliation; exclude from current recovery",
+        "incorrect_replay_run_id": 33435745482,
+        "current_authoritative_request_id": "telegram-1965-trend-2",
+        "quality_gates_weakened": false
+      }
     }
   ],
   "slot_serialization_released_at": "2026-08-22T20:01:13.546520Z",
@@ -179,13 +189,13 @@
   "replay_start_mode": "push_verified",
   "replay_dispatched_at": "2026-08-23T09:26:50.125185Z",
   "recovery_generation": 4,
-  "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
-  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "replacement_reason": "CANCELLED_STALE_RECONCILER_BUG",
+  "recovery_owner": "none",
   "recovery_failure_signature": "d68ac00bac2757f0e555",
   "recovery_dispatched_at": "2026-08-31T20:23:20.966763Z",
   "codefix_recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "request_substate": "DISPATCHED",
+    "status": "CANCELLED_STALE_RECONCILER_BUG",
+    "request_substate": "CANCELLED",
     "failed_run_id": 32649570583,
     "failure_signature": "d68ac00bac2757f0e555",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
@@ -193,7 +203,7 @@
     "failed_implementation_sha": "",
     "recovery_generation": 4,
     "armed_at": "2026-08-31T20:23:09.453835Z",
-    "same_generation_replay_required": true,
+    "same_generation_replay_required": false,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
     "orphan_reconciled": true,
@@ -201,6 +211,7 @@
     "replayed_at": "2026-08-31T20:23:20.966763Z",
     "replay_control_plane_sha": "726d7701f7399fe9e5a210977e18f2cf64374fca",
     "replay_implementation_sha": "0d4303788de99523682ff0dc1691a29455866e71",
-    "codefix_detection_reason": "relevant-control-code-changed-without-implementation-pin"
+    "codefix_detection_reason": "relevant-control-code-changed-without-implementation-pin",
+    "cancel_reason": "stale historical request selected by orphan reconciler; LUMI-AI request telegram-1965-trend-2 is authoritative"
   }
 }
