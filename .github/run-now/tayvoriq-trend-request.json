@@ -1,40 +1,44 @@
 {
-  "date": "2026-08-27",
-  "target_date": "2026-08-27",
-  "slot": "evening",
-  "selection_id": "20260827-evening-agentv2",
+  "date": "2026-09-01",
+  "target_date": "2026-09-01",
+  "slot": "morning",
+  "selection_id": "20260901-morning-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
   "mode": "manual_verified_fallback_after_provider_limits",
   "superseded": false,
   "duplicate_guard_passed": true,
-  "cross_slot_unique": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
   "production_started": false,
   "trends": [
     {
       "id": "1",
-      "title": "SpaceX plant 100-Milliarden-Starbase in Louisiana: Soll hier der größte Raketen-Startplatz der Erde entstehen?",
+      "title": "Nvidia steckt 3,5 Milliarden Dollar in MediaTek: Wie der KI-Riese sein Chip-Netzwerk noch größer macht",
       "score": 98,
-      "trend_scope": "science_future",
+      "trend_scope": "technology_ai",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 99,
-        "tayvoriq_passung": 98,
-        "quellenqualitaet": 99,
-        "visuell": 100
+        "viralitaet": 97,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 96
+      },
+      "growth_v2": {
+        "growth_score": 98,
+        "priority_score": 98,
+        "binding_score": 96
       },
       "sources": [
         {
-          "publisher": "tagesschau.de",
-          "url": "https://www.tagesschau.de/wirtschaft/unternehmen/spacex-weltraumbahnhof-100.html",
-          "supports": "Aktueller Bericht zu rund 100 Milliarden Dollar Investition, fünf Startkomplexen, Baubeginn 2027 und geplanten ersten Starship-Starts 2029."
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/world/asia-pacific/nvidia-invests-35-billion-mediatek-convertible-bonds-2026-08-31/",
+          "supports": "Nvidias 3,5-Milliarden-Dollar-Investment, Wandelanleihen und die vertiefte MediaTek-Partnerschaft."
         },
         {
-          "publisher": "Reuters",
-          "url": "https://www.reuters.com/business/media-telecom/spacex-build-starship-spaceport-louisiana-2026-08-25/",
-          "supports": "Unabhängige Bestätigung der Starbase-Louisiana-Pläne, Standortgröße, Investitionsrahmen und Starship-Ambitionen."
+          "publisher": "NVIDIA",
+          "url": "https://nvidianews.nvidia.com/news/nvidia-and-mediatek-deepen-long-standing-partnership-to-build-ai-edge-to-cloud-computing-platforms",
+          "supports": "Primärquelle zur erweiterten Zusammenarbeit, NVLink Fusion, Cloud-AI, lokale KI und Automotive."
         }
       ],
       "source_context": {
@@ -42,68 +46,66 @@
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "tagesschau.de",
-            "url": "https://www.tagesschau.de/wirtschaft/unternehmen/spacex-weltraumbahnhof-100.html",
-            "supports": "100-Milliarden-Plan, Zeitplan und Größenordnung."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/world/asia-pacific/nvidia-invests-35-billion-mediatek-convertible-bonds-2026-08-31/",
+            "supports": "Nvidias 3,5-Milliarden-Dollar-Investment, Wandelanleihen und die vertiefte MediaTek-Partnerschaft."
           },
           {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/business/media-telecom/spacex-build-starship-spaceport-louisiana-2026-08-25/",
-            "supports": "Unabhängige Bestätigung und Standort-/Job-Kontext."
+            "publisher": "NVIDIA",
+            "url": "https://nvidianews.nvidia.com/news/nvidia-and-mediatek-deepen-long-standing-partnership-to-build-ai-edge-to-cloud-computing-platforms",
+            "supports": "Primärquelle zur erweiterten Zusammenarbeit, NVLink Fusion, Cloud-AI, lokale KI und Automotive."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "SpaceX will in Louisiana einen neuen riesigen Starship-Komplex bauen. Genannt werden rund 100 Milliarden US-Dollar Investition und fünf Startkomplexe mit jeweils zwei Pads.",
-          "why_happening": "SpaceX will die Starship-Startfrequenz massiv erhöhen und Infrastruktur für Mond-, Mars- und Satellitenmissionen ausbauen.",
-          "who_is_affected": "SpaceX, NASA-Programme, die Region Louisiana, Anwohner und Umweltverbände.",
-          "personal_impact": "Das Projekt zeigt, wie Raumfahrt von einzelnen Starts zu industrieller Hochfrequenz-Infrastruktur werden soll.",
-          "action_now": "Im Short sauber zwischen offiziellen Projektplänen und Musks extremen Langfristzielen unterscheiden.",
-          "facts": [
-            "Rund 100 Milliarden US-Dollar Investition angekündigt.",
-            "Fünf Startkomplexe mit insgesamt zehn Pads geplant.",
-            "Baubeginn 2027, erste Starts ab 2029 vorgesehen."
-          ]
+          "what_happened": "Nvidia investiert 3,5 Milliarden Dollar in MediaTek und vertieft die Chip-Partnerschaft.",
+          "why_happening": "MediaTek soll Nvidias NVLink-Technik für eigene KI-Chips und Systeme nutzen.",
+          "who_is_affected": "Cloudanbieter, PC-Hersteller, Autoindustrie und Halbleiter-Wettbewerber sind direkt betroffen.",
+          "personal_impact": "Für dich zeigt der Deal, wie Nvidia sein KI-Ökosystem weiter ausdehnt.",
+          "action_now": "Beobachte, welche neuen Geräte und KI-Plattformen aus der Partnerschaft entstehen."
         },
-        "factual_guardrails": [
-          "Mehr als 30 Starts täglich als Ziel/Ankündigung von Musk markieren, nicht als gesicherte Kapazität.",
-          "Projekt ist geplant, nicht gebaut.",
-          "Umweltbedenken nicht ausblenden."
-        ],
-        "research_notes": "Story-Spine: Raumfahrt wird zur Industrieanlage -> 100 Milliarden -> zehn Pads -> tausende Starts als Ziel -> Umwelt- und Infrastrukturfrage. HASHTAG_SEEDS: #SpaceX #Starship #Louisiana #Starbase #Raumfahrt #Mars #NASA #TAYVORIQ",
-        "hashtag_seeds": [
-          "#SpaceX",
-          "#Starship",
-          "#Louisiana",
-          "#Starbase",
-          "#Raumfahrt",
-          "#Mars",
-          "#NASA",
-          "#TAYVORIQ"
-        ]
+        "factual_guardrails": {
+          "must_include": [
+            "3,5 Milliarden US-Dollar",
+            "MediaTek",
+            "NVLink Fusion",
+            "Zusammenarbeit umfasst Cloud-AI, lokale KI und Automotive"
+          ],
+          "must_not_claim": [
+            "Nvidia übernimmt MediaTek",
+            "MediaTek wird Nvidia-Tochter"
+          ],
+          "uncertainty_note": "Es handelt sich um eine strategische Investition und Partnerschaft, nicht um eine Übernahme."
+        },
+        "research_notes": "Story-Spine: Nvidia verbreitert sein KI-Ökosystem über eine milliardenschwere MediaTek-Beteiligung und technische Integration. Reuters bestätigt Investment und Finanzierungsstruktur; NVIDIA bestätigt NVLink-Fusion und die Produktfelder. HASHTAG_SEEDS: #Nvidia #MediaTek #NVLinkFusion #AIChips #Halbleiter #ArtificialIntelligence #TAYVORIQ"
       }
     },
     {
       "id": "2",
-      "title": "Namibia gibt Tiefsee-Phosphat grünes Licht: Warum dieser Meeresboden-Abbau weltweit zum Präzedenzfall werden könnte",
-      "score": 96,
-      "trend_scope": "world_society",
+      "title": "Europa bestellt einen neuen KI-Supercomputer: Warum LUMI-AI Europas Rechenleistung verzehnfachen soll",
+      "score": 97,
+      "trend_scope": "technology_ai",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 96,
-        "tayvoriq_passung": 97,
-        "quellenqualitaet": 98,
-        "visuell": 99
+        "viralitaet": 94,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 97
+      },
+      "growth_v2": {
+        "growth_score": 97,
+        "priority_score": 97,
+        "binding_score": 95
       },
       "sources": [
         {
-          "publisher": "tagesschau.de",
-          "url": "https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html",
-          "supports": "Aktueller Bericht zu Genehmigungen, Protesten, 200-300 Metern Tiefe und möglichem weltweit erstem großen Phosphatabbau am Meeresboden."
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/world/europe/europe-expands-ai-computing-network-with-390-million-order-frances-bull-2026-08-31/",
+          "supports": "Auftrag an Bull, Vertragswert, Standort Finnland und Europas wachsende Nachfrage nach KI-Rechenleistung."
         },
         {
-          "publisher": "Namib Times",
-          "url": "https://www.namibtimes.net/sandpiper-phosphate-project-receives-environmental-clearance-amid-marine-concerns/",
-          "supports": "Lokale unabhängige Bestätigung der Umweltfreigabe für das Sandpiper-Projekt und der fortbestehenden Meeres- und Fischereibedenken."
+          "publisher": "EuroHPC JU",
+          "url": "https://www.eurohpc-ju.europa.eu/eurohpc-ju-signs-contract-deploy-lumi-ai-supercomputer-2026-08-31_en",
+          "supports": "Offizielle Bestätigung von LUMI-AI, 387,8 Millionen Euro Gesamtbudget und geplanter Verfügbarkeit 2027."
         }
       ],
       "source_context": {
@@ -111,68 +113,66 @@
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "tagesschau.de",
-            "url": "https://www.tagesschau.de/ausland/afrika/namibia-proteste-phosphatabbau-100.html",
-            "supports": "Tiefe, Größenordnung, Proteste und möglicher Präzedenzfall."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/world/europe/europe-expands-ai-computing-network-with-390-million-order-frances-bull-2026-08-31/",
+            "supports": "Auftrag an Bull, Vertragswert, Standort Finnland und Europas wachsende Nachfrage nach KI-Rechenleistung."
           },
           {
-            "publisher": "Namib Times",
-            "url": "https://www.namibtimes.net/sandpiper-phosphate-project-receives-environmental-clearance-amid-marine-concerns/",
-            "supports": "Genehmigungsstatus und lokale Umweltbedenken."
+            "publisher": "EuroHPC JU",
+            "url": "https://www.eurohpc-ju.europa.eu/eurohpc-ju-signs-contract-deploy-lumi-ai-supercomputer-2026-08-31_en",
+            "supports": "Offizielle Bestätigung von LUMI-AI, 387,8 Millionen Euro Gesamtbudget und geplanter Verfügbarkeit 2027."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Das Sandpiper-Projekt vor Namibias Küste hat eine wichtige Umweltfreigabe erhalten. Geplant ist Phosphatabbau aus dem Meeresboden in großer Tiefe.",
-          "why_happening": "Phosphat ist ein zentraler Rohstoff für Düngemittel; das Projekt verspricht wirtschaftliche Chancen, stößt aber wegen möglicher Schäden an Meeresökosystem und Fischerei auf Widerstand.",
-          "who_is_affected": "Fischerei, Küstengemeinden, Umweltgruppen, Rohstoffunternehmen und Namibias Wirtschaft.",
-          "personal_impact": "Der Fall könnte beeinflussen, wie andere Länder künftig Rohstoffabbau am Meeresboden regulieren.",
-          "action_now": "Nicht behaupten, der kommerzielle Abbau habe bereits begonnen; Genehmigung und tatsächlicher Start sind getrennte Schritte.",
-          "facts": [
-            "Projekt liegt vor Walvis Bay.",
-            "Abbau soll in etwa 200 bis 300 Metern Tiefe stattfinden.",
-            "Eine Umweltfreigabe wurde erteilt, der kommerzielle Abbau hat damit nicht automatisch begonnen."
-          ]
+          "what_happened": "Europa hat den 387,8-Millionen-Euro-Supercomputer LUMI-AI für Finnland verbindlich beauftragt.",
+          "why_happening": "Die Nachfrage nach europäischer KI-Rechenleistung übersteigt bereits die vorhandenen Kapazitäten.",
+          "who_is_affected": "Start-ups, Unternehmen und Forschende in Europa sollen zusätzliche Rechenkapazität erhalten.",
+          "personal_impact": "Für dich bedeutet das mehr europäische Infrastruktur für neue KI-Dienste und Forschung.",
+          "action_now": "Achte darauf, welche europäischen KI-Projekte künftig Zugang zu LUMI-AI bekommen."
         },
-        "factual_guardrails": [
-          "Genehmigung nicht mit laufendem Abbau gleichsetzen.",
-          "Weltweit erster großer Phosphat-Meeresbodenabbau als mögliche Folge formulieren.",
-          "Umwelt- und Fischereibedenken nennen."
-        ],
-        "research_notes": "Story-Spine: Dünger-Rohstoff unter dem Meer -> Genehmigung -> 200-300 Meter Tiefe -> Proteste -> möglicher globaler Präzedenzfall. HASHTAG_SEEDS: #Namibia #Tiefseebergbau #Phosphat #WalvisBay #Meeresschutz #Rohstoffe #Afrika #TAYVORIQ",
-        "hashtag_seeds": [
-          "#Namibia",
-          "#Tiefseebergbau",
-          "#Phosphat",
-          "#WalvisBay",
-          "#Meeresschutz",
-          "#Rohstoffe",
-          "#Afrika",
-          "#TAYVORIQ"
-        ]
+        "factual_guardrails": {
+          "must_include": [
+            "387,8 Millionen Euro",
+            "Standort Kajaani in Finnland",
+            "geplante Nutzung ab 2027",
+            "bis zu zehnfach höhere KI-Kapazität gegenüber LUMI"
+          ],
+          "must_not_claim": [
+            "LUMI-AI ist bereits in Betrieb",
+            "Europa besitzt damit den schnellsten Supercomputer der Welt"
+          ],
+          "uncertainty_note": "Das System ist beauftragt und für 2027 vorgesehen; es ist noch nicht verfügbar."
+        },
+        "research_notes": "Story-Spine: Europa reagiert auf knappe KI-Rechenkapazität mit einem großen neuen EuroHPC-System. Vertrag, Finanzierung und 2027-Zeitplan sind bestätigt. HASHTAG_SEEDS: #LUMIAI #EuroHPC #Supercomputer #Europa #ArtificialIntelligence #Finland #TAYVORIQ"
       }
     },
     {
       "id": "3",
-      "title": "Fast 10.000 Furrys in Hamburg: Wie aus einer Internet-Nische Europas größtes Treffen wurde",
-      "score": 94,
-      "trend_scope": "creator_media",
+      "title": "EU stuft ChatGPT jetzt als sehr große Suchmaschine ein: Was sich dadurch für Nutzer ändern kann",
+      "score": 96,
+      "trend_scope": "technology_ai",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 97,
-        "tayvoriq_passung": 94,
-        "quellenqualitaet": 96,
-        "visuell": 100
+        "viralitaet": 98,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 93
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "priority_score": 97,
+        "binding_score": 98
       },
       "sources": [
         {
-          "publisher": "tagesschau.de / NDR",
-          "url": "https://www.tagesschau.de/kultur/eurofurence-100.html",
-          "supports": "Aktueller Bericht zur Eurofurence in Hamburg, knapp 10.000 Besuchern und geschätzter Größe der deutschen Community."
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/world/chatgpt-reddit-roblox-adhere-eus-very-large-platform-rules-2026-08-31/",
+          "supports": "Neue DSA-Einstufung von ChatGPT, Reddit und Roblox sowie die zusätzlichen EU-Pflichten."
         },
         {
-          "publisher": "Eurofurence",
-          "url": "https://www.eurofurence.org/EF30/",
-          "supports": "Offizielle Eventdaten zur Eurofurence 30 im CCH Hamburg vom 19. bis 23. August 2026."
+          "publisher": "European Commission",
+          "url": "https://digital-strategy.ec.europa.eu/en/news/commission-designates-chatgpt-reddit-roblox-under-digital-services-act",
+          "supports": "Offizielle Benennung von ChatGPT als VLOSE und Reddit/Roblox als VLOPs sowie 45-Millionen-Nutzer-Schwelle."
         }
       ],
       "source_context": {
@@ -180,68 +180,66 @@
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "tagesschau.de / NDR",
-            "url": "https://www.tagesschau.de/kultur/eurofurence-100.html",
-            "supports": "Besucherzahl und kulturelle Einordnung."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/world/chatgpt-reddit-roblox-adhere-eus-very-large-platform-rules-2026-08-31/",
+            "supports": "Neue DSA-Einstufung von ChatGPT, Reddit und Roblox sowie die zusätzlichen EU-Pflichten."
           },
           {
-            "publisher": "Eurofurence",
-            "url": "https://www.eurofurence.org/EF30/",
-            "supports": "Offizielle Veranstaltungsdaten."
+            "publisher": "European Commission",
+            "url": "https://digital-strategy.ec.europa.eu/en/news/commission-designates-chatgpt-reddit-roblox-under-digital-services-act",
+            "supports": "Offizielle Benennung von ChatGPT als VLOSE und Reddit/Roblox als VLOPs sowie 45-Millionen-Nutzer-Schwelle."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Zur Eurofurence 30 in Hamburg kamen knapp 10.000 Besucher. Das Treffen gilt als größte Furry-Convention Europas.",
-          "why_happening": "Die Community verbindet Kostümbau, Kunst, Performance, Gaming und soziale Netzwerke und ist längst international organisiert.",
-          "who_is_affected": "Teilnehmer, Künstler, Kostümbauer, Veranstalter und die Hamburger Öffentlichkeit.",
-          "personal_impact": "Das Thema zeigt, wie aus einer früheren Online-Nische eine große reale Subkultur mit eigenen Events und Märkten geworden ist.",
-          "action_now": "Respektvoll erklären und nicht sexualisieren oder lächerlich machen.",
-          "facts": [
-            "Knapp 10.000 Besucher laut aktueller NDR/tagesschau-Berichterstattung.",
-            "Eurofurence 30 fand vom 19. bis 23. August 2026 im CCH Hamburg statt.",
-            "Furry-Kultur umfasst neben Kostümen auch Kunst, Performance und Community."
-          ]
+          "what_happened": "Die EU hat ChatGPT als sehr große Online-Suchmaschine nach dem DSA eingestuft.",
+          "why_happening": "ChatGPT meldet mindestens 45 Millionen durchschnittliche Monatsnutzer innerhalb der Europäischen Union.",
+          "who_is_affected": "OpenAI, Reddit, Roblox und ihre europäischen Nutzer unterliegen zusätzlicher Plattformaufsicht.",
+          "personal_impact": "Für dich können mehr Transparenz, Risikoprüfungen und Schutzpflichten bei großen Diensten folgen.",
+          "action_now": "Prüfe künftig neue Hinweise zu Transparenz, Jugendschutz und algorithmischen Risiken dieser Dienste."
         },
-        "factual_guardrails": [
-          "Keine sexualisierende Darstellung.",
-          "Nicht behaupten, alle Besucher tragen Kostüme.",
-          "Community differenziert erklären."
-        ],
-        "research_notes": "Story-Spine: Internet-Nische wird Großevent -> fast 10.000 Menschen -> was Furry-Kultur tatsächlich umfasst -> warum die Community wächst. HASHTAG_SEEDS: #Eurofurence #Hamburg #FurryCommunity #Fursuit #Community #Kultur #Convention #TAYVORIQ",
-        "hashtag_seeds": [
-          "#Eurofurence",
-          "#Hamburg",
-          "#FurryCommunity",
-          "#Fursuit",
-          "#Community",
-          "#Kultur",
-          "#Convention",
-          "#TAYVORIQ"
-        ]
+        "factual_guardrails": {
+          "must_include": [
+            "ChatGPT als Very Large Online Search Engine",
+            "Reddit und Roblox als Very Large Online Platforms",
+            "mindestens 45 Millionen monatliche EU-Nutzer",
+            "zusätzliche DSA-Pflichten innerhalb von vier Monaten"
+          ],
+          "must_not_claim": [
+            "ChatGPT wird in der EU verboten",
+            "Die EU kontrolliert künftig einzelne ChatGPT-Antworten"
+          ],
+          "uncertainty_note": "Die Einstufung verschärft Aufsicht und Risikopflichten; sie ist kein Verbot."
+        },
+        "research_notes": "Story-Spine: Erstmals wird ChatGPT unter dem DSA als sehr große Online-Suchmaschine behandelt. Der Nutzer-Hook ist konkret: mehr Aufsicht, Transparenz und Schutzpflichten. HASHTAG_SEEDS: #ChatGPT #DigitalServicesAct #DSA #EuropeanUnion #Reddit #Roblox #TAYVORIQ"
       }
     },
     {
       "id": "4",
-      "title": "SDF löst sich auf: Warum Syriens früher wichtigster US-Partner jetzt in die Staatsarmee integriert wird",
-      "score": 95,
-      "trend_scope": "world_society",
+      "title": "G20-Wächter warnt vor KI-Cyberrisiko: Warum autonome Modelle plötzlich Finanzmärkte gefährden könnten",
+      "score": 94,
+      "trend_scope": "technology_ai",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 95,
-        "tayvoriq_passung": 96,
+        "viralitaet": 94,
+        "tayvoriq_passung": 98,
         "quellenqualitaet": 100,
-        "visuell": 96
+        "visuell": 88
+      },
+      "growth_v2": {
+        "growth_score": 94,
+        "priority_score": 94,
+        "binding_score": 95
       },
       "sources": [
         {
-          "publisher": "tagesschau.de",
-          "url": "https://www.tagesschau.de/ausland/asien/syrien-sdf-104.html",
-          "supports": "Aktueller Bericht zur Auflösung der SDF und Eingliederung in syrische staatliche Institutionen."
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/legal/litigation/ai-driven-cyber-risk-is-top-concern-global-financial-stability-watchdog-says-2026-08-31/",
+          "supports": "Warnung des FSB vor Frontier-AI, Cyberrisiken und möglichen Folgen für die globale Finanzstabilität."
         },
         {
-          "publisher": "Reuters",
-          "url": "https://www.reuters.com/world/middle-east/syrias-kurdish-led-sdf-dissolves-part-integration-with-damascus-2026-08-25/",
-          "supports": "Unabhängige Bestätigung der Auflösung und des Integrationsabkommens mit Damaskus."
+          "publisher": "Financial Stability Board",
+          "url": "https://www.fsb.org/2026/08/fsb-chairs-letter-to-g20-finance-ministers-and-central-bank-governors-august-2026/",
+          "supports": "Primärquelle: Frontier-AI könne Geschwindigkeit, Ausmaß und Ökonomie von Cyberrisiken wesentlich verändern."
         }
       ],
       "source_context": {
@@ -249,68 +247,66 @@
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "tagesschau.de",
-            "url": "https://www.tagesschau.de/ausland/asien/syrien-sdf-104.html",
-            "supports": "Auflösung, Staatsintegration und Minderheitenrechte-Kontext."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/legal/litigation/ai-driven-cyber-risk-is-top-concern-global-financial-stability-watchdog-says-2026-08-31/",
+            "supports": "Warnung des FSB vor Frontier-AI, Cyberrisiken und möglichen Folgen für die globale Finanzstabilität."
           },
           {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/world/middle-east/syrias-kurdish-led-sdf-dissolves-part-integration-with-damascus-2026-08-25/",
-            "supports": "Unabhängige Bestätigung und geopolitischer Kontext."
+            "publisher": "Financial Stability Board",
+            "url": "https://www.fsb.org/2026/08/fsb-chairs-letter-to-g20-finance-ministers-and-central-bank-governors-august-2026/",
+            "supports": "Primärquelle: Frontier-AI könne Geschwindigkeit, Ausmaß und Ökonomie von Cyberrisiken wesentlich verändern."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Die kurdisch geführten Syrischen Demokratischen Kräfte haben ihre Auflösung als eigenständiges Militärbündnis angekündigt und sollen in syrische Staatsstrukturen integriert werden.",
-          "why_happening": "Ein Abkommen mit der Regierung in Damaskus soll militärische Parallelstrukturen beenden und den syrischen Staat wieder vereinheitlichen.",
-          "who_is_affected": "Kurdische Gebiete, ehemalige SDF-Kämpfer, die Regierung in Damaskus, Türkei, USA und regionale Bevölkerung.",
-          "personal_impact": "Die Entwicklung kann Machtverhältnisse und Sicherheit in Nordostsyrien grundlegend verändern.",
-          "action_now": "Historischen US-Partnerstatus erklären, ohne aktuelle Bündnisverhältnisse zu vereinfachen.",
-          "facts": [
-            "SDF-Kommandeur Mazloum Abdi erklärte die Mission des Bündnisses für beendet.",
-            "Die Strukturen sollen in syrische staatliche Institutionen integriert werden.",
-            "Die SDF waren lange ein zentraler US-Partner im Kampf gegen den IS."
-          ]
+          "what_happened": "Der Finanzstabilitätsrat nennt Frontier-KI ein akutes Cyberrisiko für das Finanzsystem.",
+          "why_happening": "Autonome KI kann Cyberangriffe schneller, billiger und in größerem Maßstab ermöglichen.",
+          "who_is_affected": "Banken, Behörden, Technologieanbieter und Finanzkunden könnten von Störungen betroffen sein.",
+          "personal_impact": "Für dich steigt die Bedeutung robuster Sicherheits- und Wiederherstellungsprozesse bei Finanzdiensten.",
+          "action_now": "Aktiviere starke Kontosicherheit und behandle unerwartete Finanznachrichten besonders skeptisch."
         },
-        "factual_guardrails": [
-          "SDF, YPG und PKK nicht gleichsetzen.",
-          "Integration als laufenden politischen Prozess darstellen.",
-          "Minderheiten- und Sicherheitsfragen differenziert formulieren."
-        ],
-        "research_notes": "Story-Spine: Einer der wichtigsten Akteure im Syrienkrieg verschwindet als eigenständige Kraft -> Integration -> Rolle der USA und Türkei -> was das für Nordostsyrien bedeutet. HASHTAG_SEEDS: #Syrien #SDF #Kurden #Damaskus #Nahost #Geopolitik #MiddleEast #TAYVORIQ",
-        "hashtag_seeds": [
-          "#Syrien",
-          "#SDF",
-          "#Kurden",
-          "#Damaskus",
-          "#Nahost",
-          "#Geopolitik",
-          "#MiddleEast",
-          "#TAYVORIQ"
-        ]
+        "factual_guardrails": {
+          "must_include": [
+            "Financial Stability Board",
+            "Frontier-AI",
+            "Cyberrisiko",
+            "G20-Finanzminister und Notenbankchefs"
+          ],
+          "must_not_claim": [
+            "KI hat bereits das globale Finanzsystem lahmgelegt",
+            "Der FSB fordert ein KI-Verbot"
+          ],
+          "uncertainty_note": "Der FSB beschreibt ein Risikoszenario und Vorsorgebedarf, keinen bereits eingetretenen Systemkollaps."
+        },
+        "research_notes": "Story-Spine: Die Warnung kommt nicht aus einem KI-Labor, sondern vom globalen Finanzstabilitätswächter vor dem G20-Treffen. Dadurch wird abstrakte KI-Sicherheit zu einem konkreten Banken- und Alltagsrisiko. HASHTAG_SEEDS: #FrontierAI #CyberSecurity #FinancialStability #G20 #Banking #ArtificialIntelligence #TAYVORIQ"
       }
     },
     {
       "id": "5",
-      "title": "70 Jahre BRAVO: Von 1,5 Millionen Heften pro Woche zu nur noch einer Ausgabe im Monat",
+      "title": "Shein startet in Hongkong – doch KI und Robotik stehlen die Show: Platzt Chinas neuer Börsenboom?",
       "score": 92,
-      "trend_scope": "creator_media",
+      "trend_scope": "business_technology",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 94,
-        "tayvoriq_passung": 92,
-        "quellenqualitaet": 96,
-        "visuell": 97
+        "viralitaet": 93,
+        "tayvoriq_passung": 94,
+        "quellenqualitaet": 100,
+        "visuell": 96
+      },
+      "growth_v2": {
+        "growth_score": 92,
+        "priority_score": 91,
+        "binding_score": 92
       },
       "sources": [
         {
-          "publisher": "NDR",
-          "url": "https://www.ndr.de/geschichte/chronologie/70-jahre-bravo-von-teenagern-geliebt-von-eltern-gehasst%2Cbravo152.html",
-          "supports": "Historische Einordnung: erste Ausgabe am 26.08.1956, Startauflage 30.000, Generationenwirkung und Wandel des Magazins."
+          "publisher": "Associated Press",
+          "url": "https://apnews.com/article/7246cca5174e9b9f4cb305adda287395",
+          "supports": "Chinas KI- und Robotik-getriebener IPO-Boom, Shein-Debüt am 1. September sowie CXMT- und Unitree-Beispiele."
         },
         {
-          "publisher": "BRAVO",
-          "url": "https://www.bravo.de/news",
-          "supports": "Offizielle Jubiläumsseite zum 70. Geburtstag am 26. August 2026 und heutige Markenpräsenz."
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/retail-consumer/fast-fashion-retailer-shein-shares-fall-least-10-pre-debut-trading-2026-08-31/",
+          "supports": "Sheins schwacher Vorbörsenhandel und die Anlegerverschiebung hin zu KI- und Robotik-Sektoren vor dem Hongkong-Debüt."
         }
       ],
       "source_context": {
@@ -318,44 +314,37 @@
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "NDR",
-            "url": "https://www.ndr.de/geschichte/chronologie/70-jahre-bravo-von-teenagern-geliebt-von-eltern-gehasst%2Cbravo152.html",
-            "supports": "Historie, erste Ausgabe und kulturelle Wirkung."
+            "publisher": "Associated Press",
+            "url": "https://apnews.com/article/7246cca5174e9b9f4cb305adda287395",
+            "supports": "Chinas KI- und Robotik-getriebener IPO-Boom, Shein-Debüt am 1. September sowie CXMT- und Unitree-Beispiele."
           },
           {
-            "publisher": "BRAVO",
-            "url": "https://www.bravo.de/news",
-            "supports": "Offizielle Jubiläumsbestätigung und heutige Marke."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/retail-consumer/fast-fashion-retailer-shein-shares-fall-least-10-pre-debut-trading-2026-08-31/",
+            "supports": "Sheins schwacher Vorbörsenhandel und die Anlegerverschiebung hin zu KI- und Robotik-Sektoren vor dem Hongkong-Debüt."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Am 26. August 2026 wurde BRAVO 70 Jahre alt. Die erste Ausgabe erschien 1956 mit Marilyn Monroe auf dem Cover und 30.000 Exemplaren Auflage.",
-          "why_happening": "BRAVO wurde über Jahrzehnte zum Leitmedium für Jugendkultur, Stars, Musik und Aufklärung, verlor aber mit Internet und Social Media massiv an Print-Reichweite.",
-          "who_is_affected": "Mehrere Generationen ehemaliger Leser sowie heutige Jugendmedien und Creator.",
-          "personal_impact": "Der Absturz von Millionenauflagen zu monatlichem Print zeigt extrem klar, wie Social Media klassische Jugendmedien verändert hat.",
-          "action_now": "Nostalgie mit Medienwandel verbinden statt nur Jubiläumsfakten aufzuzählen.",
-          "facts": [
-            "Erste BRAVO erschien am 26. August 1956.",
-            "In den 1990ern wurden zeitweise bis zu 1,5 Millionen Exemplare pro Woche verkauft.",
-            "Heute erscheint BRAVO laut NDR nur noch einmal im Monat."
-          ]
+          "what_happened": "Shein startet am 1. September in Hongkong nach einem 1,7-Milliarden-Dollar-Börsengang.",
+          "why_happening": "Gleichzeitig zieht Chinas KI- und Robotikboom besonders viel Anlegerkapital auf sich.",
+          "who_is_affected": "Shein-Anleger, chinesische Techfirmen und internationale Investoren beobachten den Börsenstart genau.",
+          "personal_impact": "Für dich zeigt der Start, wie stark KI derzeit Kapitalströme beeinflusst.",
+          "action_now": "Vergleiche den ersten offiziellen Handelstag mit den schwächeren Vorbörsenkursen."
         },
-        "factual_guardrails": [
-          "Historische Spitzenauflage zeitlich den 1990er Jahren zuordnen.",
-          "Print-Rückgang nicht mit kompletter Markenbedeutung gleichsetzen.",
-          "Keine unbestätigten aktuellen Reichweitenzahlen nennen."
-        ],
-        "research_notes": "Story-Spine: 70 Jahre Jugendkultur -> 1,5 Mio Hefte pro Woche -> Social-Media-Bruch -> warum die Marke trotzdem überlebt. HASHTAG_SEEDS: #BRAVO #70JahreBRAVO #Jugendkultur #DrSommer #Popkultur #Medienwandel #SocialMedia #TAYVORIQ",
-        "hashtag_seeds": [
-          "#BRAVO",
-          "#70JahreBRAVO",
-          "#Jugendkultur",
-          "#DrSommer",
-          "#Popkultur",
-          "#Medienwandel",
-          "#SocialMedia",
-          "#TAYVORIQ"
-        ]
+        "factual_guardrails": {
+          "must_include": [
+            "Shein-Debüt am 1. September 2026",
+            "rund 1,7 Milliarden US-Dollar IPO-Volumen",
+            "schwächerer Vorbörsenhandel",
+            "starke Anlegernachfrage nach KI und Robotik"
+          ],
+          "must_not_claim": [
+            "Shein ist bereits abgestürzt",
+            "Chinas KI-Blase ist sicher geplatzt"
+          ],
+          "uncertainty_note": "Der offizielle erste Handelstag steht noch bevor; Vorbörsenkurse sind kein Schlusskurs."
+        },
+        "research_notes": "Story-Spine: Ein riesiger Consumer-IPO trifft auf einen Markt, dessen Risikokapital gerade von KI und Robotik angezogen wird. Das schafft einen starken Kontrast zwischen Shein, CXMT und Unitree. HASHTAG_SEEDS: #Shein #HongKongIPO #ChinaTech #Unitree #CXMT #AIInvesting #TAYVORIQ"
       }
     }
   ]
