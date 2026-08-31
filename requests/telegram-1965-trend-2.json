@@ -134,6 +134,23 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-08-31T21:33:05.951147Z",
+      "actor": "tayvoriq-semantic-diagnostic-reconcile-v1",
+      "meta": {
+        "failed_run_id": 33440475970,
+        "failure_signature": "6ae95c52a1ade46c596a",
+        "failure_state": "SEMANTIC_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "f486cc91fdd7e7036586d2299d128125a3948c6a",
+        "failed_implementation_sha": "407d9e64e2bd2f1c3c2a69b875ee7364a3a5a43b",
+        "recovery_generation": 0,
+        "reason": "diagnostic-artifact-semantic-codefix-rearmed",
+        "diagnostic_error": "CONTENT_REJECTED:v34-semantic-repair-missing:why_happening",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
@@ -141,28 +158,24 @@
   "dispatch_contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
   "golden_path_run_id": 33440475970,
   "codefix_recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failed_run_id": 33439231970,
-    "failure_signature": "d68e34e2645e033a7c2f",
-    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "failed_control_plane_sha": "249eb7a3dd00a9df60ed43add09c1c3519004cd0",
-    "failed_implementation_sha": "7d663c1fe0d53658995056170950f4e3a047d627",
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 33440475970,
+    "failure_signature": "6ae95c52a1ade46c596a",
+    "failure_state": "SEMANTIC_CODEFIX_REQUIRED",
+    "failed_control_plane_sha": "f486cc91fdd7e7036586d2299d128125a3948c6a",
+    "failed_implementation_sha": "407d9e64e2bd2f1c3c2a69b875ee7364a3a5a43b",
     "recovery_generation": 0,
-    "armed_at": "2026-08-31T21:12:02.771888Z",
+    "armed_at": "2026-08-31T21:33:05.951147Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
     "orphan_reconciled": true,
     "active_pointer_verified": true,
     "rearmed_after_failed_replay": true,
-    "previous_codefix_failed_run_id": 33426415847,
-    "previous_codefix_failure_signature": "6b12dbe9fae07ad9be88",
-    "replay_run_id": 33440475970,
-    "replayed_at": "2026-08-31T21:16:25.504326Z",
-    "replay_control_plane_sha": "f486cc91fdd7e7036586d2299d128125a3948c6a",
-    "replay_implementation_sha": "407d9e64e2bd2f1c3c2a69b875ee7364a3a5a43b",
-    "codefix_detection_reason": "production-green-implementation-changed"
+    "previous_codefix_failed_run_id": 33439231970,
+    "previous_codefix_failure_signature": "d68e34e2645e033a7c2f",
+    "diagnostic_error": "CONTENT_REJECTED:v34-semantic-repair-missing:why_happening"
   },
   "previous_golden_path_run_ids": [
     33426415847,
@@ -172,6 +185,6 @@
   "retry_of_run_id": 33439231970,
   "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
   "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
-  "recovery_failure_signature": "d68e34e2645e033a7c2f",
+  "recovery_failure_signature": "6ae95c52a1ade46c596a",
   "recovery_dispatched_at": "2026-08-31T21:16:25.504326Z"
 }
