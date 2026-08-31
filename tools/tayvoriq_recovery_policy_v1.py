@@ -33,10 +33,6 @@ PUBLISHABLE_RETRY_PATTERNS = (
     r'"state"\s*:\s*"publishable_output_retry_required"',
 )
 
-# These messages mean the bounded in-run repair mechanism itself has already
-# tried the safe local path and still cannot converge. A fresh generation with
-# unchanged code is not a meaningful recovery; keep the exact request armed for
-# verified codefix continuity instead of opening a dead circuit.
 LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"bounded localized repair exhausted",
     r"localized checkpoint repair failed safely",
@@ -46,11 +42,10 @@ LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"voice checkpoint v5 natural narrator repair failed",
 )
 
-# A terminal controller handoff is authoritative over provider-level noise that
-# happened earlier in the same run. In particular, CODE_REPAIR_REQUIRED must not
-# be downgraded to a transient same-run retry just because a provider logged a
-# timeout/circuit-open message before the controller exhausted its safe repair
-# path. This is what makes deterministic codefix continuity actually reachable.
+# A terminal controller handoff is authoritative over earlier provider messages
+# and over shell/source text echoed by GitHub Actions. A real missing-secret or
+# permission failure exits before this terminal production handoff is emitted,
+# so genuine external blockers still fall through to EXTERNAL_PATTERNS below.
 TERMINAL_CODE_REPAIR_PATTERNS = (
     r"controller handoff:\s*state=code_repair_required\b",
     r"production is not publishable:\s*controller=code_repair_required/",
@@ -132,14 +127,8 @@ def classify_failure(
     if _matches(lowered, LOCAL_REPAIR_CODEFIX_PATTERNS):
         state = "LOCAL_REPAIR_CODEFIX_REQUIRED"
         return RecoveryDecision(
-            "deterministic",
-            state,
-            False,
-            "verified-codefix-replay",
-            generation,
-            generation,
-            maximum,
-            _stable_signature(state, text),
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
             "Bounded local repair already ran and the strict audit still failed; keep the exact request armed for a verified codefix replay in the same recovery generation.",
         )
 
@@ -147,40 +136,31 @@ def classify_failure(
         if generation >= maximum:
             state = "PUBLISHABLE_CODEFIX_REQUIRED"
             return RecoveryDecision(
-                "deterministic",
-                state,
-                False,
-                "verified-codefix-replay",
-                generation,
-                generation,
-                maximum,
-                _stable_signature(state, text),
+                "deterministic", state, False, "verified-codefix-replay", generation, generation,
+                maximum, _stable_signature(state, text),
                 "The publishability gate is still failing at the generation ceiling; preserve the exact request and continue only after a verified relevant code revision.",
             )
         state = "REQUEST_BOUND_RECOVERY_REQUIRED"
         return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "The final publishability gate requires a bounded request-bound recovery generation.")
 
-    if _matches(lowered, EXTERNAL_PATTERNS):
-        state = "EXTERNAL_ACTION_REQUIRED"
-        return RecoveryDecision("external", state, False, "none", generation, None, maximum, _stable_signature(state, text), "Credentials, billing or permissions require external action.")
-
     if _matches(lowered, DETERMINISTIC_PREFLIGHT_PATTERNS):
         state = "DETERMINISTIC_PREFLIGHT_FAILURE"
         return RecoveryDecision("deterministic", state, False, "none", generation, None, maximum, _stable_signature(state, text), "Repository tests or the deterministic preflight failed; an identical retry cannot repair code.")
 
+    # Terminal production truth must win over incidental strings in the complete
+    # Actions log (for example an echoed `echo Missing secret` guard or an earlier
+    # provider circuit message). This is the authoritative handoff from runtime.
     if _matches(lowered, TERMINAL_CODE_REPAIR_PATTERNS):
         state = "CODE_REPAIR_REQUIRED"
         return RecoveryDecision(
-            "deterministic",
-            state,
-            False,
-            "verified-codefix-replay",
-            generation,
-            generation,
-            maximum,
-            _stable_signature(state, text),
-            "The controller exhausted its bounded safe repair path and handed off CODE_REPAIR_REQUIRED; preserve the exact request for verified codefix replay instead of treating earlier provider noise as transient.",
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
+            "The controller exhausted its bounded safe repair path and handed off CODE_REPAIR_REQUIRED; preserve the exact request for verified codefix replay instead of classifying earlier log noise as the failure cause.",
         )
+
+    if _matches(lowered, EXTERNAL_PATTERNS):
+        state = "EXTERNAL_ACTION_REQUIRED"
+        return RecoveryDecision("external", state, False, "none", generation, None, maximum, _stable_signature(state, text), "Credentials, billing or permissions require external action.")
 
     if _matches(lowered, DUPLICATE_PATTERNS):
         if exact_request_retry:
@@ -196,14 +176,8 @@ def classify_failure(
     if generation >= maximum:
         state = "RECOVERY_CODEFIX_REQUIRED"
         return RecoveryDecision(
-            "deterministic",
-            state,
-            False,
-            "verified-codefix-replay",
-            generation,
-            generation,
-            maximum,
-            _stable_signature(state, text),
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
             "The owned internal request reached the fresh-generation ceiling. Preserve it and resume only after a verified relevant code revision instead of opening a dead recovery circuit.",
         )
 
