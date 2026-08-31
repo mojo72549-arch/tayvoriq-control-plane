@@ -1,0 +1,39 @@
+name: TAYVORIQ Replay Approved Trend 2026-08-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-replay-approved-20260831.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  replay-approved-trend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Replay exact Telegram approval after source-contract repair
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >/tmp/replay.json <<'JSON'
+          {
+            "event_type": "tayvoriq_trend_approved",
+            "client_payload": {
+              "trend_id": "4",
+              "topic": "Gletscher-Kollaps im Himalaya: Warum die Katastrophe an der Nepal-China-Grenze immer größere Ausmaße annimmt",
+              "selection_id": "20260831-morning-agentv2-fast",
+              "telegram_message_id": 1906,
+              "approved_at": "2026-08-31T06:46:51.635Z",
+              "replayed_after_contract_repair": true
+            }
+          }
+          JSON
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/dispatches" --input /tmp/replay.json
+          echo "Exact approved request replayed. No new trend selection was created."
