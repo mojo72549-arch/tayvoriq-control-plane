@@ -1,0 +1,69 @@
+name: TAYVORIQ Replay Approved Trend Push 2026-08-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-replay-approved-push-20260831.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SELECTION_ID: 20260831-morning-agentv2-fast
+  TREND_ID: "4"
+  TELEGRAM_MESSAGE_ID: "1906"
+  APPROVED_AT: "2026-08-31T06:46:51.635Z"
+  TOPIC: "Gletscher-Kollaps im Himalaya: Warum die Katastrophe an der Nepal-China-Grenze immer größere Ausmaße annimmt"
+
+jobs:
+  replay-approved-trend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Control Plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Recreate canonical request from original Telegram approval
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          SELECTION_FILE=".automation/tayvoriq-agent-v2/selections/${SELECTION_ID}.json"
+          test -s "$SELECTION_FILE"
+          REQUEST_FILE=$(python tools/tayvoriq_orchestration_contract.py create-from-telegram \
+            --trend-request "$SELECTION_FILE" \
+            --trend-id "$TREND_ID" \
+            --selection-id "$SELECTION_ID" \
+            --message-id "$TELEGRAM_MESSAGE_ID" \
+            --payload-topic "$TOPIC" \
+            --approved-at "$APPROVED_AT" \
+            --out-dir requests)
+          test -s "$REQUEST_FILE"
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+          echo "request_file=$REQUEST_FILE" >> "$GITHUB_OUTPUT"
+          echo "Canonical approved request: $REQUEST_FILE"
+
+      - name: Persist request and trigger normal dispatcher
+        env:
+          REQUEST_FILE: ${{ steps.request.outputs.request_file }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$REQUEST_FILE"
+          if git diff --cached --quiet; then
+            echo "Request already persisted; touching replay marker to preserve exact request identity."
+            printf 'request=%s\nreplayed_at=%s\n' "$REQUEST_FILE" "$(date -u +%FT%TZ)" > requests/.tayvoriq-1906-replay-marker.txt
+            git add requests/.tayvoriq-1906-replay-marker.txt
+          fi
+          git commit -m "Replay approved Telegram request 1906 trend 4"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "Normal request dispatcher triggered by request push."
