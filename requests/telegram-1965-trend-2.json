@@ -84,15 +84,32 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-31T21:02:28.842301Z",
+      "actor": "tayvoriq-deterministic-codefix-continuity",
+      "meta": {
+        "retry_of_run_id": 33426415847,
+        "golden_path_run_id": 33439231970,
+        "recovery_generation": 0,
+        "failure_signature": "6b12dbe9fae07ad9be88",
+        "reason": "same-generation-production-green-codefix-replay",
+        "codefix_detection_reason": "production-green-implementation-changed",
+        "replay_control_plane_sha": "249eb7a3dd00a9df60ed43add09c1c3519004cd0",
+        "replay_implementation_sha": "7d663c1fe0d53658995056170950f4e3a047d627",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
   "dispatch_claim_run_id": 33426400349,
   "dispatch_contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
-  "golden_path_run_id": 33426415847,
+  "golden_path_run_id": 33439231970,
   "codefix_recovery": {
-    "status": "ARMED",
-    "request_substate": "AWAITING_CODEFIX",
+    "status": "REPLAY_DISPATCHED",
+    "request_substate": "DISPATCHED",
     "failed_run_id": 33426415847,
     "failure_signature": "6b12dbe9fae07ad9be88",
     "failure_state": "CODE_REPAIR_REQUIRED",
@@ -104,6 +121,20 @@
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
     "orphan_reconciled": true,
-    "active_pointer_verified": true
-  }
+    "active_pointer_verified": true,
+    "replay_run_id": 33439231970,
+    "replayed_at": "2026-08-31T21:02:28.842301Z",
+    "replay_control_plane_sha": "249eb7a3dd00a9df60ed43add09c1c3519004cd0",
+    "replay_implementation_sha": "7d663c1fe0d53658995056170950f4e3a047d627",
+    "codefix_detection_reason": "production-green-implementation-changed"
+  },
+  "previous_golden_path_run_ids": [
+    33426415847
+  ],
+  "recovery_generation": 0,
+  "retry_of_run_id": 33426415847,
+  "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
+  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "recovery_failure_signature": "6b12dbe9fae07ad9be88",
+  "recovery_dispatched_at": "2026-08-31T21:02:28.842301Z"
 }
