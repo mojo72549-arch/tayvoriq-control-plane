@@ -146,6 +146,22 @@
         "reason": "orphaned-deterministic-failure-reconciled",
         "quality_gates_weakened": false
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-08-31T20:23:20.966763Z",
+      "actor": "tayvoriq-deterministic-codefix-continuity",
+      "meta": {
+        "retry_of_run_id": 32649570583,
+        "golden_path_run_id": 33435745482,
+        "recovery_generation": 4,
+        "failure_signature": "d68ac00bac2757f0e555",
+        "reason": "same-generation-production-green-codefix-replay",
+        "codefix_detection_reason": "relevant-control-code-changed-without-implementation-pin",
+        "replay_control_plane_sha": "726d7701f7399fe9e5a210977e18f2cf64374fca",
+        "replay_implementation_sha": "0d4303788de99523682ff0dc1691a29455866e71",
+        "quality_gates_weakened": false
+      }
     }
   ],
   "slot_serialization_released_at": "2026-08-22T20:01:13.546520Z",
@@ -153,22 +169,23 @@
     32631013216,
     32631571653,
     32637822444,
-    32643433479
+    32643433479,
+    32649570583
   ],
-  "golden_path_run_id": 32649570583,
-  "retry_of_run_id": 32643433479,
+  "golden_path_run_id": 33435745482,
+  "retry_of_run_id": 32649570583,
   "replay_bound_by": "tayvoriq-x-replay-start-guard",
   "replay_trigger_sha": "4fe7a068e709a794ebcee501bbf2cfe50b4a9948",
   "replay_start_mode": "push_verified",
   "replay_dispatched_at": "2026-08-23T09:26:50.125185Z",
   "recovery_generation": 4,
-  "replacement_reason": "BOUNDED_ACTIVE_TELEGRAM_CONTINUITY_RECOVERY",
-  "recovery_owner": "tayvoriq-request-continuity-watchdog",
-  "recovery_failure_signature": "7446d3fed9efe1e3a594",
-  "recovery_dispatched_at": "2026-08-23T15:45:59.241764Z",
+  "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
+  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "recovery_failure_signature": "d68ac00bac2757f0e555",
+  "recovery_dispatched_at": "2026-08-31T20:23:20.966763Z",
   "codefix_recovery": {
-    "status": "ARMED",
-    "request_substate": "AWAITING_CODEFIX",
+    "status": "REPLAY_DISPATCHED",
+    "request_substate": "DISPATCHED",
     "failed_run_id": 32649570583,
     "failure_signature": "d68ac00bac2757f0e555",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
@@ -179,6 +196,11 @@
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
-    "orphan_reconciled": true
+    "orphan_reconciled": true,
+    "replay_run_id": 33435745482,
+    "replayed_at": "2026-08-31T20:23:20.966763Z",
+    "replay_control_plane_sha": "726d7701f7399fe9e5a210977e18f2cf64374fca",
+    "replay_implementation_sha": "0d4303788de99523682ff0dc1691a29455866e71",
+    "codefix_detection_reason": "relevant-control-code-changed-without-implementation-pin"
   }
 }
