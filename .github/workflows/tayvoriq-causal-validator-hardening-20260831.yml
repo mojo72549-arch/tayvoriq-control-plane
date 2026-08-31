@@ -1,0 +1,109 @@
+name: TAYVORIQ Causal Validator Hardening 2026-08-31
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-causal-validator-hardening-20260831.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-causal-validator-hardening-20260831
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          fetch-depth: 0
+
+      - name: Recognize explicit causal verbs without weakening quality gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tools/tayvoriq_dual_platform_render_v34.py')
+          text = path.read_text(encoding='utf-8')
+          anchor = '''    " aufgrund ",\n    # Verified threshold explanations (for example tectonic stress building\n'''
+          replacement = '''    " aufgrund ",\n    # Explicit causal verbs are causal explanations too. Requiring only\n    # conjunctions such as "weil" produced false negatives for grounded\n    # sentences like "... erzeugten eine Flutwelle". These stems keep the\n    # semantic gate strict while recognizing ordinary German causality.\n    " erzeug",\n    " verursach",\n    " auslös",\n    " bewirk",\n    " führte ",\n    " führt ",\n    " entstand ",\n    " entsteht ",\n    " entstehen ",\n    # Verified threshold explanations (for example tectonic stress building\n'''
+          if '    " erzeug",\n' not in text:
+              if anchor not in text:
+                  raise SystemExit('CAUSAL_MARKER_PATCH_ANCHOR_MISSING')
+              text = text.replace(anchor, replacement, 1)
+              path.write_text(text, encoding='utf-8')
+              print('CAUSAL_MARKERS_PATCHED')
+          else:
+              print('CAUSAL_MARKERS_ALREADY_HARDENED')
+          PY
+
+      - name: Add regression test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > tests/test_tayvoriq_v34_causal_markers.py <<'PY'
+          from pathlib import Path
+          import ast
+
+
+          def _markers():
+              tree = ast.parse(Path('tools/tayvoriq_dual_platform_render_v34.py').read_text(encoding='utf-8'))
+              for node in tree.body:
+                  if isinstance(node, ast.Assign) and any(getattr(t, 'id', '') == '_CAUSAL_MARKERS' for t in node.targets):
+                      return ast.literal_eval(node.value)
+              raise AssertionError('_CAUSAL_MARKERS not found')
+
+
+          def has_cause(text: str) -> bool:
+              lower = f" {text.casefold()} "
+              return any(marker in lower for marker in _markers())
+
+
+          def test_grounded_causal_verbs_are_accepted():
+              assert has_cause('Eis und Gestein stürzten ins Flusssystem und erzeugten eine massive Flutwelle.')
+              assert has_cause('Der Einsturz verursachte eine Flutwelle.')
+              assert has_cause('Der Gletscher löste dadurch eine Flut aus.')
+
+
+          def test_plain_sequence_without_causality_is_not_accepted():
+              assert not has_cause('Die Rettungskräfte suchten am Morgen weiter nach Vermissten.')
+          PY
+
+      - name: Compile and run causal regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/tayvoriq_dual_platform_render_v34.py tests/test_tayvoriq_v34_causal_markers.py
+          python -m pytest -q tests/test_tayvoriq_v34_causal_markers.py
+
+      - name: Commit hardened implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- tools/tayvoriq_dual_platform_render_v34.py tests/test_tayvoriq_v34_causal_markers.py; then
+            echo 'No implementation change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/tayvoriq_dual_platform_render_v34.py tests/test_tayvoriq_v34_causal_markers.py
+          git commit -m 'fix: recognize grounded causal verbs in editorial gate'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin feature/multi-platform-distribution-package
+            if git push origin HEAD:feature/multi-platform-distribution-package; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
