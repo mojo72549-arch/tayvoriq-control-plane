@@ -286,15 +286,13 @@ jobs:
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null
 
-      - name: Telegram deterministic technical stop
+      - name: Defer deterministic failure to Codefix Continuity
         if: steps.policy.outputs.mode == 'deterministic'
         shell: bash
         run: |
           set -euo pipefail
-          text=$(printf '🛑 TAYVORIQ · Technischer Recovery-Stopp\n\nThema: %s\nRun: %s\nFehlerklasse: %s\n\n✅ Auftrag, Freigabe und Quellen bleiben gespeichert.\n✅ Es wird kein identischer Produktions-Run erneut gestartet.\n➡️ Der deterministische Code-/Testfehler muss zuerst repariert werden; danach reicht ein gezielter Neustart.' \
-            "${{ steps.owner.outputs.topic }}" "${{ steps.watched.outputs.run_id }}" "${{ steps.policy.outputs.state }}")
-          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null
+          echo "DETERMINISTIC_FAILURE_DEFERRED_TO_CODEFIX_CONTINUITY run=${{ steps.watched.outputs.run_id }} request=${{ steps.owner.outputs.request_id }} state=${{ steps.policy.outputs.state }}"
+          echo "No Telegram end-stop is emitted here. TAYVORIQ Deterministic Codefix Continuity owns the same request until a verified Production-Green revision is available."
 
       - name: Telegram external blocker
         if: steps.policy.outputs.mode == 'external'
