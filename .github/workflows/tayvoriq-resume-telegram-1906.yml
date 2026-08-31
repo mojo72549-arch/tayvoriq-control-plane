@@ -1,0 +1,157 @@
+name: TAYVORIQ Resume Telegram 1906
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-resume-telegram-1906.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: tayvoriq-request-telegram-1906-trend-4
+  cancel-in-progress: false
+
+env:
+  REQUEST_FILE: requests/telegram-1906-trend-4.json
+  REQUEST_ID: telegram-1906-trend-4
+
+jobs:
+  resume-exact-approved-request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Validate exact approved request
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$REQUEST_FILE"
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+          python - "$REQUEST_FILE" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          assert d['request_id']=='telegram-1906-trend-4'
+          assert str(d['trend_id'])=='4'
+          assert int(d['telegram_message_id'])==1906
+          assert d['selection_id']=='20260831-morning-agentv2-fast'
+          assert str(d['status']).upper() in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'}
+          with open(sys.argv[2],'a',encoding='utf-8') as h:
+              h.write('topic='+str(d['topic']).strip()+'\n')
+              h.write('trend_id='+str(d['trend_id']).strip()+'\n')
+              h.write('contract_sha256='+str(d['contract_sha256']).strip()+'\n')
+          print({'exact_request':'verified','request_id':d['request_id'],'trend_id':d['trend_id'],'telegram_message_id':d['telegram_message_id']})
+          PY
+
+      - name: Verify morning slot can run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_slot_serialization_v1.py check \
+            --request "$REQUEST_FILE" \
+            --requests-dir requests \
+            --repo "$GITHUB_REPOSITORY" \
+            --token "$GH_TOKEN" > /tmp/slot.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/slot.json',encoding='utf-8'))
+          assert d.get('released') is True, d
+          print(d)
+          PY
+
+      - name: Atomically claim exact request
+        shell: bash
+        env:
+          CONTRACT_SHA256: ${{ steps.request.outputs.contract_sha256 }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          claimed=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            eligible=$(python - "$REQUEST_FILE" "$REQUEST_ID" "$CONTRACT_SHA256" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          status=str(d.get('status') or '').upper()
+          same=str(d.get('request_id') or '')==sys.argv[2] and str(d.get('contract_sha256') or '')==sys.argv[3]
+          print('true' if same and status in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'} else 'false')
+          PY
+            )
+            [ "$eligible" = true ] || { echo 'Exact request is no longer claimable; refusing duplicate start.'; exit 1; }
+            python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE" --require-claimable
+            python tools/tayvoriq_orchestration_contract.py transition "$REQUEST_FILE" \
+              --to DISPATCHING \
+              --actor "request-bound-resume:${GITHUB_RUN_ID}" \
+              --meta "dispatch_claim_run_id=${GITHUB_RUN_ID}" \
+              --meta "dispatch_contract_sha256=${CONTRACT_SHA256}" \
+              --meta "recovery_of_telegram_message_id=1906"
+            python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+            git add "$REQUEST_FILE"
+            git commit -m "ops(tayvoriq): claim telegram-1906-trend-4 for production"
+            if git push origin HEAD:main; then claimed=true; break; fi
+            sleep $((attempt * 2))
+          done
+          [ "$claimed" = true ] || exit 1
+
+      - name: Start exact Golden Path production
+        id: dispatch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TOPIC: ${{ steps.request.outputs.topic }}
+          TREND_ID: ${{ steps.request.outputs.trend_id }}
+        run: |
+          set -euo pipefail
+          BEFORE=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main \
+            -f topic="$TOPIC" \
+            -f trend_id="$TREND_ID" \
+            -f source_request_id="$REQUEST_ID"
+          RUN_ID=''
+          for attempt in $(seq 1 18); do
+            sleep 4
+            RUN_ID=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event workflow_dispatch --limit 20 --json databaseId --jq ".[] | select(.databaseId > $BEFORE) | .databaseId" | head -n 1)
+            [ -n "$RUN_ID" ] && break
+          done
+          [ -n "$RUN_ID" ] || { echo 'Golden Path workflow_dispatch did not become visible.'; exit 1; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "GOLDEN_PATH_STARTED request=$REQUEST_ID run=$RUN_ID"
+
+      - name: Bind request to Golden Path run
+        shell: bash
+        env:
+          GOLDEN_PATH_RUN_ID: ${{ steps.dispatch.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          python tools/tayvoriq_orchestration_contract.py transition "$REQUEST_FILE" \
+            --to DISPATCHED \
+            --actor "request-bound-resume:${GITHUB_RUN_ID}" \
+            --meta "golden_path_run_id=${GOLDEN_PATH_RUN_ID}" \
+            --meta "recovery_of_telegram_message_id=1906"
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          git add "$REQUEST_FILE"
+          git commit -m "ops(tayvoriq): bind telegram-1906-trend-4 to Golden Path ${GOLDEN_PATH_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+            git pull --rebase origin main
+          done
+          exit 1
