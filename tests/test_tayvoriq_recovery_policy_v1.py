@@ -37,8 +37,9 @@ def test_transient_failure_uses_same_run_before_fresh_generation():
     assert decision.next_generation == 2
 
 
-def test_terminal_code_repair_wins_over_provider_circuit_noise():
+def test_terminal_code_repair_wins_over_provider_and_workflow_source_noise():
     logs = """
+    test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
     gemini:RuntimeError:Gemini circuit already open for this workflow
     groq:RuntimeError:Groq circuit already open for this workflow
     TAYVORIQ_AUTONOMOUS_RECOVERY: no safe patch passed validation.
