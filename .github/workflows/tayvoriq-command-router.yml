@@ -1,0 +1,156 @@
+name: TAYVORIQ Command Router
+
+on:
+  repository_dispatch:
+    types:
+      - tayvoriq_review_command
+      - tayvoriq_control_command
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Safe command for the bound request
+        required: true
+        type: choice
+        options: [resume_request, rerun_failed, cancel_run, approve_review, reject_review]
+      request_id:
+        description: Canonical request_id
+        required: true
+        type: string
+      run_id:
+        description: Production/review run id when required
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  STUDIO_REPO: ${{ vars.TAYVORIQ_PRIVATE_REPO || 'mojo72549-arch/shorts-agent-studio' }}
+  STUDIO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+concurrency:
+  group: tayvoriq-command-${{ github.event.client_payload.request_id || inputs.request_id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resolve and validate command
+        id: command
+        env:
+          EVENT_ACTION: ${{ github.event.client_payload.action || inputs.action || '' }}
+          EVENT_REQUEST_ID: ${{ github.event.client_payload.request_id || inputs.request_id || '' }}
+          EVENT_RUN_ID: ${{ github.event.client_payload.review_run_id || github.event.client_payload.run_id || inputs.run_id || '' }}
+          EVENT_SOURCE: ${{ github.event.client_payload.source || 'control_center' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          action=str(os.environ.get('EVENT_ACTION') or '').strip()
+          request_id=str(os.environ.get('EVENT_REQUEST_ID') or '').strip()
+          run_id=str(os.environ.get('EVENT_RUN_ID') or '').strip()
+          source=str(os.environ.get('EVENT_SOURCE') or 'control_center').strip()
+          allowed={'resume_request','rerun_failed','cancel_run','approve_review','reject_review'}
+          if action not in allowed: raise SystemExit(f'COMMAND_NOT_ALLOWED:{action}')
+          if not re.fullmatch(r'[A-Za-z0-9_-]{4,80}',request_id): raise SystemExit('INVALID_REQUEST_ID')
+          path=Path('requests')/f'{request_id}.json'
+          if not path.is_file(): raise SystemExit('REQUEST_NOT_FOUND')
+          data=json.loads(path.read_text(encoding='utf-8'))
+          if str(data.get('request_id') or '') != request_id: raise SystemExit('REQUEST_BINDING_FAILED')
+          if run_id and not re.fullmatch(r'\d{6,20}',run_id): raise SystemExit('INVALID_RUN_ID')
+          if action in {'rerun_failed','cancel_run','approve_review','reject_review'} and not run_id: raise SystemExit('RUN_ID_REQUIRED')
+          if action in {'resume_request','rerun_failed'} and str(data.get('status') or '').upper() in {'COMPLETED','REJECTED','CANCELLED'}: raise SystemExit('TERMINAL_REQUEST_CANNOT_RESUME')
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+              h.write(f'action={action}\nrequest_id={request_id}\nrun_id={run_id}\nsource={source}\n')
+          print({'action':action,'request_id':request_id,'run_id':run_id or None,'source':source,'request_status':data.get('status')})
+          PY
+
+      - name: Validate Studio command credential
+        run: |
+          set -euo pipefail
+          test -n "$STUDIO_TOKEN" || { echo 'PRIVATE_REPO_TOKEN missing'; exit 2; }
+          test -n "$STUDIO_REPO" || { echo 'TAYVORIQ_PRIVATE_REPO missing'; exit 2; }
+
+      - name: Resume the same request in Studio
+        if: steps.command.outputs.action == 'resume_request'
+        env:
+          REQUEST_ID: ${{ steps.command.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $STUDIO_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$STUDIO_REPO/dispatches" \
+            -d "$(python - <<'PY'
+          import json,os
+          print(json.dumps({'event_type':'tayvoriq_produce_request','client_payload':{'source_request_id':os.environ['REQUEST_ID'],'control_repo':'mojo72549-arch/tayvoriq-control-plane','control_ref':'main','source':'control-plane-command-router'}}))
+          PY
+          )"
+
+      - name: Re-run only failed Studio jobs
+        if: steps.command.outputs.action == 'rerun_failed'
+        env:
+          RUN_ID: ${{ steps.command.outputs.run_id }}
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $STUDIO_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$STUDIO_REPO/actions/runs/$RUN_ID/rerun-failed-jobs"
+
+      - name: Cancel active Studio run
+        if: steps.command.outputs.action == 'cancel_run'
+        env:
+          RUN_ID: ${{ steps.command.outputs.run_id }}
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $STUDIO_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$STUDIO_REPO/actions/runs/$RUN_ID/cancel"
+
+      - name: Publish exactly the approved review
+        if: steps.command.outputs.action == 'approve_review'
+        env:
+          REQUEST_ID: ${{ steps.command.outputs.request_id }}
+          RUN_ID: ${{ steps.command.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $STUDIO_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$STUDIO_REPO/dispatches" \
+            -d "$(python - <<'PY'
+          import json,os
+          print(json.dumps({'event_type':'tayvoriq_publish_approved','client_payload':{'request_id':os.environ['REQUEST_ID'],'review_run_id':os.environ['RUN_ID'],'youtube_privacy':'public','source':'control-plane-command-router'}}))
+          PY
+          )"
+
+      - name: Reject review without publication
+        if: steps.command.outputs.action == 'reject_review'
+        run: echo "Review rejected for request=${{ steps.command.outputs.request_id }} run=${{ steps.command.outputs.run_id }}; no publish dispatch emitted."
+
+      - name: Confirm command on Telegram
+        if: always() && steps.command.outcome == 'success'
+        continue-on-error: true
+        env:
+          ACTION: ${{ steps.command.outputs.action }}
+          REQUEST_ID: ${{ steps.command.outputs.request_id }}
+          RUN_ID: ${{ steps.command.outputs.run_id }}
+        run: |
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then exit 0; fi
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=🎛 TAYVORIQ Control · ${ACTION}\nRequest: ${REQUEST_ID}\nRun: ${RUN_ID:-—}\nCommand wurde vom zentralen Router übernommen." >/dev/null
