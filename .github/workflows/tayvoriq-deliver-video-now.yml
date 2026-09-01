@@ -410,14 +410,36 @@ jobs:
           response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${message}")
           python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d.get("ok") and d.get("result",{}).get("message_id"), d' "$response"
 
+      - name: Resolve immutable Production Green implementation
+        id: production_green
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_resolve_production_green_v1.py
+
+      - name: Validate immutable implementation policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_harden_golden_path_v1.py --check
+
       - name: Checkout implementation
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: feature/multi-platform-distribution-package
+          ref: ${{ steps.production_green.outputs.implementation_sha }}
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
+
+      - name: Verify immutable implementation checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual=$(git -C implementation rev-parse HEAD)
+          expected="${{ steps.production_green.outputs.implementation_sha }}"
+          test "$actual" = "$expected" || { echo "IMMUTABLE_IMPLEMENTATION_CHECKOUT_FAILED: expected=$expected actual=$actual"; exit 1; }
+          echo "Immutable implementation verified: $actual"
 
       - name: Lightweight contract preflight
         id: lightweight_preflight
@@ -436,13 +458,13 @@ jobs:
           path: pages-worktree
           fetch-depth: 1
 
-      - name: Restore pip dependency cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: tayvoriq-pip-v3-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
-          restore-keys: |
-            tayvoriq-pip-v3-${{ runner.os }}-py311-
+      - name: Clear stale pip wheel cache before production
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ~/.cache/pip
+          mkdir -p ~/.cache/pip
+          df -h "$GITHUB_WORKSPACE"
 
       - name: Restore lean production checkpoint
         id: restore_recovery_cache
@@ -503,7 +525,8 @@ jobs:
               "request_nonce": sys.argv[5],
               "source_request_id": sys.argv[6],
               "global_duplicate_gate_report_sha256": sys.argv[7],
-              "implementation_branch": "feature/multi-platform-distribution-package",
+              "implementation_ref": sys.argv[2],
+              "implementation_binding": "production-green-immutable-sha",
               "execution_backend": os.environ.get("TAYVORIQ_EXECUTION_BACKEND"),
               "approved_trend_pinned": True,
               "source_context_bound": True,
@@ -532,9 +555,30 @@ jobs:
             sudo apt-get install -y -qq ffmpeg rsync git
           fi
           export PIP_DISABLE_PIP_VERSION_CHECK=1
-          python -m pip install -r implementation/requirements.txt pytest -q
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
-          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('implementation/requirements.txt')
+          target = Path('/tmp/tayvoriq-production-requirements.txt')
+          lines = source.read_text(encoding='utf-8').splitlines()
+          filtered = [line for line in lines if 'chatterbox' not in line.casefold()]
+          if len(filtered) == len(lines):
+              raise SystemExit('DEPENDENCY_POLICY_FAILED: pinned Chatterbox dependency was not found')
+          target.write_text('\n'.join(filtered) + '\n', encoding='utf-8')
+          if 'chatterbox' in target.read_text(encoding='utf-8').casefold():
+              raise SystemExit('DEPENDENCY_POLICY_FAILED: Chatterbox remained in filtered requirements')
+          PY
+          python -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          python -m pip install --no-cache-dir -r /tmp/tayvoriq-production-requirements.txt pytest -q
+          python -m pip install --no-cache-dir "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          python - <<'PY'
+          import torch
+          version = str(torch.__version__)
+          if version.split('+', 1)[0] != '2.6.0':
+              raise SystemExit(f'DEPENDENCY_POLICY_FAILED: unexpected torch {version}')
+          if torch.cuda.is_available():
+              raise SystemExit('DEPENDENCY_POLICY_FAILED: CUDA runtime unexpectedly active on CPU production runner')
+          print(f'TAYVORIQ_CPU_TORCH_VERIFIED:{version}')
+          PY
 
       - name: Preflight
         id: preflight
