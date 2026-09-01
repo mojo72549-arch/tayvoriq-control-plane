@@ -12,6 +12,7 @@ on:
       - requests/**
       - .github/state/tayvoriq-production-green.json
       - scripts/tayvoriq_ops_health.py
+      - scripts/tayvoriq_ops_health_postprocess.py
       - .github/workflows/tayvoriq-ops-health.yml
   workflow_dispatch:
   schedule:
@@ -54,6 +55,16 @@ jobs:
           python scripts/tayvoriq_ops_health.py
           python -m json.tool run-status/ops-health.json >/dev/null
 
+      - name: Resolve effective recovery state
+        id: effective
+        env:
+          TAYVORIQ_OPS_STATE_PATH: run-status/ops-health.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/tayvoriq_ops_health_postprocess.py
+          python -m json.tool run-status/ops-health.json >/dev/null
+
       - name: Persist health snapshot
         shell: bash
         env:
@@ -75,13 +86,14 @@ jobs:
           echo "Concurrent control-plane change detected; regenerating against latest main"
           git pull --rebase origin main
           GITHUB_TOKEN="${GITHUB_TOKEN}" python scripts/tayvoriq_ops_health.py
+          python scripts/tayvoriq_ops_health_postprocess.py
           git add run-status/ops-health.json
           git commit --amend --no-edit
           git push origin HEAD:main
           echo "TAYVORIQ_OPS_HEALTH_PERSISTED_AFTER_REBASE"
 
       - name: Telegram health transition
-        if: steps.health.outputs.notify == 'true'
+        if: steps.health.outputs.notify == 'true' || steps.effective.outputs.notify == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
