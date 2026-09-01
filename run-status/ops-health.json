@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v1",
-  "generated_at": "2026-09-01T13:28:57.636794Z",
+  "generated_at": "2026-09-01T16:15:42.332455Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -17,13 +17,13 @@
     "path": "requests/telegram-1965-trend-2.json"
   },
   "run": {
-    "id": 33492034864,
+    "id": 33528341412,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/33492034864",
-    "created_at": "2026-09-01T09:24:16Z",
-    "updated_at": "2026-09-01T10:31:40Z",
-    "attempt": 3,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/33528341412",
+    "created_at": "2026-09-01T15:51:44Z",
+    "updated_at": "2026-09-01T15:54:59Z",
+    "attempt": 1,
     "progress": 72,
     "current_step": null,
     "last_successful_step": "Complete job",
@@ -107,7 +107,7 @@
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "2ee6d789cf3b…"
+      "detail": "29cff72a186d…"
     },
     {
       "name": "Self-Heal",
@@ -126,7 +126,7 @@
     }
   ],
   "incident": {
-    "signature": "33492034864:32:PUBLISHABLE_CODEFIX_REQUIRED",
+    "signature": "33528341412:32:PUBLISHABLE_CODEFIX_REQUIRED",
     "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
@@ -145,7 +145,7 @@
   "recovery": {
     "status": "ARMED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 33492034864,
+    "failed_run_id": 33528341412,
     "replay_run_id": null,
     "recovery_generation": 0,
     "same_generation_replay_required": true,
@@ -156,9 +156,19 @@
   },
   "events": [
     {
-      "at": "2026-09-01T10:31:40Z",
+      "at": "2026-09-01T15:54:59Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-01T15:55:07.871785Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-01T15:51:50.644514Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-01T09:28:13.205756Z",
@@ -177,16 +187,6 @@
     },
     {
       "at": "2026-09-01T09:07:36.189401Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-01T08:56:45.765863Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-01T07:16:24.978319Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
     }
