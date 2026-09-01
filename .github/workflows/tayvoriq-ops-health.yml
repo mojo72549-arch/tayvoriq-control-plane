@@ -1,0 +1,131 @@
+name: TAYVORIQ Ops Health
+
+on:
+  workflow_run:
+    workflows:
+      - TAYVORIQ-X Golden Path
+      - TAYVORIQ Production Green Promoter
+    types: [requested, in_progress, completed]
+  push:
+    branches: [main]
+    paths:
+      - requests/**
+      - .github/state/tayvoriq-production-green.json
+      - scripts/tayvoriq_ops_health.py
+      - .github/workflows/tayvoriq-ops-health.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: tayvoriq-ops-health
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout live control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Reconcile latest main before health snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+
+      - name: Build live health snapshot
+        id: health
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAYVORIQ_OPS_STATE_PATH: run-status/ops-health.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/tayvoriq_ops_health.py
+          python -m json.tool run-status/ops-health.json >/dev/null
+
+      - name: Persist health snapshot
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add run-status/ops-health.json
+          if git diff --cached --quiet; then
+            echo "TAYVORIQ_OPS_HEALTH_UNCHANGED"
+            exit 0
+          fi
+          git commit -m "ops(tayvoriq): refresh control center health"
+          if git push origin HEAD:main; then
+            echo "TAYVORIQ_OPS_HEALTH_PERSISTED"
+            exit 0
+          fi
+          echo "Concurrent control-plane change detected; regenerating against latest main"
+          git pull --rebase origin main
+          GITHUB_TOKEN="${GITHUB_TOKEN}" python scripts/tayvoriq_ops_health.py
+          git add run-status/ops-health.json
+          git commit --amend --no-edit
+          git push origin HEAD:main
+          echo "TAYVORIQ_OPS_HEALTH_PERSISTED_AFTER_REBASE"
+
+      - name: Telegram health transition
+        if: steps.health.outputs.notify == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CONTROL_CENTER_URL: https://tayvoriq-control-center-mo61.vercel.app
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "TELEGRAM_HEALTH_NOTIFICATION_SKIPPED: secrets unavailable"
+            exit 0
+          fi
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          state=json.loads(Path('run-status/ops-health.json').read_text(encoding='utf-8'))
+          overall=state.get('overall','unknown')
+          icon={'green':'🟢','yellow':'🟡','red':'🔴'}.get(overall,'⚪')
+          title={'green':'System wieder gesund','yellow':'Run / Recovery aktiv','red':'Incident erkannt'}.get(overall,'Status aktualisiert')
+          req=state.get('request') or {}
+          run=state.get('run') or {}
+          incident=state.get('incident') or {}
+          recovery=state.get('recovery') or {}
+          action='⚠️ Aktion von dir erforderlich.' if state.get('user_action_required') else '✅ Keine Aktion von dir nötig.'
+          lines=[
+              f"{icon} TAYVORIQ Control Center · {title}",
+              '',
+              f"Thema: {req.get('topic') or '—'}",
+              f"Run: {run.get('id') or '—'} · {str(run.get('status') or '—').upper()}",
+          ]
+          if incident.get('failure_state'):
+              lines.append(f"Fehlerklasse: {incident.get('failure_state')}")
+          if incident.get('failed_step'):
+              lines.append(f"Step: {incident.get('failed_step')}")
+          lines += [
+              f"Self-Heal: {recovery.get('status') or 'IDLE'}",
+              action,
+              '',
+              f"Schaltzentrale: {os.environ['CONTROL_CENTER_URL']}",
+          ]
+          payload={'chat_id':os.environ['TELEGRAM_CHAT_ID'],'text':'\n'.join(lines),'disable_web_page_preview':True}
+          Path('/tmp/tayvoriq-ops-telegram.json').write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+          PY
+          curl -fsS --retry 2 --connect-timeout 10 --max-time 25 \
+            -H 'Content-Type: application/json' \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-binary @/tmp/tayvoriq-ops-telegram.json \
+            >/dev/null || echo "TELEGRAM_HEALTH_NOTIFICATION_FAILED"
