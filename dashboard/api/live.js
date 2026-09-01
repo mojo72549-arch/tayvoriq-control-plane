@@ -33,8 +33,9 @@ function humanKind(name=''){
 }
 
 function isNoise(name=''){
-  const n=String(name).toLowerCase();
-  return n.includes('artifact cleanup')||n.includes('legacy schedule guard')||n.includes('public preview')||n.includes('project lumen');
+  const raw=String(name);
+  const n=raw.toLowerCase();
+  return raw.startsWith('.github/workflows/')||n.includes('artifact cleanup')||n.includes('legacy schedule guard')||n.includes('public preview')||n.includes('project lumen');
 }
 
 function activityFromRuns(runs=[]){
