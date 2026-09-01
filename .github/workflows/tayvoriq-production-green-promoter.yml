@@ -12,8 +12,10 @@ on:
     paths:
       - .github/workflows/tayvoriq-production-green-promoter.yml
   workflow_dispatch:
+  # Durable self-reconciliation: a missed cross-repository event or a transient
+  # network/runner failure must not leave an ARMED production request stranded.
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: write
@@ -102,9 +104,21 @@ jobs:
             sudo apt-get install -y -qq ffmpeg rsync git
           fi
           export PIP_DISABLE_PIP_VERSION_CHECK=1
-          python -m pip install -r implementation/requirements.txt pytest -q
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
-          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          # Never let the generic requirements install pull a second CUDA/PyTorch
+          # stack before the CPU runtime is pinned. That previously made recovery
+          # promotion vulnerable to hosted-runner disk exhaustion.
+          grep -vE '^[[:space:]]*chatterbox-tts[[:space:]]*@' implementation/requirements.txt > /tmp/tayvoriq-promoter-requirements.txt
+          python -m pip install --no-cache-dir -r /tmp/tayvoriq-promoter-requirements.txt pytest -q
+          python -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          # Torch is already satisfied by the CPU wheel above, so Chatterbox can
+          # resolve its remaining dependencies without pulling the CUDA variant.
+          python -m pip install --no-cache-dir "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          python - <<'PY'
+          from pathlib import Path
+          req=Path('/tmp/tayvoriq-promoter-requirements.txt').read_text(encoding='utf-8').casefold()
+          assert 'chatterbox-tts' not in req
+          print('TAYVORIQ_PROMOTER_CPU_DEPENDENCY_CONTRACT_READY')
+          PY
 
       - name: Compile exact candidate
         if: steps.refs.outputs.changed == 'true'
