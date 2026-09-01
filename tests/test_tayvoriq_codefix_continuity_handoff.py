@@ -71,6 +71,7 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
 
     def test_successful_green_promotion_explicitly_resumes_continuity(self) -> None:
         promoter = PROMOTER.read_text(encoding="utf-8")
+        self.assertIn("permissions:\n  actions: write\n  contents: write", promoter)
         step = _step(
             promoter,
             "Resume deterministic codefix continuity after promotion",
