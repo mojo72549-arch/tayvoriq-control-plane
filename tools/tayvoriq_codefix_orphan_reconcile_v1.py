@@ -202,7 +202,7 @@ def _failed_logs(run_id: int, target: Path) -> bool:
     return target.is_file() and bool(target.read_text(encoding="utf-8", errors="replace").strip())
 
 
-def _policy(logs: Path, run_attempt: int, generation: int, target: Path) -> dict[str, Any] | None:
+def _policy(logs: Path, run_attempt: int, generation: int, codefix_replay: bool, target: Path) -> dict[str, Any] | None:
     result = _run(
         [
             sys.executable,
@@ -221,6 +221,8 @@ def _policy(logs: Path, run_attempt: int, generation: int, target: Path) -> dict
             "true",
             "--exact-request-retry",
             "true",
+            "--codefix-replay",
+            "true" if codefix_replay else "false",
             "--output-json",
             str(target),
         ],
@@ -400,7 +402,12 @@ def main() -> int:
                 print(f"CODEFIX_ORPHAN_NO_FAILED_LOGS:{run_id}")
                 continue
             policy_path = temp / "policy.json"
-            policy = _policy(logs, _int(run_meta.get("run_attempt")) or 1, generation, policy_path)
+            codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
+            codefix_replay = (
+                str(codefix.get("status") or "") == "REPLAY_DISPATCHED"
+                and _int(codefix.get("replay_run_id")) == run_id
+            )
+            policy = _policy(logs, _int(run_meta.get("run_attempt")) or 1, generation, codefix_replay, policy_path)
             if not policy:
                 print(f"CODEFIX_ORPHAN_POLICY_UNAVAILABLE:{run_id}")
                 continue

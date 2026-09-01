@@ -161,6 +161,7 @@ def classify_failure(
     owner_found: bool = True,
     owner_current: bool = True,
     exact_request_retry: bool = False,
+    codefix_replay: bool = False,
 ) -> RecoveryDecision:
     text = str(logs or "")
     lowered = text.casefold()
@@ -175,6 +176,19 @@ def classify_failure(
     if not owner_current:
         state = "SUPERSEDED_RECOVERY_EVENT"
         return RecoveryDecision("stale", state, False, "none", generation, None, maximum, _stable_signature(state, text), "A newer run already owns the request.")
+
+    # A failed codefix replay is already the bounded second execution of the exact
+    # approved request. If that replay reaches the terminal publishability handoff,
+    # generic timeout/circuit words elsewhere in the Actions log must never turn it
+    # into another blind same-run retry. Keep the same generation armed for a new
+    # verified code revision instead.
+    if codefix_replay and re.search(r"\bpublishable_output_retry_required\b", lowered, flags=re.IGNORECASE):
+        state = "PUBLISHABLE_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
+            "The exact request already failed after a verified codefix replay. Preserve it in the same recovery generation and require another verified relevant code revision; do not blind-rerun transient log noise.",
+        )
 
     if _matches(lowered, LOCAL_REPAIR_CODEFIX_PATTERNS):
         state = "LOCAL_REPAIR_CODEFIX_REQUIRED"
@@ -262,6 +276,7 @@ def main() -> int:
     parser.add_argument("--owner-found", choices=("true", "false"), default="true")
     parser.add_argument("--owner-current", choices=("true", "false"), default="true")
     parser.add_argument("--exact-request-retry", choices=("true", "false"), default="false")
+    parser.add_argument("--codefix-replay", choices=("true", "false"), default="false")
     parser.add_argument("--output-json")
     args = parser.parse_args()
 
@@ -274,6 +289,7 @@ def main() -> int:
         owner_found=args.owner_found == "true",
         owner_current=args.owner_current == "true",
         exact_request_retry=args.exact_request_retry == "true",
+        codefix_replay=args.codefix_replay == "true",
     )
     payload = asdict(decision)
     if args.output_json:
