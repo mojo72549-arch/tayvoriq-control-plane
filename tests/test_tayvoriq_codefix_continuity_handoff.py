@@ -6,6 +6,7 @@ from pathlib import Path
 
 GOLDEN = Path(".github/workflows/tayvoriq-deliver-video-now.yml")
 CONTINUITY = Path(".github/workflows/tayvoriq-deterministic-codefix-continuity.yml")
+PROMOTER = Path(".github/workflows/tayvoriq-production-green-promoter.yml")
 HARDENER = Path("tools/tayvoriq_harden_failure_finalizer_v1.py")
 
 
@@ -67,6 +68,21 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
         for marker in required:
             self.assertIn(marker, step, marker)
         self.assertNotIn("quality_gates_weakened: true", continuity.casefold())
+
+    def test_successful_green_promotion_explicitly_resumes_continuity(self) -> None:
+        promoter = PROMOTER.read_text(encoding="utf-8")
+        step = _step(
+            promoter,
+            "Resume deterministic codefix continuity after promotion",
+        )
+        for marker in (
+            "steps.refs.outputs.changed == 'true'",
+            "GH_TOKEN: ${{ github.token }}",
+            "gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main",
+            "TAYVORIQ_PRODUCTION_GREEN_CONTINUITY_RESUMED",
+        ):
+            self.assertIn(marker, step, marker)
+        self.assertNotIn("quality_gates_weakened: true", promoter.casefold())
 
 
 if __name__ == "__main__":

@@ -197,3 +197,15 @@ jobs:
             exit 1
           }
           echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$CANDIDATE_SHA"
+
+      # Commits pushed with GITHUB_TOKEN do not start downstream push workflows.
+      # Resume continuity explicitly after the verified pointer has been published.
+      - name: Resume deterministic codefix continuity after promotion
+        if: steps.refs.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main
+          echo "TAYVORIQ_PRODUCTION_GREEN_CONTINUITY_RESUMED:${{ steps.refs.outputs.candidate }}"

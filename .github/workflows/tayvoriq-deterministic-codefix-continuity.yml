@@ -419,6 +419,8 @@ jobs:
           echo "current_impl_sha=$current_impl" >> "$GITHUB_OUTPUT"
           echo "CODEFIX_REVISION_CHECK:$detected:$reason"
 
+      # The promoter explicitly dispatches this workflow after a successful
+      # GITHUB_TOKEN-backed pointer commit, whose push event is suppressed by GitHub.
       - name: Request Production Green reconciliation for armed codefix
         if: >-
           steps.pending.outputs.found == 'true' &&
