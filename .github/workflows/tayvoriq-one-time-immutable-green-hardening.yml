@@ -8,6 +8,7 @@ on:
       - tools/tayvoriq_harden_golden_path_v1.py
       - tools/tayvoriq_resolve_production_green_v1.py
       - tools/tayvoriq_harden_failure_finalizer_v1.py
+      - tools/tayvoriq_patch_replay_policy_v1.py
 
 permissions:
   contents: write
@@ -27,7 +28,8 @@ jobs:
           python -m py_compile \
             tools/tayvoriq_harden_golden_path_v1.py \
             tools/tayvoriq_resolve_production_green_v1.py \
-            tools/tayvoriq_harden_failure_finalizer_v1.py
+            tools/tayvoriq_harden_failure_finalizer_v1.py \
+            tools/tayvoriq_patch_replay_policy_v1.py
 
       - name: Apply deterministic hardening
         shell: bash
@@ -37,6 +39,36 @@ jobs:
           python tools/tayvoriq_harden_golden_path_v1.py --check
           python tools/tayvoriq_harden_failure_finalizer_v1.py
           python tools/tayvoriq_harden_failure_finalizer_v1.py --check
+          python tools/tayvoriq_patch_replay_policy_v1.py
+          python tools/tayvoriq_patch_replay_policy_v1.py --check
+          python -m py_compile tools/tayvoriq_recovery_policy_v1.py tools/tayvoriq_codefix_orphan_reconcile_v1.py
+          python - <<'PY'
+          from tools.tayvoriq_recovery_policy_v1 import classify_failure
+          replay = classify_failure(
+              'PUBLISHABLE_OUTPUT_RETRY_REQUIRED\nTimeout while collecting secondary diagnostics',
+              run_attempt=1,
+              recovery_generation=0,
+              owner_found=True,
+              owner_current=True,
+              exact_request_retry=True,
+              codefix_replay=True,
+          )
+          assert replay.mode == 'deterministic', replay
+          assert replay.state == 'PUBLISHABLE_CODEFIX_REQUIRED', replay
+          assert replay.retry_allowed is False, replay
+          assert replay.next_generation == 0, replay
+          ordinary = classify_failure(
+              'Timeout while contacting a provider',
+              run_attempt=1,
+              recovery_generation=0,
+              owner_found=True,
+              owner_current=True,
+              exact_request_retry=True,
+              codefix_replay=False,
+          )
+          assert ordinary.mode == 'rerun', ordinary
+          print('TAYVORIQ_REPLAY_POLICY_REGRESSION_PASSED')
+          PY
 
       - name: Validate patch diff
         shell: bash
@@ -45,9 +77,11 @@ jobs:
           git diff --check
           git diff -- \
             .github/workflows/tayvoriq-deliver-video-now.yml \
-            .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
+            .github/workflows/tayvoriq-deterministic-codefix-continuity.yml \
+            tools/tayvoriq_recovery_policy_v1.py \
+            tools/tayvoriq_codefix_orphan_reconcile_v1.py
 
-      - name: Commit hardened workflows
+      - name: Commit hardened recovery
         shell: bash
         run: |
           set -euo pipefail
@@ -55,11 +89,13 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
             .github/workflows/tayvoriq-deliver-video-now.yml \
-            .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
+            .github/workflows/tayvoriq-deterministic-codefix-continuity.yml \
+            tools/tayvoriq_recovery_policy_v1.py \
+            tools/tayvoriq_codefix_orphan_reconcile_v1.py
           if git diff --cached --quiet; then
-            echo 'TAYVORIQ workflows already hardened.'
+            echo 'TAYVORIQ recovery already hardened.'
             exit 0
           fi
-          git commit -m 'fix(tayvoriq): self-finalize failed deterministic replay'
+          git commit -m 'fix(tayvoriq): classify failed codefix replay deterministically'
           git pull --rebase origin main
           git push origin main
