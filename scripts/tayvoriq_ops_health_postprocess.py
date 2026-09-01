@@ -72,9 +72,18 @@ def main():
             state["events"] = [marker] + events[:7]
 
     PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    changed = effective != source_status
+    output_file = os.environ.get("GITHUB_OUTPUT")
+    if output_file:
+        with open(output_file, "a", encoding="utf-8") as handle:
+            handle.write(f"notify={'true' if changed else 'false'}\n")
+            handle.write(f"effective_self_heal={effective}\n")
+
     print(json.dumps({
         "effective_self_heal": effective,
         "source_status": source_status,
+        "changed": changed,
         "replay_is_current": replay_is_current,
         "run_conclusion": conclusion,
     }, ensure_ascii=False))
