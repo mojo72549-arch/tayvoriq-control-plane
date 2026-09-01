@@ -14,8 +14,8 @@ permissions:
   actions: write
   contents: read
 
-# Share the recovery-owner lock: a stale live run must never race Delivery Watch
-# while the same immutable Telegram request is being rebound.
+# Share the recovery-owner lock: a stale live run must never race deterministic
+# continuity while the same immutable Telegram request is being rebound.
 concurrency:
   group: tayvoriq-delivery-watch
   cancel-in-progress: false
@@ -38,7 +38,7 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Resolve current Telegram-bound request and live step
+      - name: Resolve current Telegram-bound request and recovery state
         id: live
         shell: bash
         run: |
@@ -51,6 +51,16 @@ jobs:
           def gh_json(path):
               raw = subprocess.check_output(['gh','api',path], text=True)
               return json.loads(raw)
+
+          def workflow_busy(filename):
+              p=subprocess.run([
+                  'gh','run','list','--workflow',filename,'--limit','10',
+                  '--json','status,conclusion,databaseId'
+              ],text=True,capture_output=True)
+              if p.returncode: return False
+              try: rows=json.loads(p.stdout or '[]')
+              except Exception: return False
+              return any(str(r.get('status') or '') in {'queued','requested','waiting','in_progress'} for r in rows)
 
           candidates=[]
           for path in Path('requests').glob('*.json'):
@@ -66,13 +76,24 @@ jobs:
 
           out={
               'found':'false','request_id':'','topic':'','run_id':'','run_status':'',
-              'run_age_minutes':'0','step_name':'','step_age_minutes':'0',
-              'stale':'false','stale_limit_minutes':'0','heartbeat':'false'
+              'run_conclusion':'','run_age_minutes':'0','step_name':'','step_age_minutes':'0',
+              'stale':'false','stale_limit_minutes':'0','heartbeat':'false',
+              'armed_codefix':'false','resume_needed':'false','recovery_state':''
           }
           if candidates:
               run_id,path,data=max(candidates,key=lambda item:item[0])
               run=gh_json(f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}')
               status=str(run.get('status') or '')
+              conclusion=str(run.get('conclusion') or '')
+              codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+              armed=(
+                  status == 'completed' and conclusion != 'success'
+                  and str(codefix.get('status') or '') == 'ARMED'
+                  and str(codefix.get('request_substate') or '') == 'AWAITING_CODEFIX'
+                  and int(codefix.get('failed_run_id') or 0) == run_id
+                  and codefix.get('same_generation_replay_required') is True
+                  and codefix.get('quality_gates_weakened') is False
+              )
               if status == 'in_progress':
                   now=datetime.now(timezone.utc)
                   started=datetime.fromisoformat(str(run.get('run_started_at') or run.get('created_at')).replace('Z','+00:00'))
@@ -82,17 +103,14 @@ jobs:
                   for job in jobs.get('jobs') or []:
                       for step in job.get('steps') or []:
                           if str(step.get('status') or '') == 'in_progress':
-                              active_step=step
-                              break
+                              active_step=step; break
                       if active_step: break
                   step_name=str((active_step or {}).get('name') or 'workflow in progress')
                   step_started_raw=str((active_step or {}).get('started_at') or '')
                   if step_started_raw:
                       step_started=datetime.fromisoformat(step_started_raw.replace('Z','+00:00'))
                       step_age=max(0,int((now-step_started).total_seconds()//60))
-                  else:
-                      step_age=run_age
-
+                  else: step_age=run_age
                   folded=step_name.casefold()
                   if 'repair only failed local checkpoints' in folded:
                       stale_limit=int(os.environ['REPAIR_STALE_MINUTES'])
@@ -101,17 +119,24 @@ jobs:
                   else:
                       stale_limit=int(os.environ['DEFAULT_STALE_MINUTES'])
                   stale=step_age >= stale_limit
-                  # A meaningful heartbeat starts after 8 minutes in one step.
-                  # The workflow itself runs every 10 minutes, so this stays low-noise.
                   heartbeat=step_age >= 8 and not stale
                   out.update({
                       'found':'true','request_id':str(data.get('request_id') or ''),
                       'topic':str(data.get('topic') or ''),'run_id':str(run_id),
-                      'run_status':status,'run_age_minutes':str(run_age),
-                      'step_name':step_name.replace('\n',' '),
-                      'step_age_minutes':str(step_age),'stale':str(stale).lower(),
-                      'stale_limit_minutes':str(stale_limit),
-                      'heartbeat':str(heartbeat).lower(),
+                      'run_status':status,'run_conclusion':conclusion,'run_age_minutes':str(run_age),
+                      'step_name':step_name.replace('\n',' '),'step_age_minutes':str(step_age),
+                      'stale':str(stale).lower(),'stale_limit_minutes':str(stale_limit),
+                      'heartbeat':str(heartbeat).lower(),'recovery_state':'RUNNING'
+                  })
+              elif armed:
+                  busy=(workflow_busy('tayvoriq-deterministic-codefix-continuity.yml') or
+                        workflow_busy('tayvoriq-production-green-promoter.yml'))
+                  out.update({
+                      'found':'true','request_id':str(data.get('request_id') or ''),
+                      'topic':str(data.get('topic') or ''),'run_id':str(run_id),
+                      'run_status':status,'run_conclusion':conclusion,
+                      'armed_codefix':'true','resume_needed':str(not busy).lower(),
+                      'recovery_state':'AWAITING_CODEFIX'
                   })
 
           with open(sys.argv[1],'a',encoding='utf-8') as handle:
@@ -119,20 +144,27 @@ jobs:
           print(json.dumps(out,ensure_ascii=False))
           PY
 
+      - name: Resume armed deterministic codefix continuity
+        if: steps.live.outputs.armed_codefix == 'true' && steps.live.outputs.resume_needed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main \
+            -f "failed_run_id=${{ steps.live.outputs.run_id }}" \
+            -f "source_request_id=${{ steps.live.outputs.request_id }}"
+          echo "LIVE_WATCHDOG_CODEFIX_CONTINUITY_DISPATCHED:${{ steps.live.outputs.request_id }}:${{ steps.live.outputs.run_id }}"
+
       - name: Telegram recovery heartbeat
         if: steps.live.outputs.heartbeat == 'true'
         shell: bash
         run: |
           set -euo pipefail
           text=$(printf '🔧 TAYVORIQ · Recovery arbeitet weiter\n\nThema: %s\nRun: %s\nAktiver Prüfschritt: %s\nAktiv seit: ca. %s Minuten\n\n✅ Render/Checkpoint und Freigabe bleiben gebunden.\n➡️ Der Watchdog überwacht den Schritt. Bei Stillstand wird derselbe Auftrag automatisch übernommen.\n\nFür dich: ✅ Keine Aktion nötig.' \
-            "${{ steps.live.outputs.topic }}" \
-            "${{ steps.live.outputs.run_id }}" \
-            "${{ steps.live.outputs.step_name }}" \
-            "${{ steps.live.outputs.step_age_minutes }}")
+            "${{ steps.live.outputs.topic }}" "${{ steps.live.outputs.run_id }}" \
+            "${{ steps.live.outputs.step_name }}" "${{ steps.live.outputs.step_age_minutes }}")
           response=$(curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${text}")
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}")
           python - "$response" <<'PY'
           import json,sys
           data=json.loads(sys.argv[1])
@@ -147,14 +179,11 @@ jobs:
         run: |
           set -euo pipefail
           text=$(printf '🔧 TAYVORIQ · Hängende Reparatur automatisch erkannt\n\nThema: %s\nRun: %s\nPrüfschritt: %s\nOhne Abschluss seit: ca. %s Minuten\n\n✅ Freigabe, Quellen und vorhandener Checkpoint bleiben erhalten.\n➡️ Der festhängende Run wird jetzt beendet; der request-gebundene Recovery-Pfad übernimmt denselben Auftrag automatisch.\n\nFür dich: ✅ Keine Aktion nötig.' \
-            "${{ steps.live.outputs.topic }}" \
-            "${{ steps.live.outputs.run_id }}" \
-            "${{ steps.live.outputs.step_name }}" \
-            "${{ steps.live.outputs.step_age_minutes }}")
+            "${{ steps.live.outputs.topic }}" "${{ steps.live.outputs.run_id }}" \
+            "${{ steps.live.outputs.step_name }}" "${{ steps.live.outputs.step_age_minutes }}")
           response=$(curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${text}")
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}")
           python - "$response" <<'PY'
           import json,sys
           data=json.loads(sys.argv[1])
