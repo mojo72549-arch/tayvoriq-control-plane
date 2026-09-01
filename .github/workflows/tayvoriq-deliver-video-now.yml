@@ -1025,3 +1025,38 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
           compression-level: 6
+
+      - name: Dispatch exact deterministic failure finalizer
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SOURCE_REQUEST_ID_PIN" ]; then
+            echo 'CODEFIX_FINALIZER_SKIPPED_UNPINNED_REQUEST'
+            exit 0
+          fi
+          python - "$SOURCE_REQUEST_ID_PIN" "$GITHUB_RUN_ID" <<'PY'
+          import json,sys
+          from pathlib import Path
+          request_id=sys.argv[1]; run_id=int(sys.argv[2])
+          pointer_path=Path('.github/state/tayvoriq-active-production-request.json')
+          request_path=Path('requests') / f'{request_id}.json'
+          if not pointer_path.is_file() or not request_path.is_file():
+              raise SystemExit('CODEFIX_FINALIZER_OWNER_FILES_MISSING')
+          pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          if pointer.get('schema')!='tayvoriq-active-production-request-v1' or pointer.get('state')!='ACTIVE':
+              raise SystemExit('CODEFIX_FINALIZER_ACTIVE_POINTER_INVALID')
+          if str(pointer.get('request_id') or '')!=request_id or int(pointer.get('golden_path_run_id') or 0)!=run_id:
+              raise SystemExit('CODEFIX_FINALIZER_ACTIVE_OWNER_CHANGED')
+          if str(request.get('request_id') or '')!=request_id or int(request.get('golden_path_run_id') or 0)!=run_id:
+              raise SystemExit('CODEFIX_FINALIZER_REQUEST_OWNER_CHANGED')
+          for field in ('approval_key','source_context_sha256','contract_sha256'):
+              pv=str(pointer.get(field) or '').strip(); rv=str(request.get(field) or '').strip()
+              if pv and pv!=rv: raise SystemExit(f'CODEFIX_FINALIZER_{field.upper()}_MISMATCH')
+          print(f'CODEFIX_FINALIZER_DISPATCH_OWNER_VERIFIED:{request_id}:{run_id}')
+          PY
+          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main             -f "failed_run_id=$GITHUB_RUN_ID"             -f "source_request_id=$SOURCE_REQUEST_ID_PIN"
+          echo "CODEFIX_FINALIZER_DISPATCHED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"

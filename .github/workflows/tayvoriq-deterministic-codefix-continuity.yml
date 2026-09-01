@@ -16,6 +16,15 @@ on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
+    inputs:
+      failed_run_id:
+        description: Exact failed Golden Path run to finalize
+        required: false
+        type: string
+      source_request_id:
+        description: Exact active source request bound to the failed run
+        required: false
+        type: string
 
 permissions:
   actions: write
@@ -49,6 +58,49 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+
+      - name: Wait for exact dispatched failure completion
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.failed_run_id != ''
+        shell: bash
+        env:
+          FINALIZER_RUN_ID: ${{ github.event.inputs.failed_run_id }}
+          FINALIZER_REQUEST_ID: ${{ github.event.inputs.source_request_id }}
+        run: |
+          set -euo pipefail
+          [[ "$FINALIZER_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_FINALIZER_RUN_ID_INVALID'; exit 1; }
+          [ -n "$FINALIZER_REQUEST_ID" ] || { echo 'CODEFIX_FINALIZER_REQUEST_ID_MISSING'; exit 1; }
+          python - "$ACTIVE_REQUEST_POINTER" "$FINALIZER_REQUEST_ID" "$FINALIZER_RUN_ID" <<'PY'
+          import json,sys
+          from pathlib import Path
+          p=Path(sys.argv[1]); expected_request=sys.argv[2]; expected_run=int(sys.argv[3])
+          if not p.is_file(): raise SystemExit('CODEFIX_FINALIZER_ACTIVE_POINTER_MISSING')
+          data=json.loads(p.read_text(encoding='utf-8'))
+          if data.get('schema')!='tayvoriq-active-production-request-v1' or data.get('state')!='ACTIVE':
+              raise SystemExit('CODEFIX_FINALIZER_ACTIVE_POINTER_INVALID')
+          if str(data.get('request_id') or '') != expected_request:
+              raise SystemExit('CODEFIX_FINALIZER_REQUEST_NOT_ACTIVE')
+          if int(data.get('golden_path_run_id') or 0) != expected_run:
+              raise SystemExit('CODEFIX_FINALIZER_RUN_NOT_ACTIVE')
+          print(f'CODEFIX_FINALIZER_OWNER_VERIFIED:{expected_request}:{expected_run}')
+          PY
+          completed=false
+          for poll in $(seq 1 36); do
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${FINALIZER_RUN_ID}" > /tmp/finalizer-run.json
+            status=$(python -c "import json; print(json.load(open('/tmp/finalizer-run.json')).get('status',''))")
+            if [ "$status" = "completed" ]; then completed=true; break; fi
+            sleep 5
+          done
+          [ "$completed" = "true" ] || { echo 'CODEFIX_FINALIZER_RUN_DID_NOT_COMPLETE'; exit 1; }
+          readarray -t final_meta < <(python - <<'PY'
+          import json
+          d=json.load(open('/tmp/finalizer-run.json',encoding='utf-8'))
+          print(str(d.get('name') or ''))
+          print(str(d.get('conclusion') or ''))
+          PY
+          )
+          [ "${final_meta[0]:-}" = "TAYVORIQ-X Golden Path" ] || { echo 'CODEFIX_FINALIZER_WORKFLOW_MISMATCH'; exit 1; }
+          [ "${final_meta[1]:-}" != "success" ] || { echo 'CODEFIX_FINALIZER_SUCCESS_RUN_REJECTED'; exit 1; }
+          echo "CODEFIX_FINALIZER_FAILED_RUN_CONFIRMED:${FINALIZER_RUN_ID}:${final_meta[1]:-unknown}"
 
       - name: Resolve canonical active request
         id: active
