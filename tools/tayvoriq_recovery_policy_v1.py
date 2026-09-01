@@ -8,17 +8,16 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
-EXTERNAL_PATTERNS = (
-    r"external_auth_blocker",
-    r"external_action_required",
-    r"missing (?:required )?secret",
-    r"401 client error",
-    r"unauthorized",
-    r"credentials?[^\n]*(?:missing|invalid|expired)",
-    r"billing (?:account|status)[^\n]*(?:disabled|suspended|blocked)",
-    r"spending limit (?:reached|exceeded)",
-    r"payment required",
-    r"permission denied",
+# External escalation is intentionally high-confidence. Generic words such as
+# "unauthorized", "permission denied" or workflow source lines that merely
+# contain "Missing secret" must never steal an owned internal production failure.
+EXTERNAL_EXPLICIT_PATTERNS = (
+    r"\bexternal_auth_blocker\b",
+    r"\bexternal_action_required\b",
+    r"\btelegram_failure_guard_secret_missing\b",
+    r"\bhttp\s*402\b[^\n]*(?:payment required|billing)",
+    r"\bbilling (?:account|status)[^\n]*(?:disabled|suspended|blocked)\b",
+    r"\bspending limit (?:reached|exceeded)\b",
 )
 
 DUPLICATE_PATTERNS = (
@@ -50,6 +49,18 @@ SEMANTIC_CODEFIX_PATTERNS = (
     r"content_rejected:v34-semantic-repair-missing:",
     r"content_rejected:v34-semantic-contract",
     r"v34-semantic-repair-missing:",
+)
+
+# Deterministic editorial budget/authority failures are also implementation
+# defects. In particular, a verified source-bound packet that has already been
+# compacted to the hard 38..49 word gate must not be treated as an external
+# secret/billing incident merely because unrelated workflow source text contains
+# those words.
+EDITORIAL_CODEFIX_PATTERNS = (
+    r"content_rejected:v34-legacy-validator:.*editorial_(?:answer|body)_too_long",
+    r"content_rejected:v48-bounded-overflow-outside-range",
+    r"content_rejected:verified-editorial-postcondition",
+    r"content_rejected:verified-budget-postcondition",
 )
 
 TERMINAL_CODE_REPAIR_PATTERNS = (
@@ -104,6 +115,37 @@ def _matches(text: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns)
 
 
+def _external_blocker_detected(text: str) -> bool:
+    """Return true only for explicit external blockers, not echoed workflow code."""
+
+    if _matches(text, EXTERNAL_EXPLICIT_PATTERNS):
+        return True
+
+    for raw_line in str(text or "").splitlines():
+        line = raw_line.strip()
+        lowered = line.casefold()
+        if not line:
+            continue
+
+        # `gh run view --log-failed` can contain the shell source itself. Those
+        # lines are evidence of implementation, not evidence that a secret is
+        # missing. Require a concrete secret name and reject source-code syntax.
+        if re.search(r"missing (?:required )?secret\s*:\s*[A-Z][A-Z0-9_]{2,}", line, re.IGNORECASE):
+            source_echo_tokens = ("echo ", "test -n", "${", "||", "secrets.", "getenv(", "os.environ")
+            if not any(token in lowered for token in source_echo_tokens):
+                return True
+
+        # Direct HTTP authentication failures count only when they look like a
+        # runtime/provider response, not a bare word occurring in test/source text.
+        if re.search(r"\bhttp\s*(?:error\s*)?(?:401|403)\b", lowered) and re.search(
+            r"unauthori[sz]ed|forbidden|credential|token|api[_ -]?key|permission",
+            lowered,
+        ):
+            return True
+
+    return False
+
+
 def _stable_signature(state: str, logs: str) -> str:
     failed_tests = sorted(set(re.findall(r"FAILED\s+(tests/[^\s:]+(?:::[^\s]+)?)", logs, flags=re.IGNORECASE)))
     salient = "|".join(item.casefold() for item in failed_tests[:8]) or state.casefold()
@@ -150,6 +192,14 @@ def classify_failure(
             "The renderer exposed an explicit semantic contract defect. Preserve the exact approved request and resume only after a verified relevant code revision; do not consume a fresh content-recovery generation.",
         )
 
+    if _matches(lowered, EDITORIAL_CODEFIX_PATTERNS):
+        state = "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
+            "The verified editorial packet failed a deterministic validator/budget authority contract. Preserve the exact request for a verified codefix replay; this is not an external credential, billing or permission blocker.",
+        )
+
     if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
         if generation >= maximum:
             state = "PUBLISHABLE_CODEFIX_REQUIRED"
@@ -176,9 +226,9 @@ def classify_failure(
             "The controller exhausted its bounded safe repair path and handed off CODE_REPAIR_REQUIRED; preserve the exact request for verified codefix replay instead of classifying earlier log noise as the failure cause.",
         )
 
-    if _matches(lowered, EXTERNAL_PATTERNS):
+    if _external_blocker_detected(text):
         state = "EXTERNAL_ACTION_REQUIRED"
-        return RecoveryDecision("external", state, False, "none", generation, None, maximum, _stable_signature(state, text), "Credentials, billing or permissions require external action.")
+        return RecoveryDecision("external", state, False, "none", generation, None, maximum, _stable_signature(state, text), "A verified credential, billing or permission blocker requires external action.")
 
     if _matches(lowered, DUPLICATE_PATTERNS):
         if exact_request_retry:
