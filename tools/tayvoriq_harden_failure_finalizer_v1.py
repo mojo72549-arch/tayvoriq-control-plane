@@ -84,12 +84,24 @@ FINALIZER_STEP = '''
             echo 'CODEFIX_FINALIZER_SKIPPED_UNPINNED_REQUEST'
             exit 0
           fi
-          python - "$SOURCE_REQUEST_ID_PIN" "$GITHUB_RUN_ID" <<'PY'
+          request_rel=$(python - "$SOURCE_REQUEST_ID_PIN" <<'PY'
+          import re,sys
+          request_id=sys.argv[1]
+          if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}',request_id) is None:
+              raise SystemExit('CODEFIX_FINALIZER_REQUEST_ID_INVALID')
+          print(f'requests/{request_id}.json')
+          PY
+          )
+          owner_dir="${RUNNER_TEMP}/tayvoriq-finalizer-owner-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -p "$owner_dir"
+          git fetch --no-tags --prune origin main --quiet
+          git show origin/main:.github/state/tayvoriq-active-production-request.json > "$owner_dir/active.json"
+          git show "origin/main:${request_rel}" > "$owner_dir/request.json"
+          python - "$SOURCE_REQUEST_ID_PIN" "$GITHUB_RUN_ID" "$owner_dir/active.json" "$owner_dir/request.json" <<'PY'
           import json,sys
           from pathlib import Path
           request_id=sys.argv[1]; run_id=int(sys.argv[2])
-          pointer_path=Path('.github/state/tayvoriq-active-production-request.json')
-          request_path=Path('requests') / f'{request_id}.json'
+          pointer_path=Path(sys.argv[3]); request_path=Path(sys.argv[4])
           if not pointer_path.is_file() or not request_path.is_file():
               raise SystemExit('CODEFIX_FINALIZER_OWNER_FILES_MISSING')
           pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
@@ -153,6 +165,10 @@ def _validate(golden: str, continuity: str) -> None:
         'gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main',
         '-f "failed_run_id=$GITHUB_RUN_ID"',
         '-f "source_request_id=$SOURCE_REQUEST_ID_PIN"',
+        'git fetch --no-tags --prune origin main --quiet',
+        'git show origin/main:.github/state/tayvoriq-active-production-request.json',
+        'git show "origin/main:${request_rel}"',
+        'pointer_path=Path(sys.argv[3]); request_path=Path(sys.argv[4])',
     ):
         if value not in golden: missing.append(f'golden:{value}')
     for value in (
@@ -162,6 +178,8 @@ def _validate(golden: str, continuity: str) -> None:
         'CODEFIX_FINALIZER_OWNER_VERIFIED',
         'CODEFIX_FINALIZER_FAILED_RUN_CONFIRMED',
         'Reconcile only active orphan',
+        'Request Production Green reconciliation for armed codefix',
+        'gh workflow run tayvoriq-production-green-promoter.yml --ref main',
         'Replay exact active request after verified codefix',
     ):
         if value not in continuity: missing.append(f'continuity:{value}')

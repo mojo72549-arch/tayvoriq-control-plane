@@ -419,6 +419,20 @@ jobs:
           echo "current_impl_sha=$current_impl" >> "$GITHUB_OUTPUT"
           echo "CODEFIX_REVISION_CHECK:$detected:$reason"
 
+      - name: Request Production Green reconciliation for armed codefix
+        if: >-
+          steps.pending.outputs.found == 'true' &&
+          steps.revision.outputs.detected != 'true' &&
+          github.event_name != 'schedule' &&
+          (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'TAYVORIQ Production Green Promoter')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-production-green-promoter.yml --ref main
+          echo "CODEFIX_PRODUCTION_GREEN_RECONCILIATION_DISPATCHED:${{ steps.pending.outputs.request_id }}:${{ steps.pending.outputs.run_id }}"
+
       - name: Replay exact active request after verified codefix
         id: replay
         if: steps.revision.outputs.detected == 'true'
