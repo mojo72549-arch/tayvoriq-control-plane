@@ -7,6 +7,7 @@ on:
       - .github/workflows/tayvoriq-one-time-immutable-green-hardening.yml
       - tools/tayvoriq_harden_golden_path_v1.py
       - tools/tayvoriq_resolve_production_green_v1.py
+      - tools/tayvoriq_harden_failure_finalizer_v1.py
 
 permissions:
   contents: write
@@ -23,33 +24,42 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile tools/tayvoriq_harden_golden_path_v1.py tools/tayvoriq_resolve_production_green_v1.py
+          python -m py_compile \
+            tools/tayvoriq_harden_golden_path_v1.py \
+            tools/tayvoriq_resolve_production_green_v1.py \
+            tools/tayvoriq_harden_failure_finalizer_v1.py
 
-      - name: Apply deterministic Golden Path hardening
+      - name: Apply deterministic hardening
         shell: bash
         run: |
           set -euo pipefail
           python tools/tayvoriq_harden_golden_path_v1.py
           python tools/tayvoriq_harden_golden_path_v1.py --check
+          python tools/tayvoriq_harden_failure_finalizer_v1.py
+          python tools/tayvoriq_harden_failure_finalizer_v1.py --check
 
       - name: Validate patch diff
         shell: bash
         run: |
           set -euo pipefail
           git diff --check
-          git diff -- .github/workflows/tayvoriq-deliver-video-now.yml
+          git diff -- \
+            .github/workflows/tayvoriq-deliver-video-now.yml \
+            .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
 
-      - name: Commit hardened Golden Path
+      - name: Commit hardened workflows
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/tayvoriq-deliver-video-now.yml
+          git add \
+            .github/workflows/tayvoriq-deliver-video-now.yml \
+            .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
           if git diff --cached --quiet; then
-            echo 'Golden Path already hardened.'
+            echo 'TAYVORIQ workflows already hardened.'
             exit 0
           fi
-          git commit -m 'fix(tayvoriq): pin production to immutable verified implementation'
+          git commit -m 'fix(tayvoriq): self-finalize failed deterministic replay'
           git pull --rebase origin main
           git push origin main
