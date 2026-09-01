@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v1",
-  "generated_at": "2026-09-01T08:22:20.467748Z",
+  "generated_at": "2026-09-01T09:07:26.306646Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -10,7 +10,7 @@
     "topic": "Europa bestellt einen neuen KI-Supercomputer: Warum LUMI-AI Europas Rechenleistung verzehnfachen soll",
     "trend_id": "2",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "source_count": 2,
     "quality_gates_weakened": false,
@@ -107,12 +107,12 @@
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "46708dfbb6f8…"
+      "detail": "ad0620f6ad03…"
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -131,11 +131,11 @@
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 32,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
@@ -143,27 +143,27 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "status": "ARMED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 33477791452,
-    "replay_run_id": 33481330492,
+    "failed_run_id": 33481330492,
+    "replay_run_id": null,
     "recovery_generation": 0,
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "source_status": "ARMED",
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
       "at": "2026-09-01T07:19:37Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 33481330492 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-01T07:19:37Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-01T08:56:45.765863Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-09-01T07:16:24.978319Z",
@@ -189,11 +189,6 @@
       "at": "2026-08-31T21:34:33.907757Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-08-31T21:33:05.951147Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "SEMANTIC_CODEFIX_REQUIRED"
     }
   ]
 }
