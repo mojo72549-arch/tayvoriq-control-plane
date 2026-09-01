@@ -1,0 +1,256 @@
+name: TAYVORIQ One-Time Immutable Green Hardening
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-one-time-immutable-green-hardening.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch Golden Path determinism and dependency safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
+          text = path.read_text(encoding='utf-8')
+
+          old_checkout = '''      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+'''
+          new_checkout = '''      - name: Resolve immutable Production Green implementation
+        id: production_green
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY_INNER'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          pointer_path = Path('.github/state/tayvoriq-production-green.json')
+          if not pointer_path.is_file():
+              raise SystemExit('PRODUCTION_GREEN_POINTER_MISSING')
+          pointer = json.loads(pointer_path.read_text(encoding='utf-8'))
+          if pointer.get('schema') != 'tayvoriq-production-green-v1':
+              raise SystemExit('PRODUCTION_GREEN_SCHEMA_INVALID')
+          if pointer.get('implementation_repository') != 'mojo72549-arch/shorts-agent-studio':
+              raise SystemExit('PRODUCTION_GREEN_REPOSITORY_INVALID')
+          green_sha = str(pointer.get('implementation_sha') or '').strip().lower()
+          if re.fullmatch(r'[0-9a-f]{40}', green_sha) is None:
+              raise SystemExit('PRODUCTION_GREEN_SHA_INVALID')
+          if pointer.get('full_preflight_passed') is not True:
+              raise SystemExit('PRODUCTION_GREEN_PREFLIGHT_NOT_VERIFIED')
+          if pointer.get('quality_gates_weakened') is not False:
+              raise SystemExit('PRODUCTION_GREEN_QUALITY_GATE_INTEGRITY_FAILED')
+
+          selected_sha = green_sha
+          binding_source = 'current-production-green'
+          request_id = str(os.environ.get('SOURCE_REQUEST_ID_PIN') or '').strip()
+          if request_id:
+              request_path = Path('requests') / f'{request_id}.json'
+              if not request_path.is_file():
+                  raise SystemExit('PRODUCTION_GREEN_REQUEST_MISSING')
+              request = json.loads(request_path.read_text(encoding='utf-8'))
+              if str(request.get('request_id') or '').strip() != request_id:
+                  raise SystemExit('PRODUCTION_GREEN_REQUEST_IDENTITY_FAILED')
+              recovery = request.get('codefix_recovery') if isinstance(request.get('codefix_recovery'), dict) else {}
+              replay_sha = str(recovery.get('replay_implementation_sha') or '').strip().lower()
+              if str(recovery.get('status') or '').upper() == 'REPLAY_DISPATCHED' and replay_sha:
+                  if re.fullmatch(r'[0-9a-f]{40}', replay_sha) is None:
+                      raise SystemExit('PRODUCTION_GREEN_REPLAY_SHA_INVALID')
+                  if recovery.get('quality_gates_weakened') is not False:
+                      raise SystemExit('PRODUCTION_GREEN_REPLAY_QUALITY_GATE_INTEGRITY_FAILED')
+                  if recovery.get('active_pointer_verified') is not True:
+                      raise SystemExit('PRODUCTION_GREEN_REPLAY_POINTER_NOT_VERIFIED')
+                  selected_sha = replay_sha
+                  binding_source = 'request-recorded-production-green'
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f'implementation_sha={selected_sha}\n')
+              handle.write(f'binding_source={binding_source}\n')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as handle:
+              handle.write(f'TAYVORIQ_IMPLEMENTATION_SHA={selected_sha}\n')
+          print(json.dumps({
+              'implementation_sha': selected_sha,
+              'binding_source': binding_source,
+              'current_production_green_sha': green_sha,
+              'quality_gates_weakened': False,
+          }, ensure_ascii=False))
+          PY_INNER
+
+      - name: Validate immutable implementation policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/tayvoriq-deliver-video-now.yml').read_text(encoding='utf-8')
+          mutable = '''repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package'''
+          immutable = '''repository: mojo72549-arch/shorts-agent-studio
+          ref: ${{ steps.production_green.outputs.implementation_sha }}'''
+          if mutable in text:
+              raise SystemExit('IMMUTABLE_IMPLEMENTATION_POLICY_FAILED: mutable branch checkout present')
+          if immutable not in text:
+              raise SystemExit('IMMUTABLE_IMPLEMENTATION_POLICY_FAILED: verified SHA checkout missing')
+          if 'python -m pip install -r implementation/requirements.txt pytest -q' in text:
+              raise SystemExit('DEPENDENCY_POLICY_FAILED: unfiltered Chatterbox requirements install present')
+          print('TAYVORIQ_IMMUTABLE_IMPLEMENTATION_POLICY_PASSED')
+          PY
+
+      - name: Checkout implementation
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: ${{ steps.production_green.outputs.implementation_sha }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Verify immutable implementation checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual=$(git -C implementation rev-parse HEAD)
+          expected='${{ steps.production_green.outputs.implementation_sha }}'
+          test "$actual" = "$expected" || { echo "IMMUTABLE_IMPLEMENTATION_CHECKOUT_FAILED: expected=$expected actual=$actual"; exit 1; }
+          echo "Immutable implementation verified: $actual"
+'''
+          if old_checkout not in text:
+              raise SystemExit('PATCH_FAILED: mutable implementation checkout pattern not found')
+          text = text.replace(old_checkout, new_checkout, 1)
+
+          old_cache = '''      - name: Restore pip dependency cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: tayvoriq-pip-v3-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
+          restore-keys: |
+            tayvoriq-pip-v3-${{ runner.os }}-py311-
+'''
+          new_cache = '''      - name: Clear stale pip wheel cache before production
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ~/.cache/pip
+          mkdir -p ~/.cache/pip
+          df -h "$GITHUB_WORKSPACE"
+'''
+          if old_cache not in text:
+              raise SystemExit('PATCH_FAILED: pip cache restore pattern not found')
+          text = text.replace(old_cache, new_cache, 1)
+
+          old_deps = '''          export PIP_DISABLE_PIP_VERSION_CHECK=1
+          python -m pip install -r implementation/requirements.txt pytest -q
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+'''
+          new_deps = '''          export PIP_DISABLE_PIP_VERSION_CHECK=1
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('implementation/requirements.txt')
+          target = Path('/tmp/tayvoriq-production-requirements.txt')
+          lines = source.read_text(encoding='utf-8').splitlines()
+          filtered = [line for line in lines if 'chatterbox' not in line.casefold()]
+          if len(filtered) == len(lines):
+              raise SystemExit('DEPENDENCY_POLICY_FAILED: pinned Chatterbox dependency was not found')
+          target.write_text('\\n'.join(filtered) + '\\n', encoding='utf-8')
+          if 'chatterbox' in target.read_text(encoding='utf-8').casefold():
+              raise SystemExit('DEPENDENCY_POLICY_FAILED: Chatterbox remained in filtered requirements')
+          PY
+          python -m pip install --no-cache-dir -r /tmp/tayvoriq-production-requirements.txt pytest -q
+          python -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          python -m pip install --no-cache-dir --no-deps "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          python - <<'PY'
+          import torch
+          if str(torch.__version__).split('+', 1)[0] != '2.6.0':
+              raise SystemExit(f'DEPENDENCY_POLICY_FAILED: unexpected torch {torch.__version__}')
+          if torch.cuda.is_available():
+              raise SystemExit('DEPENDENCY_POLICY_FAILED: CUDA runtime unexpectedly active on CPU production runner')
+          print(f'TAYVORIQ_CPU_TORCH_VERIFIED:{torch.__version__}')
+          PY
+'''
+          if old_deps not in text:
+              raise SystemExit('PATCH_FAILED: unsafe production dependency pattern not found')
+          text = text.replace(old_deps, new_deps, 1)
+
+          old_manifest = '''              "implementation_branch": "feature/multi-platform-distribution-package",
+'''
+          new_manifest = '''              "implementation_ref": sys.argv[2],
+              "implementation_binding": "production-green-immutable-sha",
+'''
+          if old_manifest not in text:
+              raise SystemExit('PATCH_FAILED: implementation manifest branch marker not found')
+          text = text.replace(old_manifest, new_manifest, 1)
+
+          if 'ref: feature/multi-platform-distribution-package' in text:
+              raise SystemExit('PATCH_FAILED: mutable checkout ref remains')
+          if 'ref: ${{ steps.production_green.outputs.implementation_sha }}' not in text:
+              raise SystemExit('PATCH_FAILED: immutable checkout ref missing')
+          if 'python -m pip install -r implementation/requirements.txt pytest -q' in text:
+              raise SystemExit('PATCH_FAILED: unsafe dependency install remains')
+
+          path.write_text(text, encoding='utf-8')
+          print('TAYVORIQ_GOLDEN_PATH_IMMUTABLE_GREEN_HARDENING_APPLIED')
+          PY
+
+      - name: Validate workflow syntax and hardening invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          path = Path('.github/workflows/tayvoriq-deliver-video-now.yml')
+          data = yaml.safe_load(path.read_text(encoding='utf-8'))
+          if not isinstance(data, dict) or 'jobs' not in data:
+              raise SystemExit('WORKFLOW_YAML_VALIDATION_FAILED')
+          text = path.read_text(encoding='utf-8')
+          required = [
+              'Resolve immutable Production Green implementation',
+              'Validate immutable implementation policy',
+              'ref: ${{ steps.production_green.outputs.implementation_sha }}',
+              'Verify immutable implementation checkout',
+              'request-recorded-production-green',
+              'tayvoriq-production-requirements.txt',
+              '--index-url https://download.pytorch.org/whl/cpu',
+              '--no-deps "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"',
+          ]
+          missing = [item for item in required if item not in text]
+          if missing:
+              raise SystemExit(f'HARDENING_INVARIANT_FAILED: missing={missing}')
+          print('TAYVORIQ_GOLDEN_PATH_HARDENING_VALIDATED')
+          PY
+
+      - name: Commit patched Golden Path
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/tayvoriq-deliver-video-now.yml
+          git diff --cached --check
+          git diff --cached --quiet && { echo 'No patch needed'; exit 0; }
+          git commit -m 'fix(tayvoriq): pin production to immutable verified implementation'
+          git pull --rebase origin main
+          git push origin main
