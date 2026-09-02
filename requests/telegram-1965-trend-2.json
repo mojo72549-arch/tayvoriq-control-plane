@@ -471,6 +471,22 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-09-02T12:58:28.621406Z",
+      "actor": "tayvoriq-codefix-orphan-reconcile-v1",
+      "meta": {
+        "failed_run_id": 33632602249,
+        "failure_signature": "d68ac00bac2757f0e555",
+        "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "6d4bf87c7a84f95d809185f6cb7ec0aeb0a89720",
+        "failed_implementation_sha": "8cbb291e6079caf5704bc3238f84946977682326",
+        "recovery_generation": 4,
+        "reason": "active-request-deterministic-failure-reconciled",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
@@ -478,27 +494,23 @@
   "dispatch_contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
   "golden_path_run_id": 33632602249,
   "codefix_recovery": {
-    "status": "FRESH_RECOVERY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failed_run_id": 33594886493,
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 33632602249,
     "failure_signature": "d68ac00bac2757f0e555",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_control_plane_sha": "9e35d3cae528faf6460244120cf0caa5b53b44cd",
+    "failed_control_plane_sha": "6d4bf87c7a84f95d809185f6cb7ec0aeb0a89720",
     "failed_implementation_sha": "8cbb291e6079caf5704bc3238f84946977682326",
-    "recovery_generation": 0,
-    "armed_at": "2026-09-02T05:53:43.979268Z",
+    "recovery_generation": 4,
+    "armed_at": "2026-09-02T12:58:28.621406Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
     "orphan_reconciled": true,
     "active_pointer_verified": true,
-    "rearmed_after_failed_replay": true,
-    "previous_codefix_failed_run_id": 33594154711,
-    "previous_codefix_failure_signature": "d68ac00bac2757f0e555",
-    "fresh_recovery_run_id": 33632602249,
-    "fresh_recovery_of_run_id": 33631558446,
-    "fresh_recovery_generation": 4,
-    "fresh_recovery_at": "2026-09-02T12:54:48.931789Z"
+    "rearmed_after_failed_replay": false,
+    "previous_codefix_failed_run_id": 0,
+    "previous_codefix_failure_signature": ""
   },
   "previous_golden_path_run_ids": [
     33426415847,
