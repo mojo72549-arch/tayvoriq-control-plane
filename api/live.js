@@ -2,6 +2,8 @@ const CONTROL_REPO='mojo72549-arch/tayvoriq-control-plane';
 const STUDIO_REPO='mojo72549-arch/shorts-agent-studio';
 const RAW_HEALTH='https://raw.githubusercontent.com/mojo72549-arch/tayvoriq-control-plane/main/run-status/ops-health.json';
 const ACTIVE_POINTER='.github/state/tayvoriq-active-production-request.json';
+const PILOT_BRANCH='lab/cinematic-control-center';
+const PILOT_STATE='cinematic-control-center/run-state.json';
 const API='https://api.github.com';
 const ACTIVE_STATUSES=new Set(['in_progress','queued','requested','waiting','pending']);
 
@@ -26,14 +28,15 @@ function contentPath(path){
   return String(path).split('/').map(encodeURIComponent).join('/');
 }
 
-async function repoJson(repo,path,headers){
-  const p=await jsonFetch(`${API}/repos/${repo}/contents/${contentPath(path)}?ref=main`,headers);
+async function repoJson(repo,path,headers,ref='main'){
+  const p=await jsonFetch(`${API}/repos/${repo}/contents/${contentPath(path)}?ref=${encodeURIComponent(ref)}`,headers);
   const text=Buffer.from(String(p.content||'').replace(/\n/g,''),'base64').toString('utf8');
   return JSON.parse(text);
 }
 
 function humanKind(name=''){
   const n=String(name).toLowerCase();
+  if(n.includes('cinematic pilot')) return {kind:'pilot',label:'Cinematic Pilot',owner:'Cinematic Lab → Thunder A6000'};
   if(n.includes('golden path')) return {kind:'production',label:'Golden Path',owner:'Orchestrator → Golden Path'};
   if(n.includes('orchestrator')) return {kind:'recovery',label:'Orchestrator',owner:'TAYVORIQ Orchestrator'};
   if(n.includes('delivery watch')) return {kind:'recovery',label:'Delivery Recovery',owner:'Orchestrator → Delivery Watch'};
@@ -192,6 +195,70 @@ function userActionRequired(failureState){
   return /(EXTERNAL|SECRET|AUTH|PAYMENT|BILLING|PERMISSION|QUOTA|ACCOUNT)/i.test(String(failureState||''));
 }
 
+function pilotFailureClass(stage='',step='',message=''){
+  const value=`${stage} ${step} ${message}`.toUpperCase();
+  if(/SECRET|TOKEN|AUTH|PAYMENT|BILLING|QUOTA|ACCOUNT|PERMISSION/.test(value)) return 'EXTERNAL_BLOCKER';
+  if(/DELETE|CLEANUP|BILLING STOP/.test(value)) return 'GPU_CLEANUP_WARNING';
+  if(/GPU|THUNDER|INSTANCE|SSH|PREFLIGHT/.test(value)) return 'GPU_PROVISION_FAILED';
+  if(/MODEL|WAN|DIFFUSERS/.test(value)) return 'MODEL_LOAD_FAILED';
+  if(/RENDER|SHOT/.test(value)) return 'SHOT_RENDER_FAILED';
+  if(/DOWNLOAD|TRANSFER|SCP|ARTIFACT/.test(value)) return 'ARTIFACT_TRANSFER_FAILED';
+  if(/PUBLISH|MEDIA|CONTROL CENTER/.test(value)) return 'PILOT_PUBLISH_FAILED';
+  return 'PILOT_RUN_FAILED';
+}
+
+function buildPilot(state,run,jobs=[]){
+  if(!state) return {available:false,reason:'pilot_state_unavailable'};
+  const job=selectJob(jobs);
+  const steps=Array.isArray(job?.steps)?job.steps:[];
+  const failedStep=steps.find(s=>String(s.conclusion)==='failure')||null;
+  const activeStep=steps.find(s=>String(s.status)==='in_progress')||null;
+  const lastSuccess=[...steps].reverse().find(s=>String(s.conclusion)==='success')||null;
+  const cleanupStep=findStep(steps,'delete thunder gpu');
+  const failed=String(state.status).toUpperCase()==='FAILED'||String(run?.conclusion)==='failure';
+  const failureClass=failed?pilotFailureClass(state.stage,failedStep?.name,state.last_error):null;
+  const ready=Boolean(state?.video?.ready)&&(String(state.status).toUpperCase()==='COMPLETE'||failureClass==='GPU_CLEANUP_WARNING');
+  return {
+    available:true,
+    project:state.project||'TAYVORIQ ORIGINALS · 02:17',
+    environment:state.environment||'LAB',
+    status:String(state.status||run?.status||'UNKNOWN').toUpperCase(),
+    stage:String(state.stage||'UNKNOWN').toUpperCase(),
+    progress:Number(state.progress||0),
+    provider:state.provider||'Thunder Compute',
+    gpu:state.gpu||'RTX A6000 48 GB',
+    model:state.model||'Wan 2.2 TI2V-5B',
+    updated_at:state.updated_at||run?.updated_at||null,
+    cost_estimate_usd:state.cost_estimate_usd??null,
+    shots:Array.isArray(state.shots)?state.shots:[],
+    audio:state.audio||{},
+    visual_review_ready:ready,
+    media_url:ready?'/api/pilot-media':null,
+    run:{
+      id:Number(state.run_id||run?.id||0)||null,
+      url:state.run_url||run?.html_url||null,
+      status:run?.status||null,
+      conclusion:run?.conclusion||null,
+      attempt:run?.run_attempt||1,
+      current_step:activeStep?.name||null,
+      failed_step:failedStep?.name||null,
+      failed_step_number:failedStep?.number??null,
+      last_successful_step:lastSuccess?.name||null
+    },
+    gpu_cleanup:{
+      status:phase(cleanupStep),
+      detail:cleanupStep?.conclusion==='success'?'Thunder-Instanz entfernt · Abrechnung gestoppt':cleanupStep?.name||'Cleanup noch nicht erreicht'
+    },
+    error:failed?{
+      class:failureClass,
+      message:state.last_error||`Pilot-Run ist bei ${failedStep?.name||state.stage||'unbekanntem Schritt'} fehlgeschlagen.`,
+      failed_step:failedStep?.name||null,
+      failed_step_number:failedStep?.number??null,
+      user_action_required:failureClass==='GPU_CLEANUP_WARNING'||userActionRequired(`${failureClass} ${state.last_error||''}`)
+    }:null
+  };
+}
+
 function colorForRun(run){
   if(!run) return 'unknown';
   if(ACTIVE_STATUSES.has(String(run.status))) return 'yellow';
@@ -237,12 +304,18 @@ export default async function handler(req,res){
   let controlRuns=[];
   let studioRuns=[];
   let canonicalRun=null;
+  let pilotState=null;
+  let pilotRun=null;
+  let pilotUnavailable=null;
 
   try{snapshot=await health()}catch(error){errors.push(`health:${error?.message||error}`)}
   try{
     pointer=await repoJson(CONTROL_REPO,ACTIVE_POINTER,gh.headers);
     if(pointer?.request_id) requestData=await repoJson(CONTROL_REPO,`requests/${pointer.request_id}.json`,gh.headers);
   }catch(error){errors.push(`canonical:${error?.message||error}`)}
+  if(gh.authenticated){
+    try{pilotState=await repoJson(STUDIO_REPO,PILOT_STATE,gh.headers,PILOT_BRANCH)}catch(error){pilotUnavailable=String(error?.message||error)}
+  }else pilotUnavailable='server_token_not_configured';
 
   const canonicalRunId=Number(pointer?.golden_path_run_id||requestData?.golden_path_run_id||0)||null;
   try{controlRuns=await listRuns(CONTROL_REPO,gh.headers)}catch(error){errors.push(`control-actions:${error?.message||error}`)}
@@ -253,9 +326,16 @@ export default async function handler(req,res){
     if(!canonicalRun){try{canonicalRun=await getRun(CONTROL_REPO,canonicalRunId,gh.headers)}catch(error){errors.push(`canonical-run:${error?.message||error}`)}}
   }
 
+  const pilotRunId=Number(pilotState?.run_id||0)||null;
+  if(pilotRunId){
+    pilotRun=studioRuns.find(r=>Number(r.id)===pilotRunId)||null;
+    if(!pilotRun){try{pilotRun=await getRun(STUDIO_REPO,pilotRunId,gh.headers)}catch(error){pilotUnavailable=`run:${error?.message||error}`}}
+  }
+
   const candidates=[...controlRuns,...studioRuns].filter(r=>!isNoise(r.name||r.display_title));
   const targetMap=new Map();
   if(canonicalRun) targetMap.set(runKey(canonicalRun._repo,canonicalRun.id),canonicalRun);
+  if(pilotRun) targetMap.set(runKey(pilotRun._repo,pilotRun.id),pilotRun);
   for(const run of candidates.filter(r=>ACTIVE_STATUSES.has(String(r.status))).slice(0,8)) targetMap.set(runKey(run._repo,run.id),run);
   for(const run of candidates.slice(0,4)) if(targetMap.size<10) targetMap.set(runKey(run._repo,run.id),run);
 
@@ -270,6 +350,7 @@ export default async function handler(req,res){
   telemetry.sort((a,b)=>Date.parse(b.updated_at||0)-Date.parse(a.updated_at||0));
 
   const canonicalJobs=canonicalRun?jobsByKey.get(runKey(canonicalRun._repo,canonicalRun.id))||[]:[];
+  const pilotJobs=pilotRun?jobsByKey.get(runKey(pilotRun._repo,pilotRun.id))||[]:[];
   const canonicalActivity=canonicalRun?toActivity(canonicalRun,canonicalJobs):null;
   const stages=canonicalRun?buildStages(canonicalJobs):(snapshot?.run?.stages||[]);
   const failedStage=stages.find(x=>x.status==='error')||null;
@@ -337,6 +418,7 @@ export default async function handler(req,res){
   if(pointer?.updated_at) liveEvents.push({at:pointer.updated_at,title:'Kanonischer Auftrag gebunden',detail:`${pointer.request_id} → Golden Path Run ${canonicalRunId||'–'}`});
 
   const legacy=await legacyState(gh.headers,gh.authenticated);
+  const pilot=pilotState?buildPilot(pilotState,pilotRun,pilotJobs):{available:false,reason:pilotUnavailable||'pilot_state_unavailable'};
   const payload={
     ...(snapshot||{schema:'tayvoriq-live-v2'}),
     schema:'tayvoriq-live-v2',
@@ -349,6 +431,7 @@ export default async function handler(req,res){
     incident,
     healthchecks,
     events:[...liveEvents,...(snapshot?.events||[])].slice(0,20),
+    pilot,
     live:{
       checked_at:checkedAt,
       authenticated:gh.authenticated,
