@@ -1,11 +1,13 @@
 const CONTROL_REPO='mojo72549-arch/tayvoriq-control-plane';
-const LEGACY_REPO='mojo72549-arch/shorts-agent-studio';
+const STUDIO_REPO='mojo72549-arch/shorts-agent-studio';
 const RAW_HEALTH='https://raw.githubusercontent.com/mojo72549-arch/tayvoriq-control-plane/main/run-status/ops-health.json';
+const ACTIVE_POINTER='.github/state/tayvoriq-active-production-request.json';
 const API='https://api.github.com';
+const ACTIVE_STATUSES=new Set(['in_progress','queued','requested','waiting','pending']);
 
 function ghHeaders(){
   const token=String(process.env.TAYVORIQ_GITHUB_TOKEN||process.env.GITHUB_TOKEN||'').trim();
-  const h={Accept:'application/vnd.github+json','User-Agent':'tayvoriq-control-center-live'};
+  const h={Accept:'application/vnd.github+json','User-Agent':'tayvoriq-control-center-live','X-GitHub-Api-Version':'2022-11-28'};
   if(token) h.Authorization=`Bearer ${token}`;
   return {headers:h,authenticated:Boolean(token)};
 }
@@ -20,16 +22,29 @@ async function health(){
   return jsonFetch(`${RAW_HEALTH}?v=${Date.now()}`,{Accept:'application/json'});
 }
 
+function contentPath(path){
+  return String(path).split('/').map(encodeURIComponent).join('/');
+}
+
+async function repoJson(repo,path,headers){
+  const p=await jsonFetch(`${API}/repos/${repo}/contents/${contentPath(path)}?ref=main`,headers);
+  const text=Buffer.from(String(p.content||'').replace(/\n/g,''),'base64').toString('utf8');
+  return JSON.parse(text);
+}
+
 function humanKind(name=''){
   const n=String(name).toLowerCase();
-  if(n.includes('golden path')) return {kind:'production',label:'Golden Path'};
-  if(n.includes('orchestrator')) return {kind:'recovery',label:'Recovery-Orchestrator'};
-  if(n.includes('self-heal')||n.includes('self heal')||n.includes('recovery')) return {kind:'recovery',label:'Self-Heal / Recovery'};
-  if(n.includes('quality')) return {kind:'quality',label:'Qualitätsprüfung'};
-  if(n.includes('publish')) return {kind:'publish',label:'Publish / Review'};
-  if(n.includes('telegram')) return {kind:'system',label:'Telegram-Dienst'};
-  if(n.includes('health')) return {kind:'system',label:'Health-Dienst'};
-  return {kind:'system',label:'Hintergrunddienst'};
+  if(n.includes('golden path')) return {kind:'production',label:'Golden Path',owner:'Orchestrator → Golden Path'};
+  if(n.includes('orchestrator')) return {kind:'recovery',label:'Orchestrator',owner:'TAYVORIQ Orchestrator'};
+  if(n.includes('delivery watch')) return {kind:'recovery',label:'Delivery Recovery',owner:'Orchestrator → Delivery Watch'};
+  if(n.includes('codefix')) return {kind:'recovery',label:'Codefix Recovery',owner:'Orchestrator → Codefix'};
+  if(n.includes('production green')) return {kind:'quality',label:'Production Green',owner:'Orchestrator → Production Green'};
+  if(n.includes('self-heal')||n.includes('self heal')||n.includes('recovery')) return {kind:'recovery',label:'Self-Heal / Recovery',owner:'Recovery Executor'};
+  if(n.includes('quality')) return {kind:'quality',label:'Qualitätsprüfung',owner:'Quality Gate'};
+  if(n.includes('publish')) return {kind:'publish',label:'Publish / Review',owner:'Publish Gate'};
+  if(n.includes('telegram')) return {kind:'system',label:'Telegram-Dienst',owner:'Telegram'};
+  if(n.includes('health')) return {kind:'system',label:'Health-Dienst',owner:'Health Monitor'};
+  return {kind:'system',label:'Hintergrunddienst',owner:'System'};
 }
 
 function isNoise(name=''){
@@ -38,39 +53,175 @@ function isNoise(name=''){
   return raw.startsWith('.github/workflows/')||n.includes('artifact cleanup')||n.includes('legacy schedule guard')||n.includes('public preview')||n.includes('project lumen');
 }
 
-function activityFromRuns(runs=[]){
-  return runs.filter(r=>!isNoise(r.name||r.display_title)).slice(0,14).map(r=>{
-    const meta=humanKind(r.name||r.display_title);
-    const status=String(r.status||'unknown');
-    const conclusion=String(r.conclusion||'');
-    let state='wartet';
-    if(status==='in_progress') state='läuft';
-    else if(status==='queued'||status==='requested'||status==='waiting') state='startet';
-    else if(conclusion==='success') state='erledigt';
-    else if(conclusion==='failure') state='fehlgeschlagen';
-    else if(conclusion==='skipped') state='übersprungen';
-    else if(conclusion==='cancelled') state='abgebrochen';
-    else if(status==='completed') state='beendet';
-    return {
-      id:r.id,
-      name:r.name||r.display_title||'GitHub Action',
-      label:meta.label,
-      kind:meta.kind,
-      state,
-      status,
-      conclusion:conclusion||null,
-      updated_at:r.updated_at||r.created_at||null,
-      url:r.html_url||null
-    };
+function stateFor(status,conclusion){
+  status=String(status||'unknown');
+  conclusion=String(conclusion||'');
+  if(status==='in_progress') return 'läuft';
+  if(['queued','requested','waiting','pending'].includes(status)) return 'startet';
+  if(conclusion==='success') return 'erledigt';
+  if(conclusion==='failure') return 'fehlgeschlagen';
+  if(conclusion==='skipped') return 'übersprungen';
+  if(['cancelled','canceled'].includes(conclusion)) return 'abgebrochen';
+  if(status==='completed') return 'beendet';
+  return 'wartet';
+}
+
+function runKey(repo,id){return `${repo}:${id}`}
+
+async function listRuns(repo,headers){
+  const p=await jsonFetch(`${API}/repos/${repo}/actions/runs?per_page=24`,headers);
+  return (Array.isArray(p.workflow_runs)?p.workflow_runs:[]).map(r=>({...r,_repo:repo}));
+}
+
+async function getRun(repo,id,headers){
+  const r=await jsonFetch(`${API}/repos/${repo}/actions/runs/${id}`,headers);
+  return {...r,_repo:repo};
+}
+
+async function getJobs(repo,id,headers){
+  const p=await jsonFetch(`${API}/repos/${repo}/actions/runs/${id}/jobs?filter=latest&per_page=100`,headers);
+  return Array.isArray(p.jobs)?p.jobs:[];
+}
+
+function selectJob(jobs=[]){
+  return jobs.find(j=>String(j.status)==='in_progress')
+    ||jobs.find(j=>String(j.conclusion)==='failure')
+    ||jobs.find(j=>ACTIVE_STATUSES.has(String(j.status)))
+    ||jobs[0]
+    ||null;
+}
+
+function selectStep(job){
+  const steps=Array.isArray(job?.steps)?job.steps:[];
+  return steps.find(s=>String(s.status)==='in_progress')
+    ||steps.find(s=>String(s.conclusion)==='failure')
+    ||[...steps].reverse().find(s=>String(s.status)==='completed'&&String(s.conclusion)!=='skipped')
+    ||steps.find(s=>ACTIVE_STATUSES.has(String(s.status)))
+    ||null;
+}
+
+function toActivity(run,jobs=[]){
+  const workflow=run.name||run.display_title||'GitHub Action';
+  const meta=humanKind(workflow);
+  const job=selectJob(jobs);
+  const step=selectStep(job);
+  const detail=[workflow,job?.name,step?.name].filter(Boolean).join(' › ');
+  return {
+    id:run.id,
+    repo:run._repo||CONTROL_REPO,
+    name:detail||workflow,
+    workflow,
+    job:job?.name||null,
+    job_status:job?.status||null,
+    job_conclusion:job?.conclusion||null,
+    step:step?.name||null,
+    step_number:step?.number??null,
+    step_status:step?.status||null,
+    step_conclusion:step?.conclusion||null,
+    label:meta.label,
+    owner:meta.owner,
+    kind:meta.kind,
+    state:stateFor(run.status,run.conclusion),
+    status:String(run.status||'unknown'),
+    conclusion:run.conclusion||null,
+    started_at:job?.started_at||run.run_started_at||run.created_at||null,
+    updated_at:run.updated_at||run.created_at||null,
+    url:run.html_url||null,
+    attempt:run.run_attempt||1
+  };
+}
+
+function phase(step){
+  if(!step) return 'pending';
+  const conclusion=String(step.conclusion||'').toLowerCase();
+  const status=String(step.status||'').toLowerCase();
+  if(conclusion==='failure') return 'error';
+  if(status==='in_progress') return 'running';
+  if(conclusion==='success') return 'success';
+  if(conclusion==='skipped') return 'skipped';
+  return 'pending';
+}
+
+function findStep(steps,...patterns){
+  const pats=patterns.map(p=>String(p).toLowerCase());
+  return steps.find(step=>pats.some(p=>String(step.name||'').toLowerCase().includes(p)))||null;
+}
+
+function buildStages(jobs=[]){
+  const job=jobs.find(j=>String(j.name||'').toLowerCase()==='orchestrate')||jobs[0]||{};
+  const steps=Array.isArray(job.steps)?job.steps:[];
+  const defs=[
+    ['Freigabe gebunden',['resolve approved x request']],
+    ['Quellen gesperrt',['materialize immutable verified source context']],
+    ['Dublettenprüfung',['block global duplicate content']],
+    ['Light Preflight',['lightweight contract preflight']],
+    ['Dependencies',['install production dependencies']],
+    ['Full Preflight',['preflight']],
+    ['Produktion / Master',['produce approved master']],
+    ['Publishable Output',['assert publishable production output']],
+    ['Quality Audit',['validate publication quality']],
+    ['Review-Seite',['publish review page']],
+    ['Telegram Review',['send telegram review']]
+  ];
+  return defs.map(([label,pats])=>{
+    const step=findStep(steps,...pats);
+    return {label,status:phase(step),step_number:step?.number??null,step_name:step?.name||null};
   });
+}
+
+function progressFromStages(stages=[],status,conclusion){
+  if(conclusion==='success') return 100;
+  const weights=[8,16,22,30,38,45,65,72,82,92,96];
+  let progress=0;
+  for(let i=0;i<stages.length;i++){
+    const s=stages[i]?.status;
+    if(['success','skipped'].includes(s)) progress=Math.max(progress,weights[i]);
+    else if(['running','error'].includes(s)){progress=Math.max(progress,weights[i]);break}
+    else break;
+  }
+  if(['queued','requested','waiting'].includes(String(status))) return Math.max(progress,3);
+  return progress;
+}
+
+function requestState(data){
+  const history=(Array.isArray(data?.state_history)?data.state_history:[]).filter(x=>x&&typeof x==='object');
+  return String(history.at(-1)?.state||data?.codefix_recovery?.request_substate||data?.status||'UNKNOWN').toUpperCase();
+}
+
+function userActionRequired(failureState){
+  return /(EXTERNAL|SECRET|AUTH|PAYMENT|BILLING|PERMISSION|QUOTA|ACCOUNT)/i.test(String(failureState||''));
+}
+
+function colorForRun(run){
+  if(!run) return 'unknown';
+  if(ACTIVE_STATUSES.has(String(run.status))) return 'yellow';
+  if(run.conclusion==='success') return 'green';
+  if(['failure','timed_out','cancelled','canceled','action_required'].includes(String(run.conclusion))) return 'red';
+  return 'unknown';
+}
+
+function liveHealthchecks(snapshot,canonicalRun,stages,recovery,activity){
+  const existing=new Map((snapshot?.healthchecks||[]).map(x=>[String(x.name||''),x]));
+  const qa=stages.find(x=>x.label==='Quality Audit');
+  const pub=stages.find(x=>x.label==='Publishable Output');
+  const orchestrator=activity.find(x=>/orchestrator/i.test(x.workflow||''));
+  const result=[];
+  result.push({name:'Orchestrator',status:orchestrator?(ACTIVE_STATUSES.has(orchestrator.status)?'yellow':orchestrator.conclusion==='failure'?'red':'green'):'unknown',detail:orchestrator?`${orchestrator.state} · ${orchestrator.step||orchestrator.job||'Workflow'}`:'Kein aktueller Orchestrator-Lauf in der Live-Abfrage'});
+  result.push({name:'Golden Path',status:colorForRun(canonicalRun),detail:canonicalRun?`Run ${canonicalRun.id} · ${stateFor(canonicalRun.status,canonicalRun.conclusion)}`:'Kein kanonischer Run auflösbar'});
+  const pg=existing.get('Production Green'); if(pg) result.push(pg);
+  const recoveryActive=activity.find(x=>x.kind==='recovery'&&ACTIVE_STATUSES.has(x.status));
+  result.push({name:'Self-Heal',status:recoveryActive?'yellow':String(recovery?.status||'').toUpperCase().includes('DISPATCHED')?'yellow':existing.get('Self-Heal')?.status||'unknown',detail:recoveryActive?`${recoveryActive.label}: ${recoveryActive.step||recoveryActive.job||recoveryActive.state}`:`${recovery?.status||'–'} · Gen ${recovery?.recovery_generation??0}`});
+  result.push({name:'Publishability',status:pub?.status==='success'?'green':pub?.status==='error'?'red':pub?.status==='running'?'yellow':'unknown',detail:pub?.step_name||'Noch nicht erreicht'});
+  result.push({name:'Quality Gates',status:qa?.status==='success'?'green':qa?.status==='error'?'red':qa?.status==='running'?'yellow':pub?.status==='error'?'yellow':'unknown',detail:qa?.status==='success'?'Quality Audit bestanden':pub?.status==='error'?'Wartet auf reparierten Publishable Output':qa?.status==='skipped'?'Noch nicht ausgeführt':'Noch nicht erreicht'});
+  const telegram=existing.get('Telegram'); if(telegram) result.push(telegram);
+  return result;
 }
 
 async function legacyState(headers,authenticated){
   if(!authenticated) return {available:false,reason:'server_token_not_configured'};
   try{
-    const p=await jsonFetch(`${API}/repos/${LEGACY_REPO}/contents/.automation/tayvoriq-progress/latest.json?ref=main`,headers);
-    const text=Buffer.from(String(p.content||'').replace(/\n/g,''),'base64').toString('utf8');
-    return {available:true,data:JSON.parse(text)};
+    const data=await repoJson(STUDIO_REPO,'.automation/tayvoriq-progress/latest.json',headers);
+    return {available:true,data};
   }catch(error){
     return {available:false,reason:String(error?.message||error)};
   }
@@ -81,42 +232,148 @@ export default async function handler(req,res){
   const gh=ghHeaders();
   const errors=[];
   let snapshot=null;
-  let runs=[];
-  let legacy={available:false,reason:'not_checked'};
+  let pointer=null;
+  let requestData=null;
+  let controlRuns=[];
+  let studioRuns=[];
+  let canonicalRun=null;
 
-  try{snapshot=await health();}catch(error){errors.push(`health:${error?.message||error}`)}
+  try{snapshot=await health()}catch(error){errors.push(`health:${error?.message||error}`)}
   try{
-    const p=await jsonFetch(`${API}/repos/${CONTROL_REPO}/actions/runs?per_page=30`,gh.headers);
-    runs=Array.isArray(p.workflow_runs)?p.workflow_runs:[];
-  }catch(error){errors.push(`actions:${error?.message||error}`)}
-  legacy=await legacyState(gh.headers,gh.authenticated);
+    pointer=await repoJson(CONTROL_REPO,ACTIVE_POINTER,gh.headers);
+    if(pointer?.request_id) requestData=await repoJson(CONTROL_REPO,`requests/${pointer.request_id}.json`,gh.headers);
+  }catch(error){errors.push(`canonical:${error?.message||error}`)}
 
-  const activity=activityFromRuns(runs);
-  const active=activity.filter(x=>['in_progress','queued','requested','waiting','pending'].includes(x.status));
+  const canonicalRunId=Number(pointer?.golden_path_run_id||requestData?.golden_path_run_id||0)||null;
+  try{controlRuns=await listRuns(CONTROL_REPO,gh.headers)}catch(error){errors.push(`control-actions:${error?.message||error}`)}
+  try{studioRuns=await listRuns(STUDIO_REPO,gh.headers)}catch(error){errors.push(`studio-actions:${error?.message||error}`)}
+
+  if(canonicalRunId){
+    canonicalRun=controlRuns.find(r=>Number(r.id)===canonicalRunId)||null;
+    if(!canonicalRun){try{canonicalRun=await getRun(CONTROL_REPO,canonicalRunId,gh.headers)}catch(error){errors.push(`canonical-run:${error?.message||error}`)}}
+  }
+
+  const candidates=[...controlRuns,...studioRuns].filter(r=>!isNoise(r.name||r.display_title));
+  const targetMap=new Map();
+  if(canonicalRun) targetMap.set(runKey(canonicalRun._repo,canonicalRun.id),canonicalRun);
+  for(const run of candidates.filter(r=>ACTIVE_STATUSES.has(String(r.status))).slice(0,8)) targetMap.set(runKey(run._repo,run.id),run);
+  for(const run of candidates.slice(0,4)) if(targetMap.size<10) targetMap.set(runKey(run._repo,run.id),run);
+
+  const telemetry=[];
+  const jobsByKey=new Map();
+  await Promise.all([...targetMap.values()].map(async run=>{
+    let jobs=[];
+    try{jobs=await getJobs(run._repo,run.id,gh.headers)}catch(error){errors.push(`jobs:${run._repo}:${run.id}:${error?.message||error}`)}
+    jobsByKey.set(runKey(run._repo,run.id),jobs);
+    telemetry.push(toActivity(run,jobs));
+  }));
+  telemetry.sort((a,b)=>Date.parse(b.updated_at||0)-Date.parse(a.updated_at||0));
+
+  const canonicalJobs=canonicalRun?jobsByKey.get(runKey(canonicalRun._repo,canonicalRun.id))||[]:[];
+  const canonicalActivity=canonicalRun?toActivity(canonicalRun,canonicalJobs):null;
+  const stages=canonicalRun?buildStages(canonicalJobs):(snapshot?.run?.stages||[]);
+  const failedStage=stages.find(x=>x.status==='error')||null;
+  const activeStage=stages.find(x=>x.status==='running')||null;
+  const lastSuccess=[...stages].reverse().find(x=>x.status==='success')||null;
+  const recoveryData=(requestData?.codefix_recovery&&typeof requestData.codefix_recovery==='object')?requestData.codefix_recovery:{};
+  const recovery={
+    ...(snapshot?.recovery||{}),
+    ...recoveryData,
+    status:recoveryData.status||snapshot?.recovery?.status||'UNKNOWN',
+    recovery_generation:Number(requestData?.recovery_generation??recoveryData.fresh_recovery_generation??recoveryData.recovery_generation??snapshot?.recovery?.recovery_generation??0),
+    owner:requestData?.recovery_owner||snapshot?.recovery?.owner||'tayvoriq-agent-orchestrator-v2'
+  };
+
+  const canonicalRequest=requestData?{
+    ...(snapshot?.request||{}),
+    request_id:pointer?.request_id||requestData.request_id,
+    topic:requestData.topic||snapshot?.request?.topic||null,
+    state:requestState(requestData),
+    trend_id:requestData.trend_id||pointer?.trend_id||null,
+    recovery_generation:Number(requestData.recovery_generation??0),
+    recovery_owner:requestData.recovery_owner||recovery.owner,
+    updated_at:pointer?.updated_at||requestData.recovery_dispatched_at||null
+  }:(snapshot?.request||{});
+
+  const liveRun=canonicalRun?{
+    ...(snapshot?.run||{}),
+    id:canonicalRun.id,
+    name:canonicalRun.name||canonicalRun.display_title||'TAYVORIQ-X Golden Path',
+    status:canonicalRun.status||'unknown',
+    conclusion:canonicalRun.conclusion||null,
+    attempt:canonicalRun.run_attempt||1,
+    html_url:canonicalRun.html_url||null,
+    created_at:canonicalRun.created_at||null,
+    updated_at:canonicalRun.updated_at||null,
+    current_step:activeStage?.step_name||null,
+    failed_step:failedStage?.step_name||null,
+    failed_step_number:failedStage?.step_number??null,
+    last_successful_step:lastSuccess?.step_name||null,
+    progress:progressFromStages(stages,canonicalRun.status,canonicalRun.conclusion),
+    stages
+  }:(snapshot?.run||{});
+
+  const failureState=recoveryData.failure_state||snapshot?.incident?.failure_state||null;
+  const incident=failedStage?{
+    ...(snapshot?.incident||{}),
+    failure_state:failureState||'WORKFLOW_FAILURE',
+    failed_step:failedStage.step_name,
+    failed_step_number:failedStage.step_number,
+    self_heal_status:recovery.status,
+    user_action_required:userActionRequired(failureState)
+  }:(snapshot?.incident||null);
+
+  const active=telemetry.filter(x=>ACTIVE_STATUSES.has(x.status));
+  const current=active[0]||canonicalActivity||telemetry[0]||null;
+  const latestAt=current?.updated_at||telemetry[0]?.updated_at||pointer?.updated_at||snapshot?.generated_at||null;
+  const latestAge=latestAt?Math.max(0,Math.round((Date.now()-Date.parse(latestAt))/1000)):null;
   const snapshotAt=snapshot?.generated_at||null;
   const snapshotAge=snapshotAt?Math.max(0,Math.round((Date.now()-Date.parse(snapshotAt))/1000)):null;
-  const latestAt=activity[0]?.updated_at||snapshot?.run?.updated_at||snapshotAt;
-  const latestAge=latestAt?Math.max(0,Math.round((Date.now()-Date.parse(latestAt))/1000)):null;
+  const overall=active.length?'yellow':canonicalRun?colorForRun(canonicalRun):(snapshot?.overall||'unknown');
+  const healthchecks=liveHealthchecks(snapshot,canonicalRun,stages,recovery,telemetry);
 
+  const liveEvents=[];
+  for(const item of telemetry.slice(0,6)) liveEvents.push({at:item.updated_at,title:`LIVE · ${item.label} · ${item.state}`,detail:`${item.repo.split('/').at(-1)} · Run ${item.id}${item.job?` · ${item.job}`:''}${item.step?` · Step ${item.step_number??'–'}: ${item.step}`:''}`});
+  if(pointer?.updated_at) liveEvents.push({at:pointer.updated_at,title:'Kanonischer Auftrag gebunden',detail:`${pointer.request_id} → Golden Path Run ${canonicalRunId||'–'}`});
+
+  const legacy=await legacyState(gh.headers,gh.authenticated);
   const payload={
-    ...(snapshot||{schema:'tayvoriq-live-fallback-v1',overall:'unknown'}),
+    ...(snapshot||{schema:'tayvoriq-live-v2'}),
+    schema:'tayvoriq-live-v2',
+    generated_at:checkedAt,
+    overall,
+    user_action_required:Boolean(incident?.user_action_required),
+    request:canonicalRequest,
+    run:liveRun,
+    recovery,
+    incident,
+    healthchecks,
+    events:[...liveEvents,...(snapshot?.events||[])].slice(0,20),
     live:{
       checked_at:checkedAt,
       authenticated:gh.authenticated,
+      canonical_pointer:ACTIVE_POINTER,
+      canonical_request_id:pointer?.request_id||null,
+      canonical_run_id:canonicalRunId,
+      canonical_pointer_updated_at:pointer?.updated_at||null,
       snapshot_at:snapshotAt,
       snapshot_age_seconds:snapshotAge,
-      latest_activity_at:latestAt||null,
+      latest_activity_at:latestAt,
       latest_activity_age_seconds:latestAge,
       active_count:active.length,
       active_activity:active,
-      source:errors.length?'partial':'github-actions+ops-health',
+      current,
+      telemetry_count:telemetry.length,
+      source:errors.length?'github-realtime+canonical-pointer+partial':'github-realtime+canonical-pointer',
       errors
     },
-    activity,
+    activity:telemetry,
     legacy
   };
 
   res.setHeader('Content-Type','application/json; charset=utf-8');
-  res.setHeader('Cache-Control',gh.authenticated?'public, s-maxage=8, stale-while-revalidate=20':'public, s-maxage=60, stale-while-revalidate=120');
-  res.status(snapshot||activity.length?200:502).json(payload);
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Cache-Control','no-store, max-age=0, must-revalidate');
+  res.setHeader('Pragma','no-cache');
+  res.status(snapshot||telemetry.length||pointer?200:502).json(payload);
 }

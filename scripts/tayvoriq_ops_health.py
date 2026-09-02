@@ -12,9 +12,10 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "mojo72549-arch/tayvoriq-control-plan
 TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 API = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
 OUT = Path(os.environ.get("TAYVORIQ_OPS_STATE_PATH", "run-status/ops-health.json"))
+ACTIVE_POINTER = Path(".github/state/tayvoriq-active-production-request.json")
 
 TERMINAL_STATES = {"PUBLISHED", "REJECTED", "CANCELLED", "CANCELED", "ARCHIVED"}
-USER_ACTION_TOKENS = ("EXTERNAL", "SECRET", "AUTH", "QUOTA", "MANUAL", "ACCOUNT", "BILLING")
+USER_ACTION_TOKENS = ("EXTERNAL", "SECRET", "AUTH", "QUOTA", "MANUAL", "ACCOUNT", "BILLING", "PAYMENT", "PERMISSION")
 
 
 def now_iso():
@@ -59,7 +60,7 @@ def request_timestamp(data):
             candidates.append(parse_ts(entry.get("at")))
     recovery = data.get("codefix_recovery") or {}
     if isinstance(recovery, dict):
-        for key in ("armed_at", "replayed_at", "updated_at"):
+        for key in ("armed_at", "replayed_at", "updated_at", "fresh_recovery_at"):
             candidates.append(parse_ts(recovery.get(key)))
     return max(candidates or [0.0])
 
@@ -71,36 +72,53 @@ def latest_state(data):
     return str(data.get("status") or "UNKNOWN").upper()
 
 
+def load_json(path):
+    p = Path(path)
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def load_current_request():
-    candidates = []
-    for path in Path("requests").glob("*.json"):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        if str(data.get("mode") or "").strip().lower() != "full":
-            continue
-        ts = request_timestamp(data)
-        candidates.append((ts, path, data))
-    if not candidates:
+    """Resolve only the request named by the canonical active pointer.
+
+    The monitoring path must never guess the latest non-terminal request because
+    that can make Telegram/Health and the Control Center report different runs.
+    Missing/broken canonical state is surfaced as unknown instead of silently
+    selecting another request.
+    """
+    pointer = load_json(ACTIVE_POINTER)
+    if not isinstance(pointer, dict):
         return None, None
-    active = [item for item in candidates if latest_state(item[2]) not in TERMINAL_STATES]
-    chosen = max(active or candidates, key=lambda item: item[0])
-    return chosen[1], chosen[2]
+    request_id = str(pointer.get("request_id") or "").strip()
+    if not request_id or not re.fullmatch(r"[A-Za-z0-9._-]+", request_id):
+        return None, None
+    path = Path("requests") / f"{request_id}.json"
+    data = load_json(path)
+    if not isinstance(data, dict):
+        return None, None
+    if str(data.get("request_id") or "").strip() != request_id:
+        return None, None
+    return path, data
 
 
 def resolve_run_id(data):
     if not data:
         return None
-    recovery = data.get("codefix_recovery") or {}
-    if isinstance(recovery, dict):
-        for key in ("replay_run_id", "golden_path_run_id"):
-            value = recovery.get(key)
-            if str(value or "").isdigit():
-                return int(value)
+    # The request-level Golden Path binding is canonical. Recovery metadata can
+    # contain older failed/replay run IDs and must not override this pointer.
     value = data.get("golden_path_run_id")
     if str(value or "").isdigit():
         return int(value)
+    recovery = data.get("codefix_recovery") or {}
+    if isinstance(recovery, dict):
+        for key in ("fresh_recovery_run_id", "replay_run_id", "golden_path_run_id"):
+            value = recovery.get(key)
+            if str(value or "").isdigit():
+                return int(value)
     history = [x for x in (data.get("state_history") or []) if isinstance(x, dict)]
     for entry in reversed(history):
         meta = entry.get("meta") or {}
@@ -194,24 +212,21 @@ def health_color(run_status, conclusion, run_id):
     return "unknown"
 
 
-def load_json(path):
-    p = Path(path)
-    if not p.is_file():
-        return None
-    try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-
-
 def incident_signature(run_id, failed_step, failure_state):
     return f"{run_id or 'none'}:{(failed_step or {}).get('number') or 'none'}:{failure_state or 'none'}"
 
 
 def main():
     previous = load_json(OUT) or {}
+    pointer = load_json(ACTIVE_POINTER) or {}
     request_path, request_data = load_current_request()
     run_id = resolve_run_id(request_data)
+    # Pointer and request must agree. Prefer the pointer's run binding when it is
+    # numeric, because this is what the orchestrator updates atomically.
+    pointer_run_id = pointer.get("golden_path_run_id") if isinstance(pointer, dict) else None
+    if str(pointer_run_id or "").isdigit():
+        run_id = int(pointer_run_id)
+
     run = {}
     jobs = []
     api_error = None
@@ -241,6 +256,8 @@ def main():
     failure_state = str(recovery.get("failure_state") or "") or None
     user_action_required = bool(failure_state and any(token in failure_state.upper() for token in USER_ACTION_TOKENS))
     self_heal_status = str(recovery.get("status") or "IDLE")
+    recovery_generation = int((request_data or {}).get("recovery_generation") or recovery.get("fresh_recovery_generation") or recovery.get("recovery_generation") or 0)
+    recovery_owner = str((request_data or {}).get("recovery_owner") or "tayvoriq-agent-orchestrator-v2")
 
     telegram_steps = [s for s in steps if "telegram" in str(s.get("name") or "").casefold()]
     telegram_failed = next((s for s in telegram_steps if str(s.get("conclusion") or "").lower() == "failure"), None)
@@ -264,6 +281,29 @@ def main():
         if str(s.get("conclusion") or "").lower() == "success":
             last_completed = s
             break
+
+    publishable_stage = next((x for x in stages if x.get("label") == "Publishable Output"), {})
+    quality_stage = next((x for x in stages if x.get("label") == "Quality Audit"), {})
+    quality_phase = str(quality_stage.get("status") or "pending")
+    publishable_phase = str(publishable_stage.get("status") or "pending")
+    if quality_phase == "success":
+        quality_status = "green"
+        quality_detail = "Quality Audit bestanden"
+    elif quality_phase == "error":
+        quality_status = "red"
+        quality_detail = str(quality_stage.get("step_name") or "Quality Audit fehlgeschlagen")
+    elif quality_phase == "running":
+        quality_status = "yellow"
+        quality_detail = str(quality_stage.get("step_name") or "Quality Audit läuft")
+    elif publishable_phase == "error":
+        quality_status = "yellow"
+        quality_detail = "Wartet auf reparierten Publishable Output"
+    elif run_id:
+        quality_status = "yellow"
+        quality_detail = "Noch nicht erreicht"
+    else:
+        quality_status = "unknown"
+        quality_detail = "Kein aktiver Run"
 
     incident = None
     if overall == "red" or failure_state:
@@ -299,19 +339,26 @@ def main():
         })
 
     state = {
-        "schema": "tayvoriq-ops-health-v1",
+        "schema": "tayvoriq-ops-health-v2",
         "generated_at": now_iso(),
         "overall": overall,
         "intervention_count": 1 if user_action_required else 0,
         "user_action_required": user_action_required,
         "api_error": api_error,
+        "canonical": {
+            "pointer_path": str(ACTIVE_POINTER),
+            "request_id": pointer.get("request_id") if isinstance(pointer, dict) else None,
+            "golden_path_run_id": run_id,
+            "pointer_updated_at": pointer.get("updated_at") if isinstance(pointer, dict) else None,
+        },
         "request": {
             "request_id": (request_data or {}).get("request_id"),
             "topic": (request_data or {}).get("topic"),
             "trend_id": (request_data or {}).get("trend_id"),
             "slot": (request_data or {}).get("slot"),
             "state": latest_state(request_data or {}),
-            "recovery_generation": int(recovery.get("recovery_generation") or 0),
+            "recovery_generation": recovery_generation,
+            "recovery_owner": recovery_owner,
             "source_count": len(((request_data or {}).get("source_context") or {}).get("sources") or []),
             "quality_gates_weakened": bool(((request_data or {}).get("source_context") or {}).get("quality_gates_weakened", False)),
             "path": str(request_path) if request_path else None,
@@ -345,7 +392,7 @@ def main():
             {
                 "name": "Self-Heal",
                 "status": "yellow" if self_heal_status not in {"", "IDLE", "NONE"} and overall != "green" else "green",
-                "detail": self_heal_status,
+                "detail": f"{self_heal_status} · Gen {recovery_generation} · {recovery_owner}",
             },
             {
                 "name": "Telegram",
@@ -354,8 +401,8 @@ def main():
             },
             {
                 "name": "Quality Gates",
-                "status": "red" if bool(recovery.get("quality_gates_weakened")) else "green",
-                "detail": "Nicht gelockert" if not bool(recovery.get("quality_gates_weakened")) else "WARNUNG: gelockert",
+                "status": quality_status,
+                "detail": quality_detail,
             },
         ],
         "incident": incident,
@@ -369,7 +416,9 @@ def main():
             "failure_state": failure_state,
             "failed_run_id": recovery.get("failed_run_id"),
             "replay_run_id": recovery.get("replay_run_id"),
-            "recovery_generation": int(recovery.get("recovery_generation") or 0),
+            "fresh_recovery_run_id": recovery.get("fresh_recovery_run_id"),
+            "recovery_generation": recovery_generation,
+            "owner": recovery_owner,
             "same_generation_replay_required": bool(recovery.get("same_generation_replay_required")),
             "quality_gates_weakened": bool(recovery.get("quality_gates_weakened", False)),
         },
