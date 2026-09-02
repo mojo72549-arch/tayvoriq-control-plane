@@ -1,28 +1,35 @@
 {
-  "schema": "tayvoriq-ops-health-v1",
-  "generated_at": "2026-09-02T09:07:03.009389Z",
+  "schema": "tayvoriq-ops-health-v2",
+  "generated_at": "2026-09-02T11:30:18.619852Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
+  "canonical": {
+    "pointer_path": ".github/state/tayvoriq-active-production-request.json",
+    "request_id": "telegram-1965-trend-2",
+    "golden_path_run_id": 33623127359,
+    "pointer_updated_at": "2026-09-02T11:09:29.476864Z"
+  },
   "request": {
     "request_id": "telegram-1965-trend-2",
     "topic": "Europa bestellt einen neuen KI-Supercomputer: Warum LUMI-AI Europas Rechenleistung verzehnfachen soll",
     "trend_id": "2",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
-    "recovery_generation": 0,
+    "state": "DISPATCHED",
+    "recovery_generation": 2,
+    "recovery_owner": "tayvoriq-delivery-watch",
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-1965-trend-2.json"
   },
   "run": {
-    "id": 33594886493,
+    "id": 33623127359,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/33594886493",
-    "created_at": "2026-09-02T05:29:43Z",
-    "updated_at": "2026-09-02T05:53:33Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/33623127359",
+    "created_at": "2026-09-02T11:09:23Z",
+    "updated_at": "2026-09-02T11:12:36Z",
     "attempt": 1,
     "progress": 72,
     "current_step": null,
@@ -112,7 +119,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "FRESH_RECOVERY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -121,17 +128,17 @@
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Nicht gelockert"
+      "status": "yellow",
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
   "incident": {
-    "signature": "33594886493:32:PUBLISHABLE_CODEFIX_REQUIRED",
+    "signature": "33623127359:32:PUBLISHABLE_CODEFIX_REQUIRED",
     "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 32,
-    "self_heal_status": "ARMED",
+    "self_heal_status": "FRESH_RECOVERY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -143,22 +150,34 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "ARMED",
+    "status": "FRESH_RECOVERY_DISPATCHED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 33594886493,
     "replay_run_id": null,
-    "recovery_generation": 0,
+    "fresh_recovery_run_id": 33623127359,
+    "recovery_generation": 2,
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "ARMED",
+    "source_status": "FRESH_RECOVERY_DISPATCHED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-02T05:53:33Z",
+      "at": "2026-09-02T11:12:36Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-02T11:09:29.476864Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
+    },
+    {
+      "at": "2026-09-02T09:53:17.969066Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
     },
     {
       "at": "2026-09-02T05:53:43.979268Z",
@@ -177,16 +196,6 @@
     },
     {
       "at": "2026-09-02T05:18:35.354412Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-01T15:55:07.871785Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-01T15:51:50.644514Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
     }
