@@ -1,7 +1,8 @@
 name: TAYVORIQ Production Green Promoter
 
-# Canonical production implementation is Studio main. Recovery must never
-# validate or replay from a historical feature branch.
+# Canonical production implementation currently lives on Studio's explicit
+# feature/multi-platform-distribution-package production ref. Validate only that
+# live ref until the runtime is deliberately migrated to Studio main.
 
 on:
   push:
@@ -45,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: main
+          ref: feature/multi-platform-distribution-package
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 0
@@ -153,9 +154,9 @@ jobs:
           set -euo pipefail
           tested="${{ steps.refs.outputs.candidate }}"
           local_sha="$(git rev-parse HEAD)"
-          remote_sha="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          remote_sha="$(git ls-remote origin refs/heads/feature/multi-platform-distribution-package | awk '{print $1}')"
           test "$local_sha" = "$tested" || { echo "TESTED_SHA_CHANGED:$local_sha:$tested"; exit 1; }
-          test "$remote_sha" = "$tested" || { echo "STUDIO_MAIN_ADVANCED_DURING_PREFLIGHT:$remote_sha:$tested"; exit 1; }
+          test "$remote_sha" = "$tested" || { echo "STUDIO_PRODUCTION_REF_ADVANCED_DURING_PREFLIGHT:$remote_sha:$tested"; exit 1; }
 
       - name: Promote exact fully verified SHA in control plane
         if: steps.refs.outputs.changed == 'true'
