@@ -221,7 +221,9 @@ class TelegramProgressWorkflowTests(unittest.TestCase):
         self.assertEqual(policy["watchdog_poll_interval_seconds"], 180)
         self.assertEqual(policy["operator_heartbeat_notify_minutes"], [45])
         self.assertIs(policy["suppress_intermediate_liveness_polls"], True)
-        self.assertIs(policy["immediate_failure_notification_enabled"], True)
+        self.assertIs(policy["immediate_failure_notification_enabled"], False)
+        self.assertIs(policy["internal_recovery_operator_noise_suppressed"], True)
+        self.assertIs(policy["terminal_external_blocker_notification_enabled"], True)
         self.assertEqual(
             policy["recovery_replay_suppressed_stages"],
             ["render_heartbeat", "checkpoint_repair", "checkpoint_heartbeat"],
