@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v1",
-  "generated_at": "2026-09-02T05:19:05.904179Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-02T06:21:26.190754Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -10,25 +10,25 @@
     "topic": "Europa bestellt einen neuen KI-Supercomputer: Warum LUMI-AI Europas Rechenleistung verzehnfachen soll",
     "trend_id": "2",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-1965-trend-2.json"
   },
   "run": {
-    "id": 33594154711,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/33594154711",
-    "created_at": "2026-09-02T05:18:28Z",
-    "updated_at": "2026-09-02T05:18:34Z",
+    "id": 33594886493,
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/33594886493",
+    "created_at": "2026-09-02T05:29:43Z",
+    "updated_at": "2026-09-02T05:53:33Z",
     "attempt": 1,
-    "progress": 38,
-    "current_step": "Install production dependencies",
-    "last_successful_step": "Record immutable production manifest",
-    "failed_step": null,
-    "failed_step_number": null,
+    "progress": 72,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 32,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -56,7 +56,7 @@
       },
       {
         "label": "Dependencies",
-        "status": "running",
+        "status": "success",
         "step_number": 21,
         "step_name": "Install production dependencies"
       },
@@ -68,31 +68,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "success",
         "step_number": 25,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 32,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 34,
         "step_name": "Validate publication quality"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 36,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 37,
         "step_name": "Send Telegram review"
       }
@@ -101,23 +101,23 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Install production dependencies"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "98a014089ec9…"
+      "detail": "8cbb291e6079…"
     },
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
@@ -126,12 +126,12 @@
     }
   ],
   "incident": {
-    "signature": "33594154711:none:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "warning",
+    "signature": "33594886493:32:PUBLISHABLE_CODEFIX_REQUIRED",
+    "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 32,
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -139,22 +139,42 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "ARMED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 33528341412,
-    "replay_run_id": 33594154711,
+    "failed_run_id": 33594886493,
+    "replay_run_id": null,
     "recovery_generation": 0,
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
+    "source_status": "ARMED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-02T05:53:33Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-02T05:53:43.979268Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-02T05:29:50.553902Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-02T05:21:21.498763Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
     {
       "at": "2026-09-02T05:18:35.354412Z",
       "title": "DISPATCHED",
@@ -169,21 +189,6 @@
       "at": "2026-09-01T15:51:50.644514Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-01T09:28:13.205756Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-01T09:24:22.712924Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-01T09:12:06.200662Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     }
   ]
 }
