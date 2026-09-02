@@ -20,7 +20,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
-  actions: write
+  actions: read
   contents: write
 
 concurrency:
@@ -197,14 +197,9 @@ jobs:
           }
           echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$CANDIDATE_SHA"
 
-      - name: Resume deterministic codefix continuity after verified green
+      - name: Report verified Production Green state to Orchestrator
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Run for both cases: a newly promoted SHA and an already-current,
-          # previously verified Production-Green SHA. Continuity decides whether
-          # an armed request has a relevant verified revision to replay.
-          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main
-          echo "TAYVORIQ_PRODUCTION_GREEN_CONTINUITY_RECONCILED:${{ steps.refs.outputs.candidate }}"
+          echo "TAYVORIQ_PRODUCTION_GREEN_VERIFIED:${{ steps.refs.outputs.candidate }}:changed=${{ steps.refs.outputs.changed }}"
+          echo "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2."
