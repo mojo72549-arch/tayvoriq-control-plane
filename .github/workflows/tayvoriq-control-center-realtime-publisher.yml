@@ -1,0 +1,62 @@
+name: TAYVORIQ Control Center Realtime Publisher
+
+on:
+  workflow_run:
+    workflows:
+      - TAYVORIQ-X Golden Path
+      - TAYVORIQ Agent Orchestrator V2
+      - TAYVORIQ Production Green Promoter
+      - TAYVORIQ Deterministic Codefix Continuity
+      - TAYVORIQ Delivery Watch
+      - TAYVORIQ Request Continuity Watchdog
+      - TAYVORIQ Ops Health
+    types: [requested, in_progress, completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Existing control-plane run id to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: tayvoriq-control-center-realtime-${{ github.event.workflow_run.id || inputs.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Resolve authoritative run
+        id: run
+        shell: bash
+        env:
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          run_id="${EVENT_RUN_ID:-${INPUT_RUN_ID:-}}"
+          if ! [[ "$run_id" =~ ^[0-9]+$ ]]; then
+            echo "Invalid run id: $run_id" >&2
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Publish verified telemetry signal
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.run.outputs.run_id }}
+          ENDPOINT: https://hlsnvfdjhmnulphosghd.supabase.co/functions/v1/tayvoriq-ingest
+        run: |
+          set -euo pipefail
+          body=$(printf '{"repo":"%s","run_id":%s}' "$GITHUB_REPOSITORY" "$RUN_ID")
+          response=$(curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors --connect-timeout 8 --max-time 25 \
+            -H 'Content-Type: application/json' \
+            -X POST "$ENDPOINT" \
+            --data-binary "$body")
+          echo "$response"
