@@ -415,15 +415,29 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-02T09:53:17.969066Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 33594886493,
+        "golden_path_run_id": 33616545589,
+        "recovery_generation": 1,
+        "failure_signature": "7446d3fed9efe1e3a594",
+        "reason": "bounded-shared-policy-recovery",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
   "dispatch_claim_run_id": 33426400349,
   "dispatch_contract_sha256": "5caa1b1f062b0ef08d6fdcb57233fc81d8c058281bebae0cfecf91824b489c2b",
-  "golden_path_run_id": 33594886493,
+  "golden_path_run_id": 33616545589,
   "codefix_recovery": {
-    "status": "ARMED",
-    "request_substate": "AWAITING_CODEFIX",
+    "status": "FRESH_RECOVERY_DISPATCHED",
+    "request_substate": "DISPATCHED",
     "failed_run_id": 33594886493,
     "failure_signature": "d68ac00bac2757f0e555",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
@@ -438,7 +452,11 @@
     "active_pointer_verified": true,
     "rearmed_after_failed_replay": true,
     "previous_codefix_failed_run_id": 33594154711,
-    "previous_codefix_failure_signature": "d68ac00bac2757f0e555"
+    "previous_codefix_failure_signature": "d68ac00bac2757f0e555",
+    "fresh_recovery_run_id": 33616545589,
+    "fresh_recovery_of_run_id": 33594886493,
+    "fresh_recovery_generation": 1,
+    "fresh_recovery_at": "2026-09-02T09:53:17.969066Z"
   },
   "previous_golden_path_run_ids": [
     33426415847,
@@ -450,12 +468,13 @@
     33490566336,
     33492034864,
     33528341412,
-    33594154711
+    33594154711,
+    33594886493
   ],
-  "recovery_generation": 0,
-  "retry_of_run_id": 33594154711,
-  "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
-  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
-  "recovery_failure_signature": "d68ac00bac2757f0e555",
-  "recovery_dispatched_at": "2026-09-02T05:29:50.553902Z"
+  "recovery_generation": 1,
+  "retry_of_run_id": 33594886493,
+  "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
+  "recovery_owner": "tayvoriq-delivery-watch",
+  "recovery_failure_signature": "7446d3fed9efe1e3a594",
+  "recovery_dispatched_at": "2026-09-02T09:53:17.969066Z"
 }
