@@ -4,7 +4,7 @@ const PILOT_MEDIA='cinematic-control-center/media/latest-pilot.mp4';
 const API='https://api.github.com';
 
 function ghHeaders(){
-  const token=String(process.env.TAYVORIQ_GITHUB_TOKEN||process.env.GITHUB_TOKEN||'').trim();
+  const token=String(process.env.TAYVORIQ_GITHUB_TOKEN||process.env.PRIVATE_REPO_TOKEN||process.env.GITHUB_TOKEN||'').trim();
   const headers={Accept:'application/vnd.github+json','User-Agent':'tayvoriq-control-center-pilot-media','X-GitHub-Api-Version':'2022-11-28'};
   if(token) headers.Authorization=`Bearer ${token}`;
   return {headers,authenticated:Boolean(token)};

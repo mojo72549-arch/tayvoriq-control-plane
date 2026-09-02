@@ -8,7 +8,7 @@ const API='https://api.github.com';
 const ACTIVE_STATUSES=new Set(['in_progress','queued','requested','waiting','pending']);
 
 function ghHeaders(){
-  const token=String(process.env.TAYVORIQ_GITHUB_TOKEN||process.env.GITHUB_TOKEN||'').trim();
+  const token=String(process.env.TAYVORIQ_GITHUB_TOKEN||process.env.PRIVATE_REPO_TOKEN||process.env.GITHUB_TOKEN||'').trim();
   const h={Accept:'application/vnd.github+json','User-Agent':'tayvoriq-control-center-live','X-GitHub-Api-Version':'2022-11-28'};
   if(token) h.Authorization=`Bearer ${token}`;
   return {headers:h,authenticated:Boolean(token)};
@@ -259,6 +259,86 @@ function buildPilot(state,run,jobs=[]){
   };
 }
 
+function buildOperatorFeed(state,pilot,jobs=[]){
+  const job=selectJob(jobs);
+  const steps=Array.isArray(job?.steps)?job.steps:[];
+  const shots=Array.isArray(pilot?.shots)?pilot.shots:[];
+  const runId=pilot?.run?.id||state?.run_id||null;
+  const items=[];
+  const seen=new Set();
+  const add=(severity,title,detail,at=null,id=null)=>{
+    const key=id||`${runId||'pilot'}:${title}:${detail}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    items.push({id:key,severity,title,detail,at:at||pilot?.updated_at||null,run_id:runId});
+  };
+
+  if(!pilot?.available){
+    add('error','Pilot-Livefeed nicht erreichbar','Die private Run-Telemetrie ist noch nicht verbunden. Kein Status wird erfunden.',null,'pilot:unavailable');
+    return items;
+  }
+
+  const completed=shots.filter(s=>['DONE','SUCCESS','COMPLETE','READY'].includes(String(s.status||'').toUpperCase())).length;
+  const total=Number(state?.total_shots||shots.length||5);
+  const currentShot=shots.find(s=>['RENDERING','RUNNING'].includes(String(s.status||'').toUpperCase()))||null;
+  const stage=String(pilot.stage||'UNKNOWN').toUpperCase();
+  const active=ACTIVE_STATUSES.has(String(pilot?.run?.status))||['RUNNING','RENDERING'].includes(String(pilot.status));
+  const cleanup=pilot.gpu_cleanup||{};
+
+  if(pilot.error){
+    const cleanupText=cleanup.status==='success'?' Die Thunder-GPU wurde entfernt; die Abrechnung ist gestoppt.':'';
+    add(
+      pilot.error.user_action_required?'error':'warning',
+      `Technischer Stopp: ${pilot.error.failed_step||stage.replaceAll('_',' ')}`,
+      `${pilot.error.message||'Der Run wurde an einem klaren Gate gestoppt.'}${cleanupText} ${pilot.error.user_action_required?'Eine externe Aktion ist nötig.':'Keine Nutzeraktion nötig; lokal reparieren und geprüft fortsetzen.'}`,
+      pilot.updated_at,
+      `pilot:${runId}:error:${pilot.error.failed_step_number||stage}`
+    );
+  }else if(pilot.visual_review_ready){
+    add('success','Der visuelle Mini-Pilot ist bereit',`${completed} von ${total} Shots sind geprüft. Das Video kann direkt hier angesehen werden; Voice, Musik und SFX bleiben bis zur Freigabe getrennt.`,pilot.updated_at,`pilot:${runId}:ready`);
+  }else if(stage==='RENDERING'&&currentShot){
+    add('working',`Shot ${currentShot.id} rendert jetzt: „${currentShot.title}“`,`${completed} von ${total} Shots sind fertig. A6000 und Renderer sind aktiv; kein Retry und kein neuer Fehler. Kein Eingriff nötig.`,pilot.updated_at,`pilot:${runId}:shot:${currentShot.id}:rendering`);
+  }else{
+    const narration={
+      STARTING:['Der neue Pilot-Run ist gestartet',`Run ${runId||'–'} ist eindeutig gebunden. Preflight und Schutzgates werden geprüft.`],
+      GPU_STARTING:['Thunder-Preflight läuft','Token, vorhandene Instanzen und lokales Prüftool werden kontrolliert, bevor GPU-Kosten entstehen.'],
+      GPU_READY:['A6000 und SSH sind bereit','Genau eine Thunder-Instanz läuft. Der Modellschritt ist als Nächstes dran.'],
+      MODEL_LOADING:['Wan 2.2 wird vorbereitet','GPU und SSH sind bereit. Der visuelle 5-Shot-Pilot wird ohne Audio vorbereitet; kein Fehler gemeldet.'],
+      DOWNLOADING:['Alle fünf Shots sind erzeugt','Die Einzelshots, der 25-Sekunden-Cut, das Storyboard und das Manifest werden von der GPU geladen.'],
+      VISUAL_VALIDATION:['Der Review-Cut wird technisch geprüft','Auflösung, Dauer, Dateigröße und die bewusste Audiofreiheit werden jetzt verifiziert.'],
+      PUBLISHING:['Das geprüfte Video wird eingebaut','Der validierte Review-Cut wird in den Control-Center-Player veröffentlicht.'],
+      COMPLETE:['Der visuelle Mini-Pilot ist bereit',`${completed} von ${total} Shots sind geprüft und veröffentlicht.`]
+    };
+    const [title,detail]=narration[stage]||[active?'Pilot-Run arbeitet weiter':'Pilot wartet',pilot?.run?.current_step?`Aktueller Schritt: ${pilot.run.current_step}`:`Status: ${stage.replaceAll('_',' ')}`];
+    add(active?'working':stage==='COMPLETE'?'success':'info',title,detail,pilot.updated_at,`pilot:${runId}:stage:${stage}`);
+  }
+
+  [...shots].reverse().forEach(shot=>{
+    if(['DONE','SUCCESS','COMPLETE','READY'].includes(String(shot.status||'').toUpperCase())){
+      add('success',`Shot ${shot.id} ist fertig und validiert`,shot.title||'Shot-Datei wurde technisch geprüft.',null,`pilot:${runId}:shot:${shot.id}:done`);
+    }
+  });
+
+  const facts=[
+    ['Guardrails and Thunder preflight','success','Preflight bestanden','Validator, Token und Ein-Instanz-Schutz sind bestätigt.'],
+    ['Create one RTX A6000','success','Genau eine A6000 wurde gestartet','Keine zweite bezahlte GPU-Instanz wurde angelegt.'],
+    ['Prepare Wan 2.2 renderer','success','Wan 2.2 ist bereit','Renderer und Abhängigkeiten wurden auf der A6000 vorbereitet.'],
+    ['Preserve downloaded pilot artifact','success','Pilot-Dateien sind gesichert','Der komplette Download wurde vor der Endprüfung als Artefakt konserviert.'],
+    ['Delete Thunder GPU even after failure','success','GPU entfernt · Abrechnung gestoppt','Thunder bestätigt, dass die Instanz nicht mehr aktiv ist.']
+  ];
+  facts.forEach(([needle,want,title,detail])=>{
+    const step=findStep(steps,needle);
+    if(step?.conclusion===want) add('success',title,detail,step.completed_at,`pilot:${runId}:step:${step.number}:success`);
+  });
+
+  const persisted=Array.isArray(state?.operator_events)?state.operator_events:[];
+  persisted.slice().reverse().forEach((event,index)=>{
+    if(!event||!event.title) return;
+    add(event.severity||'info',String(event.title),String(event.detail||''),event.at||null,event.id||`pilot:${runId}:stored:${index}`);
+  });
+  return items.slice(0,12);
+}
+
 function colorForRun(run){
   if(!run) return 'unknown';
   if(ACTIVE_STATUSES.has(String(run.status))) return 'yellow';
@@ -419,6 +499,7 @@ export default async function handler(req,res){
 
   const legacy=await legacyState(gh.headers,gh.authenticated);
   const pilot=pilotState?buildPilot(pilotState,pilotRun,pilotJobs):{available:false,reason:pilotUnavailable||'pilot_state_unavailable'};
+  const operatorFeed=buildOperatorFeed(pilotState,pilot,pilotJobs);
   const payload={
     ...(snapshot||{schema:'tayvoriq-live-v2'}),
     schema:'tayvoriq-live-v2',
@@ -432,6 +513,7 @@ export default async function handler(req,res){
     healthchecks,
     events:[...liveEvents,...(snapshot?.events||[])].slice(0,20),
     pilot,
+    operator_feed:operatorFeed,
     live:{
       checked_at:checkedAt,
       authenticated:gh.authenticated,
