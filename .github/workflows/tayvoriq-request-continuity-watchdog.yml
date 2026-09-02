@@ -1,341 +1,118 @@
 name: TAYVORIQ Request Continuity Watchdog
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/run-now/tayvoriq-direct-recovery-trigger.json
+  workflow_run:
+    workflows:
+      - TAYVORIQ-X Golden Path
+      - TAYVORIQ Production Green Promoter
+      - TAYVORIQ Deterministic Codefix Continuity
+      - TAYVORIQ Delivery Watch
+    types: [completed]
+  schedule:
+    - cron: '*/15 * * * *'
 
 permissions:
-  actions: write
-  contents: write
+  actions: read
+  contents: read
 
-# Delivery Watch and Continuity Watchdog share one mutation lock. Only one of
-# them may rebind the active Telegram request at a time.
+# Observer only. This workflow never retries, dispatches, cancels, mutates request
+# state, or claims recovery ownership. The Agent Orchestrator is the sole lifecycle
+# decision owner; this watchdog only exposes evidence for diagnosis/failsafe checks.
 concurrency:
-  group: tayvoriq-delivery-watch
-  cancel-in-progress: false
+  group: tayvoriq-request-continuity-watchdog
+  cancel-in-progress: true
 
 jobs:
-  protect-active-request:
+  observe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      MAX_RECOVERY_GENERATIONS: "4"
+      ACTIVE_REQUEST_POINTER: .github/state/tayvoriq-active-production-request.json
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Resolve newest exact Telegram-bound auto-repair request
-        id: active
+      - name: Observe canonical active request
         shell: bash
         run: |
           set -euo pipefail
-          python - "$GITHUB_OUTPUT" <<'PY'
-          import json, os, subprocess, sys
+          python - <<'PY'
+          import json
           from pathlib import Path
 
-          out = {
-              'found':'false', 'request_file':'', 'request_id':'', 'topic':'',
-              'trend_id':'', 'run_id':'', 'run_attempt':'1', 'generation':'0',
-              'conclusion':''
-          }
-          candidates = []
-          for request_path in sorted(Path('requests').glob('*.json')):
+          pointer_path = Path('.github/state/tayvoriq-active-production-request.json')
+          if not pointer_path.is_file():
+              print('WATCHDOG:NO_ACTIVE_POINTER')
+              raise SystemExit(0)
+
+          try:
+              pointer = json.loads(pointer_path.read_text(encoding='utf-8'))
+          except Exception as exc:
+              print(f'WATCHDOG:ACTIVE_POINTER_INVALID:{exc}')
+              raise SystemExit(0)
+
+          request_id = str(pointer.get('request_id') or '').strip()
+          run_id = int(pointer.get('golden_path_run_id') or 0)
+          state = str(pointer.get('state') or '').strip()
+          generation = int(pointer.get('recovery_generation') or 0)
+          request_path = Path('requests') / f'{request_id}.json' if request_id else None
+          request_status = ''
+          request_substate = ''
+          if request_path and request_path.is_file():
               try:
-                  data = json.loads(request_path.read_text(encoding='utf-8'))
+                  request = json.loads(request_path.read_text(encoding='utf-8'))
+                  request_status = str(request.get('status') or '')
+                  request_substate = str(request.get('request_substate') or '')
               except Exception:
-                  continue
-              request_id = str(data.get('request_id') or '').strip()
-              source_context = (
-                  data.get('source_context')
-                  if isinstance(data.get('source_context'), dict)
-                  else {}
-              )
-              telegram_bound = (
-                  str(data.get('source') or '').strip() == 'telegram_trend_approval'
-                  or data.get('telegram_only_user_path') is True
-                  or source_context.get('telegram_only_user_path') is True
-                  or str(data.get('communication_channel') or '').strip() == 'telegram'
-              )
-              auto_repair = (
-                  data.get('auto_repair_until_review') is True
-                  or source_context.get('auto_repair_until_review') is True
-                  or str(data.get('source') or '').strip() == 'telegram_trend_approval'
-              )
-              valid = (
-                  request_id
-                  and request_path.name == f'{request_id}.json'
-                  and all(c not in request_id for c in '/\\\r\n')
-                  and request_id not in {'.', '..'}
-                  and str(data.get('status') or '').strip() == 'DISPATCHED'
-                  and telegram_bound
-                  and auto_repair
-              )
-              try:
-                  run_id = int(data.get('golden_path_run_id') or 0)
-              except (TypeError, ValueError):
-                  run_id = 0
-              if valid and run_id:
-                  candidates.append((run_id, request_path, data))
+                  request_status = 'INVALID_JSON'
 
-          # The immutable request bound to the newest Golden Path run owns
-          # continuity. A stale global pointer must never pull an older failed
-          # topic (for example the exhausted Bosch request) back into recovery.
-          if candidates:
-              run_id, request_path, data = max(candidates, key=lambda item: item[0])
-              request_id = str(data.get('request_id') or '').strip()
-              try:
-                  raw = subprocess.check_output(
-                      ['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'],
-                      text=True,
-                  )
-                  run = json.loads(raw)
-              except Exception as exc:
-                  print(f'ACTIVE_REQUEST_RUN_LOOKUP_FAILED:{exc}')
-              else:
-                  status = str(run.get('status') or '')
-                  conclusion = str(run.get('conclusion') or '')
-                  if status == 'completed' and conclusion != 'success':
-                      out.update({
-                          'found':'true',
-                          'request_file':str(request_path),
-                          'request_id':request_id,
-                          'topic':str(data.get('topic') or '').strip(),
-                          'trend_id':str(data.get('trend_id') or '').strip(),
-                          'run_id':str(run_id),
-                          'run_attempt':str(max(1, int(run.get('run_attempt') or 1))),
-                          'generation':str(max(0, int(data.get('recovery_generation') or 0))),
-                          'conclusion':conclusion,
-                      })
-                  else:
-                      print(
-                          f'NEWEST_REQUEST_NOT_RECOVERABLE_YET:'
-                          f'{request_id}:{run_id}:{status}:{conclusion}'
-                      )
-
-          with open(sys.argv[1], 'a', encoding='utf-8') as handle:
-              for key, value in out.items():
-                  handle.write(f'{key}={value}\n')
-          print(out)
+          print(json.dumps({
+              'observer':'tayvoriq-request-continuity-watchdog',
+              'decision_owner':'tayvoriq-agent-orchestrator-v2',
+              'active_state':state,
+              'request_id':request_id,
+              'golden_path_run_id':run_id,
+              'recovery_generation':generation,
+              'request_status':request_status,
+              'request_substate':request_substate,
+              'action':'OBSERVE_ONLY'
+          }, ensure_ascii=False))
           PY
 
-      - name: Capture failed-run evidence
-        if: steps.active.outputs.found == 'true'
+      - name: Observe referenced Golden Path run
         shell: bash
-        env:
-          RUN_ID: ${{ steps.active.outputs.run_id }}
         run: |
           set -euo pipefail
-          gh run view "$RUN_ID" --log-failed > /tmp/tayvoriq-failed.log 2>&1 || true
-          test -f /tmp/tayvoriq-failed.log
-
-      - name: Classify recovery with shared policy
-        id: policy
-        if: steps.active.outputs.found == 'true'
-        shell: bash
-        env:
-          RUN_ATTEMPT: ${{ steps.active.outputs.run_attempt }}
-          GENERATION: ${{ steps.active.outputs.generation }}
-        run: |
-          set -euo pipefail
-          python tools/tayvoriq_recovery_policy_v1.py \
-            --logs-file /tmp/tayvoriq-failed.log \
-            --run-attempt "${RUN_ATTEMPT:-1}" \
-            --recovery-generation "${GENERATION:-0}" \
-            --max-generations "${MAX_RECOVERY_GENERATIONS}" \
-            --owner-found true \
-            --owner-current true \
-            --exact-request-retry true \
-            --output-json /tmp/recovery-policy.json
-          python - "$GITHUB_OUTPUT" <<'PY'
-          import json, sys
-          data=json.load(open('/tmp/recovery-policy.json', encoding='utf-8'))
-          for key in ('mode','state','retry_kind','failure_signature','reason'):
-              value=str(data.get(key) or '').replace('\n',' ')
-              with open(sys.argv[1],'a',encoding='utf-8') as h:
-                  h.write(f'{key}={value}\n')
-          next_generation=data.get('next_generation')
-          with open(sys.argv[1],'a',encoding='utf-8') as h:
-              h.write(f'retry_allowed={str(bool(data.get("retry_allowed"))).lower()}\n')
-              h.write(f'next_generation={"" if next_generation is None else int(next_generation)}\n')
-          print(data)
-          PY
-
-      - name: Same-run retry for transient failure only
-        if: steps.policy.outputs.mode == 'rerun'
-        shell: bash
-        env:
-          RUN_ID: ${{ steps.active.outputs.run_id }}
-        run: |
-          set -euo pipefail
-          gh run rerun "$RUN_ID" --failed
-          echo "TRANSIENT_SAME_RUN_RETRY_REQUESTED:$RUN_ID"
-
-      - name: Start one bounded fresh recovery
-        id: fresh
-        if: steps.policy.outputs.mode == 'fresh' && steps.policy.outputs.retry_allowed == 'true'
-        shell: bash
-        env:
-          OLD_RUN_ID: ${{ steps.active.outputs.run_id }}
-          REQUEST_FILE: ${{ steps.active.outputs.request_file }}
-          REQUEST_ID: ${{ steps.active.outputs.request_id }}
-          TOPIC: ${{ steps.active.outputs.topic }}
-          TREND_ID: ${{ steps.active.outputs.trend_id }}
-          NEXT_GENERATION: ${{ steps.policy.outputs.next_generation }}
-        run: |
-          set -euo pipefail
-          [[ "$NEXT_GENERATION" =~ ^[0-9]+$ ]] || { echo 'RECOVERY_GENERATION_INVALID'; exit 1; }
-          [ "$NEXT_GENERATION" -le "$MAX_RECOVERY_GENERATIONS" ] || { echo 'RECOVERY_CIRCUIT_BREACH'; exit 1; }
-
-          before_ids=$(gh run list \
-            --workflow tayvoriq-deliver-video-now.yml \
-            --event workflow_dispatch \
-            --limit 40 \
-            --json databaseId \
-            --jq '.[].databaseId' | tr '\n' ' ')
-          dispatch_epoch=$(date +%s)
-
-          gh workflow run tayvoriq-deliver-video-now.yml \
-            --ref main \
-            -f "topic=$TOPIC" \
-            -f "trend_id=$TREND_ID" \
-            -f "source_request_id=$REQUEST_ID"
-
-          new_run_id=""
-          for poll in $(seq 1 30); do
-            sleep 4
-            gh run list \
-              --workflow tayvoriq-deliver-video-now.yml \
-              --event workflow_dispatch \
-              --limit 40 \
-              --json databaseId,createdAt > /tmp/recovery-runs.json
-            candidate=$(python - "$before_ids" "$dispatch_epoch" <<'PY'
-          import json, sys
-          from datetime import datetime
-          before={int(value) for value in sys.argv[1].split() if value.isdigit()}
-          epoch=int(sys.argv[2])
-          candidates=[]
-          for item in json.load(open('/tmp/recovery-runs.json', encoding='utf-8')):
-              try:
-                  run_id=int(item.get('databaseId') or 0)
-                  created=datetime.fromisoformat(str(item.get('createdAt') or '').replace('Z','+00:00')).timestamp()
-              except Exception:
-                  continue
-              if run_id and run_id not in before and created >= epoch - 5:
-                  candidates.append((created, run_id))
-          print(max(candidates)[1] if candidates else '')
-          PY
-            )
-            if [[ "$candidate" =~ ^[0-9]+$ ]] && [ "$candidate" != "$OLD_RUN_ID" ]; then
-              new_run_id="$candidate"
-              break
-            fi
-          done
-          [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'CONTINUITY_RECOVERY_DISPATCH_NOT_VERIFIED'; exit 1; }
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rebound=false
-          for attempt in 1 2 3 4 5; do
-            git fetch origin main
-            git reset --hard origin/main
-            python - "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" "$new_run_id" "$NEXT_GENERATION" "${{ steps.policy.outputs.failure_signature }}" <<'PY'
-          import json, sys
-          from datetime import datetime, timezone
+          run_id=$(python - <<'PY'
+          import json
           from pathlib import Path
-          path=Path(sys.argv[1]); request_id=sys.argv[2]
-          old_run=int(sys.argv[3]); new_run=int(sys.argv[4]); generation=int(sys.argv[5]); signature=sys.argv[6]
-          data=json.loads(path.read_text(encoding='utf-8'))
-          if str(data.get('request_id') or '').strip() != request_id:
-              raise SystemExit('REQUEST_ID_CHANGED_DURING_CONTINUITY_RECOVERY')
-          source_context=(
-              data.get('source_context')
-              if isinstance(data.get('source_context'), dict)
-              else {}
-          )
-          telegram_bound=(
-              str(data.get('source') or '').strip() == 'telegram_trend_approval'
-              or data.get('telegram_only_user_path') is True
-              or source_context.get('telegram_only_user_path') is True
-              or str(data.get('communication_channel') or '').strip() == 'telegram'
-          )
-          auto_repair=(
-              data.get('auto_repair_until_review') is True
-              or source_context.get('auto_repair_until_review') is True
-              or str(data.get('source') or '').strip() == 'telegram_trend_approval'
-          )
-          if not telegram_bound or not auto_repair:
-              raise SystemExit('REQUEST_NOT_TELEGRAM_BOUND_AUTO_REPAIR')
-          if int(data.get('golden_path_run_id') or 0) != old_run:
-              raise SystemExit('REQUEST_ALREADY_REBOUND_BY_OTHER_RECOVERY_OWNER')
-          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
-          previous=list(data.get('previous_golden_path_run_ids') or [])
-          if old_run not in previous:
-              previous.append(old_run)
-          data['previous_golden_path_run_ids']=previous[-20:]
-          data['golden_path_run_id']=new_run
-          data['status']='DISPATCHED'
-          data['recovery_generation']=generation
-          data['retry_of_run_id']=old_run
-          data['replacement_reason']='BOUNDED_ACTIVE_REVIEW_CONTINUITY_RECOVERY'
-          data['recovery_owner']='tayvoriq-request-continuity-watchdog'
-          data['recovery_failure_signature']=signature
-          data['recovery_dispatched_at']=now
-          data['state_history']=list(data.get('state_history') or []) + [{
-              'state':'DISPATCHED','at':now,'actor':'tayvoriq-request-continuity-watchdog',
-              'meta':{
-                  'retry_of_run_id':old_run,
-                  'golden_path_run_id':new_run,
-                  'recovery_generation':generation,
-                  'failure_signature':signature,
-                  'reason':'bounded-active-review-request-continuity'
-              }
-          }]
-          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          p=Path('.github/state/tayvoriq-active-production-request.json')
+          try:
+              d=json.loads(p.read_text(encoding='utf-8')) if p.is_file() else {}
+              print(int(d.get('golden_path_run_id') or 0))
+          except Exception:
+              print(0)
           PY
-            git add -- "$REQUEST_FILE"
-            git commit -m "ops: bounded recovery ${REQUEST_ID} g${NEXT_GENERATION} to ${new_run_id}"
-            if git push origin HEAD:main; then
-              rebound=true
-              break
-            fi
-            sleep $((attempt * 2))
-          done
-          [ "$rebound" = "true" ] || { echo 'CONTINUITY_RECOVERY_BIND_FAILED'; exit 1; }
-          echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
-          echo "generation=$NEXT_GENERATION" >> "$GITHUB_OUTPUT"
+          )
+          if [ "$run_id" = "0" ]; then
+            echo 'WATCHDOG:NO_REFERENCED_RUN'
+            exit 0
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" \
+            --jq '{id,name,status,conclusion,event,head_sha,updated_at}' || true
 
-      - name: Telegram bounded recovery resumed
-        if: steps.fresh.outputs.new_run_id != ''
-        shell: bash
+      - name: Record observer contract
         run: |
-          set -euo pipefail
-          text=$(printf '🔧 TAYVORIQ 60 %% · Recovery gezielt fortgesetzt\n\nThema: %s\nFehlgeschlagener Run: %s\nNeuer Recovery-Run: %s\nRecovery: Generation %s von %s\n\n✅ Derselbe Telegram-Auftrag und dieselben geprüften Quellen bleiben gebunden.\n✅ Dieser Retry wurde als technisch sinnvoll klassifiziert.\n➡️ Kein unbegrenzter Recovery-Loop: nach dem Limit stoppt der Circuit-Breaker.' \
-            "${{ steps.active.outputs.topic }}" \
-            "${{ steps.active.outputs.run_id }}" \
-            "${{ steps.fresh.outputs.new_run_id }}" \
-            "${{ steps.fresh.outputs.generation }}" \
-            "$MAX_RECOVERY_GENERATIONS")
-          curl -fsS --retry 3 --retry-all-errors -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${text}" >/dev/null
-
-      - name: Report non-retryable blocker without redispatch
-        if: steps.active.outputs.found == 'true' && contains(fromJson('["deterministic","external","duplicate","exhausted"]'), steps.policy.outputs.mode)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "RECOVERY_STOPPED mode=${{ steps.policy.outputs.mode }} state=${{ steps.policy.outputs.state }} signature=${{ steps.policy.outputs.failure_signature }}"
-          echo "Reason: ${{ steps.policy.outputs.reason }}"
-          echo "No Golden Path run was dispatched by the continuity watchdog."
+          {
+            echo '### TAYVORIQ Watchdog'
+            echo '- Mode: **observer only**'
+            echo '- Decision owner: **TAYVORIQ Agent Orchestrator V2**'
+            echo '- Mutations: **none**'
+            echo '- Recovery dispatch: **none**'
+            echo '- Run cancellation: **none**'
+          } >> "$GITHUB_STEP_SUMMARY"
