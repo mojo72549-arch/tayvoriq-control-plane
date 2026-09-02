@@ -7,6 +7,7 @@ on:
       - tests/test_tayvoriq_recovery_policy_v1.py
       - tests/test_tayvoriq_recovery_policy_external_hardening.py
       - tests/test_tayvoriq_request_continuity_latest_request_v2.py
+      - .github/workflows/tayvoriq-agent-orchestrator-v2.yml
       - .github/workflows/tayvoriq-delivery-watch.yml
       - .github/workflows/tayvoriq-request-continuity-watchdog.yml
       - tools/tayvoriq_telegram_progress_v1.py
@@ -23,6 +24,7 @@ on:
       - tests/test_tayvoriq_recovery_policy_v1.py
       - tests/test_tayvoriq_recovery_policy_external_hardening.py
       - tests/test_tayvoriq_request_continuity_latest_request_v2.py
+      - .github/workflows/tayvoriq-agent-orchestrator-v2.yml
       - .github/workflows/tayvoriq-delivery-watch.yml
       - .github/workflows/tayvoriq-request-continuity-watchdog.yml
       - tools/tayvoriq_telegram_progress_v1.py
@@ -65,6 +67,7 @@ jobs:
           from pathlib import Path
           import yaml
           for name in (
+              '.github/workflows/tayvoriq-agent-orchestrator-v2.yml',
               '.github/workflows/tayvoriq-delivery-watch.yml',
               '.github/workflows/tayvoriq-request-continuity-watchdog.yml',
           ):
@@ -72,13 +75,25 @@ jobs:
               assert isinstance(data, dict) and data.get('jobs'), name
           print('RECOVERY_WORKFLOW_YAML_VALID')
           PY
-      - name: Assert bounded recovery invariants
+      - name: Assert orchestrator-owned bounded recovery invariants
         run: |
-          grep -q 'MAX_RECOVERY_GENERATIONS: "4"' .github/workflows/tayvoriq-delivery-watch.yml
-          grep -q 'MAX_RECOVERY_GENERATIONS: "4"' .github/workflows/tayvoriq-request-continuity-watchdog.yml
-          grep -q 'tayvoriq_recovery_policy_v1.py' .github/workflows/tayvoriq-request-continuity-watchdog.yml
-          grep -q 'No Golden Path run was dispatched' .github/workflows/tayvoriq-request-continuity-watchdog.yml
-          grep -q "steps.policy.outputs.mode == 'fresh'" .github/workflows/tayvoriq-request-continuity-watchdog.yml
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          delivery=yaml.safe_load(Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8'))
+          job=(delivery.get('jobs') or {}).get('classify-and-recover') or {}
+          assert str((job.get('env') or {}).get('MAX_RECOVERY_GENERATIONS')) == '4'
+          PY
+          grep -q 'lifecycle-controller:' .github/workflows/tayvoriq-agent-orchestrator-v2.yml
+          grep -q 'Enforce single active executor' .github/workflows/tayvoriq-agent-orchestrator-v2.yml
+          grep -q 'tayvoriq-deterministic-codefix-continuity.yml' .github/workflows/tayvoriq-agent-orchestrator-v2.yml
+          grep -q 'tayvoriq-delivery-watch.yml' .github/workflows/tayvoriq-agent-orchestrator-v2.yml
+          grep -q 'actions: read' .github/workflows/tayvoriq-request-continuity-watchdog.yml
+          grep -q "action':'OBSERVE_ONLY'" .github/workflows/tayvoriq-request-continuity-watchdog.yml
+          ! grep -q 'gh workflow run' .github/workflows/tayvoriq-request-continuity-watchdog.yml
+          ! grep -q '/cancel' .github/workflows/tayvoriq-request-continuity-watchdog.yml
+          ! grep -q 'actions: write' .github/workflows/tayvoriq-request-continuity-watchdog.yml
 
   telegram-progress:
     runs-on: ubuntu-latest
@@ -113,4 +128,6 @@ jobs:
               'render_heartbeat', 'checkpoint_repair', 'checkpoint_heartbeat'
           ]
           assert policy['suppress_intermediate_liveness_polls'] is True
+          assert policy['internal_recovery_operator_noise_suppressed'] is True
+          assert policy['terminal_external_blocker_notification_enabled'] is True
           PY

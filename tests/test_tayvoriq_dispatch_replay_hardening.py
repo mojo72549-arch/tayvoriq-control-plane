@@ -23,8 +23,10 @@ def _literal_assignment(path: Path, name: str):
 def test_normal_dispatch_pins_the_exact_telegram_request():
     text = DISPATCH.read_text(encoding="utf-8")
     assert 'REQUEST_ID: ${{ steps.request.outputs.request_id }}' in text
-    assert '-f source_request_id="$REQUEST_ID"' in text
-    assert 'Golden Path accepted request ${REQUEST_ID}' in text
+    assert "'source_request_id':os.environ['REQUEST_ID']" in text
+    assert "'event_type':'tayvoriq_produce_request'" in text
+    assert "'control_repo':'mojo72549-arch/tayvoriq-control-plane'" in text
+    assert 'BOUND_REQUEST=${REQUEST_ID} STUDIO_RUN=${STUDIO_RUN_ID}' in text
 
 
 def test_replay_push_is_verified_and_has_an_exact_request_fallback():
