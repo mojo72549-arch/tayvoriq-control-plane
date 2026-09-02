@@ -47,3 +47,10 @@ def test_quality_health_is_execution_state_not_only_policy_state():
     assert 'quality_stage = next((x for x in stages if x.get("label") == "Quality Audit")' in src
     assert 'quality_detail = "Wartet auf reparierten Publishable Output"' in src
     assert '"status": quality_status' in src
+
+
+def test_production_green_promoter_never_dispatches_codefix_helper():
+    src = Path(".github/workflows/tayvoriq-production-green-promoter.yml").read_text(encoding="utf-8")
+    assert "gh workflow run tayvoriq-deterministic-codefix-continuity.yml" not in src
+    assert "Report verified Production Green state to Orchestrator" in src
+    assert "actions: read" in src
