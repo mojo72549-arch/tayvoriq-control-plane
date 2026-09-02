@@ -16,7 +16,12 @@ on:
       - "tools/tayvoriq_agent_series_request_v2.py"
       - "scripts/tayvoriq_ops_health.py"
       - "api/live.js"
+      - "api/logs.js"
       - "dashboard/api/live.js"
+      - "dashboard/api/logs.js"
+      - "dashboard/live.html"
+      - "vercel.json"
+      - "dashboard/vercel.json"
       - "tests/**"
       - ".github/workflows/tayvoriq-growth-v2-control-plane-smoke.yml"
   workflow_dispatch:
@@ -54,6 +59,8 @@ jobs:
             scripts/tayvoriq_ops_health.py
           node --check api/live.js
           node --check dashboard/api/live.js
+          node --check api/logs.js
+          node --check dashboard/api/logs.js
 
       - name: Run Growth V2 and existing control-plane regressions
         run: |
@@ -63,4 +70,5 @@ jobs:
             tests/test_tayvoriq_control_plane_v2.py \
             tests/test_tayvoriq_global_duplicate_gate_v1.py \
             tests/test_tayvoriq_telegram_progress_v1.py \
-            tests/test_control_center_realtime_contract.py
+            tests/test_control_center_realtime_contract.py \
+            tests/test_control_center_live_console_contract.py
