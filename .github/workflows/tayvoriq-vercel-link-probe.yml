@@ -1,0 +1,49 @@
+name: TAYVORIQ Vercel Link Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tayvoriq-vercel-link-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-vercel-link-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check repository linkage
+        uses: actions/checkout@v4
+
+      - name: Report safe Vercel linkage signals
+        shell: bash
+        env:
+          HAS_VERCEL_TOKEN: "${{ secrets.VERCEL_TOKEN != '' }}"
+          HAS_VERCEL_ORG_SECRET: "${{ secrets.VERCEL_ORG_ID != '' }}"
+          HAS_VERCEL_PROJECT_SECRET: "${{ secrets.VERCEL_PROJECT_ID != '' }}"
+          HAS_VERCEL_ORG_VAR: "${{ vars.VERCEL_ORG_ID != '' }}"
+          HAS_VERCEL_PROJECT_VAR: "${{ vars.VERCEL_PROJECT_ID != '' }}"
+        run: |
+          set -euo pipefail
+          linked_file=false
+          test -f .vercel/project.json && linked_file=true
+          echo "VERCEL_TOKEN_PRESENT=${HAS_VERCEL_TOKEN}"
+          echo "VERCEL_ORG_ID_SECRET_PRESENT=${HAS_VERCEL_ORG_SECRET}"
+          echo "VERCEL_PROJECT_ID_SECRET_PRESENT=${HAS_VERCEL_PROJECT_SECRET}"
+          echo "VERCEL_ORG_ID_VARIABLE_PRESENT=${HAS_VERCEL_ORG_VAR}"
+          echo "VERCEL_PROJECT_ID_VARIABLE_PRESENT=${HAS_VERCEL_PROJECT_VAR}"
+          echo "VERCEL_PROJECT_FILE_PRESENT=${linked_file}"
+          if [ "${HAS_VERCEL_TOKEN}" != "true" ]; then
+            echo "::warning::VERCEL_TOKEN is not configured in this repository."
+          fi
+          if [ "${HAS_VERCEL_PROJECT_SECRET}" != "true" ] && [ "${HAS_VERCEL_PROJECT_VAR}" != "true" ] && [ "${linked_file}" != "true" ]; then
+            echo "::warning::No Vercel project ID is bound to this repository."
+          fi
+          echo "Probe only: no deployment was created and no secret value was printed."
