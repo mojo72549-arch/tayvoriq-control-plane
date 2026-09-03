@@ -14,6 +14,7 @@ def test_live_api_reads_isolated_pilot_state_and_exact_run():
         assert "pilotRunId=Number(pilotState?.run_id||0)" in src
         assert "buildPilot(pilotState,pilotRun,pilotJobs)" in src
         assert "visual_review_ready" in src
+        assert "VISUAL_REVIEW_READY" in src
         assert "gpu_cleanup" in src
         assert "buildOperatorFeed" in src
         assert "operator_feed:operatorFeed" in src
@@ -62,6 +63,8 @@ def test_live_console_embeds_video_shots_cleanup_and_failure_reason():
     assert 'id="operatorTitle"' in src
     assert 'id="operatorList"' in src
     assert "Codex Live · Was ich gerade mache" in src
+    assert "REVIEW BEREIT" in src
+    assert "DEINE SICHTUNG OFFEN" in src
     assert "renderOperator(d.operator_feed||[],d.pilot||{})" in src
 
 
