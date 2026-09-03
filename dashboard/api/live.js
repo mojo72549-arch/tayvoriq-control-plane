@@ -217,7 +217,7 @@ function buildPilot(state,run,jobs=[]){
   const cleanupStep=findStep(steps,'delete thunder gpu');
   const failed=String(state.status).toUpperCase()==='FAILED'||String(run?.conclusion)==='failure';
   const failureClass=failed?pilotFailureClass(state.stage,failedStep?.name,state.last_error):null;
-  const ready=Boolean(state?.video?.ready)&&(String(state.status).toUpperCase()==='COMPLETE'||failureClass==='GPU_CLEANUP_WARNING');
+  const ready=Boolean(state?.video?.ready)&&(['COMPLETE','VISUAL_REVIEW_READY'].includes(String(state.status).toUpperCase())||failureClass==='GPU_CLEANUP_WARNING');
   return {
     available:true,
     project:state.project||'TAYVORIQ ORIGINALS · 02:17',
@@ -295,7 +295,7 @@ function buildOperatorFeed(state,pilot,jobs=[]){
       `pilot:${runId}:error:${pilot.error.failed_step_number||stage}`
     );
   }else if(pilot.visual_review_ready){
-    add('success','Der visuelle Mini-Pilot ist bereit',`${completed} von ${total} Shots sind geprüft. Das Video kann direkt hier angesehen werden; Voice, Musik und SFX bleiben bis zur Freigabe getrennt.`,pilot.updated_at,`pilot:${runId}:ready`);
+    add('success','Visual-Review-Paket ist bereit',`${completed} von ${total} Shots sind technisch geprüft. Das Video kann direkt hier angesehen werden. Nächster Schritt: deine visuelle Freigabe; erst danach folgen Voice, Musik und SFX.`,pilot.updated_at,`pilot:${runId}:ready`);
   }else if(stage==='RENDERING'&&currentShot){
     add('working',`Shot ${currentShot.id} rendert jetzt: „${currentShot.title}“`,`${completed} von ${total} Shots sind fertig. A6000 und Renderer sind aktiv; kein Retry und kein neuer Fehler. Kein Eingriff nötig.`,pilot.updated_at,`pilot:${runId}:shot:${currentShot.id}:rendering`);
   }else{
@@ -307,10 +307,11 @@ function buildOperatorFeed(state,pilot,jobs=[]){
       DOWNLOADING:['Alle fünf Shots sind erzeugt','Die Einzelshots, der 25-Sekunden-Cut, das Storyboard und das Manifest werden von der GPU geladen.'],
       VISUAL_VALIDATION:['Der Review-Cut wird technisch geprüft','Auflösung, Dauer, Dateigröße und die bewusste Audiofreiheit werden jetzt verifiziert.'],
       PUBLISHING:['Das geprüfte Video wird eingebaut','Der validierte Review-Cut wird in den Control-Center-Player veröffentlicht.'],
-      COMPLETE:['Der visuelle Mini-Pilot ist bereit',`${completed} von ${total} Shots sind geprüft und veröffentlicht.`]
+      COMPLETE:['Visual-Review-Paket ist bereit',`${completed} von ${total} Shots sind technisch geprüft. Deine visuelle Freigabe ist offen.`],
+      VISUAL_REVIEW_READY:['Visual-Review-Paket ist bereit',`${completed} von ${total} Shots sind technisch geprüft. Deine visuelle Freigabe ist offen; Audio bleibt zurückgestellt.`]
     };
     const [title,detail]=narration[stage]||[active?'Pilot-Run arbeitet weiter':'Pilot wartet',pilot?.run?.current_step?`Aktueller Schritt: ${pilot.run.current_step}`:`Status: ${stage.replaceAll('_',' ')}`];
-    add(active?'working':stage==='COMPLETE'?'success':'info',title,detail,pilot.updated_at,`pilot:${runId}:stage:${stage}`);
+    add(active?'working':['COMPLETE','VISUAL_REVIEW_READY'].includes(stage)?'success':'info',title,detail,pilot.updated_at,`pilot:${runId}:stage:${stage}`);
   }
 
   [...shots].reverse().forEach(shot=>{
