@@ -31,6 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
+      - name: Checkout current control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Resolve authoritative run
         id: run
         shell: bash
@@ -46,7 +51,53 @@ jobs:
           fi
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
 
+      - name: Suppress retired production request telemetry
+        id: retired
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.run.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          run_id = int(os.environ['RUN_ID'])
+          path = Path('.github/state/tayvoriq-retired-production-requests.json')
+          suppressed = False
+          request_id = ''
+          if path.is_file():
+              try:
+                  data = json.loads(path.read_text(encoding='utf-8'))
+              except Exception:
+                  data = {}
+              requests = data.get('requests') if isinstance(data.get('requests'), dict) else {}
+              for rid, item in requests.items():
+                  if not isinstance(item, dict):
+                      continue
+                  blocked = item.get('blocked_run_ids') if isinstance(item.get('blocked_run_ids'), list) else []
+                  blocked_ids = set()
+                  for value in blocked:
+                      try:
+                          blocked_ids.add(int(value))
+                      except (TypeError, ValueError):
+                          pass
+                  if run_id in blocked_ids and item.get('allow_notifications') is False:
+                      suppressed = True
+                      request_id = str(rid)
+                      break
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f"suppressed={'true' if suppressed else 'false'}\n")
+              handle.write(f"request_id={request_id}\n")
+          print({'run_id': run_id, 'suppressed': suppressed, 'request_id': request_id or None})
+          PY
+
+      - name: Record retired telemetry suppression
+        if: steps.retired.outputs.suppressed == 'true'
+        run: echo "Retired request telemetry suppressed for run ${{ steps.run.outputs.run_id }} (${{ steps.retired.outputs.request_id }})."
+
       - name: Publish verified telemetry signal
+        if: steps.retired.outputs.suppressed != 'true'
         shell: bash
         env:
           RUN_ID: ${{ steps.run.outputs.run_id }}
