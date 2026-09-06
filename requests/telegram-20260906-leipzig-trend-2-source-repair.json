@@ -58,10 +58,23 @@
       "state": "DISPATCHED",
       "at": "2026-09-06T18:43:15Z",
       "actor": "request_bound_source_recovery"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-06T18:45:15.707085Z",
+      "actor": "tayvoriq-request-pin-autorepair",
+      "meta": {
+        "golden_path_run_id": 34052642892,
+        "reason": "bind-failed-run-before-delivery-watch"
+      }
     }
   ],
   "retry_of_run_id": 34051851584,
   "recovery_generation": 1,
   "replacement_reason": "SOURCE_CONTEXT_HANDOFF_REPAIR",
-  "quality_gates_weakened": false
+  "quality_gates_weakened": false,
+  "previous_golden_path_run_ids": [],
+  "golden_path_run_id": 34052642892,
+  "recovery_owner": "tayvoriq-request-pin-autorepair",
+  "owner_bound_at": "2026-09-06T18:45:15.707085Z"
 }
