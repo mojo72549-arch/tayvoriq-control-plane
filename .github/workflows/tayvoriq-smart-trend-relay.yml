@@ -1,0 +1,81 @@
+name: TAYVORIQ Smart Trend Relay
+
+on:
+  workflow_dispatch:
+    inputs:
+      trend_mode:
+        required: true
+        default: manual_topic
+      trend_scope:
+        required: true
+        default: auto_scope
+      topic:
+        required: true
+      language:
+        required: true
+        default: Deutsch
+      platform:
+        required: true
+        default: youtube_tiktok
+      target_duration:
+        required: true
+        default: '40'
+      llm_provider:
+        required: true
+        default: auto
+      telegram_notify:
+        required: true
+        default: 'true'
+
+permissions:
+  contents: read
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      STUDIO_REPO: ${{ vars.TAYVORIQ_PRIVATE_REPO || 'mojo72549-arch/shorts-agent-studio' }}
+      STUDIO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+    steps:
+      - name: Validate private Studio credential
+        run: |
+          set -euo pipefail
+          test -n "$STUDIO_TOKEN" || { echo 'PRIVATE_REPO_TOKEN missing'; exit 2; }
+
+      - name: Relay workflow dispatch to private Studio
+        env:
+          TREND_MODE: ${{ inputs.trend_mode }}
+          TREND_SCOPE: ${{ inputs.trend_scope }}
+          TOPIC: ${{ inputs.topic }}
+          LANGUAGE: ${{ inputs.language }}
+          PLATFORM: ${{ inputs.platform }}
+          TARGET_DURATION: ${{ inputs.target_duration }}
+          LLM_PROVIDER: ${{ inputs.llm_provider }}
+          TELEGRAM_NOTIFY: ${{ inputs.telegram_notify }}
+        run: |
+          set -euo pipefail
+          PAYLOAD=$(python - <<'PY'
+          import json, os
+          print(json.dumps({
+            'ref': 'main',
+            'inputs': {
+              'trend_mode': os.environ['TREND_MODE'],
+              'trend_scope': os.environ['TREND_SCOPE'],
+              'topic': os.environ['TOPIC'],
+              'language': os.environ['LANGUAGE'],
+              'platform': os.environ['PLATFORM'],
+              'target_duration': os.environ['TARGET_DURATION'],
+              'llm_provider': os.environ['LLM_PROVIDER'],
+              'telegram_notify': os.environ['TELEGRAM_NOTIFY'],
+            }
+          }, ensure_ascii=False))
+          PY
+          )
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $STUDIO_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$STUDIO_REPO/actions/workflows/tayvoriq-smart-trend-run.yml/dispatches" \
+            -d "$PAYLOAD"
+          echo 'Private Studio dispatch accepted.'
