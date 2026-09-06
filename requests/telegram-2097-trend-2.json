@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-2097-trend-2",
-  "status": "DISPATCH_FAILED",
+  "status": "APPROVED",
   "source": "telegram_trend_approval_recovered",
   "trend_id": "2",
   "topic": "97% · Deutschland und Russland im Drohnen-Streit: Warum der Leipzig-Vorfall die Spannungen weiter verschärft",
@@ -15,6 +15,7 @@
   "approval_key": "telegram:trend-20260906-1915-fresh:2097:trend:2",
   "mode": "full",
   "selection_id": "trend-20260906-1915-fresh",
+  "dispatch_transport": "studio_internal_kick",
   "source_context": {
     "independent_news_count": 3,
     "quality_gates_weakened": false,
@@ -59,12 +60,15 @@
       "state": "DISPATCH_FAILED",
       "at": "2026-09-06T18:50:44.187767+00:00",
       "actor": "request-dispatcher:34052996023"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-09-06T18:56:00Z",
+      "actor": "studio_internal_transport_recovery"
     }
   ],
   "retry_of_run_id": 34051851584,
   "replacement_reason": "SOURCE_CONTEXT_HANDOFF_REPAIR",
   "quality_gates_weakened": false,
-  "contract_sha256": "70389de10009ed5bb38c074ae1a8220fe8ed9fd1c201269c23cfb84939f40396",
-  "target_repo": "mojo72549-arch/shorts-agent-studio",
-  "reason": "studio_dispatch_failed"
+  "contract_sha256": "70389de10009ed5bb38c074ae1a8220fe8ed9fd1c201269c23cfb84939f40396"
 }
