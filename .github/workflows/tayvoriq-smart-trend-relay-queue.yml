@@ -1,0 +1,103 @@
+name: TAYVORIQ Smart Trend Relay Queue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'queue/trend-relay/*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-smart-trend-relay-queue
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      STUDIO_REPO: ${{ vars.TAYVORIQ_PRIVATE_REPO || 'mojo72549-arch/shorts-agent-studio' }}
+      STUDIO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Validate private Studio credential
+        run: |
+          set -euo pipefail
+          test -n "$STUDIO_TOKEN" || { echo 'PRIVATE_REPO_TOKEN missing'; exit 2; }
+
+      - name: Resolve queued relay requests
+        id: queue
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          event = json.load(open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8'))
+          paths = []
+          for commit in event.get('commits', []):
+              for key in ('added', 'modified'):
+                  for p in commit.get(key, []):
+                      if p.startswith('queue/trend-relay/') and p.endswith('.json'):
+                          paths.append(p)
+          if not paths and event.get('head_commit'):
+              for key in ('added', 'modified'):
+                  for p in event['head_commit'].get(key, []):
+                      if p.startswith('queue/trend-relay/') and p.endswith('.json'):
+                          paths.append(p)
+          paths = sorted(set(paths))
+          if not paths:
+              # Manual dispatch: process newest queue item once.
+              items = sorted(Path('queue/trend-relay').glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)
+              if items:
+                  paths = [str(items[0])]
+          Path('/tmp/tayvoriq-relay-files.txt').write_text('\n'.join(paths) + ('\n' if paths else ''), encoding='utf-8')
+          print('Queue items:', paths)
+          PY
+
+      - name: Relay queued requests to private Studio
+        run: |
+          set -euo pipefail
+          test -s /tmp/tayvoriq-relay-files.txt || { echo 'No queue item to relay.'; exit 0; }
+          while IFS= read -r request_file; do
+            test -n "$request_file" || continue
+            echo "Relaying $request_file"
+            PAYLOAD=$(python - "$request_file" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], encoding='utf-8'))
+          required = ['trend_mode','trend_scope','topic','language','platform','target_duration','llm_provider','telegram_notify']
+          missing = [k for k in required if k not in data]
+          if missing:
+              raise SystemExit(f'Missing fields: {missing}')
+          print(json.dumps({'ref':'main','inputs':{k:str(data[k]) for k in required}}, ensure_ascii=False))
+          PY
+            )
+            HTTP=$(curl --silent --show-error -o /tmp/relay-response.txt -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer $STUDIO_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$STUDIO_REPO/actions/workflows/tayvoriq-smart-trend-run.yml/dispatches" \
+              -d "$PAYLOAD")
+            if [ "$HTTP" != "204" ]; then
+              echo "Studio dispatch failed: HTTP $HTTP"
+              cat /tmp/relay-response.txt
+              exit 1
+            fi
+            echo "Private Studio dispatch accepted for $request_file"
+          done < /tmp/tayvoriq-relay-files.txt
+
+      - name: Notify relay failure
+        if: failure() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        run: |
+          curl -fsS --retry 2 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=❌ TAYVORIQ Relay fehlgeschlagen\nDer Control-Plane-Queue-Request konnte nicht ins private Studio weitergereicht werden.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null || true
