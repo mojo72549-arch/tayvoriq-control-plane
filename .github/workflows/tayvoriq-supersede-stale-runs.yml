@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Cancel older active Golden Path runs
+      - name: Cancel older active Golden Path runs for the same approved request only
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -24,21 +24,24 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
+          import base64
           import json
           import os
           import time
+          import urllib.parse
           import urllib.request
 
           repo = os.environ["REPO"]
           token = os.environ["GH_TOKEN"]
           head_sha = os.environ["HEAD_SHA"]
           workflow = "tayvoriq-deliver-video-now.yml"
+          request_path = ".github/run-now/tayvoriq-x-request.json"
           base = f"https://api.github.com/repos/{repo}"
           headers = {
               "Authorization": f"Bearer {token}",
               "Accept": "application/vnd.github+json",
               "X-GitHub-Api-Version": "2022-11-28",
-              "User-Agent": "TAYVORIQ-Supersede-Guard/1.0",
+              "User-Agent": "TAYVORIQ-Supersede-Guard/2.0",
           }
 
           def request(url, method="GET"):
@@ -46,6 +49,31 @@ jobs:
               with urllib.request.urlopen(req, timeout=30) as response:
                   raw = response.read().decode("utf-8")
                   return json.loads(raw) if raw else {}
+
+          request_cache = {}
+
+          def request_identity_for_sha(sha):
+              sha = str(sha or "").strip()
+              if not sha:
+                  return None
+              if sha in request_cache:
+                  return request_cache[sha]
+              try:
+                  encoded_path = urllib.parse.quote(request_path, safe="/")
+                  encoded_ref = urllib.parse.quote(sha, safe="")
+                  payload = request(f"{base}/contents/{encoded_path}?ref={encoded_ref}")
+                  content = str(payload.get("content") or "").replace("\n", "")
+                  if not content:
+                      request_cache[sha] = None
+                      return None
+                  data = json.loads(base64.b64decode(content).decode("utf-8"))
+                  identity = str(data.get("source_request_id") or "").strip() or None
+                  request_cache[sha] = identity
+                  return identity
+              except Exception as exc:
+                  print(f"SUPERSEDE_IDENTITY_WARNING:{sha}:{type(exc).__name__}:{exc}")
+                  request_cache[sha] = None
+                  return None
 
           runs = []
           keeper = None
@@ -72,7 +100,19 @@ jobs:
 
           keeper_id = int(keeper["id"])
           keeper_created = str(keeper.get("created_at") or "")
+          keeper_request_id = request_identity_for_sha(keeper.get("head_sha"))
+          if not keeper_request_id:
+              print(json.dumps({
+                  "status": "keeper-request-identity-unresolved",
+                  "keeper_run_id": keeper_id,
+                  "keeper_head_sha": head_sha,
+                  "action": "fail-safe-no-cancellation",
+              }))
+              raise SystemExit(0)
+
           cancelled = []
+          preserved_other_requests = []
+          unresolved_older_runs = []
           for run in runs:
               run_id = int(run.get("id") or 0)
               if not run_id or run_id == keeper_id:
@@ -83,6 +123,18 @@ jobs:
                   continue
               if keeper_created and created and created >= keeper_created:
                   continue
+
+              older_request_id = request_identity_for_sha(run.get("head_sha"))
+              if not older_request_id:
+                  unresolved_older_runs.append(run_id)
+                  continue
+              if older_request_id != keeper_request_id:
+                  preserved_other_requests.append({
+                      "run_id": run_id,
+                      "source_request_id": older_request_id,
+                  })
+                  continue
+
               try:
                   request(f"{base}/actions/runs/{run_id}/cancel", method="POST")
                   cancelled.append(run_id)
@@ -90,10 +142,14 @@ jobs:
                   print(f"SUPERSEDE_CANCEL_WARNING:{run_id}:{type(exc).__name__}:{exc}")
 
           print(json.dumps({
-              "status": "supersede-complete",
+              "status": "request-scoped-supersede-complete",
               "keeper_run_id": keeper_id,
               "keeper_head_sha": head_sha,
-              "cancelled_older_runs": cancelled,
+              "keeper_source_request_id": keeper_request_id,
+              "cancelled_same_request_runs": cancelled,
+              "preserved_other_approved_requests": preserved_other_requests,
+              "unresolved_older_runs_preserved": unresolved_older_runs,
+              "fail_safe": True,
               "publication_performed": False,
           }))
           PY
