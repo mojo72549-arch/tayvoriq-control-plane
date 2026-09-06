@@ -24,7 +24,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Suppress superseded cancelled attempt
+      - name: Suppress retired or superseded attempt
         id: stale_guard
         env:
           GH_TOKEN: ${{ github.token }}
@@ -36,9 +36,8 @@ jobs:
           suppress=false
           reason=""
 
-          if [ "$SOURCE_RUN_CONCLUSION" = "cancelled" ]; then
-            git fetch origin main --quiet || true
-            old_request=$(python - <<'PY'
+          git fetch origin main --quiet || true
+          source_request=$(python - <<'PY'
           import json
           from pathlib import Path
           path=Path('.github/run-now/tayvoriq-x-request.json')
@@ -48,7 +47,40 @@ jobs:
               data={}
           print(str(data.get('source_request_id') or '').strip())
           PY
-            )
+          )
+
+          git show origin/main:.github/state/tayvoriq-retired-production-requests.json > /tmp/retired-requests.json 2>/dev/null || printf '{"requests":{}}\n' > /tmp/retired-requests.json
+          retirement_match=$(python - "$source_request" "$SOURCE_RUN_ID" <<'PY'
+          import json, sys
+          request_id=str(sys.argv[1] or '').strip()
+          try: run_id=int(sys.argv[2])
+          except Exception: run_id=0
+          try: data=json.load(open('/tmp/retired-requests.json',encoding='utf-8'))
+          except Exception: data={}
+          requests=data.get('requests') if isinstance(data.get('requests'),dict) else {}
+          matched=False
+          if request_id:
+              item=requests.get(request_id)
+              matched=isinstance(item,dict) and item.get('allow_notifications') is False
+          if not matched and run_id:
+              for item in requests.values():
+                  if not isinstance(item,dict) or item.get('allow_notifications') is not False:
+                      continue
+                  blocked=item.get('blocked_run_ids') if isinstance(item.get('blocked_run_ids'),list) else []
+                  for value in blocked:
+                      try:
+                          if int(value)==run_id: matched=True; break
+                      except (TypeError,ValueError):
+                          pass
+                  if matched: break
+          print('true' if matched else 'false')
+          PY
+          )
+
+          if [ "$retirement_match" = "true" ]; then
+            suppress=true
+            reason="retired_user_request"
+          elif [ "$SOURCE_RUN_CONCLUSION" = "cancelled" ]; then
             current_request=$(git show origin/main:.github/run-now/tayvoriq-x-request.json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); print(str(d.get("source_request_id") or "").strip())' 2>/dev/null || true)
 
             newer_active=$(gh run list \
@@ -58,7 +90,7 @@ jobs:
               --json databaseId,status \
               --jq '[.[] | select(.databaseId > ('"$SOURCE_RUN_ID"') and (.status == "queued" or .status == "in_progress"))] | length' 2>/dev/null || echo 0)
 
-            if [ -n "$old_request" ] && [ "$old_request" = "$current_request" ] && [ "${newer_active:-0}" -gt 0 ]; then
+            if [ -n "$source_request" ] && [ "$source_request" = "$current_request" ] && [ "${newer_active:-0}" -gt 0 ]; then
               suppress=true
               reason="superseded_by_newer_active_same_request"
             fi
@@ -66,7 +98,7 @@ jobs:
 
           echo "suppress=$suppress" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          echo "TAYVORIQ failure notification guard: suppress=$suppress reason=$reason"
+          echo "TAYVORIQ failure notification guard: suppress=$suppress reason=$reason request=$source_request"
 
       - name: Send mandatory Telegram failure status
         if: steps.stale_guard.outputs.suppress != 'true'
@@ -151,7 +183,7 @@ jobs:
           print(json.dumps(receipt, ensure_ascii=False))
           PY
 
-      - name: Record superseded cancellation internally
+      - name: Record suppressed failure internally
         if: steps.stale_guard.outputs.suppress == 'true'
         run: |
-          echo "SUPSERSEDED_CANCELLED_RUN_SUPPRESSED source_run=${{ github.event.workflow_run.id }} reason=${{ steps.stale_guard.outputs.reason }}"
+          echo "SUPPRESSED_FAILURE_NOTIFICATION source_run=${{ github.event.workflow_run.id }} reason=${{ steps.stale_guard.outputs.reason }}"
