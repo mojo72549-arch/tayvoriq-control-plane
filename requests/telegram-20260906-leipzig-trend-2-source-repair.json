@@ -1,0 +1,67 @@
+{
+  "request_id": "telegram-20260906-leipzig-trend-2-source-repair",
+  "status": "DISPATCHED",
+  "source": "telegram_trend_approval_source_contract_repair",
+  "trend_id": "2",
+  "topic": "97% · Deutschland und Russland im Drohnen-Streit: Warum der Leipzig-Vorfall die Spannungen weiter verschärft",
+  "trend_scope": "world_society",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 40,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-06T18:18:00Z",
+  "mode": "full",
+  "selection_id": "trend-20260906-2018-importfix",
+  "source_context": {
+    "independent_news_count": 3,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "tagesschau.de (NDR/WDR)",
+        "url": "https://www.tagesschau.de/investigativ/ndr-wdr/leipzig-drohne-russland-100.html",
+        "supports": "Bestätigt den versuchten Sprengstoff-Drohnenanschlag am Flughafen Leipzig/Halle, die deutsche Attribution zu russischen staatlichen Stellen sowie das russische Dementi."
+      },
+      {
+        "publisher": "ZDFheute",
+        "url": "https://www.zdf.de/video/magazine/zdfheute-live-102/drohnenangriff-leipzig-pressekonferenz-video-100",
+        "supports": "Dokumentiert den Vorfall in der Nacht vom 4. auf den 5. August und die offizielle deutsche Reaktion auf die Russland zugeschriebene Operation."
+      },
+      {
+        "publisher": "WELT",
+        "url": "https://www.welt.de/article6a9d522ac0adcd67d87bb747",
+        "supports": "Belegt die weitere diplomatische Eskalation durch deutsche Gegenmaßnahmen und die scharfe russische Reaktion nach den Vorwürfen."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Am Flughafen Leipzig/Halle wurde Anfang August eine mit Sprengstoff versehene Drohne in der Nähe ukrainischer Transportflugzeuge entdeckt. Nach Ermittlungen macht die Bundesregierung Personen im Auftrag russischer staatlicher Stellen für den Anschlagsversuch verantwortlich; Russland weist die Vorwürfe zurück.",
+      "why_happening": "Die Spannungen verschärfen sich, weil Deutschland den Vorfall als Teil russischer hybrider Operationen einstuft und mit politischen Maßnahmen reagiert, während Moskau die Verantwortung bestreitet und seinerseits mit scharfer Rhetorik und Gegenmaßnahmen reagiert.",
+      "who_is_affected": "Betroffen sind die Sicherheit am Flughafen Leipzig/Halle, ukrainische Transport- und Logistikverbindungen, deutsche Behörden sowie die deutsch-russischen und europäischen Sicherheitsbeziehungen.",
+      "personal_impact": "Für Menschen in Deutschland zeigt der Fall, dass hybride Angriffe auch zivile Infrastruktur wie Flughäfen treffen können und dadurch Sicherheitsmaßnahmen sowie politische Spannungen zunehmen können.",
+      "action_now": "Im Video müssen deutsche Attribution und russisches Dementi klar getrennt dargestellt werden; keine Urheberschaft als unumstrittene Tatsache formulieren und aktuelle Gegenmaßnahmen nur quellenbasiert nennen."
+    }
+  },
+  "source_context_sha256": "89f65e0552345747e4fb127bad7eab7cc872771de510d3f17de68cf85d7d078d",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-06T18:18:00Z",
+      "actor": "telegram_callback_recovered"
+    },
+    {
+      "state": "SOURCE_CONTRACT_REPAIRED",
+      "at": "2026-09-06T18:43:15Z",
+      "actor": "request_bound_source_recovery",
+      "detail": "Restored complete causal evidence packet for the unchanged approved Leipzig trend after thin relay retries."
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-06T18:43:15Z",
+      "actor": "request_bound_source_recovery"
+    }
+  ],
+  "retry_of_run_id": 34051851584,
+  "recovery_generation": 1,
+  "replacement_reason": "SOURCE_CONTEXT_HANDOFF_REPAIR",
+  "quality_gates_weakened": false
+}
