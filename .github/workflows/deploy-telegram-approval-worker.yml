@@ -9,6 +9,7 @@ on:
       - infra/telegram-approval-worker-v3.js
       - infra/telegram-approval-worker-v4.js
       - infra/telegram-approval-worker-v5.js
+      - infra/telegram-approval-worker-v6.js
       - infra/wrangler.toml
       - tests/telegram-stale-selection-guard-v3.test.mjs
       - .github/workflows/deploy-telegram-approval-worker.yml
@@ -32,8 +33,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Test stale-selection guard
-        run: node --test ../tests/telegram-stale-selection-guard-v3.test.mjs
+      - name: Validate worker syntax and stale-selection guard
+        run: |
+          node --check telegram-approval-worker-v6.js
+          node --test ../tests/telegram-stale-selection-guard-v3.test.mjs
 
       - name: Validate deployment secrets
         env:
@@ -124,7 +127,7 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
           payload = {
-              'worker_version': 'v5-control-plane-relay',
+              'worker_version': 'v6-control-plane-queue',
               'deploy_verified': True,
               'webhook_verified': True,
               'run_id': int(os.environ['GITHUB_RUN_ID']),
@@ -139,12 +142,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add state/tayvoriq-telegram-worker-deploy-receipt.json
-          git commit -m "ops(tayvoriq): verify Telegram worker v5 deployment"
+          git commit -m "ops(tayvoriq): verify Telegram worker v6 deployment"
           git pull --rebase origin main
           git push origin HEAD:main
 
       - name: Record worker readiness
-        run: echo "Telegram approval worker deployed and webhook verified."
+        run: echo "Telegram approval worker v6 deployed and webhook verified."
 
       - name: Notify repair failure
         if: failure()
@@ -156,8 +159,10 @@ jobs:
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=❌ TAYVORIQ Produktion blockiert\nDer Telegram-Freigabepfad konnte nicht repariert werden.\nBedeutung: Deine Videoproduktion kann aktuell nicht automatisch starten.\nSelf-Heal fehlgeschlagen.\nRun: ${GITHUB_RUN_ID}\n${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload deployment diagnostics
         if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
         with:
           name: telegram-worker-deployment-${{ github.run_id }}
           path: |
