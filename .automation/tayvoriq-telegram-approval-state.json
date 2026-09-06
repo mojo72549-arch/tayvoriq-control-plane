@@ -1,14 +1,14 @@
 {
   "next_update_id": 778193263,
   "decisions": {},
-  "last_checked_at": "2026-09-06T18:00:17.209Z",
+  "last_checked_at": "2026-09-06T18:00:18.192Z",
   "senior_dev": {
     "status_hash": "c1c2d0c3cc372766fa8150322e42aa3cf3fb8b071ae530f62fad87ee608050f5",
     "notified_at": "2026-08-03T15:10:00.148322+00:00"
   },
   "trend_selection": {
     "session_id": "trend-20260906-1915-fresh",
-    "status": "RELEASING",
+    "status": "PARTIAL_FAILURE",
     "candidates": [
       {
         "number": 1,
@@ -44,10 +44,18 @@
     "target_duration": 40,
     "llm_provider": "auto",
     "created_at": "2026-09-06T17:15:00Z",
-    "dispatches": {},
+    "dispatches": {
+      "2": {
+        "status": "FAILED",
+        "topic": "97% · Deutschland und Russland im Drohnen-Streit: Warum der Leipzig-Vorfall die Spannungen weiter verschärft",
+        "error": "Error: Relay-Workflow GitHub 403: {\"message\":\"Resource not accessible by personal access token\",\"documentation_url\":\"https://docs.github.com/rest/actions/workflows#create-a-workflow-dispatch-event\",\"status\":\"403\"}",
+        "failed_at": "2026-09-06T18:00:18.192Z"
+      }
+    },
     "message_id": 2097,
     "notified_at": "2026-09-06T17:16:59.838721+00:00",
     "updated_at": "2026-09-06T18:00:14.882Z",
-    "released_at": "2026-09-06T18:00:17.209Z"
+    "released_at": "2026-09-06T18:00:17.209Z",
+    "completed_at": "2026-09-06T18:00:18.192Z"
   }
 }
