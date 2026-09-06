@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-06T21:34:19.506147Z",
+  "generated_at": "2026-09-06T22:39:34.342272Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-1965-trend-2",
-    "golden_path_run_id": 34052469652,
-    "pointer_updated_at": "2026-09-06T18:40:36.022830Z"
+    "golden_path_run_id": 34055207958,
+    "pointer_updated_at": "2026-09-06T21:41:00Z"
   },
   "request": {
     "request_id": "telegram-1965-trend-2",
@@ -24,14 +24,14 @@
     "path": "requests/telegram-1965-trend-2.json"
   },
   "run": {
-    "id": 34052469652,
+    "id": 34055207958,
     "status": "completed",
-    "conclusion": "cancelled",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/34052469652",
-    "created_at": "2026-09-06T18:40:29Z",
-    "updated_at": "2026-09-06T18:44:17Z",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/34055207958",
+    "created_at": "2026-09-06T19:32:24Z",
+    "updated_at": "2026-09-06T19:56:29Z",
     "attempt": 1,
-    "progress": 45,
+    "progress": 72,
     "current_step": null,
     "last_successful_step": "Complete job",
     "failed_step": "Assert publishable production output",
@@ -75,7 +75,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "success",
         "step_number": 25,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -118,13 +118,13 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
@@ -133,24 +133,24 @@
     }
   ],
   "incident": {
-    "signature": "34052469652:32:PUBLISHABLE_CODEFIX_REQUIRED",
+    "signature": "34055207958:32:PUBLISHABLE_CODEFIX_REQUIRED",
     "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 32,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "self_heal_status": "REPLAY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "status": "REPLAY_DISPATCHED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 33632602249,
     "replay_run_id": 34052469652,
@@ -160,17 +160,12 @@
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-06T18:44:17Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 34052469652 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-06T18:44:17Z",
+      "at": "2026-09-06T19:56:29Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
     },
