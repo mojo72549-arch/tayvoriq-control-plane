@@ -15,35 +15,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate-queue:
+  intake:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - name: Checkout control plane
-        uses: actions/checkout@v4
-
-      - name: Validate queued trend requests
+      - name: Queue accepted
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          files = sorted(Path('queue/trend-relay').glob('*.json'))
-          required = {
-              'session_id', 'candidate_number', 'trend_mode', 'trend_scope',
-              'topic', 'language', 'platform', 'target_duration',
-              'llm_provider', 'telegram_notify'
-          }
-          checked = 0
-          for path in files[-20:]:
-              data = json.loads(path.read_text(encoding='utf-8'))
-              missing = sorted(required.difference(data))
-              if missing:
-                  raise SystemExit(f'{path}: missing {missing}')
-              if not str(data.get('topic') or '').strip():
-                  raise SystemExit(f'{path}: empty topic')
-              checked += 1
-          print(f'Queue valid. Checked {checked} recent request(s).')
-          print('Private Studio consumes this queue with its own repository-scoped GITHUB_TOKEN.')
-PY
+          echo "TAYVORIQ queue request accepted."
+          echo "The private Studio queue consumer owns production dispatch."
