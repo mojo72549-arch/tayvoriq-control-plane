@@ -79,7 +79,7 @@ jobs:
           for p in Path('requests').glob('*.json'):
               try:
                   d=json.loads(p.read_text(encoding='utf-8'))
-                  if str(d.get('status') or '').upper() in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'}: candidates.append((p.stat().st_mtime,str(p)))
+                  if str(d.get('status') or '').upper() in {'APPROVED','TREND_APPROVED','READY_FOR_PRODUCTION'} and str(d.get('dispatch_transport') or '') != 'studio_internal_kick': candidates.append((p.stat().st_mtime,str(p)))
               except Exception: pass
           print(max(candidates)[1] if candidates else '')
           PY
@@ -88,6 +88,12 @@ jobs:
           if [ -z "$REQUEST_FILE" ] || [ ! -f "$REQUEST_FILE" ]; then
             echo 'eligible=false' >> "$GITHUB_OUTPUT"
             echo 'No approved request waiting.'
+            exit 0
+          fi
+          TRANSPORT=$(python -c "import json; print(str(json.load(open('$REQUEST_FILE',encoding='utf-8')).get('dispatch_transport') or ''))")
+          if [ "$TRANSPORT" = "studio_internal_kick" ]; then
+            echo 'eligible=false' >> "$GITHUB_OUTPUT"
+            echo "Internal Studio kick owns transport for $REQUEST_FILE; legacy cross-repo dispatcher is a no-op."
             exit 0
           fi
           STATUS=$(python -c "import json; print(str(json.load(open('$REQUEST_FILE',encoding='utf-8')).get('status') or '').upper())")
