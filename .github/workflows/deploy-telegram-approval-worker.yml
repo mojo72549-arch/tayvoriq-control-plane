@@ -3,6 +3,7 @@ name: Deploy Telegram Approval Worker
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - infra/telegram-approval-worker.js
       - infra/telegram-approval-worker-v2.js
@@ -12,6 +13,7 @@ on:
       - infra/telegram-approval-worker-v6.js
       - infra/wrangler.toml
       - tests/telegram-stale-selection-guard-v3.test.mjs
+      - tests/telegram-visual-mode-v2.test.mjs
       - .github/workflows/deploy-telegram-approval-worker.yml
 
 permissions:
@@ -33,10 +35,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Validate worker syntax and stale-selection guard
+      - name: Validate worker syntax and selection contracts
         run: |
           node --check telegram-approval-worker-v6.js
           node --test ../tests/telegram-stale-selection-guard-v3.test.mjs
+          node --test ../tests/telegram-visual-mode-v2.test.mjs
 
       - name: Validate deployment secrets
         env:
@@ -127,7 +130,7 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
           payload = {
-              'worker_version': 'v6-control-plane-queue',
+              'worker_version': 'v6-control-plane-queue-visual-modes-v2',
               'deploy_verified': True,
               'webhook_verified': True,
               'run_id': int(os.environ['GITHUB_RUN_ID']),
@@ -142,12 +145,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add state/tayvoriq-telegram-worker-deploy-receipt.json
-          git commit -m "ops(tayvoriq): verify Telegram worker v6 deployment"
+          git commit -m "ops(tayvoriq): verify Telegram worker visual modes deployment"
           git pull --rebase origin main
           git push origin HEAD:main
 
       - name: Record worker readiness
-        run: echo "Telegram approval worker v6 deployed and webhook verified."
+        run: echo "Telegram approval worker visual modes deployed and webhook verified."
 
       - name: Notify repair failure
         if: failure()
