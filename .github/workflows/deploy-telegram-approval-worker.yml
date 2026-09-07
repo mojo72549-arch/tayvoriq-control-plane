@@ -10,6 +10,7 @@ on:
       - infra/telegram-approval-worker-v4.js
       - infra/telegram-approval-worker-v5.js
       - infra/telegram-approval-worker-v6.js
+      - infra/telegram-approval-worker-v7.js
       - infra/wrangler.toml
       - tests/telegram-stale-selection-guard-v3.test.mjs
       - .github/workflows/deploy-telegram-approval-worker.yml
@@ -35,6 +36,7 @@ jobs:
 
       - name: Validate worker syntax and stale-selection guard
         run: |
+          node --check telegram-approval-worker-v7.js
           node --check telegram-approval-worker-v6.js
           node --test ../tests/telegram-stale-selection-guard-v3.test.mjs
 
@@ -127,7 +129,7 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
           payload = {
-              'worker_version': 'v6-control-plane-queue',
+              'worker_version': 'v7-legacy-mode-queue-bridge',
               'deploy_verified': True,
               'webhook_verified': True,
               'run_id': int(os.environ['GITHUB_RUN_ID']),
@@ -142,12 +144,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add state/tayvoriq-telegram-worker-deploy-receipt.json
-          git commit -m "ops(tayvoriq): verify Telegram worker v6 deployment"
+          git commit -m "ops(tayvoriq): verify Telegram worker v7 deployment"
           git pull --rebase origin main
           git push origin HEAD:main
 
       - name: Record worker readiness
-        run: echo "Telegram approval worker v6 deployed and webhook verified."
+        run: echo "Telegram approval worker v7 deployed and webhook verified."
 
       - name: Notify repair failure
         if: failure()
