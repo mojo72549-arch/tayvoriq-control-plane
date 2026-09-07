@@ -3,7 +3,8 @@ import v2 from './telegram-approval-worker-v2.js';
 const STATE_REPOSITORY = 'mojo72549-arch/tayvoriq-control-plane';
 const STATE_PATH = '.automation/tayvoriq-telegram-approval-state.json';
 const RELAY_WORKFLOW = 'tayvoriq-smart-trend-relay.yml';
-const CALLBACK_RE = /^tayvoriq:trend:(toggle|approve|reset):([A-Za-z0-9_-]{1,32})(?::([1-5]))?$/;
+const CALLBACK_RE = /^tayvoriq:trend:(toggle|approve|reset|mode):([A-Za-z0-9_-]{1,32})(?::([1-5]|STANDARD|CINEMATIC|MIXED))?$/;
+const VISUAL_MODES = new Set(['STANDARD', 'CINEMATIC', 'MIXED']);
 
 export default {
   async fetch(request, env) {
@@ -35,7 +36,6 @@ export default {
         console.error('trend callback failed', String(error));
         if (callback?.id) await answerCallback(env, callback.id, 'Trend-Aktion konnte nicht verarbeitet werden.', true);
         try { await sendMessage(env, chatId, `❌ Trend-Aktion fehlgeschlagen: ${String(error).slice(0, 500)}`); } catch {}
-        // Always acknowledge Telegram updates to prevent webhook retry storms.
         return new Response('trend callback acknowledged after failure', { status: 200 });
       }
     }
@@ -56,7 +56,7 @@ export default {
 };
 
 async function handleTrendCallback(env, callback, chatId, match) {
-  const [, action, sessionId, numberText] = match;
+  const [, action, sessionId, value] = match;
   const callbackId = String(callback?.id || '');
   const messageId = Number(callback?.message?.message_id || 0);
   let loaded = await loadState(env);
@@ -76,7 +76,7 @@ async function handleTrendCallback(env, callback, chatId, match) {
   }
 
   if (action === 'toggle') {
-    const number = Number(numberText || 0);
+    const number = Number(value || 0);
     if (!Number.isInteger(number) || number < 1 || number > 5) {
       if (callbackId) await answerCallback(env, callbackId, 'Ungültige Trendnummer.', true);
       return new Response('invalid number', { status: 200 });
@@ -88,6 +88,21 @@ async function handleTrendCallback(env, callback, chatId, match) {
     loaded = await saveState(env, state, loaded.sha, `Update Telegram trend selection ${sessionId}`);
     await refreshTrendMessage(env, chatId, session, messageId);
     if (callbackId) await answerCallback(env, callbackId, 'Auswahl aktualisiert.');
+    return new Response('ok');
+  }
+
+  if (action === 'mode') {
+    const visualMode = normalizeVisualMode(value);
+    if (!visualMode) {
+      if (callbackId) await answerCallback(env, callbackId, 'Ungültiger Produktionsmodus.', true);
+      return new Response('invalid mode', { status: 200 });
+    }
+    session.visual_mode = visualMode;
+    session.production_policy = productionPolicy(visualMode);
+    session.updated_at = new Date().toISOString();
+    loaded = await saveState(env, state, loaded.sha, `Set Telegram visual mode ${visualMode} ${sessionId}`);
+    await refreshTrendMessage(env, chatId, session, messageId);
+    if (callbackId) await answerCallback(env, callbackId, `Modus gewählt: ${modeLabel(visualMode)}.`);
     return new Response('ok');
   }
 
@@ -105,6 +120,11 @@ async function handleTrendCallback(env, callback, chatId, match) {
   if (!selected.length) {
     if (callbackId) await answerCallback(env, callbackId, 'Bitte zuerst mindestens einen Trend auswählen.', true);
     return new Response('no selection');
+  }
+  const visualMode = normalizeVisualMode(session.visual_mode);
+  if (!visualMode) {
+    if (callbackId) await answerCallback(env, callbackId, 'Bitte zuerst Standard, Cinematic oder Mixed wählen.', true);
+    return new Response('no visual mode', { status: 200 });
   }
 
   session.status = 'RELEASING';
@@ -124,7 +144,7 @@ async function handleTrendCallback(env, callback, chatId, match) {
     }
     try {
       await dispatchRelay(env, candidate, session);
-      session.dispatches[String(number)] = { status: 'DISPATCHED', topic: String(candidate.topic).trim(), dispatched_at: new Date().toISOString() };
+      session.dispatches[String(number)] = { status: 'DISPATCHED', topic: String(candidate.topic).trim(), visual_mode: visualMode, dispatched_at: new Date().toISOString() };
     } catch (error) {
       const detail = String(error).slice(0, 260);
       failures.push(`${number}: ${detail}`);
@@ -142,7 +162,7 @@ async function handleTrendCallback(env, callback, chatId, match) {
   if (messageId) await clearKeyboard(env, chatId, messageId);
 
   const topics = selected.map(n => String(candidates.get(n)?.topic || '').trim()).filter(Boolean);
-  let text = ['✅ Trend freigegeben.','',`Auswahl: ${selected.join(', ')}`,...topics.map(t=>`• ${t}`),'','Der Request-Workflow wurde gestartet.'].join('\n');
+  let text = ['✅ Trend freigegeben.','',`Auswahl: ${selected.join(', ')}`,`Modus: ${modeLabel(visualMode)}`,...topics.map(t=>`• ${t}`),'','Der Request-Workflow wurde gestartet.'].join('\n');
   if (failures.length) text += `\n\n⚠️ Fehler:\n${failures.join('\n')}`;
   await sendMessage(env, chatId, text);
   return new Response('ok');
@@ -156,7 +176,7 @@ async function handleTypedSelection(env, chatId, numbers) {
   session.updated_at = new Date().toISOString();
   await saveState(env, loaded.state, loaded.sha, `Set Telegram trend selection ${session.session_id || ''}`);
   await refreshTrendMessage(env, chatId, session, Number(session.message_id || 0));
-  await sendMessage(env, chatId, `🟡 Auswahl ${session.selected.join(', ')} vorgemerkt. Noch kein Workflow gestartet – bitte jetzt „Trend freigeben“ klicken.`);
+  await sendMessage(env, chatId, `🟡 Auswahl ${session.selected.join(', ')} vorgemerkt. Noch kein Workflow gestartet – bitte Produktionsmodus wählen und danach „Trend freigeben“ klicken.`);
   return true;
 }
 
@@ -168,23 +188,43 @@ function parseNumbers(value) {
   return [...new Set((normalized.match(/[1-5]/g) || []).map(Number))].sort((a,b)=>a-b);
 }
 
+function normalizeVisualMode(value) {
+  const mode = String(value || '').trim().toUpperCase();
+  return VISUAL_MODES.has(mode) ? mode : '';
+}
+
+function modeLabel(mode) {
+  return ({ STANDARD:'⚡ Standard', CINEMATIC:'🎬 Cinematic', MIXED:'🔥 Mixed' })[mode] || 'nicht gewählt';
+}
+
+function productionPolicy(mode) {
+  if (mode === 'CINEMATIC') return { min_shots:6, max_shots:8, min_hero_shots:2, final_quality_min:85 };
+  if (mode === 'MIXED') return { min_shots:6, max_shots:8, min_hero_shots:1, final_quality_min:82 };
+  return { min_shots:4, max_shots:8, min_hero_shots:0, final_quality_min:78 };
+}
+
 function trendText(session) {
   const selected = new Set((Array.isArray(session.selected) ? session.selected : []).map(Number));
+  const visualMode = normalizeVisualMode(session.visual_mode);
   const lines = ['🔥 TAYVORIQ – Trendauswahl',''];
   for (const c of Array.isArray(session.candidates) ? session.candidates : []) {
     const n = Number(c?.number || 0);
     lines.push(`${selected.has(n) ? '✅' : `${n}️⃣`} ${String(c?.topic || '').trim()}`);
   }
-  lines.push('',`Ausgewählt: ${selected.size ? [...selected].sort((a,b)=>a-b).join(', ') : 'noch nichts'}`,'','Nummer(n) senden oder unten auswählen. Erst „Trend freigeben“ startet den Request-Workflow.');
+  lines.push('',`Ausgewählt: ${selected.size ? [...selected].sort((a,b)=>a-b).join(', ') : 'noch nichts'}`,`Produktionsmodus: ${modeLabel(visualMode)}`,'','Trend und Modus wählen. Erst „Trend freigeben“ startet den Golden Path.');
   return lines.join('\n');
 }
 
 function trendKeyboard(session) {
   const sessionId = String(session.session_id || '').replace(/[^A-Za-z0-9_-]/g,'').slice(0,32);
   const selected = new Set((Array.isArray(session.selected) ? session.selected : []).map(Number));
+  const visualMode = normalizeVisualMode(session.visual_mode);
   const row = [];
   for (let n=1;n<=5;n++) row.push({ text: selected.has(n) ? `✅ ${n}` : String(n), callback_data: `tayvoriq:trend:toggle:${sessionId}:${n}` });
-  return { inline_keyboard: [row,[
+  const modeRow = [
+    ['STANDARD','⚡ Standard'],['CINEMATIC','🎬 Cinematic'],['MIXED','🔥 Mixed']
+  ].map(([mode,label]) => ({ text: visualMode === mode ? `✅ ${label}` : label, callback_data:`tayvoriq:trend:mode:${sessionId}:${mode}` }));
+  return { inline_keyboard: [row,modeRow,[
     { text:'✅ Trend freigeben', callback_data:`tayvoriq:trend:approve:${sessionId}` },
     { text:'✏️ Auswahl ändern', callback_data:`tayvoriq:trend:reset:${sessionId}` }
   ]]};
@@ -257,10 +297,12 @@ async function saveState(env, state, sha, message) {
 
 async function dispatchRelay(env, candidate, session) {
   const url = `https://api.github.com/repos/${STATE_REPOSITORY}/actions/workflows/${RELAY_WORKFLOW}/dispatches`;
+  const visualMode = normalizeVisualMode(session.visual_mode) || 'STANDARD';
   const r = await fetch(url,{method:'POST',headers:ghHeaders(env),body:JSON.stringify({ref:'main',inputs:{
     trend_mode:'manual_topic', trend_scope:String(candidate.scope || 'auto_scope'), topic:String(candidate.topic || '').trim(),
     language:String(session.language || 'Deutsch'), platform:String(session.platform || 'youtube_tiktok'),
-    target_duration:String(Number(session.target_duration || 40)), llm_provider:String(session.llm_provider || 'auto'), telegram_notify:'true'
+    target_duration:String(Number(session.target_duration || 40)), llm_provider:String(session.llm_provider || 'auto'), telegram_notify:'true',
+    visual_mode:visualMode
   }})});
   if (r.status !== 204) throw new Error(`Relay-Workflow GitHub ${r.status}: ${(await r.text()).slice(0,220)}`);
 }
