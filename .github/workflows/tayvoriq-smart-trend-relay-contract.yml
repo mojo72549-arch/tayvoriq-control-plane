@@ -1,0 +1,33 @@
+name: TAYVORIQ Smart Trend Relay Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tayvoriq-smart-trend-relay-contract.yml'
+      - '.github/workflows/tayvoriq-smart-trend-relay-queue.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Actionlint queue relay
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint .github/workflows/tayvoriq-smart-trend-relay-queue.yml
+      - name: Validate mode routing contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "tayvoriq-smart-trend-run.yml" .github/workflows/tayvoriq-smart-trend-relay-queue.yml
+          grep -F "tayvoriq-cinematic-trend-run-v2.yml" .github/workflows/tayvoriq-smart-trend-relay-queue.yml
+          grep -F "STANDARD" .github/workflows/tayvoriq-smart-trend-relay-queue.yml
+          grep -F "CINEMATIC" .github/workflows/tayvoriq-smart-trend-relay-queue.yml
+          grep -F "MIXED" .github/workflows/tayvoriq-smart-trend-relay-queue.yml
