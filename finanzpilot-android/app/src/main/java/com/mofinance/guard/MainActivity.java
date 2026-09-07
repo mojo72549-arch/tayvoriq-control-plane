@@ -43,6 +43,17 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (url != null && url.startsWith("file:///android_asset/dashboard_v20.html")) {
+                    view.evaluateJavascript(
+                        "(function(){if(!window.__fp231Patch){window.__fp231Patch=true;var s=document.createElement('script');s.src='file:///android_asset/csv_patch_v231.js';document.body.appendChild(s);}})();",
+                        null
+                    );
+                }
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 if (url == null) return false;
                 Uri uri = Uri.parse(url);
