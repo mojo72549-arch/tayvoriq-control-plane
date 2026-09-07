@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'queue/trend-relay/*.json'
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,9 +16,82 @@ concurrency:
 jobs:
   intake:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 10
+    env:
+      STUDIO_REPO: ${{ vars.TAYVORIQ_PRIVATE_REPO || 'mojo72549-arch/shorts-agent-studio' }}
+      STUDIO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
     steps:
-      - name: Queue accepted
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Validate private Studio credential
+        shell: bash
         run: |
-          echo "TAYVORIQ queue request accepted."
-          echo "The private Studio queue consumer owns production dispatch."
+          set -euo pipefail
+          test -n "${STUDIO_TOKEN:-}" || { echo '::error::PRIVATE_REPO_TOKEN missing'; exit 2; }
+
+      - name: Relay newly queued requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          BEFORE='${{ github.event.before }}'
+          SHA='${{ github.sha }}'
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != '0000000000000000000000000000000000000000' ]; then
+            mapfile -t FILES < <(git diff --name-only "$BEFORE" "$SHA" -- 'queue/trend-relay/*.json')
+          else
+            mapfile -t FILES < <(git diff-tree --no-commit-id --name-only -r "$SHA" -- 'queue/trend-relay/*.json')
+          fi
+          [ ${#FILES[@]} -gt 0 ] || { echo 'No new trend relay request in this commit.'; exit 0; }
+
+          for file in "${FILES[@]}"; do
+            test -s "$file" || { echo "::error::Queue file missing or empty: $file"; exit 3; }
+            python - "$file" <<'PY' > /tmp/relay.json
+          import json, re, sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          p = json.loads(path.read_text(encoding='utf-8'))
+          mode = str(p.get('visual_mode') or 'STANDARD').strip().upper()
+          if mode not in {'STANDARD','CINEMATIC','MIXED'}:
+              raise SystemExit(f'unsupported visual_mode: {mode}')
+          topic = ' '.join(str(p.get('topic') or '').split())
+          if not topic:
+              raise SystemExit('topic missing')
+          source_id = re.sub(r'[^A-Za-z0-9_-]+','-', path.stem)[:80]
+          common = {
+              'trend_mode': str(p.get('trend_mode') or 'manual_topic'),
+              'trend_scope': str(p.get('trend_scope') or 'auto_scope'),
+              'topic': topic,
+              'language': str(p.get('language') or 'Deutsch'),
+              'platform': str(p.get('platform') or 'youtube_tiktok'),
+              'target_duration': str(p.get('target_duration') or '25'),
+              'llm_provider': str(p.get('llm_provider') or 'auto'),
+              'telegram_notify': str(p.get('telegram_notify') or 'true').lower(),
+          }
+          if mode == 'STANDARD':
+              workflow = 'tayvoriq-smart-trend-run.yml'
+              inputs = common
+          else:
+              workflow = 'tayvoriq-cinematic-trend-run-v2.yml'
+              inputs = {**common, 'visual_mode': mode, 'source_request_id': source_id}
+          print(json.dumps({'workflow': workflow, 'mode': mode, 'source_request_id': source_id, 'inputs': inputs}, ensure_ascii=False))
+          PY
+
+            WORKFLOW=$(python -c "import json; print(json.load(open('/tmp/relay.json'))['workflow'])")
+            MODE=$(python -c "import json; print(json.load(open('/tmp/relay.json'))['mode'])")
+            SOURCE_ID=$(python -c "import json; print(json.load(open('/tmp/relay.json'))['source_request_id'])")
+            PAYLOAD=$(python - <<'PY'
+          import json
+          r=json.load(open('/tmp/relay.json'))
+          print(json.dumps({'ref':'main','inputs':r['inputs']}, ensure_ascii=False))
+          PY
+            )
+            curl --fail --silent --show-error -X POST \
+              -H "Authorization: Bearer $STUDIO_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/$STUDIO_REPO/actions/workflows/$WORKFLOW/dispatches" \
+              -d "$PAYLOAD"
+            echo "Relayed $SOURCE_ID -> $WORKFLOW ($MODE)"
+          done
