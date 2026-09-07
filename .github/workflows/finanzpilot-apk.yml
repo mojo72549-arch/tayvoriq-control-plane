@@ -46,14 +46,14 @@ jobs:
       - name: Prepare artifact
         run: |
           mkdir -p dist
-          cp finanzpilot-android/app/build/outputs/apk/debug/app-debug.apk dist/FinanzPilot_v2.3.0.apk
-          sha256sum dist/FinanzPilot_v2.3.0.apk > dist/FinanzPilot_v2.3.0.sha256
-          printf 'version=2.3.0\ncommit=%s\nfeature=csv-family-finance-drivers-charts\n' "$GITHUB_SHA" > dist/BUILD_INFO.txt
+          cp finanzpilot-android/app/build/outputs/apk/debug/app-debug.apk dist/FinanzPilot_v2.3.1.apk
+          sha256sum dist/FinanzPilot_v2.3.1.apk > dist/FinanzPilot_v2.3.1.sha256
+          printf 'version=2.3.1\ncommit=%s\nfeature=csv-runtime-hotfix-and-emre-debt-classification\n' "$GITHUB_SHA" > dist/BUILD_INFO.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: FinanzPilot-v2-3-0-${{ github.sha }}
+          name: FinanzPilot-v2-3-1-${{ github.sha }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
