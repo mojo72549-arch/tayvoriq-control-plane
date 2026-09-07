@@ -3,7 +3,7 @@
   "status": "APPROVED",
   "source": "social_editorial_direct",
   "trend_id": "social-20260907-leipzig-russia-drone",
-  "topic": "Lawrow spricht nach Leipziger Sprengstoffdrohne vom Beginn eines echten Krieges mit Deutschland",
+  "topic": "Sprengstoffdrohne Leipzig: Lawrow spricht von „echtem Krieg“",
   "trend_scope": "world_society",
   "language": "Deutsch",
   "platform": "youtube_tiktok",
@@ -19,9 +19,15 @@
       "state": "APPROVED",
       "at": "2026-09-07T09:22:00+00:00",
       "actor": "chatgpt-social-editorial"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-09-07T13:36:00+00:00",
+      "actor": "chatgpt-social-editorial-repair",
+      "reason": "quality-gate repair: source-bound Lawrow hook + shorter platform title"
     }
   ],
-  "source_context_sha256": "834c092eac93c1ac047fb69f8a4b9c831621218777cdb18256ae071be0c40a49",
+  "source_context_sha256": "b13c6cfe0b7051ed2d4942ead51c41b1e50c3f977c25e77120459e7578947c9c",
   "source_context": {
     "title": "Deutschland und Russland nach Leipziger Sprengstoffdrohne: Lawrow spricht vom „Beginn eines echten Krieges“",
     "category": "world_society",
@@ -40,11 +46,11 @@
       "Keine Kriegs- oder Explosionsbilder als vermeintlich echte Aufnahmen des Leipziger Vorfalls darstellen."
     ],
     "fallback_editorial_answers": {
-      "what_happened": "Deutschland macht Russland für die Sprengstoffdrohne in Leipzig verantwortlich.",
-      "why_happening": "Weil Deutschland die Ukraine unterstützt, sieht Berlin darin hybride Angriffe.",
-      "who_is_affected": "Betroffen sind kritische Infrastruktur und die deutsch-russischen Beziehungen.",
-      "personal_impact": "Für dich betrifft das besonders den Schutz von Flughäfen und Bahnhöfen.",
-      "action_now": "Prüfe neue Meldungen und trenne Ermittlungsfakten klar von politischen Aussagen."
+      "what_happened": "Lawrow spricht nach der Leipziger Sprengstoffdrohne vom „Beginn eines echten Krieges“ mit Deutschland.",
+      "why_happening": "Weil Berlin Russland verantwortlich macht, weist Moskau die Vorwürfe zurück.",
+      "who_is_affected": "Betroffen sind Flughäfen, kritische Infrastruktur und die deutsch-russischen Beziehungen.",
+      "personal_impact": "Für dich betrifft das besonders Flughäfen und Bahnhöfe.",
+      "action_now": "Prüfe neue Meldungen und trenne Ermittlungsfakten von politischer Rhetorik."
     },
     "script_direction": {
       "target_seconds": 35,
@@ -86,5 +92,10 @@
         "supports": "Berichtet über Lawrows Kriegsvorwurf, die deutschen Sanktionen und Merz' Aussage, die Zuordnung sei klar und gerichtsfest."
       }
     ]
+  },
+  "editorial_revision": {
+    "version": "v2-source-bound-lawrow-hook",
+    "reason": "Previous master omitted the central attributed Lawrow quote and failed factual/marketing quality gates.",
+    "quality_gates_weakened": false
   }
 }
