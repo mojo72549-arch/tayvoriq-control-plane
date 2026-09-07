@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    {"source": "/", "destination": "/live.html"}
+    {"source": "/", "destination": "/live.html"},
+    {"source": "/api/live", "destination": "/api/live-v3"}
   ],
   "headers": [
     {
@@ -19,6 +20,12 @@
     },
     {
       "source": "/live.html",
+      "headers": [
+        {"key": "Cache-Control", "value": "no-store, max-age=0, must-revalidate"}
+      ]
+    },
+    {
+      "source": "/api/live",
       "headers": [
         {"key": "Cache-Control", "value": "no-store, max-age=0, must-revalidate"}
       ]
