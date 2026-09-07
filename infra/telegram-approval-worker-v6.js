@@ -3,6 +3,7 @@ import v5 from './telegram-approval-worker-v5.js';
 const STATE_REPOSITORY = 'mojo72549-arch/tayvoriq-control-plane';
 const STATE_PATH = '.automation/tayvoriq-telegram-approval-state.json';
 const APPROVE_RE = /^tayvoriq:trend:approve:([A-Za-z0-9_-]{1,32})$/;
+const VISUAL_MODES = new Set(['STANDARD', 'CINEMATIC', 'MIXED']);
 
 export default {
   async fetch(request, env) {
@@ -65,10 +66,19 @@ async function handleApprove(env, callback, chatId, sessionId) {
     return new Response('no selection', { status: 200 });
   }
 
+  const visualMode = normalizeVisualMode(session.visual_mode);
+  if (!visualMode) {
+    if (callbackId) await answerCallback(env, callbackId, 'Bitte zuerst Standard, Cinematic oder Mixed wählen.', true);
+    return new Response('no visual mode', { status: 200 });
+  }
+  session.visual_mode = visualMode;
+  session.production_policy = productionPolicy(visualMode);
+  session.target_duration = targetDurationForMode(session.target_duration, visualMode);
+
   session.status = 'RELEASING';
   session.released_at = new Date().toISOString();
   session.dispatches = session.dispatches && typeof session.dispatches === 'object' ? session.dispatches : {};
-  loaded = await saveState(env, state, loaded.sha, `Lock Telegram trend release ${sessionId}`);
+  loaded = await saveState(env, state, loaded.sha, `Lock Telegram trend release ${sessionId} ${visualMode}`);
 
   const candidates = new Map((Array.isArray(session.candidates) ? session.candidates : [])
     .map(c => [Number(c?.number || 0), c]));
@@ -89,6 +99,7 @@ async function handleApprove(env, callback, chatId, sessionId) {
       session.dispatches[String(number)] = {
         status: 'QUEUED',
         topic: String(candidate.topic).trim(),
+        visual_mode: visualMode,
         queue_path: queuePath,
         queued_at: new Date().toISOString(),
       };
@@ -120,6 +131,8 @@ async function handleApprove(env, callback, chatId, sessionId) {
     '✅ Trend freigegeben.',
     '',
     `Auswahl: ${selected.join(', ')}`,
+    `Modus: ${modeLabel(visualMode)}`,
+    `Zieldauer: ${session.target_duration} Sekunden`,
     ...topics.map(t => `• ${t}`),
     '',
     failures.length ? 'Mindestens ein Request konnte nicht eingereiht werden.' : 'Der Request wurde in die Produktions-Queue gestellt und wird automatisch ins Studio weitergereicht.',
@@ -129,11 +142,42 @@ async function handleApprove(env, callback, chatId, sessionId) {
   return new Response('ok', { status: 200 });
 }
 
+function normalizeVisualMode(value) {
+  const mode = String(value || '').trim().toUpperCase();
+  return VISUAL_MODES.has(mode) ? mode : '';
+}
+
+function modeLabel(mode) {
+  return ({ STANDARD:'⚡ Standard', CINEMATIC:'🎬 Cinematic', MIXED:'🔥 Mixed' })[mode] || 'nicht gewählt';
+}
+
+function productionPolicy(mode) {
+  const common = {
+    allow_real_footage: true,
+    allow_stock: true,
+    allow_generated_video: true,
+    cohesion_min: 80,
+    audio_min: 82,
+  };
+  if (mode === 'CINEMATIC') return { ...common, min_shots:6, max_shots:8, min_hero_shots:2, final_quality_min:85 };
+  if (mode === 'MIXED') return { ...common, min_shots:6, max_shots:8, min_hero_shots:1, final_quality_min:82 };
+  return { ...common, min_shots:4, max_shots:8, min_hero_shots:0, final_quality_min:78 };
+}
+
+function targetDurationForMode(value, mode) {
+  const requested = Number(value || 35);
+  if (mode === 'CINEMATIC') return Math.max(15, Math.min(25, requested));
+  if (mode === 'MIXED') return Math.max(15, Math.min(30, requested));
+  return Math.max(15, Math.min(35, requested));
+}
+
 async function enqueueRelay(env, candidate, session) {
   const cleanSession = String(session.session_id || 'trend').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) || 'trend';
   const number = Number(candidate.number || 0);
   const stamp = Date.now();
   const path = `queue/trend-relay/${cleanSession}-${number}-${stamp}.json`;
+  const visualMode = normalizeVisualMode(session.visual_mode);
+  if (!visualMode) throw new Error('visual mode missing after approval lock');
   const payload = {
     session_id: cleanSession,
     candidate_number: number,
@@ -142,11 +186,13 @@ async function enqueueRelay(env, candidate, session) {
     topic: String(candidate.topic || '').trim(),
     language: String(session.language || 'Deutsch'),
     platform: String(session.platform || 'youtube_tiktok'),
-    target_duration: String(Number(session.target_duration || 40)),
+    target_duration: String(Number(session.target_duration || 35)),
     llm_provider: String(session.llm_provider || 'auto'),
     telegram_notify: 'true',
+    visual_mode: visualMode,
+    production_policy: session.production_policy || productionPolicy(visualMode),
     queued_at: new Date().toISOString(),
-    source: 'telegram-worker-v6',
+    source: 'telegram-worker-v6-visual-modes-v2',
   };
 
   const url = `https://api.github.com/repos/${STATE_REPOSITORY}/contents/${path}`;
@@ -154,7 +200,7 @@ async function enqueueRelay(env, candidate, session) {
     method: 'PUT',
     headers: ghHeaders(env),
     body: JSON.stringify({
-      message: `Queue TAYVORIQ trend ${cleanSession} #${number}`,
+      message: `Queue TAYVORIQ trend ${cleanSession} #${number} ${visualMode}`,
       content: encodeContent(`${JSON.stringify(payload, null, 2)}\n`),
       branch: 'main',
     }),
