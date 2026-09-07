@@ -1,0 +1,31 @@
+name: TAYVORIQ Visual Mode V2 Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/tayvoriq-visual-modes-v2
+    paths:
+      - infra/telegram-approval-worker-v5.js
+      - infra/telegram-approval-worker-v6.js
+      - tests/telegram-visual-mode-v2.test.mjs
+      - .github/workflows/visual-mode-v2-tests.yml
+
+permissions:
+  contents: read
+
+jobs:
+  telegram-visual-mode-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check worker syntax
+        run: |
+          node --check infra/telegram-approval-worker-v5.js
+          node --check infra/telegram-approval-worker-v6.js
+      - name: Run visual mode contract tests
+        run: node --test tests/telegram-visual-mode-v2.test.mjs
