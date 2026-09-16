@@ -1,0 +1,89 @@
+name: TAYVORIQ Isar Public Thunder Preflight
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.automation/isar-public-thunder-preflight.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PRIVATE_REPO: mojo72549-arch/shorts-agent-studio
+  SOURCE_REQUEST_ID: isar-spectrum-20260909-pilot01
+  CHECKPOINT_PATH: cinematic-control-center/checkpoints/isar-spectrum-20260909-pilot01/checkpoint.json
+  THUNDER_API: https://api.thundercompute.com:8443
+
+jobs:
+  preflight:
+    name: Public runner · private checkpoint · Thunder auth
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      TNR_API_TOKEN: ${{ secrets.TNR_API_TOKEN }}
+    steps:
+      - name: Verify public runner is actually assigned
+        run: |
+          set -euo pipefail
+          echo "runner=${RUNNER_NAME:-unknown} os=${RUNNER_OS:-unknown} arch=${RUNNER_ARCH:-unknown}"
+          test "${RUNNER_OS:-}" = "Linux"
+
+      - name: Verify required secrets exist without printing them
+        run: |
+          set -euo pipefail
+          test -n "${PRIVATE_REPO_TOKEN:-}" || { echo '::error::PRIVATE_REPO_TOKEN missing in public control-plane repo'; exit 11; }
+          test -n "${TNR_API_TOKEN:-}" || { echo '::error::TNR_API_TOKEN missing in public control-plane repo'; exit 12; }
+          echo 'Required secrets are present.'
+
+      - name: Verify private production repo and durable Isar checkpoint are readable
+        run: |
+          set -euo pipefail
+          auth="Authorization: Bearer ${PRIVATE_REPO_TOKEN}"
+          curl -fsS -H "$auth" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${PRIVATE_REPO}" > /tmp/private-repo.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/private-repo.json'))
+          assert d.get('private') is True
+          assert d.get('full_name') == 'mojo72549-arch/shorts-agent-studio'
+          print('private repo readable')
+          PY
+          encoded_path=$(python - <<'PY'
+          import urllib.parse
+          print(urllib.parse.quote('cinematic-control-center/checkpoints/isar-spectrum-20260909-pilot01/checkpoint.json', safe='/'))
+          PY
+          )
+          curl -fsS -H "$auth" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${PRIVATE_REPO}/contents/${encoded_path}?ref=lab%2Fcinematic-control-center" > /tmp/checkpoint-content.json
+          python - <<'PY'
+          import base64, json
+          raw=json.load(open('/tmp/checkpoint-content.json'))
+          payload=json.loads(base64.b64decode(str(raw['content']).replace('\n','')).decode())
+          assert payload.get('state') == 'PREPRODUCTION_READY', payload
+          assert payload.get('source_request_id') == 'isar-spectrum-20260909-pilot01', payload
+          assert payload.get('voice_provider') == 'chatterbox_multilingual_v3', payload
+          assert payload.get('artifact_storage_required') is False, payload
+          print({'checkpoint':'PREPRODUCTION_READY','voice':payload.get('voice_provider'),'duration':payload.get('voice_duration_sec')})
+          PY
+
+      - name: Verify Thunder token and refuse duplicate paid GPU
+        run: |
+          set -euo pipefail
+          curl -fsS -H "Authorization: Bearer ${TNR_API_TOKEN}" \
+            "${THUNDER_API}/v1/instances/list?update_ips=true" > /tmp/thunder-instances.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/thunder-instances.json'))
+          vals=list(d.values()) if isinstance(d,dict) else list(d or [])
+          active=[x for x in vals if str((x or {}).get('status','')).upper() in {'RUNNING','STARTING','PROVISIONING','PENDING','QUEUED'}]
+          print({'thunder_auth':'ok','active_instances':len(active)})
+          assert len(active) == 0, f'refusing duplicate paid GPU: {len(active)} active instance(s)'
+          PY
+
+      - name: Preflight contract
+        run: |
+          echo 'ISAR_PUBLIC_THUNDER_PREFLIGHT_GREEN'
+          echo 'No GPU was started by this workflow.'
