@@ -1,0 +1,116 @@
+name: TAYVORIQ Isar V4 Preproduction Export
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.automation/isar-v4-preprod-export-kick.json'
+
+permissions:
+  contents: read
+
+env:
+  PRIVATE_REPO: mojo72549-arch/shorts-agent-studio
+  SOURCE_REQUEST_ID: isar-spectrum-20260909-pilot01
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: main
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: studio-main
+          fetch-depth: 1
+
+      - name: Prepare voice runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost || true
+          sudo apt-get update -y >/dev/null
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ffmpeg libsndfile1 git >/dev/null
+          python -m pip install --no-cache-dir --upgrade pip >/dev/null
+          python -m pip install --no-cache-dir 'chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948' >/dev/null
+
+      - name: Rebuild deterministic V4 preproduction
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd studio-main
+          rm -rf preproduction_v4
+          timeout --signal=TERM --kill-after=30s 25m python tools/tayvoriq_isar_quality_preproduction_v4.py --outdir preproduction_v4 --target-duration 27
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('preproduction_v4/preproduction_report.json').read_text(encoding='utf-8'))
+          assert r['state']=='SUCCESS',r
+          assert r['voice_provider']=='chatterbox_multilingual_v3',r
+          assert r['freshness_gate'] and r['explainability_gate'] and r['diversity_gate'],r
+          assert r['independent_shot_generation_required'] is True,r
+          assert r['publish_allowed'] is False,r
+          print(json.dumps(r,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Build canonical V4 cinematic request
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd studio-main
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source=json.loads(Path('preproduction_v4/script.json').read_text(encoding='utf-8'))
+          storyboard=source['storyboard']
+          payload={
+            'schema':'tayvoriq-cinematic-director-request-v4-quality-rebuild',
+            'source_request_id':'isar-spectrum-20260909-pilot01',
+            'visual_mode':'CINEMATIC',
+            'topic':'Isar Aerospace: Spectrum erreicht beim zweiten Flug den Orbit',
+            'target_duration_sec':27,
+            'shot_count':7,
+            'min_hero_shots':3,
+            'story_beats':[x['spoken_text'] for x in storyboard],
+            'storyboard':storyboard,
+            'freshness_lock':'2026-09-05_orbit_success',
+            'reuse_rejected_master':False,
+            'style_lock':{
+              'character':'no invented presenter; preserve the same plausible Spectrum-like vehicle design only when the rocket recurs',
+              'wardrobe':'authentic aerospace workwear or cleanroom clothing only where people appear; no recurring presenter',
+              'world':'fact-grounded illustrative reconstruction of Isar Aerospace Spectrum reaching orbit from Andøya on 5 September 2026; generated imagery is illustrative, never fake documentary evidence',
+              'lighting':'natural Arctic blue-hour and physically motivated orbital/cleanroom lighting; controlled warm practical highlights',
+              'camera_language':'premium explanatory documentary cinema; intentionally varied 24mm, 35mm, 50mm and telephoto views with clear spatial readability',
+              'color_language':'coherent cool Arctic and neutral aerospace palette with restrained warm highlights; realistic materials; no oversaturated AI look',
+              'realism':'photorealistic illustrative reconstruction, physically plausible scale, exhaust, satellites, people and motion'
+            }
+          }
+          Path('preproduction_v4/cinematic_request.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          python lab/thunder/tayvoriq_full_cinematic_v2.py --input preproduction_v4/cinematic_request.json --output preproduction_v4/cinematic_manifest.json
+
+      - name: Build checkpoint descriptor
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd studio-main
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          r=json.loads(Path('preproduction_v4/preproduction_report.json').read_text(encoding='utf-8'))
+          p={'schema':'tayvoriq-cinematic-checkpoint-v4','source_request_id':os.environ['SOURCE_REQUEST_ID'],'state':'PREPRODUCTION_READY','quality_version':'V4_EXPLANATORY_DIVERSE','freshness_lock':'2026-09-05_orbit_success','voice_provider':r['voice_provider'],'voice_duration_sec':r['voice_duration_sec'],'independent_shot_generation_required':True,'diversity_gate_required':True,'explainability_gate_required':True,'quality_gates_weakened':False,'artifact_storage_required':False,'reuse_rejected_master':False,'publish_allowed':False,'updated_at':datetime.now(timezone.utc).isoformat(),'run_id':os.environ['GITHUB_RUN_ID'],'execution_context':'public_control_plane_export'}
+          Path('preproduction_v4/checkpoint.json').write_text(json.dumps(p,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: isar-v4-preproduction-${{ github.run_id }}
+          path: studio-main/preproduction_v4
+          retention-days: 3
+          if-no-files-found: error
