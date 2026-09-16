@@ -1,0 +1,118 @@
+{
+  "schema": "tayvoriq-cinematic-preproduction-v1",
+  "source_request_id": "isar-spectrum-20260909-pilot01",
+  "topic": "Isar Aerospace: Spectrum erreicht beim zweiten Flug den Orbit",
+  "target_duration_sec": 27.0,
+  "script": "Europa hat einen neuen privaten Weg ins All. Am 5. September erreichte Isar Aerospace mit Spectrum von Andøya erstmals den Orbit – und das erst beim zweiten Flug. Dabei wurden sechs CubeSats und ein Technologieexperiment ausgesetzt. Warum ist das wichtig? Spectrum ist der erste Träger der European Launcher Challenge, der die Umlaufbahn erreicht hat. Jetzt zählt nicht mehr nur der Durchbruch: Isar muss zeigen, dass daraus zuverlässige, wiederholbare Starts werden.",
+  "word_count": 69,
+  "verification_basis": "current 2026 official ESA and Isar Aerospace mission reporting",
+  "sources": [
+    {
+      "url": "https://www.esa.int/Space_in_Member_States/Germany/Isar_Aerospace_gelingt_erster_Start_in_den_Orbit_aus_Kontinentaleuropa",
+      "supports": [
+        "orbit_reached",
+        "launch_date",
+        "andoya",
+        "launcher_challenge_milestone"
+      ]
+    },
+    {
+      "url": "https://www.esa.int/ESA_Multimedia/Images/2026/09/Spectrum_lifts_off",
+      "supports": [
+        "six_cubesats",
+        "technology_experiment",
+        "second_flight"
+      ]
+    },
+    {
+      "url": "https://isaraerospace.com/press/history-for-european-spaceflight-isar-aerospace-reaches-orbit-and-deploys-payloads-on-second-flight",
+      "supports": [
+        "payloads_released_in_orbit",
+        "second_flight",
+        "orbit_reached"
+      ]
+    }
+  ],
+  "storyboard": [
+    {
+      "information_role": "BREAKTHROUGH",
+      "spoken_text": "Europa hat einen neuen privaten Weg ins All.",
+      "new_information": "A private European launch system has achieved an orbital breakthrough.",
+      "environment_key": "arctic_launch_pad_night",
+      "composition_key": "low_angle_ignition_hero",
+      "camera_key": "low_35mm_push",
+      "hero_shot": true,
+      "visual_prompt": "Spectrum-like slender two-stage European orbital launch vehicle igniting on an Arctic coastal launch pad at blue hour, low angle close hero view, physically plausible exhaust plume and pad lighting, cold Norwegian atmosphere, no readable branding",
+      "motion": "controlled low-angle push as engines build thrust and the vehicle begins liftoff; strong but physically plausible exhaust and vibration"
+    },
+    {
+      "information_role": "WHERE_AND_WHEN",
+      "spoken_text": "Am 5. September erreichte Isar Aerospace mit Spectrum von Andøya erstmals den Orbit – und das erst beim zweiten Flug.",
+      "new_information": "The launch took place from Andøya and succeeded on only the second flight.",
+      "environment_key": "andoya_coastline",
+      "composition_key": "high_wide_geography",
+      "camera_key": "aerial_24mm_reveal",
+      "hero_shot": false,
+      "visual_prompt": "wide aerial establishing shot of Andøya Spaceport on a rugged Norwegian island coastline, launch complex beside dark Arctic sea, mountains and low cloud layers, tiny launch vehicle visible for scale, documentary geography, no text",
+      "motion": "slow stabilized aerial reveal across coastline toward launch complex, clearly different scale and viewpoint from the ignition shot"
+    },
+    {
+      "information_role": "ASCENT",
+      "spoken_text": "Spectrum erreicht die Umlaufbahn.",
+      "new_information": "The vehicle climbs from atmosphere toward space.",
+      "environment_key": "upper_atmosphere_ascent",
+      "composition_key": "long_lens_tracking_profile",
+      "camera_key": "telephoto_tracking",
+      "hero_shot": true,
+      "visual_prompt": "slender orbital rocket climbing above a vast cloud deck over the Norwegian Sea, side profile with luminous exhaust trail, curvature beginning to emerge, long-lens documentary tracking aesthetic, physically plausible scale, no text or logos",
+      "motion": "smooth telephoto tracking during rapid ascent; clouds fall away and sky darkens naturally toward the upper atmosphere"
+    },
+    {
+      "information_role": "ORBIT_INSERTION",
+      "spoken_text": "Und das erst beim zweiten Flug.",
+      "new_information": "Upper-stage flight completes the transition from launch to orbit.",
+      "environment_key": "edge_of_space",
+      "composition_key": "earth_limb_upper_stage",
+      "camera_key": "orbital_50mm_drift",
+      "hero_shot": false,
+      "visual_prompt": "upper stage of a compact European launch vehicle above the bright curved limb of Earth, deep black space and thin blue atmosphere, restrained realistic spacecraft materials, no fantasy nebulae, no readable markings",
+      "motion": "subtle orbital drift and controlled perspective change with Earth limb moving slowly below, calm contrast after ascent"
+    },
+    {
+      "information_role": "PAYLOAD",
+      "spoken_text": "Dabei wurden sechs CubeSats und ein Technologieexperiment ausgesetzt.",
+      "new_information": "Six CubeSats and one technology experiment are deployed.",
+      "environment_key": "payload_deployment_orbit",
+      "composition_key": "payloads_separating_wide",
+      "camera_key": "wide_orbital_pullback",
+      "hero_shot": true,
+      "visual_prompt": "illustrative reconstruction of an orbital payload deployment: six distinct small CubeSats and one compact technology experiment separating gently from an upper stage above Earth, clear spatial separation, realistic satellite proportions, no fake UI, no labels, no logos",
+      "motion": "slow physically believable separation of seven payload objects with gentle relative motion while the camera eases backward to reveal the full deployment"
+    },
+    {
+      "information_role": "WHY_IT_MATTERS",
+      "spoken_text": "Warum ist das wichtig? Spectrum ist der erste Träger der European Launcher Challenge, der die Umlaufbahn erreicht hat.",
+      "new_information": "The achievement matters because it advances an independent European commercial launch capability.",
+      "environment_key": "satellite_integration_cleanroom",
+      "composition_key": "human_scale_payload_integration",
+      "camera_key": "documentary_50mm_lateral",
+      "hero_shot": false,
+      "visual_prompt": "European small-satellite integration cleanroom, engineers in cleanroom clothing carefully inspecting several compact CubeSat-class payloads on a workbench, authentic aerospace hardware, human scale, observational documentary cinema, no readable badges or text",
+      "motion": "restrained lateral documentary move past engineers and satellite hardware, hands moving carefully, emphasis on real-world capability rather than spectacle"
+    },
+    {
+      "information_role": "WHAT_NEXT",
+      "spoken_text": "Jetzt zählt nicht mehr nur der Durchbruch: Isar muss zeigen, dass daraus zuverlässige, wiederholbare Starts werden.",
+      "new_information": "The next test is reliability and repeatability, not merely one success.",
+      "environment_key": "launch_vehicle_preparation_dawn",
+      "composition_key": "quiet_future_resolution",
+      "camera_key": "slow_35mm_pullback",
+      "hero_shot": false,
+      "visual_prompt": "next launch vehicle being prepared at an Arctic coastal launch facility before dawn, technicians and ground equipment at realistic scale, quiet anticipation, cool natural light with restrained warm work lights, cinematic documentary finish, no text or logos",
+      "motion": "slow calm pullback revealing the prepared vehicle and launch infrastructure, ending on a stable forward-looking composition"
+    }
+  ],
+  "freshness_lock": "2026-09-05_orbit_success",
+  "extension_profile": "V4_EXPLANATORY_DIVERSE",
+  "quality_gates_weakened": false
+}
