@@ -15,6 +15,7 @@ env:
   SOURCE_REQUEST_ID: isar-spectrum-20260909-pilot01
   CHECKPOINT_PATH: cinematic-control-center/checkpoints/isar-spectrum-20260909-pilot01/checkpoint.json
   THUNDER_API: https://api.thundercompute.com:8443
+  CONTROL_CENTER_ISAR_START_URL: https://tayvoriq-control-center.vercel.app/api/isar-start
 
 jobs:
   preflight:
@@ -52,7 +53,7 @@ jobs:
           d=json.load(open('/tmp/private-repo.json'))
           assert d.get('private') is True
           assert d.get('full_name') == 'mojo72549-arch/shorts-agent-studio'
-          print('private repo readable')
+          print({'private_repo':'readable','push_permission':(d.get('permissions') or {}).get('push')})
           PY
           encoded_path=$(python - <<'PY'
           import urllib.parse
@@ -125,11 +126,11 @@ jobs:
           fi
           echo "THUNDER_AUTH_MODE=$auth_mode" >> "$GITHUB_ENV"
 
-      - name: Dispatch locked Isar request to private GPU worker
+      - name: Handoff locked Isar request to private execution context
         shell: bash
         run: |
           set -euo pipefail
-          payload=$(python - <<'PY'
+          dispatch_payload=$(python - <<'PY'
           import json, os
           print(json.dumps({
               'event_type':'tayvoriq_isar_gpu_production',
@@ -147,6 +148,8 @@ jobs:
 
           dispatched='false'
           selected_name=''
+          handoff_state=''
+
           for token_name in PRIVATE_DISPATCH_TOKEN PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN; do
             token="${!token_name:-}"
             [ -n "$token" ] || continue
@@ -156,25 +159,79 @@ jobs:
               -H 'Accept: application/vnd.github+json' \
               -H 'X-GitHub-Api-Version: 2022-11-28' \
               -H 'Content-Type: application/json' \
-              -d "$payload" \
+              -d "$dispatch_payload" \
               "https://api.github.com/repos/${PRIVATE_REPO}/dispatches" || true)
             if [ "$code" = '204' ]; then
               dispatched='true'
               selected_name="$token_name"
+              handoff_state='GPU_PRODUCTION_DISPATCHED'
               break
             fi
-            echo "Dispatch candidate $token_name returned HTTP ${code:-none}; trying next configured candidate."
+            echo "Direct dispatch candidate $token_name returned HTTP ${code:-none}; trying private Control Center bridge."
           done
 
           if [ "$dispatched" != 'true' ]; then
-            echo '::error title=Private dispatch permission missing::No configured cross-repository token can create the private Isar dispatch. The A6000 was NOT started. Configure PRIVATE_DISPATCH_TOKEN with Contents: write on shorts-agent-studio.'
-            exit 13
+            test -n "${PRIVATE_REPO_TOKEN:-}" || {
+              echo '::error::PRIVATE_REPO_TOKEN missing; cannot authenticate private bridge'; exit 13;
+            }
+            bridge_payload=$(python - <<'PY'
+          import json, os
+          print(json.dumps({
+              'source_request_id':os.environ['SOURCE_REQUEST_ID'],
+              'checkpoint_path':os.environ['CHECKPOINT_PATH'],
+              'public_run_id':os.environ['GITHUB_RUN_ID'],
+              'public_repository':os.environ['GITHUB_REPOSITORY'],
+              'public_thunder_auth':os.environ.get('THUNDER_AUTH_MODE','PRIVATE_REQUIRED'),
+              'max_budget_usd':1.75,
+          }, separators=(',',':')))
+          PY
+            )
+            bridge_code=$(curl --silent --show-error --max-time 90 \
+              --output /tmp/control-center-bridge.json --write-out '%{http_code}' \
+              -X POST \
+              -H "x-tayvoriq-bridge-token: ${PRIVATE_REPO_TOKEN}" \
+              -H 'Content-Type: application/json' \
+              -d "$bridge_payload" \
+              "$CONTROL_CENTER_ISAR_START_URL" || true)
+
+            if [ "$bridge_code" = '200' ] || [ "$bridge_code" = '202' ]; then
+              handoff_state=$(python - <<'PY'
+          import json
+          d=json.load(open('/tmp/control-center-bridge.json'))
+          assert d.get('ok') is True and d.get('accepted') is True, d
+          state=str(d.get('state') or '')
+          assert state in {'MASTER_READY','GPU_PRODUCTION_DISPATCHED'}, d
+          assert d.get('source_request_id') == 'isar-spectrum-20260909-pilot01', d
+          assert d.get('publish_allowed') is False, d
+          print(state)
+          PY
+              )
+              dispatched='true'
+              selected_name='CONTROL_CENTER_PRIVATE_BRIDGE'
+              echo "Private bridge accepted locked request with state=$handoff_state."
+              cat /tmp/control-center-bridge.json
+            else
+              echo "::error title=Private bridge rejected::HTTP ${bridge_code:-none}. A6000 was NOT started."
+              cat /tmp/control-center-bridge.json 2>/dev/null || true
+              exit 13
+            fi
           fi
-          echo "Private production dispatch accepted through $selected_name."
+
+          echo "PRIVATE_HANDOFF_STATE=$handoff_state" >> "$GITHUB_ENV"
+          echo "PRIVATE_HANDOFF_ROUTE=$selected_name" >> "$GITHUB_ENV"
+          echo "Private handoff accepted through $selected_name with state=$handoff_state."
 
       - name: Preflight contract
         run: |
+          set -euo pipefail
+          test -n "${PRIVATE_HANDOFF_STATE:-}"
           echo 'ISAR_PUBLIC_THUNDER_PREFLIGHT_GREEN'
           echo "Thunder auth context: ${THUNDER_AUTH_MODE:-PRIVATE_REQUIRED}"
+          echo "Private handoff route: ${PRIVATE_HANDOFF_ROUTE:-unknown}"
+          echo "Private handoff state: ${PRIVATE_HANDOFF_STATE}"
           echo 'No GPU was started by this public workflow.'
-          echo 'The private worker must revalidate the checkpoint, Thunder authentication, duplicate-instance guard and budget before creating the A6000.'
+          if [ "${PRIVATE_HANDOFF_STATE}" = 'MASTER_READY' ]; then
+            echo 'Verified durable master already exists. No paid rerender was requested. Next gate: REVIEW.'
+          else
+            echo 'The private worker must authenticate Thunder, refuse duplicate paid GPUs and enforce the budget before creating the A6000.'
+          fi
