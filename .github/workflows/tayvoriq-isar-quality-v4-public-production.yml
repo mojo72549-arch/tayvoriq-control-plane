@@ -1,0 +1,385 @@
+name: TAYVORIQ Isar Quality V4 Public Production
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.automation/isar-quality-v4-public-kick.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-isar-quality-v4-public-production
+  cancel-in-progress: false
+
+env:
+  PRIVATE_REPO: mojo72549-arch/shorts-agent-studio
+  REVIEW_BRANCH: lab/cinematic-control-center
+  SOURCE_REQUEST_ID: isar-spectrum-20260909-pilot01
+  CHECKPOINT_DIR: cinematic-control-center/checkpoints/isar-spectrum-20260909-pilot01-v4
+  THUNDER_API: https://api.thundercompute.com:8443
+  MAX_BUDGET_USD: '1.75'
+  GPU_RATE_USD_H: '0.35'
+  INSTANCE_ID: ''
+  GPU_STARTED_EPOCH: ''
+
+jobs:
+  quality-production:
+    name: Public runner · current facts → V4 review master
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      TNR_API_TOKEN_1: ${{ secrets.TNR_API_TOKEN }}
+      TNR_API_TOKEN_2: ${{ secrets.THUNDER_API_TOKEN }}
+      TNR_API_TOKEN_3: ${{ secrets.THUNDER_TOKEN }}
+      TNR_API_TOKEN_4: ${{ secrets.TNR_TOKEN }}
+      TNR_API_TOKEN_5: ${{ secrets.THUNDER_COMPUTE_TOKEN }}
+      TNR_API_TOKEN_6: ${{ secrets.THUNDERCOMPUTE_TOKEN }}
+      TNR_API_TOKEN_7: ${{ secrets.THUNDER_API_KEY }}
+      TNR_API_TOKEN_8: ${{ secrets.TNR_API_KEY }}
+    steps:
+      - name: Verify public runner and private repo credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "runner=${RUNNER_NAME:-unknown} os=${RUNNER_OS:-unknown}"
+          test "${RUNNER_OS:-}" = Linux
+          test -n "${PRIVATE_REPO_TOKEN:-}" || { echo '::error::PRIVATE_REPO_TOKEN missing'; exit 11; }
+
+      - name: Checkout private production code
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: main
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: studio-main
+          fetch-depth: 1
+
+      - name: Checkout private review branch
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: lab/cinematic-control-center
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: studio-review
+          fetch-depth: 1
+
+      - name: Reclaim runner disk and install preproduction runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          sudo apt-get clean || true
+          rm -rf "$HOME/.cache/pip" "$HOME/.cache/uv" "$HOME/.npm/_cacache" || true
+          sudo apt-get update -y >/dev/null
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ffmpeg libsndfile1 git jq >/dev/null
+          python -m pip install --no-cache-dir --upgrade pip >/dev/null
+          python -m pip install --no-cache-dir 'chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948' >/dev/null
+          df -h /
+
+      - name: Build new current 2026 script, slower German voice and seven-scene storyboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd studio-main
+          rm -rf preproduction_v4
+          timeout --signal=TERM --kill-after=30s 25m python tools/tayvoriq_isar_quality_preproduction_v4.py --outdir preproduction_v4 --target-duration 27
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('preproduction_v4/preproduction_report.json').read_text(encoding='utf-8'))
+          assert r['state']=='SUCCESS',r
+          assert r['voice_provider']=='chatterbox_multilingual_v3',r
+          assert r['freshness_gate'] and r['explainability_gate'] and r['diversity_gate'],r
+          assert r['independent_shot_generation_required'] is True,r
+          assert r['publish_allowed'] is False,r
+          assert 23 <= float(r['voice_duration_sec']) <= 32,r
+          print(json.dumps(r,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Build and validate explicit cinematic request before Thunder
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd studio-main
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source=json.loads(Path('preproduction_v4/script.json').read_text(encoding='utf-8'))
+          storyboard=source['storyboard']
+          assert len(storyboard)==7
+          for key in ('information_role','environment_key','composition_key','camera_key'):
+              vals=[str(x[key]).strip() for x in storyboard]
+              assert len(vals)==len(set(vals)),(key,vals)
+          payload={
+            'schema':'tayvoriq-cinematic-director-request-v4-quality-rebuild',
+            'source_request_id':'isar-spectrum-20260909-pilot01',
+            'visual_mode':'CINEMATIC',
+            'topic':'Isar Aerospace: Spectrum erreicht beim zweiten Flug den Orbit',
+            'target_duration_sec':27,
+            'shot_count':7,
+            'min_hero_shots':3,
+            'story_beats':[x['spoken_text'] for x in storyboard],
+            'storyboard':storyboard,
+            'freshness_lock':'2026-09-05_orbit_success',
+            'reuse_rejected_master':False,
+            'style_lock':{
+              'character':'no invented presenter; preserve the same plausible Spectrum-like vehicle design only when the rocket recurs',
+              'wardrobe':'authentic aerospace workwear or cleanroom clothing only where people appear; no recurring presenter',
+              'world':'fact-grounded illustrative reconstruction of Isar Aerospace Spectrum reaching orbit from Andøya on 5 September 2026; generated imagery is illustrative, never fake documentary evidence',
+              'lighting':'natural Arctic blue-hour and physically motivated orbital/cleanroom lighting; controlled warm practical highlights',
+              'camera_language':'premium explanatory documentary cinema; intentionally varied 24mm, 35mm, 50mm and telephoto views with clear spatial readability',
+              'color_language':'coherent cool Arctic and neutral aerospace palette with restrained warm highlights; realistic materials; no oversaturated AI look',
+              'realism':'photorealistic illustrative reconstruction, physically plausible scale, exhaust, satellites, people and motion'
+            }
+          }
+          Path('/tmp/cinematic-request.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          python lab/thunder/tayvoriq_full_cinematic_v2.py --input /tmp/cinematic-request.json --output /tmp/cinematic-manifest.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/cinematic-manifest.json'))
+          assert d['quality_contract']['independent_shot_generation'] is True,d
+          shots=d['shots']; assert len(shots)==7
+          for k in ('information_role','environment_key','composition_key','camera_key','new_information'):
+              vals=[str(s[k]).strip() for s in shots]
+              assert len(vals)==len(set(vals)),(k,vals)
+          print(json.dumps({'free_preflight':'GREEN','shots':len(shots),'quality_profile':d['quality_profile']},ensure_ascii=False))
+          PY
+
+      - name: Persist V4 preproduction checkpoint to private review branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest="studio-review/$CHECKPOINT_DIR"
+          rm -rf "$dest"
+          mkdir -p "$dest"
+          cp studio-main/preproduction_v4/reference_audio.m4a "$dest/reference_audio.m4a"
+          cp studio-main/preproduction_v4/reference.srt "$dest/reference.srt"
+          cp studio-main/preproduction_v4/script.txt "$dest/script.txt"
+          cp studio-main/preproduction_v4/script.json "$dest/script.json"
+          cp studio-main/preproduction_v4/preproduction_report.json "$dest/preproduction_report.json"
+          cp /tmp/cinematic-request.json "$dest/cinematic_request.json"
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          root=Path('studio-review')/os.environ['CHECKPOINT_DIR']
+          r=json.loads((root/'preproduction_report.json').read_text(encoding='utf-8'))
+          p={'schema':'tayvoriq-cinematic-checkpoint-v4','source_request_id':os.environ['SOURCE_REQUEST_ID'],'state':'PREPRODUCTION_READY','quality_version':'V4_EXPLANATORY_DIVERSE','freshness_lock':'2026-09-05_orbit_success','voice_provider':r['voice_provider'],'voice_duration_sec':r['voice_duration_sec'],'independent_shot_generation_required':True,'diversity_gate_required':True,'explainability_gate_required':True,'quality_gates_weakened':False,'artifact_storage_required':False,'reuse_rejected_master':False,'publish_allowed':False,'updated_at':datetime.now(timezone.utc).isoformat(),'run_id':os.environ['GITHUB_RUN_ID'],'execution_context':'public_control_plane'}
+          (root/'checkpoint.json').write_text(json.dumps(p,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git -C studio-review config user.name 'github-actions[bot]'
+          git -C studio-review config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C studio-review add "$CHECKPOINT_DIR"
+          git -C studio-review commit -m "Checkpoint Isar quality V4 public ${GITHUB_RUN_ID}"
+          git -C studio-review pull --rebase origin "$REVIEW_BRANCH"
+          git -C studio-review push origin HEAD:"$REVIEW_BRANCH"
+
+      - name: Resolve and authenticate public Thunder credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          selected=''; selected_name=''
+          for n in 1 2 3 4 5 6 7 8; do
+            var="TNR_API_TOKEN_${n}"; val="${!var:-}"
+            if [ -n "$val" ]; then selected="$val"; selected_name="$var"; break; fi
+          done
+          test -n "$selected" || { echo '::error::No Thunder credential exists in public control plane. V4 checkpoint is safely persisted; A6000 was not started.'; exit 21; }
+          echo "TNR_API_TOKEN=$selected" >> "$GITHUB_ENV"
+          code=$(curl -sS -o /tmp/thunder-instances.json -w '%{http_code}' -H "Authorization: Bearer $selected" "$THUNDER_API/v1/instances/list?update_ips=true")
+          test "$code" = 200 || { echo "::error::Thunder auth failed HTTP $code"; exit 22; }
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/thunder-instances.json'))
+          vals=list(d.values()) if isinstance(d,dict) else list(d or [])
+          active=[x for x in vals if str((x or {}).get('status','')).upper() in {'RUNNING','STARTING','PROVISIONING','PENDING','QUEUED'}]
+          assert not active,f"refusing duplicate paid GPU: {len(active)} active"
+          print({'thunder_auth':'ok','active_instances':0})
+          PY
+          echo "Resolved masked Thunder credential via $selected_name."
+
+      - name: Install Thunder CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/Thunder-Compute/thunder-cli/main/scripts/install.sh | bash
+          echo "$HOME/.tnr/bin" >> "$GITHUB_PATH"
+
+      - name: Start exactly one RTX A6000 after all free quality gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          body='{"cpu_cores":8,"disk_size_gb":160,"gpu_type":"a6000","mode":"prototyping","num_gpus":1,"template":"base"}'
+          curl -fsS -H "Authorization: Bearer $TNR_API_TOKEN" -H 'Content-Type: application/json' -d "$body" "$THUNDER_API/v1/instances/create" > /tmp/create.json
+          id=$(jq -r '.identifier' /tmp/create.json); test -n "$id" && test "$id" != null
+          echo "INSTANCE_ID=$id" >> "$GITHUB_ENV"
+          echo "GPU_STARTED_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+          echo "A6000 started only after V4 freshness, explainability and storyboard diversity gates."
+
+      - name: Wait for GPU and SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=''
+          for attempt in $(seq 1 90); do
+            curl -fsS -H "Authorization: Bearer $TNR_API_TOKEN" "$THUNDER_API/v1/instances/list?update_ips=true" > /tmp/instances.json
+            status=$(jq -r --arg id "$INSTANCE_ID" '.[$id].status // empty' /tmp/instances.json)
+            echo "Thunder: ${status:-pending}"
+            [ "$status" = RUNNING ] && break
+            [ "$status" != FAILED ] && [ "$status" != ERROR ] || exit 1
+            sleep 10
+          done
+          [ "$status" = RUNNING ] || { echo '::error::GPU startup timeout'; exit 1; }
+          export PATH="$HOME/.tnr/bin:$PATH"
+          tnr --json connect "$INSTANCE_ID" > /tmp/connect.json
+          echo "SSH_IP=$(jq -r .ip /tmp/connect.json)" >> "$GITHUB_ENV"
+          echo "SSH_PORT=$(jq -r .port /tmp/connect.json)" >> "$GITHUB_ENV"
+          echo "SSH_KEY=$(jq -r .key_file /tmp/connect.json)" >> "$GITHUB_ENV"
+          ip=$(jq -r .ip /tmp/connect.json); port=$(jq -r .port /tmp/connect.json); key=$(jq -r .key_file /tmp/connect.json)
+          for attempt in $(seq 1 80); do
+            ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 -i "$key" -p "$port" "ubuntu@$ip" 'echo ready' >/dev/null 2>&1 && exit 0
+            sleep 5
+          done
+          exit 1
+
+      - name: Install cinematic runtime and V4 quality code on GPU
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'set -euo pipefail; nvidia-smi; sudo apt-get update -y >/dev/null; sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ffmpeg python3-venv git jq >/dev/null; python3 -m venv --system-site-packages /home/ubuntu/tayvoriq-v4-venv; source /home/ubuntu/tayvoriq-v4-venv/bin/activate; python -m pip install --upgrade pip >/dev/null; python -m pip install -U "git+https://github.com/huggingface/diffusers.git" transformers accelerate sentencepiece safetensors imageio imageio-ffmpeg huggingface_hub pillow ftfy invisible-watermark qwen-vl-utils >/dev/null; mkdir -p /home/ubuntu/tayvoriq_v4'
+          export PATH="$HOME/.tnr/bin:$PATH"
+          tnr scp studio-main/lab/thunder/render_full_cinematic_v2.py "$INSTANCE_ID:/home/ubuntu/render_full_cinematic_v2.py"
+          tnr scp studio-main/lab/thunder/cinematic_vlm_review_v2.py "$INSTANCE_ID:/home/ubuntu/cinematic_vlm_review_v2.py"
+          tnr scp studio-main/lab/thunder/cinematic_visual_qa_v2.py "$INSTANCE_ID:/home/ubuntu/cinematic_visual_qa_v2.py"
+          tnr scp studio-main/lab/thunder/repair_cinematic_shot_v2.py "$INSTANCE_ID:/home/ubuntu/repair_cinematic_shot_v2.py"
+          tnr scp /tmp/cinematic-manifest.json "$INSTANCE_ID:/home/ubuntu/cinematic_manifest.json"
+
+      - name: Render seven independent cinematic scenes under hard budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'source /home/ubuntu/tayvoriq-v4-venv/bin/activate; nohup env TAYVORIQ_OUT_DIR=/home/ubuntu/tayvoriq_v4 TAYVORIQ_CINEMATIC_MANIFEST=/home/ubuntu/cinematic_manifest.json python /home/ubuntu/render_full_cinematic_v2.py >/home/ubuntu/v4.log 2>&1 & echo $! >/home/ubuntu/v4.pid'
+          while true; do
+            cost=$(python -c "import time; print(round((time.time()-float('$GPU_STARTED_EPOCH'))/3600*float('$GPU_RATE_USD_H'),3))")
+            over=$(python -c "print(1 if float('$cost') >= float('$MAX_BUDGET_USD') else 0)")
+            if [ "$over" = 1 ]; then ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'kill $(cat /home/ubuntu/v4.pid) 2>/dev/null || true'; echo "::error::Budget cap reached $cost"; exit 1; fi
+            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'test -f /home/ubuntu/tayvoriq_v4/progress.json && cat /home/ubuntu/tayvoriq_v4/progress.json || true'
+            if ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'kill -0 $(cat /home/ubuntu/v4.pid) 2>/dev/null'; then break; fi
+            sleep 15
+          done
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'tail -n 160 /home/ubuntu/v4.log; test -s /home/ubuntu/tayvoriq_v4/render_manifest.json'
+
+      - name: Local VLM + hard diversity gate + bounded independent repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          attempt=1
+          while [ "$attempt" -le 3 ]; do
+            cost=$(python -c "import time; print(round((time.time()-float('$GPU_STARTED_EPOCH'))/3600*float('$GPU_RATE_USD_H'),3))")
+            python -c "assert float('$cost') < float('$MAX_BUDGET_USD'), 'budget cap before QA'"
+            ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'source /home/ubuntu/tayvoriq-v4-venv/bin/activate; python /home/ubuntu/cinematic_vlm_review_v2.py --render-manifest /home/ubuntu/tayvoriq_v4/render_manifest.json --cinematic-manifest /home/ubuntu/cinematic_manifest.json --contact-dir /home/ubuntu/tayvoriq_v4/contact --output /home/ubuntu/tayvoriq_v4/perceptual.json'
+            set +e
+            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" 'source /home/ubuntu/tayvoriq-v4-venv/bin/activate; python /home/ubuntu/cinematic_visual_qa_v2.py --render-manifest /home/ubuntu/tayvoriq_v4/render_manifest.json --perceptual-json /home/ubuntu/tayvoriq_v4/perceptual.json --output /home/ubuntu/tayvoriq_v4/visual_qa.json'
+            rc=$?
+            set -e
+            [ "$rc" -eq 0 ] && break
+            [ "$rc" -eq 20 ] || exit "$rc"
+            [ "$attempt" -lt 3 ] || { echo '::error::Quality repair attempts exhausted'; exit 1; }
+            mapfile -t ids < <(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" "jq -r '.repairs[].shot_id' /home/ubuntu/tayvoriq_v4/visual_qa.json")
+            [ ${#ids[@]} -gt 0 ] || exit 1
+            for id in "${ids[@]}"; do
+              ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" "source /home/ubuntu/tayvoriq-v4-venv/bin/activate; python /home/ubuntu/repair_cinematic_shot_v2.py --cinematic-manifest /home/ubuntu/cinematic_manifest.json --render-manifest /home/ubuntu/tayvoriq_v4/render_manifest.json --shot-id '$id' --attempt '$attempt'"
+            done
+            attempt=$((attempt+1))
+          done
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i "$SSH_KEY" -p "$SSH_PORT" "ubuntu@$SSH_IP" "jq -e '.passed == true and .sequence_diversity.passed == true' /home/ubuntu/tayvoriq_v4/visual_qa.json >/dev/null"
+
+      - name: Download verified V4 visual pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.tnr/bin:$PATH"
+          rm -rf v4-out; mkdir -p v4-out
+          tnr scp "$INSTANCE_ID:/home/ubuntu/tayvoriq_v4" v4-out/
+          cp /tmp/cinematic-manifest.json v4-out/cinematic_manifest.json
+          qa=$(find v4-out -name visual_qa.json | head -1); test -n "$qa"
+          jq -e '.passed == true and .sequence_diversity.passed == true and .sequence_diversity.metadata_unique == true' "$qa" >/dev/null
+
+      - name: Stop Thunder before CPU mastering
+        shell: bash
+        run: |
+          set +e
+          [ -n "${INSTANCE_ID:-}" ] || exit 0
+          export PATH="$HOME/.tnr/bin:$PATH"; tnr stop "$INSTANCE_ID" >/dev/null 2>&1 || true
+          for attempt in $(seq 1 30); do
+            curl -fsS -H "Authorization: Bearer $TNR_API_TOKEN" "$THUNDER_API/v1/instances/list?update_ips=true" > /tmp/stopcheck.json 2>/dev/null || true
+            status=$(jq -r --arg id "$INSTANCE_ID" '.[$id].status // "STOPPED"' /tmp/stopcheck.json 2>/dev/null)
+            echo "cleanup before master: $status"
+            [ "$status" = STOPPED ] || [ "$status" = TERMINATED ] || [ "$status" = DELETED ] || [ -z "$status" ] && exit 0
+            sleep 5
+          done
+
+      - name: Build and persist only the new V4 review master
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkpoint="studio-review/$CHECKPOINT_DIR"
+          test -s "$checkpoint/reference_audio.m4a"; test -s "$checkpoint/reference.srt"
+          mapfile -t shots < <(find v4-out -type f -path '*/shots/*.mp4' | sort)
+          [ ${#shots[@]} -eq 7 ]
+          : > /tmp/shots.txt
+          for f in "${shots[@]}"; do printf "file '%s'\n" "$(realpath "$f")" >> /tmp/shots.txt; done
+          mkdir -p final
+          ffmpeg -y -hide_banner -loglevel error -f concat -safe 0 -i /tmp/shots.txt -vf 'scale=1080:1920:flags=lanczos,setsar=1,fps=30' -an -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p final/visual.mp4
+          ffmpeg -y -hide_banner -loglevel error -i final/visual.mp4 -i "$checkpoint/reference_audio.m4a" -map 0:v:0 -map 1:a:0 -shortest -c:v copy -c:a aac -b:a 192k final/mixed.mp4
+          SUB=$(realpath "$checkpoint/reference.srt" | sed "s/:/\\\\:/g")
+          ffmpeg -y -hide_banner -loglevel error -i final/mixed.mp4 -vf "subtitles='${SUB}':force_style='FontName=Arial,FontSize=18,PrimaryColour=&H00FFFFFF,OutlineColour=&H99000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=110'" -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p -c:a copy final/isar_v4_master.mp4
+          ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_type,width,height -of json final/isar_v4_master.mp4 > final/probe.json
+          qa=$(find v4-out -name visual_qa.json | head -1)
+          python - "$qa" <<'PY'
+          import json,os,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          qa=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8')); probe=json.loads(Path('final/probe.json').read_text())
+          assert qa['passed'] is True and qa['sequence_diversity']['passed'] is True,qa
+          v=next(s for s in probe['streams'] if s.get('codec_type')=='video'); a=next((s for s in probe['streams'] if s.get('codec_type')=='audio'),None)
+          duration=float(probe['format']['duration']); size=int(probe['format']['size'])
+          assert int(v['width'])==1080 and int(v['height'])==1920 and a and 23<=duration<=32 and size>=1_000_000,(v,a,duration,size)
+          root=Path('studio-review'); media=root/'cinematic-control-center/media/latest-pilot.mp4'; media.parent.mkdir(parents=True,exist_ok=True); media.write_bytes(Path('final/isar_v4_master.mp4').read_bytes())
+          state={'status':'MASTER_READY','review_gate':True,'publish_allowed':False,'source':'tayvoriq-isar-quality-v4-public-production','run_id':os.environ['GITHUB_RUN_ID'],'topic':'Isar Aerospace: Spectrum erreicht beim zweiten Flug den Orbit','platforms':'youtube_tiktok','visual_mode':'CINEMATIC','source_request_id':os.environ['SOURCE_REQUEST_ID'],'quality_version':'V4_EXPLANATORY_DIVERSE','freshness_lock':'2026-09-05_orbit_success','previous_master_reused':False,'visual_score':qa.get('visual_score'),'sequence_diversity':qa.get('sequence_diversity'),'artifact_storage_required':False,'updated_at':datetime.now(timezone.utc).isoformat(),'media_path':'cinematic-control-center/media/latest-pilot.mp4'}
+          data=root/'cinematic-control-center/data'; data.mkdir(parents=True,exist_ok=True)
+          (data/'social-latest.json').write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          (data/'latest-visual-qa.json').write_text(json.dumps(qa,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          report={'passed':True,'duration_sec':duration,'size_bytes':size,'voice':'chatterbox_multilingual_v3','visual_mode':'CINEMATIC','source_request_id':os.environ['SOURCE_REQUEST_ID'],'quality_version':'V4_EXPLANATORY_DIVERSE','visual_score':qa.get('visual_score'),'sequence_diversity':qa.get('sequence_diversity'),'artifact_storage_required':False,'publish_allowed':False,'previous_master_reused':False}
+          (data/'latest-master-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({'MASTER_READY':True,'duration':duration,'size':size,'visual_score':qa.get('visual_score'),'diversity':qa.get('sequence_diversity'),'publish_allowed':False},ensure_ascii=False))
+          PY
+          git -C studio-review config user.name 'github-actions[bot]'; git -C studio-review config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C studio-review add cinematic-control-center/media/latest-pilot.mp4 cinematic-control-center/data/social-latest.json cinematic-control-center/data/latest-visual-qa.json cinematic-control-center/data/latest-master-report.json
+          git -C studio-review commit -m "Deliver Isar quality V4 review master ${GITHUB_RUN_ID}"
+          git -C studio-review pull --rebase origin "$REVIEW_BRANCH"
+          git -C studio-review push origin HEAD:"$REVIEW_BRANCH"
+
+      - name: Final contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.status == "MASTER_READY" and .quality_version == "V4_EXPLANATORY_DIVERSE" and .previous_master_reused == false and .publish_allowed == false and .sequence_diversity.passed == true' studio-review/cinematic-control-center/data/social-latest.json >/dev/null
+          echo 'ISAR_V4_REVIEW_READY'
+          echo 'publish_allowed=false'
+
+      - name: Stop Thunder GPU on every exit path
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          [ -n "${INSTANCE_ID:-}" ] || exit 0
+          export PATH="$HOME/.tnr/bin:$PATH"
+          tnr stop "$INSTANCE_ID" >/dev/null 2>&1 || true
+          curl -fsS -H "Authorization: Bearer ${TNR_API_TOKEN:-}" "$THUNDER_API/v1/instances/list?update_ips=true" > /tmp/final-cleanup.json 2>/dev/null || true
+          jq -r --arg id "$INSTANCE_ID" '.[$id].status // "STOPPED"' /tmp/final-cleanup.json 2>/dev/null || true
