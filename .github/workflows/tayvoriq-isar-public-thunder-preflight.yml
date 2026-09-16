@@ -23,7 +23,14 @@ jobs:
     timeout-minutes: 10
     env:
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-      TNR_API_TOKEN: ${{ secrets.TNR_API_TOKEN }}
+      TNR_API_TOKEN_1: ${{ secrets.TNR_API_TOKEN }}
+      TNR_API_TOKEN_2: ${{ secrets.THUNDER_API_TOKEN }}
+      TNR_API_TOKEN_3: ${{ secrets.THUNDER_TOKEN }}
+      TNR_API_TOKEN_4: ${{ secrets.TNR_TOKEN }}
+      TNR_API_TOKEN_5: ${{ secrets.THUNDER_COMPUTE_TOKEN }}
+      TNR_API_TOKEN_6: ${{ secrets.THUNDERCOMPUTE_TOKEN }}
+      TNR_API_TOKEN_7: ${{ secrets.THUNDER_API_KEY }}
+      TNR_API_TOKEN_8: ${{ secrets.TNR_API_KEY }}
     steps:
       - name: Verify public runner is actually assigned
         run: |
@@ -31,12 +38,24 @@ jobs:
           echo "runner=${RUNNER_NAME:-unknown} os=${RUNNER_OS:-unknown} arch=${RUNNER_ARCH:-unknown}"
           test "${RUNNER_OS:-}" = "Linux"
 
-      - name: Verify required secrets exist without printing them
+      - name: Resolve existing Thunder secret alias without printing secret
         run: |
           set -euo pipefail
           test -n "${PRIVATE_REPO_TOKEN:-}" || { echo '::error::PRIVATE_REPO_TOKEN missing in public control-plane repo'; exit 11; }
-          test -n "${TNR_API_TOKEN:-}" || { echo '::error::TNR_API_TOKEN missing in public control-plane repo'; exit 12; }
-          echo 'Required secrets are present.'
+          selected=''
+          selected_name=''
+          for n in 1 2 3 4 5 6 7 8; do
+            var="TNR_API_TOKEN_${n}"
+            val="${!var:-}"
+            if [ -n "$val" ]; then
+              selected="$val"
+              selected_name="$var"
+              break
+            fi
+          done
+          [ -n "$selected" ] || { echo '::error::No existing Thunder/TNR secret alias found in public control-plane repo'; exit 12; }
+          echo "TNR_API_TOKEN=$selected" >> "$GITHUB_ENV"
+          echo "Resolved an existing Thunder credential via $selected_name. Secret value remains masked."
 
       - name: Verify private production repo and durable Isar checkpoint are readable
         run: |
