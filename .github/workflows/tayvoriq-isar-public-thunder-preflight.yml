@@ -18,11 +18,13 @@ env:
 
 jobs:
   preflight:
-    name: Public runner · private checkpoint · Thunder auth
+    name: Public preflight · private A6000 handoff
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      PRIVATE_DISPATCH_TOKEN: ${{ secrets.PRIVATE_DISPATCH_TOKEN }}
+      PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
       TNR_API_TOKEN_1: ${{ secrets.TNR_API_TOKEN }}
       TNR_API_TOKEN_2: ${{ secrets.THUNDER_API_TOKEN }}
       TNR_API_TOKEN_3: ${{ secrets.THUNDER_TOKEN }}
@@ -67,10 +69,12 @@ jobs:
           assert payload.get('source_request_id') == 'isar-spectrum-20260909-pilot01', payload
           assert payload.get('voice_provider') == 'chatterbox_multilingual_v3', payload
           assert payload.get('artifact_storage_required') is False, payload
+          assert payload.get('quality_gates_weakened') is False, payload
           print({'checkpoint':'PREPRODUCTION_READY','voice':payload.get('voice_provider'),'duration':payload.get('voice_duration_sec')})
           PY
 
-      - name: Resolve existing Thunder secret alias without printing secret
+      - name: Resolve optional public Thunder credential
+        shell: bash
         run: |
           set -euo pipefail
           selected=''
@@ -84,25 +88,93 @@ jobs:
               break
             fi
           done
-          [ -n "$selected" ] || { echo '::error::No existing Thunder/TNR secret alias found in public control-plane repo'; exit 12; }
-          echo "TNR_API_TOKEN=$selected" >> "$GITHUB_ENV"
-          echo "Resolved an existing Thunder credential via $selected_name. Secret value remains masked."
+          if [ -n "$selected" ]; then
+            echo "TNR_API_TOKEN=$selected" >> "$GITHUB_ENV"
+            echo "PUBLIC_THUNDER_CREDENTIAL_PRESENT=true" >> "$GITHUB_ENV"
+            echo "Resolved a public Thunder credential via $selected_name. Secret value remains masked."
+          else
+            echo "PUBLIC_THUNDER_CREDENTIAL_PRESENT=false" >> "$GITHUB_ENV"
+            echo "No public Thunder credential is configured; private-secret preflight will be authoritative."
+          fi
 
-      - name: Verify Thunder token and refuse duplicate paid GPU
+      - name: GPU-free Thunder auth check when public credential exists
+        shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -H "Authorization: Bearer ${TNR_API_TOKEN}" \
-            "${THUNDER_API}/v1/instances/list?update_ips=true" > /tmp/thunder-instances.json
-          python - <<'PY'
+          auth_mode='PRIVATE_REQUIRED'
+          if [ "${PUBLIC_THUNDER_CREDENTIAL_PRESENT:-false}" = 'true' ]; then
+            set +e
+            http_code=$(curl --silent --show-error --output /tmp/thunder-instances.json --write-out '%{http_code}' \
+              -H "Authorization: Bearer ${TNR_API_TOKEN}" \
+              "${THUNDER_API}/v1/instances/list?update_ips=true")
+            curl_rc=$?
+            set -e
+            if [ "$curl_rc" -eq 0 ] && [ "$http_code" = '200' ]; then
+              python - <<'PY'
           import json
           d=json.load(open('/tmp/thunder-instances.json'))
           vals=list(d.values()) if isinstance(d,dict) else list(d or [])
           active=[x for x in vals if str((x or {}).get('status','')).upper() in {'RUNNING','STARTING','PROVISIONING','PENDING','QUEUED'}]
-          print({'thunder_auth':'ok','active_instances':len(active)})
+          print({'public_thunder_auth':'ok','active_instances':len(active)})
           assert len(active) == 0, f'refusing duplicate paid GPU: {len(active)} active instance(s)'
           PY
+              auth_mode='PUBLIC_OK'
+            else
+              echo "::warning title=Public Thunder auth unavailable::HTTP ${http_code:-none}; handing authentication to the private worker."
+            fi
+          fi
+          echo "THUNDER_AUTH_MODE=$auth_mode" >> "$GITHUB_ENV"
+
+      - name: Dispatch locked Isar request to private GPU worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload=$(python - <<'PY'
+          import json, os
+          print(json.dumps({
+              'event_type':'tayvoriq_isar_gpu_production',
+              'client_payload':{
+                  'source_request_id':os.environ['SOURCE_REQUEST_ID'],
+                  'checkpoint_path':os.environ['CHECKPOINT_PATH'],
+                  'public_run_id':os.environ['GITHUB_RUN_ID'],
+                  'public_repository':os.environ['GITHUB_REPOSITORY'],
+                  'public_thunder_auth':os.environ.get('THUNDER_AUTH_MODE','PRIVATE_REQUIRED'),
+                  'max_budget_usd':'1.75',
+              },
+          }, separators=(',',':')))
+          PY
+          )
+
+          dispatched='false'
+          selected_name=''
+          for token_name in PRIVATE_DISPATCH_TOKEN PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN; do
+            token="${!token_name:-}"
+            [ -n "$token" ] || continue
+            code=$(curl --silent --show-error --output /tmp/private-dispatch-response.json --write-out '%{http_code}' \
+              -X POST \
+              -H "Authorization: Bearer $token" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              -H 'Content-Type: application/json' \
+              -d "$payload" \
+              "https://api.github.com/repos/${PRIVATE_REPO}/dispatches" || true)
+            if [ "$code" = '204' ]; then
+              dispatched='true'
+              selected_name="$token_name"
+              break
+            fi
+            echo "Dispatch candidate $token_name returned HTTP ${code:-none}; trying next configured candidate."
+          done
+
+          if [ "$dispatched" != 'true' ]; then
+            echo '::error title=Private dispatch permission missing::No configured cross-repository token can create the private Isar dispatch. The A6000 was NOT started. Configure PRIVATE_DISPATCH_TOKEN with Contents: write on shorts-agent-studio.'
+            exit 13
+          fi
+          echo "Private production dispatch accepted through $selected_name."
 
       - name: Preflight contract
         run: |
           echo 'ISAR_PUBLIC_THUNDER_PREFLIGHT_GREEN'
-          echo 'No GPU was started by this workflow.'
+          echo "Thunder auth context: ${THUNDER_AUTH_MODE:-PRIVATE_REQUIRED}"
+          echo 'No GPU was started by this public workflow.'
+          echo 'The private worker must revalidate the checkpoint, Thunder authentication, duplicate-instance guard and budget before creating the A6000.'
