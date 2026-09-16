@@ -1,6 +1,8 @@
 {
-  "requested_at": "2026-09-16T13:48:00Z",
+  "requested_at": "2026-09-16T16:24:00Z",
   "source_request_id": "isar-spectrum-20260909-pilot01",
   "mode": "CINEMATIC",
-  "purpose": "retrigger GPU-free Thunder auth preflight; prove private Isar checkpoint first; no GPU start"
+  "architecture": "public-preflight-to-private-a6000-v1",
+  "max_budget_usd": 1.75,
+  "purpose": "GPU-free public checkpoint/auth preflight; guarded handoff to private Thunder secret context; no publish before review"
 }
