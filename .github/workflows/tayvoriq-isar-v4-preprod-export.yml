@@ -1,4 +1,4 @@
-name: TAYVORIQ Isar V4 Preproduction Export
+name: TAYVORIQ Isar Existing Checkpoint Extension Handoff
 
 on:
   workflow_dispatch:
@@ -6,22 +6,33 @@ on:
     branches: [main]
     paths:
       - '.automation/isar-v4-preprod-export-kick.json'
+      - '.github/workflows/tayvoriq-isar-v4-preprod-export.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   PRIVATE_REPO: mojo72549-arch/shorts-agent-studio
+  REVIEW_BRANCH: lab/cinematic-control-center
   SOURCE_REQUEST_ID: isar-spectrum-20260909-pilot01
+  CHECKPOINT_DIR: cinematic-control-center/checkpoints/isar-spectrum-20260909-pilot01
 
 jobs:
-  export:
+  extend:
+    name: Extend existing checkpoint assets on public runner
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout public control plane
+        uses: actions/checkout@v4
+        with:
+          path: control-plane
+          fetch-depth: 1
+
+      - name: Checkout private production code read-only
+        uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
           ref: main
@@ -29,48 +40,84 @@ jobs:
           path: studio-main
           fetch-depth: 1
 
+      - name: Checkout original private review checkpoint read-only
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: lab/cinematic-control-center
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: studio-review
+          fetch-depth: 1
+
+      - name: Verify existing checkpoint lineage
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="studio-review/$CHECKPOINT_DIR"
+          test -s "$root/checkpoint.json"
+          test -s "$root/reference_audio.m4a"
+          test -s "$root/cinematic_request.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path('studio-review')/os.environ['CHECKPOINT_DIR']
+          cp=json.loads((root/'checkpoint.json').read_text(encoding='utf-8'))
+          assert cp.get('source_request_id')==os.environ['SOURCE_REQUEST_ID'],cp
+          assert cp.get('state')=='PREPRODUCTION_READY',cp
+          print(json.dumps({'mode':'EXTEND_EXISTING_CHECKPOINT','base_run_id':cp.get('base_run_id') or cp.get('run_id')},ensure_ascii=False))
+          PY
+
       - name: Prepare voice runtime
         shell: bash
         run: |
           set -euo pipefail
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
           sudo apt-get update -y >/dev/null
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ffmpeg libsndfile1 git >/dev/null
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ffmpeg libsndfile1 git jq >/dev/null
           python -m pip install --no-cache-dir --upgrade pip >/dev/null
           python -m pip install --no-cache-dir 'chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948' >/dev/null
 
-      - name: Rebuild deterministic V4 preproduction
+      - name: Generate only changed extension assets
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf /tmp/isar-extension
           cd studio-main
-          rm -rf preproduction_v4
-          timeout --signal=TERM --kill-after=30s 25m python tools/tayvoriq_isar_quality_preproduction_v4.py --outdir preproduction_v4 --target-duration 27
+          timeout --signal=TERM --kill-after=30s 25m python tools/tayvoriq_isar_quality_preproduction_v4.py --outdir /tmp/isar-extension --target-duration 27
+          cd ..
           python - <<'PY'
           import json
           from pathlib import Path
-          r=json.loads(Path('preproduction_v4/preproduction_report.json').read_text(encoding='utf-8'))
+          r=json.loads(Path('/tmp/isar-extension/preproduction_report.json').read_text(encoding='utf-8'))
           assert r['state']=='SUCCESS',r
-          assert r['voice_provider']=='chatterbox_multilingual_v3',r
+          assert r['resume_mode']=='EXTEND_EXISTING_CHECKPOINT',r
           assert r['freshness_gate'] and r['explainability_gate'] and r['diversity_gate'],r
           assert r['independent_shot_generation_required'] is True,r
           assert r['publish_allowed'] is False,r
+          assert 23 <= float(r['voice_duration_sec']) <= 32,r
           print(json.dumps(r,ensure_ascii=False,indent=2))
           PY
 
-      - name: Build canonical V4 cinematic request
+      - name: Build canonical request for same existing request id
         shell: bash
         run: |
           set -euo pipefail
-          cd studio-main
           python - <<'PY'
-          import json
+          import json,os
           from pathlib import Path
-          source=json.loads(Path('preproduction_v4/script.json').read_text(encoding='utf-8'))
+          source=json.loads(Path('/tmp/isar-extension/script.json').read_text(encoding='utf-8'))
           storyboard=source['storyboard']
+          assert len(storyboard)==7
+          for key in ('information_role','environment_key','composition_key','camera_key'):
+              values=[str(x[key]).strip() for x in storyboard]
+              assert len(values)==len(set(values)),(key,values)
           payload={
-            'schema':'tayvoriq-cinematic-director-request-v4-quality-rebuild',
-            'source_request_id':'isar-spectrum-20260909-pilot01',
+            'schema':'tayvoriq-cinematic-director-request-v2',
+            'source_request_id':os.environ['SOURCE_REQUEST_ID'],
+            'resume_mode':'EXTEND_EXISTING_CHECKPOINT',
+            'extension_profile':'V4_EXPLANATORY_DIVERSE',
+            'preserve_checkpoint_lineage':True,
             'visual_mode':'CINEMATIC',
             'topic':'Isar Aerospace: Spectrum erreicht beim zweiten Flug den Orbit',
             'target_duration_sec':27,
@@ -81,36 +128,105 @@ jobs:
             'freshness_lock':'2026-09-05_orbit_success',
             'reuse_rejected_master':False,
             'style_lock':{
-              'character':'no invented presenter; preserve the same plausible Spectrum-like vehicle design only when the rocket recurs',
+              'character':'no invented presenter; preserve a plausible consistent Spectrum-like vehicle only when the rocket recurs',
               'wardrobe':'authentic aerospace workwear or cleanroom clothing only where people appear; no recurring presenter',
-              'world':'fact-grounded illustrative reconstruction of Isar Aerospace Spectrum reaching orbit from Andøya on 5 September 2026; generated imagery is illustrative, never fake documentary evidence',
-              'lighting':'natural Arctic blue-hour and physically motivated orbital/cleanroom lighting; controlled warm practical highlights',
-              'camera_language':'premium explanatory documentary cinema; intentionally varied 24mm, 35mm, 50mm and telephoto views with clear spatial readability',
-              'color_language':'coherent cool Arctic and neutral aerospace palette with restrained warm highlights; realistic materials; no oversaturated AI look',
-              'realism':'photorealistic illustrative reconstruction, physically plausible scale, exhaust, satellites, people and motion'
+              'world':'fact-grounded illustrative reconstruction of Spectrum reaching orbit from Andøya on 5 September 2026; never present generated imagery as documentary footage',
+              'lighting':'natural Arctic blue-hour and physically motivated orbital or cleanroom lighting',
+              'camera_language':'premium explanatory documentary cinema with intentionally varied 24mm, 35mm, 50mm and telephoto views',
+              'color_language':'coherent cool Arctic and neutral aerospace palette with restrained warm practical highlights',
+              'realism':'photorealistic illustrative reconstruction with physically plausible scale, exhaust, satellites, people and motion'
             }
           }
-          Path('preproduction_v4/cinematic_request.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          Path('/tmp/isar-extension/cinematic_request.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
-          python lab/thunder/tayvoriq_full_cinematic_v2.py --input preproduction_v4/cinematic_request.json --output preproduction_v4/cinematic_manifest.json
+          cd studio-main
+          python lab/thunder/tayvoriq_full_cinematic_v2.py --input /tmp/isar-extension/cinematic_request.json --output /tmp/isar-extension/cinematic_manifest.json
+          cd ..
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/isar-extension/cinematic_manifest.json'))
+          assert d['quality_contract']['independent_shot_generation'] is True,d
+          shots=d['shots']; assert len(shots)==7,d
+          for key in ('information_role','environment_key','composition_key','camera_key','new_information'):
+              vals=[str(s[key]).strip() for s in shots]
+              assert len(vals)==len(set(vals)),(key,vals)
+          print(json.dumps({'extension_preflight':'GREEN','shots':7,'same_request_id':True},ensure_ascii=False))
+          PY
 
-      - name: Build checkpoint descriptor
+      - name: Preserve original checkpoint lineage in handoff descriptor
         shell: bash
         run: |
           set -euo pipefail
-          cd studio-main
           python - <<'PY'
           import json,os
           from datetime import datetime,timezone
           from pathlib import Path
-          r=json.loads(Path('preproduction_v4/preproduction_report.json').read_text(encoding='utf-8'))
-          p={'schema':'tayvoriq-cinematic-checkpoint-v4','source_request_id':os.environ['SOURCE_REQUEST_ID'],'state':'PREPRODUCTION_READY','quality_version':'V4_EXPLANATORY_DIVERSE','freshness_lock':'2026-09-05_orbit_success','voice_provider':r['voice_provider'],'voice_duration_sec':r['voice_duration_sec'],'independent_shot_generation_required':True,'diversity_gate_required':True,'explainability_gate_required':True,'quality_gates_weakened':False,'artifact_storage_required':False,'reuse_rejected_master':False,'publish_allowed':False,'updated_at':datetime.now(timezone.utc).isoformat(),'run_id':os.environ['GITHUB_RUN_ID'],'execution_context':'public_control_plane_export'}
-          Path('preproduction_v4/checkpoint.json').write_text(json.dumps(p,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          original=Path('studio-review')/os.environ['CHECKPOINT_DIR']/ 'checkpoint.json'
+          base=json.loads(original.read_text(encoding='utf-8'))
+          report=json.loads(Path('/tmp/isar-extension/preproduction_report.json').read_text(encoding='utf-8'))
+          original_run=base.get('base_run_id') or base.get('run_id')
+          base.update({
+            'schema':'tayvoriq-cinematic-checkpoint-v1',
+            'source_request_id':os.environ['SOURCE_REQUEST_ID'],
+            'state':'PREPRODUCTION_READY',
+            'resume_mode':'EXTEND_EXISTING_CHECKPOINT',
+            'extension_profile':'V4_EXPLANATORY_DIVERSE',
+            'base_run_id':original_run,
+            'freshness_lock':'2026-09-05_orbit_success',
+            'voice_provider':report['voice_provider'],
+            'voice_duration_sec':report['voice_duration_sec'],
+            'independent_shot_generation_required':True,
+            'diversity_gate_required':True,
+            'explainability_gate_required':True,
+            'quality_gates_weakened':False,
+            'artifact_storage_required':False,
+            'reuse_rejected_master':False,
+            'publish_allowed':False,
+            'updated_at':datetime.now(timezone.utc).isoformat(),
+            'extension_handoff_run_id':os.environ['GITHUB_RUN_ID']
+          })
+          Path('/tmp/isar-extension/checkpoint.json').write_text(json.dumps(base,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
+
+      - name: Persist temporary public handoff for private checkpoint transfer
+        shell: bash
+        run: |
+          set -euo pipefail
+          handoff="control-plane/handoff/$SOURCE_REQUEST_ID"
+          rm -rf "$handoff"
+          mkdir -p "$handoff"
+          cp /tmp/isar-extension/reference.srt "$handoff/reference.srt"
+          cp /tmp/isar-extension/script.txt "$handoff/script.txt"
+          cp /tmp/isar-extension/script.json "$handoff/script.json"
+          cp /tmp/isar-extension/preproduction_report.json "$handoff/preproduction_report.json"
+          cp /tmp/isar-extension/cinematic_request.json "$handoff/cinematic_request.json"
+          cp /tmp/isar-extension/checkpoint.json "$handoff/checkpoint.json"
+          base64 -w0 /tmp/isar-extension/reference_audio.m4a > "$handoff/reference_audio.m4a.b64"
+          printf '\n' >> "$handoff/reference_audio.m4a.b64"
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('control-plane/handoff')/os.environ['SOURCE_REQUEST_ID']
+          files={}
+          for p in root.iterdir():
+              files[p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
+          (root/'handoff-manifest.json').write_text(json.dumps({
+              'source_request_id':os.environ['SOURCE_REQUEST_ID'],
+              'mode':'EXTEND_EXISTING_CHECKPOINT',
+              'target_checkpoint':os.environ['CHECKPOINT_DIR'],
+              'publish_allowed':False,
+              'files':files
+          },ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git -C control-plane config user.name 'github-actions[bot]'
+          git -C control-plane config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C control-plane add "handoff/$SOURCE_REQUEST_ID"
+          git -C control-plane commit -m "handoff(isar): extend existing checkpoint ${GITHUB_RUN_ID}"
+          git -C control-plane push origin HEAD:main
 
       - uses: actions/upload-artifact@v4
         with:
-          name: isar-v4-preproduction-${{ github.run_id }}
-          path: studio-main/preproduction_v4
+          name: isar-existing-checkpoint-extension-${{ github.run_id }}
+          path: /tmp/isar-extension
           retention-days: 3
           if-no-files-found: error
