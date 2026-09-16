@@ -38,28 +38,10 @@ jobs:
           echo "runner=${RUNNER_NAME:-unknown} os=${RUNNER_OS:-unknown} arch=${RUNNER_ARCH:-unknown}"
           test "${RUNNER_OS:-}" = "Linux"
 
-      - name: Resolve existing Thunder secret alias without printing secret
-        run: |
-          set -euo pipefail
-          test -n "${PRIVATE_REPO_TOKEN:-}" || { echo '::error::PRIVATE_REPO_TOKEN missing in public control-plane repo'; exit 11; }
-          selected=''
-          selected_name=''
-          for n in 1 2 3 4 5 6 7 8; do
-            var="TNR_API_TOKEN_${n}"
-            val="${!var:-}"
-            if [ -n "$val" ]; then
-              selected="$val"
-              selected_name="$var"
-              break
-            fi
-          done
-          [ -n "$selected" ] || { echo '::error::No existing Thunder/TNR secret alias found in public control-plane repo'; exit 12; }
-          echo "TNR_API_TOKEN=$selected" >> "$GITHUB_ENV"
-          echo "Resolved an existing Thunder credential via $selected_name. Secret value remains masked."
-
       - name: Verify private production repo and durable Isar checkpoint are readable
         run: |
           set -euo pipefail
+          test -n "${PRIVATE_REPO_TOKEN:-}" || { echo '::error::PRIVATE_REPO_TOKEN missing in public control-plane repo'; exit 11; }
           auth="Authorization: Bearer ${PRIVATE_REPO_TOKEN}"
           curl -fsS -H "$auth" -H 'Accept: application/vnd.github+json' \
             "https://api.github.com/repos/${PRIVATE_REPO}" > /tmp/private-repo.json
@@ -87,6 +69,24 @@ jobs:
           assert payload.get('artifact_storage_required') is False, payload
           print({'checkpoint':'PREPRODUCTION_READY','voice':payload.get('voice_provider'),'duration':payload.get('voice_duration_sec')})
           PY
+
+      - name: Resolve existing Thunder secret alias without printing secret
+        run: |
+          set -euo pipefail
+          selected=''
+          selected_name=''
+          for n in 1 2 3 4 5 6 7 8; do
+            var="TNR_API_TOKEN_${n}"
+            val="${!var:-}"
+            if [ -n "$val" ]; then
+              selected="$val"
+              selected_name="$var"
+              break
+            fi
+          done
+          [ -n "$selected" ] || { echo '::error::No existing Thunder/TNR secret alias found in public control-plane repo'; exit 12; }
+          echo "TNR_API_TOKEN=$selected" >> "$GITHUB_ENV"
+          echo "Resolved an existing Thunder credential via $selected_name. Secret value remains masked."
 
       - name: Verify Thunder token and refuse duplicate paid GPU
         run: |
