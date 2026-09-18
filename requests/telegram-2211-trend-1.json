@@ -165,6 +165,22 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-09-18T17:19:04.590782Z",
+      "actor": "tayvoriq-codefix-orphan-reconcile-v1",
+      "meta": {
+        "failed_run_id": 35363807043,
+        "failure_signature": "d68ac00bac2757f0e555",
+        "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "e62ed1d4c741e73bfa1d7019b53f93f5cb68bf49",
+        "failed_implementation_sha": "dcedde0254589cdc90f96ae69e08c3ce0bd89d56",
+        "recovery_generation": 1,
+        "reason": "failed-codefix-replay-rearmed",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "01f9275384b51257d37ffef9809004e38100917df6f893ced8f3935b312bbfc4",
@@ -172,27 +188,23 @@
   "dispatch_contract_sha256": "01f9275384b51257d37ffef9809004e38100917df6f893ced8f3935b312bbfc4",
   "golden_path_run_id": 35363807043,
   "codefix_recovery": {
-    "status": "FRESH_RECOVERY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failed_run_id": 35355807775,
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 35363807043,
     "failure_signature": "d68ac00bac2757f0e555",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_control_plane_sha": "af6ec6c684f55bdf3448a39d269073a0adc0474a",
+    "failed_control_plane_sha": "e62ed1d4c741e73bfa1d7019b53f93f5cb68bf49",
     "failed_implementation_sha": "dcedde0254589cdc90f96ae69e08c3ce0bd89d56",
-    "recovery_generation": 0,
-    "armed_at": "2026-09-18T15:05:35.230858Z",
+    "recovery_generation": 1,
+    "armed_at": "2026-09-18T17:19:04.590782Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
     "orphan_reconciled": true,
     "active_pointer_verified": true,
     "rearmed_after_failed_replay": true,
-    "previous_codefix_failed_run_id": 35353624879,
-    "previous_codefix_failure_signature": "d68e34e2645e033a7c2f",
-    "fresh_recovery_run_id": 35363807043,
-    "fresh_recovery_of_run_id": 35355807775,
-    "fresh_recovery_generation": 1,
-    "fresh_recovery_at": "2026-09-18T15:40:06.553334Z"
+    "previous_codefix_failed_run_id": 35355807775,
+    "previous_codefix_failure_signature": "d68ac00bac2757f0e555"
   },
   "previous_golden_path_run_ids": [
     35349811807,
