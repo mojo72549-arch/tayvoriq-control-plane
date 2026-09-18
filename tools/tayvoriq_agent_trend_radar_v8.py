@@ -14,6 +14,102 @@ import tayvoriq_agent_trend_radar_v7 as growth_v7
 
 base = growth_v7.base
 _original_prompt = base.prompt_for
+_original_diversify = base.diversify
+
+_REGIONAL_CORE = {"local", "germany", "europe"}
+_REGIONAL_MARKERS = (
+    "deutschland", "deutsch", "bundesweit", "europa", "europä", "europae",
+    "eu-", " eu ", "dach", "stuttgart", "baden-württemberg", "baden württemberg",
+    "bayern", "münchen", "muenchen", "berlin", "hamburg", "frankfurt",
+    "köln", "koeln", "nordrhein-westfalen", "sachsen", "hessen",
+)
+
+
+def _regional_blob(candidate):
+    ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
+    answers = ctx.get("fallback_editorial_answers") if isinstance(ctx.get("fallback_editorial_answers"), dict) else {}
+    supports = []
+    for source in ctx.get("sources") or candidate.get("sources") or []:
+        if isinstance(source, dict):
+            supports.append(str(source.get("supports") or ""))
+    return " ".join([
+        str(candidate.get("title") or ""),
+        str(answers.get("why_happening") or ""),
+        str(answers.get("who_is_affected") or ""),
+        str(answers.get("personal_impact") or ""),
+        " ".join(supports),
+    ]).casefold()
+
+
+def _has_direct_de_eu_impact(candidate):
+    relevance = str(candidate.get("regional_relevance") or "").strip().lower()
+    if relevance in _REGIONAL_CORE:
+        return True
+    if relevance != "global":
+        return False
+    blob = _regional_blob(candidate)
+    return any(marker in blob for marker in _REGIONAL_MARKERS)
+
+
+def _selection_key(candidate):
+    audience = candidate.get("audience_growth_v3") if isinstance(candidate.get("audience_growth_v3"), dict) else {}
+    growth = candidate.get("growth_v2") if isinstance(candidate.get("growth_v2"), dict) else {}
+    relevance = str(candidate.get("regional_relevance") or "").strip().lower()
+    geo_bonus = {"local": 18, "germany": 16, "europe": 10, "global": 0}.get(relevance, -20)
+    return (
+        int(audience.get("selection_priority_score") or growth.get("priority_score") or candidate.get("score") or 0) + geo_bonus,
+        int(audience.get("subscriber_conversion_score") or 0),
+        int(growth.get("growth_score") or 0),
+        int(candidate.get("score") or 0),
+    )
+
+
+def diversify(candidates, slot):
+    cfg = growth_v7._config().get("selection") or {}
+    minimum = int(cfg.get("telegram_candidates_min") or 4)
+
+    regional = [
+        candidate for candidate in candidates
+        if str(candidate.get("regional_relevance") or "").strip().lower() in _REGIONAL_CORE
+    ]
+    global_bridge = [
+        candidate for candidate in candidates
+        if str(candidate.get("regional_relevance") or "").strip().lower() == "global"
+        and _has_direct_de_eu_impact(candidate)
+    ]
+    global_bridge = sorted(global_bridge, key=_selection_key, reverse=True)[:1]
+
+    # The regional core is a hard editorial contract, not a score bonus:
+    # at least three of the final 4-5 candidates must be local/Germany/Europe.
+    if len(regional) < min(3, minimum):
+        raise SystemExit(
+            f"REGIONAL_RESCAN_REQUIRED: only {len(regional)} local/Germany/Europe candidates passed all existing gates"
+        )
+
+    selected = _original_diversify(regional + global_bridge, slot)
+    regional_count = sum(
+        1 for candidate in selected
+        if str(candidate.get("regional_relevance") or "").strip().lower() in _REGIONAL_CORE
+    )
+    global_count = sum(
+        1 for candidate in selected
+        if str(candidate.get("regional_relevance") or "").strip().lower() == "global"
+    )
+    if regional_count < 3 or global_count > 1:
+        raise SystemExit(
+            f"REGIONAL_RESCAN_REQUIRED: selected regional={regional_count}, global={global_count}; require >=3 regional and <=1 global"
+        )
+
+    for candidate in selected:
+        ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
+        ctx["regional_strategy"] = {
+            "policy": "DE_DACH_EU_FIRST",
+            "direct_de_eu_impact": _has_direct_de_eu_impact(candidate),
+            "global_exception": str(candidate.get("regional_relevance") or "").strip().lower() == "global",
+        }
+        candidate["source_context"] = ctx
+
+    return sorted(selected, key=_selection_key, reverse=True)
 
 
 def _editorial_hint_text(slot, now):
@@ -70,8 +166,19 @@ def prompt_for(slot, now):
     editorial_hints = _editorial_hint_text(slot, now)
     return _original_prompt(slot, now) + """
 
+TAYVORIQ REGIONAL CORE — HARD RANKING REQUIREMENT:
+- The final Telegram ranking is DE/DACH/EU-first because these stories have shown the strongest TAYVORIQ audience response.
+- Prioritize: (1) Stuttgart/Baden-Württemberg/local relevance, (2) Germany-wide relevance, (3) Europe/EU relevance.
+- At least THREE of the final 4-5 candidates must be local, Germany or Europe relevance after all normal quality gates.
+- A pure global story may occupy AT MOST ONE slot and only when the verified facts show a concrete Germany/Europe consequence, availability, price, regulation, company exposure, consumer impact or comparable direct relevance.
+- Global technology/science novelty alone is NOT enough. Do not rank a story merely because it is globally viral.
+- For evening runs, actively search Stuttgart/Baden-Württemberg/South Germany plus strong Germany-wide developments before considering global exceptions.
+- For morning runs, actively search Germany and Europe first; major global events compete only through a concrete DE/EU angle.
+- Set regional_relevance accurately to local|germany|europe|global. Never label a global story as Germany/Europe merely to pass the ranking gate.
+- This regional rule never weakens source quality, freshness, duplicate, claim-coherence, explainability or brand-safety gates.
+
 TAYVORIQ STRATEGIC ENTITY SWEEP — DISCOVERY REQUIREMENT:
-- Before finalizing candidates, explicitly check current high-impact developments around Microsoft, OpenAI, Google/Alphabet, Apple, Meta, Amazon/AWS and Nvidia when they are relevant to Germany/Europe or the broad TAYVORIQ audience.
+- Before finalizing candidates, explicitly check current high-impact developments around Microsoft, OpenAI, Google/Alphabet, Apple, Meta, Amazon/AWS and Nvidia only when they have a verified Germany/Europe angle or direct audience consequence.
 - For Microsoft, actively check Azure, Windows, Copilot, Microsoft 365, GitHub, Xbox and major AI/cloud/business moves instead of relying on generic AI or technology searches to surface them accidentally.
 - This is a discovery-coverage rule, NOT a quota: never force Microsoft or any named company into the final five when its story is weaker, stale, duplicated or insufficiently sourced.
 - Do not suppress a strong company story merely because another AI/technology candidate already exists. Deduplicate by the underlying event and viewer takeaway, not by the broad category or company size.
@@ -130,6 +237,7 @@ TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 """.strip() + (("\n\n" + editorial_hints) if editorial_hints else "")
 
 
+base.diversify = diversify
 base.prompt_for = prompt_for
 
 if __name__ == "__main__":
