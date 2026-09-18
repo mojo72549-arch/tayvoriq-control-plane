@@ -1,0 +1,363 @@
+{
+  "date": "2026-09-18",
+  "target_date": "2026-09-18",
+  "slot": "evening",
+  "selection_id": "20260918-evening-agentv2-r3",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_fallback_after_provider_limits",
+  "superseded": false,
+  "duplicate_guard_passed": true,
+  "telegram_only_user_path": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "trends": [
+    {
+      "id": "1",
+      "title": "Stuttgart 21 wieder unter Druck: Warum ein früherer Gutachter den alten Stresstest jetzt anzweifelt",
+      "score": 98,
+      "trend_scope": "mobility_energy",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 99,
+        "viralitaet": 96,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 97,
+        "visuell": 99
+      },
+      "growth_v2": {
+        "growth_score": 98,
+        "priority_score": 99,
+        "binding_score": 98
+      },
+      "sources": [
+        {
+          "publisher": "SWR Aktuell",
+          "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/s21-gutachter-distanziert-sich-faq-100.html",
+          "supports": "Ein früherer SMA-Gutachter distanziert sich von Teilen seiner damaligen Bewertung des Stuttgart-21-Stresstests; SMA und Deutsche Bahn halten an Methodik beziehungsweise Plausibilität fest."
+        },
+        {
+          "publisher": "Staatsanzeiger Baden-Württemberg",
+          "url": "https://www.staatsanzeiger.de/nachrichten/politik-und-verwaltung/gutachter-bezweifelt-eigene-stresstest-berechnungen-zu-stuttgart-21/",
+          "supports": "Der Staatsanzeiger berichtet über Werner Stohlers neue Zweifel an den damaligen Kapazitätsberechnungen und die Brisanz für den geplanten Tiefbahnhof."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/s21-gutachter-distanziert-sich-faq-100.html",
+            "supports": "Neue Debatte über die Kapazität des künftigen Stuttgarter Tiefbahnhofs nach Aussagen eines früheren Gutachters; SMA und Bahn widersprechen seiner heutigen Einordnung."
+          },
+          {
+            "publisher": "Staatsanzeiger Baden-Württemberg",
+            "url": "https://www.staatsanzeiger.de/nachrichten/politik-und-verwaltung/gutachter-bezweifelt-eigene-stresstest-berechnungen-zu-stuttgart-21/",
+            "supports": "Unabhängige Regionalquelle bestätigt die nachträglichen Zweifel des früheren SMA-Chefs an den Stresstest-Berechnungen."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Ein früherer Stuttgart-21-Gutachter stellt Teile des alten Stresstests infrage.",
+          "why_happening": "Die Debatte kommt zurück, weil er die damalige Prüfung heute kritischer bewertet.",
+          "who_is_affected": "Betroffen sind Pendler, Bahnreisende und die gesamte Region Stuttgart.",
+          "personal_impact": "Für dich geht es um Kapazität, Zuverlässigkeit und Zukunft des Hauptbahnhofs.",
+          "action_now": "Beobachte, welche neuen Kapazitätsnachweise Bahn und Projektpartner jetzt vorlegen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "früherer SMA-Gutachter äußert nachträgliche Zweifel",
+            "SMA hält an Qualität und Methodik fest",
+            "Deutsche Bahn hält an Plausibilität fest",
+            "Digitaler Knoten verändert die Kapazitätsfrage zusätzlich"
+          ],
+          "must_not_claim": [
+            "der Stresstest sei bewiesen falsch",
+            "Stuttgart 21 müsse deshalb gestoppt werden",
+            "der neue Tiefbahnhof sei sicher zu klein"
+          ],
+          "uncertainty_note": "Die Aussagen sind Teil einer laufenden fachlichen Kontroverse; ein abschließender neuer Kapazitätsnachweis liegt in den zitierten Quellen nicht vor."
+        },
+        "research_notes": "Story-Spine: Ein vertrautes Stuttgart-Thema bekommt durch die Aussagen eines früheren Prüfers eine neue, konkrete Wendung. HASHTAG_SEEDS: #Stuttgart21 #Stuttgart #DeutscheBahn #S21 #BadenWuerttemberg #TAYVORIQ"
+      }
+    },
+    {
+      "id": "2",
+      "title": "Diesel auf neuem Allzeithoch: Warum Tanken in Deutschland gerade wieder extrem teuer wird",
+      "score": 97,
+      "trend_scope": "business_economy",
+      "regional_relevance": "germany",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 98,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 100,
+        "visuell": 95
+      },
+      "growth_v2": {
+        "growth_score": 97,
+        "priority_score": 98,
+        "binding_score": 99
+      },
+      "sources": [
+        {
+          "publisher": "tagesschau.de",
+          "url": "https://www.tagesschau.de/wirtschaft/energie/diesel-preis-rekordhoch-100.html",
+          "supports": "Der bundesweite Tagesdurchschnitt für Diesel erreichte laut ADAC 2,471 Euro pro Liter und damit am zweiten Tag in Folge ein neues Rekordhoch."
+        },
+        {
+          "publisher": "ADAC",
+          "url": "https://www.adac.de/news/aktueller-spritpreis/",
+          "supports": "Der ADAC bestätigt neue Rekordstände bei Benzin und Diesel und ordnet die Entwicklung mit Ölpreis und Wochenvergleich ein."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "tagesschau.de",
+            "url": "https://www.tagesschau.de/wirtschaft/energie/diesel-preis-rekordhoch-100.html",
+            "supports": "Aktuelle Meldung vom 18. September: Diesel erreicht im bundesweiten Schnitt 2,471 Euro je Liter; Nahost- und Raffinerieprobleme belasten den Markt."
+          },
+          {
+            "publisher": "ADAC",
+            "url": "https://www.adac.de/news/aktueller-spritpreis/",
+            "supports": "ADAC-Auswertung bestätigt das Rekordniveau und den kräftigen Anstieg im Wochenvergleich."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Diesel kostet bundesweit so viel wie nie zuvor.",
+          "why_happening": "Globale Öl- und Raffinerieprobleme treiben die Preise an deutschen Tankstellen hoch.",
+          "who_is_affected": "Betroffen sind Autofahrer, Speditionen, Handwerk und viele Lieferketten.",
+          "personal_impact": "Für dich steigen Fahrtkosten und indirekt möglicherweise weitere Alltagskosten.",
+          "action_now": "Vergleiche Preise und tanke möglichst zu den günstigeren Tageszeiten."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "2,471 Euro pro Liter im ADAC-Tagesdurchschnitt",
+            "zweiter Rekordtag in Folge",
+            "bundesweite Relevanz",
+            "hohe Energie- und Raffineriekosten"
+          ],
+          "must_not_claim": [
+            "jeder Tankstellenpreis liege bei 2,471 Euro",
+            "der Dieselpreis werde sicher weiter steigen",
+            "staatliche Entlastungen seien bereits beschlossen"
+          ],
+          "uncertainty_note": "Tankstellenpreise schwanken regional und im Tagesverlauf; politische Entlastungsmodelle sind noch nicht final beschlossen."
+        },
+        "research_notes": "Story-Spine: Ein Rekordpreis wird über den persönlichen Geldbeutel und die Logistikfolgen unmittelbar verständlich. HASHTAG_SEEDS: #Diesel #Spritpreise #Deutschland #ADAC #Energiepreise #Tanken #TAYVORIQ"
+      }
+    },
+    {
+      "id": "3",
+      "title": "Lidl schickt einen fahrerlosen E-Lkw auf deutsche Straßen: Warum Level 4 jetzt im echten Lieferbetrieb ankommt",
+      "score": 96,
+      "trend_scope": "mobility_energy",
+      "regional_relevance": "germany",
+      "criteria": {
+        "aktualitaet": 95,
+        "viralitaet": 96,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 100,
+        "visuell": 99
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "priority_score": 98,
+        "binding_score": 96
+      },
+      "sources": [
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/retail-consumer/einride-lidl-deploy-first-cab-less-autonomous-truck-germany-2026-09-15/",
+          "supports": "Einride und Lidl haben in Deutschland einen kabinenlosen autonomen Lkw mit KBA-Genehmigung für regulären Einsatz auf öffentlichen Straßen gestartet."
+        },
+        {
+          "publisher": "Lidl Unternehmen",
+          "url": "https://unternehmen.lidl.de/pressemitteilungen/2026/260915_autonomer_lkw",
+          "supports": "Lidl bestätigt den SAE-Level-4-E-Lkw im Realbetrieb in Edermünde, bis zu drei Fahrten täglich und mehr als 3.000 Paletten im viermonatigen Projekt."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/retail-consumer/einride-lidl-deploy-first-cab-less-autonomous-truck-germany-2026-09-15/",
+            "supports": "Erster kabinenloser autonomer Lkw für regelmäßigen Einsatz auf öffentlichen Straßen in Deutschland mit KBA-Genehmigung."
+          },
+          {
+            "publisher": "Lidl Unternehmen",
+            "url": "https://unternehmen.lidl.de/pressemitteilungen/2026/260915_autonomer_lkw",
+            "supports": "Konkreter Level-4-Pilot im deutschen Lebensmitteleinzelhandel mit realen Liefermengen."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Lidl und Einride setzen einen kabinenlosen Level-4-E-Lkw in Deutschland ein.",
+          "why_happening": "Das Projekt testet autonome Logistik jetzt mit echten Liefermengen auf öffentlichen Straßen.",
+          "who_is_affected": "Betroffen sind Logistikfirmen, Lkw-Fahrer, Händler und Verkehrsplaner.",
+          "personal_impact": "Für dich zeigt das, wie schnell autonome Lieferverkehre praktisch werden.",
+          "action_now": "Achte darauf, welche weiteren Strecken das KBA künftig für Level 4 freigibt."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Lidl und Einride",
+            "SAE Level 4",
+            "KBA-Genehmigung",
+            "Edermünde in Hessen",
+            "echter Filial-Lieferbetrieb"
+          ],
+          "must_not_claim": [
+            "der Lkw dürfe überall in Deutschland autonom fahren",
+            "Lkw-Fahrer würden kurzfristig vollständig ersetzt",
+            "das Fahrzeug fahre ohne festgelegten Betriebsbereich"
+          ],
+          "uncertainty_note": "Der Einsatz ist ein genehmigter, räumlich definierter Realbetrieb und keine allgemeine Freigabe für autonome Lkw auf allen Straßen."
+        },
+        "research_notes": "Story-Spine: Autonomes Fahren verlässt den Demo-Modus und übernimmt konkrete Lieferfahrten in Deutschland. HASHTAG_SEEDS: #Lidl #Einride #AutonomesFahren #Level4 #Logistik #ElektroLKW #TAYVORIQ"
+      }
+    },
+    {
+      "id": "4",
+      "title": "A8 Richtung Stuttgart wird heute Abend gesperrt: Was Autofahrer zwischen Pforzheim und Heimsheim wissen müssen",
+      "score": 95,
+      "trend_scope": "mobility_energy",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 90,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 100,
+        "visuell": 92
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "priority_score": 97,
+        "binding_score": 99
+      },
+      "sources": [
+        {
+          "publisher": "Autobahn GmbH des Bundes",
+          "url": "https://www.autobahn.de/betrieb-verkehr/verkehrsmeldung/a8-fahrbahndeckenerneuerung-zwischen-den-anschlussstellen-pforzheim-sued-und-heimsheim",
+          "supports": "Die A8 in Fahrtrichtung Stuttgart wird vom 18. September 20 Uhr bis 21. September etwa 5 Uhr zwischen Pforzheim-Süd und Heimsheim gesperrt; Umleitung U9."
+        },
+        {
+          "publisher": "SWR Aktuell",
+          "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/karlsruhe/a8-autobahn-sperrung-im-september-pforzheim-heimsheim-102.html",
+          "supports": "SWR bestätigt die Sperrung ab Freitagabend 20 Uhr bis Montagmorgen 5 Uhr wegen Fahrbahnerneuerung; Fahrtrichtung Karlsruhe ist nicht betroffen."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Autobahn GmbH des Bundes",
+            "url": "https://www.autobahn.de/betrieb-verkehr/verkehrsmeldung/a8-fahrbahndeckenerneuerung-zwischen-den-anschlussstellen-pforzheim-sued-und-heimsheim",
+            "supports": "Offizielle Sperrzeiten, betroffener Abschnitt und Umleitungsführung für die A8 Richtung Stuttgart."
+          },
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/karlsruhe/a8-autobahn-sperrung-im-september-pforzheim-heimsheim-102.html",
+            "supports": "Aktuelle Bestätigung der Wochenendsperrung zwischen Pforzheim-Süd und Heimsheim."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Die A8 Richtung Stuttgart wird zwischen Pforzheim-Süd und Heimsheim gesperrt.",
+          "why_happening": "Die Sperrung ist nötig, weil dort die Fahrbahndecke erneuert wird.",
+          "who_is_affected": "Betroffen sind Pendler, Wochenendreisende und Autofahrer Richtung Stuttgart.",
+          "personal_impact": "Für dich können Umwege und zusätzliche Fahrzeit am Wochenende entstehen.",
+          "action_now": "Plane ab 20 Uhr die ausgeschilderte U9 oder eine weiträumige Alternative."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "18. September ab 20 Uhr",
+            "bis Montag 21. September etwa 5 Uhr",
+            "Fahrtrichtung Stuttgart",
+            "Pforzheim-Süd bis Heimsheim",
+            "Umleitung U9"
+          ],
+          "must_not_claim": [
+            "beide Fahrtrichtungen seien gesperrt",
+            "die Sperrung dauere die ganze Woche",
+            "die Umleitung sei frei von Verzögerungen"
+          ],
+          "uncertainty_note": "Die Arbeiten sind laut Autobahn GmbH witterungsabhängig und können kurzfristig verschoben werden."
+        },
+        "research_notes": "Story-Spine: Unmittelbare lokale Nutzwert-News mit klaren Zeiten, Strecke und Handlungsoption. HASHTAG_SEEDS: #A8 #Stuttgart #Pforzheim #Heimsheim #Verkehr #BadenWuerttemberg #TAYVORIQ"
+      }
+    },
+    {
+      "id": "5",
+      "title": "KI-Sicherheit wird zum BW-Thema: Warum Firmen und Forscher vor zu viel Autonomie warnen",
+      "score": 93,
+      "trend_scope": "technology_ai",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 92,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 96,
+        "visuell": 92
+      },
+      "growth_v2": {
+        "growth_score": 93,
+        "priority_score": 95,
+        "binding_score": 97
+      },
+      "sources": [
+        {
+          "publisher": "SWR Aktuell",
+          "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/sorgen-ueber-die-zukunft-von-ki-bei-firmen-in-bw-und-wirtschaft-100.html",
+          "supports": "SWR berichtet über Firmen in Baden-Württemberg und den Stuttgarter AI-Safety-Forscher Thilo Hagendorff zu Risiken autonomer KI-Agenten."
+        },
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/europes-ai-firms-playing-catch-up-challenge-us-calls-slowdown-2026-09-18/",
+          "supports": "Reuters beschreibt die aktuelle europäische Debatte über KI-Sicherheit, Wettbewerbsfähigkeit und die Forderung einiger US-Firmen nach langsameren Entwicklungsschritten."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/sorgen-ueber-die-zukunft-von-ki-bei-firmen-in-bw-und-wirtschaft-100.html",
+            "supports": "Konkrete Stimmen aus Baden-Württemberg und Stuttgart zur Sicherheit autonomer KI-Agenten und zu wirtschaftlichen Folgen."
+          },
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/europes-ai-firms-playing-catch-up-challenge-us-calls-slowdown-2026-09-18/",
+            "supports": "Aktuelle europäische Einordnung des Spannungsfelds zwischen KI-Sicherheit und technologischem Aufholen."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Firmen und Forscher in Baden-Württemberg diskutieren neue Risiken autonomer KI-Agenten.",
+          "why_happening": "Die Debatte wächst, weil KI-Systeme immer selbstständiger handeln und entwickeln.",
+          "who_is_affected": "Betroffen sind Unternehmen, Entwickler, Beschäftigte und Nutzer neuer KI-Agenten.",
+          "personal_impact": "Für dich geht es darum, wie viel Kontrolle autonome KI künftig bekommt.",
+          "action_now": "Achte darauf, welche Sicherheitsgrenzen Firmen bei autonomen KI-Agenten konkret setzen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Baden-Württemberg-Bezug",
+            "Stuttgarter AI-Safety-Forschung",
+            "autonome KI-Agenten",
+            "europäische Wettbewerbs- und Sicherheitsdebatte"
+          ],
+          "must_not_claim": [
+            "KI-Agenten seien grundsätzlich außer Kontrolle",
+            "europäische Firmen wollten Sicherheit vollständig abschaffen",
+            "ein konkretes allgemeines KI-Verbot sei beschlossen"
+          ],
+          "uncertainty_note": "Die Debatte ist laufend; Risiken, Standards und regulatorische Antworten werden von Unternehmen und Forschern unterschiedlich bewertet."
+        },
+        "research_notes": "Story-Spine: Eine globale KI-Frage wird bewusst auf Baden-Württemberg heruntergebrochen: Was bedeutet mehr Autonomie für Firmen und Nutzer hier? HASHTAG_SEEDS: #KI #BadenWuerttemberg #Stuttgart #AISafety #KIAgenten #Technologie #TAYVORIQ"
+      }
+    }
+  ]
+}
