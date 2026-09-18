@@ -15,6 +15,10 @@ on:
         description: Exakt gebundene freigegebene Request-ID
         required: false
         type: string
+      recovery_generation:
+        description: Gebundene Recovery-Generation für Fortschritts- und Replay-Wahrheit
+        required: false
+        type: string
   push:
     branches: [main]
     paths:
@@ -72,6 +76,7 @@ env:
   TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
   TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
   SOURCE_REQUEST_ID_PIN: ${{ github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
+  TAYVORIQ_RECOVERY_GENERATION: ${{ github.event.inputs.recovery_generation || github.event.client_payload.recovery_generation || '0' }}
 
 jobs:
   orchestrate:
