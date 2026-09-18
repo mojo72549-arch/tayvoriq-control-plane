@@ -48,7 +48,16 @@ jobs:
           dt.date.fromisoformat(sys.argv[1])
           PY
           compact="${target_date//-/}"
-          selection_id="${compact}-${slot}-agentv2"
+          refresh="$(sed -n 's/^refresh=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+          if [ -n "$refresh" ]; then
+            case "$refresh" in
+              r[1-9]|r[1-9][0-9]) ;;
+              *) echo "Invalid refresh token: $refresh"; exit 1 ;;
+            esac
+            selection_id="${compact}-${slot}-agentv2-${refresh}"
+          else
+            selection_id="${compact}-${slot}-agentv2"
+          fi
           needs_delivery=true
           receipt=".automation/tayvoriq-agent-v2/deliveries/${selection_id}.json"
           if [ -f "$receipt" ]; then
