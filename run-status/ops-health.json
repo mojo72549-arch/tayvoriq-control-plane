@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-18T17:15:24.976023Z",
+  "generated_at": "2026-09-18T17:25:33.591500Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "Stuttgart 21 wieder unter Druck: Warum ein früherer Gutachter den alten Stresstest jetzt anzweifelt",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "source_count": 2,
@@ -119,7 +119,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "FRESH_RECOVERY_DISPATCHED"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -138,7 +138,7 @@
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 32,
-    "self_heal_status": "FRESH_RECOVERY_DISPATCHED",
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -150,16 +150,16 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "FRESH_RECOVERY_DISPATCHED",
+    "status": "ARMED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 35355807775,
+    "failed_run_id": 35363807043,
     "replay_run_id": null,
-    "fresh_recovery_run_id": 35363807043,
+    "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "FRESH_RECOVERY_DISPATCHED",
+    "source_status": "ARMED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
@@ -168,6 +168,11 @@
       "at": "2026-09-18T15:43:16Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-18T17:19:04.590782Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-09-18T15:40:06.553334Z",
@@ -193,11 +198,6 @@
       "at": "2026-09-18T14:01:02.633349Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-18T14:00:49.639527Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     }
   ]
 }
