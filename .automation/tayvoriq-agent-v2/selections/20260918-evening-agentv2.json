@@ -1,0 +1,352 @@
+{
+  "date": "2026-09-18",
+  "target_date": "2026-09-18",
+  "slot": "evening",
+  "selection_id": "20260918-evening-agentv2",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_fallback_after_provider_limits",
+  "superseded": false,
+  "duplicate_guard_passed": true,
+  "telegram_only_user_path": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "trends": [
+    {
+      "id": "1",
+      "title": "Claude baut an seinem eigenen Nachfolger mit: Wie Anthropic KI bereits für die nächste KI-Generation einsetzt",
+      "score": 99,
+      "trend_scope": "technology_ai",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 99,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 97
+      },
+      "growth_v2": {
+        "growth_score": 99,
+        "priority_score": 99,
+        "binding_score": 98
+      },
+      "sources": [
+        {
+          "publisher": "Associated Press",
+          "url": "https://apnews.com/article/4d3a7430f57cbc7c39e1c5f2b7d7e132",
+          "supports": "Anthropic sagt, Claude übernimmt unter menschlicher Aufsicht bereits einen erheblichen Anteil der Arbeit an künftigen Modellen."
+        },
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/anthropic-says-claude-now-leads-quarter-work-building-its-next-ai-models-2026-09-17/",
+          "supports": "Reuters berichtet, dass Claude rund 26 Prozent der KI-Forschungsarbeit führt und bei über 90 Prozent der Forschung mit Menschen zusammenarbeitet."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Associated Press",
+            "url": "https://apnews.com/article/4d3a7430f57cbc7c39e1c5f2b7d7e132",
+            "supports": "Claude spielt eine wachsende Rolle bei Anthropics eigener Modellforschung, bleibt aber menschlich beaufsichtigt."
+          },
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/anthropic-says-claude-now-leads-quarter-work-building-its-next-ai-models-2026-09-17/",
+            "supports": "26 Prozent geführte Forschungsarbeit und über 90 Prozent Mensch-KI-Zusammenarbeit wurden für Anthropic berichtet."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Claude übernimmt inzwischen Teile von Anthropics eigener KI-Entwicklung.",
+          "why_happening": "Das passiert, weil Claude Forschungsaufgaben unter menschlicher Aufsicht zunehmend übernimmt.",
+          "who_is_affected": "Betroffen sind KI-Entwickler, Forschungsteams und Unternehmen mit autonomen Agenten.",
+          "personal_impact": "Für dich zeigt das, wie schnell KI zum Mitentwickler wird.",
+          "action_now": "Beobachte, welche Aufgaben Menschen künftig noch selbst kontrollieren müssen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Claude arbeitet an Anthropics eigener KI-Forschung mit",
+            "rund 26 Prozent geführte Forschungsarbeit",
+            "über 90 Prozent Mensch-KI-Zusammenarbeit",
+            "menschliche Aufsicht bleibt bestehen"
+          ],
+          "must_not_claim": [
+            "Claude entwickelt sich vollständig autonom selbst",
+            "Anthropic hat Menschen aus der Forschung entfernt"
+          ],
+          "uncertainty_note": "Die veröffentlichten Werte beschreiben beaufsichtigte Forschungsarbeit, keine vollständig autonome Selbstverbesserung."
+        },
+        "research_notes": "Story-Spine: KI wird vom Werkzeug zum aktiven Mitentwickler der nächsten Modellgeneration. HASHTAG_SEEDS: #Claude #Anthropic #AIResearch #AIAgents #ArtificialIntelligence #TAYVORIQ"
+      }
+    },
+    {
+      "id": "2",
+      "title": "2-Nanometer-Chips kommen ins Smartphone: Warum MediaTeks Dimensity 9600 Pro für Handy-KI wichtig wird",
+      "score": 97,
+      "trend_scope": "technology_ai",
+      "criteria": {
+        "aktualitaet": 97,
+        "viralitaet": 95,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 100,
+        "visuell": 96
+      },
+      "growth_v2": {
+        "growth_score": 97,
+        "priority_score": 97,
+        "binding_score": 95
+      },
+      "sources": [
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/media-telecom/mediatek-launches-new-mobile-chip-using-tsmcs-most-advanced-technology-2026-09-15/",
+          "supports": "Reuters bestätigt den Dimensity 9600 Pro auf TSMCs 2-Nanometer-Prozess und einen deutlichen Leistungssprung bei lokaler generativer KI."
+        },
+        {
+          "publisher": "MediaTek",
+          "url": "https://www.mediatek.com/press-room/mediatek-dimensity-9600-pro-sets-new-standard-for-flagship-smartphone-chips?hs_amp=true",
+          "supports": "MediaTek bestätigt den 2-Nanometer-Prozess und positioniert den Chip für leistungsfähige, effiziente und agentische KI auf Smartphones."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/media-telecom/mediatek-launches-new-mobile-chip-using-tsmcs-most-advanced-technology-2026-09-15/",
+            "supports": "Dimensity 9600 Pro nutzt TSMCs 2-Nanometer-Technologie und zielt auf Premium-Smartphones sowie stärkere On-Device-KI."
+          },
+          {
+            "publisher": "MediaTek",
+            "url": "https://www.mediatek.com/press-room/mediatek-dimensity-9600-pro-sets-new-standard-for-flagship-smartphone-chips?hs_amp=true",
+            "supports": "MediaTek beschreibt 2-Nanometer-Fertigung, mehr Leistung, Effizienz und fortgeschrittene agentische KI-Funktionen."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "MediaTek bringt mit dem Dimensity 9600 Pro seinen ersten 2-Nanometer-Smartphonechip.",
+          "why_happening": "Der Sprung kommt, weil TSMCs 2-Nanometer-Fertigung mehr Leistung und Effizienz ermöglicht.",
+          "who_is_affected": "Betroffen sind Smartphonehersteller, Chipkonkurrenten und kommende Android-Flaggschiffe.",
+          "personal_impact": "Für dich könnten Geräte schneller rechnen und lokale KI effizienter ausführen.",
+          "action_now": "Vergleiche, welche Hersteller den Chip zuerst in Europa einsetzen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Dimensity 9600 Pro",
+            "TSMC 2-Nanometer-Prozess",
+            "Premium-Smartphones",
+            "stärkere On-Device-KI"
+          ],
+          "must_not_claim": [
+            "Der Chip steckt bereits in allen Android-Flaggschiffen",
+            "2 Nanometer bedeutet exakt zwei Nanometer große Transistoren"
+          ],
+          "uncertainty_note": "Konkrete Endgeräte und Markteinführungen unterscheiden sich je Hersteller."
+        },
+        "research_notes": "Story-Spine: Ein Fertigungssprung macht lokale KI im Smartphone leistungsfähiger und effizienter. HASHTAG_SEEDS: #MediaTek #Dimensity9600Pro #2nm #TSMC #SmartphoneAI #Android #TAYVORIQ"
+      }
+    },
+    {
+      "id": "3",
+      "title": "Schwarze Löcher „rülpsen“ nach einem Muster: Forscher können gewaltige Jets jetzt besser vorhersagen",
+      "score": 96,
+      "trend_scope": "science_future",
+      "criteria": {
+        "aktualitaet": 99,
+        "viralitaet": 98,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "priority_score": 96,
+        "binding_score": 94
+      },
+      "sources": [
+        {
+          "publisher": "The Guardian",
+          "url": "https://www.theguardian.com/science/2026/sep/17/black-hole-burps-scientists-solve-mystery-astronomy",
+          "supports": "Der Bericht beschreibt zwei Phasen, in denen supermassereiche Schwarze Löcher nach Sternzerstörungen Jets ausstoßen."
+        },
+        {
+          "publisher": "Nature Astronomy",
+          "url": "https://www.nature.com/articles/s41550-026-02951-1",
+          "supports": "Die Fachpublikation zeigt einen universellen kritischen Akkretionsbereich für die Entstehung von Jets bei Schwarzen Löchern."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "The Guardian",
+            "url": "https://www.theguardian.com/science/2026/sep/17/black-hole-burps-scientists-solve-mystery-astronomy",
+            "supports": "Beobachtungen von 20 Ereignissen zeigen wiederkehrende Phasen für Radiojets nach der Zerstörung von Sternen."
+          },
+          {
+            "publisher": "Nature Astronomy",
+            "url": "https://www.nature.com/articles/s41550-026-02951-1",
+            "supports": "Die Studie beschreibt einen universellen kritischen Akkretionswert für Jetbildung von stellaren bis supermassereichen Schwarzen Löchern."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Forscher fanden einen Schwellenwert, bei dem Schwarze Löcher starke Jets erzeugen.",
+          "why_happening": "Das Muster entsteht, weil Jets bei bestimmten Akkretionsraten besonders wahrscheinlich starten.",
+          "who_is_affected": "Betroffen sind Astronomen, die Schwarze Löcher und Sternzerstörungen beobachten.",
+          "personal_impact": "Für dich macht das extrem entfernte Weltraumphänomene erstmals besser vorhersagbar.",
+          "action_now": "Beobachte, wann Radioteleskope gezielt nach solchen Jets suchen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "kritischer Akkretionsbereich",
+            "Jetbildung",
+            "stellare und supermassereiche Schwarze Löcher",
+            "Beobachtungen von Tidal-Disruption-Ereignissen"
+          ],
+          "must_not_claim": [
+            "Schwarze Löcher stoßen Materie nach festem Zeitplan aus",
+            "alle Schwarzen Löcher verhalten sich identisch"
+          ],
+          "uncertainty_note": "Die Studie identifiziert ein wiederkehrendes physikalisches Muster, keinen exakten Kalender für jedes einzelne Objekt."
+        },
+        "research_notes": "Story-Spine: Ein bislang chaotisch wirkendes Weltraumphänomen bekommt einen vorhersagbaren physikalischen Schwellenwert. HASHTAG_SEEDS: #BlackHole #Astronomy #Space #NatureAstronomy #Astrophysics #Science #TAYVORIQ"
+      }
+    },
+    {
+      "id": "4",
+      "title": "iPhone 18 Pro startet weltweit: Was variable Kamera-Blende, A20 Pro und Siri-AI wirklich verändern sollen",
+      "score": 95,
+      "trend_scope": "creator_media",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 98,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "priority_score": 96,
+        "binding_score": 94
+      },
+      "sources": [
+        {
+          "publisher": "Apple",
+          "url": "https://www.apple.com/newsroom/2026/09/apple-debuts-iphone-18-pro-and-iphone-18-pro-max/",
+          "supports": "Apple bestätigt variable 48-MP-Hauptkamera, A20 Pro, Siri AI und den weltweiten Verkaufsstart am 18. September."
+        },
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/retail-consumer/italian-apple-store-employees-strike-iphone18-pro-launch-day-2026-09-18/",
+          "supports": "Reuters bestätigt den weltweiten Launch-Tag des iPhone 18 Pro und den Verkaufsstart am 18. September."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Apple",
+            "url": "https://www.apple.com/newsroom/2026/09/apple-debuts-iphone-18-pro-and-iphone-18-pro-max/",
+            "supports": "iPhone 18 Pro bringt variable Blende, A20 Pro, neue Kühlung und Siri AI; Verfügbarkeit beginnt am 18. September."
+          },
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/retail-consumer/italian-apple-store-employees-strike-iphone18-pro-launch-day-2026-09-18/",
+            "supports": "Reuters berichtet vom offiziellen Launch-Tag des iPhone 18 Pro und laufendem Verkauf in Apple Stores."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Apple bringt das iPhone 18 Pro mit variabler Kamera-Blende weltweit heraus.",
+          "why_happening": "Die variable Blende kommt, weil Apple mehr kreative Kamerakontrolle verspricht.",
+          "who_is_affected": "Betroffen sind iPhone-Käufer, Fotografen, Entwickler und Smartphonehersteller.",
+          "personal_impact": "Für dich könnten Fotos flexibler werden, besonders bei wenig Licht.",
+          "action_now": "Vergleiche, ob Kamera, Akku und Siri-AI den Aufpreis wirklich rechtfertigen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "iPhone 18 Pro",
+            "variable 48-MP-Hauptkamera",
+            "A20 Pro",
+            "Siri AI",
+            "Verkaufsstart 18. September"
+          ],
+          "must_not_claim": [
+            "Siri AI ist in jedem Land identisch verfügbar",
+            "variable Blende garantiert automatisch bessere Fotos"
+          ],
+          "uncertainty_note": "Funktionen und Verfügbarkeit einzelner KI-Dienste können regional variieren."
+        },
+        "research_notes": "Story-Spine: Der Launch bietet einen verständlichen Alltagsvergleich zwischen Kamera-Hardware, Chip-Leistung und neuer KI. HASHTAG_SEEDS: #iPhone18Pro #Apple #A20Pro #SiriAI #MobilePhotography #Smartphone #TAYVORIQ"
+      }
+    },
+    {
+      "id": "5",
+      "title": "Neue Katzenart nach über 100 Jahren entdeckt: Warum Leopardus tilcayo selbst Forscher überraschte",
+      "score": 95,
+      "trend_scope": "science_future",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 99,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "priority_score": 96,
+        "binding_score": 93
+      },
+      "sources": [
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/environment/new-cat-species-identified-bolivia-first-over-century-2026-09-17/",
+          "supports": "Reuters berichtet über Leopardus tilcayo in Boliviens Yungas-Wald, bestätigt durch genetische Analysen und erstmals als neue lebende Katzenart seit über einem Jahrhundert beschrieben."
+        },
+        {
+          "publisher": "National Geographic",
+          "url": "https://www.nationalgeographic.com/animals/article/meet-the-first-new-cat-species-discovered-in-100-years",
+          "supports": "National Geographic dokumentiert die Entdeckung, Größe, Herkunft und wissenschaftliche Einordnung der neuen Tilcayo-Katze."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/environment/new-cat-species-identified-bolivia-first-over-century-2026-09-17/",
+            "supports": "Genetische Analyse bestätigt Leopardus tilcayo als eigenständige Art in Boliviens Yungas; die Linie trennte sich vor rund 1,4 Millionen Jahren."
+          },
+          {
+            "publisher": "National Geographic",
+            "url": "https://www.nationalgeographic.com/animals/article/meet-the-first-new-cat-species-discovered-in-100-years",
+            "supports": "Die kleine gefleckte Wildkatze wurde im Yungas-Gebiet erkannt und ist kleiner als eine durchschnittliche Hauskatze."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Forscher haben Boliviens neue Wildkatzenart Leopardus tilcayo erstmals beschrieben.",
+          "why_happening": "Sie galt lange als bekannt, weil Tigerkatzen äußerlich kaum unterscheidbar sind.",
+          "who_is_affected": "Betroffen sind Artenschützer, Zoologen und Boliviens bedrohte Yungas-Wälder.",
+          "personal_impact": "Für dich zeigt das, wie viel selbst bei Säugetieren unentdeckt bleibt.",
+          "action_now": "Beobachte, wie die IUCN den Schutzstatus der neuen Art bewertet."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Leopardus tilcayo",
+            "Boliviens Yungas",
+            "genetische Analyse",
+            "erste neue lebende Katzenart seit über einem Jahrhundert"
+          ],
+          "must_not_claim": [
+            "die Art wurde erst 2026 erstmals von Menschen gesehen",
+            "der Schutzstatus ist bereits endgültig festgelegt"
+          ],
+          "uncertainty_note": "Über Population, Verhalten und Gefährdungsstatus ist bislang nur wenig bekannt."
+        },
+        "research_notes": "Story-Spine: Eine auffällige Wildkatze entpuppt sich genetisch als eigenständige Art und zeigt, wie viel Biodiversität noch verborgen ist. HASHTAG_SEEDS: #LeopardusTilcayo #Wildlife #Bolivia #Biodiversity #NewSpecies #Science #TAYVORIQ"
+      }
+    }
+  ]
+}
