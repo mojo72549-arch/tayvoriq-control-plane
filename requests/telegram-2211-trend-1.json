@@ -1,0 +1,72 @@
+{
+  "request_id": "telegram-2211-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Stuttgart 21 wieder unter Druck: Warum ein früherer Gutachter den alten Stresstest jetzt anzweifelt",
+  "trend_scope": "mobility_energy",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-18T13:21:58.972Z",
+  "telegram_message_id": 2211,
+  "approval_key": "telegram:20260918-evening-agentv2-r3:2211:trend:1",
+  "mode": "full",
+  "selection_id": "20260918-evening-agentv2-r3",
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "SWR Aktuell",
+        "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/s21-gutachter-distanziert-sich-faq-100.html",
+        "supports": "Neue Debatte über die Kapazität des künftigen Stuttgarter Tiefbahnhofs nach Aussagen eines früheren Gutachters; SMA und Bahn widersprechen seiner heutigen Einordnung."
+      },
+      {
+        "publisher": "Staatsanzeiger Baden-Württemberg",
+        "url": "https://www.staatsanzeiger.de/nachrichten/politik-und-verwaltung/gutachter-bezweifelt-eigene-stresstest-berechnungen-zu-stuttgart-21/",
+        "supports": "Unabhängige Regionalquelle bestätigt die nachträglichen Zweifel des früheren SMA-Chefs an den Stresstest-Berechnungen."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Ein früherer Stuttgart-21-Gutachter stellt Teile des alten Stresstests infrage.",
+      "why_happening": "Die Debatte kommt zurück, weil er die damalige Prüfung heute kritischer bewertet.",
+      "who_is_affected": "Betroffen sind Pendler, Bahnreisende und die gesamte Region Stuttgart.",
+      "personal_impact": "Für dich geht es um Kapazität, Zuverlässigkeit und Zukunft des Hauptbahnhofs.",
+      "action_now": "Beobachte, welche neuen Kapazitätsnachweise Bahn und Projektpartner jetzt vorlegen."
+    },
+    "factual_guardrails": {
+      "must_include": [
+        "früherer SMA-Gutachter äußert nachträgliche Zweifel",
+        "SMA hält an Qualität und Methodik fest",
+        "Deutsche Bahn hält an Plausibilität fest",
+        "Digitaler Knoten verändert die Kapazitätsfrage zusätzlich"
+      ],
+      "must_not_claim": [
+        "der Stresstest sei bewiesen falsch",
+        "Stuttgart 21 müsse deshalb gestoppt werden",
+        "der neue Tiefbahnhof sei sicher zu klein"
+      ],
+      "uncertainty_note": "Die Aussagen sind Teil einer laufenden fachlichen Kontroverse; ein abschließender neuer Kapazitätsnachweis liegt in den zitierten Quellen nicht vor."
+    },
+    "research_notes": "Story-Spine: Ein vertrautes Stuttgart-Thema bekommt durch die Aussagen eines früheren Prüfers eine neue, konkrete Wendung. HASHTAG_SEEDS: #Stuttgart21 #Stuttgart #DeutscheBahn #S21 #BadenWuerttemberg #TAYVORIQ"
+  },
+  "source_context_sha256": "af64b2c195a4563d66d8443e814b24598a7dde718c51dfd282db716db8103085",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-18T13:21:58.972Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-09-18T13:22:10.091691+00:00",
+      "actor": "request-dispatcher:35349791912"
+    }
+  ],
+  "contract_sha256": "01f9275384b51257d37ffef9809004e38100917df6f893ced8f3935b312bbfc4",
+  "dispatch_claim_run_id": 35349791912,
+  "dispatch_contract_sha256": "01f9275384b51257d37ffef9809004e38100917df6f893ced8f3935b312bbfc4"
+}
