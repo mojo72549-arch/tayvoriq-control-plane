@@ -1,5 +1,6 @@
 slot=evening
 target_date=2026-09-18
-requested_at=2026-09-18T14:56:00+02:00
-nonce=telegram-evening-20260918-zero-cost-fallback-v2
-reason=deliver today evening ranking through verified zero-cost repository fallback after provider 429/402; keep the old Telegram two-step approval flow; do not start production before explicit Trend freigeben; after approval use public request dispatcher and public Golden Path only
+refresh=r2
+requested_at=2026-09-18T15:00:00+02:00
+nonce=telegram-evening-20260918-regional-core-r2
+reason=rerun the full TAYVORIQ trend workflow after regional-core hardening; prioritize Stuttgart/Baden-Wuerttemberg, Germany and Europe; allow at most one global exception with direct DE/EU impact; keep two-step Telegram approval; do not start production before explicit Trend freigeben
