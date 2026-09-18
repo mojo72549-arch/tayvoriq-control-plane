@@ -14,7 +14,7 @@ on:
       - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
       - tools/tayvoriq_codefix_orphan_reconcile_v1.py
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       failed_run_id:
@@ -425,13 +425,17 @@ jobs:
         if: >-
           steps.pending.outputs.found == 'true' &&
           steps.revision.outputs.detected != 'true' &&
-          github.event_name != 'schedule' &&
           (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'TAYVORIQ Production Green Promoter')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          active_count=$(gh run list             --workflow tayvoriq-production-green-promoter.yml             --limit 20             --json status             --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
+          if [ "$active_count" -gt 0 ]; then
+            echo "CODEFIX_PRODUCTION_GREEN_RECONCILIATION_ALREADY_ACTIVE:$active_count"
+            exit 0
+          fi
           gh workflow run tayvoriq-production-green-promoter.yml --ref main
           echo "CODEFIX_PRODUCTION_GREEN_RECONCILIATION_DISPATCHED:${{ steps.pending.outputs.request_id }}:${{ steps.pending.outputs.run_id }}"
 
