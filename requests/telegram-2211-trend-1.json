@@ -85,15 +85,32 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-18T14:01:02.633349Z",
+      "actor": "tayvoriq-deterministic-codefix-continuity",
+      "meta": {
+        "retry_of_run_id": 35349811807,
+        "golden_path_run_id": 35353624879,
+        "recovery_generation": 0,
+        "failure_signature": "d68e34e2645e033a7c2f",
+        "reason": "same-generation-production-green-codefix-replay",
+        "codefix_detection_reason": "relevant-control-code-changed-without-implementation-pin",
+        "replay_control_plane_sha": "91cbc1c6f3ac52c7b922cfef9aa70901c2d49694",
+        "replay_implementation_sha": "9d61bbc92dc98f4d78ea305ae8976bd9f56cacf9",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "01f9275384b51257d37ffef9809004e38100917df6f893ced8f3935b312bbfc4",
   "dispatch_claim_run_id": 35349791912,
   "dispatch_contract_sha256": "01f9275384b51257d37ffef9809004e38100917df6f893ced8f3935b312bbfc4",
-  "golden_path_run_id": 35349811807,
+  "golden_path_run_id": 35353624879,
   "codefix_recovery": {
-    "status": "ARMED",
-    "request_substate": "AWAITING_CODEFIX",
+    "status": "REPLAY_DISPATCHED",
+    "request_substate": "DISPATCHED",
     "failed_run_id": 35349811807,
     "failure_signature": "d68e34e2645e033a7c2f",
     "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
@@ -108,6 +125,20 @@
     "active_pointer_verified": true,
     "rearmed_after_failed_replay": false,
     "previous_codefix_failed_run_id": 0,
-    "previous_codefix_failure_signature": ""
-  }
+    "previous_codefix_failure_signature": "",
+    "replay_run_id": 35353624879,
+    "replayed_at": "2026-09-18T14:01:02.633349Z",
+    "replay_control_plane_sha": "91cbc1c6f3ac52c7b922cfef9aa70901c2d49694",
+    "replay_implementation_sha": "9d61bbc92dc98f4d78ea305ae8976bd9f56cacf9",
+    "codefix_detection_reason": "relevant-control-code-changed-without-implementation-pin"
+  },
+  "previous_golden_path_run_ids": [
+    35349811807
+  ],
+  "recovery_generation": 0,
+  "retry_of_run_id": 35349811807,
+  "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
+  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "recovery_failure_signature": "d68e34e2645e033a7c2f",
+  "recovery_dispatched_at": "2026-09-18T14:01:02.633349Z"
 }
