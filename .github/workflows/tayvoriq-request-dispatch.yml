@@ -324,10 +324,57 @@ jobs:
             --actor "request-dispatcher:${GITHUB_RUN_ID}" \
             --meta "golden_path_run_id=${GOLDEN_PATH_RUN_ID}"
           python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          ACTIVE_POINTER=".github/state/tayvoriq-active-production-request.json"
+          python - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GOLDEN_PATH_RUN_ID" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          request_path=Path(sys.argv[1]); pointer_path=Path(sys.argv[2]); run_id=int(sys.argv[3])
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          if str(request.get('status') or '')!='DISPATCHED':
+              raise SystemExit('ACTIVE_POINTER_REQUEST_NOT_DISPATCHED')
+          if int(request.get('golden_path_run_id') or 0)!=run_id:
+              raise SystemExit('ACTIVE_POINTER_RUN_BINDING_MISMATCH')
+          if pointer_path.is_file():
+              try: previous=json.loads(pointer_path.read_text(encoding='utf-8'))
+              except Exception: previous={}
+              if (
+                  previous.get('schema')=='tayvoriq-active-production-request-v1'
+                  and previous.get('state')=='ACTIVE'
+                  and str(previous.get('request_id') or '') not in {'',str(request.get('request_id') or '')}
+              ):
+                  raise SystemExit('ACTIVE_POINTER_OTHER_REQUEST_STILL_ACTIVE')
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          payload={
+              'schema':'tayvoriq-active-production-request-v1',
+              'state':'ACTIVE',
+              'request_id':str(request.get('request_id') or ''),
+              'selection_id':str(request.get('selection_id') or ''),
+              'trend_id':str(request.get('trend_id') or ''),
+              'telegram_message_id':int(request.get('telegram_message_id') or 0),
+              'approval_key':str(request.get('approval_key') or ''),
+              'approved_at':str(request.get('approved_at') or ''),
+              'golden_path_run_id':run_id,
+              'source_context_sha256':str(request.get('source_context_sha256') or ''),
+              'contract_sha256':str(request.get('contract_sha256') or ''),
+              'recovery_generation':max(0,int(request.get('recovery_generation') or 0)),
+              'reason':'request-dispatch-success',
+              'allow_recovery':True,
+              'allow_publish':False,
+              'allow_notifications':True,
+              'updated_at':now,
+          }
+          for field in ('request_id','approval_key','source_context_sha256','contract_sha256'):
+              if not str(payload.get(field) or '').strip():
+                  raise SystemExit(f'ACTIVE_POINTER_REQUIRED_FIELD_MISSING:{field}')
+          pointer_path.parent.mkdir(parents=True,exist_ok=True)
+          pointer_path.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(payload,ensure_ascii=False,sort_keys=True))
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$REQUEST_FILE"
-          git commit -m "ops(tayvoriq): bind request to Golden Path ${GOLDEN_PATH_RUN_ID}"
+          git add "$REQUEST_FILE" "$ACTIVE_POINTER"
+          git commit -m "ops(tayvoriq): bind request and active pointer to Golden Path ${GOLDEN_PATH_RUN_ID}"
           pushed=false
           for attempt in 1 2 3; do
             if git push origin HEAD:main; then pushed=true; break; fi
