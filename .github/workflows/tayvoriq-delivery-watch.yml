@@ -66,6 +66,7 @@ jobs:
           out={
               'found':'false','request_file':'','request_id':'','topic':'','trend_id':'',
               'run_id':'','generation':'0','selection_id':'','telegram_message_id':'',
+              'verified_codefix_required':'false',
           }
           if not pointer_path.is_file():
               print('DELIVERY_WATCH_ACTIVE_POINTER_MISSING')
@@ -91,6 +92,18 @@ jobs:
                   elif request_id and pointer_run>0 and request_path.is_file():
                       try: data=json.loads(request_path.read_text(encoding='utf-8'))
                       except Exception: data={}
+                      codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+                      failure_state=str(codefix.get('failure_state') or '').strip().upper()
+                      verified_codefix_required=(
+                          failure_state.endswith('CODEFIX_REQUIRED')
+                          or failure_state in {
+                              'LOCAL_REPAIR_CODEFIX_REQUIRED',
+                              'SEMANTIC_CODEFIX_REQUIRED',
+                              'EDITORIAL_VALIDATOR_CODEFIX_REQUIRED',
+                              'DETERMINISTIC_PREFLIGHT_FAILURE',
+                              'CODE_REPAIR_REQUIRED',
+                          }
+                      )
                       try: request_run=int(data.get('golden_path_run_id') or 0)
                       except (TypeError,ValueError): request_run=0
                       immutable_ok=True
@@ -112,6 +125,7 @@ jobs:
                               'generation':str(max(0,int(data.get('recovery_generation') or 0))),
                               'selection_id':str(data.get('selection_id') or '').strip(),
                               'telegram_message_id':str(data.get('telegram_message_id') or '').strip(),
+                              'verified_codefix_required':str(bool(verified_codefix_required)).lower(),
                           })
                       else:
                           print('DELIVERY_WATCH_ACTIVE_REQUEST_CONTRACT_MISMATCH')
@@ -164,6 +178,7 @@ jobs:
         env:
           RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
           GENERATION: ${{ steps.owner.outputs.generation }}
+          VERIFIED_CODEFIX_REQUIRED: ${{ steps.owner.outputs.verified_codefix_required }}
         run: |
           set -euo pipefail
           # The canonical pointer proves this is the exact Telegram-approved request,
@@ -176,6 +191,7 @@ jobs:
             --owner-found true \
             --owner-current true \
             --exact-request-retry true \
+            --codefix-replay "${VERIFIED_CODEFIX_REQUIRED:-false}" \
             --output-json /tmp/recovery-policy.json
           python - "$GITHUB_OUTPUT" <<'PY'
           import json,sys
@@ -200,7 +216,10 @@ jobs:
 
       - name: Start bounded fresh request recovery
         id: fresh
-        if: steps.policy.outputs.mode == 'fresh' && steps.policy.outputs.retry_allowed == 'true'
+        if: >-
+          steps.policy.outputs.mode == 'fresh' &&
+          steps.policy.outputs.retry_allowed == 'true' &&
+          steps.owner.outputs.verified_codefix_required != 'true'
         shell: bash
         env:
           OLD_RUN_ID: ${{ steps.owner.outputs.run_id }}
