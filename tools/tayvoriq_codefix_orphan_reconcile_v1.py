@@ -117,6 +117,12 @@ def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int) -> bool:
             return True
         print(f"CODEFIX_REPLAY_BINDING_MISMATCH:replay={replay_run}:active={run_id}")
         return False
+    if status == "FRESH_RECOVERY_DISPATCHED":
+        fresh_run = _int(codefix.get("fresh_recovery_run_id"))
+        if fresh_run == run_id:
+            return True
+        print(f"CODEFIX_FRESH_RECOVERY_BINDING_MISMATCH:fresh={fresh_run}:active={run_id}")
+        return False
     return True
 
 
@@ -312,7 +318,12 @@ def _arm_request(
         if not _replay_status_allows_rearm(existing, run_id):
             return False, "", "", 0
 
-        replay_rearm = str(existing.get("status") or "") == "REPLAY_DISPATCHED" and _int(existing.get("replay_run_id")) == run_id
+        existing_status = str(existing.get("status") or "")
+        replay_rearm = (
+            (existing_status == "REPLAY_DISPATCHED" and _int(existing.get("replay_run_id")) == run_id)
+            or
+            (existing_status == "FRESH_RECOVERY_DISPATCHED" and _int(existing.get("fresh_recovery_run_id")) == run_id)
+        )
         effective_failed_control = str(failed_control or "").strip()
         effective_failed_impl = str(failed_impl or "").strip()
         if replay_rearm:
@@ -419,9 +430,11 @@ def main() -> int:
                 continue
             policy_path = temp / "policy.json"
             codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
+            status = str(codefix.get("status") or "")
             codefix_replay = (
-                str(codefix.get("status") or "") == "REPLAY_DISPATCHED"
-                and _int(codefix.get("replay_run_id")) == run_id
+                (status == "REPLAY_DISPATCHED" and _int(codefix.get("replay_run_id")) == run_id)
+                or
+                (status == "FRESH_RECOVERY_DISPATCHED" and _int(codefix.get("fresh_recovery_run_id")) == run_id)
             )
             policy = _policy(logs, _int(run_meta.get("run_attempt")) or 1, generation, codefix_replay, policy_path)
             if not policy:
