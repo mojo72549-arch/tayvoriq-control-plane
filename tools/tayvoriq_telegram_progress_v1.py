@@ -180,7 +180,16 @@ def immediate_failure_enabled(path: Path = DEFAULT_POLICY) -> bool:
 
 
 def recovery_generation() -> int:
-    """Resolve durable recovery ownership from the repository root, never cwd."""
+    """Resolve recovery ownership without racing the post-dispatch request commit."""
+    explicit = str(os.getenv("TAYVORIQ_RECOVERY_GENERATION") or "").strip()
+    if explicit:
+        try:
+            value = max(0, int(explicit))
+        except ValueError:
+            value = 0
+        if value > 0:
+            return value
+
     request_id = str(os.getenv("SOURCE_REQUEST_ID_PIN") or "").strip()
     if (
         not request_id
