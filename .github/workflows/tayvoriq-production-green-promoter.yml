@@ -22,7 +22,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -226,3 +226,12 @@ jobs:
           set -euo pipefail
           echo "TAYVORIQ_PRODUCTION_GREEN_VERIFIED:${{ steps.refs.outputs.candidate }}:changed=${{ steps.refs.outputs.changed }}"
           echo "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2."
+
+      - name: Continue armed request after verified Production Green
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main
+          echo "TAYVORIQ_CODEFIX_CONTINUITY_DISPATCHED_AFTER_PRODUCTION_GREEN"
