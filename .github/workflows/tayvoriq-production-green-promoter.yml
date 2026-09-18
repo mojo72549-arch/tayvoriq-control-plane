@@ -27,7 +27,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-production-green-promoter
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   verify-and-promote:
@@ -94,8 +94,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: implementation/requirements.txt
 
-      - name: Install deterministic preflight dependencies
+      - name: Install fast-gate dependencies
         if: steps.refs.outputs.changed == 'true'
         shell: bash
         run: |
@@ -110,9 +112,30 @@ jobs:
           fi
           export PIP_DISABLE_PIP_VERSION_CHECK=1
           grep -vE '^[[:space:]]*chatterbox-tts[[:space:]]*@' implementation/requirements.txt > /tmp/tayvoriq-promoter-requirements.txt
-          python -m pip install --no-cache-dir -r /tmp/tayvoriq-promoter-requirements.txt pytest -q
-          python -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
-          python -m pip install --no-cache-dir "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          python -m pip install -r /tmp/tayvoriq-promoter-requirements.txt pytest -q
+
+      - name: Fast request regression gate
+        if: steps.refs.outputs.changed == 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ steps.refs.outputs.candidate }}" || {
+            echo "CANDIDATE_SHA_CHANGED_BEFORE_FAST_GATE"
+            exit 1
+          }
+          python -m compileall -q tools tests
+          if [ -d runtime_patches ]; then python -m compileall -q runtime_patches; fi
+          python -m pytest -q tests/test_tayvoriq_verified_request_causal_alignment.py
+
+      - name: Install heavy voice verification dependencies
+        if: steps.refs.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PIP_DISABLE_PIP_VERSION_CHECK=1
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
+          python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
           python - <<'PY'
           from pathlib import Path
           req=Path('/tmp/tayvoriq-promoter-requirements.txt').read_text(encoding='utf-8').casefold()
@@ -130,8 +153,6 @@ jobs:
             echo "CANDIDATE_SHA_CHANGED_BEFORE_PREFLIGHT"
             exit 1
           }
-          python -m compileall -q tools tests
-          if [ -d runtime_patches ]; then python -m compileall -q runtime_patches; fi
           python tools/tayvoriq_lightweight_preflight.py
 
       - name: Full production preflight
