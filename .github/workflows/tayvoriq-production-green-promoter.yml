@@ -228,6 +228,7 @@ jobs:
           echo "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2."
 
       - name: Continue armed request after verified Production Green
+        if: steps.refs.outputs.changed == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
