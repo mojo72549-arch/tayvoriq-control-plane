@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUESTS = ROOT / "requests"
 POLICY = ROOT / "tools" / "tayvoriq_recovery_policy_v1.py"
 ACTIVE_POINTER = ROOT / ".github" / "state" / "tayvoriq-active-production-request.json"
+PRODUCTION_GREEN_POINTER = ROOT / ".github" / "state" / "tayvoriq-production-green.json"
 ACTIVE_POINTER_SCHEMA = "tayvoriq-active-production-request-v1"
 
 
@@ -250,6 +251,21 @@ def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], te
             data = json.loads(manifests[0].read_text(encoding="utf-8"))
             failed_control = str(data.get("control_plane_sha") or failed_control).strip()
             failed_impl = str(data.get("implementation_sha") or "").strip()
+        except Exception:
+            pass
+    if not failed_impl and PRODUCTION_GREEN_POINTER.is_file():
+        try:
+            pointer = json.loads(PRODUCTION_GREEN_POINTER.read_text(encoding="utf-8"))
+            candidate = str(pointer.get("implementation_sha") or "").strip().lower()
+            if (
+                pointer.get("schema") == "tayvoriq-production-green-v1"
+                and pointer.get("full_preflight_passed") is True
+                and pointer.get("quality_gates_weakened") is False
+                and len(candidate) == 40
+                and all(c in "0123456789abcdef" for c in candidate)
+            ):
+                failed_impl = candidate
+                print(f"CODEFIX_DIAGNOSTIC_IMPL_FALLBACK_TO_PRODUCTION_GREEN:{failed_impl}")
         except Exception:
             pass
     return failed_control, failed_impl
