@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-18T21:07:02.907578Z",
+  "generated_at": "2026-09-18T21:16:58.880302Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2211-trend-1",
-    "golden_path_run_id": 35392157518,
-    "pointer_updated_at": "2026-09-18T20:34:09.382745Z"
+    "golden_path_run_id": 35395088613,
+    "pointer_updated_at": "2026-09-18T21:07:10.032860Z"
   },
   "request": {
     "request_id": "telegram-2211-trend-1",
@@ -24,18 +24,18 @@
     "path": "requests/telegram-2211-trend-1.json"
   },
   "run": {
-    "id": 35392157518,
+    "id": 35395088613,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35392157518",
-    "created_at": "2026-09-18T20:34:03Z",
-    "updated_at": "2026-09-18T20:57:25Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35395088613",
+    "created_at": "2026-09-18T21:07:02Z",
+    "updated_at": "2026-09-18T21:09:24Z",
     "attempt": 1,
     "progress": 72,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 32,
+    "failed_step": "Preflight",
+    "failed_step_number": 22,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -75,7 +75,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "skipped",
         "step_number": 25,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "Assert publishable production output"
+      "detail": "Preflight"
     },
     {
       "name": "Production Green",
@@ -133,11 +133,11 @@
     }
   ],
   "incident": {
-    "signature": "35392157518:32:PUBLISHABLE_CODEFIX_REQUIRED",
+    "signature": "35395088613:22:DETERMINISTIC_PREFLIGHT_FAILURE",
     "severity": "critical",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 32,
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
+    "failed_step": "Preflight",
+    "failed_step_number": 22,
     "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -151,8 +151,8 @@
   },
   "recovery": {
     "status": "ARMED",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 35392157518,
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
+    "failed_run_id": 35395088613,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
@@ -165,9 +165,19 @@
   },
   "events": [
     {
-      "at": "2026-09-18T20:57:25Z",
+      "at": "2026-09-18T21:09:24Z",
       "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "detail": "Preflight"
+    },
+    {
+      "at": "2026-09-18T21:09:31.490361Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
+    {
+      "at": "2026-09-18T21:07:10.032860Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-18T20:57:30.889924Z",
@@ -188,16 +198,6 @@
       "at": "2026-09-18T18:19:21.242354Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-18T17:19:04.590782Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-18T15:40:06.553334Z",
-      "title": "DISPATCHED",
-      "detail": "bounded-shared-policy-recovery"
     }
   ]
 }
