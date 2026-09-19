@@ -174,38 +174,53 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out/control-plane/replay-readiness
-          mapfile -t active_requests < <(python - <<'PY'
-          import json
+          active_pointer="../.github/state/tayvoriq-active-production-request.json"
+          request="$(python - "$active_pointer" <<'PY'
+          import json,sys
           from pathlib import Path
 
-          for path in sorted(Path("../requests").glob("*.json")):
-              try:
-                  data = json.loads(path.read_text(encoding="utf-8"))
-              except Exception:
-                  continue
-              recovery = data.get("codefix_recovery")
-              if not isinstance(recovery, dict):
-                  continue
-              status = str(recovery.get("status") or "")
-              substate = str(recovery.get("request_substate") or "")
-              signature = str(recovery.get("failure_signature") or "")
-              if signature and (
-                  status in {"ARMED", "REPLAY_DISPATCHED"}
-                  or substate in {"AWAITING_CODEFIX", "DISPATCHED"}
-              ):
-                  print(path)
+          pointer_path=Path(sys.argv[1])
+          if not pointer_path.is_file():
+              print("")
+              raise SystemExit(0)
+          try:
+              pointer=json.loads(pointer_path.read_text(encoding="utf-8"))
+          except Exception:
+              print("")
+              raise SystemExit(0)
+          request_id=str(pointer.get("request_id") or "").strip()
+          if (
+              pointer.get("schema")!="tayvoriq-active-production-request-v1"
+              or pointer.get("state")!="ACTIVE"
+              or not request_id
+          ):
+              print("")
+              raise SystemExit(0)
+          request_path=Path("../requests")/f"{request_id}.json"
+          if not request_path.is_file():
+              raise SystemExit(f"ACTIVE_REQUEST_FILE_MISSING:{request_path}")
+          data=json.loads(request_path.read_text(encoding="utf-8"))
+          recovery=data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"),dict) else {}
+          if (
+              str(data.get("request_id") or "")!=request_id
+              or str(data.get("status") or "")!="DISPATCHED"
+              or recovery.get("status")!="ARMED"
+              or recovery.get("request_substate")!="AWAITING_CODEFIX"
+          ):
+              print("")
+              raise SystemExit(0)
+          print(request_path)
           PY
-          )
-          if [ "${#active_requests[@]}" -eq 0 ]; then
-            echo "TAYVORIQ_REPLAY_READINESS:NO_ACTIVE_RECOVERY_REQUESTS"
+          )"
+          if [ -z "$request" ]; then
+            echo "TAYVORIQ_REPLAY_READINESS:NO_ACTIVE_ARMED_OWNER"
             exit 0
           fi
-          for request in "${active_requests[@]}"; do
-            request_id="$(basename "$request" .json)"
-            python tools/tayvoriq_replay_readiness_gate_v1.py \
-              --request "$request" \
-              --report-out "out/control-plane/replay-readiness/${request_id}.json"
-          done
+          request_id="$(basename "$request" .json)"
+          echo "TAYVORIQ_REPLAY_READINESS:ACTIVE_OWNER:$request_id"
+          python tools/tayvoriq_replay_readiness_gate_v1.py \
+            --request "$request" \
+            --report-out "out/control-plane/replay-readiness/${request_id}.json"
 
       - name: Re-verify candidate did not move
         if: steps.refs.outputs.changed == 'true'
