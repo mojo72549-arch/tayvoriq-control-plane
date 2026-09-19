@@ -64,6 +64,26 @@ def _selection_key(candidate):
     )
 
 
+def _mark_research_deferred(reason: str, **meta):
+    """Persist a machine-readable transient research defer marker.
+
+    The orchestrator already treats this file as an internal saturation/defer
+    signal and suppresses the misleading red user-facing failure notification.
+    This never lowers ranking, source, regional or brand-safety gates.
+    """
+
+    payload = {
+        "schema": "tayvoriq-research-deferred-v1",
+        "reason": str(reason or "RESEARCH_TEMPORARILY_INCOMPLETE"),
+        "quality_gates_weakened": False,
+        **meta,
+    }
+    Path("/tmp/tayvoriq-research-deferred.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def diversify(candidates, slot):
     cfg = growth_v7._config().get("selection") or {}
     minimum = int(cfg.get("telegram_candidates_min") or 4)
@@ -82,6 +102,13 @@ def diversify(candidates, slot):
     # The regional core is a hard editorial contract, not a score bonus:
     # at least three of the final 4-5 candidates must be local/Germany/Europe.
     if len(regional) < min(3, minimum):
+        _mark_research_deferred(
+            "REGIONAL_RESCAN_REQUIRED",
+            slot=str(slot),
+            regional_candidates=len(regional),
+            required_regional=min(3, minimum),
+            total_candidates=len(candidates),
+        )
         raise SystemExit(
             f"REGIONAL_RESCAN_REQUIRED: only {len(regional)} local/Germany/Europe candidates passed all existing gates"
         )
@@ -96,6 +123,14 @@ def diversify(candidates, slot):
         if str(candidate.get("regional_relevance") or "").strip().lower() == "global"
     )
     if regional_count < 3 or global_count > 1:
+        _mark_research_deferred(
+            "REGIONAL_SELECTION_RESCAN_REQUIRED",
+            slot=str(slot),
+            regional_selected=regional_count,
+            global_selected=global_count,
+            required_regional=3,
+            max_global=1,
+        )
         raise SystemExit(
             f"REGIONAL_RESCAN_REQUIRED: selected regional={regional_count}, global={global_count}; require >=3 regional and <=1 global"
         )
