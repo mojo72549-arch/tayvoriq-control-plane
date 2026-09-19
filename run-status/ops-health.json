@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-19T16:28:57.992768Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-19T16:29:07.712929Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -25,11 +25,11 @@
   },
   "run": {
     "id": 35453197072,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35453197072",
     "created_at": "2026-09-19T15:53:10Z",
-    "updated_at": "2026-09-19T15:53:15Z",
+    "updated_at": "2026-09-19T16:28:58Z",
     "attempt": 1,
     "progress": 72,
     "current_step": null,
@@ -108,7 +108,7 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
+      "status": "red",
       "detail": "Assert publishable production output"
     },
     {
@@ -118,8 +118,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "status": "red",
+      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
     },
     {
       "name": "Telegram",
@@ -134,15 +134,15 @@
   ],
   "incident": {
     "signature": "35453197072:32:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "warning",
+    "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 32,
-    "self_heal_status": "REPLAY_RUNNING",
+    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": false
+    "recovery_replay_failed": true
   },
   "telegram": {
     "status": "green",
@@ -150,7 +150,7 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 35396115966,
     "replay_run_id": 35453197072,
@@ -160,12 +160,17 @@
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "inferred_from_run_terminal_state": true,
+    "needs_codefix": true
   },
   "events": [
     {
-      "at": "2026-09-19T15:53:15Z",
+      "at": "2026-09-19T16:28:58Z",
+      "title": "Recovery-Replay fehlgeschlagen",
+      "detail": "Run 35453197072 · interner Codefix erforderlich · kein Eingriff von dir"
+    },
+    {
+      "at": "2026-09-19T16:28:58Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
     },
