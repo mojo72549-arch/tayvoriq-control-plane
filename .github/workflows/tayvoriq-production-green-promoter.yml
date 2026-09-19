@@ -167,6 +167,46 @@ jobs:
             tests/test_tayvoriq_verified_source_budget_guard.py \
             tests/test_tayvoriq_verified_request_causal_alignment.py
 
+      - name: Repeated-failure exact-request replay readiness gate
+        if: steps.refs.outputs.changed == 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/control-plane/replay-readiness
+          mapfile -t active_requests < <(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for path in sorted(Path("../requests").glob("*.json")):
+              try:
+                  data = json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  continue
+              recovery = data.get("codefix_recovery")
+              if not isinstance(recovery, dict):
+                  continue
+              status = str(recovery.get("status") or "")
+              substate = str(recovery.get("request_substate") or "")
+              signature = str(recovery.get("failure_signature") or "")
+              if signature and (
+                  status in {"ARMED", "REPLAY_DISPATCHED"}
+                  or substate in {"AWAITING_CODEFIX", "DISPATCHED"}
+              ):
+                  print(path)
+          PY
+          )
+          if [ "${#active_requests[@]}" -eq 0 ]; then
+            echo "TAYVORIQ_REPLAY_READINESS:NO_ACTIVE_RECOVERY_REQUESTS"
+            exit 0
+          fi
+          for request in "${active_requests[@]}"; do
+            request_id="$(basename "$request" .json)"
+            python tools/tayvoriq_replay_readiness_gate_v1.py \
+              --request "$request" \
+              --report-out "out/control-plane/replay-readiness/${request_id}.json"
+          done
+
       - name: Re-verify candidate did not move
         if: steps.refs.outputs.changed == 'true'
         working-directory: implementation
