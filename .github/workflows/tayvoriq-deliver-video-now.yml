@@ -593,6 +593,26 @@ jobs:
           python -m compileall -q tools src runtime_patches
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
 
+      - name: Exact-request replay readiness gate
+        id: replay_readiness
+        if: steps.preflight.outcome == 'success'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          request="../requests/${SOURCE_REQUEST_ID_PIN}.json"
+          test -n "$SOURCE_REQUEST_ID_PIN" || {
+            echo "REPLAY_READINESS_SOURCE_REQUEST_PIN_MISSING"
+            exit 1
+          }
+          test -f "$request" || {
+            echo "REPLAY_READINESS_REQUEST_FILE_MISSING:$request"
+            exit 1
+          }
+          python tools/tayvoriq_replay_readiness_gate_v1.py \
+            --request "$request" \
+            --report-out out/control-plane/replay-readiness.json
+
       - name: Telegram progress - production active
         continue-on-error: true
         run: |
@@ -604,7 +624,7 @@ jobs:
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Restore production model cache
-        if: steps.preflight.outcome == 'success'
+        if: steps.preflight.outcome == 'success' && steps.replay_readiness.outcome == 'success'
         uses: actions/cache@v4
         with:
           path: |
@@ -616,7 +636,7 @@ jobs:
 
       - name: Produce approved master or reuse checkpoint
         id: controller
-        if: steps.preflight.outcome == 'success'
+        if: steps.preflight.outcome == 'success' && steps.replay_readiness.outcome == 'success'
         working-directory: implementation
         shell: bash
         env:
@@ -807,6 +827,7 @@ jobs:
         shell: bash
         env:
           PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
+          REPLAY_READINESS_OUTCOME: ${{ steps.replay_readiness.outcome }}
           CONTROLLER_STATE: ${{ steps.controller.outputs.state }}
           CONTROLLER_EXIT: ${{ steps.controller.outputs.process_exit }}
           RECOVERY_STATE: ${{ steps.checkpoint_recovery.outputs.state }}
@@ -815,6 +836,10 @@ jobs:
           set -euo pipefail
           if [ "$PREFLIGHT_OUTCOME" != "success" ]; then
             echo "Production blocked before render: preflight outcome=$PREFLIGHT_OUTCOME"
+            exit 1
+          fi
+          if [ "$REPLAY_READINESS_OUTCOME" != "success" ]; then
+            echo "Production blocked before render: repeated-failure request is not replay-ready ($REPLAY_READINESS_OUTCOME)"
             exit 1
           fi
           if [ "$CONTROLLER_STATE" = "SUCCESS" ] && [ "${CONTROLLER_EXIT:-1}" = "0" ]; then
