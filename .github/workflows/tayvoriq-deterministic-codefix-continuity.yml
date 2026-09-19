@@ -145,6 +145,63 @@ jobs:
           print(out)
           PY
 
+      - name: Telegram active replay status receipt
+        if: >-
+          github.event_name == 'push' &&
+          contains(github.event.head_commit.message, 'verify Telegram recovery delivery') &&
+          steps.active.outputs.found == 'true'
+        shell: bash
+        env:
+          REQUEST_FILE: ${{ steps.active.outputs.request_file }}
+          ACTIVE_TOPIC: ${{ steps.active.outputs.topic }}
+          ACTIVE_RUN_ID: ${{ steps.active.outputs.run_id }}
+          ACTIVE_GENERATION: ${{ steps.active.outputs.generation }}
+        run: |
+          set -euo pipefail
+          python - "$REQUEST_FILE" "$ACTIVE_TOPIC" "$ACTIVE_RUN_ID" "$ACTIVE_GENERATION" <<'PY'
+          import json, os, sys, urllib.request
+          from pathlib import Path
+          request_path=Path(sys.argv[1]); topic=sys.argv[2]; run_id=sys.argv[3]; generation=sys.argv[4]
+          data=json.loads(request_path.read_text(encoding="utf-8"))
+          codefix=data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"),dict) else {}
+          if codefix.get("status")!="REPLAY_DISPATCHED" or str(codefix.get("replay_run_id") or "")!=run_id:
+              print(json.dumps({"status":"skipped","reason":"active-replay-not-bound"}))
+              raise SystemExit(0)
+          token=os.environ.get("TELEGRAM_BOT_TOKEN","").strip()
+          chat_id=os.environ.get("TELEGRAM_CHAT_ID","").strip()
+          if not token or not chat_id:
+              raise SystemExit("TELEGRAM_RECOVERY_STATUS_SECRETS_MISSING")
+          text=(
+              "🔧 TAYVORIQ · Recovery läuft\n\n"
+              f"Thema: {topic}\n"
+              f"Aktiver Run: {run_id}\n"
+              f"Recovery: Generation {generation}\n\n"
+              "✅ Production Green ist bestätigt.\n"
+              "✅ Derselbe freigegebene Auftrag und dieselben Quellen bleiben gebunden.\n"
+              "➡️ Der Master wird aktuell produziert bzw. aus dem gesicherten Stand fortgesetzt."
+          )
+          payload=json.dumps({"chat_id":chat_id,"text":text,"disable_web_page_preview":True},ensure_ascii=False).encode("utf-8")
+          req=urllib.request.Request(
+              f"https://api.telegram.org/bot{token}/sendMessage",
+              data=payload,
+              headers={"Content-Type":"application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req,timeout=30) as response:
+              result=json.loads(response.read().decode("utf-8"))
+          message=result.get("result") if isinstance(result.get("result"),dict) else {}
+          message_id=int(message.get("message_id") or 0)
+          if result.get("ok") is not True or message_id<=0:
+              raise SystemExit("TELEGRAM_RECOVERY_STATUS_NOT_VERIFIED")
+          print(json.dumps({
+              "status":"sent",
+              "telegram_message_id":message_id,
+              "chat_type":str((message.get("chat") or {}).get("type") or ""),
+              "run_id":run_id,
+              "generation":generation,
+          },ensure_ascii=False))
+          PY
+
       - name: Reject stale workflow-run owner
         if: >-
           github.event_name == 'workflow_run' &&
@@ -298,10 +355,19 @@ jobs:
           set -euo pipefail
           text=$(printf '🧰 TAYVORIQ · Codefix-Recovery ist aktiv\n\nThema: %s\nFehlgeschlagener Run: %s\nRecovery: Generation %s\n\n✅ Ausschließlich der aktuell freigegebene Telegram-Auftrag wurde übernommen.\n✅ Auftrag, Trendfreigabe und geprüfte Quellen bleiben gebunden.\n✅ Historische Requests werden nicht automatisch reaktiviert.\n➡️ Derselbe Auftrag läuft nach einem verifizierten Production-Green-Codefix weiter.' \
             "${{ steps.arm.outputs.topic }}" "${{ steps.arm.outputs.run_id }}" "${{ steps.arm.outputs.generation }}")
-          curl -fsS --retry 3 --retry-all-errors -X POST \
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${text}" >/dev/null
+            --data-urlencode "text=${text}")
+          python - "$response" <<'PY'
+          import json,sys
+          data=json.loads(sys.argv[1])
+          result=data.get("result") if isinstance(data.get("result"),dict) else {}
+          message_id=int(result.get("message_id") or 0)
+          if data.get("ok") is not True or message_id <= 0:
+              raise SystemExit("TELEGRAM_DELIVERY_NOT_VERIFIED")
+          print(json.dumps({"status":"sent","telegram_message_id":message_id},ensure_ascii=False))
+          PY
 
       - name: Reconcile only active orphan
         if: >-
@@ -541,7 +607,16 @@ jobs:
           set -euo pipefail
           text=$(printf '🔧 TAYVORIQ · Production-Green-Codefix erkannt – Recovery fortgesetzt\n\nThema: %s\nAlter Run: %s\nNeuer Run: %s\nRecovery: Generation %s\n\n✅ Exakt derselbe aktuell freigegebene Auftrag und dieselben Quellen bleiben gebunden.\n✅ Historische Requests wurden ausgeschlossen.\n➡️ Produktion und Qualitätsprüfungen laufen autonom weiter.' \
             "${{ steps.pending.outputs.topic }}" "${{ steps.pending.outputs.run_id }}" "${{ steps.replay.outputs.new_run_id }}" "${{ steps.replay.outputs.generation }}")
-          curl -fsS --retry 3 --retry-all-errors -X POST \
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${text}" >/dev/null
+            --data-urlencode "text=${text}")
+          python - "$response" <<'PY'
+          import json,sys
+          data=json.loads(sys.argv[1])
+          result=data.get("result") if isinstance(data.get("result"),dict) else {}
+          message_id=int(result.get("message_id") or 0)
+          if data.get("ok") is not True or message_id <= 0:
+              raise SystemExit("TELEGRAM_DELIVERY_NOT_VERIFIED")
+          print(json.dumps({"status":"sent","telegram_message_id":message_id},ensure_ascii=False))
+          PY
