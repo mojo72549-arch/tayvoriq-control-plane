@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-20T21:47:50.007330Z",
-  "overall": "red",
+  "generated_at": "2026-09-20T21:50:53.824475Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35536771658,
-    "pointer_updated_at": "2026-09-20T20:49:34Z"
+    "golden_path_run_id": 35539782669,
+    "pointer_updated_at": "2026-09-20T21:48:14.212683Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
@@ -17,25 +17,25 @@
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_generation": 2,
+    "recovery_owner": "tayvoriq-delivery-watch",
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35536771658,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35536771658",
-    "created_at": "2026-09-20T20:49:34Z",
-    "updated_at": "2026-09-20T21:24:11Z",
+    "id": 35539782669,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35539782669",
+    "created_at": "2026-09-20T21:48:08Z",
+    "updated_at": "2026-09-20T21:48:13Z",
     "attempt": 1,
-    "progress": 72,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
+    "progress": 65,
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -81,25 +81,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 35,
         "step_name": "Validate publication quality"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 37,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 38,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
@@ -118,56 +118,45 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "FRESH_RECOVERY_DISPATCHED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "35536771658:33:none",
-    "severity": "critical",
-    "failure_state": null,
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
-    "self_heal_status": "IDLE",
-    "same_generation_replay_required": false,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
+    "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
-    "status": "IDLE",
+    "status": "FRESH_RECOVERY_DISPATCHED",
     "failure_state": null,
     "failed_run_id": null,
     "replay_run_id": null,
-    "fresh_recovery_run_id": null,
-    "recovery_generation": 1,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "fresh_recovery_run_id": 35539782669,
+    "recovery_generation": 2,
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": false,
     "quality_gates_weakened": false,
-    "source_status": "IDLE",
+    "source_status": "FRESH_RECOVERY_DISPATCHED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-20T21:24:11Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-09-20T21:48:14.212683Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
     },
     {
       "at": "2026-09-20T20:49:34Z",
