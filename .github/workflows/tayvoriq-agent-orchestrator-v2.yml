@@ -150,13 +150,57 @@ jobs:
           print({'active_series':active,'series_in_flight':in_flight, **info})
           PY
 
+      - name: Detect active production or recovery request
+        id: active_request
+        if: steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          active=False
+          request_id=''
+          state=''
+          for path in sorted(Path('requests').glob('*.json')):
+              try:
+                  request=json.loads(path.read_text(encoding='utf-8'))
+              except Exception:
+                  continue
+              status=str(request.get('status') or '').strip().upper()
+              recovery=request.get('codefix_recovery')
+              recovery=recovery if isinstance(recovery,dict) else {}
+              recovery_status=str(recovery.get('status') or '').strip().upper()
+              substate=str(recovery.get('request_substate') or '').strip().upper()
+              if status in {'APPROVED','DISPATCHING','DISPATCHED'} and (
+                  recovery_status in {'ARMED','REPLAY_DISPATCHED'}
+                  or substate in {'AWAITING_CODEFIX','DISPATCHED'}
+                  or int(request.get('golden_path_run_id') or 0) > 0
+              ):
+                  active=True
+                  request_id=str(request.get('request_id') or path.stem)
+                  state=f'{status}/{recovery_status or substate}'
+                  break
+
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+              h.write(f"active={'true' if active else 'false'}\n")
+              h.write(f"request_id={request_id}\n")
+              h.write(f"state={state}\n")
+          print({'active_production_request':active,'request_id':request_id,'state':state})
+          PY
+
+      - name: Hold trend scan while approved production is active
+        if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active == 'true'
+        run: |
+          echo "An approved production/recovery request is still active; Growth ranking is intentionally skipped."
+
       - name: Hold duplicate series proposal while approved episode is in flight
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true' && steps.mode.outputs.series_in_flight == 'true'
         run: |
           echo "Active series episode is still in flight; no duplicate episode or loose trend is proposed."
 
       - name: Build active series episode request
-        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series == 'true' && steps.mode.outputs.series_in_flight != 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active != 'true' && steps.mode.outputs.active_series == 'true' && steps.mode.outputs.series_in_flight != 'true'
         run: |
           set -euo pipefail
           python tools/tayvoriq_agent_series_request_v2.py \
@@ -165,7 +209,7 @@ jobs:
             --audit-output /tmp/tayvoriq-trend-audit.json
 
       - name: Generate quality-driven 1-5 trend ranking
-        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active != 'true' && steps.mode.outputs.active_series != 'true'
         env:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.mode.outputs.series_in_flight }}
         run: |
@@ -177,7 +221,7 @@ jobs:
 
       - name: Resolve idempotent selection delivery
         id: delivery
-        if: steps.slot.outputs.should_run == 'true' && (steps.mode.outputs.active_series != 'true' || steps.mode.outputs.series_in_flight != 'true')
+        if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active != 'true' && (steps.mode.outputs.active_series != 'true' || steps.mode.outputs.series_in_flight != 'true')
         run: |
           set -euo pipefail
           python - <<'PY'
