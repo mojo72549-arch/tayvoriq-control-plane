@@ -1,22 +1,22 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-20T03:38:47.914480Z",
-  "overall": "red",
+  "generated_at": "2026-09-20T06:01:45.273381Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2211-trend-1",
-    "golden_path_run_id": 35478197588,
-    "pointer_updated_at": "2026-09-20T00:13:36.609227Z"
+    "golden_path_run_id": 35487110685,
+    "pointer_updated_at": "2026-09-20T03:38:55.674678Z"
   },
   "request": {
     "request_id": "telegram-2211-trend-1",
     "topic": "Stuttgart 21 wieder unter Druck: Warum ein früherer Gutachter den alten Stresstest jetzt anzweifelt",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "source_count": 2,
@@ -24,18 +24,18 @@
     "path": "requests/telegram-2211-trend-1.json"
   },
   "run": {
-    "id": 35478197588,
+    "id": 35487110685,
     "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35478197588",
-    "created_at": "2026-09-20T00:13:29Z",
-    "updated_at": "2026-09-20T00:46:25Z",
+    "conclusion": "success",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35487110685",
+    "created_at": "2026-09-20T03:38:49Z",
+    "updated_at": "2026-09-20T04:32:34Z",
     "attempt": 1,
-    "progress": 72,
+    "progress": 100,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -81,25 +81,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "success",
         "step_number": 33,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "success",
         "step_number": 35,
         "step_name": "Validate publication quality"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "success",
         "step_number": 37,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "success",
         "step_number": 38,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -118,27 +118,27 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "ARMED"
+      "status": "green",
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Send Telegram review"
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
   "incident": {
-    "signature": "35478197588:33:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "critical",
+    "signature": "35487110685:none:PUBLISHABLE_CODEFIX_REQUIRED",
+    "severity": "warning",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
-    "self_heal_status": "ARMED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -146,28 +146,28 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Send Telegram review",
+    "last_step": "Send Telegram review"
   },
   "recovery": {
-    "status": "ARMED",
+    "status": "REPLAY_DISPATCHED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 35478197588,
-    "replay_run_id": null,
+    "replay_run_id": 35487110685,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "ARMED",
+    "source_status": "REPLAY_DISPATCHED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-20T00:46:25Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-09-20T03:38:55.674678Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-20T00:46:33.014562Z",
@@ -193,11 +193,6 @@
       "at": "2026-09-19T17:21:21.321500Z",
       "title": "AWAITING_CODEFIX",
       "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-19T16:46:32.077343Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
