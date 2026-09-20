@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-20T20:50:02.071456Z",
+  "generated_at": "2026-09-20T20:52:43.686248Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -31,9 +31,9 @@
     "created_at": "2026-09-20T20:49:34Z",
     "updated_at": "2026-09-20T20:49:38Z",
     "attempt": 1,
-    "progress": 38,
-    "current_step": "Install production dependencies",
-    "last_successful_step": "Record immutable production manifest",
+    "progress": 65,
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -63,7 +63,7 @@
       },
       {
         "label": "Dependencies",
-        "status": "running",
+        "status": "success",
         "step_number": 21,
         "step_name": "Install production dependencies"
       },
@@ -75,7 +75,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "running",
         "step_number": 26,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Install production dependencies"
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -124,7 +124,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
@@ -135,8 +135,8 @@
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
     "status": "IDLE",
