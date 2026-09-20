@@ -1,7 +1,7 @@
 {
   "request_id": "telegram-2286-trend-1-source-repair-v1",
   "status": "DISPATCHED",
-  "source": "telegram_trend_approval_source_editorial_repair",
+  "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
   "trend_scope": "technology_ai",
@@ -94,5 +94,12 @@
     35534569381
   ],
   "golden_path_run_id": 35536771658,
-  "contract_sha256": "509757201d25e3b454d8f2151ff9403927c9861e511781023629ec4f131226e7"
+  "contract_sha256": "509757201d25e3b454d8f2151ff9403927c9861e511781023629ec4f131226e7",
+  "source_repair_metadata": {
+    "prior_source_label": "telegram_trend_approval_source_editorial_repair",
+    "reason": "preserve canonical Telegram source identity so Delivery Watch can own recovery",
+    "changed_facts": false,
+    "changed_sources": false,
+    "quality_gates_weakened": false
+  }
 }
