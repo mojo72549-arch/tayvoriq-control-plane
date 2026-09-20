@@ -110,7 +110,7 @@ jobs:
                       for field in ('approval_key','source_context_sha256','contract_sha256'):
                           pv=str(pointer.get(field) or '').strip(); rv=str(data.get(field) or '').strip()
                           if pv and pv != rv: immutable_ok=False
-                      telegram_bound=(str(data.get('source') or '').strip()=='telegram_trend_approval')
+                      telegram_bound=str(data.get('source') or '').strip().startswith('telegram_trend_approval')
                       if (
                           str(data.get('request_id') or '').strip()==request_id
                           and str(data.get('status') or '')=='DISPATCHED'
