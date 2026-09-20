@@ -1,0 +1,351 @@
+{
+  "date": "2026-09-20",
+  "target_date": "2026-09-20",
+  "slot": "evening",
+  "selection_id": "20260920-evening-agentv2-r1",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_fallback_after_provider_limits",
+  "superseded": false,
+  "duplicate_guard_passed": true,
+  "telegram_only_user_path": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "trends": [
+    {
+      "id": "1",
+      "title": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
+      "score": 99,
+      "trend_scope": "technology_ai",
+      "regional_relevance": "germany",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 99,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 96
+      },
+      "growth_v2": {
+        "growth_score": 99,
+        "priority_score": 100,
+        "binding_score": 99
+      },
+      "sources": [
+        {
+          "publisher": "LMU München",
+          "url": "https://www.lmu.de/de/die-lmu/struktur/zentrale-universitaetsverwaltung/presse-und-kommunikation-puk/press-room/pressemitteilung/information-ueber-einen-datenschutzvorfall-f446c16e.html",
+          "supports": "Die LMU bestätigt den Angriff auf ihr IT-System und nennt betroffene Datenkategorien von Identitäts- und Kontaktdaten bis hin zu Bank-, Krankenversicherungs- und möglichen BAföG-Daten."
+        },
+        {
+          "publisher": "tagesschau.de / BR24",
+          "url": "https://www.tagesschau.de/inland/regional/bayern/hackerangriff-lmu-muenchen-100.html",
+          "supports": "ARD berichtet am 20. September über den Hackerangriff, den Zugriff auf Studierendendaten und die noch laufende Aufklärung des Ausmaßes."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "LMU München",
+            "url": "https://www.lmu.de/de/die-lmu/struktur/zentrale-universitaetsverwaltung/presse-und-kommunikation-puk/press-room/pressemitteilung/information-ueber-einen-datenschutzvorfall-f446c16e.html",
+            "supports": "Offizielle Erstquelle zum Datenschutzvorfall, betroffenen Datenarten und den laufenden Gegenmaßnahmen."
+          },
+          {
+            "publisher": "tagesschau.de / BR24",
+            "url": "https://www.tagesschau.de/inland/regional/bayern/hackerangriff-lmu-muenchen-100.html",
+            "supports": "Unabhängige journalistische Einordnung des Angriffs und der potenziell betroffenen sensiblen Studierendendaten."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Ein Angreifer hat auf ein LMU-IT-System mit Immatrikulationsdaten zugegriffen; die Universität geht davon aus, dass Daten abgerufen wurden.",
+          "why_happening": "Der Vorfall wurde am 16. September erkannt; die technische und forensische Untersuchung läuft noch.",
+          "who_is_affected": "Betroffen sein können Studierende und Bewerber, deren Daten im Immatrikulationssystem verarbeitet wurden.",
+          "personal_impact": "Neben Kontakt- und Identitätsdaten können je nach Datensatz auch IBAN, Krankenversicherungsnummer und BAföG-bezogene Angaben betroffen sein.",
+          "action_now": "Betroffene sollten offizielle LMU-Hinweise beachten und besonders auf verdächtige Nachrichten, Links und Anhänge achten."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Ausmaß noch nicht abschließend geklärt",
+            "keine Hinweise auf Veröffentlichung oder Missbrauch nach aktuellem Stand",
+            "Prüfungsinformationen laut LMU nicht betroffen"
+          ],
+          "must_not_claim": [
+            "alle LMU-Studierenden seien sicher betroffen",
+            "die Daten seien bereits im Darknet veröffentlicht",
+            "die Angreifer hätten Prüfungsdaten verändert"
+          ],
+          "uncertainty_note": "Die forensische Untersuchung läuft; Zahl und genauer Zeitraum der betroffenen Datensätze sind noch offen."
+        }
+      }
+    },
+    {
+      "id": "2",
+      "title": "KI könnte Europas Produktivität anschieben – und gleichzeitig Stromnetze und Arbeitsmarkt unter Druck setzen",
+      "score": 98,
+      "trend_scope": "technology_ai",
+      "regional_relevance": "europe",
+      "criteria": {
+        "aktualitaet": 99,
+        "viralitaet": 98,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 100,
+        "visuell": 97
+      },
+      "growth_v2": {
+        "growth_score": 98,
+        "priority_score": 99,
+        "binding_score": 98
+      },
+      "sources": [
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/business/imf-tells-eu-ministers-ai-could-boost-growth-increase-economic-strains-2026-09-19/",
+          "supports": "Reuters berichtet über das IMF-Papier für EU-Finanzminister: KI könnte Europas Produktivität über fünf Jahre um rund 1% erhöhen, zugleich aber Ungleichheit, Stromnetze und Abhängigkeiten verschärfen."
+        },
+        {
+          "publisher": "Irische EU-Ratspräsidentschaft",
+          "url": "https://irish-presidency.consilium.europa.eu/en/news/tanaiste-to-host-key-meeting-of-finance-ministers-and-central-bank-governors-as-part-of-ireland-s-eu-presidency/",
+          "supports": "Die Ratspräsidentschaft bestätigt KI als zentrales Thema des ECOFIN-Treffens und die Debatte über Produktivität, Wachstum sowie wirtschaftliche und gesellschaftliche Folgen."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/imf-tells-eu-ministers-ai-could-boost-growth-increase-economic-strains-2026-09-19/",
+            "supports": "Aktuelle Berichterstattung zu den vom IMF vorgelegten Chancen und Risiken von KI für Europas Wirtschaft."
+          },
+          {
+            "publisher": "Irische EU-Ratspräsidentschaft",
+            "url": "https://irish-presidency.consilium.europa.eu/en/news/tanaiste-to-host-key-meeting-of-finance-ministers-and-central-bank-governors-as-part-of-ireland-s-eu-presidency/",
+            "supports": "Offizielle Bestätigung, dass EU-Finanzminister mit IMF und EZB über KI, Produktivität, Wachstum und gesellschaftliche Folgen beraten."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "EU-Finanzminister haben in Dublin über die wirtschaftlichen Chancen und Risiken von KI beraten.",
+          "why_happening": "KI verbreitet sich schnell, während Europa gleichzeitig bei Infrastruktur, Kapital und eigener Technologie aufholen muss.",
+          "who_is_affected": "Unternehmen, Beschäftigte, Stromnetzbetreiber und europäische Technologieanbieter sind direkt betroffen.",
+          "personal_impact": "KI kann Arbeit produktiver machen, könnte aber Tätigkeiten verändern und den Energiebedarf von Rechenzentren erhöhen.",
+          "action_now": "Beobachte, welche Investitionen Europa in Netze, Kompetenzen und eigene KI-Infrastruktur daraus ableitet."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "IMF sieht Produktivitätschance und wirtschaftliche Spannungen zugleich",
+            "Europa ist stark von ausländischer KI-Technologie abhängig",
+            "Arbeitsmarkt- und Energieeffekte bleiben unsicher"
+          ],
+          "must_not_claim": [
+            "KI werde Europas Produktivität garantiert um genau 1% steigern",
+            "60% aller europäischen Jobs würden verschwinden",
+            "EU-Minister hätten einen konkreten neuen KI-Beschluss gefasst"
+          ],
+          "uncertainty_note": "Die Produktivitätszahlen sind Modellschätzungen und hängen stark von Einführung, Investitionen und Regulierung ab."
+        }
+      }
+    },
+    {
+      "id": "3",
+      "title": "Zverev führt Deutschland ins Davis-Cup-Finale: Warum jetzt trotzdem offen ist, ob er in Bologna spielt",
+      "score": 97,
+      "trend_scope": "sports",
+      "regional_relevance": "germany",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 99,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "growth_v2": {
+        "growth_score": 97,
+        "priority_score": 98,
+        "binding_score": 98
+      },
+      "sources": [
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/sports/tennis/zverev-leads-germany-into-davis-cup-final-8-spain-also-through-2026-09-20/",
+          "supports": "Reuters berichtet, dass Alexander Zverev Deutschland mit seinem Sieg über Dino Prizmic zur 3:1-Führung gegen Kroatien und damit in die Final 8 führte."
+        },
+        {
+          "publisher": "Sportschau",
+          "url": "https://www.sportschau.de/tennis/davis-cup/zverev-bestimmt-ueber-wohl-und-wehe-des-davis-cup-teams%2Cdavis-cup-zverev-resuemmee-100.html",
+          "supports": "Die Sportschau bestätigt den 3:1-Sieg, Zverevs zwei Punkte und dass er seine Teilnahme an der Endrunde in Bologna offenließ."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/sports/tennis/zverev-leads-germany-into-davis-cup-final-8-spain-also-through-2026-09-20/",
+            "supports": "Aktuelle internationale Berichterstattung zum deutschen Davis-Cup-Erfolg gegen Kroatien."
+          },
+          {
+            "publisher": "Sportschau",
+            "url": "https://www.sportschau.de/tennis/davis-cup/zverev-bestimmt-ueber-wohl-und-wehe-des-davis-cup-teams%2Cdavis-cup-zverev-resuemmee-100.html",
+            "supports": "Aktuelle deutsche Analyse mit Ergebnis, Zverevs Matchbilanz und offener Bologna-Teilnahme."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Deutschland hat Kroatien 3:1 geschlagen und sich für die Davis Cup Final 8 in Bologna qualifiziert.",
+          "why_happening": "Zverev gewann beide Einzel; auch das deutsche Doppel lieferte einen wichtigen Punkt.",
+          "who_is_affected": "Das deutsche Davis-Cup-Team und Tennisfans blicken nun auf die Endrunde im November.",
+          "personal_impact": "Die offene Frage ist, ob Deutschlands stärkster Einzelspieler Zverev in Bologna tatsächlich dabei sein wird.",
+          "action_now": "Achte auf Zverevs Turnierplanung und die spätere Nominierung für die Final 8."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Deutschland gewinnt 3:1 gegen Kroatien",
+            "Zverev holt zwei Einzelpunkte",
+            "Final 8 in Bologna im November"
+          ],
+          "must_not_claim": [
+            "Zverev habe seine Bologna-Teilnahme zugesagt",
+            "Deutschland sei bereits Davis-Cup-Sieger",
+            "Kroatien sei 4:0 geschlagen worden"
+          ],
+          "uncertainty_note": "Zverev hat seine Teilnahme an der Endrunde noch nicht verbindlich bestätigt."
+        }
+      }
+    },
+    {
+      "id": "4",
+      "title": "Deutschlands Wachstum wird deutlich höher erwartet: Warum 1,2% trotzdem noch keine starke Erholung bedeuten",
+      "score": 96,
+      "trend_scope": "business_economy",
+      "regional_relevance": "germany",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 93,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 100,
+        "visuell": 93
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "priority_score": 96,
+        "binding_score": 97
+      },
+      "sources": [
+        {
+          "publisher": "Institut der deutschen Wirtschaft (IW)",
+          "url": "https://www.iwkoeln.de/studien/michael-groemling-erholung-mit-vielen-fragezeichen.html",
+          "supports": "Das IW erwartet für Deutschland 2026 knapp 1,2% reales BIP-Wachstum, getragen vom starken ersten Halbjahr, warnt aber vor nachlassender Dynamik."
+        },
+        {
+          "publisher": "Reuters",
+          "url": "https://www.reuters.com/markets/europe/germanys-iw-institute-triples-growth-forecast-2026-2026-09-20/",
+          "supports": "Reuters ordnet die kräftige Prognoseanhebung von 0,4% auf knapp 1,2% ein und nennt Exporte sowie Staatsausgaben als Haupttreiber, bei weiter bestehenden strukturellen Belastungen."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Institut der deutschen Wirtschaft (IW)",
+            "url": "https://www.iwkoeln.de/studien/michael-groemling-erholung-mit-vielen-fragezeichen.html",
+            "supports": "Primärquelle der Herbstprognose mit knapp 1,2% Wachstum und Hinweis auf wieder nachlassende Dynamik."
+          },
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/markets/europe/germanys-iw-institute-triples-growth-forecast-2026-2026-09-20/",
+            "supports": "Unabhängige Einordnung der Prognoseanhebung und ihrer Treiber sowie Risiken."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Das IW hat seine Wachstumsprognose für Deutschland 2026 deutlich auf knapp 1,2% angehoben.",
+          "why_happening": "Stärkere Exporte und hohe staatliche Ausgaben haben das erste Halbjahr besser ausfallen lassen als erwartet.",
+          "who_is_affected": "Unternehmen, Beschäftigte und Verbraucher hängen davon ab, ob aus dem guten ersten Halbjahr eine breitere Erholung wird.",
+          "personal_impact": "Mehr Wachstum kann Arbeitsmarkt und Investitionen stützen, gleichzeitig bleiben Energiepreise und schwacher Konsum Belastungen.",
+          "action_now": "Beobachte die nächsten Daten zu Konsum, Investitionen und Auftragseingängen, statt nur auf die Jahreszahl zu schauen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "IW-Prognose knapp 1,2% für 2026",
+            "starkes erstes Halbjahr als Hauptgrund",
+            "Dynamik soll wieder nachlassen"
+          ],
+          "must_not_claim": [
+            "Deutschland befinde sich bereits in einem Boom",
+            "1,2% Wachstum sei garantiert",
+            "alle Institute hätten exakt dieselbe Prognose"
+          ],
+          "uncertainty_note": "Konjunkturprognosen können sich mit neuen Daten, Energiepreisen und Außenhandelsentwicklungen deutlich verändern."
+        }
+      }
+    },
+    {
+      "id": "5",
+      "title": "BVB nach 40 Monaten wieder Tabellenführer – und der VfB steckt trotz guter Leistung im Fehlstart",
+      "score": 95,
+      "trend_scope": "sports",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 98,
+        "viralitaet": 98,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "priority_score": 97,
+        "binding_score": 96
+      },
+      "sources": [
+        {
+          "publisher": "Sportschau",
+          "url": "https://www.sportschau.de/fussball/bundesliga/beier-schiesst-bvb-nach-40-monaten-zurueck-an-die-spitze%2Cspielbericht-vfb-stuttgart-borussia-dortmund-112.html",
+          "supports": "Die Sportschau berichtet über Dortmunds 1:0 in Stuttgart, Beiers Siegtreffer und die erste Tabellenführung des BVB seit über drei Jahren."
+        },
+        {
+          "publisher": "Bundesliga",
+          "url": "https://www.bundesliga.com/de/bundesliga/news/vfb-stuttgart-borussia-dortmund-spieltag-4-spielbericht-highlights-39271",
+          "supports": "Die Bundesliga bestätigt Ergebnis, Torschütze, Spielverlauf und die knappe Niederlage des VfB Stuttgart."
+        }
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Sportschau",
+            "url": "https://www.sportschau.de/fussball/bundesliga/beier-schiesst-bvb-nach-40-monaten-zurueck-an-die-spitze%2Cspielbericht-vfb-stuttgart-borussia-dortmund-112.html",
+            "supports": "Unabhängiger Spielbericht mit Tabellenkontext, Beiers Treffer und Stuttgarts Ausgangslage."
+          },
+          {
+            "publisher": "Bundesliga",
+            "url": "https://www.bundesliga.com/de/bundesliga/news/vfb-stuttgart-borussia-dortmund-spieltag-4-spielbericht-highlights-39271",
+            "supports": "Offizieller Wettbewerbsbericht mit 0:1-Endstand, Beier-Tor in Minute 70 und statistischer Einordnung."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Borussia Dortmund hat beim VfB Stuttgart 1:0 gewonnen und die Tabellenführung übernommen.",
+          "why_happening": "Maximilian Beier erzielte nach einem ausgeglichenen Spiel in der 70. Minute den entscheidenden Treffer.",
+          "who_is_affected": "Für Dortmund geht es mit perfekter Punkteausbeute in die Pause; Stuttgart verliert früh Anschluss.",
+          "personal_impact": "Für Fans in Stuttgart ist die Diskrepanz spannend: ordentliche Leistung, aber erneut keine Punkte.",
+          "action_now": "Entscheidend wird nach der Pause, ob der VfB die spielerischen Ansätze in Ergebnisse umsetzen kann."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "VfB Stuttgart 0:1 Borussia Dortmund",
+            "Tor Maximilian Beier in der 70. Minute",
+            "BVB übernimmt Tabellenführung"
+          ],
+          "must_not_claim": [
+            "Stuttgart habe schlecht gespielt",
+            "die Meisterschaft sei entschieden",
+            "Beier sei schon sicher Nationalspieler"
+          ],
+          "uncertainty_note": "Tabellenstände nach vier Spieltagen sind eine Momentaufnahme und erlauben noch keine belastbare Saisonprognose."
+        }
+      }
+    }
+  ]
+}
