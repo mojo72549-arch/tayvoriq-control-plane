@@ -246,8 +246,14 @@ TAYVORIQ CONTENT DEPTH — HARD REQUIREMENT:
 - For every candidate, research and retain at least THREE concrete, source-backed facts whenever they are available.
 - Where the topic naturally permits it, retain at least TWO specific named examples or entities: games, models, companies, products, places, people, dates, features or comparable concrete details.
 - IMPORTANT CONTRACT SEPARATION: deep research belongs in source supports, factual_guardrails and research_notes. Do NOT stuff long-form research prose into the five fallback_editorial_answers.
-- The five fallback_editorial_answers are a compact 35-second fail-closed render contract and MUST continue to obey the inherited STRICT FALLBACK CONTRACT: one natural sentence per field, 5–15 words each, 38–49 words total, explicit causal why, explicit 'Für dich' relevance and a viewer-facing concrete action verb.
-- Use source_context.research_notes and source support fields for extra examples, names, dates, numbers and context that production may draw on when building a richer story without invalidating the render contract.
+- The five fallback_editorial_answers are a compact factual compatibility contract and MUST continue to obey the inherited STRICT FALLBACK CONTRACT: one natural sentence per field, 5–15 words each, 38–49 words total, explicit causal why, explicit 'Für dich' relevance and a viewer-facing concrete action verb.
+- NEW STORY-FIRST V2: every newly generated candidate MUST also set source_context.editorial_story_contract_version = 2 and source_context.story_first_script_body.
+- story_first_script_body is the spoken editorial mini-story, 38–49 words, at least 3 natural sentences, and MUST NOT simply concatenate the five fallback answers.
+- Required narrative spine: surprising/consequential hook -> only the context needed to understand it -> cause/development -> verified tension/counterposition when supported -> meaning/outlook.
+- Use connective narration such as aber, doch, denn, weil, gleichzeitig, brisant or entscheidend where natural. Do not manufacture conflict merely to satisfy the pattern.
+- Avoid the form-like spoken sequence 'Betroffen sind ... Für dich ... Beobachte/Achte/Prüfe ...'. Those compatibility fields remain available for validation but are not the preferred spoken copy.
+- Every claim in story_first_script_body must be supported by source_context.sources, factual_guardrails or other verified source material in the same candidate. Never add a dramatic claim not present in the evidence.
+- Use source_context.research_notes and source support fields for extra examples, names, dates, numbers and context that production may draw on when building a richer story without invalidating the compatibility contract.
 - Explicitly distinguish current or confirmed facts from announced or planned items and from rumor or speculation. Never elevate rumor or expectation to confirmed fact.
 - Include at least ONE contextualizing number, comparison or date where credible and relevant in the research evidence; it does not need to be forced into the compact five-answer fallback if doing so breaks its contract.
 - Explain why the concrete detail matters to the viewer and what happens next when known.
