@@ -1,39 +1,39 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-20T20:49:49.984211Z",
-  "overall": "green",
+  "generated_at": "2026-09-20T20:50:02.071456Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2211-trend-1",
-    "golden_path_run_id": 35487110685,
-    "pointer_updated_at": "2026-09-20T03:38:55.674678Z"
+    "request_id": "telegram-2286-trend-1-source-repair-v1",
+    "golden_path_run_id": 35536771658,
+    "pointer_updated_at": "2026-09-20T20:49:34Z"
   },
   "request": {
-    "request_id": "telegram-2211-trend-1",
-    "topic": "Stuttgart 21 wieder unter Druck: Warum ein früherer Gutachter den alten Stresstest jetzt anzweifelt",
+    "request_id": "telegram-2286-trend-1-source-repair-v1",
+    "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2211-trend-1.json"
+    "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35487110685,
-    "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35487110685",
-    "created_at": "2026-09-20T03:38:49Z",
-    "updated_at": "2026-09-20T04:32:34Z",
+    "id": 35536771658,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35536771658",
+    "created_at": "2026-09-20T20:49:34Z",
+    "updated_at": "2026-09-20T20:49:38Z",
     "attempt": 1,
-    "progress": 100,
-    "current_step": null,
-    "last_successful_step": "Complete job",
+    "progress": 38,
+    "current_step": "Install production dependencies",
+    "last_successful_step": "Record immutable production manifest",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -63,7 +63,7 @@
       },
       {
         "label": "Dependencies",
-        "status": "success",
+        "status": "running",
         "step_number": 21,
         "step_name": "Install production dependencies"
       },
@@ -75,31 +75,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "pending",
         "step_number": 26,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "pending",
         "step_number": 35,
         "step_name": "Validate publication quality"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "pending",
         "step_number": 37,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "pending",
         "step_number": 38,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "yellow",
+      "detail": "Install production dependencies"
     },
     {
       "name": "Production Green",
@@ -119,80 +119,54 @@
     {
       "name": "Self-Heal",
       "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "35487110685:none:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "warning",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_DISPATCHED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
+    "last_step": "Telegram progress - sources locked"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 35478197588,
-    "replay_run_id": 35487110685,
+    "status": "IDLE",
+    "failure_state": null,
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
-    "same_generation_replay_required": true,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
+    "source_status": "IDLE",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-20T03:38:55.674678Z",
+      "at": "2026-09-20T20:49:34Z",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "bind repaired source packet to replay run"
     },
     {
-      "at": "2026-09-20T00:46:33.014562Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-20T00:13:36.609227Z",
+      "at": "2026-09-20T20:45:00Z",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "align verified source packet with immutable production editorial contract"
     },
     {
-      "at": "2026-09-19T20:28:13.044453Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-19T19:41:54.805578Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-19T17:21:21.321500Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-09-20T20:08:08.008Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
