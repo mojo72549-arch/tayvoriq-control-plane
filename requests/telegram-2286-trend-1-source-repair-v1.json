@@ -1,0 +1,88 @@
+{
+  "request_id": "telegram-2286-trend-1-source-repair-v1",
+  "status": "DISPATCHED",
+  "source": "telegram_trend_approval_source_editorial_repair",
+  "trend_id": "1",
+  "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
+  "trend_scope": "technology_ai",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-20T20:08:08.008Z",
+  "telegram_message_id": 2286,
+  "approval_key": "telegram:20260920-evening-agentv2-r1:2286:trend:1:source-repair-v1",
+  "mode": "full",
+  "selection_id": "20260920-evening-agentv2-r1",
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "LMU München",
+        "url": "https://www.lmu.de/de/die-lmu/struktur/zentrale-universitaetsverwaltung/presse-und-kommunikation-puk/press-room/pressemitteilung/information-ueber-einen-datenschutzvorfall-f446c16e.html",
+        "supports": "Offizielle Erstquelle zum Datenschutzvorfall, betroffenen Datenarten und den laufenden Gegenmaßnahmen."
+      },
+      {
+        "publisher": "tagesschau.de / BR24",
+        "url": "https://www.tagesschau.de/inland/regional/bayern/hackerangriff-lmu-muenchen-100.html",
+        "supports": "Unabhängige journalistische Einordnung des Angriffs und der potenziell betroffenen sensiblen Studierendendaten."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Ein Angreifer griff auf LMU-Immatrikulationsdaten zu und rief Daten ab.",
+      "why_happening": "Durch einen IT-Angriff untersucht die LMU den Vorfall forensisch.",
+      "who_is_affected": "Betroffen sein können Studierende und Bewerber mit Immatrikulationsdaten.",
+      "personal_impact": "Für dich können IBAN, Versicherung oder BAföG-Angaben betroffen sein.",
+      "action_now": "Prüfe LMU-Hinweise und misstraue verdächtigen Nachrichten und Links."
+    },
+    "factual_guardrails": {
+      "must_include": [
+        "Ausmaß noch nicht abschließend geklärt",
+        "keine Hinweise auf Veröffentlichung oder Missbrauch nach aktuellem Stand",
+        "Prüfungsinformationen laut LMU nicht betroffen"
+      ],
+      "must_not_claim": [
+        "alle LMU-Studierenden seien sicher betroffen",
+        "die Daten seien bereits im Darknet veröffentlicht",
+        "die Angreifer hätten Prüfungsdaten verändert"
+      ],
+      "uncertainty_note": "Die forensische Untersuchung läuft; Zahl und genauer Zeitraum der betroffenen Datensätze sind noch offen."
+    },
+    "source_repair": {
+      "original_request_id": "telegram-2286-trend-1",
+      "repair_reason": "LIGHTWEIGHT_EDITORIAL_CONTRACT_ALIGNMENT",
+      "same_editorial_event": true,
+      "facts_changed": false,
+      "sources_changed": false,
+      "quality_gates_weakened": false
+    }
+  },
+  "source_context_sha256": "643c8f5f83a6b41950ced5183818797c5e1d1aeda28c4ecab71e13d4183dfaa7",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-20T20:08:08.008Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-20T20:45:00Z",
+      "actor": "autonomous_source_editorial_repair",
+      "meta": {
+        "retry_of_run_id": 35534569381,
+        "reason": "align verified source packet with immutable production editorial contract"
+      }
+    }
+  ],
+  "repair_of_request_id": "telegram-2286-trend-1",
+  "retry_allowed": true,
+  "replacement_reason": "LIGHTWEIGHT_EDITORIAL_CONTRACT_ALIGNMENT_SAME_APPROVED_EVENT",
+  "recovery_generation": 1,
+  "retry_of_run_id": 35534569381,
+  "previous_golden_path_run_ids": [
+    35534569381
+  ],
+  "contract_sha256": "509757201d25e3b454d8f2151ff9403927c9861e511781023629ec4f131226e7"
+}
