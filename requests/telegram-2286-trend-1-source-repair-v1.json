@@ -74,6 +74,15 @@
         "retry_of_run_id": 35534569381,
         "reason": "align verified source packet with immutable production editorial contract"
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-20T20:49:34Z",
+      "actor": "direct-recovery-bind",
+      "meta": {
+        "golden_path_run_id": 35536771658,
+        "reason": "bind repaired source packet to replay run"
+      }
     }
   ],
   "repair_of_request_id": "telegram-2286-trend-1",
@@ -84,5 +93,6 @@
   "previous_golden_path_run_ids": [
     35534569381
   ],
+  "golden_path_run_id": 35536771658,
   "contract_sha256": "509757201d25e3b454d8f2151ff9403927c9861e511781023629ec4f131226e7"
 }
