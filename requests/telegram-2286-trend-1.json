@@ -1,0 +1,70 @@
+{
+  "request_id": "telegram-2286-trend-1",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
+  "trend_scope": "technology_ai",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-20T20:08:08.008Z",
+  "telegram_message_id": 2286,
+  "approval_key": "telegram:20260920-evening-agentv2-r1:2286:trend:1",
+  "mode": "full",
+  "selection_id": "20260920-evening-agentv2-r1",
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "LMU München",
+        "url": "https://www.lmu.de/de/die-lmu/struktur/zentrale-universitaetsverwaltung/presse-und-kommunikation-puk/press-room/pressemitteilung/information-ueber-einen-datenschutzvorfall-f446c16e.html",
+        "supports": "Offizielle Erstquelle zum Datenschutzvorfall, betroffenen Datenarten und den laufenden Gegenmaßnahmen."
+      },
+      {
+        "publisher": "tagesschau.de / BR24",
+        "url": "https://www.tagesschau.de/inland/regional/bayern/hackerangriff-lmu-muenchen-100.html",
+        "supports": "Unabhängige journalistische Einordnung des Angriffs und der potenziell betroffenen sensiblen Studierendendaten."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Ein Angreifer hat auf ein LMU-IT-System mit Immatrikulationsdaten zugegriffen; die Universität geht davon aus, dass Daten abgerufen wurden.",
+      "why_happening": "Der Vorfall wurde am 16. September erkannt; die technische und forensische Untersuchung läuft noch.",
+      "who_is_affected": "Betroffen sein können Studierende und Bewerber, deren Daten im Immatrikulationssystem verarbeitet wurden.",
+      "personal_impact": "Neben Kontakt- und Identitätsdaten können je nach Datensatz auch IBAN, Krankenversicherungsnummer und BAföG-bezogene Angaben betroffen sein.",
+      "action_now": "Betroffene sollten offizielle LMU-Hinweise beachten und besonders auf verdächtige Nachrichten, Links und Anhänge achten."
+    },
+    "factual_guardrails": {
+      "must_include": [
+        "Ausmaß noch nicht abschließend geklärt",
+        "keine Hinweise auf Veröffentlichung oder Missbrauch nach aktuellem Stand",
+        "Prüfungsinformationen laut LMU nicht betroffen"
+      ],
+      "must_not_claim": [
+        "alle LMU-Studierenden seien sicher betroffen",
+        "die Daten seien bereits im Darknet veröffentlicht",
+        "die Angreifer hätten Prüfungsdaten verändert"
+      ],
+      "uncertainty_note": "Die forensische Untersuchung läuft; Zahl und genauer Zeitraum der betroffenen Datensätze sind noch offen."
+    }
+  },
+  "source_context_sha256": "f9f9a7e8e523f31b0ef74ec61d8bb07e9f4d13135d4badceec4e27b140b8f72e",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-20T20:08:08.008Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-09-20T20:08:16.686446+00:00",
+      "actor": "request-dispatcher:35534557195"
+    }
+  ],
+  "contract_sha256": "9a16caa15c68b3c7afb4e2e5b114ba9c35afba4b4edad25b3b86149e5aeb6e9e",
+  "dispatch_claim_run_id": 35534557195,
+  "dispatch_contract_sha256": "9a16caa15c68b3c7afb4e2e5b114ba9c35afba4b4edad25b3b86149e5aeb6e9e"
+}
