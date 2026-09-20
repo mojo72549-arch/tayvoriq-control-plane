@@ -83,17 +83,32 @@
         "golden_path_run_id": 35536771658,
         "reason": "bind repaired source packet to replay run"
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-20T21:48:14.212683Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 35536771658,
+        "golden_path_run_id": 35539782669,
+        "recovery_generation": 2,
+        "failure_signature": "7446d3fed9efe1e3a594",
+        "reason": "bounded-shared-policy-recovery",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "repair_of_request_id": "telegram-2286-trend-1",
   "retry_allowed": true,
-  "replacement_reason": "LIGHTWEIGHT_EDITORIAL_CONTRACT_ALIGNMENT_SAME_APPROVED_EVENT",
-  "recovery_generation": 1,
-  "retry_of_run_id": 35534569381,
+  "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
+  "recovery_generation": 2,
+  "retry_of_run_id": 35536771658,
   "previous_golden_path_run_ids": [
-    35534569381
+    35534569381,
+    35536771658
   ],
-  "golden_path_run_id": 35536771658,
+  "golden_path_run_id": 35539782669,
   "contract_sha256": "509757201d25e3b454d8f2151ff9403927c9861e511781023629ec4f131226e7",
   "source_repair_metadata": {
     "prior_source_label": "telegram_trend_approval_source_editorial_repair",
@@ -101,5 +116,18 @@
     "changed_facts": false,
     "changed_sources": false,
     "quality_gates_weakened": false
+  },
+  "recovery_owner": "tayvoriq-delivery-watch",
+  "recovery_failure_signature": "7446d3fed9efe1e3a594",
+  "recovery_dispatched_at": "2026-09-20T21:48:14.212683Z",
+  "codefix_recovery": {
+    "status": "FRESH_RECOVERY_DISPATCHED",
+    "request_substate": "DISPATCHED",
+    "fresh_recovery_run_id": 35539782669,
+    "fresh_recovery_of_run_id": 35536771658,
+    "fresh_recovery_generation": 2,
+    "fresh_recovery_at": "2026-09-20T21:48:14.212683Z",
+    "quality_gates_weakened": false,
+    "active_pointer_verified": true
   }
 }
