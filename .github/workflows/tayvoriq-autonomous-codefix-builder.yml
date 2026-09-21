@@ -13,7 +13,7 @@ on:
         type: string
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -256,7 +256,187 @@ jobs:
           echo "patch_sha256=$patch_sha" >> "$GITHUB_OUTPUT"
           echo "AUTOCODEFIX_VERIFIED_HANDOFF_PUBLISHED:$REQUEST_ID:$patch_sha"
 
-      - name: Handoff ready for Studio-owned apply
+      - name: Handoff ready for request-bound overlay replay
         if: steps.handoff.outputs.patch_sha256 != ''
         run: |
-          echo "AUTOCODEFIX_WAITING_FOR_STUDIO_OWNED_APPLIER:${{ steps.owner.outputs.request_id }}:${{ steps.handoff.outputs.patch_sha256 }}"
+          echo "AUTOCODEFIX_VERIFIED_OVERLAY_READY:${{ steps.owner.outputs.request_id }}:${{ steps.handoff.outputs.patch_sha256 }}"
+
+      - name: Dispatch and bind exact verified overlay replay
+        id: overlay_replay
+        if: steps.handoff.outputs.patch_sha256 != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          REQUEST_FILE: ${{ steps.owner.outputs.request_file }}
+          OLD_RUN_ID: ${{ steps.owner.outputs.run_id }}
+          TOPIC: ${{ steps.owner.outputs.topic }}
+          HANDOFF_BASE_SHA: ${{ steps.handoff.outputs.base_sha }}
+          PATCH_SHA256: ${{ steps.handoff.outputs.patch_sha256 }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          green_sha=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('.github/state/tayvoriq-production-green.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          if d.get('schema')!='tayvoriq-production-green-v1' or d.get('full_preflight_passed') is not True or d.get('quality_gates_weakened') is not False:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_PRODUCTION_GREEN_INVALID')
+          print(str(d.get('implementation_sha') or ''))
+          PY
+          )
+          if [ "$green_sha" != "$HANDOFF_BASE_SHA" ]; then
+            gh workflow run tayvoriq-production-green-promoter.yml --ref main
+            echo "AUTOCODEFIX_OVERLAY_BASE_NOT_GREEN:handoff=$HANDOFF_BASE_SHA green=$green_sha"
+            echo "replay_dispatched=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          before_ids=$(gh run list --workflow tayvoriq-deliver-video-now.yml --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')
+          dispatch_epoch=$(date +%s)
+          python - "$REQUEST_FILE" "$HANDOFF_BASE_SHA" "$PATCH_SHA256" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          request=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          codefix=request.get('codefix_recovery') if isinstance(request.get('codefix_recovery'),dict) else {}
+          if str(request.get('request_id') or '')=='' or str(request.get('status') or '')!='DISPATCHED':
+              raise SystemExit('AUTOCODEFIX_OVERLAY_REPLAY_REQUEST_INVALID')
+          if codefix.get('status') not in {'ARMED','REPLAY_DISPATCHED'}:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_REPLAY_NOT_CODEFIX_BOUND')
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          trigger_path=Path('.github/run-now/tayvoriq-x-request.json')
+          try:
+              trigger=json.loads(trigger_path.read_text(encoding='utf-8'))
+          except Exception:
+              trigger={}
+          trigger.update({
+              'request':'tayvoriq-x-production',
+              'topic':str(request.get('topic') or ''),
+              'trend_id':str(request.get('trend_id') or ''),
+              'requested_at':now,
+              'request_nonce':f"autocodefix-overlay-{request.get('request_id')}-{sys.argv[2][:12]}-{sys.argv[3][:12]}",
+              'workflow':'.github/workflows/tayvoriq-deliver-video-now.yml',
+              'implementation_branch':'feature/multi-platform-distribution-package',
+              'implementation_sha_expected':sys.argv[2],
+              'approved_trend_pinned':True,
+              'source_request_id':str(request.get('request_id') or ''),
+              'technical_replay':True,
+              'fresh_recovery':True,
+              'reuse_exact_source_request':True,
+              'suppress_start_notification':True,
+              'execution_backend':'github_hosted_public',
+              'retry_of_run_id':int(codefix.get('failed_run_id') or request.get('golden_path_run_id') or 0),
+              'recovery_generation':max(0,int(request.get('recovery_generation') or 0)),
+              'recovery_strategy':'same-approved-request-verified-autocodefix-overlay',
+              'checkpoint_policy':'discard_if_implementation_binding_missing',
+              'slot':'recovery',
+          })
+          hardening=trigger.get('hardening')
+          if not isinstance(hardening,dict):
+              hardening={}
+          required=(
+              'checkpoint_source_context_required','implementation_bound_checkpoint_required',
+              'platform_specific_cta_required','platform_specific_voice_repair_required',
+              'validated_voice_candidate_required','premium_voice_required',
+              'concrete_failure_state_required','post_repair_checkpoint_required',
+              'fresh_post_repair_audit_required','topic_aware_visual_repair_required',
+              'actual_frame_semantics_required','semantic_voice_fact_terms_required',
+              'request_bound_recovery_required','exact_source_request_pin_required',
+              'telegram_review_video_required','provider_failure_must_not_reuse_stale_audit',
+              'strict_visual_audit_required','strict_pronunciation_audit_required',
+              'generic_visual_fallback_forbidden',
+          )
+          for key in required:
+              hardening[key]=True
+          hardening['quality_gates_weakened']=False
+          trigger['hardening']=hardening
+          trigger_path.write_text(json.dumps(trigger,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/run-now/tayvoriq-x-request.json
+          git commit -m "ops(tayvoriq): dispatch verified overlay replay ${REQUEST_ID}"
+          git push origin HEAD:main
+
+          new_run_id=''
+          for poll in $(seq 1 30); do
+            sleep 4
+            gh run list --workflow tayvoriq-deliver-video-now.yml --limit 50 --json databaseId,createdAt,event > /tmp/overlay-replay-runs.json
+            candidate=$(python - "$before_ids" "$dispatch_epoch" <<'PY'
+          import json,sys
+          from datetime import datetime
+          before={int(v) for v in sys.argv[1].split() if v.isdigit()}; epoch=int(sys.argv[2]); found=[]
+          for item in json.load(open('/tmp/overlay-replay-runs.json',encoding='utf-8')):
+              try:
+                  rid=int(item.get('databaseId') or 0)
+                  created=datetime.fromisoformat(str(item.get('createdAt') or '').replace('Z','+00:00')).timestamp()
+              except Exception:
+                  continue
+              if rid and rid not in before and created>=epoch-5:
+                  found.append((created,rid))
+          print(max(found)[1] if found else '')
+          PY
+            )
+            if [[ "$candidate" =~ ^[0-9]+$ ]]; then new_run_id="$candidate"; break; fi
+          done
+          [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'AUTOCODEFIX_OVERLAY_REPLAY_RUN_NOT_FOUND'; exit 1; }
+
+          rebound=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main --quiet
+            git reset --hard origin/main
+            python - "$ACTIVE_REQUEST_POINTER" "$REQUEST_FILE" "$REQUEST_ID" "$new_run_id" "$HANDOFF_BASE_SHA" "$PATCH_SHA256" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          pp=Path(sys.argv[1]); rp=Path(sys.argv[2]); rid=sys.argv[3]; new_run=int(sys.argv[4]); impl=sys.argv[5]; patch=sys.argv[6]
+          pointer=json.loads(pp.read_text(encoding='utf-8')); request=json.loads(rp.read_text(encoding='utf-8'))
+          codefix=request.get('codefix_recovery') if isinstance(request.get('codefix_recovery'),dict) else {}
+          if str(pointer.get('request_id') or '')!=rid or str(request.get('request_id') or '')!=rid:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_BIND_OWNER_CHANGED')
+          if codefix.get('status') not in {'ARMED','REPLAY_DISPATCHED'}:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_BIND_NOT_CODEFIX_BOUND')
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          old_run=int(request.get('golden_path_run_id') or 0)
+          previous=list(request.get('previous_golden_path_run_ids') or [])
+          if old_run and old_run not in previous: previous.append(old_run)
+          request['previous_golden_path_run_ids']=previous[-20:]
+          request['golden_path_run_id']=new_run
+          request['status']='DISPATCHED'
+          request['retry_of_run_id']=old_run
+          request['replacement_reason']='VERIFIED_AUTOCODEFIX_OVERLAY_REPLAY'
+          request['recovery_owner']='tayvoriq-autonomous-codefix-builder'
+          request['recovery_dispatched_at']=now
+          codefix.update({
+              'status':'REPLAY_DISPATCHED','request_substate':'DISPATCHED',
+              'replay_run_id':new_run,'replayed_at':now,
+              'replay_implementation_sha':impl,
+              'verified_overlay_patch_sha256':patch,
+              'codefix_detection_reason':'verified-request-bound-overlay',
+              'quality_gates_weakened':False,'active_pointer_verified':True,
+          })
+          request['codefix_recovery']=codefix
+          request['state_history']=list(request.get('state_history') or [])+[{
+              'state':'DISPATCHED','at':now,'actor':'tayvoriq-autonomous-codefix-builder',
+              'meta':{'retry_of_run_id':old_run,'golden_path_run_id':new_run,
+                      'reason':'verified-request-bound-autocodefix-overlay-replay',
+                      'replay_implementation_sha':impl,'verified_overlay_patch_sha256':patch,
+                      'quality_gates_weakened':False,'active_pointer_verified':True}
+          }]
+          rp.write_text(json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          pointer['golden_path_run_id']=new_run
+          pointer['reason']='verified-autocodefix-overlay-replay'
+          pointer['updated_at']=now
+          pp.write_text(json.dumps(pointer,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER"
+            git commit -m "ops(tayvoriq): bind verified overlay replay ${REQUEST_ID} to ${new_run_id}"
+            if git push origin HEAD:main; then rebound=true; break; fi
+            sleep $((attempt*2))
+          done
+          [ "$rebound" = "true" ] || { echo 'AUTOCODEFIX_OVERLAY_REPLAY_BIND_FAILED'; exit 1; }
+          echo "replay_dispatched=true" >> "$GITHUB_OUTPUT"
+          echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
+          echo "AUTOCODEFIX_OVERLAY_REPLAY_BOUND:$REQUEST_ID:$new_run_id:$PATCH_SHA256"
