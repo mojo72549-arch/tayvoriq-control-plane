@@ -248,7 +248,7 @@ jobs:
           )
         shell: bash
         env:
-          FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
+          FAILED_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.failed_run_id || github.event.workflow_run.id }}
           OWNER: ${{ steps.active.outputs.request_file }}
           ACTIVE_REQUEST_ID: ${{ steps.active.outputs.request_id }}
           GENERATION: ${{ steps.active.outputs.generation }}
