@@ -145,6 +145,49 @@ jobs:
           path: implementation
           fetch-depth: 0
 
+      - name: Hydrate prior verified overlay for cumulative repair
+        id: hydrate_overlay
+        working-directory: implementation
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          meta="$GITHUB_WORKSPACE/.github/state/tayvoriq-autocodefix-candidate.json"
+          patch="$GITHUB_WORKSPACE/.github/state/tayvoriq-autocodefix-candidate.patch"
+          if [ ! -f "$meta" ] || [ ! -f "$patch" ]; then
+            echo "hydrated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          decision=$(python - "$meta" "$patch" "$REQUEST_ID" "$(git rev-parse HEAD)" <<'PY'
+          import hashlib,json,sys
+          from pathlib import Path
+          meta=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          patch=Path(sys.argv[2]); rid=sys.argv[3]; base=sys.argv[4]
+          if (
+              meta.get('schema')!='tayvoriq-autocodefix-handoff-v1'
+              or meta.get('state')!='PATCH_VERIFIED_PENDING_STUDIO_APPLY'
+              or str(meta.get('request_id') or '')!=rid
+              or str(meta.get('base_sha') or '')!=base
+              or meta.get('quality_gates_weakened') is not False
+          ):
+              print('skip'); raise SystemExit(0)
+          actual=hashlib.sha256(patch.read_bytes()).hexdigest()
+          if actual!=str(meta.get('patch_sha256') or ''):
+              raise SystemExit('AUTOCODEFIX_CUMULATIVE_PATCH_HASH_MISMATCH')
+          print('apply')
+          PY
+          )
+          if [ "$decision" != "apply" ]; then
+            echo "hydrated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git apply --check --recount --whitespace=fix "$patch"
+          git apply --recount --whitespace=fix "$patch"
+          git diff --check
+          echo "hydrated=true" >> "$GITHUB_OUTPUT"
+          echo "AUTOCODEFIX_CUMULATIVE_OVERLAY_HYDRATED:$REQUEST_ID"
+
       - name: Resolve existing candidate
         id: existing
         working-directory: implementation
