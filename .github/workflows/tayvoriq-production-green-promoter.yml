@@ -171,6 +171,8 @@ jobs:
         if: steps.refs.outputs.changed == 'true'
         working-directory: implementation
         shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/implementation/tools:${{ github.workspace }}/implementation
         run: |
           set -euo pipefail
           mkdir -p out/control-plane/replay-readiness
