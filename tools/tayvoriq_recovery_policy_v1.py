@@ -41,6 +41,14 @@ LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"voice checkpoint v5 natural narrator repair failed",
 )
 
+FINAL_PUBLICATION_VOICE_CODEFIX_PATTERNS = (
+    r"human-voice-postmux-proof-missing",
+    r"human-voice-postmux-proof-not-passed",
+    r"human-voice-postmux-similarity-too-low",
+    r"final_publication_voice_repair_exhausted",
+    r"publication_gate_voice_recovery.*true",
+)
+
 # Explicit semantic/runtime contract failures are code defects, not content
 # freshness problems. They must win over the generic publishability handoff that
 # the parent workflow emits after the renderer exits. Otherwise an unchanged
@@ -199,6 +207,14 @@ def classify_failure(
             "deterministic", state, False, "verified-codefix-replay", generation, generation,
             maximum, _stable_signature(state, text),
             "Bounded local repair already ran and the strict audit still failed; keep the exact request armed for a verified codefix replay in the same recovery generation.",
+        )
+
+    if _matches(lowered, FINAL_PUBLICATION_VOICE_CODEFIX_PATTERNS):
+        state = "FINAL_PUBLICATION_VOICE_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
+            "The publishable master failed only the strict final human-voice/post-mux contract. Preserve the exact request and master, then resume through bounded voice/post-mux recovery; transient timeout noise must not win.",
         )
 
     if _matches(lowered, SEMANTIC_CODEFIX_PATTERNS):
