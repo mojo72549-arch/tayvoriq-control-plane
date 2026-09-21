@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T05:56:16.104332Z",
-  "overall": "red",
+  "generated_at": "2026-09-21T05:56:40.280322Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35566206394,
-    "pointer_updated_at": "2026-09-21T05:52:53.224695Z"
+    "golden_path_run_id": 35566385159,
+    "pointer_updated_at": "2026-09-21T05:55:45Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
@@ -24,18 +24,18 @@
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35566206394,
-    "status": "completed",
-    "conclusion": "cancelled",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35566206394",
-    "created_at": "2026-09-21T05:52:46Z",
-    "updated_at": "2026-09-21T05:55:53Z",
+    "id": 35566385159,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35566385159",
+    "created_at": "2026-09-21T05:55:38Z",
+    "updated_at": "2026-09-21T05:56:32Z",
     "attempt": 1,
     "progress": 72,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
+    "current_step": "Dispatch exact deterministic failure finalizer",
+    "last_successful_step": "Upload lean diagnostics",
+    "failed_step": "Validate immutable implementation policy",
+    "failed_step_number": 12,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -57,50 +57,50 @@
       },
       {
         "label": "Light Preflight",
-        "status": "success",
-        "step_number": 15,
+        "status": "skipped",
+        "step_number": 16,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
-        "status": "success",
-        "step_number": 21,
+        "status": "skipped",
+        "step_number": 22,
         "step_name": "Install production dependencies"
       },
       {
         "label": "Full Preflight",
-        "status": "success",
-        "step_number": 15,
+        "status": "skipped",
+        "step_number": 16,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
         "status": "skipped",
-        "step_number": 26,
+        "step_number": 27,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
         "status": "error",
-        "step_number": 33,
+        "step_number": 34,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "skipped",
-        "step_number": 35,
+        "step_number": 36,
         "step_name": "Validate publication quality"
       },
       {
         "label": "Review-Seite",
         "status": "skipped",
-        "step_number": 37,
+        "step_number": 38,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "skipped",
-        "step_number": 38,
+        "step_number": 39,
         "step_name": "Send Telegram review"
       }
     ]
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Validate immutable implementation policy"
     },
     {
       "name": "Production Green",
@@ -119,12 +119,12 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
@@ -133,12 +133,12 @@
     }
   ],
   "incident": {
-    "signature": "35566206394:33:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "critical",
+    "signature": "35566385159:12:PUBLISHABLE_CODEFIX_REQUIRED",
+    "severity": "warning",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
-    "self_heal_status": "REPLAY_DISPATCHED",
+    "failed_step": "Validate immutable implementation policy",
+    "failed_step_number": 12,
+    "self_heal_status": "REPLAY_RUNNING",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -146,11 +146,11 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
+    "status": "REPLAY_RUNNING",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 35539782669,
     "replay_run_id": 35566385159,
@@ -165,9 +165,9 @@
   },
   "events": [
     {
-      "at": "2026-09-21T05:55:53Z",
+      "at": "2026-09-21T05:56:32Z",
       "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "detail": "Validate immutable implementation policy"
     },
     {
       "at": "2026-09-21T05:55:45Z",
