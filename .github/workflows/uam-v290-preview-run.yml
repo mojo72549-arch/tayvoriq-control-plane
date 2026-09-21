@@ -8,7 +8,7 @@ on:
       - .github/workflows/uam-v290-preview-run.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: uam-v290-email-auth-preview
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       WRAP_SECRET: ${{ secrets.UAM_VERCEL_TOKEN }}
       VERCEL_ORG_ID: team_Maifclp5V8xrU2vIyzXHpbyH
@@ -68,11 +68,32 @@ jobs:
           node build.mjs
           test -f dist/index.html
 
-      - name: Authenticate Vercel CLI by email
+      - name: Authenticate Vercel CLI by device
         shell: bash
         run: |
           set -euo pipefail
-          timeout 600s script -q -e -c "npx --yes vercel@latest login mojo72549@gmail.com --no-color" /tmp/vercel-login.log
+          rm -f /tmp/vercel-login.log .uam-v290/device-login.txt
+          timeout 1200s script -q -e -c "npx --yes vercel@latest login --no-color" /tmp/vercel-login.log &
+          LOGIN_PID=$!
+
+          URL=""
+          for i in $(seq 1 180); do
+            URL=$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' /tmp/vercel-login.log | tail -n 1 || true)
+            [ -n "$URL" ] && break
+            sleep 1
+          done
+
+          test -n "$URL" || { echo "::error::No Vercel device login URL generated"; kill "$LOGIN_PID" || true; exit 3; }
+          printf '%s\n' "$URL" > .uam-v290/device-login.txt
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .uam-v290/device-login.txt
+          git commit -m "ops: publish temporary Vercel device login URL"
+          git push origin HEAD:uam-v290-preview-run
+
+          echo "Vercel device authorization URL published."
+          wait "$LOGIN_PID"
           npx --yes vercel@latest whoami --no-color
 
       - name: Bind exact existing project
