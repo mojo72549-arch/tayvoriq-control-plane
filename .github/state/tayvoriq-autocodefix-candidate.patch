@@ -26,7 +26,7 @@ index f4ce9f1b..d114a478 100644
  
  _ORIGINAL_PEXELS_SEARCH = base.core.pexels_search
 diff --git a/tools/tayvoriq_voice_only_repair_v5.py b/tools/tayvoriq_voice_only_repair_v5.py
-index 20e1a02c..ecf214ef 100644
+index 20e1a02c..95d4fb64 100644
 --- a/tools/tayvoriq_voice_only_repair_v5.py
 +++ b/tools/tayvoriq_voice_only_repair_v5.py
 @@ -30,7 +30,7 @@ v2 = base.v2
@@ -45,7 +45,7 @@ index 20e1a02c..ecf214ef 100644
 +def _ensure_publishable_recovery(contract: dict[str, Any]) -> bool:
 +    """Ensure the recovery state does not exit 1 if the contract is valid."""
 +    if contract.get("status") == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED":
-+        # Force a soft-reset to allow the final muxer to catch the valid state
++        # Force a soft-reset to allow the final orchestration muxer to catch the valid state
 +        contract["status"] = "READY"
 +        return True
 +    return False
