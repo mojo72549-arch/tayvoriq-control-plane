@@ -1,0 +1,102 @@
+name: UAM V290 Preview Run
+
+on:
+  push:
+    branches:
+      - uam-v290-preview-run
+    paths:
+      - .github/workflows/uam-v290-preview-run.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uam-v290-preview-run
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      UAM_VERCEL_TOKEN: ${{ secrets.UAM_VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_Maifclp5V8xrU2vIyzXHpbyH
+      VERCEL_PROJECT_ID: prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP
+    steps:
+      - name: Checkout encrypted payload
+        uses: actions/checkout@v4
+
+      - name: Verify secret and fixed target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$UAM_VERCEL_TOKEN" || { echo "::error::UAM_VERCEL_TOKEN missing"; exit 2; }
+          test "$VERCEL_PROJECT_ID" = "prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP"
+          test "$VERCEL_ORG_ID" = "team_Maifclp5V8xrU2vIyzXHpbyH"
+
+      - name: Restore encrypted V290 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/uam-v290/src
+          cat .uam-v290/payload-00.b64 .uam-v290/payload-01.b64 .uam-v290/payload-02.b64 .uam-v290/payload-03.b64 .uam-v290/payload-04.b64 > /tmp/uam-v290/source.enc.b64
+          base64 -d /tmp/uam-v290/source.enc.b64 > /tmp/uam-v290/source.tar.xz.enc
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in /tmp/uam-v290/source.tar.xz.enc \
+            -out /tmp/uam-v290/source.tar.xz \
+            -pass env:UAM_VERCEL_TOKEN
+          tar -xJf /tmp/uam-v290/source.tar.xz -C /tmp/uam-v290/src
+          rm -f /tmp/uam-v290/source.enc.b64 /tmp/uam-v290/source.tar.xz.enc /tmp/uam-v290/source.tar.xz
+
+      - name: Verify engineering package
+        working-directory: /tmp/uam-v290/src
+        shell: bash
+        run: |
+          set -euo pipefail
+          node verify.mjs
+          timeout 420s node verify-sweep.mjs
+          node build.mjs
+          test -f dist/index.html
+
+      - name: Verify existing Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          INFO=$(curl -fsS \
+            -H "Authorization: Bearer $UAM_VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")
+          test "$(jq -r '.id' <<<"$INFO")" = "$VERCEL_PROJECT_ID"
+          test "$(jq -r '.name' <<<"$INFO")" = "uam-biograd-mobile-v290"
+          echo "Existing target project verified."
+
+      - name: Bind source to existing project
+        working-directory: /tmp/uam-v290/src
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          printf '%s\n' '{"projectId":"prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP","orgId":"team_Maifclp5V8xrU2vIyzXHpbyH","projectName":"uam-biograd-mobile-v290"}' > .vercel/project.json
+
+      - name: Deploy PREVIEW only
+        id: deploy
+        working-directory: /tmp/uam-v290/src
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest deploy --yes \
+            --token "$UAM_VERCEL_TOKEN" \
+            --scope mo61 2>&1 | tee /tmp/uam-v290/vercel-deploy.log
+          URL=$(grep -Eo 'https://[^[:space:]]+\.vercel\.app' /tmp/uam-v290/vercel-deploy.log | tail -n 1 || true)
+          test -n "$URL" || { echo "::error::No Preview URL returned by Vercel"; exit 20; }
+          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "### UAM V290 Preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Confirm preview responds
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        run: |
+          set -euo pipefail
+          echo "Preview created: $PREVIEW_URL"
+          curl -sS -o /dev/null -w 'HTTP %{http_code}\n' "$PREVIEW_URL" || true
