@@ -177,7 +177,7 @@ jobs:
           set -euo pipefail
           mkdir -p out/control-plane/replay-readiness
           active_pointer="../.github/state/tayvoriq-active-production-request.json"
-          request="$(python - "$active_pointer" <<'PY'
+          request="$(env -u PYTHONPATH python -I - "$active_pointer" <<'PY'
           import json,sys
           from pathlib import Path
 
@@ -225,7 +225,7 @@ jobs:
           # negative cases here; the exact live request+manifest proof runs in
           # Golden Path after the verified overlay is actually applied.
           python -m pytest -q tests/test_tayvoriq_replay_readiness_gate_v1.py
-          python - "$request" <<'PY'
+          env -u PYTHONPATH python -I - "$request" <<'PY'
           import json,re,sys
           data=json.load(open(sys.argv[1],encoding='utf-8'))
           recovery=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
