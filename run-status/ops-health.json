@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T05:55:50.728053Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-21T05:56:16.104332Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -18,22 +18,22 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 2,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-autonomous-codefix-builder",
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
     "id": 35566206394,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "cancelled",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35566206394",
     "created_at": "2026-09-21T05:52:46Z",
-    "updated_at": "2026-09-21T05:55:46Z",
+    "updated_at": "2026-09-21T05:55:53Z",
     "attempt": 1,
     "progress": 72,
-    "current_step": "Post Checkout implementation",
-    "last_successful_step": "Post Checkout review pages",
+    "current_step": null,
+    "last_successful_step": "Complete job",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 33,
     "stages": [
@@ -108,7 +108,7 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
+      "status": "red",
       "detail": "Assert publishable production output"
     },
     {
@@ -119,7 +119,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -134,11 +134,11 @@
   ],
   "incident": {
     "signature": "35566206394:33:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "warning",
+    "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 33,
-    "self_heal_status": "REPLAY_RUNNING",
+    "self_heal_status": "REPLAY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -150,13 +150,13 @@
     "last_step": "Telegram progress - production active"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "REPLAY_DISPATCHED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 35539782669,
-    "replay_run_id": 35566206394,
+    "replay_run_id": 35566385159,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "owner": "tayvoriq-autonomous-codefix-builder",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "source_status": "REPLAY_DISPATCHED",
@@ -165,9 +165,14 @@
   },
   "events": [
     {
-      "at": "2026-09-21T05:55:46Z",
+      "at": "2026-09-21T05:55:53Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-21T05:55:45Z",
+      "title": "DISPATCHED",
+      "detail": "verified-request-bound-autocodefix-overlay-replay"
     },
     {
       "at": "2026-09-21T05:52:53.224695Z",
@@ -193,11 +198,6 @@
       "at": "2026-09-20T20:45:00Z",
       "title": "DISPATCHED",
       "detail": "align verified source packet with immutable production editorial contract"
-    },
-    {
-      "at": "2026-09-20T20:08:08.008Z",
-      "title": "APPROVED",
-      "detail": "telegram_callback"
     }
   ]
 }
