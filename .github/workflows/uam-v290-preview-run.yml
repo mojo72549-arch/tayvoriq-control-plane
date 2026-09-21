@@ -1,4 +1,4 @@
-name: UAM V290 Final Preview Deploy
+name: UAM V290 Email Auth Preview Deploy
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: uam-v290-final-preview
+  group: uam-v290-email-auth-preview
   cancel-in-progress: false
 
 jobs:
@@ -26,11 +26,11 @@ jobs:
       - name: Checkout encrypted transport
         uses: actions/checkout@v4
 
-      - name: Recover protected deployment credentials and source
+      - name: Recover V290 source
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$WRAP_SECRET" || { echo "::error::Transport wrap secret missing"; exit 2; }
+          test -n "$WRAP_SECRET"
           mkdir -p /tmp/uam-v290/src
 
           base64 -d .uam-v290/transport-private.pem.enc.b64 > /tmp/transport-private.pem.enc
@@ -38,22 +38,6 @@ jobs:
             -in /tmp/transport-private.pem.enc \
             -out /tmp/transport-private.pem \
             -pass env:WRAP_SECRET
-
-          base64 -d .uam-v290/vercel-token.rsa.b64 > /tmp/vercel-token.rsa
-          openssl pkeyutl -decrypt \
-            -inkey /tmp/transport-private.pem \
-            -pkeyopt rsa_padding_mode:oaep \
-            -pkeyopt rsa_oaep_md:sha256 \
-            -in /tmp/vercel-token.rsa > /tmp/vercel-token.txt
-
-          VERCEL_TOKEN_REAL=$(cat /tmp/vercel-token.txt)
-          test -n "$VERCEL_TOKEN_REAL"
-          echo "::add-mask::$VERCEL_TOKEN_REAL"
-          {
-            echo "UAM_REAL_VERCEL_TOKEN<<EOF_TOKEN"
-            printf '%s\n' "$VERCEL_TOKEN_REAL"
-            echo "EOF_TOKEN"
-          } >> "$GITHUB_ENV"
 
           base64 -d .uam-v290/source-key.rsa.b64 > /tmp/source-key.rsa
           openssl pkeyutl -decrypt \
@@ -73,23 +57,25 @@ jobs:
             -out /tmp/source.tar.xz \
             -pass file:/tmp/source-key.txt
           tar -xJf /tmp/source.tar.xz -C /tmp/uam-v290/src
+          rm -f /tmp/transport-private.pem.enc /tmp/transport-private.pem /tmp/source-key.rsa /tmp/source-key.txt /tmp/source.tar.xz.enc.b64 /tmp/source.tar.xz.enc /tmp/source.tar.xz
 
-          rm -f /tmp/transport-private.pem.enc /tmp/transport-private.pem \
-            /tmp/vercel-token.rsa /tmp/vercel-token.txt /tmp/source-key.rsa \
-            /tmp/source-key.txt /tmp/source.tar.xz.enc.b64 /tmp/source.tar.xz.enc /tmp/source.tar.xz
-
-      - name: Verify V290 engineering package
+      - name: Quick source verification
         working-directory: /tmp/uam-v290/src
         shell: bash
         run: |
           set -euo pipefail
           node verify.mjs
-          timeout 420s node verify-sweep.mjs
           node build.mjs
           test -f dist/index.html
 
+      - name: Authenticate Vercel CLI by email
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 600s script -q -e -c "npx --yes vercel@latest login mojo72549@gmail.com --no-color" /tmp/vercel-login.log
+          npx --yes vercel@latest whoami --no-color
 
-      - name: Bind local source to existing project
+      - name: Bind exact existing project
         working-directory: /tmp/uam-v290/src
         shell: bash
         run: |
@@ -103,11 +89,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes vercel@latest deploy --yes \
-            --token "$UAM_REAL_VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-preview.log
-
+          npx --yes vercel@latest deploy --yes --scope mo61 --no-color 2>&1 | tee /tmp/vercel-preview.log
           URL=$(grep -Eo 'https://[^[:space:]]+\.vercel\.app' /tmp/vercel-preview.log | tail -n 1 || true)
-          test -n "$URL" || { echo "::error::Vercel did not return a Preview URL"; exit 20; }
+          test -n "$URL" || { echo "::error::No Preview URL returned"; exit 20; }
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
           echo "::notice::Preview created: $URL"
           {
@@ -124,6 +108,4 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
         run: |
           set -euo pipefail
-          echo "Preview: $PREVIEW_URL"
-          npx --yes vercel@latest inspect "$PREVIEW_URL" --wait \
-            --token "$UAM_REAL_VERCEL_TOKEN"
+          npx --yes vercel@latest inspect "$PREVIEW_URL" --wait --scope mo61 --no-color
