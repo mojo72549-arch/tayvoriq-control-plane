@@ -120,7 +120,7 @@ jobs:
               'failure_state':os.environ['FAILURE_STATE'],
               'failure_signature':os.environ['FAILURE_SIGNATURE'],
               'traceback_files':[],
-              'log_excerpt':log[-24000:],
+              'log_excerpt':log[-7000:],
               'safety_contract':{
                   'exact_request_required':True,
                   'source_context_must_remain_bound':True,
@@ -361,7 +361,7 @@ jobs:
             exit 0
           fi
 
-          before_ids=$(gh run list --workflow tayvoriq-deliver-video-now.yml --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')
+          before_ids=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')
           dispatch_epoch=$(date +%s)
           python - "$REQUEST_FILE" "$HANDOFF_BASE_SHA" "$PATCH_SHA256" <<'PY'
           import json,sys
@@ -428,10 +428,27 @@ jobs:
           git commit -m "ops(tayvoriq): dispatch verified overlay replay ${REQUEST_ID}"
           git push origin HEAD:main
 
+          readarray -t dispatch_meta < <(python - "$REQUEST_FILE" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          print(str(data.get('trend_id') or ''))
+          print(str(max(0,int(data.get('recovery_generation') or 0))))
+          PY
+          )
+          trend_id="${dispatch_meta[0]:-}"
+          generation="${dispatch_meta[1]:-0}"
+          [ -n "$trend_id" ] || { echo 'AUTOCODEFIX_OVERLAY_TREND_ID_MISSING'; exit 1; }
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main \
+            -f "topic=$TOPIC" \
+            -f "trend_id=$trend_id" \
+            -f "source_request_id=$REQUEST_ID" \
+            -f "recovery_generation=$generation"
+          echo "AUTOCODEFIX_OVERLAY_WORKFLOW_DISPATCHED:$REQUEST_ID:generation=$generation"
+
           new_run_id=''
           for poll in $(seq 1 30); do
             sleep 4
-            gh run list --workflow tayvoriq-deliver-video-now.yml --limit 50 --json databaseId,createdAt,event > /tmp/overlay-replay-runs.json
+            gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId,createdAt,event > /tmp/overlay-replay-runs.json
             candidate=$(python - "$before_ids" "$dispatch_epoch" <<'PY'
           import json,sys
           from datetime import datetime
