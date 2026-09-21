@@ -12,6 +12,7 @@ on:
       - .github/state/tayvoriq-production-green.json
       - .github/state/tayvoriq-active-production-request.json
       - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
+      - .github/workflows/tayvoriq-autonomous-codefix-builder.yml
       - tools/tayvoriq_codefix_orphan_reconcile_v1.py
   schedule:
     - cron: '*/5 * * * *'
