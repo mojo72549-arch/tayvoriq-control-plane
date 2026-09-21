@@ -31,8 +31,15 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$UAM_VERCEL_TOKEN" || { echo "::error::UAM_VERCEL_TOKEN missing"; exit 2; }
-          ACTUAL_HASH=$(printf '%s' "$UAM_VERCEL_TOKEN" | sha256sum | awk '{print $1}')
-          test "$ACTUAL_HASH" = "cc98b36bebeb7ae6cf457b028950d00b6c84dc41c637de58813fb1d1740142c5" || { echo "::error::UAM_VERCEL_TOKEN differs from expected token"; exit 3; }
+          CLEAN_TOKEN=$(printf '%s' "$UAM_VERCEL_TOKEN" | tr -d '\r\n\t ' | sed -e 's/^["'\''"]//' -e 's/["'\''"]$//')
+          CLEAN_HASH=$(printf '%s' "$CLEAN_TOKEN" | sha256sum | awk '{print $1}')
+          if [ "$CLEAN_HASH" = "cc98b36bebeb7ae6cf457b028950d00b6c84dc41c637de58813fb1d1740142c5" ]; then
+            echo "Token matches after harmless whitespace/quote normalization."
+          else
+            echo "::error::UAM_VERCEL_TOKEN is a different token value, not a formatting issue."
+            exit 3
+          fi
+          echo "UAM_VERCEL_TOKEN_CLEAN=$CLEAN_TOKEN" >> "$GITHUB_ENV"
           test "$VERCEL_PROJECT_ID" = "prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP"
           test "$VERCEL_ORG_ID" = "team_Maifclp5V8xrU2vIyzXHpbyH"
 
@@ -46,7 +53,7 @@ jobs:
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
             -in /tmp/uam-v290/source.tar.xz.enc \
             -out /tmp/uam-v290/source.tar.xz \
-            -pass env:UAM_VERCEL_TOKEN
+            -pass env:UAM_VERCEL_TOKEN_CLEAN
           tar -xJf /tmp/uam-v290/source.tar.xz -C /tmp/uam-v290/src
           rm -f /tmp/uam-v290/source.enc.b64 /tmp/uam-v290/source.tar.xz.enc /tmp/uam-v290/source.tar.xz
 
@@ -65,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           INFO=$(curl -fsS \
-            -H "Authorization: Bearer $UAM_VERCEL_TOKEN" \
+            -H "Authorization: Bearer $UAM_VERCEL_TOKEN_CLEAN" \
             "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")
           test "$(jq -r '.id' <<<"$INFO")" = "$VERCEL_PROJECT_ID"
           test "$(jq -r '.name' <<<"$INFO")" = "uam-biograd-mobile-v290"
@@ -86,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes vercel@latest deploy --yes \
-            --token "$UAM_VERCEL_TOKEN" \
+            --token "$UAM_VERCEL_TOKEN_CLEAN" \
             --scope mo61 2>&1 | tee /tmp/uam-v290/vercel-deploy.log
           URL=$(grep -Eo 'https://[^[:space:]]+\.vercel\.app' /tmp/uam-v290/vercel-deploy.log | tail -n 1 || true)
           test -n "$URL" || { echo "::error::No Preview URL returned by Vercel"; exit 20; }
