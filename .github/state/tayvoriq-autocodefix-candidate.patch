@@ -1,0 +1,48 @@
+diff --git a/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py b/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py
+index fb180065..2aa9c8e9 100644
+--- a/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py
++++ b/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py
+@@ -17,12 +17,27 @@ def _morphological_overlap(left: Iterable[str], right: Iterable[str]) -> bool:
+     right_tokens = {str(token).casefold() for token in right if str(token).strip()}
+     if left_tokens & right_tokens:
+         return True
++
++    def clean_tok(t: str) -> str:
++        return "".join(c for c in t if c.isalnum())
++
++    left_clean = {clean_tok(t) for t in left_tokens if clean_tok(t)}
++    right_clean = {clean_tok(t) for t in right_tokens if clean_tok(t)}
++    if left_clean & right_clean:
++        return True
++
+     for left_token in left_tokens:
+         for right_token in right_tokens:
+             if min(len(left_token), len(right_token)) < 5:
+                 continue
+             if left_token[:5] == right_token[:5]:
+                 return True
++    for left_token in left_clean:
++        for right_token in right_clean:
++            if min(len(left_token), len(right_token)) < 5:
++                continue
++            if left_token[:5] == right_token[:5]:
++                return True
+     return False
+ 
+ 
+diff --git a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
+index d4aa1cd4..2292d6d6 100644
+--- a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
++++ b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
+@@ -27,10 +27,7 @@ import re
+ from typing import Any
+ 
+ 
+-_SEPARABLE_AUS = re.compile(
+-    r"\b(?:lös(?:t|te|ten|en)|auslös(?:t|te|ten|en))\b[^.!?]{0,180}\baus[.!?]$",
+-    re.IGNORECASE,
+-)
++_SEPARABLE_AUS = re.compile(r"\b(?:lös|auslös|schließ|ausschließ|fall|ausfall|fällt|fiel|breit|ausbreit|wirk|auswirk|geh|ausgeh|ging|seh|ausseh|sieht|sah|geb|ausgeb|gibt|gab|drück|ausdrück|tausch|austausch|richt|ausricht|nutz|ausnutz|weich|ausweich|wich|sprech|aussprech|spricht|sprach|führ|ausführ)\w*\b[^.!?]{0,180}\baus[.!?]$", re.IGNORECASE)
+ _FINAL_AUS = re.compile(r"\baus(?=[.!?]$)", re.IGNORECASE)
+ _DEPTH_KEYS = (
+     "what_happened",
