@@ -1039,9 +1039,35 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
+      - name: Validate publication quality initial
+        id: publication_gate_initial
+        if: steps.production.outcome == 'success'
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          JOB_DIR=$(python -c 'import json,pathlib; d=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); print(d.get("job_dir") or "")')
+          test -n "$JOB_DIR" && test -d "$JOB_DIR"
+          python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
+
+      - name: Repair final publication voice proof only
+        id: final_publication_voice_recovery
+        if: steps.production.outcome == 'success' && steps.publication_gate_initial.outcome == 'failure'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Final publication gate failed after a publishable master; reuse the exact master and invoke bounded final voice/postmux recovery."
+          python tools/tayvoriq_resume_existing_render_v2.py \
+            --outdir out/tayvoriq-youtube-tiktok \
+            --site-root site/tayvoriq \
+            --run-id "$GITHUB_RUN_ID" \
+            --state-out out/tayvoriq-review-state.json \
+            --report-out out/tayvoriq-self-heal/report.json
+
       - name: Validate publication quality
         id: publication_gate
-        if: steps.production.outcome == 'success'
+        if: steps.production.outcome == 'success' && (steps.publication_gate_initial.outcome == 'success' || steps.final_publication_voice_recovery.outcome == 'success')
         working-directory: implementation
         run: |
           set -euo pipefail
@@ -1050,6 +1076,7 @@ jobs:
           python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
 
       - name: Telegram progress - quality passed
+        if: steps.publication_gate.outcome == 'success'
         continue-on-error: true
         run: |
           set -euo pipefail
