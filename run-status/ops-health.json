@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T16:37:58.086042Z",
+  "generated_at": "2026-09-21T17:13:27.547188Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35625888642,
-    "pointer_updated_at": "2026-09-21T16:29:12.750926Z"
+    "golden_path_run_id": 35630304906,
+    "pointer_updated_at": "2026-09-21T17:10:35.907081Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
@@ -24,12 +24,12 @@
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35625888642,
+    "id": 35630304906,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35625888642",
-    "created_at": "2026-09-21T16:29:06Z",
-    "updated_at": "2026-09-21T16:29:11Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35630304906",
+    "created_at": "2026-09-21T17:10:29Z",
+    "updated_at": "2026-09-21T17:10:34Z",
     "attempt": 1,
     "progress": 65,
     "current_step": "Produce approved master or reuse checkpoint",
@@ -132,18 +132,7 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "35625888642:none:DETERMINISTIC_PREFLIGHT_FAILURE",
-    "severity": "warning",
-    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
     "detail": "Zuletzt erfolgreich: Telegram progress - production active",
@@ -151,9 +140,9 @@
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
-    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "failed_run_id": 35625642487,
-    "replay_run_id": 35625888642,
+    "failure_state": null,
+    "failed_run_id": 35629529501,
+    "replay_run_id": 35630304906,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
     "owner": "tayvoriq-autonomous-codefix-builder",
@@ -165,32 +154,32 @@
   },
   "events": [
     {
+      "at": "2026-09-21T17:10:35.907081Z",
+      "title": "DISPATCHED",
+      "detail": "verified-request-bound-autocodefix-overlay-replay"
+    },
+    {
+      "at": "2026-09-21T17:09:32.215046Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
+    {
+      "at": "2026-09-21T17:03:27.283198Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-21T17:03:13.900763Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
+    {
       "at": "2026-09-21T16:29:12.750926Z",
       "title": "DISPATCHED",
       "detail": "verified-request-bound-autocodefix-overlay-replay"
     },
     {
       "at": "2026-09-21T16:27:31.377958Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
-    },
-    {
-      "at": "2026-09-21T16:26:50.443150Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-21T16:26:38.034225Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-21T16:02:00Z",
-      "title": "DISPATCHED",
-      "detail": "canonical-bind-race-fixed-verified-overlay-replay"
-    },
-    {
-      "at": "2026-09-21T11:01:55.692419Z",
       "title": "AWAITING_CODEFIX",
       "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     }
