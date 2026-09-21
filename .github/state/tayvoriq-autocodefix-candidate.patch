@@ -64,3 +64,14 @@ index d4aa1cd4..6ac1f1e1 100644
  import re
  from typing import Any
  
+diff --git a/tools/tayvoriq_dual_platform_render_local_repair.py b/tools/tayvoriq_dual_platform_render_local_repair.py
+index f4ce9f1b..cf26ee59 100644
+--- a/tools/tayvoriq_dual_platform_render_local_repair.py
++++ b/tools/tayvoriq_dual_platform_render_local_repair.py
+@@ -300,4 +300,5 @@ if _truthy(os.getenv("TAYVORIQ_FACTUAL_REPAIR_REQUIRED")):
+ 
+ if __name__ == "__main__":
+     _refresh_source_context_for_factual_repair()
+-    raise SystemExit(base.main())
++    return_code = base.main()
++    sys.exit(return_code)
