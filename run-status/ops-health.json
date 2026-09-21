@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T17:40:33.249758Z",
-  "overall": "unknown",
+  "generated_at": "2026-09-21T17:44:24.266302Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -25,91 +25,91 @@
   },
   "run": {
     "id": 35633492937,
-    "status": "pending",
+    "status": "in_progress",
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35633492937",
     "created_at": "2026-09-21T17:40:20Z",
-    "updated_at": "2026-09-21T17:40:22Z",
+    "updated_at": "2026-09-21T17:44:17Z",
     "attempt": 1,
-    "progress": 0,
-    "current_step": null,
-    "last_successful_step": null,
+    "progress": 30,
+    "current_step": "Checkout review pages",
+    "last_successful_step": "Lightweight contract preflight",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 3,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 7,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 8,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 16,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 22,
+        "step_name": "Install production dependencies"
       },
       {
         "label": "Full Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 16,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 27,
+        "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 34,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 36,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 40,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 41,
+        "step_name": "Send Telegram review"
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "unknown",
-      "detail": "pending"
+      "status": "yellow",
+      "detail": "Checkout review pages"
     },
     {
       "name": "Production Green",
@@ -119,12 +119,12 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
+      "status": "green",
+      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
     },
     {
       "name": "Quality Gates",
@@ -134,12 +134,12 @@
   ],
   "incident": null,
   "telegram": {
-    "status": "yellow",
-    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
-    "last_step": null
+    "status": "green",
+    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
+    "last_step": "Telegram progress - sources locked"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
+    "status": "REPLAY_RUNNING",
     "failure_state": null,
     "failed_run_id": 35630304906,
     "replay_run_id": 35633492937,
