@@ -446,6 +446,99 @@ jobs:
           test "$actual" = "$expected" || { echo "IMMUTABLE_IMPLEMENTATION_CHECKOUT_FAILED: expected=$expected actual=$actual"; exit 1; }
           echo "Immutable implementation verified: $actual"
 
+      - name: Apply exact verified autonomous codefix overlay
+        id: autocodefix_overlay
+        shell: bash
+        env:
+          EXPECTED_IMPLEMENTATION_SHA: ${{ steps.production_green.outputs.implementation_sha }}
+        run: |
+          set -euo pipefail
+          meta=".github/state/tayvoriq-autocodefix-candidate.json"
+          patch=".github/state/tayvoriq-autocodefix-candidate.patch"
+          if [ -z "${SOURCE_REQUEST_ID_PIN:-}" ] || [ ! -f "$meta" ] || [ ! -f "$patch" ]; then
+            echo "applied=false" >> "$GITHUB_OUTPUT"
+            echo "AUTOCODEFIX_OVERLAY_NOT_PRESENT_OR_UNPINNED"
+            exit 0
+          fi
+
+          python - "$meta" "$patch" "$SOURCE_REQUEST_ID_PIN" "$EXPECTED_IMPLEMENTATION_SHA" <<'PY'
+          import hashlib,json,sys
+          from pathlib import Path
+          meta_path=Path(sys.argv[1]); patch_path=Path(sys.argv[2])
+          request_id=sys.argv[3]; expected_impl=sys.argv[4]
+          meta=json.loads(meta_path.read_text(encoding='utf-8'))
+          if meta.get('schema')!='tayvoriq-autocodefix-handoff-v1':
+              raise SystemExit('AUTOCODEFIX_OVERLAY_SCHEMA_INVALID')
+          if meta.get('state')!='PATCH_VERIFIED_PENDING_STUDIO_APPLY':
+              raise SystemExit('AUTOCODEFIX_OVERLAY_STATE_INVALID')
+          if str(meta.get('request_id') or '')!=request_id:
+              print('AUTOCODEFIX_OVERLAY_DIFFERENT_REQUEST')
+              raise SystemExit(2)
+          if meta.get('implementation_repository')!='mojo72549-arch/shorts-agent-studio':
+              raise SystemExit('AUTOCODEFIX_OVERLAY_REPOSITORY_MISMATCH')
+          if str(meta.get('base_sha') or '')!=expected_impl:
+              raise SystemExit(
+                  f"AUTOCODEFIX_OVERLAY_BASE_MISMATCH:{meta.get('base_sha')}:{expected_impl}"
+              )
+          if meta.get('quality_gates_weakened') is not False:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_QUALITY_GATE_INTEGRITY_FAILED')
+          request_path=Path('requests')/f'{request_id}.json'
+          if not request_path.is_file():
+              raise SystemExit('AUTOCODEFIX_OVERLAY_REQUEST_MISSING')
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          codefix=request.get('codefix_recovery') if isinstance(request.get('codefix_recovery'),dict) else {}
+          if str(request.get('request_id') or '')!=request_id or str(request.get('status') or '')!='DISPATCHED':
+              raise SystemExit('AUTOCODEFIX_OVERLAY_REQUEST_NOT_DISPATCHED')
+          if str(codefix.get('status') or '') not in {'ARMED','REPLAY_DISPATCHED'}:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_REQUEST_NOT_CODEFIX_BOUND')
+          if int(codefix.get('failed_run_id') or 0)!=int(meta.get('failed_run_id') or 0):
+              raise SystemExit('AUTOCODEFIX_OVERLAY_FAILED_RUN_MISMATCH')
+          if str(codefix.get('failure_signature') or '')!=str(meta.get('failure_signature') or ''):
+              raise SystemExit('AUTOCODEFIX_OVERLAY_FAILURE_SIGNATURE_MISMATCH')
+          actual=hashlib.sha256(patch_path.read_bytes()).hexdigest()
+          expected=str(meta.get('patch_sha256') or '')
+          if actual!=expected:
+              raise SystemExit(f'AUTOCODEFIX_OVERLAY_PATCH_HASH_MISMATCH:{actual}:{expected}')
+          print(json.dumps({
+              'request_id':request_id,
+              'base_sha':expected_impl,
+              'patch_sha256':actual,
+              'quality_gates_weakened':False,
+          },ensure_ascii=False))
+          PY
+          verify_rc=$?
+          if [ "$verify_rc" = "2" ]; then
+            echo "applied=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$verify_rc" = "0" ] || exit "$verify_rc"
+
+          git -C implementation apply --check --recount --whitespace=fix "$GITHUB_WORKSPACE/$patch"
+          git -C implementation apply --recount --whitespace=fix "$GITHUB_WORKSPACE/$patch"
+          git -C implementation diff --check
+          git -C implementation diff --name-only > /tmp/tayvoriq-autocodefix-overlay-files.txt
+          python - /tmp/tayvoriq-autocodefix-overlay-files.txt <<'PY'
+          import sys
+          paths=[line.strip() for line in open(sys.argv[1],encoding='utf-8') if line.strip()]
+          allowed_prefixes=(
+              'tools/tayvoriq_',
+              'runtime_patches/tayvoriq_',
+              'src/runtime_hotfixes/tayvoriq_',
+              'tests/test_tayvoriq_',
+          )
+          if not paths:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_EMPTY_AFTER_APPLY')
+          rejected=[path for path in paths if not path.startswith(allowed_prefixes)]
+          if rejected:
+              raise SystemExit('AUTOCODEFIX_OVERLAY_PATH_NOT_ALLOWLISTED:'+','.join(rejected))
+          print({'autocodefix_overlay_paths':paths,'quality_gates_weakened':False})
+          PY
+          patch_sha=$(sha256sum "$patch" | awk '{print $1}')
+          echo "TAYVORIQ_AUTOCODEFIX_PATCH_SHA256=$patch_sha" >> "$GITHUB_ENV"
+          echo "applied=true" >> "$GITHUB_OUTPUT"
+          echo "patch_sha256=$patch_sha" >> "$GITHUB_OUTPUT"
+          echo "AUTOCODEFIX_OVERLAY_APPLIED:$SOURCE_REQUEST_ID_PIN:$patch_sha"
+
       - name: Lightweight contract preflight
         id: lightweight_preflight
         working-directory: implementation
@@ -531,7 +624,13 @@ jobs:
               "source_request_id": sys.argv[6],
               "global_duplicate_gate_report_sha256": sys.argv[7],
               "implementation_ref": sys.argv[2],
-              "implementation_binding": "production-green-immutable-sha",
+              "implementation_binding": (
+                  "production-green-sha+verified-request-codefix-overlay"
+                  if os.environ.get("TAYVORIQ_AUTOCODEFIX_PATCH_SHA256")
+                  else "production-green-immutable-sha"
+              ),
+              "autocodefix_overlay_applied": bool(os.environ.get("TAYVORIQ_AUTOCODEFIX_PATCH_SHA256")),
+              "autocodefix_patch_sha256": os.environ.get("TAYVORIQ_AUTOCODEFIX_PATCH_SHA256") or None,
               "execution_backend": os.environ.get("TAYVORIQ_EXECUTION_BACKEND"),
               "approved_trend_pinned": True,
               "source_context_bound": True,
