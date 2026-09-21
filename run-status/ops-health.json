@@ -1,105 +1,105 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T05:52:47.817603Z",
-  "overall": "red",
+  "generated_at": "2026-09-21T05:52:58.711201Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35539782669,
-    "pointer_updated_at": "2026-09-20T21:48:14.212683Z"
+    "golden_path_run_id": 35566206394,
+    "pointer_updated_at": "2026-09-21T05:52:53.224695Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
     "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 2,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35539782669,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35539782669",
-    "created_at": "2026-09-20T21:48:08Z",
-    "updated_at": "2026-09-20T21:51:34Z",
+    "id": 35566206394,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35566206394",
+    "created_at": "2026-09-21T05:52:46Z",
+    "updated_at": "2026-09-21T05:52:53Z",
     "attempt": 1,
-    "progress": 72,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
+    "progress": 0,
+    "current_step": "Checkout control plane",
+    "last_successful_step": "Set up job",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
+        "status": "pending",
         "step_number": 3,
         "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
+        "status": "pending",
         "step_number": 7,
         "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
+        "status": "pending",
         "step_number": 8,
         "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
-        "status": "success",
+        "status": "pending",
         "step_number": 15,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
-        "status": "success",
+        "status": "pending",
         "step_number": 21,
         "step_name": "Install production dependencies"
       },
       {
         "label": "Full Preflight",
-        "status": "success",
+        "status": "pending",
         "step_number": 15,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "pending",
         "step_number": 26,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 35,
         "step_name": "Validate publication quality"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 37,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 38,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Checkout control plane"
     },
     {
       "name": "Production Green",
@@ -119,55 +119,55 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "status": "yellow",
+      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": {
-    "signature": "35539782669:33:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "critical",
+    "signature": "35566206394:none:PUBLISHABLE_CODEFIX_REQUIRED",
+    "severity": "warning",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 33,
-    "self_heal_status": "ARMED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_RUNNING",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
   },
   "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "status": "yellow",
+    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
+    "last_step": null
   },
   "recovery": {
-    "status": "ARMED",
+    "status": "REPLAY_RUNNING",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 35539782669,
-    "replay_run_id": null,
+    "replay_run_id": 35566206394,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "ARMED",
+    "source_status": "REPLAY_DISPATCHED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-20T21:51:34Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-09-21T05:52:53.224695Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-20T21:51:45.078053Z",
