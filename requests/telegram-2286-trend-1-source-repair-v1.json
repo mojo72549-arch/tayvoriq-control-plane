@@ -424,7 +424,7 @@
     "request_substate": "DISPATCHED",
     "failed_run_id": 35629529501,
     "failure_signature": "d68e34e2645e033a7c2f",
-    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
+    "failure_state": "",
     "failed_control_plane_sha": "09cc44f46bb38a0d2efebd43be522bf616a3baf6",
     "failed_implementation_sha": "bc8ea406c2ce909f63303b496eeab3e1746eb76e",
     "recovery_generation": 2,
@@ -443,7 +443,8 @@
     "replay_run_id": 35630304906,
     "replayed_at": "2026-09-21T17:10:35.907081Z",
     "replay_implementation_sha": "bc8ea406c2ce909f63303b496eeab3e1746eb76e",
-    "codefix_detection_reason": "verified-request-bound-overlay"
+    "codefix_detection_reason": "verified-request-bound-overlay",
+    "last_failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE"
   },
   "replay_bound_by": "tayvoriq-x-replay-start-guard",
   "replay_trigger_sha": "cb58674dc3df49b0fe1c1e6074b823a52f120acc",
