@@ -93,6 +93,7 @@ jobs:
           EVENT_TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
           EVENT_TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
           EVENT_SOURCE_REQUEST_ID: ${{ github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
+          EVENT_RECOVERY_GENERATION: ${{ github.event.inputs.recovery_generation || github.event.client_payload.recovery_generation || '' }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -111,6 +112,28 @@ jobs:
               or request.get("source_request_id")
               or ""
           ).strip()
+          generation_candidates = [
+              os.environ.get("EVENT_RECOVERY_GENERATION"),
+              request.get("recovery_generation"),
+          ]
+          if source_request_id:
+              durable = Path("requests") / f"{source_request_id}.json"
+              if durable.is_file():
+                  try:
+                      durable_request = json.loads(durable.read_text(encoding="utf-8"))
+                  except Exception:
+                      durable_request = {}
+                  generation_candidates.append(durable_request.get("recovery_generation"))
+          recovery_generation = 0
+          for value in generation_candidates:
+              if value in (None, ""):
+                  continue
+              try:
+                  recovery_generation = max(recovery_generation, int(value))
+              except (TypeError, ValueError):
+                  raise SystemExit("CONTROL_PLANE_RECOVERY_GENERATION_INVALID")
+          if recovery_generation < 0:
+              raise SystemExit("CONTROL_PLANE_RECOVERY_GENERATION_INVALID")
           if not topic or any(char in topic for char in "\r\n"):
               raise SystemExit("CONTROL_PLANE_TOPIC_RESOLUTION_FAILED")
           if not trend_id or any(char in trend_id for char in "\r\n"):
@@ -125,15 +148,18 @@ jobs:
               handle.write(f"TOPIC={topic}\n")
               handle.write(f"TREND_ID={trend_id}\n")
               handle.write(f"SOURCE_REQUEST_ID_PIN={source_request_id}\n")
+              handle.write(f"TAYVORIQ_RECOVERY_GENERATION={recovery_generation}\n")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"trend_id={trend_id}\n")
               handle.write(f"source_request_id={source_request_id}\n")
+              handle.write(f"recovery_generation={recovery_generation}\n")
           print(json.dumps({
               "request_resolution": "approved-x-request",
               "topic": topic,
               "trend_id": trend_id,
               "source_request_id": source_request_id or None,
               "source_request_pinned": bool(source_request_id),
+              "recovery_generation": recovery_generation,
               "event_topic_override": bool(os.environ.get("EVENT_TOPIC")),
               "quality_gates_weakened": False,
           }, ensure_ascii=False))
