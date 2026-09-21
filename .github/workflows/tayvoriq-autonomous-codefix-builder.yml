@@ -256,6 +256,7 @@ jobs:
         shell: bash
         env:
           REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          REQUEST_FILE: ${{ steps.owner.outputs.request_file }}
           RUN_ID: ${{ steps.owner.outputs.run_id }}
           FAILURE_SIGNATURE: ${{ steps.owner.outputs.failure_signature }}
         run: |
@@ -288,11 +289,32 @@ jobs:
           Path(".github/state/tayvoriq-autocodefix-candidate.json").write_text(
               json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"
           )
+          request_path=Path(os.environ["REQUEST_FILE"])
+          if not request_path.is_file():
+              raise SystemExit("AUTOCODEFIX_HANDOFF_REQUEST_MISSING")
+          request=json.loads(request_path.read_text(encoding="utf-8"))
+          codefix=request.get("codefix_recovery") if isinstance(request.get("codefix_recovery"),dict) else {}
+          if str(request.get("request_id") or "") != os.environ["REQUEST_ID"]:
+              raise SystemExit("AUTOCODEFIX_HANDOFF_REQUEST_ID_MISMATCH")
+          if str(request.get("status") or "") != "DISPATCHED":
+              raise SystemExit("AUTOCODEFIX_HANDOFF_REQUEST_NOT_DISPATCHED")
+          if codefix.get("status") not in {"ARMED","REPLAY_DISPATCHED"}:
+              raise SystemExit("AUTOCODEFIX_HANDOFF_REQUEST_NOT_CODEFIX_BOUND")
+          if int(codefix.get("failed_run_id") or 0) != int(os.environ["RUN_ID"]):
+              raise SystemExit("AUTOCODEFIX_HANDOFF_FAILED_RUN_MISMATCH")
+          if str(codefix.get("failure_signature") or "") != os.environ["FAILURE_SIGNATURE"]:
+              raise SystemExit("AUTOCODEFIX_HANDOFF_FAILURE_SIGNATURE_MISMATCH")
+          codefix["verified_overlay_patch_sha256"]=os.environ["PATCH_SHA"]
+          codefix["verified_overlay_base_sha"]=os.environ["BASE_SHA"]
+          codefix["verified_overlay_at"]=payload["created_at"]
+          codefix["quality_gates_weakened"]=False
+          request["codefix_recovery"]=codefix
+          request_path.write_text(json.dumps(request,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
           print(json.dumps(payload,ensure_ascii=False))
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/state/tayvoriq-autocodefix-candidate.json .github/state/tayvoriq-autocodefix-candidate.patch
+          git add .github/state/tayvoriq-autocodefix-candidate.json .github/state/tayvoriq-autocodefix-candidate.patch "$REQUEST_FILE"
           git commit -m "ops(tayvoriq): publish verified Studio codefix handoff ${REQUEST_ID}"
           git push origin HEAD:main
           echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
