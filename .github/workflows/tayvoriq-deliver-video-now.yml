@@ -461,6 +461,7 @@ jobs:
             exit 0
           fi
 
+          set +e
           python - "$meta" "$patch" "$SOURCE_REQUEST_ID_PIN" "$EXPECTED_IMPLEMENTATION_SHA" <<'PY'
           import hashlib,json,sys
           from pathlib import Path
@@ -507,6 +508,7 @@ jobs:
           },ensure_ascii=False))
           PY
           verify_rc=$?
+          set -e
           if [ "$verify_rc" = "2" ]; then
             echo "applied=false" >> "$GITHUB_OUTPUT"
             exit 0
