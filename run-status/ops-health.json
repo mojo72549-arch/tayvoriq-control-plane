@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T17:44:24.266302Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-21T17:48:06.980508Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -16,7 +16,7 @@
     "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 2,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "source_count": 2,
@@ -25,17 +25,17 @@
   },
   "run": {
     "id": 35633492937,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35633492937",
     "created_at": "2026-09-21T17:40:20Z",
-    "updated_at": "2026-09-21T17:44:17Z",
+    "updated_at": "2026-09-21T17:46:48Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
-    "failed_step": null,
-    "failed_step_number": null,
+    "progress": 72,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Exact-request replay readiness gate",
+    "failed_step_number": 24,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -63,7 +63,7 @@
       },
       {
         "label": "Dependencies",
-        "status": "pending",
+        "status": "success",
         "step_number": 22,
         "step_name": "Install production dependencies"
       },
@@ -75,31 +75,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 27,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 34,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 36,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 40,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 41,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Checkout review pages"
+      "status": "red",
+      "detail": "Exact-request replay readiness gate"
     },
     {
       "name": "Production Green",
@@ -119,40 +119,61 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "35633492937:24:DETERMINISTIC_PREFLIGHT_FAILURE",
+    "severity": "critical",
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
+    "failed_step": "Exact-request replay readiness gate",
+    "failed_step_number": 24,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "failure_state": null,
-    "failed_run_id": 35630304906,
-    "replay_run_id": 35633492937,
+    "status": "ARMED",
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
+    "failed_run_id": 35633492937,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
+    "source_status": "ARMED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-21T17:46:48Z",
+      "title": "Workflow-Fehler",
+      "detail": "Exact-request replay readiness gate"
+    },
+    {
+      "at": "2026-09-21T17:46:56.434289Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
     {
       "at": "2026-09-21T17:40:28.107786Z",
       "title": "DISPATCHED",
@@ -177,11 +198,6 @@
       "at": "2026-09-21T17:03:27.283198Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-21T17:03:13.900763Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     }
   ]
 }
