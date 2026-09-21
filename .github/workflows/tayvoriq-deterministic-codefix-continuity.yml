@@ -485,12 +485,40 @@ jobs:
           echo "current_impl_sha=$current_impl" >> "$GITHUB_OUTPUT"
           echo "CODEFIX_REVISION_CHECK:$detected:$reason"
 
+      - name: Start autonomous guarded codefix builder
+        id: autocodefix
+        if: >-
+          steps.pending.outputs.found == 'true' &&
+          steps.revision.outputs.detected != 'true' &&
+          (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'TAYVORIQ Production Green Promoter')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          active_count=$(gh run list \
+            --workflow tayvoriq-autonomous-codefix-builder.yml \
+            --limit 20 \
+            --json status \
+            --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
+          if [ "$active_count" -gt 0 ]; then
+            echo "AUTOCODEFIX_BUILDER_ALREADY_ACTIVE:$active_count"
+            echo "dispatched=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh workflow run tayvoriq-autonomous-codefix-builder.yml --ref main \
+            -f "failed_run_id=${{ steps.pending.outputs.run_id }}" \
+            -f "source_request_id=${{ steps.pending.outputs.request_id }}"
+          echo "dispatched=true" >> "$GITHUB_OUTPUT"
+          echo "AUTOCODEFIX_BUILDER_DISPATCHED:${{ steps.pending.outputs.request_id }}:${{ steps.pending.outputs.run_id }}"
+
       # The promoter explicitly dispatches this workflow after a successful
       # GITHUB_TOKEN-backed pointer commit, whose push event is suppressed by GitHub.
       - name: Request Production Green reconciliation for armed codefix
         if: >-
           steps.pending.outputs.found == 'true' &&
           steps.revision.outputs.detected != 'true' &&
+          steps.autocodefix.outputs.dispatched != 'true' &&
           (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'TAYVORIQ Production Green Promoter')
         shell: bash
         env:
