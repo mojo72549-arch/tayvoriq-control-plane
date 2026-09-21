@@ -1,16 +1,18 @@
 diff --git a/tools/tayvoriq_dual_platform_render_local_repair.py b/tools/tayvoriq_dual_platform_render_local_repair.py
-index f4ce9f1b..725214a9 100644
+index f4ce9f1b..ccd32c55 100644
 --- a/tools/tayvoriq_dual_platform_render_local_repair.py
 +++ b/tools/tayvoriq_dual_platform_render_local_repair.py
-@@ -37,6 +37,11 @@ def _truthy(value: Any) -> bool:
-     return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
- 
- 
-+def _safe_git_path(path: str) -> str:
-+    """Ensure git paths are separated from revisions to prevent ambiguous argument errors."""
-+    return f"-- {path}"
-+
-+
- def _clean(value: Any) -> str:
-     return " ".join(str(value or "").split())
+@@ -3,6 +3,13 @@ from __future__ import annotations
+ import json
+ import os
+ import re
++import sys
++import subprocess
++try:
++    import requests
++    from PIL import Image
++except ImportError:
++    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "Pillow"])
+ from pathlib import Path
+ from typing import Any
  
