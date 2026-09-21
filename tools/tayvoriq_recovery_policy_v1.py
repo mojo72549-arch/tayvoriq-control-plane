@@ -88,6 +88,9 @@ TRANSIENT_PATTERNS = (
 DETERMINISTIC_PREFLIGHT_PATTERNS = (
     r"\bpreflight_failed\b",
     r"production blocked before render:\s*preflight outcome=failure",
+    r"\breplay_readiness_failed\b",
+    r"repeated_failure_request_specific_handler_required",
+    r"production blocked before render:\s*repeated-failure request is not replay-ready",
     r"=+ failures =+",
     r"failed tests/[^\s]+",
     r"pytest[^\n]*returncode[^\n]*1",
