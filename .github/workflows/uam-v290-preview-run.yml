@@ -31,6 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$UAM_VERCEL_TOKEN" || { echo "::error::UAM_VERCEL_TOKEN missing"; exit 2; }
+          ACTUAL_HASH=$(printf '%s' "$UAM_VERCEL_TOKEN" | sha256sum | awk '{print $1}')
+          test "$ACTUAL_HASH" = "cc98b36bebeb7ae6cf457b028950d00b6c84dc41c637de58813fb1d1740142c5" || { echo "::error::UAM_VERCEL_TOKEN differs from expected token"; exit 3; }
           test "$VERCEL_PROJECT_ID" = "prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP"
           test "$VERCEL_ORG_ID" = "team_Maifclp5V8xrU2vIyzXHpbyH"
 
