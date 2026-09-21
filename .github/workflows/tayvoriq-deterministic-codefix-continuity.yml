@@ -210,7 +210,7 @@ jobs:
           github.event.workflow_run.conclusion != 'success'
         shell: bash
         env:
-          FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
+          FAILED_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || github.event.inputs.failed_run_id }}
           ACTIVE_FOUND: ${{ steps.active.outputs.found }}
           ACTIVE_RUN_ID: ${{ steps.active.outputs.run_id }}
           ACTIVE_REQUEST_ID: ${{ steps.active.outputs.request_id }}
@@ -229,11 +229,21 @@ jobs:
       - name: Arm deterministic active Golden Path failure
         id: arm
         if: >-
-          github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'TAYVORIQ-X Golden Path' &&
-          github.event.workflow_run.conclusion != 'success' &&
           steps.active.outputs.found == 'true' &&
-          github.event.workflow_run.id == fromJSON(steps.active.outputs.run_id)
+          (
+            (
+              github.event_name == 'workflow_run' &&
+              github.event.workflow_run.name == 'TAYVORIQ-X Golden Path' &&
+              github.event.workflow_run.conclusion != 'success' &&
+              github.event.workflow_run.id == fromJSON(steps.active.outputs.run_id)
+            ) ||
+            (
+              github.event_name == 'workflow_dispatch' &&
+              github.event.inputs.failed_run_id != '' &&
+              fromJSON(github.event.inputs.failed_run_id) == fromJSON(steps.active.outputs.run_id) &&
+              github.event.inputs.source_request_id == steps.active.outputs.request_id
+            )
+          )
         shell: bash
         env:
           FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
@@ -311,8 +321,15 @@ jobs:
           if str(data.get('request_id') or '')!=expected_id or int(data.get('golden_path_run_id') or 0)!=run_id:
               print('STALE_REQUEST_OWNER'); raise SystemExit(0)
           existing=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
-          if str(existing.get('status') or '') in {'ARMED','REPLAY_DISPATCHED'}:
+          existing_status=str(existing.get('status') or '')
+          try:
+              existing_replay_run=int(existing.get('replay_run_id') or 0)
+          except (TypeError,ValueError):
+              existing_replay_run=0
+          if existing_status == 'ARMED':
               print('ALREADY_HANDLED'); raise SystemExit(0)
+          if existing_status == 'REPLAY_DISPATCHED' and existing_replay_run != run_id:
+              print('ALREADY_HANDLED_OTHER_REPLAY'); raise SystemExit(0)
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z'); generation=max(0,int(data.get('recovery_generation') or 0))
           data['codefix_recovery']={
               'status':'ARMED','request_substate':'AWAITING_CODEFIX','failed_run_id':run_id,
@@ -333,7 +350,7 @@ jobs:
           print(json.dumps({'request_id':expected_id,'topic':str(data.get('topic') or ''),'generation':generation},ensure_ascii=False))
           PY
             )
-            if [ "$result" = "STALE_ACTIVE_OWNER" ] || [ "$result" = "STALE_REQUEST_OWNER" ] || [ "$result" = "ALREADY_HANDLED" ]; then
+            if [ "$result" = "STALE_ACTIVE_OWNER" ] || [ "$result" = "STALE_REQUEST_OWNER" ] || [ "$result" = "ALREADY_HANDLED" ] || [ "$result" = "ALREADY_HANDLED_OTHER_REPLAY" ]; then
               echo 'armed=false' >> "$GITHUB_OUTPUT"; exit 0
             fi
             git add -- "$OWNER"
