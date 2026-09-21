@@ -1,4 +1,4 @@
-name: UAM V290 Secure Bootstrap
+name: UAM V290 Final Preview Deploy
 
 on:
   push:
@@ -8,33 +8,134 @@ on:
       - .github/workflows/uam-v290-preview-run.yml
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: uam-v290-final-preview
+  cancel-in-progress: false
 
 jobs:
-  bootstrap:
+  deploy-preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     env:
       WRAP_SECRET: ${{ secrets.UAM_VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_Maifclp5V8xrU2vIyzXHpbyH
+      VERCEL_PROJECT_ID: prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout encrypted transport
+        uses: actions/checkout@v4
 
-      - name: Generate protected transport key
+      - name: Recover protected deployment credentials and source
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$WRAP_SECRET" || { echo "::error::UAM_VERCEL_TOKEN secret missing"; exit 2; }
-          mkdir -p .uam-v290
-          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out /tmp/uam-private.pem
-          openssl rsa -pubout -in /tmp/uam-private.pem -out .uam-v290/transport-public.pem
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
-            -in /tmp/uam-private.pem \
-            -out /tmp/uam-private.pem.enc \
+          test -n "$WRAP_SECRET" || { echo "::error::Transport wrap secret missing"; exit 2; }
+          mkdir -p /tmp/uam-v290/src
+
+          base64 -d .uam-v290/transport-private.pem.enc.b64 > /tmp/transport-private.pem.enc
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in /tmp/transport-private.pem.enc \
+            -out /tmp/transport-private.pem \
             -pass env:WRAP_SECRET
-          base64 -w 0 /tmp/uam-private.pem.enc > .uam-v290/transport-private.pem.enc.b64
-          rm -f /tmp/uam-private.pem /tmp/uam-private.pem.enc
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .uam-v290/transport-public.pem .uam-v290/transport-private.pem.enc.b64
-          git commit -m "ops: bootstrap protected UAM transport key"
-          git push origin HEAD:uam-v290-preview-run
+
+          base64 -d .uam-v290/vercel-token.rsa.b64 > /tmp/vercel-token.rsa
+          openssl pkeyutl -decrypt \
+            -inkey /tmp/transport-private.pem \
+            -pkeyopt rsa_padding_mode:oaep \
+            -pkeyopt rsa_oaep_md:sha256 \
+            -in /tmp/vercel-token.rsa > /tmp/vercel-token.txt
+
+          VERCEL_TOKEN_REAL=$(cat /tmp/vercel-token.txt)
+          test -n "$VERCEL_TOKEN_REAL"
+          echo "::add-mask::$VERCEL_TOKEN_REAL"
+          {
+            echo "UAM_REAL_VERCEL_TOKEN<<EOF_TOKEN"
+            printf '%s\n' "$VERCEL_TOKEN_REAL"
+            echo "EOF_TOKEN"
+          } >> "$GITHUB_ENV"
+
+          base64 -d .uam-v290/source-key.rsa.b64 > /tmp/source-key.rsa
+          openssl pkeyutl -decrypt \
+            -inkey /tmp/transport-private.pem \
+            -pkeyopt rsa_padding_mode:oaep \
+            -pkeyopt rsa_oaep_md:sha256 \
+            -in /tmp/source-key.rsa > /tmp/source-key.txt
+
+          cat .uam-v290/secure-payload-00.b64 \
+              .uam-v290/secure-payload-01.b64 \
+              .uam-v290/secure-payload-02.b64 \
+              .uam-v290/secure-payload-03.b64 \
+              .uam-v290/secure-payload-04.b64 > /tmp/source.tar.xz.enc.b64
+          base64 -d /tmp/source.tar.xz.enc.b64 > /tmp/source.tar.xz.enc
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in /tmp/source.tar.xz.enc \
+            -out /tmp/source.tar.xz \
+            -pass file:/tmp/source-key.txt
+          tar -xJf /tmp/source.tar.xz -C /tmp/uam-v290/src
+
+          rm -f /tmp/transport-private.pem.enc /tmp/transport-private.pem \
+            /tmp/vercel-token.rsa /tmp/vercel-token.txt /tmp/source-key.rsa \
+            /tmp/source-key.txt /tmp/source.tar.xz.enc.b64 /tmp/source.tar.xz.enc /tmp/source.tar.xz
+
+      - name: Verify V290 engineering package
+        working-directory: /tmp/uam-v290/src
+        shell: bash
+        run: |
+          set -euo pipefail
+          node verify.mjs
+          timeout 420s node verify-sweep.mjs
+          node build.mjs
+          test -f dist/index.html
+
+      - name: Verify exact existing Vercel target
+        shell: bash
+        run: |
+          set -euo pipefail
+          INFO=$(curl -fsS \
+            -H "Authorization: Bearer $UAM_REAL_VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")
+          test "$(jq -r '.id' <<<"$INFO")" = "$VERCEL_PROJECT_ID"
+          test "$(jq -r '.name' <<<"$INFO")" = "uam-biograd-mobile-v290"
+          echo "Existing Vercel target verified: uam-biograd-mobile-v290"
+
+      - name: Bind local source to existing project
+        working-directory: /tmp/uam-v290/src
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          printf '%s\n' '{"projectId":"prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP","orgId":"team_Maifclp5V8xrU2vIyzXHpbyH","projectName":"uam-biograd-mobile-v290"}' > .vercel/project.json
+
+      - name: Deploy PREVIEW only
+        id: deploy
+        working-directory: /tmp/uam-v290/src
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest deploy --yes \
+            --token "$UAM_REAL_VERCEL_TOKEN" \
+            --scope mo61 2>&1 | tee /tmp/vercel-preview.log
+
+          URL=$(grep -Eo 'https://[^[:space:]]+\.vercel\.app' /tmp/vercel-preview.log | tail -n 1 || true)
+          test -n "$URL" || { echo "::error::Vercel did not return a Preview URL"; exit 20; }
+          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "::notice::Preview created: $URL"
+          {
+            echo "### UAM V290 Preview"
+            echo "$URL"
+            echo ""
+            echo "Existing project: uam-biograd-mobile-v290"
+            echo "Production changed: NO"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify preview deployment
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        run: |
+          set -euo pipefail
+          echo "Preview: $PREVIEW_URL"
+          npx --yes vercel@latest inspect "$PREVIEW_URL" --wait \
+            --token "$UAM_REAL_VERCEL_TOKEN" \
+            --scope mo61
