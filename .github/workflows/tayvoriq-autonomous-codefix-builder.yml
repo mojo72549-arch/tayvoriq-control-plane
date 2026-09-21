@@ -14,7 +14,7 @@ on:
 
 permissions:
   actions: read
-  contents: read
+  contents: write
 
 concurrency:
   group: tayvoriq-autonomous-codefix-builder
@@ -206,29 +206,57 @@ jobs:
           python -m pytest -q             tests/test_tayvoriq_publishability_codefix_context.py             tests/test_tayvoriq_verified_request_runtime_recovery.py             tests/test_tayvoriq_pronunciation_audit_contract.py             tests/test_tayvoriq_visual_audit_resilience.py
           python tools/tayvoriq_lightweight_preflight.py
 
-      - name: Push verified Studio candidate
-        id: push
+      - name: Publish verified patch handoff
+        id: handoff
         if: steps.existing.outputs.ready != 'true'
         working-directory: implementation
         shell: bash
         env:
           REQUEST_ID: ${{ steps.owner.outputs.request_id }}
           RUN_ID: ${{ steps.owner.outputs.run_id }}
+          FAILURE_SIGNATURE: ${{ steps.owner.outputs.failure_signature }}
         run: |
           set -euo pipefail
+          git diff --binary > /tmp/tayvoriq-autocodefix-candidate.patch
+          test -s /tmp/tayvoriq-autocodefix-candidate.patch || { echo 'AUTOCODEFIX_EMPTY_VERIFIED_PATCH'; exit 1; }
+          base_sha="$(git rev-parse HEAD)"
+          patch_sha="$(sha256sum /tmp/tayvoriq-autocodefix-candidate.patch | awk '{print $1}')"
+          cd "$GITHUB_WORKSPACE"
+          git pull --rebase origin main
+          mkdir -p .github/state
+          cp /tmp/tayvoriq-autocodefix-candidate.patch .github/state/tayvoriq-autocodefix-candidate.patch
+          BASE_SHA="$base_sha" PATCH_SHA="$patch_sha" python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          payload={
+              "schema":"tayvoriq-autocodefix-handoff-v1",
+              "state":"PATCH_VERIFIED_PENDING_STUDIO_APPLY",
+              "request_id":os.environ["REQUEST_ID"],
+              "failed_run_id":int(os.environ["RUN_ID"]),
+              "failure_signature":os.environ["FAILURE_SIGNATURE"],
+              "implementation_repository":"mojo72549-arch/shorts-agent-studio",
+              "target_branch":"feature/multi-platform-distribution-package",
+              "base_sha":os.environ["BASE_SHA"],
+              "patch_sha256":os.environ["PATCH_SHA"],
+              "quality_gates_weakened":False,
+              "created_at":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+          }
+          Path(".github/state/tayvoriq-autocodefix-candidate.json").write_text(
+              json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"
+          )
+          print(json.dumps(payload,ensure_ascii=False))
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- tools runtime_patches src/runtime_hotfixes tests
-          git diff --cached --quiet && { echo 'AUTOCODEFIX_NOTHING_TO_COMMIT'; exit 1; }
-          git commit -m "fix(tayvoriq): auto-codefix(${REQUEST_ID}) run ${RUN_ID}"
-          git push origin "HEAD:${IMPLEMENTATION_BRANCH}"
-          sha="$(git rev-parse HEAD)"
-          echo "candidate_sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "AUTOCODEFIX_STUDIO_CANDIDATE_PUSHED:$sha"
+          git add .github/state/tayvoriq-autocodefix-candidate.json .github/state/tayvoriq-autocodefix-candidate.patch
+          git commit -m "ops(tayvoriq): publish verified Studio codefix handoff ${REQUEST_ID}"
+          git push origin HEAD:main
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "patch_sha256=$patch_sha" >> "$GITHUB_OUTPUT"
+          echo "AUTOCODEFIX_VERIFIED_HANDOFF_PUBLISHED:$REQUEST_ID:$patch_sha"
 
-      - name: Request Production Green verification
-        shell: bash
+      - name: Handoff ready for Studio-owned apply
+        if: steps.handoff.outputs.patch_sha256 != ''
         run: |
-          set -euo pipefail
-          gh workflow run tayvoriq-production-green-promoter.yml             --repo mojo72549-arch/tayvoriq-control-plane             --ref main
-          echo "AUTOCODEFIX_PRODUCTION_GREEN_PROMOTER_DISPATCHED"
+          echo "AUTOCODEFIX_WAITING_FOR_STUDIO_OWNED_APPLIER:${{ steps.owner.outputs.request_id }}:${{ steps.handoff.outputs.patch_sha256 }}"
