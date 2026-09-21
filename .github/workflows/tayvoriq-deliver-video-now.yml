@@ -727,17 +727,50 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          request="../requests/${SOURCE_REQUEST_ID_PIN}.json"
           test -n "$SOURCE_REQUEST_ID_PIN" || {
             echo "REPLAY_READINESS_SOURCE_REQUEST_PIN_MISSING"
             exit 1
           }
-          test -f "$request" || {
-            echo "REPLAY_READINESS_REQUEST_FILE_MISSING:$request"
+
+          runtime_request="$RUNNER_TEMP/tayvoriq-replay-request-${GITHUB_RUN_ID}.json"
+          bound=false
+          for poll in $(seq 1 30); do
+            git -C .. fetch origin main --quiet
+            if git -C .. show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
+              if python - "$runtime_request" "$GITHUB_RUN_ID" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          run_id=int(sys.argv[2])
+          codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+          repeated=bool(data.get('previous_golden_path_run_ids'))
+          if not repeated:
+              raise SystemExit(0)
+          if (
+              str(data.get('status') or '')=='DISPATCHED'
+              and int(data.get('golden_path_run_id') or 0)==run_id
+              and codefix.get('status')=='REPLAY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('replay_run_id') or 0)==run_id
+          ):
+              raise SystemExit(0)
+          raise SystemExit(1)
+          PY
+              then
+                bound=true
+                break
+              fi
+            fi
+            sleep 3
+          done
+          [ "$bound" = "true" ] || {
+            echo "REPLAY_READINESS_CANONICAL_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
             exit 1
           }
+
+          echo "REPLAY_READINESS_CANONICAL_REQUEST_BOUND:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
           python tools/tayvoriq_replay_readiness_gate_v1.py \
-            --request "$request" \
+            --request "$runtime_request" \
+            --production-manifest out/control-plane/production-manifest.json \
             --report-out out/control-plane/replay-readiness.json
 
       - name: Telegram progress - production active
