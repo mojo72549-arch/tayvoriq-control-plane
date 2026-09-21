@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T06:05:26.747867Z",
+  "generated_at": "2026-09-21T06:39:56.980406Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 2,
     "recovery_owner": "tayvoriq-autonomous-codefix-builder",
     "source_count": 2,
@@ -118,8 +118,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -133,16 +133,16 @@
     }
   ],
   "incident": {
-    "signature": "35566496648:24:PUBLISHABLE_CODEFIX_REQUIRED",
+    "signature": "35566496648:24:DETERMINISTIC_PREFLIGHT_FAILURE",
     "severity": "critical",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
     "failed_step": "Exact-request replay readiness gate",
     "failed_step_number": 24,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
@@ -150,29 +150,29 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 35539782669,
-    "replay_run_id": 35566496648,
+    "status": "ARMED",
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
+    "failed_run_id": 35566496648,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
     "owner": "tayvoriq-autonomous-codefix-builder",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "source_status": "ARMED",
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
       "at": "2026-09-21T06:05:18Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 35566496648 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-21T06:05:18Z",
       "title": "Workflow-Fehler",
       "detail": "Exact-request replay readiness gate"
+    },
+    {
+      "at": "2026-09-21T06:37:56.560507Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     },
     {
       "at": "2026-09-21T05:58:00Z",
@@ -198,11 +198,6 @@
       "at": "2026-09-20T21:48:14.212683Z",
       "title": "DISPATCHED",
       "detail": "bounded-shared-policy-recovery"
-    },
-    {
-      "at": "2026-09-20T20:49:34Z",
-      "title": "DISPATCHED",
-      "detail": "bind repaired source packet to replay run"
     }
   ]
 }
