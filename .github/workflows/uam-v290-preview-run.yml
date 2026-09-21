@@ -32,13 +32,10 @@ jobs:
           set -euo pipefail
           test -n "$UAM_VERCEL_TOKEN" || { echo "::error::UAM_VERCEL_TOKEN missing"; exit 2; }
           CLEAN_TOKEN=$(printf '%s' "$UAM_VERCEL_TOKEN" | tr -d '\r\n\t ' | sed -e 's/^["'\''"]//' -e 's/["'\''"]$//')
-          CLEAN_HASH=$(printf '%s' "$CLEAN_TOKEN" | sha256sum | awk '{print $1}')
-          if [ "$CLEAN_HASH" = "cc98b36bebeb7ae6cf457b028950d00b6c84dc41c637de58813fb1d1740142c5" ]; then
-            echo "Token matches after harmless whitespace/quote normalization."
-          else
-            echo "::error::UAM_VERCEL_TOKEN is a different token value, not a formatting issue."
-            exit 3
-          fi
+          INFO=$(curl -fsS -H "Authorization: Bearer $CLEAN_TOKEN" "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID") || { echo "::error::Stored GitHub secret is not accepted by Vercel for the target project"; exit 3; }
+          test "$(jq -r '.id' <<<"$INFO")" = "$VERCEL_PROJECT_ID" || { echo "::error::Stored token cannot access the fixed Vercel project"; exit 4; }
+          test "$(jq -r '.name' <<<"$INFO")" = "uam-biograd-mobile-v290" || exit 5
+          echo "Stored GitHub secret is a valid Vercel credential for the fixed project."
           echo "UAM_VERCEL_TOKEN_CLEAN=$CLEAN_TOKEN" >> "$GITHUB_ENV"
           test "$VERCEL_PROJECT_ID" = "prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP"
           test "$VERCEL_ORG_ID" = "team_Maifclp5V8xrU2vIyzXHpbyH"
