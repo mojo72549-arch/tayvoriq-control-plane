@@ -1,14 +1,16 @@
-diff --git a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-index d4aa1cd4..935da7a6 100644
---- a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-+++ b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-@@ -279,7 +279,8 @@ def _install_verified_request_editorial_depth(depth: Any) -> None:
-         confirmed: list[str] = []
-         for key in _DEPTH_KEYS:
-             text = depth._clean(raw.get(key))
--            if len(text.split()) >= 5 and text not in confirmed:
-+            words = text.split()
-+            if len(words) >= 5 and text not in confirmed:
-                 confirmed.append(text)
+diff --git a/tools/tayvoriq_dual_platform_render_local_repair.py b/tools/tayvoriq_dual_platform_render_local_repair.py
+index f4ce9f1b..725214a9 100644
+--- a/tools/tayvoriq_dual_platform_render_local_repair.py
++++ b/tools/tayvoriq_dual_platform_render_local_repair.py
+@@ -37,6 +37,11 @@ def _truthy(value: Any) -> bool:
+     return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
  
-         # Fail closed. A verified request still needs three concrete source-bound
+ 
++def _safe_git_path(path: str) -> str:
++    """Ensure git paths are separated from revisions to prevent ambiguous argument errors."""
++    return f"-- {path}"
++
++
+ def _clean(value: Any) -> str:
+     return " ".join(str(value or "").split())
+ 
