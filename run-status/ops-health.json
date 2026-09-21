@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T10:18:47.300461Z",
+  "generated_at": "2026-09-21T11:53:44.389297Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35566496648,
-    "pointer_updated_at": "2026-09-21T05:58:00Z"
+    "golden_path_run_id": 35591653657,
+    "pointer_updated_at": "2026-09-21T10:59:44.012201Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
@@ -18,19 +18,19 @@
     "slot": null,
     "state": "AWAITING_CODEFIX",
     "recovery_generation": 2,
-    "recovery_owner": "tayvoriq-autonomous-codefix-builder",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35566496648,
+    "id": 35591653657,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35566496648",
-    "created_at": "2026-09-21T05:57:56Z",
-    "updated_at": "2026-09-21T06:05:18Z",
-    "attempt": 3,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35591653657",
+    "created_at": "2026-09-21T10:59:37Z",
+    "updated_at": "2026-09-21T11:01:43Z",
+    "attempt": 1,
     "progress": 72,
     "current_step": null,
     "last_successful_step": "Complete job",
@@ -114,7 +114,7 @@
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "ba98b986f89d…"
+      "detail": "4b746fa5762a…"
     },
     {
       "name": "Self-Heal",
@@ -133,7 +133,7 @@
     }
   ],
   "incident": {
-    "signature": "35566496648:24:DETERMINISTIC_PREFLIGHT_FAILURE",
+    "signature": "35591653657:24:DETERMINISTIC_PREFLIGHT_FAILURE",
     "severity": "critical",
     "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
     "failed_step": "Exact-request replay readiness gate",
@@ -152,11 +152,11 @@
   "recovery": {
     "status": "ARMED",
     "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "failed_run_id": 35566496648,
+    "failed_run_id": 35591653657,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
-    "owner": "tayvoriq-autonomous-codefix-builder",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "source_status": "ARMED",
@@ -165,9 +165,29 @@
   },
   "events": [
     {
-      "at": "2026-09-21T06:05:18Z",
+      "at": "2026-09-21T11:01:43Z",
       "title": "Workflow-Fehler",
       "detail": "Exact-request replay readiness gate"
+    },
+    {
+      "at": "2026-09-21T11:01:55.692419Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
+    {
+      "at": "2026-09-21T10:59:44.012201Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-21T10:19:42.598150Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
+    {
+      "at": "2026-09-21T10:18:56.925552Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-21T06:37:56.560507Z",
@@ -178,26 +198,6 @@
       "at": "2026-09-21T05:58:00Z",
       "title": "DISPATCHED",
       "detail": "verified-overlay-hardening-v2-replay"
-    },
-    {
-      "at": "2026-09-21T05:55:45Z",
-      "title": "DISPATCHED",
-      "detail": "verified-request-bound-autocodefix-overlay-replay"
-    },
-    {
-      "at": "2026-09-21T05:52:53.224695Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-20T21:51:45.078053Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-20T21:48:14.212683Z",
-      "title": "DISPATCHED",
-      "detail": "bounded-shared-policy-recovery"
     }
   ]
 }
