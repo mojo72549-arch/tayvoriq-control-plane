@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T16:02:40.543671Z",
+  "generated_at": "2026-09-21T16:02:54.966613Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -31,9 +31,9 @@
     "created_at": "2026-09-21T16:00:33Z",
     "updated_at": "2026-09-21T16:00:37Z",
     "attempt": 1,
-    "progress": 38,
-    "current_step": "Install production dependencies",
-    "last_successful_step": "Record immutable production manifest",
+    "progress": 45,
+    "current_step": "Restore production model cache",
+    "last_successful_step": "Telegram progress - production active",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -63,7 +63,7 @@
       },
       {
         "label": "Dependencies",
-        "status": "running",
+        "status": "success",
         "step_number": 22,
         "step_name": "Install production dependencies"
       },
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Install production dependencies"
+      "detail": "Restore production model cache"
     },
     {
       "name": "Production Green",
@@ -124,7 +124,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
@@ -146,8 +146,8 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
