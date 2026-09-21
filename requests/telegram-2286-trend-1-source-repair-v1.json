@@ -136,13 +136,14 @@
   "retry_allowed": true,
   "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
   "recovery_generation": 2,
-  "retry_of_run_id": 35539782669,
+  "retry_of_run_id": 35566206394,
   "previous_golden_path_run_ids": [
     35534569381,
     35536771658,
-    35539782669
+    35539782669,
+    35566206394
   ],
-  "golden_path_run_id": 35566206394,
+  "golden_path_run_id": 35566385159,
   "contract_sha256": "509757201d25e3b454d8f2151ff9403927c9861e511781023629ec4f131226e7",
   "source_repair_metadata": {
     "prior_source_label": "telegram_trend_approval_source_editorial_repair",
@@ -177,5 +178,9 @@
     "replay_control_plane_sha": "aeb3c11e80f774a993271a19ca41067cd89f9002",
     "replay_implementation_sha": "bfa6248c3a57cfb62f2f13d5c86a54dbb7826ce5",
     "codefix_detection_reason": "production-green-implementation-changed"
-  }
+  },
+  "replay_bound_by": "tayvoriq-x-replay-start-guard",
+  "replay_trigger_sha": "6a9d79e00ea59d914f1401007818d97a1f82daa6",
+  "replay_start_mode": "push_verified",
+  "replay_dispatched_at": "2026-09-21T05:55:45.369675Z"
 }
