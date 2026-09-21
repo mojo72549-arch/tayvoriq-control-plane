@@ -173,12 +173,15 @@ jobs:
           ):
               print('skip'); raise SystemExit(0)
           actual=hashlib.sha256(patch.read_bytes()).hexdigest()
-          if actual!=str(meta.get('patch_sha256') or ''):
-              raise SystemExit('AUTOCODEFIX_CUMULATIVE_PATCH_HASH_MISMATCH')
+          expected=str(meta.get('patch_sha256') or '')
+          if actual!=expected:
+              print('skip-corrupt-prior-handoff')
+              raise SystemExit(0)
           print('apply')
           PY
           )
           if [ "$decision" != "apply" ]; then
+            echo "AUTOCODEFIX_PRIOR_OVERLAY_DISCARDED:$decision"
             echo "hydrated=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
