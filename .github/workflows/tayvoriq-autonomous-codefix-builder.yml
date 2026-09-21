@@ -1,0 +1,224 @@
+name: TAYVORIQ Autonomous Codefix Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      failed_run_id:
+        description: Exact failed Golden Path run
+        required: true
+        type: string
+      source_request_id:
+        description: Exact active Telegram request
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: tayvoriq-autonomous-codefix-builder
+  cancel-in-progress: false
+
+jobs:
+  build-verified-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      ACTIVE_REQUEST_POINTER: .github/state/tayvoriq-active-production-request.json
+      IMPLEMENTATION_REPO: mojo72549-arch/shorts-agent-studio
+      IMPLEMENTATION_BRANCH: feature/multi-platform-distribution-package
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify exact armed owner
+        id: owner
+        shell: bash
+        env:
+          INPUT_RUN_ID: ${{ inputs.failed_run_id }}
+          INPUT_REQUEST_ID: ${{ inputs.source_request_id }}
+        run: |
+          set -euo pipefail
+          [[ "$INPUT_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'AUTOCODEFIX_RUN_ID_INVALID'; exit 1; }
+          [[ "$INPUT_REQUEST_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || { echo 'AUTOCODEFIX_REQUEST_ID_INVALID'; exit 1; }
+          python - "$ACTIVE_REQUEST_POINTER" "$INPUT_REQUEST_ID" "$INPUT_RUN_ID" "$GITHUB_OUTPUT" <<'PY'
+          import json,sys
+          from pathlib import Path
+          pointer_path=Path(sys.argv[1]); request_id=sys.argv[2]; run_id=int(sys.argv[3]); out=Path(sys.argv[4])
+          if not pointer_path.is_file():
+              raise SystemExit('AUTOCODEFIX_ACTIVE_POINTER_MISSING')
+          pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
+          request_path=Path('requests')/f'{request_id}.json'
+          if not request_path.is_file():
+              raise SystemExit('AUTOCODEFIX_REQUEST_MISSING')
+          data=json.loads(request_path.read_text(encoding='utf-8'))
+          codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+          if pointer.get('schema')!='tayvoriq-active-production-request-v1' or pointer.get('state')!='ACTIVE':
+              raise SystemExit('AUTOCODEFIX_ACTIVE_POINTER_INVALID')
+          if str(pointer.get('request_id') or '')!=request_id or int(pointer.get('golden_path_run_id') or 0)!=run_id:
+              raise SystemExit('AUTOCODEFIX_ACTIVE_OWNER_CHANGED')
+          if str(data.get('request_id') or '')!=request_id or int(data.get('golden_path_run_id') or 0)!=run_id:
+              raise SystemExit('AUTOCODEFIX_REQUEST_OWNER_CHANGED')
+          if codefix.get('status')!='ARMED' or codefix.get('request_substate')!='AWAITING_CODEFIX':
+              raise SystemExit('AUTOCODEFIX_REQUEST_NOT_ARMED')
+          if int(codefix.get('failed_run_id') or 0)!=run_id:
+              raise SystemExit('AUTOCODEFIX_FAILED_RUN_MISMATCH')
+          for field in ('approval_key','source_context_sha256','contract_sha256'):
+              pv=str(pointer.get(field) or '').strip(); rv=str(data.get(field) or '').strip()
+              if pv and pv!=rv:
+                  raise SystemExit(f'AUTOCODEFIX_IMMUTABLE_MISMATCH:{field}')
+          values={
+              'request_file':str(request_path),
+              'request_id':request_id,
+              'run_id':str(run_id),
+              'topic':str(data.get('topic') or '').strip(),
+              'failed_impl_sha':str(codefix.get('failed_implementation_sha') or '').strip(),
+              'failure_state':str(codefix.get('failure_state') or 'PUBLISHABLE_CODEFIX_REQUIRED').strip(),
+              'failure_signature':str(codefix.get('failure_signature') or '').strip(),
+          }
+          with out.open('a',encoding='utf-8') as h:
+              for k,v in values.items(): h.write(f'{k}={v}\n')
+          print(json.dumps(values,ensure_ascii=False))
+          PY
+
+      - name: Capture exact failed-run evidence
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed > /tmp/tayvoriq-codefix-failed.log 2>&1 || true
+          test -s /tmp/tayvoriq-codefix-failed.log || { echo 'AUTOCODEFIX_FAILED_LOG_MISSING'; exit 1; }
+
+      - name: Build guarded repair request
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+          FAILURE_STATE: ${{ steps.owner.outputs.failure_state }}
+          FAILURE_SIGNATURE: ${{ steps.owner.outputs.failure_signature }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          log=Path('/tmp/tayvoriq-codefix-failed.log').read_text(encoding='utf-8',errors='replace')
+          payload={
+              'state':'CODE_REPAIR_REQUIRED',
+              'self_heal_depth':0,
+              'action':'repair_publishability_quality_contract_then_resume_approved_request',
+              'request_id':os.environ['REQUEST_ID'],
+              'failed_run_id':int(os.environ['RUN_ID']),
+              'failure_state':os.environ['FAILURE_STATE'],
+              'failure_signature':os.environ['FAILURE_SIGNATURE'],
+              'traceback_files':[],
+              'log_excerpt':log[-24000:],
+              'safety_contract':{
+                  'exact_request_required':True,
+                  'source_context_must_remain_bound':True,
+                  'quality_gates_weakened':False,
+                  'thresholds_must_not_change':True,
+                  'publication_must_remain_review_gated':True,
+                  'generic_runtime_fix_required':True,
+              },
+          }
+          Path('/tmp/tayvoriq-codefix-request.json').write_text(
+              json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps({'repair_request':'ready','request_id':payload['request_id'],'failure_state':payload['failure_state']},ensure_ascii=False))
+          PY
+
+      - name: Checkout Studio production branch
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: ${{ env.IMPLEMENTATION_BRANCH }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 0
+
+      - name: Resolve existing candidate
+        id: existing
+        working-directory: implementation
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          FAILED_IMPL_SHA: ${{ steps.owner.outputs.failed_impl_sha }}
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          if git log --format='%s' "${FAILED_IMPL_SHA}..HEAD" 2>/dev/null | grep -Fq "auto-codefix(${REQUEST_ID})"; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "AUTOCODEFIX_EXISTING_CANDIDATE:$head"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Python
+        if: steps.existing.outputs.ready != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install guarded repair dependencies
+        if: steps.existing.outputs.ready != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q requests pillow "moviepy==1.0.3" pytest
+
+      - name: Generate guarded Studio patch
+        if: steps.existing.outputs.ready != 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_autonomous_code_repair_v2.py             --request /tmp/tayvoriq-codefix-request.json             --repo .             --provider auto             --report-out out/tayvoriq-self-heal/autonomous-codefix-report.json             --max-provider-attempts 3
+          git diff --check
+          test -n "$(git status --porcelain)" || { echo 'AUTOCODEFIX_NO_PATCH_PRODUCED'; exit 1; }
+
+      - name: Validate generated patch
+        if: steps.existing.outputs.ready != 'true'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools runtime_patches src/runtime_hotfixes tests
+          python -m pytest -q             tests/test_tayvoriq_publishability_codefix_context.py             tests/test_tayvoriq_verified_request_runtime_recovery.py             tests/test_tayvoriq_pronunciation_audit_contract.py             tests/test_tayvoriq_visual_audit_resilience.py
+          python tools/tayvoriq_lightweight_preflight.py
+
+      - name: Push verified Studio candidate
+        id: push
+        if: steps.existing.outputs.ready != 'true'
+        working-directory: implementation
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- tools runtime_patches src/runtime_hotfixes tests
+          git diff --cached --quiet && { echo 'AUTOCODEFIX_NOTHING_TO_COMMIT'; exit 1; }
+          git commit -m "fix(tayvoriq): auto-codefix(${REQUEST_ID}) run ${RUN_ID}"
+          git push origin "HEAD:${IMPLEMENTATION_BRANCH}"
+          sha="$(git rev-parse HEAD)"
+          echo "candidate_sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "AUTOCODEFIX_STUDIO_CANDIDATE_PUSHED:$sha"
+
+      - name: Request Production Green verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run tayvoriq-production-green-promoter.yml             --repo mojo72549-arch/tayvoriq-control-plane             --ref main
+          echo "AUTOCODEFIX_PRODUCTION_GREEN_PROMOTER_DISPATCHED"
