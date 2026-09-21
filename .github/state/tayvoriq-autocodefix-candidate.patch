@@ -1,77 +1,14 @@
-diff --git a/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py b/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py
-index fb180065..4611abd3 100644
---- a/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py
-+++ b/runtime_patches/tayvoriq_topic_specificity_morphology_guard.py
-@@ -9,6 +9,28 @@ issues when both sides share a lexical prefix of at least five characters.
- 
- from __future__ import annotations
- 
-+import sys
-+from types import ModuleType
-+
-+class _DummyModule(ModuleType):
-+    def __init__(self, name: str):
-+        super().__init__(name)
-+        self.__path__ = []
-+    def __getattr__(self, name: str):
-+        full_name = f"{self.__name__}.{name}"
-+        if full_name not in sys.modules:
-+            sys.modules[full_name] = _DummyModule(full_name)
-+        return sys.modules[full_name]
-+    def __call__(self, *args, **kwargs):
-+        return self
-+
-+for _name in ["requests", "PIL", "PIL.Image"]:
-+    if _name not in sys.modules:
-+        try:
-+            __import__(_name)
-+        except ImportError:
-+            sys.modules[_name] = _DummyModule(_name)
-+
- from typing import Iterable
- 
- 
 diff --git a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-index d4aa1cd4..6ac1f1e1 100644
+index d4aa1cd4..935da7a6 100644
 --- a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
 +++ b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-@@ -23,6 +23,28 @@ This patch fixes narrow runtime false negatives without weakening quality gates:
+@@ -279,7 +279,8 @@ def _install_verified_request_editorial_depth(depth: Any) -> None:
+         confirmed: list[str] = []
+         for key in _DEPTH_KEYS:
+             text = depth._clean(raw.get(key))
+-            if len(text.split()) >= 5 and text not in confirmed:
++            words = text.split()
++            if len(words) >= 5 and text not in confirmed:
+                 confirmed.append(text)
  
- from __future__ import annotations
- 
-+import sys
-+from types import ModuleType
-+
-+class _DummyModule(ModuleType):
-+    def __init__(self, name: str):
-+        super().__init__(name)
-+        self.__path__ = []
-+    def __getattr__(self, name: str):
-+        full_name = f"{self.__name__}.{name}"
-+        if full_name not in sys.modules:
-+            sys.modules[full_name] = _DummyModule(full_name)
-+        return sys.modules[full_name]
-+    def __call__(self, *args, **kwargs):
-+        return self
-+
-+for _name in ["requests", "PIL", "PIL.Image"]:
-+    if _name not in sys.modules:
-+        try:
-+            __import__(_name)
-+        except ImportError:
-+            sys.modules[_name] = _DummyModule(_name)
-+
- import re
- from typing import Any
- 
-diff --git a/tools/tayvoriq_dual_platform_render_local_repair.py b/tools/tayvoriq_dual_platform_render_local_repair.py
-index f4ce9f1b..cf26ee59 100644
---- a/tools/tayvoriq_dual_platform_render_local_repair.py
-+++ b/tools/tayvoriq_dual_platform_render_local_repair.py
-@@ -300,4 +300,5 @@ if _truthy(os.getenv("TAYVORIQ_FACTUAL_REPAIR_REQUIRED")):
- 
- if __name__ == "__main__":
-     _refresh_source_context_for_factual_repair()
--    raise SystemExit(base.main())
-+    return_code = base.main()
-+    sys.exit(return_code)
+         # Fail closed. A verified request still needs three concrete source-bound
