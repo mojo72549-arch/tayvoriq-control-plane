@@ -247,3 +247,25 @@ def test_failure_signature_is_stable_for_same_failed_test_across_runs():
         recovery_generation=3,
     )
     assert a.failure_signature == b.failure_signature
+
+
+def test_final_publication_voice_failure_wins_over_transient_noise():
+    logs = """
+    RuntimeError: Publication blocked by final quality gate V2
+    "youtube_shorts": {"passed": false, "issues": ["human-voice-postmux-proof-missing"]}
+    requests.post(..., timeout=90)
+    provider note: temporarily unavailable
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=2,
+        max_generations=4,
+        exact_request_retry=True,
+        codefix_replay=True,
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "FINAL_PUBLICATION_VOICE_CODEFIX_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.retry_allowed is False
+    assert decision.next_generation == 2
