@@ -1,4 +1,4 @@
-name: UAM V290 Preview Run
+name: UAM V290 Secure Bootstrap
 
 on:
   push:
@@ -8,111 +8,33 @@ on:
       - .github/workflows/uam-v290-preview-run.yml
 
 permissions:
-  contents: read
-  id-token: write
-
-concurrency:
-  group: uam-v290-preview-run
-  cancel-in-progress: false
+  contents: write
 
 jobs:
-  deploy-preview:
+  bootstrap:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     env:
-      UAM_VERCEL_TOKEN: ${{ secrets.UAM_VERCEL_TOKEN }}
-      VERCEL_ORG_ID: team_Maifclp5V8xrU2vIyzXHpbyH
-      VERCEL_PROJECT_ID: prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP
+      WRAP_SECRET: ${{ secrets.UAM_VERCEL_TOKEN }}
     steps:
-      - name: Checkout encrypted payload
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Verify GitHub OIDC access to fixed Vercel project
+      - name: Generate protected transport key
         shell: bash
         run: |
           set -euo pipefail
-          OIDC=$(curl -fsS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fgithub.com%2Fmojo72549-arch" | jq -r '.value')
-          test -n "$OIDC" -a "$OIDC" != "null"
-          ACCESS=$(curl -fsS -X POST https://api.vercel.com/login/oauth/token \
-            --data "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-            --data "client_id=cl_kyUx2zVvA4MGptBohkmtYHJly2XltXzD" \
-            --data "subject_token_type=urn:ietf:params:oauth:token-type:id_token" \
-            --data "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
-            --data-urlencode "team_id_or_slug=mo61" \
-            --data-urlencode "subject_token=$OIDC" | jq -r '.access_token')
-          test -n "$ACCESS" -a "$ACCESS" != "null" || { echo "::error::OIDC exchange did not return access token"; exit 3; }
-          INFO=$(curl -fsS -H "Authorization: Bearer $ACCESS" "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID") || { echo "::error::Exchanged OIDC token cannot read fixed Vercel project"; exit 4; }
-          test "$(jq -r '.id' <<<"$INFO")" = "$VERCEL_PROJECT_ID"
-          test "$(jq -r '.name' <<<"$INFO")" = "uam-biograd-mobile-v290"
-          echo "GitHub OIDC can access the fixed Vercel project."
-          echo "::add-mask::$ACCESS"
-          echo "UAM_VERCEL_OIDC_ACCESS=$ACCESS" >> "$GITHUB_ENV"
-
-      - name: Restore encrypted V290 package
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/uam-v290/src
-          cat .uam-v290/payload-00.b64 .uam-v290/payload-01.b64 .uam-v290/payload-02.b64 .uam-v290/payload-03.b64 .uam-v290/payload-04.b64 > /tmp/uam-v290/source.enc.b64
-          base64 -d /tmp/uam-v290/source.enc.b64 > /tmp/uam-v290/source.tar.xz.enc
-          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
-            -in /tmp/uam-v290/source.tar.xz.enc \
-            -out /tmp/uam-v290/source.tar.xz \
-            -pass env:UAM_VERCEL_TOKEN_CLEAN
-          tar -xJf /tmp/uam-v290/source.tar.xz -C /tmp/uam-v290/src
-          rm -f /tmp/uam-v290/source.enc.b64 /tmp/uam-v290/source.tar.xz.enc /tmp/uam-v290/source.tar.xz
-
-      - name: Verify engineering package
-        working-directory: /tmp/uam-v290/src
-        shell: bash
-        run: |
-          set -euo pipefail
-          node verify.mjs
-          timeout 420s node verify-sweep.mjs
-          node build.mjs
-          test -f dist/index.html
-
-      - name: Verify existing Vercel project
-        shell: bash
-        run: |
-          set -euo pipefail
-          INFO=$(curl -fsS \
-            -H "Authorization: Bearer $UAM_VERCEL_TOKEN_CLEAN" \
-            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")
-          test "$(jq -r '.id' <<<"$INFO")" = "$VERCEL_PROJECT_ID"
-          test "$(jq -r '.name' <<<"$INFO")" = "uam-biograd-mobile-v290"
-          echo "Existing target project verified."
-
-      - name: Bind source to existing project
-        working-directory: /tmp/uam-v290/src
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p .vercel
-          printf '%s\n' '{"projectId":"prj_6CeUslzmHvM8TnH8oS9f8EkNFlbP","orgId":"team_Maifclp5V8xrU2vIyzXHpbyH","projectName":"uam-biograd-mobile-v290"}' > .vercel/project.json
-
-      - name: Deploy PREVIEW only
-        id: deploy
-        working-directory: /tmp/uam-v290/src
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes vercel@latest deploy --yes \
-            --token "$UAM_VERCEL_TOKEN_CLEAN" \
-            --scope mo61 2>&1 | tee /tmp/uam-v290/vercel-deploy.log
-          URL=$(grep -Eo 'https://[^[:space:]]+\.vercel\.app' /tmp/uam-v290/vercel-deploy.log | tail -n 1 || true)
-          test -n "$URL" || { echo "::error::No Preview URL returned by Vercel"; exit 20; }
-          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
-          echo "### UAM V290 Preview" >> "$GITHUB_STEP_SUMMARY"
-          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Confirm preview responds
-        shell: bash
-        env:
-          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
-        run: |
-          set -euo pipefail
-          echo "Preview created: $PREVIEW_URL"
-          curl -sS -o /dev/null -w 'HTTP %{http_code}\n' "$PREVIEW_URL" || true
-
-# rerun-after-reencrypt
+          test -n "$WRAP_SECRET" || { echo "::error::UAM_VERCEL_TOKEN secret missing"; exit 2; }
+          mkdir -p .uam-v290
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out /tmp/uam-private.pem
+          openssl rsa -pubout -in /tmp/uam-private.pem -out .uam-v290/transport-public.pem
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+            -in /tmp/uam-private.pem \
+            -out /tmp/uam-private.pem.enc \
+            -pass env:WRAP_SECRET
+          base64 -w 0 /tmp/uam-private.pem.enc > .uam-v290/transport-private.pem.enc.b64
+          rm -f /tmp/uam-private.pem /tmp/uam-private.pem.enc
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .uam-v290/transport-public.pem .uam-v290/transport-private.pem.enc.b64
+          git commit -m "ops: bootstrap protected UAM transport key"
+          git push origin HEAD:uam-v290-preview-run
