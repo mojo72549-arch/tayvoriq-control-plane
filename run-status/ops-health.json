@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T05:57:57.598655Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-21T05:58:16.206593Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -25,11 +25,11 @@
   },
   "run": {
     "id": 35566385159,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35566385159",
     "created_at": "2026-09-21T05:55:38Z",
-    "updated_at": "2026-09-21T05:57:48Z",
+    "updated_at": "2026-09-21T05:57:58Z",
     "attempt": 3,
     "progress": 72,
     "current_step": null,
@@ -108,7 +108,7 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
+      "status": "red",
       "detail": "Validate immutable implementation policy"
     },
     {
@@ -119,7 +119,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -134,11 +134,11 @@
   ],
   "incident": {
     "signature": "35566385159:12:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "warning",
+    "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Validate immutable implementation policy",
     "failed_step_number": 12,
-    "self_heal_status": "REPLAY_RUNNING",
+    "self_heal_status": "REPLAY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -150,10 +150,10 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "REPLAY_DISPATCHED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 35539782669,
-    "replay_run_id": 35566385159,
+    "replay_run_id": 35566496648,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
     "owner": "tayvoriq-autonomous-codefix-builder",
@@ -165,9 +165,14 @@
   },
   "events": [
     {
-      "at": "2026-09-21T05:57:48Z",
+      "at": "2026-09-21T05:57:58Z",
       "title": "Workflow-Fehler",
       "detail": "Validate immutable implementation policy"
+    },
+    {
+      "at": "2026-09-21T05:58:00Z",
+      "title": "DISPATCHED",
+      "detail": "verified-overlay-hardening-v2-replay"
     },
     {
       "at": "2026-09-21T05:55:45Z",
@@ -193,11 +198,6 @@
       "at": "2026-09-20T20:49:34Z",
       "title": "DISPATCHED",
       "detail": "bind repaired source packet to replay run"
-    },
-    {
-      "at": "2026-09-20T20:45:00Z",
-      "title": "DISPATCHED",
-      "detail": "align verified source packet with immutable production editorial contract"
     }
   ]
 }
