@@ -503,10 +503,6 @@ jobs:
               raise SystemExit(2)
           if meta.get('implementation_repository')!='mojo72549-arch/shorts-agent-studio':
               raise SystemExit('AUTOCODEFIX_OVERLAY_REPOSITORY_MISMATCH')
-          if str(meta.get('base_sha') or '')!=expected_impl:
-              raise SystemExit(
-                  f"AUTOCODEFIX_OVERLAY_BASE_MISMATCH:{meta.get('base_sha')}:{expected_impl}"
-              )
           if meta.get('quality_gates_weakened') is not False:
               raise SystemExit('AUTOCODEFIX_OVERLAY_QUALITY_GATE_INTEGRITY_FAILED')
           request_path=Path('requests')/f'{request_id}.json'
@@ -518,12 +514,32 @@ jobs:
               raise SystemExit('AUTOCODEFIX_OVERLAY_REQUEST_NOT_DISPATCHED')
           if str(codefix.get('status') or '') not in {'ARMED','REPLAY_DISPATCHED'}:
               raise SystemExit('AUTOCODEFIX_OVERLAY_REQUEST_NOT_CODEFIX_BOUND')
+
+          # A handoff is request-bound, not globally sticky. Once a newer
+          # Production Green is promoted, deterministic continuity may replay
+          # the same request without needing the older overlay at all. In that
+          # case the stale handoff must be a safe no-op rather than blocking the
+          # newer verified implementation before preflight.
+          expected=str(meta.get('patch_sha256') or '')
+          bound_patch=str(codefix.get('verified_overlay_patch_sha256') or '')
+          if not bound_patch:
+              print('AUTOCODEFIX_OVERLAY_NOT_BOUND_TO_CURRENT_REPLAY')
+              raise SystemExit(2)
+          if bound_patch!=expected:
+              print(
+                  f'AUTOCODEFIX_OVERLAY_STALE_HANDOFF:{expected}:{bound_patch}'
+              )
+              raise SystemExit(2)
+
+          if str(meta.get('base_sha') or '')!=expected_impl:
+              raise SystemExit(
+                  f"AUTOCODEFIX_OVERLAY_BASE_MISMATCH:{meta.get('base_sha')}:{expected_impl}"
+              )
           if int(codefix.get('failed_run_id') or 0)!=int(meta.get('failed_run_id') or 0):
               raise SystemExit('AUTOCODEFIX_OVERLAY_FAILED_RUN_MISMATCH')
           if str(codefix.get('failure_signature') or '')!=str(meta.get('failure_signature') or ''):
               raise SystemExit('AUTOCODEFIX_OVERLAY_FAILURE_SIGNATURE_MISMATCH')
           actual=hashlib.sha256(patch_path.read_bytes()).hexdigest()
-          expected=str(meta.get('patch_sha256') or '')
           if actual!=expected:
               raise SystemExit(f'AUTOCODEFIX_OVERLAY_PATCH_HASH_MISMATCH:{actual}:{expected}')
           print(json.dumps({
