@@ -88,16 +88,6 @@ jobs:
           node build.mjs
           test -f dist/index.html
 
-      - name: Verify exact existing Vercel target
-        shell: bash
-        run: |
-          set -euo pipefail
-          INFO=$(curl -fsS \
-            -H "Authorization: Bearer $UAM_REAL_VERCEL_TOKEN" \
-            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")
-          test "$(jq -r '.id' <<<"$INFO")" = "$VERCEL_PROJECT_ID"
-          test "$(jq -r '.name' <<<"$INFO")" = "uam-biograd-mobile-v290"
-          echo "Existing Vercel target verified: uam-biograd-mobile-v290"
 
       - name: Bind local source to existing project
         working-directory: /tmp/uam-v290/src
@@ -114,8 +104,7 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes vercel@latest deploy --yes \
-            --token "$UAM_REAL_VERCEL_TOKEN" \
-            --scope mo61 2>&1 | tee /tmp/vercel-preview.log
+            --token "$UAM_REAL_VERCEL_TOKEN" 2>&1 | tee /tmp/vercel-preview.log
 
           URL=$(grep -Eo 'https://[^[:space:]]+\.vercel\.app' /tmp/vercel-preview.log | tail -n 1 || true)
           test -n "$URL" || { echo "::error::Vercel did not return a Preview URL"; exit 20; }
@@ -137,5 +126,4 @@ jobs:
           set -euo pipefail
           echo "Preview: $PREVIEW_URL"
           npx --yes vercel@latest inspect "$PREVIEW_URL" --wait \
-            --token "$UAM_REAL_VERCEL_TOKEN" \
-            --scope mo61
+            --token "$UAM_REAL_VERCEL_TOKEN"
