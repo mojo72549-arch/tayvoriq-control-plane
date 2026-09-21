@@ -494,6 +494,10 @@ jobs:
           request['replacement_reason']='VERIFIED_AUTOCODEFIX_OVERLAY_REPLAY'
           request['recovery_owner']='tayvoriq-autonomous-codefix-builder'
           request['recovery_dispatched_at']=now
+          previous_failure_state=str(codefix.get('failure_state') or '').strip()
+          if previous_failure_state:
+              codefix['last_failure_state']=previous_failure_state
+          codefix['failure_state']=''
           codefix.update({
               'status':'REPLAY_DISPATCHED','request_substate':'DISPATCHED',
               'replay_run_id':new_run,'replayed_at':now,
