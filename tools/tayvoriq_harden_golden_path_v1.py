@@ -131,8 +131,20 @@ def validate(text: str) -> None:
         failures.append("pinned Chatterbox install missing")
     if text.find(cpu_marker) > text.find(chatterbox_marker) >= 0:
         failures.append("Chatterbox is installed before CPU-only torch")
-    if '"implementation_binding": "production-green-immutable-sha"' not in text:
-        failures.append("production manifest immutable binding missing")
+    if "production-green-immutable-sha" not in text:
+        failures.append("production manifest immutable SHA binding missing")
+    overlay_marker = "Apply exact verified autonomous codefix overlay"
+    if overlay_marker in text:
+        required_overlay_markers = (
+            "production-green-sha+verified-request-codefix-overlay",
+            "AUTOCODEFIX_OVERLAY_PATCH_HASH_MISMATCH",
+            "AUTOCODEFIX_OVERLAY_BASE_MISMATCH",
+            "AUTOCODEFIX_OVERLAY_PATH_NOT_ALLOWLISTED",
+            "quality_gates_weakened",
+        )
+        missing = [marker for marker in required_overlay_markers if marker not in text]
+        if missing:
+            failures.append("verified overlay hardening markers missing:" + ",".join(missing))
     if failures:
         raise SystemExit("GOLDEN_PATH_HARDENING_CHECK_FAILED:" + ";".join(failures))
 
@@ -157,8 +169,8 @@ def patch(text: str) -> str:
 
     if OLD_MANIFEST in text:
         text = text.replace(OLD_MANIFEST, NEW_MANIFEST, 1)
-    elif '"implementation_binding": "production-green-immutable-sha"' not in text:
-        raise SystemExit("PATCH_FAILED: expected manifest implementation branch marker not found")
+    elif "production-green-immutable-sha" not in text:
+        raise SystemExit("PATCH_FAILED: expected manifest immutable SHA binding marker not found")
 
     validate(text)
     return text
