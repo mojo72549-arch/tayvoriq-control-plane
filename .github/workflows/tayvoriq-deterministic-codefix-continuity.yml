@@ -495,7 +495,11 @@ jobs:
           fi
           detected=false; reason=''
           if [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
-            if [ "$implementation_changed" = "true" ]; then detected=true; reason='production-green-implementation-changed'; fi
+            if [ "$implementation_changed" = "true" ]; then
+              detected=true; reason='production-green-implementation-changed'
+            elif [ "$relevant_control" = "true" ]; then
+              detected=true; reason='relevant-control-code-changed-same-production-green'
+            fi
           elif [ "$relevant_control" = "true" ]; then
             detected=true; reason='relevant-control-code-changed-without-implementation-pin'
           fi
@@ -627,6 +631,10 @@ jobs:
           data['previous_golden_path_run_ids']=previous[-20:]; data['golden_path_run_id']=new_run; data['status']='DISPATCHED'; data['recovery_generation']=generation
           data['retry_of_run_id']=old_run; data['replacement_reason']='SAME_GENERATION_CODEFIX_REPLAY'; data['recovery_owner']='tayvoriq-deterministic-codefix-continuity'
           data['recovery_failure_signature']=signature; data['recovery_dispatched_at']=now
+          previous_failure_state=str(codefix.get('failure_state') or '').strip()
+          if previous_failure_state:
+              codefix['last_failure_state']=previous_failure_state
+          codefix['failure_state']=''
           codefix.update({'status':'REPLAY_DISPATCHED','request_substate':'DISPATCHED','replay_run_id':new_run,'replayed_at':now,
                           'replay_control_plane_sha':control_sha,'replay_implementation_sha':impl_sha,'codefix_detection_reason':reason,
                           'quality_gates_weakened':False,'active_pointer_verified':True})
