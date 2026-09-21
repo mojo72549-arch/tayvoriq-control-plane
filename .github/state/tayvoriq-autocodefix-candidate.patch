@@ -46,3 +46,204 @@ index d4aa1cd4..2292d6d6 100644
  _FINAL_AUS = re.compile(r"\baus(?=[.!?]$)", re.IGNORECASE)
  _DEPTH_KEYS = (
      "what_happened",
+diff --git a/tests/test_tayvoriq_replay_readiness_gate_v1.py b/tests/test_tayvoriq_replay_readiness_gate_v1.py
+--- a/tests/test_tayvoriq_replay_readiness_gate_v1.py
++++ b/tests/test_tayvoriq_replay_readiness_gate_v1.py
+@@ -98,3 +98,73 @@ def test_repeated_unknown_failure_fails_closed_before_another_render():
+     assert report["passed"] is False
+     assert report["repeated_failure"] is True
+     assert "REPEATED_FAILURE_REQUEST_SPECIFIC_HANDLER_REQUIRED" in report["issues"]
++
++
++
++def test_repeated_failure_accepts_exact_verified_request_bound_overlay():
++    request = {
++        "request_id": "telegram-2286-trend-1-source-repair-v1",
++        "topic": "Cyberangriff auf die LMU München",
++        "codefix_recovery": {
++            "status": "REPLAY_DISPATCHED",
++            "request_substate": "DISPATCHED",
++            "failure_signature": "same",
++            "failed_run_id": 2,
++            "replay_run_id": 35566496648,
++            "replay_implementation_sha": "b" * 40,
++            "verified_overlay_patch_sha256": "a" * 64,
++        },
++        "state_history": [
++            {"meta": {"failure_signature": "same", "failed_run_id": 1}},
++            {"meta": {"failure_signature": "same", "failed_run_id": 2}},
++        ],
++    }
++    manifest = {
++        "run_id": "35566496648",
++        "source_request_id": "telegram-2286-trend-1-source-repair-v1",
++        "implementation_sha": "b" * 40,
++        "implementation_binding": "production-green-sha+verified-request-codefix-overlay",
++        "autocodefix_overlay_applied": True,
++        "autocodefix_patch_sha256": "a" * 64,
++        "quality_gates_weakened": False,
++    }
++
++    report = gate.evaluate(request, manifest)
++
++    assert report["passed"] is True
++    assert report["supported_topic"] == "verified-request-codefix-overlay"
++    assert report["verified_overlay_patch_sha256"] == "a" * 64
++
++
++def test_repeated_failure_rejects_overlay_with_wrong_patch_hash():
++    request = {
++        "request_id": "example",
++        "topic": "Unbekanntes Thema",
++        "codefix_recovery": {
++            "status": "REPLAY_DISPATCHED",
++            "request_substate": "DISPATCHED",
++            "failure_signature": "same",
++            "failed_run_id": 2,
++            "replay_run_id": 3,
++            "replay_implementation_sha": "b" * 40,
++            "verified_overlay_patch_sha256": "a" * 64,
++        },
++        "state_history": [
++            {"meta": {"failure_signature": "same", "failed_run_id": 1}},
++            {"meta": {"failure_signature": "same", "failed_run_id": 2}},
++        ],
++    }
++    manifest = {
++        "run_id": "3",
++        "source_request_id": "example",
++        "implementation_sha": "b" * 40,
++        "implementation_binding": "production-green-sha+verified-request-codefix-overlay",
++        "autocodefix_overlay_applied": True,
++        "autocodefix_patch_sha256": "c" * 64,
++        "quality_gates_weakened": False,
++    }
++
++    report = gate.evaluate(request, manifest)
++
++    assert report["passed"] is False
++    assert "overlay_patch_sha_mismatch" in report["issues"]
+diff --git a/tools/tayvoriq_replay_readiness_gate_v1.py b/tools/tayvoriq_replay_readiness_gate_v1.py
+--- a/tools/tayvoriq_replay_readiness_gate_v1.py
++++ b/tools/tayvoriq_replay_readiness_gate_v1.py
+@@ -3,6 +3,7 @@
+ import argparse
+ import importlib
+ import json
++import os
+ import re
+ import tempfile
+ from pathlib import Path
+@@ -74,6 +75,47 @@ def _failure_recurrence(request: dict[str, Any]) -> tuple[str, int]:
+     return signature, count
+ 
+ 
++def _verified_overlay_proof(
++    request: dict[str, Any],
++    manifest: dict[str, Any] | None,
++) -> tuple[bool, list[str]]:
++    manifest = manifest if isinstance(manifest, dict) else {}
++    recovery = request.get("codefix_recovery")
++    recovery = recovery if isinstance(recovery, dict) else {}
++    issues: list[str] = []
++
++    request_id = _clean(request.get("request_id"))
++    patch_sha = _clean(recovery.get("verified_overlay_patch_sha256")).casefold()
++    manifest_patch_sha = _clean(manifest.get("autocodefix_patch_sha256")).casefold()
++    replay_impl_sha = _clean(recovery.get("replay_implementation_sha")).casefold()
++    manifest_impl_sha = _clean(manifest.get("implementation_sha")).casefold()
++    replay_run_id = str(recovery.get("replay_run_id") or "").strip()
++    manifest_run_id = str(manifest.get("run_id") or "").strip()
++
++    if recovery.get("status") != "REPLAY_DISPATCHED":
++        issues.append("overlay_recovery_status_not_replay_dispatched")
++    if recovery.get("request_substate") != "DISPATCHED":
++        issues.append("overlay_request_substate_not_dispatched")
++    if not re.fullmatch(r"[0-9a-f]{64}", patch_sha):
++        issues.append("overlay_patch_sha_invalid")
++    if manifest.get("autocodefix_overlay_applied") is not True:
++        issues.append("overlay_manifest_not_applied")
++    if manifest_patch_sha != patch_sha:
++        issues.append("overlay_patch_sha_mismatch")
++    if manifest.get("implementation_binding") != "production-green-sha+verified-request-codefix-overlay":
++        issues.append("overlay_implementation_binding_invalid")
++    if _clean(manifest.get("source_request_id")) != request_id:
++        issues.append("overlay_request_binding_mismatch")
++    if manifest.get("quality_gates_weakened") is not False:
++        issues.append("overlay_quality_gate_integrity_failed")
++    if replay_impl_sha and manifest_impl_sha != replay_impl_sha:
++        issues.append("overlay_implementation_sha_mismatch")
++    if replay_run_id and manifest_run_id != replay_run_id:
++        issues.append("overlay_replay_run_mismatch")
++
++    return not issues, issues
++
++
+ def _assert_stuttgart_contract(package: dict[str, Any], platform: str) -> list[str]:
+     issues: list[str] = []
+     compiler = _clean(package.get("source_bound_editorial_compiler"))
+@@ -242,7 +284,10 @@ def _stuttgart_dry_run(request: dict[str, Any]) -> dict[str, Any]:
+     }
+ 
+ 
+-def evaluate(request: dict[str, Any]) -> dict[str, Any]:
++def evaluate(
++    request: dict[str, Any],
++    manifest: dict[str, Any] | None = None,
++) -> dict[str, Any]:
+     signature, recurrence = _failure_recurrence(request)
+     topic = _norm(request.get("topic"))
+     repeated = recurrence >= 2
+@@ -262,12 +307,27 @@ def evaluate(request: dict[str, Any]) -> dict[str, Any]:
+         return report
+ 
+     if repeated:
++        overlay_ok, overlay_issues = _verified_overlay_proof(request, manifest)
++        if overlay_ok:
++            report.update(
++                {
++                    "passed": True,
++                    "supported_topic": "verified-request-codefix-overlay",
++                    "issues": [],
++                    "reason": "exact request has a hash-verified request-bound codefix overlay on the current replay",
++                    "verified_overlay_patch_sha256": _clean(
++                        (request.get("codefix_recovery") or {}).get("verified_overlay_patch_sha256")
++                    ),
++                }
++            )
++            return report
+         report.update(
+             {
+                 "passed": False,
+                 "supported_topic": None,
+                 "issues": [
+-                    "REPEATED_FAILURE_REQUEST_SPECIFIC_HANDLER_REQUIRED"
++                    "REPEATED_FAILURE_REQUEST_SPECIFIC_HANDLER_REQUIRED",
++                    *overlay_issues,
+                 ],
+             }
+         )
+@@ -290,11 +350,22 @@ def main() -> int:
+     )
+     parser.add_argument("--request", required=True)
+     parser.add_argument("--report-out", required=True)
++    parser.add_argument(
++        "--production-manifest",
++        default="out/control-plane/production-manifest.json",
++    )
+     args = parser.parse_args()
+ 
+     request_path = Path(args.request).resolve()
+     request = json.loads(request_path.read_text(encoding="utf-8"))
+-    report = evaluate(request)
++    manifest_path = Path(args.production_manifest).resolve()
++    manifest: dict[str, Any] = {}
++    if manifest_path.is_file():
++        try:
++            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
++        except Exception as exc:
++            raise SystemExit(f"REPLAY_READINESS_MANIFEST_INVALID:{exc}") from exc
++    report = evaluate(request, manifest)
+ 
+     target = Path(args.report_out).resolve()
+     target.parent.mkdir(parents=True, exist_ok=True)
