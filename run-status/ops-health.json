@@ -1,39 +1,39 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T15:41:45.237622Z",
-  "overall": "green",
+  "generated_at": "2026-09-22T15:45:18.061579Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35730845227,
-    "pointer_updated_at": "2026-09-22T15:40:40.081792Z"
+    "request_id": "telegram-2433-trend-1-source-repair-v1",
+    "golden_path_run_id": 35749140108,
+    "pointer_updated_at": "2026-09-22T15:41:53.084232Z"
   },
   "request": {
-    "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
+    "request_id": "telegram-2433-trend-1-source-repair-v1",
+    "topic": "48.000 Auto-Beschäftigte in Baden-Württemberg protestieren gegen Stellenabbau und Standortverlagerungen",
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 2,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_generation": 1,
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
+    "path": "requests/telegram-2433-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35730845227,
-    "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35730845227",
-    "created_at": "2026-09-22T13:02:01Z",
-    "updated_at": "2026-09-22T14:11:35Z",
-    "attempt": 2,
-    "progress": 100,
-    "current_step": null,
-    "last_successful_step": "Complete job",
+    "id": 35749140108,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35749140108",
+    "created_at": "2026-09-22T15:41:46Z",
+    "updated_at": "2026-09-22T15:41:58Z",
+    "attempt": 1,
+    "progress": 65,
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -75,31 +75,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "running",
         "step_number": 28,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "pending",
         "step_number": 35,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "pending",
         "step_number": 37,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "pending",
         "step_number": 41,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "yellow",
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -119,69 +119,54 @@
     {
       "name": "Self-Heal",
       "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
+    "status": "IDLE",
     "failure_state": null,
-    "failed_run_id": 35719122804,
-    "replay_run_id": 35730845227,
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
-    "recovery_generation": 2,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
-    "same_generation_replay_required": true,
+    "recovery_generation": 1,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
+    "source_status": "IDLE",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-22T13:02:08.042641Z",
+      "at": "2026-09-22T15:41:53.014531+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:35749121478"
     },
     {
-      "at": "2026-09-22T11:49:35.554763Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-09-22T15:41:42.104774+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:35749121478"
     },
     {
-      "at": "2026-09-22T11:01:17.224070Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-22T10:47:57.938058Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
-    },
-    {
-      "at": "2026-09-22T10:45:12.372840Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-22T09:53:21.435782Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-09-22T15:10:03.205Z",
+      "title": "APPROVED",
+      "detail": "orchestrator_source_contract_repair"
     }
   ]
 }
