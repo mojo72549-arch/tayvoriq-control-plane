@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-21T22:33:42.134845Z",
+  "generated_at": "2026-09-22T00:17:05.850729Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,15 +8,15 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35663046071,
-    "pointer_updated_at": "2026-09-21T22:30:49.979104Z"
+    "golden_path_run_id": 35663721568,
+    "pointer_updated_at": "2026-09-21T22:38:41.152124Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
     "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 2,
     "recovery_owner": "tayvoriq-autonomous-codefix-builder",
     "source_count": 2,
@@ -24,12 +24,12 @@
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35663046071,
+    "id": 35663721568,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35663046071",
-    "created_at": "2026-09-21T22:30:43Z",
-    "updated_at": "2026-09-21T22:33:20Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35663721568",
+    "created_at": "2026-09-21T22:38:34Z",
+    "updated_at": "2026-09-21T22:40:46Z",
     "attempt": 1,
     "progress": 72,
     "current_step": null,
@@ -118,8 +118,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -133,16 +133,16 @@
     }
   ],
   "incident": {
-    "signature": "35663046071:23:none",
+    "signature": "35663721568:23:DETERMINISTIC_PREFLIGHT_FAILURE",
     "severity": "critical",
-    "failure_state": null,
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
     "failed_step": "Preflight",
     "failed_step_number": 23,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
@@ -150,59 +150,54 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
-    "failure_state": null,
-    "failed_run_id": 35658707470,
-    "replay_run_id": 35663046071,
+    "status": "ARMED",
+    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
+    "failed_run_id": 35663721568,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
     "owner": "tayvoriq-autonomous-codefix-builder",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "source_status": "ARMED",
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-21T22:33:20Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 35663046071 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-21T22:33:20Z",
+      "at": "2026-09-21T22:40:46Z",
       "title": "Workflow-Fehler",
       "detail": "Preflight"
+    },
+    {
+      "at": "2026-09-21T22:40:52.728366Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
+    {
+      "at": "2026-09-21T22:38:41.152124Z",
+      "title": "DISPATCHED",
+      "detail": "verified-request-bound-autocodefix-overlay-replay"
+    },
+    {
+      "at": "2026-09-21T22:37:22.425814Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
+    {
+      "at": "2026-09-21T22:35:13.144554Z",
+      "title": "DISPATCHED",
+      "detail": "verified-request-bound-autocodefix-overlay-replay"
+    },
+    {
+      "at": "2026-09-21T22:34:07.481266Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     },
     {
       "at": "2026-09-21T22:30:49.979104Z",
       "title": "DISPATCHED",
       "detail": "verified-request-bound-autocodefix-overlay-replay"
-    },
-    {
-      "at": "2026-09-21T21:45:58.320865Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-21T21:42:26.021542Z",
-      "title": "DISPATCHED",
-      "detail": "verified-request-bound-autocodefix-overlay-replay"
-    },
-    {
-      "at": "2026-09-21T17:46:56.434289Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
-    },
-    {
-      "at": "2026-09-21T17:40:28.107786Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-21T17:39:54.685972Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "FINAL_PUBLICATION_VOICE_CODEFIX_REQUIRED"
     }
   ]
 }
