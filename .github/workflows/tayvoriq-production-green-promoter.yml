@@ -334,7 +334,7 @@ jobs:
           echo "TAYVORIQ_PRODUCTION_GREEN_VERIFIED:${{ steps.refs.outputs.candidate }}:changed=${{ steps.refs.outputs.changed }}"
           echo "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2."
 
-      - name: Continue armed request after verified Production Green
+      - name: Resume deterministic codefix continuity after promotion
         if: steps.refs.outputs.changed == 'true'
         shell: bash
         env:
@@ -342,4 +342,4 @@ jobs:
         run: |
           set -euo pipefail
           gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main
-          echo "TAYVORIQ_CODEFIX_CONTINUITY_DISPATCHED_AFTER_PRODUCTION_GREEN"
+          echo "TAYVORIQ_PRODUCTION_GREEN_CONTINUITY_RESUMED"
