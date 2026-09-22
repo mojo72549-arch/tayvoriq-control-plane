@@ -779,7 +779,7 @@ jobs:
 
           runtime_request="$RUNNER_TEMP/tayvoriq-replay-request-${GITHUB_RUN_ID}.json"
           bound=false
-          for poll in $(seq 1 30); do
+          for poll in $(seq 1 10); do
             git -C .. fetch origin main --quiet
             if git -C .. show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
               if python - "$runtime_request" "$GITHUB_RUN_ID" <<'PY'
@@ -790,13 +790,22 @@ jobs:
           repeated=bool(data.get('previous_golden_path_run_ids'))
           if not repeated:
               raise SystemExit(0)
-          if (
+          request_bound=(
               str(data.get('status') or '')=='DISPATCHED'
               and int(data.get('golden_path_run_id') or 0)==run_id
-              and codefix.get('status')=='REPLAY_DISPATCHED'
+          )
+          deterministic_bound=(
+              codefix.get('status')=='REPLAY_DISPATCHED'
               and codefix.get('request_substate')=='DISPATCHED'
               and int(codefix.get('replay_run_id') or 0)==run_id
-          ):
+          )
+          fresh_bound=(
+              codefix.get('status')=='FRESH_RECOVERY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('fresh_recovery_run_id') or 0)==run_id
+              and str(data.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY'
+          )
+          if request_bound and (deterministic_bound or fresh_bound):
               raise SystemExit(0)
           raise SystemExit(1)
           PY
@@ -805,7 +814,7 @@ jobs:
                 break
               fi
             fi
-            sleep 3
+            sleep 2
           done
           [ "$bound" = "true" ] || {
             echo "REPLAY_READINESS_CANONICAL_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
@@ -813,6 +822,54 @@ jobs:
           }
 
           echo "REPLAY_READINESS_CANONICAL_REQUEST_BOUND:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+
+          # A bounded Delivery-Watch recovery is already a verified continuation
+          # of the exact request. It needs no Studio code mutation when the full
+          # preflight passed and the immutable Production Green binding is intact.
+          if python - "$runtime_request" "out/control-plane/production-manifest.json" <<'PY'
+          import json,sys
+          from pathlib import Path
+          request=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          manifest=json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+          codefix=request.get('codefix_recovery') if isinstance(request.get('codefix_recovery'),dict) else {}
+          request_id=str(request.get('request_id') or '').strip()
+          current_request=str(manifest.get('source_request_id') or '').strip()
+          current_run=int(manifest.get('run_id') or 0)
+          passed=all((
+              str(request.get('status') or '')=='DISPATCHED',
+              int(request.get('golden_path_run_id') or 0)==current_run,
+              str(request.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY',
+              int(request.get('retry_of_run_id') or 0)>0,
+              codefix.get('status')=='FRESH_RECOVERY_DISPATCHED',
+              codefix.get('request_substate')=='DISPATCHED',
+              int(codefix.get('fresh_recovery_run_id') or 0)==current_run,
+              current_request==request_id and bool(request_id),
+              manifest.get('implementation_binding')=='production-green-immutable-sha',
+              manifest.get('lightweight_preflight_passed') is True,
+              manifest.get('autocodefix_overlay_applied') is False,
+              manifest.get('quality_gates_weakened') is False,
+          ))
+          if not passed:
+              raise SystemExit(1)
+          report={
+              'schema':'tayvoriq-replay-readiness-v1',
+              'request_id':request_id,
+              'topic':str(request.get('topic') or ''),
+              'passed':True,
+              'supported_topic':'bounded-request-recovery',
+              'issues':[],
+              'reason':'Delivery Watch rebound the exact approved request to this run; full preflight passed and immutable Production Green remains intact.',
+              'quality_gates_weakened':False,
+          }
+          target=Path('out/control-plane/replay-readiness.json')
+          target.parent.mkdir(parents=True,exist_ok=True)
+          target.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+          then
+            echo "REPLAY_READINESS_VERIFIED_BOUNDED_RECOVERY:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            exit 0
+          fi
 
           # A deterministic failure that happened in the control plane before
           # implementation checkout must be proven by a control-plane revision,
@@ -1346,6 +1403,8 @@ jobs:
         continue-on-error: true
         env:
           PRODUCTION_OUTCOME: ${{ steps.production.outcome }}
+          PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
+          REPLAY_READINESS_OUTCOME: ${{ steps.replay_readiness.outcome }}
           PUBLICATION_INITIAL_OUTCOME: ${{ steps.publication_gate_initial.outcome }}
           FINAL_VOICE_RECOVERY_OUTCOME: ${{ steps.final_publication_voice_recovery.outcome }}
         run: |
@@ -1380,6 +1439,12 @@ jobs:
               and __import__("os").environ.get("PUBLICATION_INITIAL_OUTCOME") == "failure"
               and __import__("os").environ.get("FINAL_VOICE_RECOVERY_OUTCOME") == "failure"
           )
+          control_plane_binding_failure = (
+              __import__("os").environ.get("PREFLIGHT_OUTCOME") == "success"
+              and __import__("os").environ.get("REPLAY_READINESS_OUTCOME") == "failure"
+          )
+          if control_plane_binding_failure:
+              state = "CONTROL_PLANE_BINDING_FAILURE"
           if late_voice_failure:
               # A publishable master already exists. This is stochastic/local
               # narrator-postmux output variance, never a repository-codefix signal.
@@ -1513,6 +1578,11 @@ jobs:
           if [ "$failure_state" = "TRANSIENT_AUDIO_FAILURE" ]; then
             echo "CODEFIX_FINALIZER_SKIPPED_LOCAL_VOICE_FAILURE"
             echo "Delivery Watch exclusively owns bounded same-run voice/postmux retry."
+            exit 0
+          fi
+          if [ "$failure_state" = "CONTROL_PLANE_BINDING_FAILURE" ]; then
+            echo "CODEFIX_FINALIZER_SKIPPED_CONTROL_PLANE_BINDING_FAILURE"
+            echo "Delivery Watch exclusively owns bounded binding retry; no Studio codefix provider is called."
             exit 0
           fi
           if [ -z "$SOURCE_REQUEST_ID_PIN" ]; then
