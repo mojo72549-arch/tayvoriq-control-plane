@@ -119,14 +119,11 @@ REPLAY_SUPPRESSED_STAGES = {
 }
 
 RECOVERY_REPLAY_SUPPRESSED_STAGES = {
-    # A codefix replay already has a durable prior progress history. Never send
-    # early 20/35/45-style milestones again and make the user think recovery
-    # restarted from zero. The dedicated recovery-resumed message is sufficient
-    # until a genuine >=75% checkpoint/master/quality milestone is reached.
-    "sources_locked",
-    "environment_active",
-    "production_active",
+    # Suppress only repetitive liveness/repair noise. A fresh recovery still
+    # confirms its real source/environment/production milestones so Telegram
+    # never appears stuck after an automatic takeover.
     "render_heartbeat",
+    "checkpoint_repair",
     "checkpoint_heartbeat",
 }
 
