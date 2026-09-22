@@ -19,7 +19,7 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("for poll in $(seq 1 20)", workflow)
+        self.assertIn("for poll in $(seq 1 30)", workflow)
         self.assertIn("previous_golden_path_run_ids", workflow)
         self.assertIn("Give the binder a bounded window", workflow)
 
