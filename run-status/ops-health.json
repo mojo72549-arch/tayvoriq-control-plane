@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T13:02:02.345630Z",
+  "generated_at": "2026-09-22T13:51:51.294569Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,15 +8,15 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35719122804,
-    "pointer_updated_at": "2026-09-22T11:01:17.224070Z"
+    "golden_path_run_id": 35730845227,
+    "pointer_updated_at": "2026-09-22T13:02:08.042641Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
     "topic": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 2,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "source_count": 2,
@@ -24,18 +24,18 @@
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35719122804,
+    "id": 35730845227,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35719122804",
-    "created_at": "2026-09-22T11:01:10Z",
-    "updated_at": "2026-09-22T11:49:25Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35730845227",
+    "created_at": "2026-09-22T13:02:01Z",
+    "updated_at": "2026-09-22T13:33:16Z",
     "attempt": 1,
-    "progress": 72,
+    "progress": 96,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 35,
+    "failed_step": "Repair final publication voice proof only",
+    "failed_step_number": 38,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -81,13 +81,13 @@
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "success",
         "step_number": 35,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "success",
         "step_number": 37,
         "step_name": "Validate publication quality initial"
       },
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "Assert publishable production output"
+      "detail": "Repair final publication voice proof only"
     },
     {
       "name": "Production Green",
@@ -118,8 +118,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "ARMED"
+      "status": "red",
+      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
     },
     {
       "name": "Telegram",
@@ -128,21 +128,21 @@
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
   "incident": {
-    "signature": "35719122804:35:PUBLISHABLE_CODEFIX_REQUIRED",
+    "signature": "35730845227:38:none",
     "severity": "critical",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 35,
-    "self_heal_status": "ARMED",
+    "failure_state": null,
+    "failed_step": "Repair final publication voice proof only",
+    "failed_step_number": 38,
+    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": false
+    "recovery_replay_failed": true
   },
   "telegram": {
     "status": "green",
@@ -150,24 +150,34 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "ARMED",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "failure_state": null,
     "failed_run_id": 35719122804,
-    "replay_run_id": null,
+    "replay_run_id": 35730845227,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "ARMED",
-    "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "source_status": "REPLAY_DISPATCHED",
+    "inferred_from_run_terminal_state": true,
+    "needs_codefix": true
   },
   "events": [
     {
-      "at": "2026-09-22T11:49:25Z",
+      "at": "2026-09-22T13:33:16Z",
+      "title": "Recovery-Replay fehlgeschlagen",
+      "detail": "Run 35730845227 · interner Codefix erforderlich · kein Eingriff von dir"
+    },
+    {
+      "at": "2026-09-22T13:33:16Z",
       "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "detail": "Repair final publication voice proof only"
+    },
+    {
+      "at": "2026-09-22T13:02:08.042641Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-22T11:49:35.554763Z",
@@ -193,11 +203,6 @@
       "at": "2026-09-22T09:53:21.435782Z",
       "title": "AWAITING_CODEFIX",
       "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-22T09:50:00.679773Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
