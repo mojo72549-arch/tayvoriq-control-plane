@@ -410,6 +410,28 @@ jobs:
           done
           [ "$pushed" = "true" ] || { echo "::error title=Dispatch persistence failed::Golden Path started but request binding could not be persisted"; exit 1; }
 
+      - name: Telegram 10 percent start confirmation
+        if: steps.persist_dispatch.outcome == 'success'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC: ${{ steps.request.outputs.topic }}
+          GOLDEN_PATH_RUN_ID: ${{ steps.dispatch.outputs.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TELEGRAM_BOT_TOKEN"
+          test -n "$TELEGRAM_CHAT_ID"
+          text=$(printf '🟣 TAYVORIQ 10 %% · Produktionslauf gestartet\n\nThema: %s\nRun: %s\n\n✅ Der freigegebene Auftrag, die geprüften Quellen und der Golden Path sind verbindlich gebunden.\n➡️ Als Nächstes: Fakten-/Quellen-Lock und technischer Preflight.\n\nFür dich: ✅ Keine Aktion nötig.' "$TOPIC" "$GOLDEN_PATH_RUN_ID")
+          response=$(curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}")
+          python -S - "$response" <<'PY'
+          import json,sys
+          d=json.loads(sys.argv[1])
+          if d.get('ok') is not True or int((d.get('result') or {}).get('message_id') or 0)<=0:
+              raise SystemExit('TELEGRAM_10_PERCENT_DELIVERY_NOT_VERIFIED')
+          print({'telegram_10_percent_message_id':int(d['result']['message_id'])})
+          PY
       - name: Persist dispatch failure
         if: failure() && steps.claim.outputs.claimed == 'true' && steps.dispatch.outcome != 'success'
         env:
