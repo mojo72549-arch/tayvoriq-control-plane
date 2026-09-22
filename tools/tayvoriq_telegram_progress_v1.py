@@ -31,12 +31,6 @@ MILESTONES = {
         "Der fehlgeschlagene Lauf wurde erkannt und derselbe freigegebene Auftrag ist an einen neuen Recovery-Lauf gebunden.",
         "Der gespeicherte Produktionsstand wird übernommen und nur der noch offene Pfad weiterbearbeitet.",
     ),
-    "dispatch_started": Milestone(
-        10,
-        "Produktionslauf bestätigt",
-        "Die Trendfreigabe ist dauerhaft an einen konkreten Golden-Path-Run gebunden und der Produktionsauftrag wurde angenommen.",
-        "Quellenbindung, Dublettenprüfung und technischer Preflight.",
-    ),
     "sources_locked": Milestone(
         20,
         "Fakten gesichert",
