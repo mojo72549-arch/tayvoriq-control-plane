@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T19:05:58.142626Z",
+  "generated_at": "2026-09-22T21:35:21.401274Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2433-trend-1-source-repair-v1",
-    "golden_path_run_id": 35761458519,
-    "pointer_updated_at": "2026-09-22T18:27:04.639Z"
+    "golden_path_run_id": 35776482938,
+    "pointer_updated_at": "2026-09-22T19:51:40.649672Z"
   },
   "request": {
     "request_id": "telegram-2433-trend-1-source-repair-v1",
@@ -17,25 +17,25 @@
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 2,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_generation": 4,
+    "recovery_owner": "tayvoriq-delivery-watch",
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-2433-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35761458519,
+    "id": 35776482938,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35761458519",
-    "created_at": "2026-09-22T17:33:18Z",
-    "updated_at": "2026-09-22T18:31:21Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35776482938",
+    "created_at": "2026-09-22T19:51:33Z",
+    "updated_at": "2026-09-22T20:19:21Z",
     "attempt": 1,
-    "progress": 72,
+    "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
     "failed_step": "Assert publishable production output",
-    "failed_step_number": 36,
+    "failed_step_number": 38,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -63,9 +63,9 @@
       },
       {
         "label": "Dependencies",
-        "status": "success",
-        "step_number": 24,
-        "step_name": "Install production dependencies"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Full Preflight",
@@ -76,31 +76,31 @@
       {
         "label": "Produktion / Master",
         "status": "success",
-        "step_number": 29,
+        "step_number": 31,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
         "status": "error",
-        "step_number": 36,
+        "step_number": 38,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "skipped",
-        "step_number": 38,
+        "step_number": 40,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "skipped",
-        "step_number": 42,
+        "step_number": 44,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "skipped",
-        "step_number": 43,
+        "step_number": 45,
         "step_name": "Send Telegram review"
       }
     ]
@@ -118,8 +118,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "FRESH_RECOVERY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -133,16 +133,16 @@
     }
   ],
   "incident": {
-    "signature": "35761458519:36:none",
+    "signature": "35776482938:38:none",
     "severity": "critical",
     "failure_state": null,
     "failed_step": "Assert publishable production output",
-    "failed_step_number": 36,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "failed_step_number": 38,
+    "self_heal_status": "FRESH_RECOVERY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
@@ -150,29 +150,34 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "status": "FRESH_RECOVERY_DISPATCHED",
     "failure_state": null,
     "failed_run_id": 35760127698,
     "replay_run_id": 35761458519,
-    "fresh_recovery_run_id": null,
-    "recovery_generation": 2,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "fresh_recovery_run_id": 35776482938,
+    "recovery_generation": 4,
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "source_status": "FRESH_RECOVERY_DISPATCHED",
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-22T18:31:21Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 35761458519 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-22T18:31:21Z",
+      "at": "2026-09-22T20:19:21Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-22T19:51:40.649672Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
+    },
+    {
+      "at": "2026-09-22T19:06:17.178731Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
     },
     {
       "at": "2026-09-22T17:33:24.590244Z",
@@ -193,16 +198,6 @@
       "at": "2026-09-22T16:15:08.094756Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-22T16:14:53.287195Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
-    },
-    {
-      "at": "2026-09-22T15:41:53.014531+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:35749121478"
     }
   ]
 }
