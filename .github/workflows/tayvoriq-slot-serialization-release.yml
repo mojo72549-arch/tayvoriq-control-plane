@@ -122,7 +122,7 @@ jobs:
           [ "$released" = "true" ] || { echo "::error title=Slot release persistence failed::Could not persist evening release"; exit 1; }
           echo "Evening request released; explicit idempotent redispatch will start production."
 
-      - name: Redispatch exact released approval
+      - name: Redispatch exact released Telegram approval
         if: steps.gate.outputs.released == 'true'
         env:
           REQUEST_FILE: ${{ steps.candidate.outputs.request_file }}
