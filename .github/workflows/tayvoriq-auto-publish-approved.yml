@@ -69,7 +69,9 @@ jobs:
                   review_id = str(data.get('review_id') or path.stem)
                   if requested and review_id != requested:
                       continue
-                  if str(data.get('status') or '') == 'APPROVED' and not bool(data.get('platform_upload_performed')):
+                  ledger = Path('.automation/tayvoriq-publications') / f'{review_id}.json'
+                  already_published = bool(data.get('platform_upload_performed')) or ledger.exists()
+                  if str(data.get('status') or '') == 'APPROVED' and not already_published:
                       candidates.append((int(review_id) if review_id.isdigit() else 0, path, data))
 
           if not candidates:
@@ -221,12 +223,13 @@ jobs:
           review = json.loads(path.read_text(encoding='utf-8'))
           result = json.loads(Path('youtube-result.json').read_text(encoding='utf-8'))
           payload = json.loads(Path('publish-payload.json').read_text(encoding='utf-8'))
+          published_at = datetime.now(timezone.utc).isoformat()
           review.update({
               'platform_upload_performed': True,
               'publication_pending': False,
               'upload_status': 'PUBLISHED_YOUTUBE',
               'youtube': result,
-              'published_at': datetime.now(timezone.utc).isoformat(),
+              'published_at': published_at,
               'youtube_privacy': 'public',
               'tiktok_status': 'MANUAL_UPLOAD_REQUIRED',
               'tiktok_video_url': payload['tiktok_video_url'],
@@ -234,10 +237,24 @@ jobs:
               'published_payload': payload,
           })
           path.write_text(json.dumps(review, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          ledger_dir = Path('.automation/tayvoriq-publications')
+          ledger_dir.mkdir(parents=True, exist_ok=True)
+          ledger_path = ledger_dir / f"{review.get('review_id') or path.stem}.json"
+          ledger = {
+              'review_id': str(review.get('review_id') or path.stem),
+              'platform': 'youtube',
+              'video_id': result.get('video_id'),
+              'url': result.get('url'),
+              'privacy': result.get('privacy') or 'public',
+              'published_at': published_at,
+              'idempotency_lock': True,
+          }
+          ledger_path.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$REVIEW_PATH"
+          git add "$REVIEW_PATH" .automation/tayvoriq-publications/
           git commit -m "Publish approved TAYVORIQ review ${{ steps.select.outputs.review_id }} to YouTube"
           git pull --rebase origin main
           git push origin main
