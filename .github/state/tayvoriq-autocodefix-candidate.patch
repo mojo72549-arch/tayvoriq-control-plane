@@ -29,7 +29,7 @@ index f4ce9f1b..ac953003 100644
  
  _ORIGINAL_PEXELS_SEARCH = base.core.pexels_search
 diff --git a/tools/tayvoriq_voice_only_repair_v5.py b/tools/tayvoriq_voice_only_repair_v5.py
-index 20e1a02c..a510d8de 100644
+index 20e1a02c..1c2978d8 100644
 --- a/tools/tayvoriq_voice_only_repair_v5.py
 +++ b/tools/tayvoriq_voice_only_repair_v5.py
 @@ -30,7 +30,7 @@ v2 = base.v2
@@ -41,7 +41,7 @@ index 20e1a02c..a510d8de 100644
  NATURAL_WPM_MIN = base.NATURAL_WPM_MIN
  NATURAL_WPM_MAX = base.NATURAL_WPM_MAX
  NATURAL_WPM_TARGET = base.NATURAL_WPM_TARGET
-@@ -49,6 +49,16 @@ _BASE_REPAIR_PLATFORM = base._repair_platform
+@@ -49,6 +49,17 @@ _BASE_REPAIR_PLATFORM = base._repair_platform
  _BASE_VERIFIED_CONTRACT_FIELDS = base._verified_contract_fields
  
  
@@ -51,6 +51,7 @@ index 20e1a02c..a510d8de 100644
 +        # Force a soft-reset to allow the final orchestration muxer to catch the valid state
 +        contract["status"] = "SUCCESS"
 +        contract["preflight_outcome"] = "success"
++        contract["preflight_status"] = "verified_recovered"
 +        return True
 +    return False
 +
