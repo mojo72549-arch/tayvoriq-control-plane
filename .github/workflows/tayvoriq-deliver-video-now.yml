@@ -702,6 +702,16 @@ jobs:
         env:
           RESTORED_CHECKPOINT: ${{ steps.hydrate_recovery.outputs.restored }}
 
+      - name: Telegram progress - environment active
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_telegram_progress_v1.py \
+            --stage environment_active \
+            --topic "$TOPIC" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT"
+
       - name: Install production dependencies
         run: |
           set -euo pipefail
