@@ -313,6 +313,7 @@ jobs:
         id: persist_dispatch
         if: steps.dispatch.outcome == 'success'
         env:
+          GH_TOKEN: ${{ github.token }}
           REQUEST_FILE: ${{ steps.request.outputs.request_file }}
           GOLDEN_PATH_RUN_ID: ${{ steps.dispatch.outputs.run_id }}
         run: |
@@ -325,8 +326,33 @@ jobs:
             --meta "golden_path_run_id=${GOLDEN_PATH_RUN_ID}"
           python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
           ACTIVE_POINTER=".github/state/tayvoriq-active-production-request.json"
-          python - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GOLDEN_PATH_RUN_ID" <<'PY'
+          STALE_POINTER_TAKEOVER=false
+          if [ -f "$ACTIVE_POINTER" ]; then
+            readarray -t previous_owner < <(python -S - "$ACTIVE_POINTER" <<'PY'
           import json,sys
+          from pathlib import Path
+          path=Path(sys.argv[1])
+          try: data=json.loads(path.read_text(encoding='utf-8'))
+          except Exception: data={}
+          print(str(data.get('request_id') or ''))
+          print(str(data.get('golden_path_run_id') or '0'))
+          print(str(data.get('state') or ''))
+          PY
+            )
+            previous_request_id="${previous_owner[0]:-}"
+            previous_run_id="${previous_owner[1]:-0}"
+            previous_state="${previous_owner[2]:-}"
+            if [ "$previous_state" = "ACTIVE" ] && [ -n "$previous_request_id" ] && [ "$previous_request_id" != "${{ steps.request.outputs.request_id }}" ] && [[ "$previous_run_id" =~ ^[0-9]+$ ]] && [ "$previous_run_id" -gt 0 ]; then
+              previous_terminal=$(gh run view "$previous_run_id" --json status,conclusion --jq '(.status // "") + ":" + (.conclusion // "")' 2>/dev/null || true)
+              if [ "$previous_terminal" = "completed:success" ]; then
+                STALE_POINTER_TAKEOVER=true
+                echo "STALE_ACTIVE_POINTER_RELEASED previous_request=$previous_request_id previous_run=$previous_run_id"
+              fi
+            fi
+          fi
+          export STALE_POINTER_TAKEOVER
+          python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GOLDEN_PATH_RUN_ID" <<'PY'
+          import json,os,sys
           from datetime import datetime,timezone
           from pathlib import Path
           request_path=Path(sys.argv[1]); pointer_path=Path(sys.argv[2]); run_id=int(sys.argv[3])
@@ -338,11 +364,12 @@ jobs:
           if pointer_path.is_file():
               try: previous=json.loads(pointer_path.read_text(encoding='utf-8'))
               except Exception: previous={}
-              if (
+              other_active=(
                   previous.get('schema')=='tayvoriq-active-production-request-v1'
                   and previous.get('state')=='ACTIVE'
                   and str(previous.get('request_id') or '') not in {'',str(request.get('request_id') or '')}
-              ):
+              )
+              if other_active and os.environ.get('STALE_POINTER_TAKEOVER')!='true':
                   raise SystemExit('ACTIVE_POINTER_OTHER_REQUEST_STILL_ACTIVE')
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           payload={
