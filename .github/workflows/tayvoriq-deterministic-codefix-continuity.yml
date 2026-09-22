@@ -645,7 +645,7 @@ jobs:
                       'reason':'same-generation-production-green-codefix-replay','codefix_detection_reason':reason,
                       'replay_control_plane_sha':control_sha,'replay_implementation_sha':impl_sha,'quality_gates_weakened':False,'active_pointer_verified':True}}]
           rp.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          pointer['golden_path_run_id']=new_run; pointer['updated_at']=now; pointer['reason']='same-generation-codefix-replay'
+          pointer['golden_path_run_id']=new_run; pointer['recovery_generation']=generation; pointer['updated_at']=now; pointer['reason']='same-generation-codefix-replay'
           pp.write_text(json.dumps(pointer,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
             git add -- "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER"
