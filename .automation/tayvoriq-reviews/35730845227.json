@@ -3,9 +3,9 @@
   "status": "APPROVED",
   "platform_upload_performed": true,
   "publication_pending": false,
-  "approved_at": "2026-09-22T14:16:53.834Z",
-  "approved_via": "user_confirmed_telegram_recovery",
-  "telegram_message_id": null,
+  "approved_at": "2026-09-22T14:14:27.607Z",
+  "approved_via": "telegram_callback",
+  "telegram_message_id": 2418,
   "video_url": "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/35730845227/short_youtube.mp4",
   "youtube_video_url": "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/35730845227/short_youtube.mp4",
   "tiktok_video_url": "https://raw.githubusercontent.com/mojo72549-arch/mind-reset-daily/main/tayvoriq/runs/35730845227/short_tiktok.mp4",
@@ -32,5 +32,11 @@
     "tiktok_caption": "Ein Angreifer griff auf LMU-Immatrikulationsdaten zu und rief Daten ab. Durch einen IT-Angriff untersucht die LMU den Vorfall forensisch. Betroffen sein können Studierende und Bewerber mit Immatrikulationsdaten. Für dich können IBAN, Versicherung oder BAföG-Angaben betroffen sein. Prüfe LMU-Hinweise und misstraue verdächtigen Nachrichten und Links. #TAYVORIQ #Trendjagd #Gesellschaft",
     "quality_gates_weakened": false
   },
-  "supersedes_youtube_video_id": "rlcrSWYHFWY"
+  "duplicate_cleanup": {
+    "status": "BLOCKED_OAUTH_SCOPE",
+    "duplicate_video_id": "rlcrSWYHFWY",
+    "canonical_video_id": "4lDN9XEy3HI",
+    "reason": "Existing refresh token grants youtube.upload; YouTube privacy updates require youtube or youtube.force-ssl.",
+    "automatic_retry": false
+  }
 }
