@@ -249,7 +249,7 @@ def test_failure_signature_is_stable_for_same_failed_test_across_runs():
     assert a.failure_signature == b.failure_signature
 
 
-def test_final_publication_voice_failure_wins_over_transient_noise():
+def test_final_publication_voice_failure_stays_local_even_during_codefix_replay():
     logs = """
     RuntimeError: Publication blocked by final quality gate V2
     "youtube_shorts": {"passed": false, "issues": ["human-voice-postmux-proof-missing"]}
@@ -264,8 +264,23 @@ def test_final_publication_voice_failure_wins_over_transient_noise():
         exact_request_retry=True,
         codefix_replay=True,
     )
-    assert decision.mode == "deterministic"
-    assert decision.state == "FINAL_PUBLICATION_VOICE_CODEFIX_REQUIRED"
-    assert decision.retry_kind == "verified-codefix-replay"
-    assert decision.retry_allowed is False
+    assert decision.mode == "rerun"
+    assert decision.state == "LOCAL_VOICE_RETRY_REQUIRED"
+    assert decision.retry_kind == "same-run"
+    assert decision.retry_allowed is True
     assert decision.next_generation == 2
+
+
+def test_local_voice_retry_exhaustion_stops_without_autonomous_code_mutation():
+    decision = classify_failure(
+        "RuntimeError: VOICE_V5_NO_NATURAL_FULL_TAKE:youtube_shorts",
+        run_attempt=3,
+        recovery_generation=2,
+        max_generations=4,
+        exact_request_retry=True,
+        codefix_replay=True,
+    )
+    assert decision.mode == "exhausted"
+    assert decision.state == "LOCAL_VOICE_RETRY_EXHAUSTED"
+    assert decision.retry_allowed is False
+    assert decision.next_generation is None
