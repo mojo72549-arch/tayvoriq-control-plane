@@ -432,22 +432,6 @@ jobs:
               raise SystemExit('TELEGRAM_10_PERCENT_DELIVERY_NOT_VERIFIED')
           print({'telegram_10_percent_message_id':int(d['result']['message_id'])})
           PY
-      - name: Telegram progress - 10 percent start confirmed
-        if: steps.persist_dispatch.outcome == 'success'
-        continue-on-error: true
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TOPIC: ${{ steps.request.outputs.topic }}
-          GOLDEN_PATH_RUN_ID: ${{ steps.dispatch.outputs.run_id }}
-        run: |
-          set -euo pipefail
-          python tools/tayvoriq_telegram_progress_v1.py \
-            --stage dispatch_started \
-            --topic "$TOPIC" \
-            --run-id "$GOLDEN_PATH_RUN_ID" \
-            --run-attempt "1"
-
       - name: Persist dispatch failure
         if: failure() && steps.claim.outputs.claimed == 'true' && steps.dispatch.outcome != 'success'
         env:
