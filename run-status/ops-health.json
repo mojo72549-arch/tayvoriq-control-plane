@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T13:52:04.439742Z",
-  "overall": "red",
+  "generated_at": "2026-09-22T13:53:47.584024Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -25,17 +25,17 @@
   },
   "run": {
     "id": 35730845227,
-    "status": "completed",
-    "conclusion": "failure",
+    "status": "in_progress",
+    "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35730845227",
     "created_at": "2026-09-22T13:02:01Z",
-    "updated_at": "2026-09-22T13:33:16Z",
-    "attempt": 1,
-    "progress": 96,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Repair final publication voice proof only",
-    "failed_step_number": 38,
+    "updated_at": "2026-09-22T13:52:27Z",
+    "attempt": 2,
+    "progress": 38,
+    "current_step": "Install production dependencies",
+    "last_successful_step": "Record immutable production manifest",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -63,7 +63,7 @@
       },
       {
         "label": "Dependencies",
-        "status": "success",
+        "status": "running",
         "step_number": 23,
         "step_name": "Install production dependencies"
       },
@@ -75,31 +75,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "pending",
         "step_number": 28,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "pending",
         "step_number": 35,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "pending",
         "step_number": 37,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 41,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Repair final publication voice proof only"
+      "status": "yellow",
+      "detail": "Install production dependencies"
     },
     {
       "name": "Production Green",
@@ -118,39 +118,28 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "35730845227:38:none",
-    "severity": "critical",
-    "failure_state": null,
-    "failed_step": "Repair final publication voice proof only",
-    "failed_step_number": 38,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": true
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
+    "last_step": "Telegram progress - sources locked"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "status": "REPLAY_RUNNING",
     "failure_state": null,
     "failed_run_id": 35719122804,
     "replay_run_id": 35730845227,
@@ -160,20 +149,10 @@
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
-    {
-      "at": "2026-09-22T13:33:16Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 35730845227 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-22T13:33:16Z",
-      "title": "Workflow-Fehler",
-      "detail": "Repair final publication voice proof only"
-    },
     {
       "at": "2026-09-22T13:02:08.042641Z",
       "title": "DISPATCHED",
