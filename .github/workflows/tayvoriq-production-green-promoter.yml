@@ -126,7 +126,9 @@ jobs:
           }
           python -m compileall -q tools tests
           if [ -d runtime_patches ]; then python -m compileall -q runtime_patches; fi
-          python -m pytest -q tests/test_tayvoriq_verified_request_causal_alignment.py
+          python -m pytest -q \
+            tests/test_tayvoriq_verified_request_causal_alignment.py \
+            tests/test_tayvoriq_voice_v5_human_narrator.py
 
       - name: Install heavy voice verification dependencies
         if: steps.refs.outputs.changed == 'true'
@@ -173,6 +175,7 @@ jobs:
         shell: bash
         env:
           PYTHONPATH: ${{ github.workspace }}/implementation/tools:${{ github.workspace }}/implementation
+          CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
         run: |
           set -euo pipefail
           mkdir -p out/control-plane/replay-readiness
@@ -226,20 +229,44 @@ jobs:
           # Golden Path after the verified overlay is actually applied.
           python -m pytest -q tests/test_tayvoriq_replay_readiness_gate_v1.py
           env -u PYTHONPATH python -I - "$request" <<'PY'
-          import json,re,sys
+          import json,os,re,sys
           data=json.load(open(sys.argv[1],encoding='utf-8'))
           recovery=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
           if recovery.get('status')!='ARMED' or recovery.get('request_substate')!='AWAITING_CODEFIX':
               raise SystemExit('PROMOTER_ACTIVE_REQUEST_NOT_ARMED')
-          patch=str(recovery.get('verified_overlay_patch_sha256') or '').strip().lower()
-          if re.fullmatch(r'[0-9a-f]{64}',patch) is None:
-              raise SystemExit('PROMOTER_VERIFIED_OVERLAY_HASH_MISSING')
           if recovery.get('quality_gates_weakened') is not False:
               raise SystemExit('PROMOTER_QUALITY_GATE_INTEGRITY_FAILED')
+
+          candidate=str(os.environ.get('CANDIDATE_SHA') or '').strip().lower()
+          failed_impl=str(recovery.get('failed_implementation_sha') or '').strip().lower()
+          patch=str(recovery.get('verified_overlay_patch_sha256') or '').strip().lower()
+          sha40=lambda value: re.fullmatch(r'[0-9a-f]{40}',value) is not None
+
+          verified_studio_codefix=(
+              sha40(candidate)
+              and sha40(failed_impl)
+              and candidate != failed_impl
+          )
+          verified_overlay=(
+              re.fullmatch(r'[0-9a-f]{64}',patch) is not None
+          )
+          if not (verified_studio_codefix or verified_overlay):
+              raise SystemExit(
+                  'PROMOTER_NO_VERIFIED_RELEVANT_CODEFIX:'
+                  f'candidate={candidate}:failed_impl={failed_impl}:overlay={bool(verified_overlay)}'
+              )
+
           print(json.dumps({
               'request_id':data.get('request_id'),
               'candidate_handler_verified':True,
-              'verified_overlay_patch_sha256':patch,
+              'verification_mode':(
+                  'new-studio-production-sha'
+                  if verified_studio_codefix
+                  else 'request-bound-overlay'
+              ),
+              'failed_implementation_sha':failed_impl or None,
+              'candidate_implementation_sha':candidate,
+              'verified_overlay_patch_sha256':patch or None,
               'quality_gates_weakened':False,
           },ensure_ascii=False))
           PY
