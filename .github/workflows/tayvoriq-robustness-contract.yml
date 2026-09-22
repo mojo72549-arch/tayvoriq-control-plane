@@ -65,22 +65,24 @@ jobs:
           from runtime_patches import tayvoriq_deep_voice_contract as voice
           from runtime_patches import tayvoriq_world_forces_visual_guard as visuals
 
-          assert voice.DEEP_F0_MIN_HZ == 84.0
-          assert voice.DEEP_F0_MAX_HZ == 125.0
-          assert round(voice.DEEP_REPAIR_HIGH_HZ, 2) == 156.25
-          for median in (150.94, 153.85):
+          # Natural narrator contract: sanity-check the generated voice, but
+          # never pitch-shift it just to hit an artificial "deep" target.
+          assert voice.DEEP_F0_MIN_HZ == 65.0
+          assert voice.DEEP_F0_MAX_HZ == 230.0
+          assert voice.DEEP_REPAIR_LOW_HZ == voice.DEEP_F0_MIN_HZ
+          assert voice.DEEP_REPAIR_HIGH_HZ == voice.DEEP_F0_MAX_HZ
+          assert voice.PITCH_FACTOR_MIN == 1.0
+          assert voice.PITCH_FACTOR_MAX == 1.0
+          assert voice.PITCH_FACTOR_HIGH_CAP == 1.0
+          assert voice.PITCH_FACTOR_LOW_FLOOR == 1.0
+          assert voice.MAX_FEEDBACK_REPAIR_PASSES == 0
+          for median in (84.0, 125.0, 150.94, 153.85, 220.0):
               factor = voice.repair_factor_for_median(median)
-              assert factor is not None
-              projected = voice.projected_f0_hz(median, factor)
-              assert voice.DEEP_F0_MIN_HZ <= projected <= voice.DEEP_F0_MAX_HZ
-          assert voice.repair_factor_for_median(156.26) is None
-          assert voice.MAX_FEEDBACK_REPAIR_PASSES == 2
-          for residual in (134.45, 126.98, 125.98):
-              factor = voice.feedback_repair_factor(residual, repairs_applied=1)
-              assert factor is not None
-              projected = voice.projected_f0_hz(residual, factor)
-              assert voice.DEEP_F0_MIN_HZ <= projected <= voice.DEEP_F0_MAX_HZ
-          assert voice.feedback_repair_factor(134.45, repairs_applied=2) is None
+              assert factor == 1.0
+              assert voice.projected_f0_hz(median, factor) == median
+          assert voice.repair_factor_for_median(64.99) is None
+          assert voice.repair_factor_for_median(230.01) is None
+          assert voice.feedback_repair_factor(134.45, repairs_applied=0) is None
 
           visual_repair_source = Path(
               'tools/tayvoriq_visual_only_repair_v1.py'
