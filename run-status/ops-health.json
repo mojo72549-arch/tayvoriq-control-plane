@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T10:45:23.168761Z",
+  "generated_at": "2026-09-22T11:28:30.106360Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35717695855,
-    "pointer_updated_at": "2026-09-22T10:45:12.372840Z"
+    "golden_path_run_id": 35719122804,
+    "pointer_updated_at": "2026-09-22T11:01:17.224070Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
@@ -24,16 +24,16 @@
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35717695855,
+    "id": 35719122804,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35717695855",
-    "created_at": "2026-09-22T10:45:06Z",
-    "updated_at": "2026-09-22T10:45:12Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35719122804",
+    "created_at": "2026-09-22T11:01:10Z",
+    "updated_at": "2026-09-22T11:01:16Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
+    "progress": 65,
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -63,7 +63,7 @@
       },
       {
         "label": "Dependencies",
-        "status": "pending",
+        "status": "success",
         "step_number": 23,
         "step_name": "Install production dependencies"
       },
@@ -75,7 +75,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "running",
         "step_number": 28,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout review pages"
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -124,7 +124,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
@@ -135,14 +135,14 @@
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
     "failure_state": null,
-    "failed_run_id": 35712601233,
-    "replay_run_id": 35717695855,
+    "failed_run_id": 35717695855,
+    "replay_run_id": 35719122804,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
     "owner": "tayvoriq-deterministic-codefix-continuity",
@@ -153,6 +153,16 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-22T11:01:17.224070Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-22T10:47:57.938058Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
+    },
     {
       "at": "2026-09-22T10:45:12.372840Z",
       "title": "DISPATCHED",
@@ -170,16 +180,6 @@
     },
     {
       "at": "2026-09-22T07:37:46.411410Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
-    },
-    {
-      "at": "2026-09-22T07:35:16.188536Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-22T07:35:02.076918Z",
       "title": "AWAITING_CODEFIX",
       "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     }
