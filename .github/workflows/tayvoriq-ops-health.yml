@@ -100,24 +100,17 @@ jobs:
           fi
           REQUEST_FILE="requests/${request_id}.json"
           [ -f "$REQUEST_FILE" ] || { echo "ORCHESTRATOR_REQUEST_FILE_MISSING"; exit 0; }
-          recovery_owned=$(python -S - "$REQUEST_FILE" <<'PY'
-          import json,sys
-          d=json.load(open(sys.argv[1],encoding='utf-8'))
-          c=d.get('codefix_recovery') if isinstance(d.get('codefix_recovery'),dict) else {}
-          status=str(c.get('status') or '').upper()
-          print('true' if status in {'ARMED','REPLAY_DISPATCHED','RECOVERY_ACTIVE','AWAITING_CODEFIX'} else 'false')
-          PY
-          )
-          if [ "$recovery_owned" = "true" ]; then
-            echo "ORCHESTRATOR_RECOVERY_ALREADY_OWNED request=$request_id run=$run_id"
-            exit 0
-          fi
-          active_recovery=$(gh run list --workflow tayvoriq-deterministic-codefix-continuity.yml --limit 20 --json status --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
+
+          # Delivery Watch is the single recovery classifier for every terminal
+          # failed active Golden Path. It decides fresh-run, same-run rerun,
+          # deterministic codefix, duplicate block, or external action. Never
+          # bypass that policy here based on stale request recovery metadata.
+          active_recovery=$(gh run list --workflow tayvoriq-delivery-watch.yml --limit 20 --json status --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
           if [ "$active_recovery" -eq 0 ]; then
-            gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main -f "failed_run_id=$run_id" -f "source_request_id=$request_id"
-            echo "ORCHESTRATOR_RECOVERY_DISPATCHED request=$request_id run=$run_id"
+            gh workflow run tayvoriq-delivery-watch.yml --ref main -f "run_id=$run_id"
+            echo "ORCHESTRATOR_DELIVERY_WATCH_DISPATCHED request=$request_id run=$run_id"
           else
-            echo "ORCHESTRATOR_RECOVERY_ALREADY_RUNNING count=$active_recovery"
+            echo "ORCHESTRATOR_DELIVERY_WATCH_ALREADY_RUNNING count=$active_recovery"
           fi
       - name: Build live health snapshot
         id: health
