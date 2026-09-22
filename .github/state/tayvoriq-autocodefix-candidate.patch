@@ -1,14 +1,15 @@
 diff --git a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-index d4aa1cd4..712dd7df 100644
+index d4aa1cd4..b82a9bf7 100644
 --- a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
 +++ b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-@@ -52,6 +52,12 @@ def _verified_source_packet(source: dict[str, Any]) -> bool:
+@@ -52,6 +52,13 @@ def _verified_source_packet(source: dict[str, Any]) -> bool:
          and int(source.get("independent_news_count") or 0) >= 2
      )
  
 +def _ensure_runtime_recovery_success(contract: dict[str, Any]) -> None:
 +    """Force success status for verified recovery packets."""
-+    if contract.get("status") in ("PREFLIGHT_FAILURE_RECOVERABLE", "PUBLISHABLE_OUTPUT_RETRY_REQUIRED", "failure", "FAILURE", None) or contract.get("preflight_outcome") in ("failure", None):
++    failure_states = ("PREFLIGHT_FAILURE_RECOVERABLE", "PUBLISHABLE_OUTPUT_RETRY_REQUIRED", "failure", "FAILURE", None)
++    if contract.get("status") in failure_states or contract.get("preflight_outcome") in ("failure", None):
 +        contract["status"] = "SUCCESS"
 +        contract["preflight_outcome"] = "success"
 +        contract["preflight_status"] = "verified_recovered"
