@@ -104,6 +104,7 @@ TRANSIENT_PATTERNS = (
 )
 
 CONTROL_PLANE_BINDING_PATTERNS = (
+    r"early_recovery_bind_timeout",
     r"replay_readiness_canonical_bind_timeout",
     r"control_plane_binding_failure",
 )
