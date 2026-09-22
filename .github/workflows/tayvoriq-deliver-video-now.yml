@@ -496,7 +496,11 @@ jobs:
           meta=json.loads(meta_path.read_text(encoding='utf-8'))
           if meta.get('schema')!='tayvoriq-autocodefix-handoff-v1':
               raise SystemExit('AUTOCODEFIX_OVERLAY_SCHEMA_INVALID')
-          if meta.get('state')!='PATCH_VERIFIED_PENDING_STUDIO_APPLY':
+          state=str(meta.get('state') or '')
+          if state in {'REJECTED_CONTRACT_REGRESSION','REJECTED','SUPERSEDED'}:
+              print(f'AUTOCODEFIX_OVERLAY_REJECTED_SAFE_SKIP:{state}')
+              raise SystemExit(2)
+          if state!='PATCH_VERIFIED_PENDING_STUDIO_APPLY':
               raise SystemExit('AUTOCODEFIX_OVERLAY_STATE_INVALID')
           if str(meta.get('request_id') or '')!=request_id:
               print('AUTOCODEFIX_OVERLAY_DIFFERENT_REQUEST')
