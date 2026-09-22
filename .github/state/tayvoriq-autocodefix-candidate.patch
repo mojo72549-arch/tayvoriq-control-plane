@@ -17,10 +17,10 @@ index d4aa1cd4..b8173643 100644
  def _install_verified_request_viewer_frame(v11: Any) -> None:
      current = v11._verified_request_editorial
 diff --git a/tools/tayvoriq_dual_platform_render_local_repair.py b/tools/tayvoriq_dual_platform_render_local_repair.py
-index f4ce9f1b..ac953003 100644
+index f4ce9f1b..845c7cd4 100644
 --- a/tools/tayvoriq_dual_platform_render_local_repair.py
 +++ b/tools/tayvoriq_dual_platform_render_local_repair.py
-@@ -3,10 +3,25 @@ from __future__ import annotations
+@@ -3,11 +3,25 @@ from __future__ import annotations
  import json
  import os
  import re
@@ -35,17 +35,17 @@ index f4ce9f1b..ac953003 100644
  from typing import Any
  
  import tayvoriq_dual_platform_render_v23_entry as base
-+import subprocess
-+
+ 
 +def _safe_git_config(key: str, value: str) -> None:
 +    """Apply local git config without polluting global scope."""
 +    try:
 +        subprocess.run(["git", "config", "--local", key, value], check=True, capture_output=True)
-+    except subprocess.CalledProcessError:
++    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
 +        pass
- 
++
  
  _ORIGINAL_PEXELS_SEARCH = base.core.pexels_search
+ _ORIGINAL_NARRATION_TEXT = base.tts_router_v28.v24.engine.narration_text
 diff --git a/tools/tayvoriq_voice_only_repair_v5.py b/tools/tayvoriq_voice_only_repair_v5.py
 index 20e1a02c..b8fe640d 100644
 --- a/tools/tayvoriq_voice_only_repair_v5.py
