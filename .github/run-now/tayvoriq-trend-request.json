@@ -1,8 +1,8 @@
 {
-  "date": "2026-09-20",
-  "target_date": "2026-09-20",
+  "date": "2026-09-22",
+  "target_date": "2026-09-22",
   "slot": "evening",
-  "selection_id": "20260920-evening-agentv2-r1",
+  "selection_id": "20260922-evening-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
   "mode": "manual_verified_fallback_after_provider_limits",
@@ -14,336 +14,296 @@
   "trends": [
     {
       "id": "1",
-      "title": "Cyberangriff auf die LMU München: Warum jetzt sogar IBAN-, Versicherungs- und BAföG-Daten betroffen sein können",
-      "score": 99,
-      "trend_scope": "technology_ai",
-      "regional_relevance": "germany",
+      "title": "48.000 Auto-Beschäftigte in Baden-Württemberg protestieren gegen Stellenabbau und Standortverlagerungen",
+      "score": 96,
+      "trend_scope": "mobility_energy",
+      "regional_relevance": "local",
       "criteria": {
         "aktualitaet": 100,
-        "viralitaet": 99,
-        "tayvoriq_passung": 100,
-        "quellenqualitaet": 100,
-        "visuell": 96
+        "viralitaet": 94,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 98,
+        "visuell": 95
       },
       "growth_v2": {
-        "growth_score": 99,
-        "priority_score": 100,
-        "binding_score": 99
+        "growth_score": 96,
+        "priority_score": 97,
+        "binding_score": 96
       },
       "sources": [
-        {
-          "publisher": "LMU München",
-          "url": "https://www.lmu.de/de/die-lmu/struktur/zentrale-universitaetsverwaltung/presse-und-kommunikation-puk/press-room/pressemitteilung/information-ueber-einen-datenschutzvorfall-f446c16e.html",
-          "supports": "Die LMU bestätigt den Angriff auf ihr IT-System und nennt betroffene Datenkategorien von Identitäts- und Kontaktdaten bis hin zu Bank-, Krankenversicherungs- und möglichen BAföG-Daten."
-        },
-        {
-          "publisher": "tagesschau.de / BR24",
-          "url": "https://www.tagesschau.de/inland/regional/bayern/hackerangriff-lmu-muenchen-100.html",
-          "supports": "ARD berichtet am 20. September über den Hackerangriff, den Zugriff auf Studierendendaten und die noch laufende Aufklärung des Ausmaßes."
-        }
+        "https://baden-wuerttemberg.igmetall.de/2026/2026-09-18-pressemitteilung-32-2027",
+        "https://www.wsj.com/business/autos/auto-industry-workers-protest-in-germany-against-job-cuts-industrial-policy-19fef607"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "LMU München",
-            "url": "https://www.lmu.de/de/die-lmu/struktur/zentrale-universitaetsverwaltung/presse-und-kommunikation-puk/press-room/pressemitteilung/information-ueber-einen-datenschutzvorfall-f446c16e.html",
-            "supports": "Offizielle Erstquelle zum Datenschutzvorfall, betroffenen Datenarten und den laufenden Gegenmaßnahmen."
+            "publisher": "IG Metall Baden-Württemberg",
+            "url": "https://baden-wuerttemberg.igmetall.de/2026/2026-09-18-pressemitteilung-32-2027",
+            "supports": "Die Gewerkschaft meldet rund 48.000 Teilnehmende an knapp 50 Standorten in Baden-Württemberg, darunter Mercedes-Benz, Bosch, Porsche und weitere Betriebe."
           },
           {
-            "publisher": "tagesschau.de / BR24",
-            "url": "https://www.tagesschau.de/inland/regional/bayern/hackerangriff-lmu-muenchen-100.html",
-            "supports": "Unabhängige journalistische Einordnung des Angriffs und der potenziell betroffenen sensiblen Studierendendaten."
+            "publisher": "Wall Street Journal",
+            "url": "https://www.wsj.com/business/autos/auto-industry-workers-protest-in-germany-against-job-cuts-industrial-policy-19fef607",
+            "supports": "Unabhängige Berichterstattung ordnet die bundesweiten Proteste vor dem Hintergrund von Stellenabbau, Kostendruck und Produktionsverlagerungen in der deutschen Autoindustrie ein."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Ein Angreifer hat auf ein LMU-IT-System mit Immatrikulationsdaten zugegriffen; die Universität geht davon aus, dass Daten abgerufen wurden.",
-          "why_happening": "Der Vorfall wurde am 16. September erkannt; die technische und forensische Untersuchung läuft noch.",
-          "who_is_affected": "Betroffen sein können Studierende und Bewerber, deren Daten im Immatrikulationssystem verarbeitet wurden.",
-          "personal_impact": "Neben Kontakt- und Identitätsdaten können je nach Datensatz auch IBAN, Krankenversicherungsnummer und BAföG-bezogene Angaben betroffen sein.",
-          "action_now": "Betroffene sollten offizielle LMU-Hinweise beachten und besonders auf verdächtige Nachrichten, Links und Anhänge achten."
+          "what_happened": "48.000 Auto-Beschäftigte protestierten in Baden-Württemberg gegen Stellenabbau und Standortverlagerungen.",
+          "why_happening": "Weil Hersteller sparen und Produktion verlagern, wächst der Druck auf Standorte.",
+          "who_is_affected": "Beschäftigte bei Mercedes, Bosch, Porsche und Zulieferern sind betroffen.",
+          "personal_impact": "Für dich zeigt das, wie stark der Autowandel Südwest-Arbeitsplätze trifft.",
+          "action_now": "Beobachte, welche Standorte Investitionen erhalten und welche Sparprogramme verschärft werden."
         },
         "factual_guardrails": {
           "must_include": [
-            "Ausmaß noch nicht abschließend geklärt",
-            "keine Hinweise auf Veröffentlichung oder Missbrauch nach aktuellem Stand",
-            "Prüfungsinformationen laut LMU nicht betroffen"
+            "rund 48.000 Teilnehmende in Baden-Württemberg",
+            "knapp 50 Standorte im Südwesten",
+            "Arbeitsplatz- und Standortthema"
           ],
           "must_not_claim": [
-            "alle LMU-Studierenden seien sicher betroffen",
-            "die Daten seien bereits im Darknet veröffentlicht",
-            "die Angreifer hätten Prüfungsdaten verändert"
+            "alle deutschen Autowerke würden schließen",
+            "48.000 Arbeitsplätze seien bereits gestrichen",
+            "die Proteste hätten konkrete Sparprogramme gestoppt"
           ],
-          "uncertainty_note": "Die forensische Untersuchung läuft; Zahl und genauer Zeitraum der betroffenen Datensätze sind noch offen."
+          "uncertainty_note": "Weitere Unternehmensentscheidungen zu Standorten und Stellen sind je nach Konzern noch offen."
         }
       }
     },
     {
       "id": "2",
-      "title": "KI könnte Europas Produktivität anschieben – und gleichzeitig Stromnetze und Arbeitsmarkt unter Druck setzen",
-      "score": 98,
-      "trend_scope": "technology_ai",
-      "regional_relevance": "europe",
-      "criteria": {
-        "aktualitaet": 99,
-        "viralitaet": 98,
-        "tayvoriq_passung": 100,
-        "quellenqualitaet": 100,
-        "visuell": 97
-      },
-      "growth_v2": {
-        "growth_score": 98,
-        "priority_score": 99,
-        "binding_score": 98
-      },
-      "sources": [
-        {
-          "publisher": "Reuters",
-          "url": "https://www.reuters.com/business/imf-tells-eu-ministers-ai-could-boost-growth-increase-economic-strains-2026-09-19/",
-          "supports": "Reuters berichtet über das IMF-Papier für EU-Finanzminister: KI könnte Europas Produktivität über fünf Jahre um rund 1% erhöhen, zugleich aber Ungleichheit, Stromnetze und Abhängigkeiten verschärfen."
-        },
-        {
-          "publisher": "Irische EU-Ratspräsidentschaft",
-          "url": "https://irish-presidency.consilium.europa.eu/en/news/tanaiste-to-host-key-meeting-of-finance-ministers-and-central-bank-governors-as-part-of-ireland-s-eu-presidency/",
-          "supports": "Die Ratspräsidentschaft bestätigt KI als zentrales Thema des ECOFIN-Treffens und die Debatte über Produktivität, Wachstum sowie wirtschaftliche und gesellschaftliche Folgen."
-        }
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "sources": [
-          {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/business/imf-tells-eu-ministers-ai-could-boost-growth-increase-economic-strains-2026-09-19/",
-            "supports": "Aktuelle Berichterstattung zu den vom IMF vorgelegten Chancen und Risiken von KI für Europas Wirtschaft."
-          },
-          {
-            "publisher": "Irische EU-Ratspräsidentschaft",
-            "url": "https://irish-presidency.consilium.europa.eu/en/news/tanaiste-to-host-key-meeting-of-finance-ministers-and-central-bank-governors-as-part-of-ireland-s-eu-presidency/",
-            "supports": "Offizielle Bestätigung, dass EU-Finanzminister mit IMF und EZB über KI, Produktivität, Wachstum und gesellschaftliche Folgen beraten."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "EU-Finanzminister haben in Dublin über die wirtschaftlichen Chancen und Risiken von KI beraten.",
-          "why_happening": "KI verbreitet sich schnell, während Europa gleichzeitig bei Infrastruktur, Kapital und eigener Technologie aufholen muss.",
-          "who_is_affected": "Unternehmen, Beschäftigte, Stromnetzbetreiber und europäische Technologieanbieter sind direkt betroffen.",
-          "personal_impact": "KI kann Arbeit produktiver machen, könnte aber Tätigkeiten verändern und den Energiebedarf von Rechenzentren erhöhen.",
-          "action_now": "Beobachte, welche Investitionen Europa in Netze, Kompetenzen und eigene KI-Infrastruktur daraus ableitet."
-        },
-        "factual_guardrails": {
-          "must_include": [
-            "IMF sieht Produktivitätschance und wirtschaftliche Spannungen zugleich",
-            "Europa ist stark von ausländischer KI-Technologie abhängig",
-            "Arbeitsmarkt- und Energieeffekte bleiben unsicher"
-          ],
-          "must_not_claim": [
-            "KI werde Europas Produktivität garantiert um genau 1% steigern",
-            "60% aller europäischen Jobs würden verschwinden",
-            "EU-Minister hätten einen konkreten neuen KI-Beschluss gefasst"
-          ],
-          "uncertainty_note": "Die Produktivitätszahlen sind Modellschätzungen und hängen stark von Einführung, Investitionen und Regulierung ab."
-        }
-      }
-    },
-    {
-      "id": "3",
-      "title": "Zverev führt Deutschland ins Davis-Cup-Finale: Warum jetzt trotzdem offen ist, ob er in Bologna spielt",
-      "score": 97,
-      "trend_scope": "sports",
-      "regional_relevance": "germany",
-      "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 99,
-        "tayvoriq_passung": 98,
-        "quellenqualitaet": 100,
-        "visuell": 100
-      },
-      "growth_v2": {
-        "growth_score": 97,
-        "priority_score": 98,
-        "binding_score": 98
-      },
-      "sources": [
-        {
-          "publisher": "Reuters",
-          "url": "https://www.reuters.com/sports/tennis/zverev-leads-germany-into-davis-cup-final-8-spain-also-through-2026-09-20/",
-          "supports": "Reuters berichtet, dass Alexander Zverev Deutschland mit seinem Sieg über Dino Prizmic zur 3:1-Führung gegen Kroatien und damit in die Final 8 führte."
-        },
-        {
-          "publisher": "Sportschau",
-          "url": "https://www.sportschau.de/tennis/davis-cup/zverev-bestimmt-ueber-wohl-und-wehe-des-davis-cup-teams%2Cdavis-cup-zverev-resuemmee-100.html",
-          "supports": "Die Sportschau bestätigt den 3:1-Sieg, Zverevs zwei Punkte und dass er seine Teilnahme an der Endrunde in Bologna offenließ."
-        }
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "sources": [
-          {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/sports/tennis/zverev-leads-germany-into-davis-cup-final-8-spain-also-through-2026-09-20/",
-            "supports": "Aktuelle internationale Berichterstattung zum deutschen Davis-Cup-Erfolg gegen Kroatien."
-          },
-          {
-            "publisher": "Sportschau",
-            "url": "https://www.sportschau.de/tennis/davis-cup/zverev-bestimmt-ueber-wohl-und-wehe-des-davis-cup-teams%2Cdavis-cup-zverev-resuemmee-100.html",
-            "supports": "Aktuelle deutsche Analyse mit Ergebnis, Zverevs Matchbilanz und offener Bologna-Teilnahme."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Deutschland hat Kroatien 3:1 geschlagen und sich für die Davis Cup Final 8 in Bologna qualifiziert.",
-          "why_happening": "Zverev gewann beide Einzel; auch das deutsche Doppel lieferte einen wichtigen Punkt.",
-          "who_is_affected": "Das deutsche Davis-Cup-Team und Tennisfans blicken nun auf die Endrunde im November.",
-          "personal_impact": "Die offene Frage ist, ob Deutschlands stärkster Einzelspieler Zverev in Bologna tatsächlich dabei sein wird.",
-          "action_now": "Achte auf Zverevs Turnierplanung und die spätere Nominierung für die Final 8."
-        },
-        "factual_guardrails": {
-          "must_include": [
-            "Deutschland gewinnt 3:1 gegen Kroatien",
-            "Zverev holt zwei Einzelpunkte",
-            "Final 8 in Bologna im November"
-          ],
-          "must_not_claim": [
-            "Zverev habe seine Bologna-Teilnahme zugesagt",
-            "Deutschland sei bereits Davis-Cup-Sieger",
-            "Kroatien sei 4:0 geschlagen worden"
-          ],
-          "uncertainty_note": "Zverev hat seine Teilnahme an der Endrunde noch nicht verbindlich bestätigt."
-        }
-      }
-    },
-    {
-      "id": "4",
-      "title": "Deutschlands Wachstum wird deutlich höher erwartet: Warum 1,2% trotzdem noch keine starke Erholung bedeuten",
-      "score": 96,
+      "title": "China-Schock 2.0: Warum Deutschlands Industrie laut EZB besonders unter Druck gerät",
+      "score": 95,
       "trend_scope": "business_economy",
       "regional_relevance": "germany",
       "criteria": {
         "aktualitaet": 100,
         "viralitaet": 93,
-        "tayvoriq_passung": 97,
+        "tayvoriq_passung": 98,
         "quellenqualitaet": 100,
-        "visuell": 93
+        "visuell": 92
       },
       "growth_v2": {
-        "growth_score": 96,
+        "growth_score": 95,
         "priority_score": 96,
         "binding_score": 97
       },
       "sources": [
-        {
-          "publisher": "Institut der deutschen Wirtschaft (IW)",
-          "url": "https://www.iwkoeln.de/studien/michael-groemling-erholung-mit-vielen-fragezeichen.html",
-          "supports": "Das IW erwartet für Deutschland 2026 knapp 1,2% reales BIP-Wachstum, getragen vom starken ersten Halbjahr, warnt aber vor nachlassender Dynamik."
-        },
-        {
-          "publisher": "Reuters",
-          "url": "https://www.reuters.com/markets/europe/germanys-iw-institute-triples-growth-forecast-2026-2026-09-20/",
-          "supports": "Reuters ordnet die kräftige Prognoseanhebung von 0,4% auf knapp 1,2% ein und nennt Exporte sowie Staatsausgaben als Haupttreiber, bei weiter bestehenden strukturellen Belastungen."
-        }
+        "https://www.reuters.com/world/china/chinas-industrial-rise-hits-german-manufacturers-hard-ecb-finds-2026-09-22/",
+        "https://www.ecb.europa.eu/press/economic-bulletin/focus/2026/html/ecb.ebbox202603_02~7df7facd9a.de.html"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "Institut der deutschen Wirtschaft (IW)",
-            "url": "https://www.iwkoeln.de/studien/michael-groemling-erholung-mit-vielen-fragezeichen.html",
-            "supports": "Primärquelle der Herbstprognose mit knapp 1,2% Wachstum und Hinweis auf wieder nachlassende Dynamik."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/world/china/chinas-industrial-rise-hits-german-manufacturers-hard-ecb-finds-2026-09-22/",
+            "supports": "Reuters berichtet am 22. September über die EZB-Analyse, wonach deutsche Hersteller wegen ihres ähnlichen Exportprofils besonders stark mit chinesischer Konkurrenz konfrontiert sind."
           },
           {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/markets/europe/germanys-iw-institute-triples-growth-forecast-2026-2026-09-20/",
-            "supports": "Unabhängige Einordnung der Prognoseanhebung und ihrer Treiber sowie Risiken."
+            "publisher": "Europäische Zentralbank",
+            "url": "https://www.ecb.europa.eu/press/economic-bulletin/focus/2026/html/ecb.ebbox202603_02~7df7facd9a.de.html",
+            "supports": "Die EZB beschreibt steigenden Wettbewerbsdruck durch chinesische Exporte besonders in mittel- und hochtechnologischen Industriebranchen sowie Marktanteilsverluste europäischer Hersteller."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Das IW hat seine Wachstumsprognose für Deutschland 2026 deutlich auf knapp 1,2% angehoben.",
-          "why_happening": "Stärkere Exporte und hohe staatliche Ausgaben haben das erste Halbjahr besser ausfallen lassen als erwartet.",
-          "who_is_affected": "Unternehmen, Beschäftigte und Verbraucher hängen davon ab, ob aus dem guten ersten Halbjahr eine breitere Erholung wird.",
-          "personal_impact": "Mehr Wachstum kann Arbeitsmarkt und Investitionen stützen, gleichzeitig bleiben Energiepreise und schwacher Konsum Belastungen.",
-          "action_now": "Beobachte die nächsten Daten zu Konsum, Investitionen und Auftragseingängen, statt nur auf die Jahreszahl zu schauen."
+          "what_happened": "Die EZB sieht Deutschlands Industrie besonders stark durch Chinas Aufstieg bedrängt.",
+          "why_happening": "Weil China mehr Hochtechnologie exportiert, verlieren europäische Hersteller Marktanteile.",
+          "who_is_affected": "Besonders Maschinenbau, Fahrzeugindustrie und technologieintensive Zulieferer stehen unter Druck.",
+          "personal_impact": "Für dich betrifft das Jobs, Preise und Europas industrielle Wettbewerbsfähigkeit.",
+          "action_now": "Beobachte, wie deutsche Hersteller Produktion, Kosten und Produkte anpassen."
         },
         "factual_guardrails": {
           "must_include": [
-            "IW-Prognose knapp 1,2% für 2026",
-            "starkes erstes Halbjahr als Hauptgrund",
-            "Dynamik soll wieder nachlassen"
+            "Deutschland ist wegen ähnlicher Exportstruktur besonders exponiert",
+            "chinesische Konkurrenz wächst in höherwertiger Industrie",
+            "EU-Hersteller verlieren in betroffenen Bereichen Marktanteile"
           ],
           "must_not_claim": [
-            "Deutschland befinde sich bereits in einem Boom",
-            "1,2% Wachstum sei garantiert",
-            "alle Institute hätten exakt dieselbe Prognose"
+            "Deutschlands Industrie sei bereits vollständig verdrängt",
+            "China sei alleinige Ursache aller deutschen Industrieprobleme",
+            "die EZB prognostiziere konkrete Werksschließungen"
           ],
-          "uncertainty_note": "Konjunkturprognosen können sich mit neuen Daten, Energiepreisen und Außenhandelsentwicklungen deutlich verändern."
+          "uncertainty_note": "Die EZB beschreibt Wettbewerbsdruck und Modellwirkungen; konkrete Folgen unterscheiden sich nach Branche und Unternehmen."
+        }
+      }
+    },
+    {
+      "id": "3",
+      "title": "Stuttgarter Oper-Milliardenstreit: Warum jetzt Günther Oettinger vermitteln soll",
+      "score": 94,
+      "trend_scope": "world_society",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 90,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 98,
+        "visuell": 95
+      },
+      "growth_v2": {
+        "growth_score": 94,
+        "priority_score": 95,
+        "binding_score": 96
+      },
+      "sources": [
+        "https://www.swr.de/swraktuell/baden-wuerttemberg/streit-um-stuttgarter-oper-oettinger-soll-vermittler-werden-100.html",
+        "https://www.welt.de/article6ab25eaea15a9fecb668b62b"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/streit-um-stuttgarter-oper-oettinger-soll-vermittler-werden-100.html",
+            "supports": "SWR berichtet, dass Günther Oettinger eine Expertenrunde zur Zukunft der Stuttgarter Staatsoper leiten und Empfehlungen erarbeiten soll."
+          },
+          {
+            "publisher": "WELT",
+            "url": "https://www.welt.de/article6ab25eaea15a9fecb668b62b",
+            "supports": "WELT ordnet den Streit um Sanierung, Neubau und Interimsspielstätte sowie die hohen Kosten des Gesamtprojekts ein."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Günther Oettinger soll den festgefahrenen Streit um Stuttgarts Oper moderieren.",
+          "why_happening": "Weil Sanierung, Neubau und Interimslösung Milliarden kosten können, braucht es Einigung.",
+          "who_is_affected": "Betroffen sind Stadt, Land, Kulturbetrieb und letztlich die Steuerzahler.",
+          "personal_impact": "Für dich in Stuttgart geht es um Kosten und jahrelange Baustellen.",
+          "action_now": "Beobachte, welche Variante die Expertenrunde bis Jahresende empfiehlt."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Oettinger soll die Expertenrunde leiten",
+            "Sanierung oder Neubau werden neu bewertet",
+            "Stadt und Land tragen das Projekt gemeinsam"
+          ],
+          "must_not_claim": [
+            "eine endgültige Bauvariante sei bereits beschlossen",
+            "Oettinger entscheide allein über das Projekt",
+            "die endgültigen Kosten stünden bereits fest"
+          ],
+          "uncertainty_note": "Die Expertenrunde soll Empfehlungen erarbeiten; die endgültige Projektentscheidung steht noch aus."
+        }
+      }
+    },
+    {
+      "id": "4",
+      "title": "E-Scooter-Akku explodiert in Karlsruhe: Drei Verletzte und 250.000 Euro Schaden",
+      "score": 93,
+      "trend_scope": "world_society",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 92,
+        "tayvoriq_passung": 95,
+        "quellenqualitaet": 100,
+        "visuell": 96
+      },
+      "growth_v2": {
+        "growth_score": 93,
+        "priority_score": 94,
+        "binding_score": 95
+      },
+      "sources": [
+        "https://www.presseportal.de/blaulicht/pm/110972/6356397",
+        "https://www.swr.de/swraktuell/baden-wuerttemberg/karlsruhe/brand-wohnhaus-escooter-akku-explodiert-karlsruhe-100.html"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Polizeipräsidium Karlsruhe",
+            "url": "https://www.presseportal.de/blaulicht/pm/110972/6356397",
+            "supports": "Die Polizei meldet, dass nach bisherigen Erkenntnissen ein E-Scooter-Akku nach dem Laden explodierte; drei Menschen wurden verletzt und der Schaden liegt bei rund 250.000 Euro."
+          },
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/karlsruhe/brand-wohnhaus-escooter-akku-explodiert-karlsruhe-100.html",
+            "supports": "SWR bestätigt den Wohnungsbrand in der Karlsruher Südstadt, drei Verletzte, Evakuierungen und die derzeitige Unbewohnbarkeit des Hauses."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Ein E-Scooter-Akku explodierte nach dem Laden und verursachte einen Wohnungsbrand.",
+          "why_happening": "Weil der Akku explodierte, breitete sich das Feuer schnell aus.",
+          "who_is_affected": "Drei Menschen wurden verletzt, das Karlsruher Wohnhaus ist unbewohnbar.",
+          "personal_impact": "Für dich zeigt der Fall, wie ernst Akku-Brände zuhause werden.",
+          "action_now": "Achte beim Laden auf Herstellerhinweise, Hitze und sichtbare Schäden."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Explosion nach dem Ladevorgang laut Polizei",
+            "drei Verletzte",
+            "rund 250.000 Euro Schaden"
+          ],
+          "must_not_claim": [
+            "die genaue technische Defektursache sei bereits geklärt",
+            "alle E-Scooter-Akkus seien gefährlich",
+            "es habe Tote gegeben"
+          ],
+          "uncertainty_note": "Die Polizei beschreibt die Explosion nach bisherigen Erkenntnissen; die technische Ursache ist damit nicht abschließend geklärt."
         }
       }
     },
     {
       "id": "5",
-      "title": "BVB nach 40 Monaten wieder Tabellenführer – und der VfB steckt trotz guter Leistung im Fehlstart",
-      "score": 95,
-      "trend_scope": "sports",
-      "regional_relevance": "local",
+      "title": "Meta Muse entfacht neue KI-Rally: Warum der Hype auch Europas Techwerte bewegt",
+      "score": 92,
+      "trend_scope": "technology_ai",
+      "regional_relevance": "global",
       "criteria": {
-        "aktualitaet": 98,
+        "aktualitaet": 100,
         "viralitaet": 98,
-        "tayvoriq_passung": 98,
+        "tayvoriq_passung": 95,
         "quellenqualitaet": 100,
-        "visuell": 100
+        "visuell": 97
       },
       "growth_v2": {
-        "growth_score": 95,
-        "priority_score": 97,
-        "binding_score": 96
+        "growth_score": 92,
+        "priority_score": 94,
+        "binding_score": 91
       },
       "sources": [
-        {
-          "publisher": "Sportschau",
-          "url": "https://www.sportschau.de/fussball/bundesliga/beier-schiesst-bvb-nach-40-monaten-zurueck-an-die-spitze%2Cspielbericht-vfb-stuttgart-borussia-dortmund-112.html",
-          "supports": "Die Sportschau berichtet über Dortmunds 1:0 in Stuttgart, Beiers Siegtreffer und die erste Tabellenführung des BVB seit über drei Jahren."
-        },
-        {
-          "publisher": "Bundesliga",
-          "url": "https://www.bundesliga.com/de/bundesliga/news/vfb-stuttgart-borussia-dortmund-spieltag-4-spielbericht-highlights-39271",
-          "supports": "Die Bundesliga bestätigt Ergebnis, Torschütze, Spielverlauf und die knappe Niederlage des VfB Stuttgart."
-        }
+        "https://www.reuters.com/markets/europe/global-markets-view-europe-2026-09-22/",
+        "https://www.ft.com/content/2c60812b-77b4-4de5-a276-5e3eb2ceb5c3"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "sources": [
           {
-            "publisher": "Sportschau",
-            "url": "https://www.sportschau.de/fussball/bundesliga/beier-schiesst-bvb-nach-40-monaten-zurueck-an-die-spitze%2Cspielbericht-vfb-stuttgart-borussia-dortmund-112.html",
-            "supports": "Unabhängiger Spielbericht mit Tabellenkontext, Beiers Treffer und Stuttgarts Ausgangslage."
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/markets/europe/global-markets-view-europe-2026-09-22/",
+            "supports": "Reuters berichtet, dass Metas neuer KI-Assistent Muse den KI-Handel neu belebt und die Stimmung an globalen Technologiemärkten antreibt."
           },
           {
-            "publisher": "Bundesliga",
-            "url": "https://www.bundesliga.com/de/bundesliga/news/vfb-stuttgart-borussia-dortmund-spieltag-4-spielbericht-highlights-39271",
-            "supports": "Offizieller Wettbewerbsbericht mit 0:1-Endstand, Beier-Tor in Minute 70 und statistischer Einordnung."
+            "publisher": "Financial Times",
+            "url": "https://www.ft.com/content/2c60812b-77b4-4de5-a276-5e3eb2ceb5c3",
+            "supports": "Die FT berichtet über die KI-getriebene Aktienrally und nennt auch Kursgewinne im europäischen Technologieindex Stoxx Europe 600 Tech."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Borussia Dortmund hat beim VfB Stuttgart 1:0 gewonnen und die Tabellenführung übernommen.",
-          "why_happening": "Maximilian Beier erzielte nach einem ausgeglichenen Spiel in der 70. Minute den entscheidenden Treffer.",
-          "who_is_affected": "Für Dortmund geht es mit perfekter Punkteausbeute in die Pause; Stuttgart verliert früh Anschluss.",
-          "personal_impact": "Für Fans in Stuttgart ist die Diskrepanz spannend: ordentliche Leistung, aber erneut keine Punkte.",
-          "action_now": "Entscheidend wird nach der Pause, ob der VfB die spielerischen Ansätze in Ergebnisse umsetzen kann."
+          "what_happened": "Metas neuer KI-Assistent Muse hat eine weltweite Tech-Rally ausgelöst.",
+          "why_happening": "Weil die Nachfrage stark anspringt, wetten Anleger erneut auf KI-Wachstum.",
+          "who_is_affected": "Betroffen sind Chipkonzerne, Plattformen und auch europäische Technologiewerte.",
+          "personal_impact": "Für dich in Europa zeigt das, wie schnell KI-Hype Märkte bewegt.",
+          "action_now": "Beobachte, ob Nutzung und Umsätze den aktuellen Börsenoptimismus wirklich tragen."
         },
         "factual_guardrails": {
           "must_include": [
-            "VfB Stuttgart 0:1 Borussia Dortmund",
-            "Tor Maximilian Beier in der 70. Minute",
-            "BVB übernimmt Tabellenführung"
+            "Muse treibt neue KI-Euphorie",
+            "europäische Technologiewerte reagieren mit",
+            "Börsenreaktion ist Marktstimmung, keine Garantie"
           ],
           "must_not_claim": [
-            "Stuttgart habe schlecht gespielt",
-            "die Meisterschaft sei entschieden",
-            "Beier sei schon sicher Nationalspieler"
+            "Muse sei bereits dauerhaft profitabel",
+            "europäische Tech-Aktien würden weiter steigen",
+            "der KI-Boom sei sicher und risikolos"
           ],
-          "uncertainty_note": "Tabellenstände nach vier Spieltagen sind eine Momentaufnahme und erlauben noch keine belastbare Saisonprognose."
+          "uncertainty_note": "Börsenbewegungen können sich schnell ändern; die längerfristige Nutzung und Monetarisierung von Muse bleibt abzuwarten."
         }
       }
     }
