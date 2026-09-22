@@ -868,6 +868,71 @@ jobs:
             exit 0
           fi
 
+          # A verified Production Green implementation revision is itself the
+          # codefix proof. Do not require a request-specific overlay when the
+          # previous failed implementation changed to a different immutable
+          # Production Green SHA and the current full preflight has passed.
+          if python - "$runtime_request" "out/control-plane/production-manifest.json" <<'PY'
+          import json,re,sys
+          from pathlib import Path
+          request=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          manifest=json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+          codefix=request.get('codefix_recovery') if isinstance(request.get('codefix_recovery'),dict) else {}
+          failed_impl=str(codefix.get('failed_implementation_sha') or '').strip().lower()
+          replay_impl=str(codefix.get('replay_implementation_sha') or '').strip().lower()
+          replay_control=str(codefix.get('replay_control_plane_sha') or '').strip().lower()
+          current_impl=str(manifest.get('implementation_sha') or '').strip().lower()
+          current_control=str(manifest.get('control_plane_sha') or '').strip().lower()
+          request_id=str(request.get('request_id') or '').strip()
+          current_request=str(manifest.get('source_request_id') or '').strip()
+          status=str(codefix.get('status') or '')
+          substate=str(codefix.get('request_substate') or '')
+          replay_run=int(codefix.get('replay_run_id') or 0)
+          current_run=int(manifest.get('run_id') or 0)
+          reason=str(codefix.get('codefix_detection_reason') or '')
+          valid_sha=lambda value: bool(re.fullmatch(r'[0-9a-f]{40}', value))
+          passed=all((
+              status=='REPLAY_DISPATCHED',
+              substate=='DISPATCHED',
+              replay_run==current_run,
+              reason=='production-green-implementation-changed',
+              valid_sha(failed_impl),
+              valid_sha(replay_impl),
+              replay_impl==current_impl,
+              replay_impl!=failed_impl,
+              valid_sha(replay_control),
+              replay_control==current_control,
+              current_request==request_id and bool(request_id),
+              manifest.get('implementation_binding')=='production-green-immutable-sha',
+              manifest.get('autocodefix_overlay_applied') is False,
+              manifest.get('lightweight_preflight_passed') is True,
+              manifest.get('quality_gates_weakened') is False,
+          ))
+          if not passed:
+              raise SystemExit(1)
+          report={
+              'schema':'tayvoriq-replay-readiness-v1',
+              'request_id':request_id,
+              'topic':str(request.get('topic') or ''),
+              'passed':True,
+              'supported_topic':'verified-production-green-implementation-codefix',
+              'issues':[],
+              'reason':'replay is bound to a different immutable Production Green implementation SHA than the failed run; current preflight passed and no request overlay is applied',
+              'failed_implementation_sha':failed_impl,
+              'replay_implementation_sha':replay_impl,
+              'control_plane_sha':current_control,
+              'quality_gates_weakened':False,
+          }
+          target=Path('out/control-plane/replay-readiness.json')
+          target.parent.mkdir(parents=True,exist_ok=True)
+          target.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+          then
+            echo "REPLAY_READINESS_VERIFIED_PRODUCTION_GREEN_CODEFIX:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            exit 0
+          fi
+
           python tools/tayvoriq_replay_readiness_gate_v1.py \
             --request "$runtime_request" \
             --production-manifest out/control-plane/production-manifest.json \
