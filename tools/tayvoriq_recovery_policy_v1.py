@@ -32,6 +32,16 @@ PUBLISHABLE_RETRY_PATTERNS = (
     r'"state"\s*:\s*"publishable_output_retry_required"',
 )
 
+LOCAL_VOICE_RETRY_PATTERNS = (
+    r"voice_v5_no_natural_full_take",
+    r"voice_v5_postmux_failed",
+    r"voice_v5_platform_cta_missing",
+    r"human-voice-postmux-proof-missing",
+    r"human-voice-postmux-proof-not-passed",
+    r"human-voice-postmux-similarity-too-low",
+)
+
+
 LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"bounded localized repair exhausted",
     r"localized checkpoint repair failed safely",
@@ -187,6 +197,24 @@ def classify_failure(
     if not owner_current:
         state = "SUPERSEDED_RECOVERY_EVENT"
         return RecoveryDecision("stale", state, False, "none", generation, None, maximum, _stable_signature(state, text), "A newer run already owns the request.")
+
+    # Voice/post-mux misses are runtime output variance, not repository defects.
+    # Retry the exact same request/checkpoint locally and never arm autonomous
+    # codefix merely because one synthesized take failed ASR/post-mux proof.
+    if _matches(lowered, LOCAL_VOICE_RETRY_PATTERNS):
+        if attempt < 3:
+            state = "LOCAL_VOICE_RETRY_REQUIRED"
+            return RecoveryDecision(
+                "rerun", state, True, "same-run", generation, generation,
+                maximum, _stable_signature(state, text),
+                "The local narrator/post-mux proof failed; retry the same bound run from its checkpoint without changing code or request."
+            )
+        state = "LOCAL_VOICE_RETRY_EXHAUSTED"
+        return RecoveryDecision(
+            "exhausted", state, False, "none", generation, None,
+            maximum, _stable_signature(state, text),
+            "The bounded local narrator retries were exhausted. Stop without autonomous code mutation."
+        )
 
     # A failed codefix replay is already the bounded second execution of the exact
     # approved request. If that replay reaches the terminal publishability handoff,
