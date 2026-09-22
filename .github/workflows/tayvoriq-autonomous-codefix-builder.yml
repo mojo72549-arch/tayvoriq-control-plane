@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-autonomous-codefix-builder
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-verified-candidate:
@@ -249,6 +249,37 @@ jobs:
         run: |
           set -euo pipefail
           python -m compileall -q tools runtime_patches src/runtime_hotfixes tests
+
+          # Autonomous recovery must never weaken or bypass an already-tested
+          # production contract. Reject the two regression classes that caused
+          # the September recovery loop before any handoff can be published.
+          python - <<'PY'
+          import re
+          import subprocess
+
+          diff = subprocess.check_output(
+              ["git", "diff", "--unified=0"], text=True, errors="replace"
+          )
+          added = "\n".join(
+              line for line in diff.splitlines()
+              if line.startswith("+") and not line.startswith("+++")
+          )
+          forbidden = {
+              "FULL_TAKE_ATTEMPTS contract override": r"(?m)^\+.*FULL_TAKE_ATTEMPTS\s*=\s*(?!3\b)\d+",
+              "forced SUCCESS status": r"(?m)^\+.*\[['\"]status['\"]\]\s*=\s*['\"]SUCCESS['\"]",
+              "forced preflight success": r"(?m)^\+.*\[['\"]preflight_outcome['\"]\]\s*=\s*['\"]success['\"]",
+              "forced verified_recovered preflight": r"(?m)^\+.*\[['\"]preflight_status['\"]\]\s*=\s*['\"]verified_recovered['\"]",
+          }
+          hits = [name for name, pattern in forbidden.items() if re.search(pattern, added)]
+          if hits:
+              raise SystemExit(
+                  "AUTOCODEFIX_CONTRACT_REGRESSION_BLOCKED:" + ",".join(hits)
+              )
+          PY
+
+          # Run the exact regression contract that previously escaped the
+          # reduced autocodefix suite, then the existing focused safety suite.
+          python -m pytest -q tests/test_tayvoriq_voice_v5_human_narrator.py
           python -m pytest -q             tests/test_tayvoriq_publishability_codefix_context.py             tests/test_tayvoriq_verified_request_runtime_recovery.py             tests/test_tayvoriq_pronunciation_audit_contract.py             tests/test_tayvoriq_visual_audit_resilience.py
           python tools/tayvoriq_lightweight_preflight.py
 
