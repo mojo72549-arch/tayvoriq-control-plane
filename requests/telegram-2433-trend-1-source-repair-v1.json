@@ -1,0 +1,66 @@
+{
+  "request_id": "telegram-2433-trend-1-source-repair-v1",
+  "status": "APPROVED",
+  "source": "telegram_trend_approval_source_repair",
+  "trend_id": "1",
+  "topic": "48.000 Auto-Beschäftigte in Baden-Württemberg protestieren gegen Stellenabbau und Standortverlagerungen",
+  "trend_scope": "mobility_energy",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-22T15:10:03.205Z",
+  "telegram_message_id": 2433,
+  "approval_key": "telegram:20260922-evening-agentv2:2433:trend:1:source-repair-v1",
+  "mode": "full",
+  "selection_id": "20260922-evening-agentv2",
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "sources": [
+      {
+        "publisher": "IG Metall Baden-Württemberg",
+        "url": "https://baden-wuerttemberg.igmetall.de/2026/2026-09-18-pressemitteilung-32-2027",
+        "supports": "Die Gewerkschaft meldet rund 48.000 Teilnehmende an knapp 50 Standorten in Baden-Württemberg, darunter Mercedes-Benz, Bosch, Porsche und weitere Betriebe."
+      },
+      {
+        "publisher": "Wall Street Journal",
+        "url": "https://www.wsj.com/business/autos/auto-industry-workers-protest-in-germany-against-job-cuts-industrial-policy-19fef607",
+        "supports": "Unabhängige Berichterstattung ordnet die bundesweiten Proteste vor dem Hintergrund von Stellenabbau, Kostendruck und Produktionsverlagerungen in der deutschen Autoindustrie ein."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "48.000 Auto-Beschäftigte protestierten in Baden-Württemberg gegen Stellenabbau und Standortverlagerungen.",
+      "why_happening": "Weil Hersteller sparen und Produktion verlagern, wächst der Druck auf Standorte.",
+      "who_is_affected": "Beschäftigte bei Mercedes, Bosch, Porsche und Zulieferern sind betroffen.",
+      "personal_impact": "Für dich zeigt das, wie der Autowandel Südwest-Arbeitsplätze trifft.",
+      "action_now": "Beobachte, welche Standorte Investitionen erhalten und welche Sparprogramme verschärft werden."
+    },
+    "factual_guardrails": {
+      "must_include": [
+        "rund 48.000 Teilnehmende in Baden-Württemberg",
+        "knapp 50 Standorte im Südwesten",
+        "Arbeitsplatz- und Standortthema"
+      ],
+      "must_not_claim": [
+        "alle deutschen Autowerke würden schließen",
+        "48.000 Arbeitsplätze seien bereits gestrichen",
+        "die Proteste hätten konkrete Sparprogramme gestoppt"
+      ],
+      "uncertainty_note": "Weitere Unternehmensentscheidungen zu Standorten und Stellen sind je nach Konzern noch offen."
+    }
+  },
+  "source_context_sha256": "883af8339d80d9cdab850933925f8c980164d9fc3b165f4583e5c71538b3a7c8",
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-22T15:10:03.205Z",
+      "actor": "orchestrator_source_contract_repair"
+    }
+  ],
+  "repair_of_request_id": "telegram-2433-trend-1",
+  "recovery_generation": 1,
+  "quality_gates_weakened": false,
+  "contract_sha256": "06eea0329575e3083da0af632b639ad4a386a2f9b539d68caad95e4afa0ddc1c"
+}
