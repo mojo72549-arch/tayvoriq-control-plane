@@ -13,7 +13,10 @@ from pathlib import Path
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-SCOPE = "https://www.googleapis.com/auth/youtube.upload"
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
+]
 
 
 def main() -> None:
@@ -41,14 +44,14 @@ def main() -> None:
 
     flow = InstalledAppFlow.from_client_secrets_file(
         str(args.client_secret_json),
-        scopes=[SCOPE],
+        scopes=SCOPES,
     )
     credentials = flow.run_local_server(
         host="localhost",
         port=0,
         authorization_prompt_message=(
             "A browser window will open. Sign in with the Google account that owns "
-            "the TAYVORIQ YouTube channel and approve video uploads."
+            "the TAYVORIQ YouTube channel and approve uploads plus video management."
         ),
         success_message="YouTube authorization completed. You can close this window.",
         open_browser=True,
