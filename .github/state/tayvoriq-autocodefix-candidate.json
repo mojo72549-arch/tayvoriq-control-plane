@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-autocodefix-handoff-v1",
-  "state": "PATCH_VERIFIED_PENDING_STUDIO_APPLY",
+  "state": "REJECTED_CONTRACT_REGRESSION",
   "request_id": "telegram-2286-trend-1-source-repair-v1",
   "failed_run_id": 35695212079,
   "failure_signature": "2f7f619dc422244aad79",
@@ -9,5 +9,7 @@
   "base_sha": "bc8ea406c2ce909f63303b496eeab3e1746eb76e",
   "patch_sha256": "677e77f36c45b9474b887217d218fa120da6a1f2cec449077f74850d620d62c2",
   "quality_gates_weakened": false,
-  "created_at": "2026-09-22T06:34:38.248109Z"
+  "created_at": "2026-09-22T06:34:38.248109Z",
+  "rejected_reason": "Autonomous overlay changed FULL_TAKE_ATTEMPTS from tested value 3 to 5 and introduced forced SUCCESS/preflight-success rewrites; do not hydrate or replay.",
+  "rejected_at": "2026-09-22T06:33:00Z"
 }
