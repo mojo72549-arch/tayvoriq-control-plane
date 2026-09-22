@@ -24,5 +24,18 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
         self.assertIn("Give the binder a bounded window", workflow)
 
 
+    def test_late_voice_failure_is_owned_only_by_delivery_watch(self):
+        workflow = (ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('state = "TRANSIENT_AUDIO_FAILURE"', workflow)
+        self.assertIn("CODEFIX_FINALIZER_SKIPPED_LOCAL_VOICE_FAILURE", workflow)
+        self.assertIn(
+            "Delivery Watch exclusively owns bounded same-run voice/postmux retry.",
+            workflow,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
