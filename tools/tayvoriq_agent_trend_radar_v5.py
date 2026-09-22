@@ -59,12 +59,24 @@ def main() -> int:
         prompt = base.prompt_for(args.slot, now)
         if scan_index > 1:
             prior_titles = [str(candidate.get("title") or "") for candidate in normalized]
-            prompt += (
-                f"\n\nAUTOMATIC BELOW-MINIMUM RESCAN: the previous scan left fewer than {min_candidates} candidates above the existing Growth reserve/source thresholds. "
-                "Find DISTINCT current stories/angles without weakening scores, source quality, novelty, claim coherence or duplicate rules. "
-                "Exclude already-seen titles or equivalent angles: "
-                + " | ".join(prior_titles[:12])
-            )
+            previous_error = str(last_growth_error or "")
+            if "REGIONAL_RESCAN_REQUIRED" in previous_error or "REGIONAL_SELECTION_RESCAN_REQUIRED" in previous_error:
+                prompt += (
+                    "\n\nAUTOMATIC REGIONAL CONTRACT RESCAN: the previous scan did not yield enough contract-valid "
+                    "local/Germany/Europe candidates. Run a FRESH, targeted Stuttgart/Baden-Wuerttemberg, Germany and EU discovery pass. "
+                    "Return distinct current stories that can survive every existing source, freshness, Growth, semantic, duplicate, "
+                    "claim-coherence and brand-safety gate. Aim for at least 5 genuinely regional raw candidates so that at least 3 can "
+                    "remain after validation. Do NOT relabel a global story as regional and do NOT weaken any threshold. "
+                    "Exclude already-seen titles or equivalent angles: "
+                    + " | ".join(prior_titles[:12])
+                )
+            else:
+                prompt += (
+                    f"\n\nAUTOMATIC BELOW-MINIMUM RESCAN: the previous scan left fewer than {min_candidates} candidates above the existing Growth reserve/source thresholds. "
+                    "Find DISTINCT current stories/angles without weakening scores, source quality, novelty, claim coherence or duplicate rules. "
+                    "Exclude already-seen titles or equivalent angles: "
+                    + " | ".join(prior_titles[:12])
+                )
 
         data, chunks, model, provider_name = base.grounded_call(prompt, gemini_key, groq_key)
         providers.append(provider_name)
@@ -110,18 +122,28 @@ def main() -> int:
         except SystemExit as exc:
             last_growth_error = exc
             message = str(exc)
+            rescan_signal = any(signal in message for signal in (
+                "GROWTH_RESCAN_REQUIRED",
+                "REGIONAL_RESCAN_REQUIRED",
+                "REGIONAL_SELECTION_RESCAN_REQUIRED",
+            ))
             if (
-                "GROWTH_RESCAN_REQUIRED" in message
+                rescan_signal
                 and rescan_below_minimum
                 and scan_index < max_scans
             ):
+                regional_rescan = (
+                    "REGIONAL_RESCAN_REQUIRED" in message
+                    or "REGIONAL_SELECTION_RESCAN_REQUIRED" in message
+                )
                 print(json.dumps({
                     "event": "growth_rescan",
-                    "reason": "below_minimum_candidates",
+                    "reason": "regional_contract_below_minimum" if regional_rescan else "below_minimum_candidates",
                     "scan": scan_index,
                     "valid_pool": len(candidate_pool),
                     "minimum_required": min_candidates,
                     "error": message,
+                    "quality_gates_weakened": False,
                 }, ensure_ascii=False))
                 continue
             raise
