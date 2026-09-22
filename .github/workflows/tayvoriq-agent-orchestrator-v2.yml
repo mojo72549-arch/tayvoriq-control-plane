@@ -209,7 +209,7 @@ jobs:
             --audit-output /tmp/tayvoriq-trend-audit.json
 
       - name: Generate quality-driven 1-5 trend ranking
-        if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active != 'true' && steps.mode.outputs.active_series != 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true' && steps.mode.outputs.series_in_flight != 'true' && steps.active_request.outputs.active != 'true'
         env:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.mode.outputs.series_in_flight }}
         run: |
