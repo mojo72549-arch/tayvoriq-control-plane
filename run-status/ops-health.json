@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T01:05:46.234289Z",
+  "generated_at": "2026-09-22T05:13:54.135773Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35674275299,
-    "pointer_updated_at": "2026-09-22T01:02:21.877881Z"
+    "golden_path_run_id": 35675146186,
+    "pointer_updated_at": "2026-09-22T01:16:30.187552Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
@@ -24,12 +24,12 @@
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35674275299,
+    "id": 35675146186,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35674275299",
-    "created_at": "2026-09-22T01:02:15Z",
-    "updated_at": "2026-09-22T01:04:51Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35675146186",
+    "created_at": "2026-09-22T01:16:24Z",
+    "updated_at": "2026-09-22T01:19:59Z",
     "attempt": 1,
     "progress": 72,
     "current_step": null,
@@ -133,7 +133,7 @@
     }
   ],
   "incident": {
-    "signature": "35674275299:23:DETERMINISTIC_PREFLIGHT_FAILURE",
+    "signature": "35675146186:23:DETERMINISTIC_PREFLIGHT_FAILURE",
     "severity": "critical",
     "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
     "failed_step": "Preflight",
@@ -152,7 +152,7 @@
   "recovery": {
     "status": "ARMED",
     "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "failed_run_id": 35674275299,
+    "failed_run_id": 35675146186,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
@@ -165,37 +165,37 @@
   },
   "events": [
     {
-      "at": "2026-09-22T01:04:51Z",
+      "at": "2026-09-22T01:19:59Z",
       "title": "Workflow-Fehler",
       "detail": "Preflight"
     },
     {
-      "at": "2026-09-22T01:04:57.676198Z",
+      "at": "2026-09-22T01:20:04.863907Z",
       "title": "AWAITING_CODEFIX",
       "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     },
     {
-      "at": "2026-09-22T01:02:21.877881Z",
+      "at": "2026-09-22T01:16:30.187552Z",
       "title": "DISPATCHED",
       "detail": "verified-request-bound-autocodefix-overlay-replay"
     },
     {
-      "at": "2026-09-22T01:01:20.046059Z",
+      "at": "2026-09-22T01:15:27.130942Z",
       "title": "AWAITING_CODEFIX",
       "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     },
     {
-      "at": "2026-09-22T00:59:11.855131Z",
+      "at": "2026-09-22T01:13:08.690667Z",
       "title": "DISPATCHED",
       "detail": "verified-request-bound-autocodefix-overlay-replay"
     },
     {
-      "at": "2026-09-22T00:56:54.123603Z",
+      "at": "2026-09-22T01:11:52.184926Z",
       "title": "AWAITING_CODEFIX",
       "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     },
     {
-      "at": "2026-09-22T00:46:42.121178Z",
+      "at": "2026-09-22T01:09:44.558025Z",
       "title": "DISPATCHED",
       "detail": "verified-request-bound-autocodefix-overlay-replay"
     }
