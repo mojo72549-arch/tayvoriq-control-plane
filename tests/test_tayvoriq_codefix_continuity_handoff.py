@@ -20,7 +20,7 @@ def _step(text: str, name: str) -> str:
 class CodefixContinuityHandoffTests(unittest.TestCase):
     def test_failure_finalizer_verifies_the_latest_committed_owner(self) -> None:
         golden = GOLDEN.read_text(encoding="utf-8")
-        step = _step(golden, "Dispatch exact deterministic failure finalizer")
+        step = _step(golden, "Verify failure handoff for canonical Delivery Watch")
         required = (
             "CODEFIX_FINALIZER_REQUEST_ID_INVALID",
             "git fetch --no-tags --prune origin main --quiet",
@@ -34,6 +34,11 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
             self.assertIn(marker, step, marker)
         self.assertNotIn(
             "pointer_path=Path('.github/state/tayvoriq-active-production-request.json')",
+            step,
+        )
+        self.assertIn("DELIVERY_WATCH_HANDOFF_VERIFIED", step)
+        self.assertNotIn(
+            "gh workflow run tayvoriq-deterministic-codefix-continuity.yml",
             step,
         )
 
