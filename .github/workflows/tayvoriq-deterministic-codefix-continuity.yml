@@ -543,6 +543,7 @@ jobs:
           steps.pending.outputs.found == 'true' &&
           steps.revision.outputs.detected != 'true' &&
           steps.autocodefix.outputs.dispatched != 'true' &&
+          github.event_name != 'schedule' &&
           (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'TAYVORIQ Production Green Promoter')
         shell: bash
         env:
