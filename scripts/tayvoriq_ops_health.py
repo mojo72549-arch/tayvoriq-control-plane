@@ -82,6 +82,28 @@ def load_json(path):
         return None
 
 
+def newer_pending_request_exists(pointer_request_id, pointer_updated_at):
+    """Detect a newer approved/dispatching request only to suppress stale green notifications.
+
+    This does not replace the canonical active pointer and never drives recovery.
+    It only prevents Telegram from announcing an older completed topic as
+    "system healthy" while a newer approval is already waiting to be bound.
+    """
+    cutoff = parse_ts(pointer_updated_at)
+    pending_states = {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION", "DISPATCHING", "DISPATCHED"}
+    for path in Path("requests").glob("*.json"):
+        data = load_json(path)
+        if not isinstance(data, dict):
+            continue
+        if str(data.get("request_id") or "").strip() == str(pointer_request_id or "").strip():
+            continue
+        if latest_state(data) not in pending_states:
+            continue
+        if request_timestamp(data) > cutoff:
+            return True
+    return False
+
+
 def load_current_request():
     """Resolve only the request named by the canonical active pointer.
 
@@ -429,11 +451,18 @@ def main():
     previous_incident = ((previous.get("incident") or {}).get("signature") if isinstance(previous.get("incident"), dict) else None)
     previous_recovery = str(((previous.get("recovery") or {}).get("status") if isinstance(previous.get("recovery"), dict) else "") or "")
     current_incident = incident.get("signature") if incident else None
+    stale_green_suppressed = bool(
+        overall == "green"
+        and newer_pending_request_exists(
+            pointer.get("request_id") if isinstance(pointer, dict) else None,
+            pointer.get("updated_at") if isinstance(pointer, dict) else None,
+        )
+    )
     notify = (
         previous_overall != overall
         or previous_incident != current_incident
         or previous_recovery != self_heal_status
-    ) and (overall in {"red", "yellow", "green"})
+    ) and (overall in {"red", "yellow", "green"}) and not stale_green_suppressed
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -446,7 +475,13 @@ def main():
             handle.write(f"run_id={run_id or ''}\n")
             handle.write(f"user_action_required={'true' if user_action_required else 'false'}\n")
             handle.write(f"incident_signature={current_incident or ''}\n")
-    print(json.dumps({"overall": overall, "run_id": run_id, "notify": notify, "api_error": api_error}, ensure_ascii=False))
+    print(json.dumps({
+        "overall": overall,
+        "run_id": run_id,
+        "notify": notify,
+        "stale_green_suppressed": stale_green_suppressed,
+        "api_error": api_error,
+    }, ensure_ascii=False))
     return 0
 
 
