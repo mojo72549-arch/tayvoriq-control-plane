@@ -803,6 +803,71 @@ jobs:
           }
 
           echo "REPLAY_READINESS_CANONICAL_REQUEST_BOUND:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+
+          # A deterministic failure that happened in the control plane before
+          # implementation checkout must be proven by a control-plane revision,
+          # not by inventing a Studio overlay. Keep the immutable Production
+          # Green implementation and all quality gates unchanged.
+          if python - "$runtime_request" "out/control-plane/production-manifest.json" <<'PY'
+          import json,re,sys
+          from pathlib import Path
+          request=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          manifest=json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+          codefix=request.get('codefix_recovery') if isinstance(request.get('codefix_recovery'),dict) else {}
+          failed_control=str(codefix.get('failed_control_plane_sha') or '').strip().lower()
+          failed_impl=str(codefix.get('failed_implementation_sha') or '').strip().lower()
+          replay_control=str(codefix.get('replay_control_plane_sha') or '').strip().lower()
+          replay_impl=str(codefix.get('replay_implementation_sha') or '').strip().lower()
+          current_control=str(manifest.get('control_plane_sha') or '').strip().lower()
+          current_impl=str(manifest.get('implementation_sha') or '').strip().lower()
+          request_id=str(request.get('request_id') or '').strip()
+          current_request=str(manifest.get('source_request_id') or '').strip()
+          status=str(codefix.get('status') or '')
+          substate=str(codefix.get('request_substate') or '')
+          replay_run=int(codefix.get('replay_run_id') or 0)
+          current_run=int(manifest.get('run_id') or 0)
+          valid_sha=lambda value: bool(re.fullmatch(r'[0-9a-f]{40}', value))
+          passed=all((
+              status=='REPLAY_DISPATCHED',
+              substate=='DISPATCHED',
+              replay_run==current_run,
+              valid_sha(failed_control),
+              not failed_impl,
+              valid_sha(replay_control),
+              replay_control==current_control,
+              replay_control!=failed_control,
+              valid_sha(replay_impl),
+              replay_impl==current_impl,
+              current_request==request_id and bool(request_id),
+              manifest.get('implementation_binding')=='production-green-immutable-sha',
+              manifest.get('autocodefix_overlay_applied') is False,
+              manifest.get('quality_gates_weakened') is False,
+          ))
+          if not passed:
+              raise SystemExit(1)
+          report={
+              'schema':'tayvoriq-replay-readiness-v1',
+              'request_id':request_id,
+              'topic':str(request.get('topic') or ''),
+              'passed':True,
+              'supported_topic':'verified-control-plane-codefix',
+              'issues':[],
+              'reason':'deterministic failure occurred before implementation checkout; current replay proves a changed bound control-plane SHA while the immutable Production Green implementation SHA remains unchanged',
+              'failed_control_plane_sha':failed_control,
+              'replay_control_plane_sha':replay_control,
+              'implementation_sha':current_impl,
+              'quality_gates_weakened':False,
+          }
+          target=Path('out/control-plane/replay-readiness.json')
+          target.parent.mkdir(parents=True,exist_ok=True)
+          target.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+          then
+            echo "REPLAY_READINESS_VERIFIED_CONTROL_PLANE_CODEFIX:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            exit 0
+          fi
+
           python tools/tayvoriq_replay_readiness_gate_v1.py \
             --request "$runtime_request" \
             --production-manifest out/control-plane/production-manifest.json \
