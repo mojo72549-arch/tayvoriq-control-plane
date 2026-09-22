@@ -37,5 +37,18 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
         )
 
 
+    def test_local_voice_retry_uses_new_green_when_verified_implementation_advanced(self):
+        workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Detect advanced Production Green for local voice retry", workflow)
+        self.assertIn("steps.voice_green.outputs.advanced != 'true'", workflow)
+        self.assertIn("Replay local voice request on advanced Production Green", workflow)
+        self.assertIn("SAME_GENERATION_VERIFIED_GREEN_VOICE_REPLAY", workflow)
+        self.assertIn("production-green-advanced-during-local-voice-retry", workflow)
+        self.assertIn("quality_gates_weakened':False", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()
