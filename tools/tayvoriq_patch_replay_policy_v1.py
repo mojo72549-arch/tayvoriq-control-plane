@@ -110,8 +110,11 @@ def validate(policy: str, orphan: str) -> None:
         'generation: int, codefix_replay: bool, target: Path',
         '"--codefix-replay"',
         '"true" if codefix_replay else "false"',
-        'str(codefix.get("status") or "") == "REPLAY_DISPATCHED"',
+        'status = str(codefix.get("status") or "")',
+        'status == "REPLAY_DISPATCHED"',
         '_int(codefix.get("replay_run_id")) == run_id',
+        'status == "FRESH_RECOVERY_DISPATCHED"',
+        '_int(codefix.get("fresh_recovery_run_id")) == run_id',
         'generation, codefix_replay, policy_path',
     )
     missing=[f'policy:{v}' for v in required_policy if v not in policy]
