@@ -600,11 +600,18 @@ jobs:
           path: pages-worktree
           fetch-depth: 1
 
-      - name: Clear stale pip wheel cache before production
+      - name: Restore production dependency cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: tayvoriq-pip-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
+          restore-keys: |
+            tayvoriq-pip-${{ runner.os }}-py311-
+
+      - name: Check production workspace capacity
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf ~/.cache/pip
           mkdir -p ~/.cache/pip
           df -h "$GITHUB_WORKSPACE"
 
@@ -715,9 +722,17 @@ jobs:
           if 'chatterbox' in target.read_text(encoding='utf-8').casefold():
               raise SystemExit('DEPENDENCY_POLICY_FAILED: Chatterbox remained in filtered requirements')
           PY
-          python -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q
-          python -m pip install --no-cache-dir -r /tmp/tayvoriq-production-requirements.txt pytest -q
-          python -m pip install --no-cache-dir "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          install_dependencies() {
+            python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q &&
+            python -m pip install -r /tmp/tayvoriq-production-requirements.txt pytest -q &&
+            python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          }
+          if ! install_dependencies; then
+            echo "TAYVORIQ_DEPENDENCY_CACHE_RETRY_AFTER_PURGE"
+            rm -rf ~/.cache/pip
+            mkdir -p ~/.cache/pip
+            install_dependencies
+          fi
           python - <<'PY'
           import torch
           version = str(torch.__version__)
