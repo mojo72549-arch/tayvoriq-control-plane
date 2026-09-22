@@ -20,7 +20,7 @@ on:
 
 permissions:
   contents: write
-  actions: read
+  actions: write
 
 concurrency:
   group: tayvoriq-ops-health
@@ -44,6 +44,81 @@ jobs:
           set -euo pipefail
           git pull --rebase origin main
 
+      - name: Autonomous active-request watchdog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          POINTER=".github/state/tayvoriq-active-production-request.json"
+          [ -f "$POINTER" ] || { echo "ORCHESTRATOR_NO_ACTIVE_POINTER"; exit 0; }
+          readarray -t owner < <(python -S - "$POINTER" <<'PY'
+          import json,sys
+          from pathlib import Path
+          path=Path(sys.argv[1])
+          try: d=json.loads(path.read_text(encoding='utf-8'))
+          except Exception: d={}
+          print(str(d.get('state') or ''))
+          print(str(d.get('request_id') or ''))
+          print(str(d.get('golden_path_run_id') or '0'))
+          PY
+          )
+          pointer_state="${owner[0]:-}"
+          request_id="${owner[1]:-}"
+          run_id="${owner[2]:-0}"
+          if [ "$pointer_state" != "ACTIVE" ] || [ -z "$request_id" ] || [[ ! "$run_id" =~ ^[0-9]+$ ]] || [ "$run_id" -le 0 ]; then
+            echo "ORCHESTRATOR_POINTER_NOT_ACTIONABLE state=$pointer_state request=$request_id run=$run_id"
+            exit 0
+          fi
+          run_state=$(gh run view "$run_id" --json status,conclusion --jq '(.status // "") + ":" + (.conclusion // "")' 2>/dev/null || true)
+          echo "ORCHESTRATOR_OWNER request=$request_id run=$run_id state=$run_state"
+          if [ "$run_state" = "completed:success" ]; then
+            python -S - "$POINTER" "$run_id" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          p=Path(sys.argv[1]); run_id=int(sys.argv[2]); d=json.loads(p.read_text(encoding='utf-8'))
+          if d.get('state')!='ACTIVE' or int(d.get('golden_path_run_id') or 0)!=run_id:
+              raise SystemExit(0)
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          d['state']='COMPLETED'; d['reason']='ops-health-terminal-success-reconcile'; d['completed_at']=now; d['updated_at']=now
+          p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(f'ORCHESTRATOR_STALE_SUCCESS_FINALIZED:{run_id}')
+          PY
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$POINTER"
+            if ! git diff --cached --quiet; then
+              git commit -m "ops(tayvoriq): reconcile completed active pointer ${run_id}"
+              git push origin HEAD:main || { git pull --rebase origin main; git push origin HEAD:main; }
+            fi
+            exit 0
+          fi
+          if [ "$run_state" != "completed:failure" ] && [ "$run_state" != "completed:cancelled" ] && [ "$run_state" != "completed:timed_out" ]; then
+            echo "ORCHESTRATOR_RUN_STILL_ACTIVE_OR_UNKNOWN"
+            exit 0
+          fi
+          REQUEST_FILE="requests/${request_id}.json"
+          [ -f "$REQUEST_FILE" ] || { echo "ORCHESTRATOR_REQUEST_FILE_MISSING"; exit 0; }
+          recovery_owned=$(python -S - "$REQUEST_FILE" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          c=d.get('codefix_recovery') if isinstance(d.get('codefix_recovery'),dict) else {}
+          status=str(c.get('status') or '').upper()
+          print('true' if status in {'ARMED','REPLAY_DISPATCHED','RECOVERY_ACTIVE','AWAITING_CODEFIX'} else 'false')
+          PY
+          )
+          if [ "$recovery_owned" = "true" ]; then
+            echo "ORCHESTRATOR_RECOVERY_ALREADY_OWNED request=$request_id run=$run_id"
+            exit 0
+          fi
+          active_recovery=$(gh run list --workflow tayvoriq-deterministic-codefix-continuity.yml --limit 20 --json status --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
+          if [ "$active_recovery" -eq 0 ]; then
+            gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main -f "failed_run_id=$run_id" -f "source_request_id=$request_id"
+            echo "ORCHESTRATOR_RECOVERY_DISPATCHED request=$request_id run=$run_id"
+          else
+            echo "ORCHESTRATOR_RECOVERY_ALREADY_RUNNING count=$active_recovery"
+          fi
       - name: Build live health snapshot
         id: health
         env:
