@@ -612,6 +612,13 @@ jobs:
           restore-keys: |
             tayvoriq-pip-${{ runner.os }}-py311-
 
+      - name: Restore prebuilt production virtualenv
+        id: production_venv_cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: tayvoriq-venv-v1-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
+
       - name: Check production workspace capacity
         shell: bash
         run: |
@@ -768,7 +775,10 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
-      - name: Install production dependencies
+      - name: Install or reuse production dependencies
+        id: production_dependencies
+        env:
+          VENV_CACHE_HIT: ${{ steps.production_venv_cache.outputs.cache-hit }}
         run: |
           set -euo pipefail
           missing=()
@@ -779,8 +789,35 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq ffmpeg rsync git
           fi
+
+          VENV="$GITHUB_WORKSPACE/.venv"
           export PIP_DISABLE_PIP_VERSION_CHECK=1
-          python - <<'PY'
+
+          venv_valid=false
+          if [ -x "$VENV/bin/python" ]; then
+            if "$VENV/bin/python" - <<'PY'
+          import requests
+          import torch
+          from PIL import Image
+          version=str(torch.__version__).split('+',1)[0]
+          if version != '2.6.0':
+              raise SystemExit(1)
+          if torch.cuda.is_available():
+              raise SystemExit(1)
+          print('TAYVORIQ_PRODUCTION_VENV_VALID')
+          PY
+            then
+              venv_valid=true
+            fi
+          fi
+
+          if [ "$venv_valid" != "true" ]; then
+            echo "TAYVORIQ_PRODUCTION_VENV_REBUILD cache_hit=${VENV_CACHE_HIT:-false}"
+            rm -rf "$VENV"
+            python -m venv "$VENV"
+            "$VENV/bin/python" -m pip install --upgrade pip -q
+
+            "$VENV/bin/python" - <<'PY'
           from pathlib import Path
           source = Path('implementation/requirements.txt')
           target = Path('/tmp/tayvoriq-production-requirements.txt')
@@ -792,25 +829,35 @@ jobs:
           if 'chatterbox' in target.read_text(encoding='utf-8').casefold():
               raise SystemExit('DEPENDENCY_POLICY_FAILED: Chatterbox remained in filtered requirements')
           PY
-          install_dependencies() {
-            python -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q &&
-            python -m pip install -r /tmp/tayvoriq-production-requirements.txt pytest -q &&
-            python -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
-          }
-          if ! install_dependencies; then
-            echo "TAYVORIQ_DEPENDENCY_CACHE_RETRY_AFTER_PURGE"
-            rm -rf ~/.cache/pip
-            mkdir -p ~/.cache/pip
-            install_dependencies
+
+            install_dependencies() {
+              "$VENV/bin/python" -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q &&
+              "$VENV/bin/python" -m pip install -r /tmp/tayvoriq-production-requirements.txt pytest -q &&
+              "$VENV/bin/python" -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+            }
+            if ! install_dependencies; then
+              echo "TAYVORIQ_DEPENDENCY_CACHE_RETRY_AFTER_PURGE"
+              rm -rf ~/.cache/pip
+              mkdir -p ~/.cache/pip
+              install_dependencies
+            fi
+          else
+            echo "TAYVORIQ_PRODUCTION_VENV_CACHE_REUSED"
           fi
+
+          echo "$VENV/bin" >> "$GITHUB_PATH"
+          export PATH="$VENV/bin:$PATH"
           python - <<'PY'
+          import requests
           import torch
+          from PIL import Image
           version = str(torch.__version__)
           if version.split('+', 1)[0] != '2.6.0':
               raise SystemExit(f'DEPENDENCY_POLICY_FAILED: unexpected torch {version}')
           if torch.cuda.is_available():
               raise SystemExit('DEPENDENCY_POLICY_FAILED: CUDA runtime unexpectedly active on CPU production runner')
           print(f'TAYVORIQ_CPU_TORCH_VERIFIED:{version}')
+          print('TAYVORIQ_RUNTIME_IMPORTS_VERIFIED:requests,PIL')
           PY
 
       - name: Preflight
