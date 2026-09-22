@@ -129,6 +129,8 @@ jobs:
           if [ -d runtime_patches ]; then python -m compileall -q runtime_patches; fi
           python -m pytest -q \
             tests/test_tayvoriq_verified_request_causal_alignment.py \
+            tests/test_tayvoriq_pronunciation_lexicon_v1.py \
+            tests/test_tayvoriq_voice_v4_postmux.py \
             tests/test_tayvoriq_voice_v5_human_narrator.py
 
       - name: Install heavy voice verification dependencies
