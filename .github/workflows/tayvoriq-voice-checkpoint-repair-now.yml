@@ -31,7 +31,7 @@ env:
   TAYVORIQ_CHATTERBOX_CFG_WEIGHT: '0.36'
   TAYVORIQ_CHATTERBOX_PAUSE_MS: '360'
   TAYVORIQ_NATURAL_VOICE_WPM: '132'
-  TAYVORIQ_NARRATOR_PITCH_FACTOR: '0.90'
+  TAYVORIQ_NARRATOR_PITCH_FACTOR: '1.0'
   TAYVORIQ_NARRATOR_TONE_REQUIRED: 'true'
   TAYVORIQ_V3_SEGMENT_RETRIES: '3'
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -104,6 +104,7 @@ jobs:
             tools/tayvoriq_preapproval_ai_audit_v4.py \
             tools/tayvoriq_preapproval_ai_audit_v5.py
           python -m pytest -q \
+            tests/test_tayvoriq_pronunciation_lexicon_v1.py \
             tests/test_tayvoriq_voice_checkpoint_v3.py \
             tests/test_tayvoriq_voice_v4_postmux.py \
             tests/test_tayvoriq_voice_v5_human_narrator.py \
@@ -126,7 +127,7 @@ jobs:
           assert v4.SHARED_PREFIX_REPAIR_ATTEMPTS == 2
           assert v4.CTA_CACHE_SCHEMA == 3
           assert v4.SHARED_CTA_BOUNDARY_SILENCE_SECONDS == 0.16
-          assert v5.FULL_TAKE_ATTEMPTS == 2
+          assert v5.FULL_TAKE_ATTEMPTS == 3
           assert v5.NATURAL_WPM_MIN >= 108.0
           assert v5.NATURAL_WPM_MAX <= 150.0
           assert audit_v5.AUDIT_QUORUM_MIN_SIMILARITY == 0.95
@@ -163,8 +164,31 @@ jobs:
               'SanDisk und Western Digital fielen trotz starker Zahlen deutlich.', expected, 'intro'
           )
           assert exact_joined['passed'] is True
-          assert exact_joined['similarity'] >= 0.90
+          assert exact_joined['similarity'] >= 0.95
           assert exact_joined['missing_critical_terms'] == []
+
+          acronym_expected = (
+              'Ein Angreifer griff auf LMU-Immatrikulationsdaten zu und rief Daten ab. '
+              'Für dich können IBAN, Versicherung oder BAföG-Angaben betroffen sein.'
+          )
+          acronym_safe_asr = retry.v3._segment_validation(
+              'Ein Angreifer griff auf LMÜ-Immatrikulationsdaten zu und rief Daten ab. '
+              'Für dich können IBA-N, Versicherung oder BAföG-Angaben betroffen sein.',
+              acronym_expected,
+              'final',
+          )
+          assert acronym_safe_asr['passed'] is True
+          assert acronym_safe_asr['asr_orthographic_equivalence_applied'] is True
+          assert acronym_safe_asr['similarity'] >= 0.95
+
+          acronym_bad_asr = retry.v3._segment_validation(
+              'Ein Angreifer griff auf LMU-Immatrikulationsdaten zu und lief Daten ab. '
+              'Für dich können die BA in Versicherung oder bei Vög-Angaben betroffen sein.',
+              acronym_expected,
+              'final',
+          )
+          assert acronym_bad_asr['passed'] is False
+          assert acronym_bad_asr['similarity'] < 0.95
 
           wrong = retry.v3._segment_validation(
               'Sundisk und Western Digital fielen trotz starker Zahlen deutlich.', expected, 'intro'
