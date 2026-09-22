@@ -1,8 +1,8 @@
 diff --git a/tools/tayvoriq_dual_platform_render_local_repair.py b/tools/tayvoriq_dual_platform_render_local_repair.py
-index f4ce9f1b..d114a478 100644
+index f4ce9f1b..ac953003 100644
 --- a/tools/tayvoriq_dual_platform_render_local_repair.py
 +++ b/tools/tayvoriq_dual_platform_render_local_repair.py
-@@ -3,10 +3,22 @@ from __future__ import annotations
+@@ -3,10 +3,25 @@ from __future__ import annotations
  import json
  import os
  import re
@@ -21,7 +21,10 @@ index f4ce9f1b..d114a478 100644
 +
 +def _safe_git_config(key: str, value: str) -> None:
 +    """Apply local git config without polluting global scope."""
-+    subprocess.run(["git", "config", "--local", key, value], check=False)
++    try:
++        subprocess.run(["git", "config", "--local", key, value], check=True, capture_output=True)
++    except subprocess.CalledProcessError:
++        pass
  
  
  _ORIGINAL_PEXELS_SEARCH = base.core.pexels_search
