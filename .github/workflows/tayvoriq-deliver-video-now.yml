@@ -62,6 +62,7 @@ env:
   TAYVORIQ_VISUAL_REPAIR_TIMEOUT_SECONDS: "900"
   TAYVORIQ_VOICE_REPAIR_TIMEOUT_SECONDS: "1200"
   TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "2"
+  TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS: "1500"
   TAYVORIQ_APPROVED_TREND_PINNED: "true"
   TAYVORIQ_TELEGRAM_PROGRESS: "true"
   TAYVORIQ_SOURCE_CONTEXT_FILE: ${{ github.workspace }}/tayvoriq-source-context.json
@@ -1277,15 +1278,19 @@ jobs:
           trap stop_repair_heartbeat EXIT
 
           set +e
-          python tools/tayvoriq_resume_existing_render_v2.py \
-            --outdir out/tayvoriq-youtube-tiktok \
-            --site-root site/tayvoriq \
-            --run-id "${GITHUB_RUN_ID}" \
-            --state-out out/tayvoriq-review-state.json \
-            --report-out out/tayvoriq-self-heal/report.json \
-            2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
+          timeout --signal=TERM --kill-after=30s "${TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS}s" \
+            python tools/tayvoriq_resume_existing_render_v2.py \
+              --outdir out/tayvoriq-youtube-tiktok \
+              --site-root site/tayvoriq \
+              --run-id "${GITHUB_RUN_ID}" \
+              --state-out out/tayvoriq-review-state.json \
+              --report-out out/tayvoriq-self-heal/report.json \
+              2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
           resume_exit=${PIPESTATUS[0]}
           set -e
+          if [ "$resume_exit" = "124" ] || [ "$resume_exit" = "137" ]; then
+            echo "LOCAL_REPAIR_WALL_TIMEOUT:${TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS}s"
+          fi
           state=$(python -c 'import json,pathlib; p=pathlib.Path("out/tayvoriq-self-heal/report.json"); d=json.loads(p.read_text()) if p.exists() else {}; print(d.get("state") or "PUBLISHABLE_OUTPUT_RETRY_REQUIRED")')
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "process_exit=$resume_exit" >> "$GITHUB_OUTPUT"
