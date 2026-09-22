@@ -46,6 +46,7 @@ jobs:
 
           candidates=[]
           root=Path('.automation/tayvoriq-reviews')
+          manual_retry=os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
           if root.exists():
               for path in root.glob('*.json'):
                   try:
@@ -58,21 +59,20 @@ jobs:
                   published=str(data.get('upload_status') or '') == 'PUBLISHED_YOUTUBE'
                   retired=bool(data.get('superseded_video_private')) or cleanup.get('status') == 'RETIRED'
                   blocked_scope=cleanup.get('status') == 'BLOCKED_OAUTH_SCOPE'
-                  manual_retry=os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
                   if blocked_scope and not manual_retry:
                       continue
                   if old and new and old != new and published and not retired:
                       rid=str(data.get('review_id') or path.stem)
-                      candidates.append((int(rid) if rid.isdigit() else 0,path,data))
+                      candidates.append((int(rid) if rid.isdigit() else 0,path,old,new))
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as out:
               if not candidates:
                   out.write('found=false\n')
               else:
-                  _,path,data=max(candidates,key=lambda item:item[0])
+                  _,path,old,new=max(candidates,key=lambda item:item[0])
                   out.write('found=true\n')
-                  out.write(f"review_path={path}\n")
-                  out.write(f"old_video_id={data['supersedes_youtube_video_id']}\n")
-                  out.write(f"new_video_id={(data.get('youtube') or {}).get('video_id')}\n")
+                  out.write(f'review_path={path}\n')
+                  out.write(f'old_video_id={old}\n')
+                  out.write(f'new_video_id={new}\n')
           PY
 
       - name: Validate YouTube credentials
@@ -108,9 +108,8 @@ jobs:
           from googleapiclient.discovery import build
           from googleapiclient.errors import HttpError
 
-          out_path=os.environ['GITHUB_OUTPUT']
           def emit(name, value):
-              with open(out_path,'a',encoding='utf-8') as out:
+              with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as out:
                   out.write(f"{name}={str(value).lower()}\n")
 
           creds=Credentials(
@@ -133,14 +132,24 @@ jobs:
                   raise RuntimeError(f'Old YouTube video not found: {video_id}')
               status=dict(items[0].get('status') or {})
               status['privacyStatus']='private'
-              body={'id':video_id,'status':status}
-              result=youtube.videos().update(part='status',body=body).execute()
-              print(json.dumps({'video_id':video_id,'privacyStatus':(result.get('status') or {}).get('privacyStatus')},indent=2))
+              result=youtube.videos().update(
+                  part='status',
+                  body={'id':video_id,'status':status},
+              ).execute()
+              privacy=(result.get('status') or {}).get('privacyStatus')
+              if privacy != 'private':
+                  raise RuntimeError(f'Unexpected privacy result: {privacy}')
+              print(json.dumps({'video_id':video_id,'privacyStatus':privacy},indent=2))
               emit('retired', True)
               emit('blocked_scope', False)
           except (RefreshError, HttpError) as exc:
               text=str(exc)
-              insufficient=('insufficient' in text.lower() and 'permission' in text.lower()) or 'invalid_scope' in text.lower()
+              lowered=text.lower()
+              insufficient=(
+                  'insufficientpermissions' in lowered
+                  or ('insufficient' in lowered and 'permission' in lowered)
+                  or 'invalid_scope' in lowered
+              )
               if insufficient:
                   print(f'YOUTUBE_SCOPE_BLOCKED: {text}')
                   emit('retired', False)
@@ -165,11 +174,19 @@ jobs:
 
           path=Path(os.environ['REVIEW_PATH'])
           data=json.loads(path.read_text(encoding='utf-8'))
+          cleanup=data.get('duplicate_cleanup') if isinstance(data.get('duplicate_cleanup'),dict) else {}
+          cleanup.update({
+              'status':'RETIRED',
+              'duplicate_video_id':os.environ['OLD_VIDEO_ID'],
+              'canonical_video_id':os.environ['NEW_VIDEO_ID'],
+              'automatic_retry':False,
+          })
           data.update({
               'superseded_video_private': True,
               'superseded_video_id': os.environ['OLD_VIDEO_ID'],
               'replacement_video_id': os.environ['NEW_VIDEO_ID'],
               'superseded_at': datetime.now(timezone.utc).isoformat(),
+              'duplicate_cleanup': cleanup,
           })
           path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
@@ -226,49 +243,7 @@ jobs:
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode 
-        env:
-          OLD_VIDEO_ID: ${{ steps.select.outputs.old_video_id }}
-          NEW_VIDEO_ID: ${{ steps.select.outputs.new_video_id }}
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error \
-            --request POST \
-            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=✅ Die neue menschlichere Sprecherfassung ist jetzt auf YouTube veröffentlicht.\n\nDie vorherige Version wurde automatisch auf privat gestellt, damit keine doppelte öffentliche Version bestehen bleibt.\n\nNeue Version: https://www.youtube.com/shorts/'"${NEW_VIDEO_ID}"
-
-      - name: Notify failure
-        if: failure() && steps.retire.outputs.blocked_scope != 'true'
-        run: |
-          set +e
-          curl --silent --show-error \
-            --request POST \
-            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=🔴 Die neue YouTube-Version wurde veröffentlicht, aber die alte Version konnte noch nicht automatisch auf privat gestellt werden. Der Fehler wird separat repariert; die neue Veröffentlichung bleibt bestehen.'
-text=🟠 YouTube-Dublettenbereinigung wartet einmalig auf eine erweiterte Google-Freigabe.\n\nDie neue Version bleibt öffentlich und ist korrekt veröffentlicht. Die alte Version konnte wegen des bisherigen OAuth-Scopes youtube.upload noch nicht auf privat gestellt werden. Nach einmaliger Neuautorisierung mit youtube.force-ssl kann derselbe Cleanup-Lauf ohne erneuten Upload fortgesetzt werden.\n\nNeue Version: https://www.youtube.com/shorts/'"${NEW_VIDEO_ID}"
-        env:
-          OLD_VIDEO_ID: ${{ steps.select.outputs.old_video_id }}
-          NEW_VIDEO_ID: ${{ steps.select.outputs.new_video_id }}
-        run: |
-          set -euo pipefail
-          curl --fail --silent --show-error \
-            --request POST \
-            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=✅ Die neue menschlichere Sprecherfassung ist jetzt auf YouTube veröffentlicht.\n\nDie vorherige Version wurde automatisch auf privat gestellt, damit keine doppelte öffentliche Version bestehen bleibt.\n\nNeue Version: https://www.youtube.com/shorts/'"${NEW_VIDEO_ID}"
-
-      - name: Notify failure
-        if: failure()
-        run: |
-          set +e
-          curl --silent --show-error \
-            --request POST \
-            --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=🔴 Die neue YouTube-Version wurde veröffentlicht, aber die alte Version konnte noch nicht automatisch auf privat gestellt werden. Der Fehler wird separat repariert; die neue Veröffentlichung bleibt bestehen.'
-\nAlte Version: https://www.youtube.com/shorts/'"${OLD_VIDEO_ID}"
+            --data-urlencode "text=🟠 YouTube-Dublettenbereinigung wartet einmalig auf eine erweiterte Google-Freigabe. Die neue Version bleibt öffentlich. Die alte Version konnte wegen des bisherigen OAuth-Scopes youtube.upload noch nicht auf privat gestellt werden. Nach einmaliger Neuautorisierung mit youtube.force-ssl kann derselbe Cleanup-Lauf ohne erneuten Upload fortgesetzt werden. Neue Version: https://www.youtube.com/shorts/${NEW_VIDEO_ID} Alte Version: https://www.youtube.com/shorts/${OLD_VIDEO_ID}"
 
       - name: Notify Telegram
         if: steps.select.outputs.found == 'true' && steps.retire.outputs.retired == 'true'
@@ -281,14 +256,14 @@ text=🟠 YouTube-Dublettenbereinigung wartet einmalig auf eine erweiterte Googl
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=✅ Die neue menschlichere Sprecherfassung ist jetzt auf YouTube veröffentlicht.\n\nDie vorherige Version wurde automatisch auf privat gestellt, damit keine doppelte öffentliche Version bestehen bleibt.\n\nNeue Version: https://www.youtube.com/shorts/'"${NEW_VIDEO_ID}"
+            --data-urlencode "text=✅ Die neue TAYVORIQ-Version bleibt veröffentlicht. Die vorherige YouTube-Version wurde automatisch auf privat gestellt. Neue Version: https://www.youtube.com/shorts/${NEW_VIDEO_ID}"
 
       - name: Notify failure
-        if: failure()
+        if: failure() && steps.retire.outputs.blocked_scope != 'true'
         run: |
           set +e
           curl --silent --show-error \
             --request POST \
             --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode $'text=🔴 Die neue YouTube-Version wurde veröffentlicht, aber die alte Version konnte noch nicht automatisch auf privat gestellt werden. Der Fehler wird separat repariert; die neue Veröffentlichung bleibt bestehen.'
+            --data-urlencode "text=🔴 Die neue YouTube-Version bleibt veröffentlicht, aber die Dublettenbereinigung ist an einem technischen Fehler gestoppt. Es wird kein erneuter Upload gestartet."
