@@ -1270,6 +1270,10 @@ jobs:
       - name: Record internal failure for Delivery Watch
         if: failure()
         continue-on-error: true
+        env:
+          PRODUCTION_OUTCOME: ${{ steps.production.outcome }}
+          PUBLICATION_INITIAL_OUTCOME: ${{ steps.publication_gate_initial.outcome }}
+          FINAL_VOICE_RECOVERY_OUTCOME: ${{ steps.final_publication_voice_recovery.outcome }}
         run: |
           set +e
           mkdir -p implementation/out/control-plane
@@ -1297,6 +1301,15 @@ jobs:
               or preflight.get("state")
               or "TECHNICAL_FAILURE"
           )
+          late_voice_failure = (
+              __import__("os").environ.get("PRODUCTION_OUTCOME") == "success"
+              and __import__("os").environ.get("PUBLICATION_INITIAL_OUTCOME") == "failure"
+              and __import__("os").environ.get("FINAL_VOICE_RECOVERY_OUTCOME") == "failure"
+          )
+          if late_voice_failure:
+              # A publishable master already exists. This is stochastic/local
+              # narrator-postmux output variance, never a repository-codefix signal.
+              state = "TRANSIENT_AUDIO_FAILURE"
           payload = {
               "state": state,
               "notification_owner": "tayvoriq-x-golden-path",
@@ -1415,6 +1428,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          failure_state="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path("implementation/out/control-plane/failure-notification-policy.json")
+          data=json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+          print(str(data.get("state") or "TECHNICAL_FAILURE"))
+          PY
+          )"
+          if [ "$failure_state" = "TRANSIENT_AUDIO_FAILURE" ]; then
+            echo "CODEFIX_FINALIZER_SKIPPED_LOCAL_VOICE_FAILURE"
+            echo "Delivery Watch exclusively owns bounded same-run voice/postmux retry."
+            exit 0
+          fi
           if [ -z "$SOURCE_REQUEST_ID_PIN" ]; then
             echo 'CODEFIX_FINALIZER_SKIPPED_UNPINNED_REQUEST'
             exit 0
