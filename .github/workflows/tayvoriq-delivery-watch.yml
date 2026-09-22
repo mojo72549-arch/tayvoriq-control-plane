@@ -204,8 +204,63 @@ jobs:
           print(data)
           PY
 
-      - name: Same-run retry for transient failure only
+      - name: Detect advanced Production Green for local voice retry
+        id: voice_green
         if: steps.policy.outputs.mode == 'rerun' && steps.policy.outputs.retry_allowed == 'true'
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+          RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
+        run: |
+          set -euo pipefail
+          current_green="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('.github/state/tayvoriq-production-green.json')
+          data=json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
+          sha=str(data.get('implementation_sha') or '').strip().lower()
+          valid=(
+              data.get('schema')=='tayvoriq-production-green-v1'
+              and data.get('full_preflight_passed') is True
+              and data.get('quality_gates_weakened') is False
+              and len(sha)==40
+              and all(c in '0123456789abcdef' for c in sha)
+          )
+          print(sha if valid else '')
+          PY
+          )"
+          failed_impl=""
+          rm -rf /tmp/tayvoriq-voice-green-diag
+          mkdir -p /tmp/tayvoriq-voice-green-diag
+          artifact="tayvoriq-x-diagnostics-${RUN_ID}-attempt-${RUN_ATTEMPT:-1}"
+          gh run download "$RUN_ID" -n "$artifact" -D /tmp/tayvoriq-voice-green-diag >/dev/null 2>&1 || true
+          manifest="$(find /tmp/tayvoriq-voice-green-diag -type f -name production-manifest.json -print -quit 2>/dev/null || true)"
+          if [ -n "$manifest" ]; then
+            failed_impl="$(python - "$manifest" <<'PY'
+          import json,sys
+          from pathlib import Path
+          try:
+              data=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          except Exception:
+              data={}
+          print(str(data.get('implementation_sha') or '').strip().lower())
+          PY
+            )"
+          fi
+          advanced=false
+          if [[ "$current_green" =~ ^[0-9a-f]{40}$ ]] && [[ "$failed_impl" =~ ^[0-9a-f]{40}$ ]] && [ "$current_green" != "$failed_impl" ]; then
+            advanced=true
+          fi
+          echo "advanced=$advanced" >> "$GITHUB_OUTPUT"
+          echo "current_green=$current_green" >> "$GITHUB_OUTPUT"
+          echo "failed_impl=$failed_impl" >> "$GITHUB_OUTPUT"
+          echo "VOICE_RETRY_PRODUCTION_GREEN_CHECK:advanced=$advanced:failed=$failed_impl:current=$current_green"
+
+      - name: Same-run retry for transient failure only
+        if: >-
+          steps.policy.outputs.mode == 'rerun' &&
+          steps.policy.outputs.retry_allowed == 'true' &&
+          steps.voice_green.outputs.advanced != 'true'
         shell: bash
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
@@ -213,6 +268,156 @@ jobs:
           set -euo pipefail
           gh run rerun "$RUN_ID" --failed
           echo "TRANSIENT_SAME_RUN_RETRY_REQUESTED:$RUN_ID"
+
+      - name: Replay local voice request on advanced Production Green
+        if: >-
+          steps.policy.outputs.mode == 'rerun' &&
+          steps.policy.outputs.retry_allowed == 'true' &&
+          steps.voice_green.outputs.advanced == 'true'
+        shell: bash
+        env:
+          OLD_RUN_ID: ${{ steps.owner.outputs.run_id }}
+          REQUEST_FILE: ${{ steps.owner.outputs.request_file }}
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          TOPIC: ${{ steps.owner.outputs.topic }}
+          TREND_ID: ${{ steps.owner.outputs.trend_id }}
+          GENERATION: ${{ steps.owner.outputs.generation }}
+          FAILURE_SIGNATURE: ${{ steps.policy.outputs.failure_signature }}
+          FAILURE_STATE: ${{ steps.policy.outputs.state }}
+          FAILED_IMPL_SHA: ${{ steps.voice_green.outputs.failed_impl }}
+          CURRENT_IMPL_SHA: ${{ steps.voice_green.outputs.current_green }}
+        run: |
+          set -euo pipefail
+          [[ "$OLD_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'VOICE_GREEN_REPLAY_OLD_RUN_INVALID'; exit 1; }
+          [[ "$GENERATION" =~ ^[0-9]+$ ]] || { echo 'VOICE_GREEN_REPLAY_GENERATION_INVALID'; exit 1; }
+          [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'VOICE_GREEN_REPLAY_FAILED_IMPL_INVALID'; exit 1; }
+          [[ "$CURRENT_IMPL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'VOICE_GREEN_REPLAY_CURRENT_IMPL_INVALID'; exit 1; }
+          [ "$FAILED_IMPL_SHA" != "$CURRENT_IMPL_SHA" ] || { echo 'VOICE_GREEN_REPLAY_NOT_NEEDED'; exit 1; }
+
+          python - "$ACTIVE_REQUEST_POINTER" "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" <<'PY'
+          import json,sys
+          from pathlib import Path
+          pp=Path(sys.argv[1]); rp=Path(sys.argv[2]); rid=sys.argv[3]; old=int(sys.argv[4])
+          pointer=json.loads(pp.read_text(encoding='utf-8'))
+          request=json.loads(rp.read_text(encoding='utf-8'))
+          if pointer.get('state')!='ACTIVE' or str(pointer.get('request_id') or '')!=rid or int(pointer.get('golden_path_run_id') or 0)!=old:
+              raise SystemExit('VOICE_GREEN_REPLAY_ACTIVE_OWNER_CHANGED')
+          if str(request.get('request_id') or '')!=rid or int(request.get('golden_path_run_id') or 0)!=old:
+              raise SystemExit('VOICE_GREEN_REPLAY_REQUEST_OWNER_CHANGED')
+          PY
+
+          before_ids="$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')"
+          dispatch_epoch="$(date +%s)"
+          gh workflow run tayvoriq-deliver-video-now.yml --ref main             -f "topic=$TOPIC"             -f "trend_id=$TREND_ID"             -f "source_request_id=$REQUEST_ID"             -f "recovery_generation=$GENERATION"
+
+          new_run_id=""
+          for poll in $(seq 1 30); do
+            sleep 4
+            gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId,createdAt > /tmp/voice-green-replay-runs.json
+            candidate="$(python - "$before_ids" "$dispatch_epoch" <<'PY'
+          import json,sys
+          from datetime import datetime
+          before={int(v) for v in sys.argv[1].split() if v.isdigit()}
+          epoch=int(sys.argv[2]); found=[]
+          for item in json.load(open('/tmp/voice-green-replay-runs.json',encoding='utf-8')):
+              try:
+                  rid=int(item.get('databaseId') or 0)
+                  created=datetime.fromisoformat(str(item.get('createdAt') or '').replace('Z','+00:00')).timestamp()
+              except Exception:
+                  continue
+              if rid and rid not in before and created>=epoch-5:
+                  found.append((created,rid))
+          print(max(found)[1] if found else '')
+          PY
+            )"
+            if [[ "$candidate" =~ ^[0-9]+$ ]] && [ "$candidate" != "$OLD_RUN_ID" ]; then
+              new_run_id="$candidate"
+              break
+            fi
+          done
+          [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'VOICE_GREEN_REPLAY_DISPATCH_NOT_VERIFIED'; exit 1; }
+
+          current_control_sha="$(git rev-parse HEAD)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rebound=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main --quiet
+            git reset --hard origin/main
+            python - "$ACTIVE_REQUEST_POINTER" "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" "$new_run_id" "$GENERATION" "$FAILURE_SIGNATURE" "$FAILURE_STATE" "$FAILED_IMPL_SHA" "$CURRENT_IMPL_SHA" "$current_control_sha" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          pp=Path(sys.argv[1]); rp=Path(sys.argv[2]); rid=sys.argv[3]
+          old=int(sys.argv[4]); new=int(sys.argv[5]); generation=int(sys.argv[6])
+          signature,state,failed_impl,current_impl,control_sha=sys.argv[7:12]
+          pointer=json.loads(pp.read_text(encoding='utf-8'))
+          data=json.loads(rp.read_text(encoding='utf-8'))
+          if pointer.get('state')!='ACTIVE' or str(pointer.get('request_id') or '')!=rid or int(pointer.get('golden_path_run_id') or 0)!=old:
+              raise SystemExit('VOICE_GREEN_REPLAY_ACTIVE_OWNER_CHANGED')
+          if str(data.get('request_id') or '')!=rid or int(data.get('golden_path_run_id') or 0)!=old:
+              raise SystemExit('VOICE_GREEN_REPLAY_REQUEST_OWNER_CHANGED')
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          previous=list(data.get('previous_golden_path_run_ids') or [])
+          if old not in previous:
+              previous.append(old)
+          data['previous_golden_path_run_ids']=previous[-20:]
+          data['golden_path_run_id']=new
+          data['status']='DISPATCHED'
+          data['recovery_generation']=generation
+          data['retry_of_run_id']=old
+          data['replacement_reason']='SAME_GENERATION_VERIFIED_GREEN_VOICE_REPLAY'
+          data['recovery_owner']='tayvoriq-delivery-watch'
+          data['recovery_failure_signature']=signature
+          data['recovery_dispatched_at']=now
+          codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+          codefix.update({
+              'status':'REPLAY_DISPATCHED',
+              'request_substate':'DISPATCHED',
+              'failed_run_id':old,
+              'failure_signature':signature,
+              'last_failure_state':state,
+              'failure_state':'',
+              'failed_implementation_sha':failed_impl,
+              'replay_run_id':new,
+              'replayed_at':now,
+              'replay_control_plane_sha':control_sha,
+              'replay_implementation_sha':current_impl,
+              'codefix_detection_reason':'production-green-advanced-during-local-voice-retry',
+              'recovery_generation':generation,
+              'same_generation_replay_required':True,
+              'exact_source_request_required':True,
+              'quality_gates_weakened':False,
+              'active_pointer_verified':True,
+          })
+          data['codefix_recovery']=codefix
+          data['state_history']=list(data.get('state_history') or [])+[{
+              'state':'DISPATCHED','at':now,'actor':'tayvoriq-delivery-watch',
+              'meta':{
+                  'retry_of_run_id':old,'golden_path_run_id':new,
+                  'recovery_generation':generation,'failure_signature':signature,
+                  'reason':'same-generation-verified-green-local-voice-replay',
+                  'failed_implementation_sha':failed_impl,
+                  'replay_implementation_sha':current_impl,
+                  'quality_gates_weakened':False,'active_pointer_verified':True,
+              }
+          }]
+          rp.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          pointer['golden_path_run_id']=new
+          pointer['updated_at']=now
+          pointer['reason']='same-generation-verified-green-local-voice-replay'
+          pp.write_text(json.dumps(pointer,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add -- "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER"
+            git commit -m "ops: replay local voice request on verified green ${REQUEST_ID} to ${new_run_id}"
+            if git push origin HEAD:main; then
+              rebound=true
+              break
+            fi
+            sleep $((attempt*2))
+          done
+          [ "$rebound" = "true" ] || { echo 'VOICE_GREEN_REPLAY_BIND_FAILED'; exit 1; }
+          echo "VOICE_GREEN_REPLAY_DISPATCHED:$REQUEST_ID:$OLD_RUN_ID:$new_run_id:$CURRENT_IMPL_SHA"
 
       - name: Start bounded fresh request recovery
         id: fresh
