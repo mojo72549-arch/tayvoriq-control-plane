@@ -311,6 +311,7 @@ jobs:
           gh workflow run tayvoriq-deliver-video-now.yml --ref main             -f "topic=$TOPIC"             -f "trend_id=$TREND_ID"             -f "source_request_id=$REQUEST_ID"             -f "recovery_generation=$GENERATION"
 
           new_run_id=""
+          # Give the binder a bounded window to expose the exact replacement run before rebinding ownership.
           for poll in $(seq 1 30); do
             sleep 4
             gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId,createdAt > /tmp/voice-green-replay-runs.json
