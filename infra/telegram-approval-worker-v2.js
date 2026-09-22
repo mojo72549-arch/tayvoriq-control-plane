@@ -218,13 +218,11 @@ export default {
     const tiktokVideoUrl = `${base}/short_tiktok.mp4`;
     const reviewUrl = `${base}/`;
 
-    const [youtubeHead, tiktokHead] = await Promise.all([
-      fetch(youtubeVideoUrl, { method: 'HEAD', redirect: 'follow' }),
-      fetch(tiktokVideoUrl, { method: 'HEAD', redirect: 'follow' }),
-    ]);
-    if (!youtubeHead.ok || !tiktokHead.ok) {
-      if (callback?.id) await answerCallback(env, callback.id, 'Plattform-Paket ist noch nicht vollständig erreichbar.');
-      await requireTelegramMessage(await telegram(env, chatId, `❌ Review ${runId} ist noch nicht vollständig erreichbar. YouTube=${youtubeHead.status}, TikTok=${tiktokHead.status}. Keine Freigabe gespeichert.`));
+    const packageCheck = await verifyCommittedReviewPackage(runId);
+    if (!packageCheck.ok) {
+      if (callback?.id) await answerCallback(env, callback.id, 'Review-Paket ist im Quell-Repository noch nicht vollständig.', true);
+      const missing = packageCheck.missing.length ? packageCheck.missing.join(', ') : 'Verzeichnis nicht erreichbar';
+      await requireTelegramMessage(await telegram(env, chatId, `❌ Review ${runId} ist noch nicht vollständig committed. Fehlend: ${missing}. Keine Freigabe gespeichert.`));
       return new Response('platform package unavailable', { status: 409 });
     }
 
@@ -362,6 +360,31 @@ async function loadTrendRequest(env, selectionId = '') {
     if (!safeSelection || String(data?.selection_id || '') === safeSelection) return data;
   }
   throw new Error(`Trend request HTTP ${lastStatus} for selection ${safeSelection || 'current'}`);
+}
+
+async function verifyCommittedReviewPackage(runId) {
+  const safeRunId = String(runId || '').trim();
+  if (!/^\d+$/.test(safeRunId)) {
+    return { ok: false, missing: ['ungueltige Review-ID'], status: 400 };
+  }
+
+  const required = ['index.html', 'job.json', 'preapproval_ai_audit.json', 'short_youtube.mp4', 'short_tiktok.mp4'];
+  const url = `https://api.github.com/repos/mojo72549-arch/mind-reset-daily/contents/tayvoriq/runs/${safeRunId}?ref=main`;
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'tayvoriq-telegram-approval',
+    },
+  });
+  if (!response.ok) {
+    return { ok: false, missing: required, status: response.status };
+  }
+
+  const items = await response.json();
+  const names = new Set(Array.isArray(items) ? items.map(item => String(item?.name || '')) : []);
+  const missing = required.filter(name => !names.has(name));
+  return { ok: missing.length === 0, missing, status: response.status };
 }
 
 async function upsertApprovalRecord(env, { runId, youtubeVideoUrl, tiktokVideoUrl, reviewUrl, telegramMessageId }) {
