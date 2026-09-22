@@ -147,6 +147,7 @@ jobs:
               "keeper_head_sha": head_sha,
               "keeper_source_request_id": keeper_request_id,
               "cancelled_same_request_runs": cancelled,
+              "cancelled_older_runs": cancelled,
               "preserved_other_approved_requests": preserved_other_requests,
               "unresolved_older_runs_preserved": unresolved_older_runs,
               "fail_safe": True,
