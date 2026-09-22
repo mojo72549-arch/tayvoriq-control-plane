@@ -103,6 +103,12 @@ TRANSIENT_PATTERNS = (
     r"circuit already open",
 )
 
+CONTROL_PLANE_BINDING_PATTERNS = (
+    r"replay_readiness_canonical_bind_timeout",
+    r"control_plane_binding_failure",
+)
+
+
 DETERMINISTIC_PREFLIGHT_PATTERNS = (
     r"\bpreflight_failed\b",
     r"production blocked before render:\s*preflight outcome=failure",
@@ -271,6 +277,31 @@ def classify_failure(
             )
         state = "REQUEST_BOUND_RECOVERY_REQUIRED"
         return RecoveryDecision("fresh", state, True, "fresh-run", generation, generation + 1, maximum, _stable_signature(state, text), "The final publishability gate requires a bounded request-bound recovery generation.")
+
+    # Canonical request-binding misses are orchestration propagation/race failures,
+    # not Studio defects. Retry the exact same run first and never call an LLM
+    # code-repair provider for this class.
+    if _matches(lowered, CONTROL_PLANE_BINDING_PATTERNS):
+        if attempt < 3:
+            state = "CONTROL_PLANE_BINDING_FAILURE"
+            return RecoveryDecision(
+                "rerun", state, True, "same-run", generation, generation,
+                maximum, _stable_signature(state, text),
+                "The exact request binding was not visible/accepted in time; retry the same bound workflow without Studio code mutation."
+            )
+        if generation >= maximum:
+            state = "CONTROL_PLANE_BINDING_RECOVERY_EXHAUSTED"
+            return RecoveryDecision(
+                "exhausted", state, False, "none", generation, None,
+                maximum, _stable_signature(state, text),
+                "Repeated canonical binding retries were exhausted; stop safely without autonomous Studio mutation."
+            )
+        state = "CONTROL_PLANE_BINDING_RECOVERY_REQUIRED"
+        return RecoveryDecision(
+            "fresh", state, True, "fresh-run", generation, generation + 1,
+            maximum, _stable_signature(state, text),
+            "A bounded request rebind is required; no Studio code mutation is allowed."
+        )
 
     # Bootstrap/import/test failures are deterministic code defects. They must be
     # classified before generic timeout/circuit words from the complete Actions
