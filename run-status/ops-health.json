@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T18:28:54.346041Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-22T19:05:58.142626Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -25,17 +25,17 @@
   },
   "run": {
     "id": 35761458519,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35761458519",
     "created_at": "2026-09-22T17:33:18Z",
-    "updated_at": "2026-09-22T17:33:23Z",
+    "updated_at": "2026-09-22T18:31:21Z",
     "attempt": 1,
-    "progress": 65,
-    "current_step": "Repair only failed local checkpoints",
-    "last_successful_step": "Telegram progress - checkpoint repair",
-    "failed_step": null,
-    "failed_step_number": null,
+    "progress": 72,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 36,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -81,25 +81,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 36,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 38,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 42,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 43,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Repair only failed local checkpoints"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -118,28 +118,39 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "status": "red",
+      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "35761458519:36:none",
+    "severity": "critical",
+    "failure_state": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 36,
+    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": true
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
-    "last_step": "Telegram progress - checkpoint repair"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "failure_state": null,
     "failed_run_id": 35760127698,
     "replay_run_id": 35761458519,
@@ -149,10 +160,20 @@
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "source_status": "REPLAY_DISPATCHED",
-    "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "inferred_from_run_terminal_state": true,
+    "needs_codefix": true
   },
   "events": [
+    {
+      "at": "2026-09-22T18:31:21Z",
+      "title": "Recovery-Replay fehlgeschlagen",
+      "detail": "Run 35761458519 · interner Codefix erforderlich · kein Eingriff von dir"
+    },
+    {
+      "at": "2026-09-22T18:31:21Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
     {
       "at": "2026-09-22T17:33:24.590244Z",
       "title": "DISPATCHED",
