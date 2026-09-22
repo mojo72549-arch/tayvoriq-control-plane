@@ -104,11 +104,13 @@ jobs:
           selected = json.loads(Path('selected-review.json').read_text(encoding='utf-8'))
           review = selected.get('review') or {}
           review_id = os.environ['REVIEW_ID']
-          base = f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{review_id}'
+          review_base = f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{review_id}'
+          source_base = f'https://raw.githubusercontent.com/mojo72549-arch/mind-reset-daily/main/tayvoriq/runs/{review_id}'
           payload = {
-              'base': base,
-              'youtube_video_url': str(review.get('youtube_video_url') or review.get('video_url') or f'{base}/short_youtube.mp4'),
-              'tiktok_video_url': str(review.get('tiktok_video_url') or f'{base}/short_tiktok.mp4'),
+              'base': source_base,
+              'review_base': review_base,
+              'youtube_video_url': f'{source_base}/short_youtube.mp4',
+              'tiktok_video_url': f'{source_base}/short_tiktok.mp4',
           }
           Path('platform-urls.json').write_text(json.dumps(payload, indent=2) + '\n', encoding='utf-8')
           PY
@@ -117,12 +119,11 @@ jobs:
           TIKTOK_URL=$(python -c "import json; print(json.load(open('platform-urls.json'))['tiktok_video_url'])")
           BASE=$(python -c "import json; print(json.load(open('platform-urls.json'))['base'])")
           for url in "$YOUTUBE_URL" "$TIKTOK_URL"; do
-            code=$(curl -L -s -o /dev/null -w '%{http_code}' "$url" || true)
-            test "$code" = "200" || { echo "::error title=Platform MP4 unavailable::$url HTTP $code"; exit 1; }
+            curl --fail --silent --show-error --location --head --retry 5 --retry-delay 2 --retry-all-errors "$url" >/dev/null
           done
 
-          curl --fail --location --retry 3 "${BASE}/job.json" --output review-job.json
-          curl --fail --location --retry 3 "${BASE}/preapproval_ai_audit.json" --output preapproval-ai-audit.json
+          curl --fail --location --retry 5 --retry-delay 2 --retry-all-errors "${BASE}/job.json" --output review-job.json
+          curl --fail --location --retry 5 --retry-delay 2 --retry-all-errors "${BASE}/preapproval_ai_audit.json" --output preapproval-ai-audit.json
 
           export YOUTUBE_URL TIKTOK_URL REVIEW_ID
           python - <<'PY'
