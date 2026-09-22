@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-22T06:06:02.982599Z",
+  "generated_at": "2026-09-22T10:00:16.220976Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2286-trend-1-source-repair-v1",
-    "golden_path_run_id": 35692069792,
-    "pointer_updated_at": "2026-09-22T05:47:12.272653Z"
+    "golden_path_run_id": 35712601233,
+    "pointer_updated_at": "2026-09-22T09:50:00.679773Z"
   },
   "request": {
     "request_id": "telegram-2286-trend-1-source-repair-v1",
@@ -18,24 +18,24 @@
     "slot": null,
     "state": "AWAITING_CODEFIX",
     "recovery_generation": 2,
-    "recovery_owner": "tayvoriq-autonomous-codefix-builder",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "source_count": 2,
     "quality_gates_weakened": false,
     "path": "requests/telegram-2286-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35692069792,
+    "id": 35712601233,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35692069792",
-    "created_at": "2026-09-22T05:47:06Z",
-    "updated_at": "2026-09-22T05:49:30Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35712601233",
+    "created_at": "2026-09-22T09:49:53Z",
+    "updated_at": "2026-09-22T09:53:10Z",
     "attempt": 1,
     "progress": 72,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Preflight",
-    "failed_step_number": 23,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 35,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -64,7 +64,7 @@
       {
         "label": "Dependencies",
         "status": "success",
-        "step_number": 22,
+        "step_number": 23,
         "step_name": "Install production dependencies"
       },
       {
@@ -75,32 +75,32 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "skipped",
-        "step_number": 27,
+        "status": "success",
+        "step_number": 28,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
         "status": "error",
-        "step_number": 34,
+        "step_number": 35,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "skipped",
-        "step_number": 36,
+        "step_number": 37,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "skipped",
-        "step_number": 40,
+        "step_number": 41,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "skipped",
-        "step_number": 41,
+        "step_number": 42,
         "step_name": "Send Telegram review"
       }
     ]
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "Preflight"
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -133,11 +133,11 @@
     }
   ],
   "incident": {
-    "signature": "35692069792:23:DETERMINISTIC_PREFLIGHT_FAILURE",
+    "signature": "35712601233:35:PUBLISHABLE_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "failed_step": "Preflight",
-    "failed_step_number": 23,
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 35,
     "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -151,12 +151,12 @@
   },
   "recovery": {
     "status": "ARMED",
-    "failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "failed_run_id": 35692069792,
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_run_id": 35712601233,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 2,
-    "owner": "tayvoriq-autonomous-codefix-builder",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "source_status": "ARMED",
@@ -165,39 +165,39 @@
   },
   "events": [
     {
-      "at": "2026-09-22T05:49:30Z",
+      "at": "2026-09-22T09:53:10Z",
       "title": "Workflow-Fehler",
-      "detail": "Preflight"
+      "detail": "Assert publishable production output"
     },
     {
-      "at": "2026-09-22T05:49:35.375952Z",
+      "at": "2026-09-22T09:53:21.435782Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-22T09:50:00.679773Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-22T07:37:46.411410Z",
       "title": "AWAITING_CODEFIX",
       "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     },
     {
-      "at": "2026-09-22T05:47:12.272653Z",
+      "at": "2026-09-22T07:35:16.188536Z",
       "title": "DISPATCHED",
-      "detail": "verified-request-bound-autocodefix-overlay-replay"
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
-      "at": "2026-09-22T05:46:06.491167Z",
+      "at": "2026-09-22T07:35:02.076918Z",
       "title": "AWAITING_CODEFIX",
       "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
     },
     {
-      "at": "2026-09-22T05:43:56.243411Z",
+      "at": "2026-09-22T07:32:32.006623Z",
       "title": "DISPATCHED",
-      "detail": "verified-request-bound-autocodefix-overlay-replay"
-    },
-    {
-      "at": "2026-09-22T05:42:49.562377Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "DETERMINISTIC_PREFLIGHT_FAILURE"
-    },
-    {
-      "at": "2026-09-22T05:40:31.636836Z",
-      "title": "DISPATCHED",
-      "detail": "verified-request-bound-autocodefix-overlay-replay"
+      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
