@@ -526,7 +526,7 @@ jobs:
                       'quality_gates_weakened':False,'active_pointer_verified':True}
           }]
           rp.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-          pointer['golden_path_run_id']=new_run; pointer['updated_at']=now; pointer['reason']='bounded-request-recovery'
+          pointer['golden_path_run_id']=new_run; pointer['recovery_generation']=generation; pointer['updated_at']=now; pointer['reason']='bounded-request-recovery'
           pp.write_text(json.dumps(pointer,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
             then
