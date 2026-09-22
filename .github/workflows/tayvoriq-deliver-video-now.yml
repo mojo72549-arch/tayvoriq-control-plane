@@ -702,6 +702,62 @@ jobs:
         env:
           RESTORED_CHECKPOINT: ${{ steps.hydrate_recovery.outputs.restored }}
 
+      - name: Early recovery binding gate
+        id: early_recovery_binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_REQUEST_ID_PIN" || {
+            echo "EARLY_RECOVERY_BIND_SOURCE_REQUEST_PIN_MISSING"
+            exit 1
+          }
+
+          runtime_request="$RUNNER_TEMP/tayvoriq-early-bind-${GITHUB_RUN_ID}.json"
+          bound=false
+          for poll in $(seq 1 10); do
+            git fetch origin main --quiet
+            if git show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
+              if python -S - "$runtime_request" "$GITHUB_RUN_ID" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          run_id=int(sys.argv[2])
+          previous=list(data.get('previous_golden_path_run_ids') or [])
+          generation=max(0,int(data.get('recovery_generation') or 0))
+          if not previous and generation <= 0:
+              raise SystemExit(0)
+          codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+          request_bound=(
+              str(data.get('status') or '')=='DISPATCHED'
+              and int(data.get('golden_path_run_id') or 0)==run_id
+          )
+          deterministic_bound=(
+              codefix.get('status')=='REPLAY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('replay_run_id') or 0)==run_id
+          )
+          fresh_bound=(
+              codefix.get('status')=='FRESH_RECOVERY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('fresh_recovery_run_id') or 0)==run_id
+              and str(data.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY'
+          )
+          if request_bound and (deterministic_bound or fresh_bound):
+              raise SystemExit(0)
+          raise SystemExit(1)
+          PY
+              then
+                bound=true
+                break
+              fi
+            fi
+            sleep 2
+          done
+          [ "$bound" = "true" ] || {
+            echo "EARLY_RECOVERY_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            exit 1
+          }
+          echo "EARLY_RECOVERY_BIND_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+
       - name: Telegram progress - environment active
         continue-on-error: true
         run: |
@@ -779,7 +835,7 @@ jobs:
 
           runtime_request="$RUNNER_TEMP/tayvoriq-replay-request-${GITHUB_RUN_ID}.json"
           bound=false
-          for poll in $(seq 1 10); do
+          for poll in $(seq 1 5); do
             git -C .. fetch origin main --quiet
             if git -C .. show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
               if python - "$runtime_request" "$GITHUB_RUN_ID" <<'PY'
@@ -814,7 +870,7 @@ jobs:
                 break
               fi
             fi
-            sleep 2
+            sleep 1
           done
           [ "$bound" = "true" ] || {
             echo "REPLAY_READINESS_CANONICAL_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
@@ -1560,11 +1616,9 @@ jobs:
           retention-days: 14
           compression-level: 6
 
-      - name: Dispatch exact deterministic failure finalizer
+      - name: Verify failure handoff for canonical Delivery Watch
         if: failure()
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           failure_state="$(python -S - <<'PY'
@@ -1619,5 +1673,5 @@ jobs:
               if pv and pv!=rv: raise SystemExit(f'CODEFIX_FINALIZER_{field.upper()}_MISMATCH')
           print(f'CODEFIX_FINALIZER_DISPATCH_OWNER_VERIFIED:{request_id}:{run_id}')
           PY
-          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main             -f "failed_run_id=$GITHUB_RUN_ID"             -f "source_request_id=$SOURCE_REQUEST_ID_PIN"
-          echo "CODEFIX_FINALIZER_DISPATCHED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+          echo "DELIVERY_WATCH_HANDOFF_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+          echo "The completed Golden Path workflow_run event is the single recovery trigger; no duplicate continuity dispatch is issued here."
