@@ -1,0 +1,311 @@
+{
+  "date": "2026-09-22",
+  "target_date": "2026-09-22",
+  "slot": "evening",
+  "selection_id": "20260922-evening-agentv2",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_fallback_after_provider_limits",
+  "superseded": false,
+  "duplicate_guard_passed": true,
+  "telegram_only_user_path": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "trends": [
+    {
+      "id": "1",
+      "title": "48.000 Auto-Beschäftigte in Baden-Württemberg protestieren gegen Stellenabbau und Standortverlagerungen",
+      "score": 96,
+      "trend_scope": "mobility_energy",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 94,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 98,
+        "visuell": 95
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "priority_score": 97,
+        "binding_score": 96
+      },
+      "sources": [
+        "https://baden-wuerttemberg.igmetall.de/2026/2026-09-18-pressemitteilung-32-2027",
+        "https://www.wsj.com/business/autos/auto-industry-workers-protest-in-germany-against-job-cuts-industrial-policy-19fef607"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "IG Metall Baden-Württemberg",
+            "url": "https://baden-wuerttemberg.igmetall.de/2026/2026-09-18-pressemitteilung-32-2027",
+            "supports": "Die Gewerkschaft meldet rund 48.000 Teilnehmende an knapp 50 Standorten in Baden-Württemberg, darunter Mercedes-Benz, Bosch, Porsche und weitere Betriebe."
+          },
+          {
+            "publisher": "Wall Street Journal",
+            "url": "https://www.wsj.com/business/autos/auto-industry-workers-protest-in-germany-against-job-cuts-industrial-policy-19fef607",
+            "supports": "Unabhängige Berichterstattung ordnet die bundesweiten Proteste vor dem Hintergrund von Stellenabbau, Kostendruck und Produktionsverlagerungen in der deutschen Autoindustrie ein."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "48.000 Auto-Beschäftigte protestierten in Baden-Württemberg gegen Stellenabbau und Standortverlagerungen.",
+          "why_happening": "Weil Hersteller sparen und Produktion verlagern, wächst der Druck auf Standorte.",
+          "who_is_affected": "Beschäftigte bei Mercedes, Bosch, Porsche und Zulieferern sind betroffen.",
+          "personal_impact": "Für dich zeigt das, wie stark der Autowandel Südwest-Arbeitsplätze trifft.",
+          "action_now": "Beobachte, welche Standorte Investitionen erhalten und welche Sparprogramme verschärft werden."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "rund 48.000 Teilnehmende in Baden-Württemberg",
+            "knapp 50 Standorte im Südwesten",
+            "Arbeitsplatz- und Standortthema"
+          ],
+          "must_not_claim": [
+            "alle deutschen Autowerke würden schließen",
+            "48.000 Arbeitsplätze seien bereits gestrichen",
+            "die Proteste hätten konkrete Sparprogramme gestoppt"
+          ],
+          "uncertainty_note": "Weitere Unternehmensentscheidungen zu Standorten und Stellen sind je nach Konzern noch offen."
+        }
+      }
+    },
+    {
+      "id": "2",
+      "title": "China-Schock 2.0: Warum Deutschlands Industrie laut EZB besonders unter Druck gerät",
+      "score": 95,
+      "trend_scope": "business_economy",
+      "regional_relevance": "germany",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 93,
+        "tayvoriq_passung": 98,
+        "quellenqualitaet": 100,
+        "visuell": 92
+      },
+      "growth_v2": {
+        "growth_score": 95,
+        "priority_score": 96,
+        "binding_score": 97
+      },
+      "sources": [
+        "https://www.reuters.com/world/china/chinas-industrial-rise-hits-german-manufacturers-hard-ecb-finds-2026-09-22/",
+        "https://www.ecb.europa.eu/press/economic-bulletin/focus/2026/html/ecb.ebbox202603_02~7df7facd9a.de.html"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/world/china/chinas-industrial-rise-hits-german-manufacturers-hard-ecb-finds-2026-09-22/",
+            "supports": "Reuters berichtet am 22. September über die EZB-Analyse, wonach deutsche Hersteller wegen ihres ähnlichen Exportprofils besonders stark mit chinesischer Konkurrenz konfrontiert sind."
+          },
+          {
+            "publisher": "Europäische Zentralbank",
+            "url": "https://www.ecb.europa.eu/press/economic-bulletin/focus/2026/html/ecb.ebbox202603_02~7df7facd9a.de.html",
+            "supports": "Die EZB beschreibt steigenden Wettbewerbsdruck durch chinesische Exporte besonders in mittel- und hochtechnologischen Industriebranchen sowie Marktanteilsverluste europäischer Hersteller."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Die EZB sieht Deutschlands Industrie besonders stark durch Chinas Aufstieg bedrängt.",
+          "why_happening": "Weil China mehr Hochtechnologie exportiert, verlieren europäische Hersteller Marktanteile.",
+          "who_is_affected": "Besonders Maschinenbau, Fahrzeugindustrie und technologieintensive Zulieferer stehen unter Druck.",
+          "personal_impact": "Für dich betrifft das Jobs, Preise und Europas industrielle Wettbewerbsfähigkeit.",
+          "action_now": "Beobachte, wie deutsche Hersteller Produktion, Kosten und Produkte anpassen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Deutschland ist wegen ähnlicher Exportstruktur besonders exponiert",
+            "chinesische Konkurrenz wächst in höherwertiger Industrie",
+            "EU-Hersteller verlieren in betroffenen Bereichen Marktanteile"
+          ],
+          "must_not_claim": [
+            "Deutschlands Industrie sei bereits vollständig verdrängt",
+            "China sei alleinige Ursache aller deutschen Industrieprobleme",
+            "die EZB prognostiziere konkrete Werksschließungen"
+          ],
+          "uncertainty_note": "Die EZB beschreibt Wettbewerbsdruck und Modellwirkungen; konkrete Folgen unterscheiden sich nach Branche und Unternehmen."
+        }
+      }
+    },
+    {
+      "id": "3",
+      "title": "Stuttgarter Oper-Milliardenstreit: Warum jetzt Günther Oettinger vermitteln soll",
+      "score": 94,
+      "trend_scope": "world_society",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 90,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 98,
+        "visuell": 95
+      },
+      "growth_v2": {
+        "growth_score": 94,
+        "priority_score": 95,
+        "binding_score": 96
+      },
+      "sources": [
+        "https://www.swr.de/swraktuell/baden-wuerttemberg/streit-um-stuttgarter-oper-oettinger-soll-vermittler-werden-100.html",
+        "https://www.welt.de/article6ab25eaea15a9fecb668b62b"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/streit-um-stuttgarter-oper-oettinger-soll-vermittler-werden-100.html",
+            "supports": "SWR berichtet, dass Günther Oettinger eine Expertenrunde zur Zukunft der Stuttgarter Staatsoper leiten und Empfehlungen erarbeiten soll."
+          },
+          {
+            "publisher": "WELT",
+            "url": "https://www.welt.de/article6ab25eaea15a9fecb668b62b",
+            "supports": "WELT ordnet den Streit um Sanierung, Neubau und Interimsspielstätte sowie die hohen Kosten des Gesamtprojekts ein."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Günther Oettinger soll den festgefahrenen Streit um Stuttgarts Oper moderieren.",
+          "why_happening": "Weil Sanierung, Neubau und Interimslösung Milliarden kosten können, braucht es Einigung.",
+          "who_is_affected": "Betroffen sind Stadt, Land, Kulturbetrieb und letztlich die Steuerzahler.",
+          "personal_impact": "Für dich in Stuttgart geht es um Kosten und jahrelange Baustellen.",
+          "action_now": "Beobachte, welche Variante die Expertenrunde bis Jahresende empfiehlt."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Oettinger soll die Expertenrunde leiten",
+            "Sanierung oder Neubau werden neu bewertet",
+            "Stadt und Land tragen das Projekt gemeinsam"
+          ],
+          "must_not_claim": [
+            "eine endgültige Bauvariante sei bereits beschlossen",
+            "Oettinger entscheide allein über das Projekt",
+            "die endgültigen Kosten stünden bereits fest"
+          ],
+          "uncertainty_note": "Die Expertenrunde soll Empfehlungen erarbeiten; die endgültige Projektentscheidung steht noch aus."
+        }
+      }
+    },
+    {
+      "id": "4",
+      "title": "E-Scooter-Akku explodiert in Karlsruhe: Drei Verletzte und 250.000 Euro Schaden",
+      "score": 93,
+      "trend_scope": "world_society",
+      "regional_relevance": "local",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 92,
+        "tayvoriq_passung": 95,
+        "quellenqualitaet": 100,
+        "visuell": 96
+      },
+      "growth_v2": {
+        "growth_score": 93,
+        "priority_score": 94,
+        "binding_score": 95
+      },
+      "sources": [
+        "https://www.presseportal.de/blaulicht/pm/110972/6356397",
+        "https://www.swr.de/swraktuell/baden-wuerttemberg/karlsruhe/brand-wohnhaus-escooter-akku-explodiert-karlsruhe-100.html"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Polizeipräsidium Karlsruhe",
+            "url": "https://www.presseportal.de/blaulicht/pm/110972/6356397",
+            "supports": "Die Polizei meldet, dass nach bisherigen Erkenntnissen ein E-Scooter-Akku nach dem Laden explodierte; drei Menschen wurden verletzt und der Schaden liegt bei rund 250.000 Euro."
+          },
+          {
+            "publisher": "SWR Aktuell",
+            "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/karlsruhe/brand-wohnhaus-escooter-akku-explodiert-karlsruhe-100.html",
+            "supports": "SWR bestätigt den Wohnungsbrand in der Karlsruher Südstadt, drei Verletzte, Evakuierungen und die derzeitige Unbewohnbarkeit des Hauses."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Ein E-Scooter-Akku explodierte nach dem Laden und verursachte einen Wohnungsbrand.",
+          "why_happening": "Weil der Akku explodierte, breitete sich das Feuer schnell aus.",
+          "who_is_affected": "Drei Menschen wurden verletzt, das Karlsruher Wohnhaus ist unbewohnbar.",
+          "personal_impact": "Für dich zeigt der Fall, wie ernst Akku-Brände zuhause werden.",
+          "action_now": "Achte beim Laden auf Herstellerhinweise, Hitze und sichtbare Schäden."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Explosion nach dem Ladevorgang laut Polizei",
+            "drei Verletzte",
+            "rund 250.000 Euro Schaden"
+          ],
+          "must_not_claim": [
+            "die genaue technische Defektursache sei bereits geklärt",
+            "alle E-Scooter-Akkus seien gefährlich",
+            "es habe Tote gegeben"
+          ],
+          "uncertainty_note": "Die Polizei beschreibt die Explosion nach bisherigen Erkenntnissen; die technische Ursache ist damit nicht abschließend geklärt."
+        }
+      }
+    },
+    {
+      "id": "5",
+      "title": "Meta Muse entfacht neue KI-Rally: Warum der Hype auch Europas Techwerte bewegt",
+      "score": 92,
+      "trend_scope": "technology_ai",
+      "regional_relevance": "global",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 98,
+        "tayvoriq_passung": 95,
+        "quellenqualitaet": 100,
+        "visuell": 97
+      },
+      "growth_v2": {
+        "growth_score": 92,
+        "priority_score": 94,
+        "binding_score": 91
+      },
+      "sources": [
+        "https://www.reuters.com/markets/europe/global-markets-view-europe-2026-09-22/",
+        "https://www.ft.com/content/2c60812b-77b4-4de5-a276-5e3eb2ceb5c3"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/markets/europe/global-markets-view-europe-2026-09-22/",
+            "supports": "Reuters berichtet, dass Metas neuer KI-Assistent Muse den KI-Handel neu belebt und die Stimmung an globalen Technologiemärkten antreibt."
+          },
+          {
+            "publisher": "Financial Times",
+            "url": "https://www.ft.com/content/2c60812b-77b4-4de5-a276-5e3eb2ceb5c3",
+            "supports": "Die FT berichtet über die KI-getriebene Aktienrally und nennt auch Kursgewinne im europäischen Technologieindex Stoxx Europe 600 Tech."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Metas neuer KI-Assistent Muse hat eine weltweite Tech-Rally ausgelöst.",
+          "why_happening": "Weil die Nachfrage stark anspringt, wetten Anleger erneut auf KI-Wachstum.",
+          "who_is_affected": "Betroffen sind Chipkonzerne, Plattformen und auch europäische Technologiewerte.",
+          "personal_impact": "Für dich in Europa zeigt das, wie schnell KI-Hype Märkte bewegt.",
+          "action_now": "Beobachte, ob Nutzung und Umsätze den aktuellen Börsenoptimismus wirklich tragen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Muse treibt neue KI-Euphorie",
+            "europäische Technologiewerte reagieren mit",
+            "Börsenreaktion ist Marktstimmung, keine Garantie"
+          ],
+          "must_not_claim": [
+            "Muse sei bereits dauerhaft profitabel",
+            "europäische Tech-Aktien würden weiter steigen",
+            "der KI-Boom sei sicher und risikolos"
+          ],
+          "uncertainty_note": "Börsenbewegungen können sich schnell ändern; die längerfristige Nutzung und Monetarisierung von Muse bleibt abzuwarten."
+        }
+      }
+    }
+  ]
+}
