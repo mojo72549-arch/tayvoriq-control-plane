@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-2433-trend-1-source-repair-v1",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "telegram_trend_approval_source_repair",
   "trend_id": "1",
   "topic": "48.000 Auto-Beschäftigte in Baden-Württemberg protestieren gegen Stellenabbau und Standortverlagerungen",
@@ -62,6 +62,11 @@
       "state": "DISPATCHING",
       "at": "2026-09-22T15:41:42.104774+00:00",
       "actor": "request-dispatcher:35749121478"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-22T15:41:53.014531+00:00",
+      "actor": "request-dispatcher:35749121478"
     }
   ],
   "repair_of_request_id": "telegram-2433-trend-1",
@@ -69,5 +74,6 @@
   "quality_gates_weakened": false,
   "contract_sha256": "06eea0329575e3083da0af632b639ad4a386a2f9b539d68caad95e4afa0ddc1c",
   "dispatch_claim_run_id": 35749121478,
-  "dispatch_contract_sha256": "06eea0329575e3083da0af632b639ad4a386a2f9b539d68caad95e4afa0ddc1c"
+  "dispatch_contract_sha256": "06eea0329575e3083da0af632b639ad4a386a2f9b539d68caad95e4afa0ddc1c",
+  "golden_path_run_id": 35749140108
 }
