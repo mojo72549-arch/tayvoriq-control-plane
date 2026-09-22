@@ -1487,6 +1487,22 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-09-22T11:49:35.554763Z",
+      "actor": "tayvoriq-codefix-orphan-reconcile-v1",
+      "meta": {
+        "failed_run_id": 35719122804,
+        "failure_signature": "d68ac00bac2757f0e555",
+        "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "aebc10f999325878c30b7170ef05b4a08ded535d",
+        "failed_implementation_sha": "4e2b5f9dc9f4d52e30b9603fba3903b055aa70ee",
+        "recovery_generation": 2,
+        "reason": "failed-codefix-replay-rearmed",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "repair_of_request_id": "telegram-2286-trend-1",
@@ -1529,25 +1545,23 @@
   "recovery_failure_signature": "d68e34e2645e033a7c2f",
   "recovery_dispatched_at": "2026-09-22T11:01:17.224070Z",
   "codefix_recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failed_run_id": 35717695855,
-    "failure_signature": "d68e34e2645e033a7c2f",
-    "failure_state": "",
-    "failed_control_plane_sha": "17c9817b397144edd71317a05c04e69baa8a4889",
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 35719122804,
+    "failure_signature": "d68ac00bac2757f0e555",
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_control_plane_sha": "aebc10f999325878c30b7170ef05b4a08ded535d",
     "failed_implementation_sha": "4e2b5f9dc9f4d52e30b9603fba3903b055aa70ee",
     "recovery_generation": 2,
-    "armed_at": "2026-09-22T10:47:57.938058Z",
+    "armed_at": "2026-09-22T11:49:35.554763Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
+    "orphan_reconciled": true,
     "active_pointer_verified": true,
-    "last_failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "replay_run_id": 35719122804,
-    "replayed_at": "2026-09-22T11:01:17.224070Z",
-    "replay_control_plane_sha": "aebc10f999325878c30b7170ef05b4a08ded535d",
-    "replay_implementation_sha": "4e2b5f9dc9f4d52e30b9603fba3903b055aa70ee",
-    "codefix_detection_reason": "relevant-control-code-changed-same-production-green"
+    "rearmed_after_failed_replay": true,
+    "previous_codefix_failed_run_id": 35717695855,
+    "previous_codefix_failure_signature": "d68e34e2645e033a7c2f"
   },
   "replay_bound_by": "tayvoriq-x-replay-start-guard",
   "replay_trigger_sha": "cb58674dc3df49b0fe1c1e6074b823a52f120acc",
