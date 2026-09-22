@@ -1267,6 +1267,70 @@ jobs:
             --review-id "${GITHUB_RUN_ID}" \
             --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
 
+      - name: Finalize active production ownership
+        if: steps.telegram_final.outcome == 'success' && env.SOURCE_REQUEST_ID_PIN != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$SOURCE_REQUEST_ID_PIN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "ACTIVE_POINTER_FINALIZE_REQUEST_ID_INVALID"
+            exit 1
+          fi
+          REQUEST_FILE="requests/${SOURCE_REQUEST_ID_PIN}.json"
+          ACTIVE_POINTER=".github/state/tayvoriq-active-production-request.json"
+          git fetch origin main --quiet
+          git reset --hard origin/main
+          if [ ! -f "$REQUEST_FILE" ] || [ ! -f "$ACTIVE_POINTER" ]; then
+            echo "ACTIVE_POINTER_FINALIZE_NO_OWNER_FILES"
+            exit 0
+          fi
+          python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GITHUB_RUN_ID" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+          request_path=Path(sys.argv[1]); pointer_path=Path(sys.argv[2]); run_id=int(sys.argv[3])
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
+          request_id=str(request.get('request_id') or '')
+          if str(pointer.get('request_id') or '')!=request_id or int(pointer.get('golden_path_run_id') or 0)!=run_id:
+              print('ACTIVE_POINTER_FINALIZE_OWNER_CHANGED')
+              raise SystemExit(0)
+          if pointer.get('state')!='ACTIVE':
+              print('ACTIVE_POINTER_FINALIZE_ALREADY_TERMINAL')
+              raise SystemExit(0)
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          pointer['state']='COMPLETED'
+          pointer['reason']='golden-path-review-ready'
+          pointer['completed_at']=now
+          pointer['updated_at']=now
+          request['production_completion']={
+              'state':'REVIEW_READY',
+              'golden_path_run_id':run_id,
+              'completed_at':now,
+              'quality_gates_weakened':False,
+          }
+          request_path.write_text(json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          pointer_path.write_text(json.dumps(pointer,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(f'ACTIVE_POINTER_FINALIZED:{request_id}:{run_id}')
+          PY
+          python -S tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REQUEST_FILE" "$ACTIVE_POINTER"
+          if git diff --cached --quiet; then
+            echo "ACTIVE_POINTER_FINALIZE_NO_CHANGE"
+            exit 0
+          fi
+          git commit -m "ops(tayvoriq): finalize active production ${GITHUB_RUN_ID}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt*2))
+            git pull --rebase origin main
+          done
+          echo "ACTIVE_POINTER_FINALIZE_PUSH_FAILED"
+          exit 1
       - name: Record internal failure for Delivery Watch
         if: failure()
         continue-on-error: true
@@ -1338,7 +1402,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          readarray -t status_fields < <(python - <<'PY'
+          readarray -t status_fields < <(python -S - <<'PY'
           import json
           from pathlib import Path
 
@@ -1428,7 +1492,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          failure_state="$(python - <<'PY'
+          failure_state="$(python -S - <<'PY'
           import json
           from pathlib import Path
           path=Path("implementation/out/control-plane/failure-notification-policy.json")
@@ -1445,14 +1509,11 @@ jobs:
             echo 'CODEFIX_FINALIZER_SKIPPED_UNPINNED_REQUEST'
             exit 0
           fi
-          request_rel=$(python - "$SOURCE_REQUEST_ID_PIN" <<'PY'
-          import re,sys
-          request_id=sys.argv[1]
-          if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}',request_id) is None:
-              raise SystemExit('CODEFIX_FINALIZER_REQUEST_ID_INVALID')
-          print(f'requests/{request_id}.json')
-          PY
-          )
+          if [[ ! "$SOURCE_REQUEST_ID_PIN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo 'CODEFIX_FINALIZER_REQUEST_ID_INVALID'
+            exit 1
+          fi
+          request_rel="requests/${SOURCE_REQUEST_ID_PIN}.json"
           owner_dir="${RUNNER_TEMP}/tayvoriq-finalizer-owner-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           mkdir -p "$owner_dir"
           git fetch --no-tags --prune origin main --quiet
