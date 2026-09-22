@@ -59,11 +59,18 @@ OLD_CACHE = '''      - name: Restore pip dependency cache
             tayvoriq-pip-v3-${{ runner.os }}-py311-
 '''
 
-NEW_CACHE = '''      - name: Clear stale pip wheel cache before production
+NEW_CACHE = '''      - name: Restore production dependency cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: tayvoriq-pip-${{ runner.os }}-py311-${{ hashFiles('implementation/requirements.txt') }}-torch260-chatterbox-65b18437
+          restore-keys: |
+            tayvoriq-pip-${{ runner.os }}-py311-
+
+      - name: Check production workspace capacity
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf ~/.cache/pip
           mkdir -p ~/.cache/pip
           df -h "$GITHUB_WORKSPACE"
 '''
@@ -119,18 +126,52 @@ def validate(text: str) -> None:
         failures.append("immutable implementation SHA ref missing")
     if "Verify immutable implementation checkout" not in text:
         failures.append("immutable checkout verification missing")
-    if OLD_CACHE in text or "Restore pip dependency cache" in text:
-        failures.append("stale pip cache restore remains")
+    if "Restore pip dependency cache" in text:
+        failures.append("legacy unversioned pip cache restore remains")
     if OLD_DEPS in text or "python -m pip install -r implementation/requirements.txt pytest -q" in text:
         failures.append("unsafe unfiltered production dependency install remains")
-    cpu_marker = 'python -m pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q'
-    chatterbox_marker = 'python -m pip install --no-cache-dir "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q'
-    if cpu_marker not in text:
-        failures.append("CPU-only torch install missing")
+
+    # Caching is allowed only when its identity is tied to the requirements,
+    # Python runtime, pinned Torch version and pinned Chatterbox revision.
+    required_cache_markers = (
+        "Restore production dependency cache",
+        "actions/cache@v4",
+        "hashFiles('implementation/requirements.txt')",
+        "torch260",
+        "chatterbox-65b18437",
+    )
+    missing_cache = [marker for marker in required_cache_markers if marker not in text]
+    if missing_cache:
+        failures.append("version-bound production dependency cache missing:" + ",".join(missing_cache))
+
+    # Do not couple policy verification to --no-cache-dir. The security contract
+    # is the exact index/version/revision plus post-install runtime verification.
+    cpu_markers = (
+        '--index-url https://download.pytorch.org/whl/cpu',
+        '"torch==2.6.0"',
+        '"torchaudio==2.6.0"',
+    )
+    chatterbox_marker = '"git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948"'
+    if not all(marker in text for marker in cpu_markers):
+        failures.append("CPU-only pinned torch install missing")
     if chatterbox_marker not in text:
         failures.append("pinned Chatterbox install missing")
-    if text.find(cpu_marker) > text.find(chatterbox_marker) >= 0:
+
+    cpu_pos = text.find('"torch==2.6.0"')
+    chatterbox_pos = text.find(chatterbox_marker)
+    if cpu_pos < 0 or chatterbox_pos < 0 or cpu_pos > chatterbox_pos:
         failures.append("Chatterbox is installed before CPU-only torch")
+
+    required_runtime_verification = (
+        "version.split('+', 1)[0] != '2.6.0'",
+        "torch.cuda.is_available()",
+        "TAYVORIQ_CPU_TORCH_VERIFIED",
+        "TAYVORIQ_DEPENDENCY_CACHE_RETRY_AFTER_PURGE",
+        "rm -rf ~/.cache/pip",
+    )
+    missing_runtime = [marker for marker in required_runtime_verification if marker not in text]
+    if missing_runtime:
+        failures.append("dependency runtime/fallback verification missing:" + ",".join(missing_runtime))
     if "production-green-immutable-sha" not in text:
         failures.append("production manifest immutable SHA binding missing")
     overlay_marker = "Apply exact verified autonomous codefix overlay"
@@ -159,8 +200,8 @@ def patch(text: str) -> str:
 
     if OLD_CACHE in text:
         text = text.replace(OLD_CACHE, NEW_CACHE, 1)
-    elif "Clear stale pip wheel cache before production" not in text:
-        raise SystemExit("PATCH_FAILED: expected pip cache block not found")
+    elif "Restore production dependency cache" not in text:
+        raise SystemExit("PATCH_FAILED: expected version-bound dependency cache block not found")
 
     if OLD_DEPS in text:
         text = text.replace(OLD_DEPS, NEW_DEPS, 1)
