@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-23T10:08:25.892111Z",
+  "generated_at": "2026-09-23T10:09:37.533726Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -151,6 +151,7 @@
   },
   "recovery": {
     "status": "ARMED",
+    "source_status": "ARMED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 35844593889,
     "replay_run_id": null,
@@ -159,7 +160,6 @@
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "ARMED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
