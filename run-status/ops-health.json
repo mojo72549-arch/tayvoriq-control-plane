@@ -1,22 +1,22 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-23T09:43:01.444927Z",
-  "overall": "red",
+  "generated_at": "2026-09-23T09:44:33.252654Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2433-trend-1-source-repair-v1",
-    "golden_path_run_id": 35838996791,
-    "pointer_updated_at": "2026-09-23T08:46:10.712893Z"
+    "golden_path_run_id": 35844593889,
+    "pointer_updated_at": "2026-09-23T09:43:23.359569Z"
   },
   "request": {
     "request_id": "telegram-2433-trend-1-source-repair-v1",
     "topic": "48.000 Auto-Beschäftigte in Baden-Württemberg protestieren gegen Stellenabbau und Standortverlagerungen",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 4,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "source_count": 2,
@@ -24,18 +24,18 @@
     "path": "requests/telegram-2433-trend-1-source-repair-v1.json"
   },
   "run": {
-    "id": 35838996791,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35838996791",
-    "created_at": "2026-09-23T08:46:04Z",
-    "updated_at": "2026-09-23T09:20:47Z",
+    "id": 35844593889,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35844593889",
+    "created_at": "2026-09-23T09:43:17Z",
+    "updated_at": "2026-09-23T09:43:22Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 38,
+    "current_step": "Install or reuse production dependencies",
+    "last_successful_step": "Telegram progress - environment active",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -75,31 +75,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "pending",
         "step_number": 31,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 38,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 44,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 45,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Install or reuse production dependencies"
     },
     {
       "name": "Production Green",
@@ -119,55 +119,44 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "35838996791:38:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "critical",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 38,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
+    "last_step": "Telegram progress - environment active"
   },
   "recovery": {
-    "status": "ARMED",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "status": "REPLAY_RUNNING",
+    "failure_state": null,
     "failed_run_id": 35838996791,
-    "replay_run_id": null,
+    "replay_run_id": 35844593889,
     "fresh_recovery_run_id": null,
     "recovery_generation": 4,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "source_status": "ARMED",
+    "source_status": "REPLAY_DISPATCHED",
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-23T09:20:47Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-09-23T09:43:23.359569Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-23T09:35:12.817222Z",
@@ -193,11 +182,6 @@
       "at": "2026-09-23T06:39:00.810826Z",
       "title": "AWAITING_CODEFIX",
       "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-22T19:51:40.649672Z",
-      "title": "DISPATCHED",
-      "detail": "bounded-shared-policy-recovery"
     }
   ]
 }
