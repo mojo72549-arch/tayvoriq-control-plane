@@ -155,13 +155,13 @@ jobs:
           payload={
               'state':'CODE_REPAIR_REQUIRED',
               'self_heal_depth':0,
-              'action':'repair_root_cause_publishability_contract_then_resume_same_checkpoint',
+              'action':'repair_publishability_quality_contract_then_resume_approved_request',
               'request_id':os.environ['REQUEST_ID'],
               'failed_run_id':int(os.environ['RUN_ID']),
               'failure_state':os.environ['FAILURE_STATE'],
               'failure_signature':os.environ['FAILURE_SIGNATURE'],
               'traceback_files':[],
-              'log_excerpt':failed_log[-7000:],
+              'log_excerpt':((quality_evidence + '\n\n' + failed_log[-7000:]).strip())[-14000:],
               'quality_evidence_excerpt':quality_evidence,
               'full_log_tail':full_log[-7000:],
               'safety_contract':{
