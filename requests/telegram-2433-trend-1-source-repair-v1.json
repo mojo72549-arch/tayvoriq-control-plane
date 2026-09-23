@@ -175,6 +175,22 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-09-23T06:39:00.810826Z",
+      "actor": "tayvoriq-deterministic-codefix-continuity",
+      "meta": {
+        "failed_run_id": 35776482938,
+        "failure_signature": "d68ac00bac2757f0e555",
+        "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "7a97ecb82ce3150df0688951f7cdafc85fe6161d",
+        "failed_implementation_sha": "03313c61e1b0c287a3ea6be07a33e439bdd7fa53",
+        "recovery_generation": 4,
+        "reason": "active-owner-generation-ceiling-publishability-failure",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "repair_of_request_id": "telegram-2433-trend-1",
@@ -185,29 +201,20 @@
   "dispatch_contract_sha256": "06eea0329575e3083da0af632b639ad4a386a2f9b539d68caad95e4afa0ddc1c",
   "golden_path_run_id": 35776482938,
   "codefix_recovery": {
-    "status": "FRESH_RECOVERY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failed_run_id": 35760127698,
-    "failure_signature": "d68e34e2645e033a7c2f",
-    "failure_state": "",
-    "failed_control_plane_sha": "c800942b67d54d4db1f201b20a4ec40363f4962d",
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 35776482938,
+    "failure_signature": "d68ac00bac2757f0e555",
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_control_plane_sha": "7a97ecb82ce3150df0688951f7cdafc85fe6161d",
     "failed_implementation_sha": "03313c61e1b0c287a3ea6be07a33e439bdd7fa53",
-    "recovery_generation": 2,
-    "armed_at": "2026-09-22T17:25:42.716554Z",
+    "recovery_generation": 4,
+    "armed_at": "2026-09-23T06:39:00.810826Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
     "active_pointer_verified": true,
-    "last_failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE",
-    "replay_run_id": 35761458519,
-    "replayed_at": "2026-09-22T17:33:24.590244Z",
-    "replay_control_plane_sha": "23fea197e7dae9826a6f5ce6c768380662b5822d",
-    "replay_implementation_sha": "03313c61e1b0c287a3ea6be07a33e439bdd7fa53",
-    "codefix_detection_reason": "relevant-control-code-changed-same-production-green",
-    "fresh_recovery_run_id": 35776482938,
-    "fresh_recovery_of_run_id": 35771589444,
-    "fresh_recovery_generation": 4,
-    "fresh_recovery_at": "2026-09-22T19:51:40.649672Z"
+    "last_failure_state": "DETERMINISTIC_PREFLIGHT_FAILURE"
   },
   "previous_golden_path_run_ids": [
     35749140108,
