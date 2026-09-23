@@ -96,7 +96,11 @@ jobs:
         run: |
           set -euo pipefail
           gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed > /tmp/tayvoriq-codefix-failed.log 2>&1 || true
+          gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log > /tmp/tayvoriq-codefix-full.log 2>&1 || true
           test -s /tmp/tayvoriq-codefix-failed.log || { echo 'AUTOCODEFIX_FAILED_LOG_MISSING'; exit 1; }
+          if [ ! -s /tmp/tayvoriq-codefix-full.log ]; then
+            cp /tmp/tayvoriq-codefix-failed.log /tmp/tayvoriq-codefix-full.log
+          fi
 
       - name: Build guarded repair request
         shell: bash
@@ -108,19 +112,58 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json,os
+          import json,os,re
           from pathlib import Path
-          log=Path('/tmp/tayvoriq-codefix-failed.log').read_text(encoding='utf-8',errors='replace')
+
+          failed_log=Path('/tmp/tayvoriq-codefix-failed.log').read_text(encoding='utf-8',errors='replace')
+          full_log=Path('/tmp/tayvoriq-codefix-full.log').read_text(encoding='utf-8',errors='replace')
+
+          # Failed-step logs often contain only the final publishability assertion.
+          # Preserve the earlier quality-audit evidence that actually explains why
+          # Voice/Visual repair failed, so autonomous repair targets the root cause
+          # instead of blindly increasing retries or weakening gates.
+          lines=full_log.splitlines()
+          evidence_patterns=(
+              r'preapproval-ai quality-gate',
+              r'critical_pronunciation',
+              r'number-pronunciation',
+              r'pronunciation',
+              r'score_below_threshold',
+              r'visual_agent',
+              r'marketing_agent',
+              r'local_repair_wall_timeout',
+              r'publishable_output_retry_required',
+              r'checkpoint.*repair',
+              r'voice.*repair',
+              r'visual.*repair',
+              r'whisper',
+          )
+          hit_indexes=[]
+          for index,line in enumerate(lines):
+              lowered=line.casefold()
+              if any(re.search(pattern,lowered,re.IGNORECASE) for pattern in evidence_patterns):
+                  hit_indexes.extend(range(max(0,index-2),min(len(lines),index+3)))
+          selected=[]
+          seen=set()
+          for index in hit_indexes:
+              if index in seen:
+                  continue
+              seen.add(index)
+              selected.append(lines[index])
+          quality_evidence='\n'.join(selected)[-14000:]
+
           payload={
               'state':'CODE_REPAIR_REQUIRED',
               'self_heal_depth':0,
-              'action':'repair_publishability_quality_contract_then_resume_approved_request',
+              'action':'repair_root_cause_publishability_contract_then_resume_same_checkpoint',
               'request_id':os.environ['REQUEST_ID'],
               'failed_run_id':int(os.environ['RUN_ID']),
               'failure_state':os.environ['FAILURE_STATE'],
               'failure_signature':os.environ['FAILURE_SIGNATURE'],
               'traceback_files':[],
-              'log_excerpt':log[-7000:],
+              'log_excerpt':failed_log[-7000:],
+              'quality_evidence_excerpt':quality_evidence,
+              'full_log_tail':full_log[-7000:],
               'safety_contract':{
                   'exact_request_required':True,
                   'source_context_must_remain_bound':True,
@@ -128,6 +171,11 @@ jobs:
                   'thresholds_must_not_change':True,
                   'publication_must_remain_review_gated':True,
                   'generic_runtime_fix_required':True,
+                  'root_cause_evidence_required':True,
+                  'checkpoint_reuse_required':True,
+                  'pronunciation_normalization_must_be_deterministic':True,
+                  'visual_semantics_must_remain_topic_bound':True,
+                  'blind_retry_forbidden':True,
               },
           }
           Path('/tmp/tayvoriq-codefix-request.json').write_text(
