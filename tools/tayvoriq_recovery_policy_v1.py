@@ -49,6 +49,8 @@ LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"fresh strict audit after localized repair still contains",
     r"visual checkpoint topic-aware repair failed",
     r"voice checkpoint v5 natural narrator repair failed",
+    r"local_repair_wall_timeout",
+    r"checkpoint handoff:.*process_exit=124",
 )
 
 FINAL_PUBLICATION_VOICE_CODEFIX_PATTERNS = (
