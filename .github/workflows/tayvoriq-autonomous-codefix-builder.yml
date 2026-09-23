@@ -375,6 +375,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Studio modules are intentionally flat under tools/runtime_patches.
+          # Make the validation environment match the production import contract.
+          export PYTHONPATH="$PWD/tools:$PWD/runtime_patches:$PWD/src/runtime_hotfixes:$PWD/src:${PYTHONPATH:-}"
           python -m compileall -q tools runtime_patches src/runtime_hotfixes tests
 
           # Autonomous recovery must never weaken or bypass an already-tested
@@ -407,6 +410,7 @@ jobs:
           # Run the exact regression contract that previously escaped the
           # reduced autocodefix suite, then the existing focused safety suite.
           python -m pytest -q tests/test_tayvoriq_voice_v5_human_narrator.py
+          python -m pytest -q tests/test_tayvoriq_autonomous_code_repair_provider_resilience.py
           python -m pytest -q             tests/test_tayvoriq_publishability_codefix_context.py             tests/test_tayvoriq_verified_request_runtime_recovery.py             tests/test_tayvoriq_pronunciation_audit_contract.py             tests/test_tayvoriq_visual_audit_resilience.py
           python tools/tayvoriq_lightweight_preflight.py
 
