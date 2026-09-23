@@ -29,6 +29,8 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       ACTIVE_REQUEST_POINTER: .github/state/tayvoriq-active-production-request.json
       IMPLEMENTATION_REPO: mojo72549-arch/shorts-agent-studio
       IMPLEMENTATION_BRANCH: feature/multi-platform-distribution-package
@@ -88,6 +90,17 @@ jobs:
               for k,v in values.items(): h.write(f'{k}={v}\n')
           print(json.dumps(values,ensure_ascii=False))
           PY
+
+      - name: Telegram codefix started
+        if: steps.owner.outputs.request_id != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🧰 TAYVORIQ · Auto-Codefix gestartet\n\nThema: %s\nFehlgeschlagener Run: %s\nFehlerklasse: %s\n\n✅ Derselbe freigegebene Auftrag und dieselben Quellen bleiben gebunden.\n➡️ Fehlerbeweise werden analysiert und ein verifizierter Studio-Fix wird automatisch erstellt.\n\nFür dich: ✅ Keine Aktion nötig.' \
+            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}" "${{ steps.owner.outputs.failure_state }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
 
       - name: Capture exact failed-run evidence
         shell: bash
@@ -281,6 +294,7 @@ jobs:
           python -m pip install -q requests pillow "moviepy==1.0.3" pytest
 
       - name: Generate guarded Studio patch
+        id: generate
         if: steps.existing.outputs.ready != 'true'
         working-directory: implementation
         shell: bash
@@ -290,7 +304,19 @@ jobs:
           git diff --check
           test -n "$(git status --porcelain)" || { echo 'AUTOCODEFIX_NO_PATCH_PRODUCED'; exit 1; }
 
+      - name: Telegram Studio patch generated
+        if: steps.generate.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🛠️ TAYVORIQ · Studio-Fix erzeugt\n\nThema: %s\nRun: %s\n\n✅ Der automatische Codefix hat einen konkreten Patch erzeugt.\n➡️ Jetzt laufen Regressionstests und der technische Preflight.\n\nFür dich: ✅ Keine Aktion nötig.' \
+            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
+
       - name: Validate generated patch
+        id: validate
         if: steps.existing.outputs.ready != 'true'
         working-directory: implementation
         shell: bash
@@ -330,6 +356,17 @@ jobs:
           python -m pytest -q tests/test_tayvoriq_voice_v5_human_narrator.py
           python -m pytest -q             tests/test_tayvoriq_publishability_codefix_context.py             tests/test_tayvoriq_verified_request_runtime_recovery.py             tests/test_tayvoriq_pronunciation_audit_contract.py             tests/test_tayvoriq_visual_audit_resilience.py
           python tools/tayvoriq_lightweight_preflight.py
+
+      - name: Telegram codefix verified
+        if: steps.validate.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '✅ TAYVORIQ · Auto-Codefix verifiziert\n\nThema: %s\nRun: %s\n\n✅ Regressionstests bestanden.\n✅ Lightweight Preflight bestanden.\n✅ Quality-Gates wurden nicht abgeschwächt.\n➡️ Derselbe Auftrag wird jetzt mit dem verifizierten Fix fortgesetzt.\n\nFür dich: ✅ Keine Aktion nötig.' \
+            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
 
       - name: Publish verified patch handoff
         id: handoff
@@ -608,3 +645,35 @@ jobs:
           echo "replay_dispatched=true" >> "$GITHUB_OUTPUT"
           echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
           echo "AUTOCODEFIX_OVERLAY_REPLAY_BOUND:$REQUEST_ID:$new_run_id:$PATCH_SHA256"
+
+      - name: Telegram repaired recovery started
+        if: steps.overlay_replay.outputs.new_run_id != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🚀 TAYVORIQ · Reparierte Produktion gestartet\n\nThema: %s\nAlter Run: %s\nNeuer Run: %s\nRecovery: Generation 4\n\n✅ Verifizierter Studio-Fix ist gebunden.\n✅ Derselbe Telegram-Auftrag und derselbe Checkpoint bleiben erhalten.\n➡️ Voice, Visuals, Render und Quality-Audit laufen automatisch weiter.\n\nFür dich: ✅ Keine Aktion nötig.' \
+            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}" "${{ steps.overlay_replay.outputs.new_run_id }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
+
+      - name: Telegram codefix stopped
+        if: failure() && steps.owner.outputs.request_id != ''
+        shell: bash
+        env:
+          GENERATE_OUTCOME: ${{ steps.generate.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          HANDOFF_OUTCOME: ${{ steps.handoff.outcome }}
+          REPLAY_OUTCOME: ${{ steps.overlay_replay.outcome }}
+        run: |
+          set -euo pipefail
+          stage="Auto-Codefix"
+          if [ "${GENERATE_OUTCOME:-}" = "failure" ]; then stage="Studio-Patch erzeugen"; fi
+          if [ "${VALIDATE_OUTCOME:-}" = "failure" ]; then stage="Regressionstests / Preflight"; fi
+          if [ "${HANDOFF_OUTCOME:-}" = "failure" ]; then stage="Verifizierten Patch übernehmen"; fi
+          if [ "${REPLAY_OUTCOME:-}" = "failure" ]; then stage="Reparierten Recovery-Run binden"; fi
+          text=$(printf '🔴 TAYVORIQ · Auto-Codefix gestoppt\n\nThema: %s\nRun: %s\nStufe: %s\n\n✅ Auftrag, Quellen und Recovery Generation 4 bleiben erhalten.\n✅ Es wurde kein ungeprüfter Fix veröffentlicht.\n➡️ Der technische Self-Heal-Pfad bleibt fail-closed; kein Generation-5-Blind-Retry.\n\nFür dich: ✅ Keine manuelle Neuauswahl nötig.' \
+            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}" "${stage}")
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
