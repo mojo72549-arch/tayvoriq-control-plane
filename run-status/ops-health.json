@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-23T23:57:56.423365Z",
+  "generated_at": "2026-09-23T23:58:09.783438Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -32,8 +32,8 @@
     "updated_at": "2026-09-23T23:57:39Z",
     "attempt": 2,
     "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
+    "current_step": "Restore production dependency cache",
+    "last_successful_step": "Checkout review pages",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout review pages"
+      "detail": "Restore production dependency cache"
     },
     {
       "name": "Production Green",
