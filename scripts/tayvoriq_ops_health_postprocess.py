@@ -20,7 +20,8 @@ def main():
     recovery = state.get("recovery") or {}
     incident = state.get("incident") or {}
 
-    source_status = str(recovery.get("status") or "IDLE").upper()
+    source_status = str(recovery.get("source_status") or recovery.get("status") or "IDLE").upper()
+    previous_effective = str(recovery.get("previous_effective_status") or "").upper()
     run_status = str(run.get("status") or "").lower()
     conclusion = str(run.get("conclusion") or "").lower()
     replay_is_current = same_id(recovery.get("replay_run_id"), run.get("id"))
@@ -71,9 +72,10 @@ def main():
         if not events or events[0].get("title") != marker["title"] or events[0].get("at") != marker["at"]:
             state["events"] = [marker] + events[:7]
 
+    changed = effective != (previous_effective or source_status)
+    recovery.pop("previous_effective_status", None)
+    state["recovery"] = recovery
     PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    changed = effective != source_status
     output_file = os.environ.get("GITHUB_OUTPUT")
     if output_file:
         with open(output_file, "a", encoding="utf-8") as handle:
