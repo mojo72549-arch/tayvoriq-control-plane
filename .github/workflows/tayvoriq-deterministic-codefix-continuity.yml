@@ -33,6 +33,7 @@ permissions:
   actions: write
   contents: write
 
+# Generation-ceiling publishability handoff is reconciled automatically; no fresh generation is opened.
 # Recovery is single-owner and fail-closed. Durable request JSON files are audit
 # history, not a recovery queue. Every automatic action must match the canonical
 # active-production pointer before it may mutate, notify, or replay anything.
