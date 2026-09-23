@@ -483,10 +483,19 @@ jobs:
                    '.github/workflows/tayvoriq-deterministic-codefix-continuity.yml',
                    '.github/workflows/tayvoriq-autonomous-codefix-builder.yml',
                    '.github/workflows/tayvoriq-delivery-watch.yml',
+                   '.github/workflows/tayvoriq-production-green-promoter.yml',
                    'tools/tayvoriq_codefix_orphan_reconcile_v1.py'}
           relevant=[]
           for path in paths:
-              if path.startswith('.github/run-now/') or path.startswith('requests/') or path.startswith('state/') or path in ignored: continue
+              if (
+                  path.startswith('.github/run-now/')
+                  or path.startswith('.github/state/')
+                  or path.startswith('requests/')
+                  or path.startswith('state/')
+                  or path.startswith('run-status/')
+                  or path in ignored
+              ):
+                  continue
               if path.startswith('tools/tayvoriq_') or path.startswith('scripts/') or path.startswith('.github/workflows/tayvoriq-'): relevant.append(path)
           raise SystemExit(0 if relevant else 1)
           PY
