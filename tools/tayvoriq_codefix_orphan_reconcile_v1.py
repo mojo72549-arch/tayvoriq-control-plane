@@ -54,8 +54,9 @@ def _parse_time(value: Any) -> datetime | None:
 
 def _telegram_bound(data: dict[str, Any]) -> bool:
     source = data.get("source_context") if isinstance(data.get("source_context"), dict) else {}
+    source_name = str(data.get("source") or "").strip()
     return (
-        str(data.get("source") or "").strip() == "telegram_trend_approval"
+        source_name.startswith("telegram_trend_approval")
         or data.get("telegram_only_user_path") is True
         or source.get("telegram_only_user_path") is True
         or str(data.get("communication_channel") or "").strip() == "telegram"
@@ -64,10 +65,11 @@ def _telegram_bound(data: dict[str, Any]) -> bool:
 
 def _auto_repair(data: dict[str, Any]) -> bool:
     source = data.get("source_context") if isinstance(data.get("source_context"), dict) else {}
+    source_name = str(data.get("source") or "").strip()
     return (
         data.get("auto_repair_until_review") is True
         or source.get("auto_repair_until_review") is True
-        or str(data.get("source") or "").strip() == "telegram_trend_approval"
+        or source_name.startswith("telegram_trend_approval")
     )
 
 
