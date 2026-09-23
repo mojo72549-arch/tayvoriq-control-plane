@@ -173,7 +173,13 @@ jobs:
               'failed_run_id':int(os.environ['RUN_ID']),
               'failure_state':os.environ['FAILURE_STATE'],
               'failure_signature':os.environ['FAILURE_SIGNATURE'],
-              'traceback_files':[],
+              'traceback_files':[
+                  'runtime_patches/tayvoriq_verified_request_runtime_recovery.py',
+                  'runtime_patches/tayvoriq_brand_pronunciation_guard.py',
+                  'tools/tayvoriq_pronunciation_lexicon_v1.py',
+                  'tools/tayvoriq_preapproval_local_visual_audit.py',
+                  'tools/tayvoriq_visual_audit_resilience.py',
+              ],
               'log_excerpt':((quality_evidence + '\n\n' + failed_log[-7000:]).strip())[-14000:],
               'quality_evidence_excerpt':quality_evidence,
               'full_log_tail':full_log[-7000:],
@@ -293,14 +299,56 @@ jobs:
           command -v ffprobe >/dev/null || { echo 'AUTOCODEFIX_FFPROBE_MISSING'; exit 1; }
           python -m pip install -q requests pillow "moviepy==1.0.3" pytest
 
+      - name: Telegram root cause context ready
+        if: steps.existing.outputs.ready != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          text=$(printf '🔎 TAYVORIQ · Fehleranalyse abgeschlossen\n\nThema: %s\nRun: %s\n\n✅ Voice-, Aussprache- und Visual-Audit wurden als Reparaturkontext übernommen.\n✅ Der aktuelle Studio-Code ist exakt gebunden.\n➡️ Jetzt wird ein anwendbarer Patch gegen den tatsächlichen Produktionsstand erzeugt.\n\nFür dich: ✅ Keine Aktion nötig.' \
+            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}")
+          curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" >/dev/null
+
       - name: Generate guarded Studio patch
         id: generate
         if: steps.existing.outputs.ready != 'true'
         working-directory: implementation
         shell: bash
         run: |
-          set -euo pipefail
-          python tools/tayvoriq_autonomous_code_repair_v2.py             --request /tmp/tayvoriq-codefix-request.json             --repo .             --provider auto             --report-out out/tayvoriq-self-heal/autonomous-codefix-report.json             --max-provider-attempts 3
+          set -uo pipefail
+          mkdir -p out/tayvoriq-self-heal
+          set +e
+          python tools/tayvoriq_autonomous_code_repair_v2.py \
+            --request /tmp/tayvoriq-codefix-request.json \
+            --repo . \
+            --provider auto \
+            --report-out out/tayvoriq-self-heal/autonomous-codefix-report.json \
+            --max-provider-attempts 3 2>&1 | tee /tmp/tayvoriq-autocodefix-generate.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            reason=$(python - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path('/tmp/tayvoriq-autocodefix-generate.log').read_text(encoding='utf-8',errors='replace')
+          candidates=[]
+          for line in text.splitlines():
+              s=line.strip()
+              if 'RuntimeError:' in s or 'git apply --check failed:' in s or 'AUTOCODEFIX_' in s:
+                  candidates.append(s)
+          reason=(candidates[-1] if candidates else 'Studio-Patch konnte nicht verifiziert erzeugt werden.')
+          reason=re.sub(r'\s+',' ',reason)[:700]
+          print(reason)
+          PY
+            )
+            {
+              echo 'failure_reason<<EOF'
+              echo "$reason"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+            exit "$rc"
+          fi
           git diff --check
           test -n "$(git status --porcelain)" || { echo 'AUTOCODEFIX_NO_PATCH_PRODUCED'; exit 1; }
 
@@ -662,6 +710,7 @@ jobs:
         shell: bash
         env:
           GENERATE_OUTCOME: ${{ steps.generate.outcome }}
+          GENERATE_REASON: ${{ steps.generate.outputs.failure_reason }}
           VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
           HANDOFF_OUTCOME: ${{ steps.handoff.outcome }}
           REPLAY_OUTCOME: ${{ steps.overlay_replay.outcome }}
@@ -672,8 +721,10 @@ jobs:
           if [ "${VALIDATE_OUTCOME:-}" = "failure" ]; then stage="Regressionstests / Preflight"; fi
           if [ "${HANDOFF_OUTCOME:-}" = "failure" ]; then stage="Verifizierten Patch übernehmen"; fi
           if [ "${REPLAY_OUTCOME:-}" = "failure" ]; then stage="Reparierten Recovery-Run binden"; fi
-          text=$(printf '🔴 TAYVORIQ · Auto-Codefix gestoppt\n\nThema: %s\nRun: %s\nStufe: %s\n\n✅ Auftrag, Quellen und Recovery Generation 4 bleiben erhalten.\n✅ Es wurde kein ungeprüfter Fix veröffentlicht.\n➡️ Der technische Self-Heal-Pfad bleibt fail-closed; kein Generation-5-Blind-Retry.\n\nFür dich: ✅ Keine manuelle Neuauswahl nötig.' \
-            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}" "${stage}")
+          reason="${GENERATE_REASON:-}"
+          [ -n "$reason" ] || reason="Der Self-Heal wurde fail-closed beendet; der konkrete Fehler steht im technischen Laufprotokoll."
+          text=$(printf '🔴 TAYVORIQ · Auto-Codefix gestoppt\n\nThema: %s\nRun: %s\nStufe: %s\nTechnischer Grund: %s\n\n✅ Auftrag, Quellen und Recovery Generation 4 bleiben erhalten.\n✅ Es wurde kein ungeprüfter Fix veröffentlicht.\n➡️ Kein Generation-5-Blind-Retry. Der nächste Self-Heal muss genau diesen Fehler beheben.\n\nFür dich: ✅ Keine manuelle Neuauswahl nötig.' \
+            "${{ steps.owner.outputs.topic }}" "${{ steps.owner.outputs.run_id }}" "${stage}" "${reason}")
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=${text}" >/dev/null
