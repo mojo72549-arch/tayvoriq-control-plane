@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-23T09:44:33.252654Z",
+  "generated_at": "2026-09-23T09:54:55.906999Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -32,8 +32,8 @@
     "updated_at": "2026-09-23T09:43:22Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Install or reuse production dependencies",
-    "last_successful_step": "Telegram progress - environment active",
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -75,7 +75,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "success",
         "step_number": 31,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -109,7 +109,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Install or reuse production dependencies"
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
@@ -124,7 +124,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
     },
     {
       "name": "Quality Gates",
@@ -135,8 +135,8 @@
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
-    "last_step": "Telegram progress - environment active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
+    "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
