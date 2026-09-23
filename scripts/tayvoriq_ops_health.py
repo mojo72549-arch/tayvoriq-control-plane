@@ -435,6 +435,12 @@ def main():
         },
         "recovery": {
             "status": self_heal_status,
+            "source_status": self_heal_status,
+            "previous_effective_status": str(
+                ((previous.get("recovery") or {}).get("status")
+                 if isinstance(previous.get("recovery"), dict) else "")
+                or ""
+            ),
             "failure_state": failure_state,
             "failed_run_id": recovery.get("failed_run_id"),
             "replay_run_id": recovery.get("replay_run_id"),
@@ -449,7 +455,14 @@ def main():
 
     previous_overall = str(previous.get("overall") or "unknown")
     previous_incident = ((previous.get("incident") or {}).get("signature") if isinstance(previous.get("incident"), dict) else None)
-    previous_recovery = str(((previous.get("recovery") or {}).get("status") if isinstance(previous.get("recovery"), dict) else "") or "")
+    previous_recovery = str(
+        ((previous.get("recovery") or {}).get("source_status")
+         if isinstance(previous.get("recovery"), dict) else "")
+        or
+        ((previous.get("recovery") or {}).get("status")
+         if isinstance(previous.get("recovery"), dict) else "")
+        or ""
+    )
     current_incident = incident.get("signature") if incident else None
     stale_green_suppressed = bool(
         overall == "green"
