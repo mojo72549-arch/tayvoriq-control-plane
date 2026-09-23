@@ -173,12 +173,17 @@ jobs:
               'failed_run_id':int(os.environ['RUN_ID']),
               'failure_state':os.environ['FAILURE_STATE'],
               'failure_signature':os.environ['FAILURE_SIGNATURE'],
+              # Put the files that own the proven failing gate first. The repair
+              # agent only expands the first four file contexts, so a generic
+              # verified-request runtime shim must not crowd out the actual
+              # voice/pronunciation implementation for pronunciation failures.
               'traceback_files':[
-                  'runtime_patches/tayvoriq_verified_request_runtime_recovery.py',
                   'runtime_patches/tayvoriq_brand_pronunciation_guard.py',
                   'tools/tayvoriq_pronunciation_lexicon_v1.py',
-                  'tools/tayvoriq_preapproval_local_visual_audit.py',
-                  'tools/tayvoriq_visual_audit_resilience.py',
+                  'tools/tayvoriq_voice_only_repair_v5.py',
+                  'tools/tayvoriq_preapproval_ai_audit_v6.py',
+                  'tests/test_tayvoriq_pronunciation_audit_contract.py',
+                  'runtime_patches/tayvoriq_verified_request_runtime_recovery.py',
               ],
               'log_excerpt':((quality_evidence + '\n\n' + failed_log[-7000:]).strip())[-14000:],
               'quality_evidence_excerpt':quality_evidence,
