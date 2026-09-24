@@ -1252,6 +1252,59 @@ jobs:
           set -uo pipefail
           echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
 
+          # Never spend another long local-repair cycle on an implementation that
+          # has already been superseded by a fully verified Production Green SHA.
+          # Hand the exact request back to Delivery Watch so it can replay the
+          # checkpoint on the newer immutable implementation.
+          git -C .. fetch origin main --quiet || true
+          if git -C .. show origin/main:.github/state/tayvoriq-production-green.json > /tmp/tayvoriq-latest-green.json 2>/dev/null; then
+            if python - "out/control-plane/production-manifest.json" /tmp/tayvoriq-latest-green.json <<'PY'
+          import json,sys
+          from pathlib import Path
+          manifest=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          green=json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+          current=str(manifest.get('implementation_sha') or '').strip().lower()
+          latest=str(green.get('implementation_sha') or '').strip().lower()
+          valid=lambda value: len(value)==40 and all(c in '0123456789abcdef' for c in value)
+          advanced=(
+              valid(current) and valid(latest) and current != latest
+              and green.get('full_preflight_passed') is True
+              and green.get('quality_gates_weakened') is False
+          )
+          raise SystemExit(0 if advanced else 1)
+          PY
+            then
+              python - "out/control-plane/production-manifest.json" /tmp/tayvoriq-latest-green.json <<'PY'
+          import json,sys
+          from pathlib import Path
+          manifest=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          green=json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+          payload={
+              'schema_version':2,
+              'state':'PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED',
+              'action':'replay_on_advanced_production_green',
+              'reason':'A newer fully verified Production Green implementation became available before local checkpoint repair.',
+              'repair_target_stages':['CHECKPOINT_REPLAY'],
+              'checkpoint_job_dir':'',
+              'repair_history':[],
+              'failed_implementation_sha':manifest.get('implementation_sha'),
+              'current_production_green_sha':green.get('implementation_sha'),
+              'full_pipeline_restarted':False,
+              'quality_gates_weakened':False,
+              'user_notification_allowed':False,
+          }
+          target=Path('out/tayvoriq-self-heal/report.json')
+          target.parent.mkdir(parents=True,exist_ok=True)
+          target.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(payload,ensure_ascii=False))
+          PY
+              echo "state=PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED" >> "$GITHUB_OUTPUT"
+              echo "process_exit=75" >> "$GITHUB_OUTPUT"
+              echo "Checkpoint handoff: state=PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED process_exit=75"
+              exit 0
+            fi
+          fi
+
           repair_heartbeat_stop="${RUNNER_TEMP}/tayvoriq-repair-heartbeat-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.stop"
           rm -f "$repair_heartbeat_stop"
           (
