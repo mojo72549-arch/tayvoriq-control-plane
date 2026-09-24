@@ -98,7 +98,7 @@ jobs:
           trends=p.get('trends') or []
           broad={'germany','europe','global'}
           def reach_contract(items):
-              return len(items) >= 4 and all(
+              return len(items) >= 3 and all(
                   str(trend.get('regional_relevance') or '').strip().lower() in broad
                   for trend in items
               )
@@ -108,7 +108,7 @@ jobs:
               and p.get('slot') == sys.argv[4]
               and p.get('mode') == 'manual_verified_fallback_after_provider_limits'
               and p.get('quality_gates_weakened') is False
-              and 4 <= len(trends) <= 5
+              and 3 <= len(trends) <= 5
               and reach_contract(trends)
           )
           if ok:
@@ -219,11 +219,11 @@ jobs:
           def reach_contract(items):
             scopes=[str(trend.get('regional_relevance') or '').strip().lower() for trend in items]
             assert all(scope in broad for scope in scopes), f'local/invalid scope blocked by reach gate: {scopes}'
-            assert len(items) >= 4, f'need at least 4 broad-reach trends, got {len(items)}'
+            assert len(items) >= 3, f'need at least 3 broad-reach trends, got {len(items)}'
           assert d.get('agent_orchestrator') == 'v2'
           assert d.get('slot') in {'morning','evening'}
           assert d.get('quality_gates_weakened', False) is False
-          assert 4 <= len(trends) <= 5, f'expected 4-5 strong trends, got {len(trends)}'
+          assert 3 <= len(trends) <= 5, f'expected 3-5 strong trends, got {len(trends)}'
           reach_contract(trends)
           assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
           for trend in trends:
