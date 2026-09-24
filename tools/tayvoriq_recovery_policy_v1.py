@@ -200,6 +200,7 @@ def classify_failure(
     owner_current: bool = True,
     exact_request_retry: bool = False,
     codefix_replay: bool = False,
+    structured_evidence: dict | None = None,
 ) -> RecoveryDecision:
     text = str(logs or "")
     lowered = text.casefold()
@@ -215,6 +216,88 @@ def classify_failure(
         state = "SUPERSEDED_RECOVERY_EVENT"
         return RecoveryDecision("stale", state, False, "none", generation, None, maximum, _stable_signature(state, text), "A newer run already owns the request.")
 
+    # Prefer the producer's structured failure contract over text scraping. Logs
+    # remain a backwards-compatible fallback only when no valid machine state was
+    # emitted. This prevents earlier voice/provider noise from stealing a later
+    # visual or publication failure.
+    evidence = structured_evidence if isinstance(structured_evidence, dict) else {}
+    evidence_state = str(evidence.get("state") or "").strip().upper()
+    repair_targets = {
+        str(item or "").strip().upper()
+        for item in (evidence.get("repair_target_stages") or [])
+        if str(item or "").strip()
+    }
+    if evidence_state == "LOCAL_VISUAL_REPAIR_REQUIRED" or (
+        evidence_state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED" and "VISUALS" in repair_targets
+    ):
+        state = "LOCAL_VISUAL_RETRY_REQUIRED"
+        if attempt < 3:
+            return RecoveryDecision(
+                "rerun", state, True, "same-run", generation, generation,
+                maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+                "Structured failure evidence localizes the defect to visuals; retry only the same bound checkpoint."
+            )
+        state = "LOCAL_VISUAL_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            "The same visual checkpoint class survived bounded local retries; preserve the exact request and require a verified relevant code revision."
+        )
+
+    if evidence_state == "TRANSIENT_AUDIO_FAILURE" or (
+        evidence_state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
+        and repair_targets
+        and repair_targets <= {"VOICE"}
+    ):
+        state = "LOCAL_VOICE_RETRY_REQUIRED"
+        if attempt < 3:
+            return RecoveryDecision(
+                "rerun", state, True, "same-run", generation, generation,
+                maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+                "Structured failure evidence localizes the defect to narrator/post-mux output; retry only the same bound checkpoint."
+            )
+        state = "LOCAL_VOICE_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            "The same narrator/post-mux class survived bounded local retries; preserve the exact request and require a verified relevant code revision."
+        )
+
+    if evidence_state == "CONTROL_PLANE_BINDING_FAILURE":
+        if attempt < 3:
+            state = "CONTROL_PLANE_BINDING_FAILURE"
+            return RecoveryDecision(
+                "rerun", state, True, "same-run", generation, generation,
+                maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+                "Structured evidence shows a request-binding race; retry the same workflow without Studio mutation."
+            )
+
+    if evidence_state in {"CODE_REPAIR_REQUIRED", "LOCAL_REPAIR_CODEFIX_REQUIRED", "PUBLISHABLE_CODEFIX_REQUIRED"}:
+        state = evidence_state
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            "Structured failure evidence requires a verified code revision while preserving the exact approved request."
+        )
+
+    if evidence_state == "EXTERNAL_ACTION_REQUIRED":
+        state = evidence_state
+        return RecoveryDecision(
+            "external", state, False, "none", generation, None,
+            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            "Structured failure evidence identifies an external credential, billing or permission blocker."
+        )
+
+    if evidence_state == "DUPLICATE_CONTENT_BLOCKED":
+        state = evidence_state
+        mode = "deterministic" if exact_request_retry else "duplicate"
+        effective_state = "DUPLICATE_RETRY_CONTRACT_BROKEN" if exact_request_retry else state
+        return RecoveryDecision(
+            mode, effective_state, False, "none", generation, None,
+            maximum, _stable_signature(effective_state, json.dumps(evidence, sort_keys=True)),
+            "Structured duplicate evidence was emitted by the canonical producer."
+        )
+
     # A strict visual audit can fail after a successful narrator repair. Visual
     # checkpoint repair is local runtime work too; it must win over earlier voice
     # evidence from the same log so the exact master can be repaired in-place.
@@ -226,11 +309,11 @@ def classify_failure(
                 maximum, _stable_signature(state, text),
                 "The strict visual audit failed; retry the same bound run from its checkpoint so only the failed visual stage is repaired."
             )
-        state = "LOCAL_VISUAL_RETRY_EXHAUSTED"
+        state = "LOCAL_VISUAL_CODEFIX_REQUIRED"
         return RecoveryDecision(
-            "exhausted", state, False, "none", generation, None,
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
             maximum, _stable_signature(state, text),
-            "The bounded local visual retries were exhausted. Stop without blind full regeneration."
+            "The bounded local visual retries were exhausted; preserve the exact request and continue only after a verified relevant code revision."
         )
 
     # Voice/post-mux misses are runtime output variance, not repository defects.
@@ -244,11 +327,11 @@ def classify_failure(
                 maximum, _stable_signature(state, text),
                 "The local narrator/post-mux proof failed; retry the same bound run from its checkpoint without changing code or request."
             )
-        state = "LOCAL_VOICE_RETRY_EXHAUSTED"
+        state = "LOCAL_VOICE_CODEFIX_REQUIRED"
         return RecoveryDecision(
-            "exhausted", state, False, "none", generation, None,
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
             maximum, _stable_signature(state, text),
-            "The bounded local narrator retries were exhausted. Stop without autonomous code mutation."
+            "The bounded local narrator retries were exhausted; preserve the exact request and continue only after a verified relevant code revision."
         )
 
     # A failed codefix replay is already the bounded second execution of the exact
@@ -384,10 +467,19 @@ def main() -> int:
     parser.add_argument("--owner-current", choices=("true", "false"), default="true")
     parser.add_argument("--exact-request-retry", choices=("true", "false"), default="false")
     parser.add_argument("--codefix-replay", choices=("true", "false"), default="false")
+    parser.add_argument("--structured-evidence")
     parser.add_argument("--output-json")
     args = parser.parse_args()
 
     logs = Path(args.logs_file).read_text(encoding="utf-8", errors="replace") if Path(args.logs_file).is_file() else ""
+    structured_evidence = {}
+    if args.structured_evidence and Path(args.structured_evidence).is_file():
+        try:
+            loaded = json.loads(Path(args.structured_evidence).read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                structured_evidence = loaded
+        except Exception:
+            structured_evidence = {}
     decision = classify_failure(
         logs,
         run_attempt=args.run_attempt,
@@ -397,6 +489,7 @@ def main() -> int:
         owner_current=args.owner_current == "true",
         exact_request_retry=args.exact_request_retry == "true",
         codefix_replay=args.codefix_replay == "true",
+        structured_evidence=structured_evidence,
     )
     payload = asdict(decision)
     if args.output_json:
