@@ -74,7 +74,12 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("SELECTION_SNAPSHOT_MISSING", dispatcher)
         self.assertIn("loadTrendRequest(env, selectionId)", worker)
         self.assertIn("reject_trend:${selectionId}:${trendId}", worker)
-        self.assertIn("trend_reason:newtrend:${selectionId}:${trendId}", worker)
+        self.assertIn("tayvoriq_trends_rejected", worker)
+        self.assertIn("Alle ablehnen & neue Trends suchen", worker)
+        refresh = (ROOT / ".github/workflows/tayvoriq-rejected-trend-refresh.yml").read_text(encoding="utf-8")
+        self.assertIn("tayvoriq_trends_rejected", refresh)
+        self.assertIn("policy=reach_first", refresh)
+        self.assertIn("rejected_whole_selection", refresh)
 
     def test_series_selection_ids_remain_owned_by_agent_v2(self) -> None:
         builder = (ROOT / "tools/tayvoriq_agent_series_request_v2.py").read_text(encoding="utf-8")
