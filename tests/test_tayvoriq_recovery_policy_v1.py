@@ -383,3 +383,31 @@ def test_structured_voice_evidence_wins_over_generic_publishability_text():
     assert decision.mode == "rerun"
     assert decision.state == "LOCAL_VOICE_RETRY_REQUIRED"
     assert decision.next_generation == 1
+
+
+def test_structured_failure_signature_distinguishes_repair_stage():
+    visual = classify_failure(
+        "same generic log",
+        run_attempt=1,
+        recovery_generation=1,
+        structured_evidence={
+            "state": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+            "failure_class": "LOCAL_VISUAL",
+            "repair_target_stages": ["VISUALS"],
+            "same_request_required": True,
+            "master_reusable": True,
+        },
+    )
+    voice = classify_failure(
+        "same generic log",
+        run_attempt=1,
+        recovery_generation=1,
+        structured_evidence={
+            "state": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+            "failure_class": "LOCAL_VOICE",
+            "repair_target_stages": ["VOICE"],
+            "same_request_required": True,
+            "master_reusable": True,
+        },
+    )
+    assert visual.failure_signature != voice.failure_signature
