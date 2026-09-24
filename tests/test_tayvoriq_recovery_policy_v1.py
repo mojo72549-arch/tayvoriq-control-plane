@@ -411,3 +411,24 @@ def test_structured_failure_signature_distinguishes_repair_stage():
         },
     )
     assert visual.failure_signature != voice.failure_signature
+
+
+def test_advanced_green_preempts_stale_local_repair_without_new_generation():
+    decision = classify_failure(
+        "Checkpoint handoff: state=PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED process_exit=75",
+        run_attempt=1,
+        recovery_generation=2,
+        max_generations=4,
+        exact_request_retry=True,
+        structured_evidence={
+            "state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
+            "repair_target_stages": ["CHECKPOINT_REPLAY"],
+            "failure_class": "INTERNAL_UNCLASSIFIED",
+            "same_request_required": True,
+            "master_reusable": True,
+        },
+    )
+    assert decision.mode == "rerun"
+    assert decision.state == "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED"
+    assert decision.retry_kind == "same-run"
+    assert decision.next_generation == 2
