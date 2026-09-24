@@ -271,7 +271,7 @@ def test_final_publication_voice_failure_stays_local_even_during_codefix_replay(
     assert decision.next_generation == 2
 
 
-def test_local_voice_retry_exhaustion_stops_without_autonomous_code_mutation():
+def test_local_voice_retry_exhaustion_escalates_to_verified_codefix():
     decision = classify_failure(
         "RuntimeError: VOICE_V5_NO_NATURAL_FULL_TAKE:youtube_shorts",
         run_attempt=3,
@@ -280,10 +280,11 @@ def test_local_voice_retry_exhaustion_stops_without_autonomous_code_mutation():
         exact_request_retry=True,
         codefix_replay=True,
     )
-    assert decision.mode == "exhausted"
-    assert decision.state == "LOCAL_VOICE_RETRY_EXHAUSTED"
+    assert decision.mode == "deterministic"
+    assert decision.state == "LOCAL_VOICE_CODEFIX_REQUIRED"
     assert decision.retry_allowed is False
-    assert decision.next_generation is None
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.next_generation == 2
 
 
 def test_visual_failure_after_voice_repair_wins_over_earlier_voice_markers():
@@ -309,7 +310,7 @@ def test_visual_failure_after_voice_repair_wins_over_earlier_voice_markers():
     assert decision.next_generation == 2
 
 
-def test_local_visual_retry_exhaustion_stops_without_blind_regeneration():
+def test_local_visual_retry_exhaustion_escalates_to_verified_codefix():
     decision = classify_failure(
         "score_below_threshold:visual:45<78 visual_agent_recommendation_block",
         run_attempt=3,
@@ -317,7 +318,68 @@ def test_local_visual_retry_exhaustion_stops_without_blind_regeneration():
         max_generations=4,
         exact_request_retry=True,
     )
-    assert decision.mode == "exhausted"
-    assert decision.state == "LOCAL_VISUAL_RETRY_EXHAUSTED"
+    assert decision.mode == "deterministic"
+    assert decision.state == "LOCAL_VISUAL_CODEFIX_REQUIRED"
     assert decision.retry_allowed is False
-    assert decision.next_generation is None
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.next_generation == 2
+
+
+def test_structured_visual_evidence_wins_over_earlier_voice_log_noise():
+    logs = """
+    human-voice-postmux-proof-missing
+    VOICE_REPAIR_HUMAN_NARRATOR_V5 completed
+    provider note: HTTP 503 temporarily unavailable
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=2,
+        exact_request_retry=True,
+        codefix_replay=True,
+        structured_evidence={
+            "state": "LOCAL_VISUAL_REPAIR_REQUIRED",
+            "repair_target_stages": ["VISUALS"],
+            "quality_gates_weakened": False,
+        },
+    )
+    assert decision.mode == "rerun"
+    assert decision.state == "LOCAL_VISUAL_RETRY_REQUIRED"
+    assert decision.retry_kind == "same-run"
+    assert decision.next_generation == 2
+
+
+def test_structured_visual_retry_exhaustion_escalates_without_new_generation():
+    decision = classify_failure(
+        "old voice and provider noise",
+        run_attempt=3,
+        recovery_generation=4,
+        max_generations=4,
+        exact_request_retry=True,
+        structured_evidence={
+            "state": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+            "repair_target_stages": ["VISUALS"],
+            "quality_gates_weakened": False,
+        },
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "LOCAL_VISUAL_CODEFIX_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.next_generation == 4
+
+
+def test_structured_voice_evidence_wins_over_generic_publishability_text():
+    decision = classify_failure(
+        "Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1",
+        run_attempt=1,
+        recovery_generation=1,
+        exact_request_retry=True,
+        structured_evidence={
+            "state": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+            "repair_target_stages": ["VOICE"],
+            "quality_gates_weakened": False,
+        },
+    )
+    assert decision.mode == "rerun"
+    assert decision.state == "LOCAL_VOICE_RETRY_REQUIRED"
+    assert decision.next_generation == 1
