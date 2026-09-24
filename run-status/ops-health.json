@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-24T19:17:46.308747Z",
+  "generated_at": "2026-09-24T19:20:31.475818Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -32,8 +32,8 @@
     "updated_at": "2026-09-24T19:16:11Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Restore production model cache",
-    "last_successful_step": "Telegram progress - production active",
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -75,7 +75,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "success",
         "step_number": 31,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -109,12 +109,12 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Restore production model cache"
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "ae20e3416e46…"
+      "detail": "54729a613031…"
     },
     {
       "name": "Self-Heal",
@@ -124,7 +124,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
     },
     {
       "name": "Quality Gates",
@@ -135,8 +135,8 @@
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
+    "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
