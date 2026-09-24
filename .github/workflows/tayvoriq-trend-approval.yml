@@ -6,7 +6,6 @@ on:
     branches: [main]
     paths:
       - .github/run-now/tayvoriq-trend-request.json
-      - .github/workflows/tayvoriq-trend-approval.yml
 
 permissions:
   contents: read
@@ -40,6 +39,9 @@ jobs:
           selection_id=str(data.get('selection_id') or '')
           assert re.fullmatch(r'[A-Za-z0-9_-]{4,40}', selection_id), selection_id
           assert data.get('selected_trend_id') in {None, ''}, data.get('selected_trend_id')
+          assert data.get('superseded', False) is not True, 'selection is superseded'
+          assert data.get('rejected_whole_selection', False) is not True, 'selection was rejected'
+          assert data.get('production_started', False) is False, 'selection already started production'
           trends=data.get('trends') or []
           assert 3 <= len(trends) <= 5, len(trends)
           assert [str(item.get('id')) for item in trends] == [str(i) for i in range(1,len(trends)+1)], trends
