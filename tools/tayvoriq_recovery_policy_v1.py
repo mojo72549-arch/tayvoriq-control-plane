@@ -190,6 +190,23 @@ def _stable_signature(state: str, logs: str) -> str:
     return hashlib.sha256(f"{state}|{salient}".encode("utf-8")).hexdigest()[:20]
 
 
+def _structured_signature(state: str, evidence: dict) -> str:
+    targets = sorted(
+        str(item or "").strip().upper()
+        for item in (evidence.get("repair_target_stages") or [])
+        if str(item or "").strip()
+    )
+    payload = {
+        "state": str(state or "").strip().upper(),
+        "failure_class": str(evidence.get("failure_class") or "").strip().upper(),
+        "repair_target_stages": targets,
+        "same_request_required": evidence.get("same_request_required"),
+        "master_reusable": evidence.get("master_reusable"),
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
+
+
 def classify_failure(
     logs: str,
     *,
@@ -234,13 +251,13 @@ def classify_failure(
         if attempt < 3:
             return RecoveryDecision(
                 "rerun", state, True, "same-run", generation, generation,
-                maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+                maximum, _structured_signature(state, evidence),
                 "Structured failure evidence localizes the defect to visuals; retry only the same bound checkpoint."
             )
         state = "LOCAL_VISUAL_CODEFIX_REQUIRED"
         return RecoveryDecision(
             "deterministic", state, False, "verified-codefix-replay", generation, generation,
-            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            maximum, _structured_signature(state, evidence),
             "The same visual checkpoint class survived bounded local retries; preserve the exact request and require a verified relevant code revision."
         )
 
@@ -253,13 +270,13 @@ def classify_failure(
         if attempt < 3:
             return RecoveryDecision(
                 "rerun", state, True, "same-run", generation, generation,
-                maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+                maximum, _structured_signature(state, evidence),
                 "Structured failure evidence localizes the defect to narrator/post-mux output; retry only the same bound checkpoint."
             )
         state = "LOCAL_VOICE_CODEFIX_REQUIRED"
         return RecoveryDecision(
             "deterministic", state, False, "verified-codefix-replay", generation, generation,
-            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            maximum, _structured_signature(state, evidence),
             "The same narrator/post-mux class survived bounded local retries; preserve the exact request and require a verified relevant code revision."
         )
 
@@ -268,7 +285,7 @@ def classify_failure(
             state = "CONTROL_PLANE_BINDING_FAILURE"
             return RecoveryDecision(
                 "rerun", state, True, "same-run", generation, generation,
-                maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+                maximum, _structured_signature(state, evidence),
                 "Structured evidence shows a request-binding race; retry the same workflow without Studio mutation."
             )
 
@@ -276,7 +293,7 @@ def classify_failure(
         state = evidence_state
         return RecoveryDecision(
             "deterministic", state, False, "verified-codefix-replay", generation, generation,
-            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            maximum, _structured_signature(state, evidence),
             "Structured failure evidence requires a verified code revision while preserving the exact approved request."
         )
 
@@ -284,7 +301,7 @@ def classify_failure(
         state = evidence_state
         return RecoveryDecision(
             "external", state, False, "none", generation, None,
-            maximum, _stable_signature(state, json.dumps(evidence, sort_keys=True)),
+            maximum, _structured_signature(state, evidence),
             "Structured failure evidence identifies an external credential, billing or permission blocker."
         )
 
@@ -294,7 +311,7 @@ def classify_failure(
         effective_state = "DUPLICATE_RETRY_CONTRACT_BROKEN" if exact_request_retry else state
         return RecoveryDecision(
             mode, effective_state, False, "none", generation, None,
-            maximum, _stable_signature(effective_state, json.dumps(evidence, sort_keys=True)),
+            maximum, _structured_signature(effective_state, evidence),
             "Structured duplicate evidence was emitted by the canonical producer."
         )
 
