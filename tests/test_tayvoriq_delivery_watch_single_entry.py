@@ -37,17 +37,36 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
         )
 
 
-    def test_local_voice_retry_uses_new_green_when_verified_implementation_advanced(self):
+    def test_local_checkpoint_retry_uses_new_green_when_verified_implementation_advanced(self):
         workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("Detect advanced Production Green for local voice retry", workflow)
-        self.assertIn("steps.voice_green.outputs.advanced != 'true'", workflow)
-        self.assertIn("Replay local voice request on advanced Production Green", workflow)
-        self.assertIn("SAME_GENERATION_VERIFIED_GREEN_VOICE_REPLAY", workflow)
-        self.assertIn("production-green-advanced-during-local-voice-retry", workflow)
+        self.assertIn("Detect advanced Production Green for local checkpoint retry", workflow)
+        self.assertIn("steps.local_green.outputs.advanced != 'true'", workflow)
+        self.assertIn("Replay local checkpoint request on advanced Production Green", workflow)
+        self.assertIn("SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY", workflow)
         self.assertIn("quality_gates_weakened':False", workflow)
+
+    def test_delivery_watch_prefers_structured_failure_contract(self):
+        workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("failure-notification-policy.json", workflow)
+        self.assertIn("/tmp/tayvoriq-structured-failure.json", workflow)
+        self.assertIn("--structured-evidence /tmp/tayvoriq-structured-failure.json", workflow)
+        self.assertIn("Raw Actions", workflow)
+
+    def test_visual_failure_is_owned_by_delivery_watch_without_full_regeneration(self):
+        workflow = (ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('state = "LOCAL_VISUAL_REPAIR_REQUIRED"', workflow)
+        self.assertIn("CODEFIX_FINALIZER_SKIPPED_LOCAL_VISUAL_FAILURE", workflow)
+        self.assertIn('"full_regeneration_allowed": False if local_checkpoint else None', workflow)
+        self.assertIn('"schema": "tayvoriq-failure-contract-v2"', workflow)
 
 
 if __name__ == "__main__":
