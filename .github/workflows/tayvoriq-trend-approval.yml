@@ -41,8 +41,8 @@ jobs:
           assert re.fullmatch(r'[A-Za-z0-9_-]{4,40}', selection_id), selection_id
           assert data.get('selected_trend_id') in {None, ''}, data.get('selected_trend_id')
           trends=data.get('trends') or []
-          assert len(trends) == 5, len(trends)
-          assert [str(item.get('id')) for item in trends] == ['1','2','3','4','5'], trends
+          assert 3 <= len(trends) <= 5, len(trends)
+          assert [str(item.get('id')) for item in trends] == [str(i) for i in range(1,len(trends)+1)], trends
           required_criteria={'aktualitaet','viralitaet','tayvoriq_passung','quellenqualitaet','visuell'}
           required_answers={'what_happened','why_happening','who_is_affected','personal_impact','action_now'}
           for item in trends:
@@ -88,17 +88,12 @@ jobs:
 
           data=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text(encoding='utf-8'))
           selection_id=data['selection_id']
-          keyboard={'inline_keyboard': [
-            [
-              {'text':'1️⃣ Trend 1','callback_data':f'select_trend:{selection_id}:1'},
-              {'text':'2️⃣ Trend 2','callback_data':f'select_trend:{selection_id}:2'},
-            ],
-            [
-              {'text':'3️⃣ Trend 3','callback_data':f'select_trend:{selection_id}:3'},
-              {'text':'4️⃣ Trend 4','callback_data':f'select_trend:{selection_id}:4'},
-            ],
-            [{'text':'5️⃣ Trend 5','callback_data':f'select_trend:{selection_id}:5'}],
-          ]}
+          labels=['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣']
+          buttons=[
+            {'text':f"{labels[i-1]} Trend {i}",'callback_data':f'select_trend:{selection_id}:{i}'}
+            for i in range(1,len(data['trends'])+1)
+          ]
+          keyboard={'inline_keyboard':[buttons[i:i+2] for i in range(0,len(buttons),2)]}
           print(json.dumps(keyboard, ensure_ascii=False))
           PY
           )
@@ -115,7 +110,7 @@ jobs:
           assert result.get('message_id'), result
           markup=result.get('reply_markup') or {}
           callbacks=[button.get('callback_data') for row in markup.get('inline_keyboard',[]) for button in row]
-          assert len(callbacks) == 5, callbacks
+          assert 3 <= len(callbacks) <= 5, callbacks
           assert all(str(value).startswith('select_trend:') for value in callbacks), callbacks
           assert not any(str(value).startswith('approve_trend:') for value in callbacks), callbacks
           print('telegram_message_id', result['message_id'])
