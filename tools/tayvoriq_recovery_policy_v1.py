@@ -244,6 +244,14 @@ def classify_failure(
         for item in (evidence.get("repair_target_stages") or [])
         if str(item or "").strip()
     }
+    if evidence_state == "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED":
+        state = evidence_state
+        return RecoveryDecision(
+            "rerun", state, True, "same-run", generation, generation,
+            maximum, _structured_signature(state, evidence),
+            "A newer fully verified Production Green implementation superseded the stale local-repair runtime; replay the exact bound request on the newer immutable SHA."
+        )
+
     if evidence_state == "LOCAL_VISUAL_REPAIR_REQUIRED" or (
         evidence_state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED" and "VISUALS" in repair_targets
     ):
@@ -313,6 +321,14 @@ def classify_failure(
             mode, effective_state, False, "none", generation, None,
             maximum, _structured_signature(effective_state, evidence),
             "Structured duplicate evidence was emitted by the canonical producer."
+        )
+
+    if "production_green_advanced_replay_required" in lowered:
+        state = "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED"
+        return RecoveryDecision(
+            "rerun", state, True, "same-run", generation, generation,
+            maximum, _stable_signature(state, text),
+            "A newer fully verified Production Green implementation superseded the stale local-repair runtime; replay the exact bound request on the newer immutable SHA."
         )
 
     # A strict visual audit can fail after a successful narrator repair. Visual
