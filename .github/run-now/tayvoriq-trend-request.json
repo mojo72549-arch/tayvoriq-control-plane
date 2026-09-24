@@ -6,7 +6,7 @@
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
   "mode": "manual_verified_reachgate",
-  "superseded": false,
+  "superseded": true,
   "duplicate_guard_passed": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
@@ -307,5 +307,7 @@
         }
       }
     }
-  ]
+  ],
+  "rejected_whole_selection": true,
+  "rejection_reason": "USER_REJECTED_WHOLE_SELECTION"
 }
