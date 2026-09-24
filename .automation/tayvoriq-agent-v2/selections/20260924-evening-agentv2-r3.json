@@ -1,0 +1,235 @@
+{
+  "date": "2026-09-24",
+  "target_date": "2026-09-24",
+  "slot": "evening",
+  "selection_id": "20260924-evening-agentv2-r3",
+  "selected_trend_id": null,
+  "agent_orchestrator": "v2",
+  "mode": "manual_verified_fallback_after_provider_limits",
+  "superseded": false,
+  "rejected_whole_selection": false,
+  "duplicate_guard_passed": true,
+  "telegram_only_user_path": true,
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "rejected_selection_parent": "20260924-evening-reachgate",
+  "policy": "reach_first",
+  "trends": [
+    {
+      "id": "1",
+      "title": "Apple will KI-Rechenzentren auf den Schreibtisch holen: Vier Mac Studios sollen riesige KI-Modelle lokal stemmen",
+      "score": 97,
+      "trend_scope": "technology_ai",
+      "regional_relevance": "global",
+      "criteria": {
+        "aktualitaet": 98,
+        "viralitaet": 97,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 99,
+        "visuell": 99
+      },
+      "growth_v2": {
+        "growth_score": 97,
+        "priority_score": 98,
+        "binding_score": 98
+      },
+      "sources": [
+        "https://www.reuters.com/business/retail-consumer/with-new-macs-apple-aims-take-microsoft-nvidia-rush-lower-ai-costs-2026-09-22/",
+        "https://www.theverge.com/tech/998040/apple-mac-studio-m5-ultra-initial-impressions-testing-review"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "reach_gate": {
+          "policy": "NATIONAL_EU_GLOBAL_FIRST",
+          "scope": "global",
+          "why_now": "Die neuen Mac-Studio-Modelle sind seit 22. September verfügbar und werden unmittelbar als lokale Alternative zu teurer Cloud-KI getestet.",
+          "momentum_evidence": "Reuters ordnet den Launch als Angriff auf Microsoft/Nvidia und Cloud-KI-Kosten ein; The Verge veröffentlicht aktuelle M5-Ultra-Benchmarks.",
+          "cross_platform_signal_count": 0,
+          "breakout_proof": "Apple, KI-Kosten und lokale LLMs sind global relevante Tech-Themen."
+        },
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/retail-consumer/with-new-macs-apple-aims-take-microsoft-nvidia-rush-lower-ai-costs-2026-09-22/",
+            "supports": "Reuters berichtet, dass Apple die neuen Macs für anspruchsvolle lokale KI-Aufgaben positioniert und damit Cloud-Kosten sowie Microsoft/Nvidia-Systeme angreift."
+          },
+          {
+            "publisher": "The Verge",
+            "url": "https://www.theverge.com/tech/998040/apple-mac-studio-m5-ultra-initial-impressions-testing-review",
+            "supports": "The Verge testet den neuen M5 Ultra Mac Studio und bestätigt sehr hohe CPU-/GPU-Leistung sowie die klare Ausrichtung auf AI-Entwicklung."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Apple bringt neue Mac-Studio-Systeme in den Markt und positioniert sie ausdrücklich als lokale KI-Rechner statt reiner Cloud-Nutzung.",
+          "why_happening": "Unternehmen und Entwickler suchen Wege, große KI-Modelle lokal auszuführen und laufende Token- sowie Rechenzentrumskosten zu reduzieren.",
+          "who_is_affected": "KI-Entwickler, Unternehmen, Cloud-Anbieter sowie Nvidia- und Windows-PC-Ökosysteme.",
+          "personal_impact": "KI-Leistung könnte stärker vom Rechenzentrum auf lokale Geräte wandern, wodurch Datenschutz und laufende Kosten wichtiger werden.",
+          "action_now": "Entscheidend sind reale Modellgrößen, Energieverbrauch und Gesamtkosten im Vergleich zu Cloud-GPUs."
+        }
+      }
+    },
+    {
+      "id": "2",
+      "title": "Claude Opus 5.5: Anthropic verspricht Spitzen-KI mit 40 Prozent weniger Betriebskosten und stärkeren Sicherheitsbremsen",
+      "score": 96,
+      "trend_scope": "technology_ai",
+      "regional_relevance": "global",
+      "criteria": {
+        "aktualitaet": 98,
+        "viralitaet": 96,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 100,
+        "visuell": 94
+      },
+      "growth_v2": {
+        "growth_score": 96,
+        "priority_score": 97,
+        "binding_score": 98
+      },
+      "sources": [
+        "https://www.reuters.com/business/anthropic-unveils-claude-opus-55-2026-09-22/",
+        "https://www.theverge.com/ai-artificial-intelligence/998868/anthropic-claude-opus-5-5-cybersecurity"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "reach_gate": {
+          "policy": "NATIONAL_EU_GLOBAL_FIRST",
+          "scope": "global",
+          "why_now": "Opus 5.5 wurde am 22. September veröffentlicht und verbindet Kosten-, Leistungs- und Sicherheitsstory in einem aktuellen Modelllaunch.",
+          "momentum_evidence": "Reuters und The Verge berichten unabhängig über Launch, Kosten und neue Safeguards.",
+          "cross_platform_signal_count": 0,
+          "breakout_proof": "Claude ist ein weltweit genutztes Frontier-Modell und der Launch betrifft Entwickler und Unternehmen global."
+        },
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/anthropic-unveils-claude-opus-55-2026-09-22/",
+            "supports": "Reuters berichtet über Claude Opus 5.5, laut Anthropic vergleichbare Spitzenleistung bei 40 Prozent geringeren Betriebskosten als Opus 5 sowie externe Sicherheitstests."
+          },
+          {
+            "publisher": "The Verge",
+            "url": "https://www.theverge.com/ai-artificial-intelligence/998868/anthropic-claude-opus-5-5-cybersecurity",
+            "supports": "The Verge bestätigt den Launch und beschreibt die verschärften Cybersecurity-Safeguards und Anthropic-eigenen Angaben zum reduzierten riskanten Verhalten."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Anthropic hat Claude Opus 5.5 veröffentlicht und kombiniert niedrigere Kosten mit zusätzlichen Schutzmechanismen.",
+          "why_happening": "Der KI-Wettbewerb verschiebt sich von reiner Benchmark-Leistung hin zu Kosten, Zuverlässigkeit und sichererem Agentenverhalten.",
+          "who_is_affected": "Entwickler, Unternehmen, Cloud-Kunden und Nutzer leistungsfähiger KI-Agenten.",
+          "personal_impact": "Leistungsfähige KI kann günstiger werden, während Anbieter gleichzeitig stärkere Grenzen für riskante Aufgaben einziehen.",
+          "action_now": "Herstellerangaben sollten mit unabhängigen Praxis- und Sicherheitstests verglichen werden."
+        }
+      }
+    },
+    {
+      "id": "3",
+      "title": "Diese „Feuer-Amöbe“ verschiebt die Grenze des Lebens: Sie teilt sich noch bei 63 Grad und überlebt kurzzeitig 70 Grad",
+      "score": 97,
+      "trend_scope": "science_future",
+      "regional_relevance": "global",
+      "criteria": {
+        "aktualitaet": 98,
+        "viralitaet": 100,
+        "tayvoriq_passung": 97,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "growth_v2": {
+        "growth_score": 97,
+        "priority_score": 99,
+        "binding_score": 97
+      },
+      "sources": [
+        "https://www.reuters.com/business/environment/tenacious-hot-springs-amoeba-sets-heat-tolerance-record-2026-09-22/",
+        "https://www.livescience.com/planet-earth/evolution/newfound-fire-amoeba-from-the-cascades-sets-record-for-the-hottest-temperature-complex-life-can-survive-at"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "reach_gate": {
+          "policy": "NATIONAL_EU_GLOBAL_FIRST",
+          "scope": "global",
+          "why_now": "Die neue Art und der Temperaturrekord wurden diese Woche veröffentlicht und verändern die bekannte Grenze für komplexes Leben.",
+          "momentum_evidence": "Reuters, Live Science, NASA und weitere Wissenschaftsmedien berichten über den Rekord.",
+          "cross_platform_signal_count": 0,
+          "breakout_proof": "Extremleben, 70 Grad und die Frage nach Leben auf anderen Welten sind global verständliche, visuell starke Hooks."
+        },
+        "sources": [
+          {
+            "publisher": "Reuters",
+            "url": "https://www.reuters.com/business/environment/tenacious-hot-springs-amoeba-sets-heat-tolerance-record-2026-09-22/",
+            "supports": "Reuters berichtet, dass Incendiamoeba cascadensis sich bis 63 °C teilen und sich nach kurzer Exposition bei 70 °C erholen kann, ein Rekord für komplexes Leben."
+          },
+          {
+            "publisher": "Live Science",
+            "url": "https://www.livescience.com/planet-earth/evolution/newfound-fire-amoeba-from-the-cascades-sets-record-for-the-hottest-temperature-complex-life-can-survive-at",
+            "supports": "Live Science bestätigt den neuen Hitzerekord und die Entdeckung in heißen Quellen des Lassen Volcanic National Park."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Forscher haben eine neu beschriebene Amöbe untersucht, die bei Temperaturen wächst und sich teilt, die bisher für komplexes Leben als zu heiß galten.",
+          "why_happening": "Die Zelle besitzt Anpassungen für Protein- und DNA-Schutz und verändert unter extremer Hitze ihren Zustand.",
+          "who_is_affected": "Relevant ist die Entdeckung für Evolutionsbiologie, Astrobiologie und Forschung zu Extremophilen.",
+          "personal_impact": "Sie erweitert die Vorstellung davon, unter welchen Bedingungen komplexes Leben existieren könnte.",
+          "action_now": "Weitere Forschung muss klären, welche molekularen Mechanismen den Rekord ermöglichen und was davon auf andere Lebensformen übertragbar ist."
+        }
+      }
+    },
+    {
+      "id": "4",
+      "title": "NASA baut ein neues Fenster ins unsichtbare Universum: PRIMA soll Planeten, schwarze Löcher und sogar die Geschichte des Wassers verfolgen",
+      "score": 94,
+      "trend_scope": "science_future",
+      "regional_relevance": "global",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 93,
+        "tayvoriq_passung": 96,
+        "quellenqualitaet": 100,
+        "visuell": 100
+      },
+      "growth_v2": {
+        "growth_score": 94,
+        "priority_score": 95,
+        "binding_score": 96
+      },
+      "sources": [
+        "https://www.nasa.gov/news-release/nasa-selects-far-infrared-telescope-as-first-in-new-mission-class/",
+        "https://www.caltech.edu/about/news/nasa-confirms-prima-mission-key-roles-for-caltech-jpl-and-ipac"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "reach_gate": {
+          "policy": "NATIONAL_EU_GLOBAL_FIRST",
+          "scope": "global",
+          "why_now": "NASA hat PRIMA am 23. September als erste Mission einer neuen Probe-Explorer-Klasse für die nächste Entwicklungsphase ausgewählt.",
+          "momentum_evidence": "NASA und Caltech/JPL veröffentlichten die Missionsentscheidung gleichzeitig mit konkreten Missionszielen und geplantem Start 2033.",
+          "cross_platform_signal_count": 0,
+          "breakout_proof": "Neue NASA-Missionsklasse plus schwarze Löcher, Planetenentstehung und Ursprung von Wasser bietet weltweite Science-Relevanz."
+        },
+        "sources": [
+          {
+            "publisher": "NASA",
+            "url": "https://www.nasa.gov/news-release/nasa-selects-far-infrared-telescope-as-first-in-new-mission-class/",
+            "supports": "NASA bestätigt PRIMA als erste Mission der neuen Probe-Explorers-Klasse, Zielstart 2033 und Untersuchungen von Planetenentstehung, Galaxien, schwarzen Löchern und kosmischem Staub."
+          },
+          {
+            "publisher": "Caltech",
+            "url": "https://www.caltech.edu/about/news/nasa-confirms-prima-mission-key-roles-for-caltech-jpl-and-ipac",
+            "supports": "Caltech bestätigt die Auswahl von PRIMA, die Rolle von JPL/IPAC und die Nutzung von Ferninfrarotlicht zur Untersuchung des kalten, staubigen Universums."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "NASA hat PRIMA als erste Mission einer neuen Astrophysik-Missionsklasse für die nächste Entwicklungsphase ausgewählt.",
+          "why_happening": "Ferninfrarotlicht kann kalte und staubverdeckte Bereiche sichtbar machen, die Webb und Radioteleskope nicht auf dieselbe Weise abdecken.",
+          "who_is_affected": "Astronomen und Forschungsteams weltweit, darunter Partner aus mehreren Raumfahrtagenturen.",
+          "personal_impact": "Die Mission könnte erklären helfen, wie Planeten, Galaxien, schwarze Löcher und die chemischen Bausteine für Wasser entstanden.",
+          "action_now": "PRIMA muss noch die weitere Bestätigung und Entwicklung durchlaufen; bei Bestätigung ist der Start für 2033 vorgesehen."
+        }
+      }
+    }
+  ]
+}
