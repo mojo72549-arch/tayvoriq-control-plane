@@ -253,7 +253,7 @@ jobs:
               'SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY',
               'same-generation-verified-green-local-checkpoint-replay',
               '- name: Telegram external blocker',
-              'EXTERNAL_ACTION_REQUIRED',
+              "steps.policy.outputs.mode == 'external'",
               'new_run_id',
               "quality_gates_weakened':False",
           )
