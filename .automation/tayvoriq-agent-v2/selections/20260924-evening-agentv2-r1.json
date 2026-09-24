@@ -5,7 +5,7 @@
   "selection_id": "20260924-evening-agentv2-r1",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
-  "mode": "manual_verified_reachgate",
+  "mode": "manual_verified_fallback_after_provider_limits",
   "superseded": false,
   "duplicate_guard_passed": true,
   "telegram_only_user_path": true,
@@ -340,5 +340,7 @@
         }
       }
     }
-  ]
+  ],
+  "recovery_origin_mode": "manual_verified_reachgate",
+  "recovery_reason": "LIVE_RADAR_REACH_GATE_ONLY_3_CANDIDATES"
 }
