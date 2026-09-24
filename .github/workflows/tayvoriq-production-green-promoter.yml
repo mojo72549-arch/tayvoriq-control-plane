@@ -194,7 +194,11 @@ jobs:
           python -m pytest -q \
             tests/test_tayvoriq_production_green_pin.py \
             tests/test_tayvoriq_verified_source_budget_guard.py \
-            tests/test_tayvoriq_verified_request_causal_alignment.py
+            tests/test_tayvoriq_verified_request_causal_alignment.py \
+            tests/test_tayvoriq_resume_publication_voice_recovery.py \
+            tests/test_tayvoriq_checkpoint_resume_policy.py \
+            tests/test_tayvoriq_semantic_voice_scope_regression.py \
+            tests/test_tayvoriq_vw_visual_repair.py
 
       - name: Repeated-failure exact-request replay readiness gate
         if: steps.refs.outputs.changed == 'true'
