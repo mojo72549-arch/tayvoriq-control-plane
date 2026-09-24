@@ -246,12 +246,16 @@ jobs:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_FORBIDDEN_WATCHER:{token}')
 
           required_watcher = (
-              "data['suppress_start_notification'] = True",
-              '- name: Record silent same-run recovery',
-              '- name: Record verified silent fresh recovery generation',
-              '- name: Telegram external action blocker',
+              'failure-notification-policy.json',
+              '--structured-evidence /tmp/tayvoriq-structured-failure.json',
+              '- name: Detect advanced Production Green for local checkpoint retry',
+              'steps.local_green.outputs.advanced',
+              'SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY',
+              'same-generation-verified-green-local-checkpoint-replay',
+              '- name: Telegram external blocker',
               'EXTERNAL_ACTION_REQUIRED',
               'new_run_id',
+              "quality_gates_weakened':False",
           )
           for token in required_watcher:
               if token not in watcher:
