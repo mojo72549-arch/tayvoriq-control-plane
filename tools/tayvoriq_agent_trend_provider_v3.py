@@ -75,10 +75,12 @@ def groq_browser_then_structure(prompt: str, api_key: str):
     if not api_key:
         raise RuntimeError("GROQ_API_KEY missing")
     research_prompt = f"""
-Research CURRENT TAYVORIQ short-video candidates for Germany now.
-Use browser search. We need SIX different stories, normally from the last 24 hours (48 hours only if still unfolding).
-Morning focus: Germany, Europe, major global stories. Evening focus: Stuttgart/Baden-Württemberg/South Germany plus strong Germany-wide stories.
-Audience 16-44, sweet spot 18-34. Prioritize direct relevance, surprise, weather, transport, safety, prices, science, technology, business, mobility, major world developments and sports.
+Research CURRENT TAYVORIQ short-video candidates with broad reach potential now.
+Use browser search. We need EIGHT genuinely different candidate stories, normally from the last 24 hours (48 hours only if still unfolding).
+For BOTH morning and evening, search Germany-wide, Europe-wide and major global developments across AI, technology, science, business/economy, mobility/energy, sports and world/society. Do not prioritize Stuttgart, Baden-Württemberg, a city, a state or South Germany merely because the audience is German.
+Audience 16-44, sweet spot 18-34. Prioritize verified momentum, broad audience relevance, surprise, consequence, strong 35-60 second hookability, visual potential and cross-publisher confirmation.
+Purely local/city/state stories are normally ineligible. Include one only when the evidence shows a real national or international breakout, consequence or unusually strong cross-platform momentum.
+"Recently reported somewhere" is not a trend signal. Prefer stories with clear why-now momentum and independent confirmation. Never pad the candidate set with weak/local filler.
 Before choosing the final six, perform a strategic entity sweep for Microsoft, OpenAI, Google/Alphabet, Apple, Meta, Amazon/AWS and Nvidia. For Microsoft explicitly check Azure, Windows, Copilot, Microsoft 365, GitHub, Xbox and major AI/cloud/business developments. This is discovery coverage, not a quota: include a named-company story only when it is fresh, independently sourced and competitive on the normal TAYVORIQ criteria. Do not discard a strong Microsoft story merely because other AI/technology stories exist; deduplicate by the actual event and viewer takeaway, not by broad category.
 For earthquakes, volcanoes, eclipses, storms, wildfires, floods or similar natural events, include a concise WHY/HOW explanation.
 Avoid political advocacy, gossip, rumors, graphic violence and duplicate angles.
@@ -102,7 +104,7 @@ Current editorial contract:
     structure_prompt = f"""
 Convert the dossier below into ONE valid JSON object. Use ONLY facts and URLs already present. Do not add or infer claims.
 Schema: {{"candidates":[{{"title":"German headline","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0}},"sources":[{{"publisher":"...","url":"https://...","supports":"..."}},{{"publisher":"...","url":"https://...","supports":"..."}}],"fallback_editorial_answers":{{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}}}]}}
-Keep up to six complete candidates. Every candidate needs exactly two independent publishers and direct URLs. Return JSON only.
+Keep up to eight complete candidates so the downstream reach gate can reject weak/local items without starving the final 3-5. Every candidate needs exactly two independent publishers and direct URLs. Return JSON only.
 DOSSIER:
 {dossier[:28000]}
 """.strip()
