@@ -20,7 +20,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           set -euo pipefail
-          for message_id in 1153 1154; do
+          control=".github/run-now/tayvoriq-retire-stale-telegram-lists.txt"
+          test -s "$control"
+          raw="$(sed -n 's/^retire_message_ids=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+          test -n "$raw" || { echo "No Telegram message IDs requested."; exit 0; }
+          IFS=',' read -r -a ids <<< "$raw"
+          for value in "${ids[@]}"; do
+            message_id="$(echo "$value" | xargs)"
+            [[ "$message_id" =~ ^[0-9]+$ ]] || { echo "::error::Invalid Telegram message id: $message_id"; exit 2; }
             payload=$(printf '{"chat_id":"%s","message_id":%s,"reply_markup":{"inline_keyboard":[]}}' "$TELEGRAM_CHAT_ID" "$message_id")
             curl --fail --silent --show-error \
               -H 'Content-Type: application/json' \
