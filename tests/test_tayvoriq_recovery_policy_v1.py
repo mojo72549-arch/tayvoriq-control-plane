@@ -284,3 +284,40 @@ def test_local_voice_retry_exhaustion_stops_without_autonomous_code_mutation():
     assert decision.state == "LOCAL_VOICE_RETRY_EXHAUSTED"
     assert decision.retry_allowed is False
     assert decision.next_generation is None
+
+
+def test_visual_failure_after_voice_repair_wins_over_earlier_voice_markers():
+    logs = """
+    human-voice-postmux-proof-missing
+    VOICE_REPAIR_HUMAN_NARRATOR_V5 completed returncode=0
+    score_below_threshold:visual:45<78
+    visual_agent_recommendation_block
+    Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=2,
+        max_generations=4,
+        exact_request_retry=True,
+        codefix_replay=True,
+    )
+    assert decision.mode == "rerun"
+    assert decision.state == "LOCAL_VISUAL_RETRY_REQUIRED"
+    assert decision.retry_kind == "same-run"
+    assert decision.retry_allowed is True
+    assert decision.next_generation == 2
+
+
+def test_local_visual_retry_exhaustion_stops_without_blind_regeneration():
+    decision = classify_failure(
+        "score_below_threshold:visual:45<78 visual_agent_recommendation_block",
+        run_attempt=3,
+        recovery_generation=2,
+        max_generations=4,
+        exact_request_retry=True,
+    )
+    assert decision.mode == "exhausted"
+    assert decision.state == "LOCAL_VISUAL_RETRY_EXHAUSTED"
+    assert decision.retry_allowed is False
+    assert decision.next_generation is None
