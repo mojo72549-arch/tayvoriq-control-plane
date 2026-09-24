@@ -1,0 +1,128 @@
+name: TAYVORIQ Rejected Trend Refresh
+
+on:
+  repository_dispatch:
+    types:
+      - tayvoriq_trends_rejected
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: tayvoriq-rejected-trend-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Reject complete selection and prepare fresh scan
+        id: refresh
+        env:
+          SELECTION_ID: ${{ github.event.client_payload.selection_id }}
+          REJECTED_TREND_ID: ${{ github.event.client_payload.rejected_trend_id }}
+          TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id }}
+          REJECTED_AT: ${{ github.event.client_payload.rejected_at }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, re
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          sid=str(os.environ.get('SELECTION_ID') or '').strip()
+          if re.fullmatch(r'[A-Za-z0-9_-]{4,40}', sid) is None:
+              raise SystemExit(f'INVALID_SELECTION_ID:{sid!r}')
+
+          snapshot=Path(f'.automation/tayvoriq-agent-v2/selections/{sid}.json')
+          if not snapshot.is_file():
+              raise SystemExit(f'SELECTION_SNAPSHOT_MISSING:{sid}')
+          data=json.loads(snapshot.read_text(encoding='utf-8'))
+          if str(data.get('selection_id') or '') != sid:
+              raise SystemExit('SELECTION_ID_MISMATCH')
+          if data.get('production_started') is True:
+              raise SystemExit('REFUSE_REJECT_AFTER_PRODUCTION_START')
+
+          now=datetime.now(ZoneInfo('Europe/Berlin'))
+          target_date=str(data.get('target_date') or data.get('date') or '').strip()
+          slot=str(data.get('slot') or '').strip()
+          if target_date != now.date().isoformat() or slot not in {'morning','evening'}:
+              target_date=now.date().isoformat()
+              slot='morning' if now.hour < 12 else 'evening'
+
+          rejected_at=str(os.environ.get('REJECTED_AT') or '').strip() or now.isoformat()
+          data['superseded']=True
+          data['rejected_whole_selection']=True
+          data['rejected_at']=rejected_at
+          data['rejection_reason']='USER_REJECTED_WHOLE_SELECTION'
+          data['rejected_from_trend_id']=str(os.environ.get('REJECTED_TREND_ID') or '').strip()
+          data['production_started']=False
+          snapshot.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          compact=target_date.replace('-','')
+          pattern=re.compile(rf'^{re.escape(compact)}-{re.escape(slot)}-agentv2-r([1-9][0-9]*)\.json$')
+          highest=0
+          selection_dir=Path('.automation/tayvoriq-agent-v2/selections')
+          for path in selection_dir.glob(f'{compact}-{slot}-agentv2-r*.json'):
+              match=pattern.match(path.name)
+              if match:
+                  highest=max(highest,int(match.group(1)))
+          refresh=f'r{highest+1}'
+
+          rejection_dir=Path('.automation/tayvoriq-agent-v2/rejections')
+          rejection_dir.mkdir(parents=True,exist_ok=True)
+          receipt={
+              'schema':'tayvoriq-trend-rejection-v1',
+              'selection_id':sid,
+              'rejected_whole_selection':True,
+              'rejected_trend_id':str(os.environ.get('REJECTED_TREND_ID') or '').strip(),
+              'telegram_message_id':int(os.environ.get('TELEGRAM_MESSAGE_ID') or 0),
+              'rejected_at':rejected_at,
+              'next_target_date':target_date,
+              'next_slot':slot,
+              'next_refresh':refresh,
+              'production_started':False,
+          }
+          (rejection_dir/f'{sid}.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          control=Path('.github/run-now/tayvoriq-telegram-trends-now.txt')
+          control.write_text(
+              f'slot={slot}\n'
+              f'target_date={target_date}\n'
+              f'refresh={refresh}\n'
+              f'rejected_selection={sid}\n'
+              'policy=reach_first\n',
+              encoding='utf-8'
+          )
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+              h.write(f'target_date={target_date}\n')
+              h.write(f'slot={slot}\n')
+              h.write(f'refresh={refresh}\n')
+          print(receipt)
+          PY
+
+      - name: Persist rejection and trigger fresh trend radar
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .automation/tayvoriq-agent-v2/selections                   .automation/tayvoriq-agent-v2/rejections                   .github/run-now/tayvoriq-telegram-trends-now.txt
+          git commit -m "agent(v2): reject selection and request fresh reach-first trends"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
