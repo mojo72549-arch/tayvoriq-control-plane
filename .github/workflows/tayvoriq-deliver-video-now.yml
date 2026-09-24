@@ -1542,10 +1542,25 @@ jobs:
               or preflight.get("state")
               or "TECHNICAL_FAILURE"
           )
+          repair_targets = {
+              str(item or "").strip().upper()
+              for item in (report.get("repair_target_stages") or [])
+              if str(item or "").strip()
+          }
+          local_visual_failure = (
+              state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
+              and "VISUALS" in repair_targets
+          )
           late_voice_failure = (
               __import__("os").environ.get("PRODUCTION_OUTCOME") == "success"
               and __import__("os").environ.get("PUBLICATION_INITIAL_OUTCOME") == "failure"
               and __import__("os").environ.get("FINAL_VOICE_RECOVERY_OUTCOME") == "failure"
+              and not local_visual_failure
+          )
+          local_voice_failure = (
+              state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
+              and repair_targets
+              and repair_targets <= {"VOICE"}
           )
           control_plane_binding_failure = (
               __import__("os").environ.get("PREFLIGHT_OUTCOME") == "success"
@@ -1553,12 +1568,17 @@ jobs:
           )
           if control_plane_binding_failure:
               state = "CONTROL_PLANE_BINDING_FAILURE"
-          if late_voice_failure:
+          elif local_visual_failure:
+              # A reusable master exists and the strict audit localized the
+              # remaining defect to visuals. Keep the exact request/checkpoint.
+              state = "LOCAL_VISUAL_REPAIR_REQUIRED"
+          elif late_voice_failure or local_voice_failure:
               # A publishable master already exists. This is stochastic/local
               # narrator-postmux output variance, never a repository-codefix signal.
               state = "TRANSIENT_AUDIO_FAILURE"
           payload = {
               "state": state,
+              "repair_target_stages": sorted(repair_targets),
               "notification_owner": "tayvoriq-x-golden-path",
               "recovery_owner": "tayvoriq-delivery-watch",
               "telegram_technical_failure_expected": True,
@@ -1599,6 +1619,9 @@ jobs:
           if state == "TRANSIENT_AUDIO_FAILURE":
               stage = "audio_recovery"
               detail = "Die Sprachprüfung hat den natürlichen Sprechervertrag noch nicht erfüllt; künstliches Pitch-Down bleibt deaktiviert."
+          elif state == "LOCAL_VISUAL_REPAIR_REQUIRED":
+              stage = "checkpoint_repair"
+              detail = "Der Master bleibt erhalten; nur die vom strikten Audit beanstandeten Visuals werden lokal ersetzt und erneut geprüft."
           elif state == "DUPLICATE_CONTENT_BLOCKED":
               stage = "duplicate_blocked"
               nearest = duplicate.get("nearest_prior") if isinstance(duplicate.get("nearest_prior"), dict) else {}
@@ -1684,6 +1707,11 @@ jobs:
           if [ "$failure_state" = "TRANSIENT_AUDIO_FAILURE" ]; then
             echo "CODEFIX_FINALIZER_SKIPPED_LOCAL_VOICE_FAILURE"
             echo "Delivery Watch exclusively owns bounded same-run voice/postmux retry."
+            exit 0
+          fi
+          if [ "$failure_state" = "LOCAL_VISUAL_REPAIR_REQUIRED" ]; then
+            echo "CODEFIX_FINALIZER_SKIPPED_LOCAL_VISUAL_FAILURE"
+            echo "Delivery Watch exclusively owns bounded same-run visual checkpoint retry."
             exit 0
           fi
           if [ "$failure_state" = "CONTROL_PLANE_BINDING_FAILURE" ]; then
