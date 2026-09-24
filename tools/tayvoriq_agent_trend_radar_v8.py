@@ -175,8 +175,54 @@ def _editorial_hint_text(slot, now):
     return "\n".join(lines)
 
 
+def _rejected_topic_hint_text():
+    """Load explicit user-rejected selections as hard semantic exclusions."""
+    rejection_dir = Path(".automation/tayvoriq-agent-v2/rejections")
+    selection_dir = Path(".automation/tayvoriq-agent-v2/selections")
+    if not rejection_dir.is_dir():
+        return ""
+    exclusions = []
+    seen = set()
+    files = sorted(rejection_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:12]
+    for receipt_path in files:
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if receipt.get("rejected_whole_selection") is not True:
+            continue
+        sid = str(receipt.get("selection_id") or receipt_path.stem).strip()
+        snapshot = selection_dir / f"{sid}.json"
+        if not snapshot.is_file():
+            continue
+        try:
+            data = json.loads(snapshot.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for trend in data.get("trends") or []:
+            title = " ".join(str(trend.get("title") or "").split())
+            if not title:
+                continue
+            key = title.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            exclusions.append(title)
+    if not exclusions:
+        return ""
+    lines = [
+        "TAYVORIQ USER REJECTION HISTORY — HARD EXCLUSION:",
+        "- The user explicitly rejected the following previously surfaced stories.",
+        "- Do not return the same underlying event, topic or viewer takeaway with rewritten wording.",
+        "- A follow-up is eligible only when a material new development changes the story itself.",
+    ]
+    lines.extend(f"- REJECTED: {title}" for title in exclusions[:30])
+    return "\n".join(lines)
+
+
 def prompt_for(slot, now):
     editorial_hints = _editorial_hint_text(slot, now)
+    rejected_hints = _rejected_topic_hint_text()
     return _original_prompt(slot, now) + """
 
 TAYVORIQ REACH POTENTIAL GATE — HARD RANKING REQUIREMENT:
@@ -255,7 +301,7 @@ TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 - Do NOT pad with generic reach-bait such as #fyp, #viral, #trending, #explorepage or #fuerdich. Do not use #news merely because the item is a news story.
 - Avoid duplicate synonyms and overbroad tags that do not help discovery. Strong specificity beats hashtag volume.
 - Never put an unverified claim, rumor or speculative release detail into a hashtag.
-""".strip() + (("\n\n" + editorial_hints) if editorial_hints else "")
+""".strip() + (("\n\n" + rejected_hints) if rejected_hints else "") + (("\n\n" + editorial_hints) if editorial_hints else "")
 
 
 base.diversify = diversify
