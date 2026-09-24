@@ -43,6 +43,9 @@ export default {
         await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendauswahl ist nicht mehr aktuell. Bitte nutze die zugehörige aktuelle Rangliste.'));
         return new Response('stale trend selection', { status: 409 });
       }
+      if (selectionIsRejected(requestData)) {
+        return rejectStaleSelectionUi(env, callback, chatId, selectionId);
+      }
       const trend = (requestData.trends || []).find(item => String(item.id) === trendId);
       if (!trend) {
         await requireTelegramMessage(await telegram(env, chatId, `❌ Trend ${trendId} ist in der aktuellen Rangliste nicht vorhanden.`));
@@ -73,6 +76,9 @@ export default {
       if (String(requestData?.selection_id || '') !== selectionId) {
         await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendauswahl ist nicht mehr aktuell. Bitte nutze die zugehörige aktuelle Rangliste.'));
         return new Response('stale trend selection', { status: 409 });
+      }
+      if (selectionIsRejected(requestData)) {
+        return rejectStaleSelectionUi(env, callback, chatId, selectionId);
       }
       await requireTelegramMessage(await editMessageWithMarkup(
         env,
@@ -149,6 +155,9 @@ export default {
       if ((currentSelectionId && selectionId !== currentSelectionId) || (!currentSelectionId && selectionId)) {
         await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendfreigabe ist nicht mehr aktuell. Es wurde keine Produktion gestartet.'));
         return new Response('stale trend approval', { status: 409 });
+      }
+      if (selectionIsRejected(requestData)) {
+        return rejectStaleSelectionUi(env, callback, chatId, currentSelectionId || selectionId);
       }
       const trend = (requestData.trends || []).find(item => String(item.id) === trendId);
       if (!trend || !String(trend.title || '').trim()) {
@@ -376,6 +385,27 @@ function parseTrendApproval(callbackData, text, messageText) {
     if (match?.[1]) { topic = match[1].replace(/^[*\s]+|[*\s]+$/g, '').trim(); break; }
   }
   return { trendId, selectionId, topic };
+}
+
+function selectionIsRejected(requestData) {
+  return requestData?.superseded === true
+    || requestData?.rejected_whole_selection === true
+    || String(requestData?.status || '').toUpperCase() === 'REJECTED';
+}
+
+async function rejectStaleSelectionUi(env, callback, chatId, selectionId) {
+  if (callback?.id) {
+    await answerCallback(env, callback.id, 'Diese Trendliste wurde verworfen. Nutze die neueste Auswahl.');
+  }
+  if (callback?.message?.message_id) {
+    await clearKeyboard(env, chatId, callback.message.message_id);
+  }
+  await requireTelegramMessage(await telegram(
+    env,
+    chatId,
+    `⚠️ Trendliste ${selectionId} wurde bereits verworfen. Keine Produktion gestartet. Nutze nur die neueste Rangliste.`,
+  ));
+  return new Response('rejected trend selection', { status: 409 });
 }
 
 async function loadTrendRequest(env, selectionId = '') {
