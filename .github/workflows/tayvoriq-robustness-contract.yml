@@ -323,7 +323,7 @@ jobs:
           ):
               if token in release:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_FORBIDDEN_AUTORELEASE:{token}')
-          if "'recovery_owner':'tayvoriq-delivery-watch'" not in watcher:
+          if "data['recovery_owner']='tayvoriq-delivery-watch'" not in watcher:
               raise SystemExit('ROBUSTNESS_CONTRACT_RECOVERY_RUN_MAP_MISSING')
           for token in ('platform_upload_performed', 'advanced_to_next_episode', 'series_completed'):
               if token not in series_state:
