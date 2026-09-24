@@ -52,6 +52,7 @@ jobs:
     env:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
+      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v2"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -76,7 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           candidate="$(git rev-parse HEAD)"
-          current_green="$(python - <<'PY'
+          readarray -t green_fields < <(python - <<'PY'
           import json
           from pathlib import Path
           path=Path('../.github/state/tayvoriq-production-green.json')
@@ -91,18 +92,22 @@ jobs:
           if data.get('full_preflight_passed') is not True or data.get('quality_gates_weakened') is not False:
               raise SystemExit('PRODUCTION_GREEN_POINTER_INTEGRITY_INVALID')
           print(sha)
+          print(str(data.get('verification_policy_version') or ''))
           PY
           )"
+          current_green="${green_fields[0]:-}"
+          current_policy="${green_fields[1]:-}"
           test -n "$candidate" || { echo "CANDIDATE_SHA_MISSING"; exit 1; }
           test -n "$current_green" || { echo "PRODUCTION_GREEN_POINTER_MISSING"; exit 1; }
           echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
           echo "current_green=$current_green" >> "$GITHUB_OUTPUT"
-          if [ "$candidate" = "$current_green" ]; then
+          echo "current_policy=$current_policy" >> "$GITHUB_OUTPUT"
+          if [ "$candidate" = "$current_green" ] && [ "$current_policy" = "$TAYVORIQ_GREEN_POLICY_VERSION" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "TAYVORIQ_PRODUCTION_GREEN_ALREADY_CURRENT:$candidate"
+            echo "TAYVORIQ_PRODUCTION_GREEN_ALREADY_CURRENT:$candidate:policy=$current_policy"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "TAYVORIQ_PRODUCTION_GREEN_CANDIDATE:$candidate current=$current_green"
+            echo "TAYVORIQ_PRODUCTION_GREEN_REVERIFY:$candidate current=$current_green policy=$current_policy required=$TAYVORIQ_GREEN_POLICY_VERSION"
           fi
 
       - name: Setup Python
@@ -335,6 +340,7 @@ jobs:
               'implementation_sha':sha,
               'verified_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
               'verification_run_id':str(os.environ.get('GITHUB_RUN_ID') or ''),
+              'verification_policy_version':str(os.environ.get('TAYVORIQ_GREEN_POLICY_VERSION') or ''),
               'full_preflight_passed':True,
               'quality_gates_weakened':False,
           }
