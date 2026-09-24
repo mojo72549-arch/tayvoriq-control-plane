@@ -16,48 +16,36 @@ base = growth_v7.base
 _original_prompt = base.prompt_for
 _original_diversify = base.diversify
 
-_REGIONAL_CORE = {"local", "germany", "europe"}
-_REGIONAL_MARKERS = (
-    "deutschland", "deutsch", "bundesweit", "europa", "europä", "europae",
-    "eu-", " eu ", "dach", "stuttgart", "baden-württemberg", "baden württemberg",
-    "bayern", "münchen", "muenchen", "berlin", "hamburg", "frankfurt",
-    "köln", "koeln", "nordrhein-westfalen", "sachsen", "hessen",
-)
+_BROAD_REACH = {"germany", "europe", "global"}
+_SCOPE_BONUS = {"global": 18, "europe": 16, "germany": 13, "local": -45}
 
 
-def _regional_blob(candidate):
-    ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
-    answers = ctx.get("fallback_editorial_answers") if isinstance(ctx.get("fallback_editorial_answers"), dict) else {}
-    supports = []
-    for source in ctx.get("sources") or candidate.get("sources") or []:
-        if isinstance(source, dict):
-            supports.append(str(source.get("supports") or ""))
-    return " ".join([
-        str(candidate.get("title") or ""),
-        str(answers.get("why_happening") or ""),
-        str(answers.get("who_is_affected") or ""),
-        str(answers.get("personal_impact") or ""),
-        " ".join(supports),
-    ]).casefold()
-
-
-def _has_direct_de_eu_impact(candidate):
+def _reach_gate(candidate):
+    """Return a conservative audience-reach score without inventing signals."""
     relevance = str(candidate.get("regional_relevance") or "").strip().lower()
-    if relevance in _REGIONAL_CORE:
-        return True
-    if relevance != "global":
-        return False
-    blob = _regional_blob(candidate)
-    return any(marker in blob for marker in _REGIONAL_MARKERS)
+    audience = candidate.get("audience_growth_v3") if isinstance(candidate.get("audience_growth_v3"), dict) else {}
+    growth = candidate.get("growth_v2") if isinstance(candidate.get("growth_v2"), dict) else {}
+    source_context = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
+    independent = int(source_context.get("independent_news_count") or 0)
+    base_score = int(audience.get("selection_priority_score") or growth.get("priority_score") or candidate.get("score") or 0)
+    viral = int((candidate.get("criteria") or {}).get("viralitaet") or 0)
+    freshness = int((candidate.get("criteria") or {}).get("aktualitaet") or 0)
+    cross_signal = int((source_context.get("reach_gate") or {}).get("cross_platform_signal_count") or 0) if isinstance(source_context.get("reach_gate"), dict) else 0
+    return (
+        base_score
+        + _SCOPE_BONUS.get(relevance, -30)
+        + min(8, independent * 2)
+        + min(8, cross_signal * 2)
+        + (viral // 20)
+        + (freshness // 25)
+    )
 
 
 def _selection_key(candidate):
     audience = candidate.get("audience_growth_v3") if isinstance(candidate.get("audience_growth_v3"), dict) else {}
     growth = candidate.get("growth_v2") if isinstance(candidate.get("growth_v2"), dict) else {}
-    relevance = str(candidate.get("regional_relevance") or "").strip().lower()
-    geo_bonus = {"local": 18, "germany": 16, "europe": 10, "global": 0}.get(relevance, -20)
     return (
-        int(audience.get("selection_priority_score") or growth.get("priority_score") or candidate.get("score") or 0) + geo_bonus,
+        _reach_gate(candidate),
         int(audience.get("subscriber_conversion_score") or 0),
         int(growth.get("growth_score") or 0),
         int(candidate.get("score") or 0),
@@ -88,63 +76,53 @@ def diversify(candidates, slot):
     cfg = growth_v7._config().get("selection") or {}
     minimum = int(cfg.get("telegram_candidates_min") or 4)
 
-    regional = [
+    # Reach-first: local-only stories do not enter Telegram by default.
+    broad = [
         candidate for candidate in candidates
-        if str(candidate.get("regional_relevance") or "").strip().lower() in _REGIONAL_CORE
+        if str(candidate.get("regional_relevance") or "").strip().lower() in _BROAD_REACH
     ]
-    global_bridge = [
-        candidate for candidate in candidates
-        if str(candidate.get("regional_relevance") or "").strip().lower() == "global"
-        and _has_direct_de_eu_impact(candidate)
-    ]
-    global_bridge = sorted(global_bridge, key=_selection_key, reverse=True)[:1]
-
-    # The regional core is a hard editorial contract, not a score bonus:
-    # at least three of the final 4-5 candidates must be local/Germany/Europe.
-    if len(regional) < min(3, minimum):
+    if len(broad) < minimum:
         _mark_research_deferred(
-            "REGIONAL_RESCAN_REQUIRED",
+            "REACH_RESCAN_REQUIRED",
             slot=str(slot),
-            regional_candidates=len(regional),
-            required_regional=min(3, minimum),
+            broad_reach_candidates=len(broad),
+            required_broad_reach=minimum,
             total_candidates=len(candidates),
         )
         raise SystemExit(
-            f"REGIONAL_RESCAN_REQUIRED: only {len(regional)} local/Germany/Europe candidates passed all existing gates"
+            f"REACH_RESCAN_REQUIRED: only {len(broad)} Germany/Europe/global candidates passed all gates"
         )
 
-    selected = _original_diversify(regional + global_bridge, slot)
-    regional_count = sum(
-        1 for candidate in selected
-        if str(candidate.get("regional_relevance") or "").strip().lower() in _REGIONAL_CORE
-    )
-    global_count = sum(
-        1 for candidate in selected
-        if str(candidate.get("regional_relevance") or "").strip().lower() == "global"
-    )
-    if regional_count < 3 or global_count > 1:
+    selected = _original_diversify(sorted(broad, key=_selection_key, reverse=True), slot)
+    selected = [
+        candidate for candidate in selected
+        if str(candidate.get("regional_relevance") or "").strip().lower() in _BROAD_REACH
+    ]
+    if len(selected) < minimum:
         _mark_research_deferred(
-            "REGIONAL_SELECTION_RESCAN_REQUIRED",
+            "REACH_SELECTION_RESCAN_REQUIRED",
             slot=str(slot),
-            regional_selected=regional_count,
-            global_selected=global_count,
-            required_regional=3,
-            max_global=1,
+            selected=len(selected),
+            required=minimum,
         )
         raise SystemExit(
-            f"REGIONAL_RESCAN_REQUIRED: selected regional={regional_count}, global={global_count}; require >=3 regional and <=1 global"
+            f"REACH_RESCAN_REQUIRED: selected={len(selected)}; require at least {minimum} broad-reach candidates"
         )
 
     for candidate in selected:
         ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
-        ctx["regional_strategy"] = {
-            "policy": "DE_DACH_EU_FIRST",
-            "direct_de_eu_impact": _has_direct_de_eu_impact(candidate),
-            "global_exception": str(candidate.get("regional_relevance") or "").strip().lower() == "global",
-        }
+        gate = ctx.get("reach_gate") if isinstance(ctx.get("reach_gate"), dict) else {}
+        gate.update({
+            "policy": "NATIONAL_EU_GLOBAL_FIRST",
+            "scope": str(candidate.get("regional_relevance") or "").strip().lower(),
+            "local_only_rejected": False,
+            "reach_score": _reach_gate(candidate),
+        })
+        ctx["reach_gate"] = gate
         candidate["source_context"] = ctx
 
     return sorted(selected, key=_selection_key, reverse=True)
+
 
 
 def _editorial_hint_text(slot, now):
@@ -201,16 +179,18 @@ def prompt_for(slot, now):
     editorial_hints = _editorial_hint_text(slot, now)
     return _original_prompt(slot, now) + """
 
-TAYVORIQ REGIONAL CORE — HARD RANKING REQUIREMENT:
-- The final Telegram ranking is DE/DACH/EU-first because these stories have shown the strongest TAYVORIQ audience response.
-- Prioritize: (1) Stuttgart/Baden-Württemberg/local relevance, (2) Germany-wide relevance, (3) Europe/EU relevance.
-- At least THREE of the final 4-5 candidates must be local, Germany or Europe relevance after all normal quality gates.
-- A pure global story may occupy AT MOST ONE slot and only when the verified facts show a concrete Germany/Europe consequence, availability, price, regulation, company exposure, consumer impact or comparable direct relevance.
-- Global technology/science novelty alone is NOT enough. Do not rank a story merely because it is globally viral.
-- For evening runs, actively search Stuttgart/Baden-Württemberg/South Germany plus strong Germany-wide developments before considering global exceptions.
-- For morning runs, actively search Germany and Europe first; major global events compete only through a concrete DE/EU angle.
-- Set regional_relevance accurately to local|germany|europe|global. Never label a global story as Germany/Europe merely to pass the ranking gate.
-- This regional rule never weakens source quality, freshness, duplicate, claim-coherence, explainability or brand-safety gates.
+TAYVORIQ REACH POTENTIAL GATE — HARD RANKING REQUIREMENT:
+- The final Telegram ranking is reach-first, not locality-first.
+- Default eligible scope is Germany-wide, Europe-wide or global. Purely local/city/state stories are rejected before Telegram unless they demonstrably break out to a national or international audience.
+- Do NOT fill the list just because a story is recent. "Trending somewhere" is not enough.
+- Prefer stories with verified momentum, broad audience relevance, strong short-form hookability, visual potential and at least two independent credible sources.
+- A Germany-wide story can outrank a global story when its momentum and viewer relevance are stronger; geography is not a substitute for momentum.
+- Global AI/Tech/Science/Sports/World stories are fully eligible without an artificial Germany angle when their audience potential is genuinely broad.
+- For every candidate, set regional_relevance accurately to local|germany|europe|global.
+- Put a source_context.reach_gate object on each candidate when possible with: scope, why_now, momentum_evidence, cross_platform_signal_count, and breakout_proof.
+- Never invent cross-platform evidence. Use 0 when it is not verified.
+- If fewer than 4 strong broad-reach candidates pass, fail closed and rescan instead of forcing weak/local filler.
+- A rejected Telegram selection is part of duplicate history: do not immediately recycle the same underlying stories with rewritten headlines.
 
 TAYVORIQ STRATEGIC ENTITY SWEEP — DISCOVERY REQUIREMENT:
 - Before finalizing candidates, explicitly check current high-impact developments around Microsoft, OpenAI, Google/Alphabet, Apple, Meta, Amazon/AWS and Nvidia only when they have a verified Germany/Europe angle or direct audience consequence.
