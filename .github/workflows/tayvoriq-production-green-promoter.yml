@@ -94,7 +94,7 @@ jobs:
           print(sha)
           print(str(data.get('verification_policy_version') or ''))
           PY
-          )"
+          )
           current_green="${green_fields[0]:-}"
           current_policy="${green_fields[1]:-}"
           test -n "$candidate" || { echo "CANDIDATE_SHA_MISSING"; exit 1; }
