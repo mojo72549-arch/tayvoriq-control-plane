@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-24T17:56:36.720443Z",
+  "generated_at": "2026-09-24T18:25:54.124750Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "ChatGPT bekommt auf dem Smartphone Voice→Work: Aufgaben per Sprache starten und in Dokumenten, Apps oder Browsern weiterarbeiten",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "source_count": 2,
@@ -118,8 +118,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -133,13 +133,13 @@
     }
   ],
   "incident": {
-    "signature": "36036332718:16:none",
+    "signature": "36036332718:16:LOCAL_REPAIR_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": null,
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
     "failed_step": "Lightweight contract preflight",
     "failed_step_number": 16,
-    "self_heal_status": "IDLE",
-    "same_generation_replay_required": false,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
@@ -150,15 +150,15 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
-    "failure_state": null,
-    "failed_run_id": null,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_run_id": 36036332718,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
-    "same_generation_replay_required": false,
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
@@ -168,6 +168,11 @@
       "at": "2026-09-24T17:44:07Z",
       "title": "Workflow-Fehler",
       "detail": "Lightweight contract preflight"
+    },
+    {
+      "at": "2026-09-24T17:56:46.329711Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-09-24T17:43:55.872181+00:00",
