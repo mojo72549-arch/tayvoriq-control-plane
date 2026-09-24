@@ -1576,9 +1576,30 @@ jobs:
               # A publishable master already exists. This is stochastic/local
               # narrator-postmux output variance, never a repository-codefix signal.
               state = "TRANSIENT_AUDIO_FAILURE"
+          if state == "LOCAL_VISUAL_REPAIR_REQUIRED":
+              failure_class = "LOCAL_VISUAL"
+          elif state == "TRANSIENT_AUDIO_FAILURE":
+              failure_class = "LOCAL_VOICE"
+          elif state == "CONTROL_PLANE_BINDING_FAILURE":
+              failure_class = "CONTROL_PLANE_BINDING"
+          elif state.endswith("CODEFIX_REQUIRED") or state == "CODE_REPAIR_REQUIRED":
+              failure_class = "DETERMINISTIC_CODE"
+          elif state == "DUPLICATE_CONTENT_BLOCKED":
+              failure_class = "DUPLICATE"
+          elif state == "EXTERNAL_ACTION_REQUIRED":
+              failure_class = "EXTERNAL"
+          else:
+              failure_class = "INTERNAL_UNCLASSIFIED"
+
+          local_checkpoint = failure_class in {"LOCAL_VISUAL", "LOCAL_VOICE"}
           payload = {
+              "schema": "tayvoriq-failure-contract-v2",
               "state": state,
+              "failure_class": failure_class,
               "repair_target_stages": sorted(repair_targets),
+              "same_request_required": True,
+              "master_reusable": bool(local_checkpoint or report.get("checkpoint_job_dir")),
+              "full_regeneration_allowed": False if local_checkpoint else None,
               "notification_owner": "tayvoriq-x-golden-path",
               "recovery_owner": "tayvoriq-delivery-watch",
               "telegram_technical_failure_expected": True,
