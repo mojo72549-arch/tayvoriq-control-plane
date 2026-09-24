@@ -29,7 +29,7 @@ jobs:
             message_id="$(echo "$value" | xargs)"
             [[ "$message_id" =~ ^[0-9]+$ ]] || { echo "::error::Invalid Telegram message id: $message_id"; exit 2; }
             payload=$(printf '{"chat_id":"%s","message_id":%s,"reply_markup":{"inline_keyboard":[]}}' "$TELEGRAM_CHAT_ID" "$message_id")
-            curl --fail --silent --show-error \
+            curl --silent --show-error \
               -H 'Content-Type: application/json' \
               -d "$payload" \
               "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup" >/tmp/telegram-${message_id}.json
@@ -37,7 +37,19 @@ jobs:
           import json, sys
           mid=sys.argv[1]
           data=json.load(open(f'/tmp/telegram-{mid}.json'))
-          assert data.get('ok') is True, data
-          print({'retired_message_id': int(mid)})
+          if data.get('ok') is True:
+              print({'retired_message_id': int(mid), 'status': 'keyboard_removed'})
+              raise SystemExit(0)
+          description=str(data.get('description') or '').lower()
+          harmless=(
+              'message is not modified',
+              'message to edit not found',
+              "message can't be edited",
+              'message can not be edited',
+          )
+          if any(token in description for token in harmless):
+              print({'retired_message_id': int(mid), 'status': 'already_inert_or_uneditable', 'description': description})
+              raise SystemExit(0)
+          raise SystemExit(f'TELEGRAM_RETIRE_FAILED:{mid}:{data}')
           PY
           done
