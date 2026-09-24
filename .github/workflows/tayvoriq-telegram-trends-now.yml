@@ -96,24 +96,12 @@ jobs:
           import json, sys
           p=json.load(open(sys.argv[1],encoding='utf-8'))
           trends=p.get('trends') or []
-          core={'local','germany','europe'}
-          allowed=core|{'global'}
-          markers=('deutsch','europa','europä','europae','stuttgart','baden-württemberg','baden württemberg','dach','bundesweit')
-          def regional_contract(items):
-              regional=0
-              global_count=0
-              for trend in items:
-                  rel=str(trend.get('regional_relevance') or '').strip().lower()
-                  if rel not in allowed:
-                      return False
-                  if rel in core:
-                      regional += 1
-                  else:
-                      global_count += 1
-                      blob=json.dumps(trend,ensure_ascii=False).casefold()
-                      if not any(marker in blob for marker in markers):
-                          return False
-              return regional >= 3 and global_count <= 1
+          broad={'germany','europe','global'}
+          def reach_contract(items):
+              return len(items) >= 4 and all(
+                  str(trend.get('regional_relevance') or '').strip().lower() in broad
+                  for trend in items
+              )
           ok=(
               p.get('selection_id') == sys.argv[2]
               and str(p.get('target_date') or p.get('date') or '') == sys.argv[3]
@@ -121,7 +109,7 @@ jobs:
               and p.get('mode') == 'manual_verified_fallback_after_provider_limits'
               and p.get('quality_gates_weakened') is False
               and 4 <= len(trends) <= 5
-              and regional_contract(trends)
+              and reach_contract(trends)
           )
           if ok:
               for trend in trends:
@@ -175,7 +163,7 @@ jobs:
 
           if [ "$recovered" != true ]; then
             set +e
-            python tools/tayvoriq_agent_trend_radar_v3.py \
+            python tools/tayvoriq_agent_trend_radar_v8.py \
               --slot "$SLOT" \
               --output /tmp/tayvoriq-trend-request.json \
               --audit-output /tmp/tayvoriq-trend-audit.json
@@ -227,28 +215,16 @@ jobs:
           import json
           d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
           trends=d.get('trends') or []
-          core={'local','germany','europe'}
-          allowed=core|{'global'}
-          markers=('deutsch','europa','europä','europae','stuttgart','baden-württemberg','baden württemberg','dach','bundesweit')
-          def regional_contract(items):
-            regional=0
-            global_count=0
-            for trend in items:
-              rel=str(trend.get('regional_relevance') or '').strip().lower()
-              assert rel in allowed, f'missing/invalid regional_relevance: {rel!r}'
-              if rel in core:
-                regional += 1
-              else:
-                global_count += 1
-                blob=json.dumps(trend,ensure_ascii=False).casefold()
-                assert any(marker in blob for marker in markers), 'global trend lacks concrete Germany/Europe impact'
-            assert regional >= 3, f'need >=3 local/Germany/Europe trends, got {regional}'
-            assert global_count <= 1, f'allow at most one global exception, got {global_count}'
+          broad={'germany','europe','global'}
+          def reach_contract(items):
+            scopes=[str(trend.get('regional_relevance') or '').strip().lower() for trend in items]
+            assert all(scope in broad for scope in scopes), f'local/invalid scope blocked by reach gate: {scopes}'
+            assert len(items) >= 4, f'need at least 4 broad-reach trends, got {len(items)}'
           assert d.get('agent_orchestrator') == 'v2'
           assert d.get('slot') in {'morning','evening'}
           assert d.get('quality_gates_weakened', False) is False
           assert 4 <= len(trends) <= 5, f'expected 4-5 strong trends, got {len(trends)}'
-          regional_contract(trends)
+          reach_contract(trends)
           assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
           for trend in trends:
             assert len(trend.get('sources') or []) >= 2
