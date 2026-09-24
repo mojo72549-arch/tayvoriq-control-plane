@@ -176,19 +176,56 @@ export default {
     }
 
     const currentReject = callbackData.match(/^reject_trend:([A-Za-z0-9_-]{4,40}):([1-5])$/i);
+    if (currentReject) {
+      const selectionId = currentReject[1];
+      const trendId = currentReject[2];
+      if (callback?.id) await answerCallback(env, callback.id, 'Komplette Liste verworfen. Neue Trends werden gesucht.');
+
+      let requestData;
+      try {
+        requestData = await loadTrendRequest(env, selectionId);
+      } catch (error) {
+        await requireTelegramMessage(await telegram(env, chatId, `❌ Ablehnung konnte die aktuelle Auswahl nicht laden.\nGrund: ${String(error).slice(0, 300)}`));
+        return new Response('trend request unavailable', { status: 502 });
+      }
+      if (String(requestData?.selection_id || '') !== selectionId) {
+        await requireTelegramMessage(await telegram(env, chatId, '⚠️ Diese Trendauswahl ist bereits veraltet. Es wurde nichts gestartet.'));
+        return new Response('stale trend rejection', { status: 409 });
+      }
+
+      const dispatch = await githubDispatch(env, 'tayvoriq_trends_rejected', {
+        selection_id: selectionId,
+        rejected_trend_id: trendId,
+        telegram_chat_id: chatId,
+        telegram_message_id: callback?.message?.message_id || null,
+        rejected_at: new Date().toISOString(),
+        reason: 'USER_REJECTED_WHOLE_SELECTION',
+      });
+      if (!dispatch.ok) {
+        const detail = await dispatch.text();
+        console.error('trend rejection dispatch failed', dispatch.status, detail);
+        await requireTelegramMessage(await telegram(env, chatId, `❌ Neue Trends konnten nicht angefordert werden. GitHub-Fehler: ${dispatch.status}`));
+        return new Response('trend rejection dispatch failed', { status: 502 });
+      }
+
+      if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
+      await requireTelegramMessage(await telegram(env, chatId, [
+        '🔄 TAYVORIQ · Komplette Trendliste verworfen',
+        '',
+        `Selection: ${selectionId}`,
+        '✅ Keine Produktion gestartet.',
+        '✅ Die fünf bisherigen Themen werden als abgelehnt markiert.',
+        '➡️ Neue Reach-First-Trends werden jetzt frisch recherchiert.',
+      ].join('\n')));
+      return new Response('ok');
+    }
+
     const legacyReject = callbackData.match(/^(?:reject_trend|trend_reject|reject:trend)[:_](\d+)$/i);
-    const rejectTrend = currentReject || legacyReject;
-    if (rejectTrend) {
-      const selectionId = currentReject?.[1] || '';
-      const trendId = currentReject?.[2] || legacyReject?.[1] || '';
+    if (legacyReject) {
+      const trendId = legacyReject[1];
       if (callback?.id) await answerCallback(env, callback.id, `Trend ${trendId} abgelehnt.`);
       if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
-      await requireTelegramMessage(await telegramWithMarkup(env, chatId, `❌ Trend ${trendId} abgelehnt.\n\nWas ist der Hauptgrund?`, {
-        inline_keyboard: [
-          [{ text: '📰 Thema/Trend passt nicht', callback_data: selectionId ? `trend_reason:newtrend:${selectionId}:${trendId}` : `trend_reason:newtrend:${trendId}` }],
-          [{ text: '🎬 Format passt nicht', callback_data: selectionId ? `trend_reason:newformat:${selectionId}:${trendId}` : `trend_reason:newformat:${trendId}` }]
-        ]
-      }));
+      await requireTelegramMessage(await telegram(env, chatId, `❌ Trend ${trendId} abgelehnt. Bitte nutze für neue Listen die aktuelle Zwei-Schritt-Auswahl.`));
       return new Response('ok');
     }
 
@@ -273,10 +310,8 @@ function trendConfirmationKeyboard(selectionId, trendId) {
   return {
     inline_keyboard: [
       [{ text: '✅ Trend freigeben', callback_data: `approve_trend:${selectionId}:${trendId}` }],
-      [
-        { text: '↩️ Anderen Trend wählen', callback_data: `trend_list:${selectionId}` },
-        { text: '❌ Ablehnen', callback_data: `reject_trend:${selectionId}:${trendId}` },
-      ],
+      [{ text: '🔄 Alle ablehnen & neue Trends suchen', callback_data: `reject_trend:${selectionId}:${trendId}` }],
+      [{ text: '↩️ Anderen Trend aus dieser Liste wählen', callback_data: `trend_list:${selectionId}` }],
     ],
   };
 }
