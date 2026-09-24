@@ -2,76 +2,150 @@
   "date": "2026-09-24",
   "target_date": "2026-09-24",
   "slot": "evening",
-  "selection_id": "20260924-evening-agentv2-r3",
+  "selection_id": "20260924-evening-agentv2-r1",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
-  "mode": "manual_verified_fallback_after_provider_limits",
+  "mode": "manual_verified_reachgate",
   "superseded": false,
-  "rejected_whole_selection": false,
   "duplicate_guard_passed": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
   "production_started": false,
-  "rejected_selection_parent": "20260924-evening-reachgate",
-  "policy": "reach_first",
   "trends": [
     {
       "id": "1",
-      "title": "Apple will KI-Rechenzentren auf den Schreibtisch holen: Vier Mac Studios sollen riesige KI-Modelle lokal stemmen",
-      "score": 97,
+      "title": "ChatGPT bekommt auf dem Smartphone Voice→Work: Aufgaben per Sprache starten und in Dokumenten, Apps oder Browsern weiterarbeiten",
+      "score": 98,
       "trend_scope": "technology_ai",
       "regional_relevance": "global",
       "criteria": {
-        "aktualitaet": 98,
-        "viralitaet": 97,
+        "aktualitaet": 100,
+        "viralitaet": 98,
         "tayvoriq_passung": 99,
-        "quellenqualitaet": 99,
-        "visuell": 99
+        "quellenqualitaet": 100,
+        "visuell": 98
       },
       "growth_v2": {
-        "growth_score": 97,
-        "priority_score": 98,
+        "growth_score": 98,
+        "priority_score": 99,
         "binding_score": 98
       },
       "sources": [
-        "https://www.reuters.com/business/retail-consumer/with-new-macs-apple-aims-take-microsoft-nvidia-rush-lower-ai-costs-2026-09-22/",
-        "https://www.theverge.com/tech/998040/apple-mac-studio-m5-ultra-initial-impressions-testing-review"
+        "https://help.openai.com/en/articles/6825453-chatgpt-release-notes",
+        "https://techcrunch.com/2026/09/23/chatgpt-mobile-app-gets-voice-based-agentic-features/"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "policy": "NATIONAL_EU_GLOBAL_FIRST",
           "scope": "global",
-          "why_now": "Die neuen Mac-Studio-Modelle sind seit 22. September verfügbar und werden unmittelbar als lokale Alternative zu teurer Cloud-KI getestet.",
-          "momentum_evidence": "Reuters ordnet den Launch als Angriff auf Microsoft/Nvidia und Cloud-KI-Kosten ein; The Verge veröffentlicht aktuelle M5-Ultra-Benchmarks.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Apple, KI-Kosten und lokale LLMs sind global relevante Tech-Themen."
+          "why_now": "Rollout seit 23. September 2026",
+          "momentum_evidence": "Neue mobile Voice-/Work-Funktionen mit direktem Alltagsnutzen",
+          "cross_platform_signal_count": 2,
+          "breakout_proof": "OpenAI Release Notes plus TechCrunch-Bericht"
         },
         "sources": [
           {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/business/retail-consumer/with-new-macs-apple-aims-take-microsoft-nvidia-rush-lower-ai-costs-2026-09-22/",
-            "supports": "Reuters berichtet, dass Apple die neuen Macs für anspruchsvolle lokale KI-Aufgaben positioniert und damit Cloud-Kosten sowie Microsoft/Nvidia-Systeme angreift."
+            "publisher": "OpenAI",
+            "url": "https://help.openai.com/en/articles/6825453-chatgpt-release-notes",
+            "supports": "OpenAI nennt für den 23. September Voice in Work auf Web und Mobile sowie Plugins und verbundene Apps in Voice."
           },
           {
-            "publisher": "The Verge",
-            "url": "https://www.theverge.com/tech/998040/apple-mac-studio-m5-ultra-initial-impressions-testing-review",
-            "supports": "The Verge testet den neuen M5 Ultra Mac Studio und bestätigt sehr hohe CPU-/GPU-Leistung sowie die klare Ausrichtung auf AI-Entwicklung."
+            "publisher": "TechCrunch",
+            "url": "https://techcrunch.com/2026/09/23/chatgpt-mobile-app-gets-voice-based-agentic-features/",
+            "supports": "TechCrunch berichtet, dass Nutzer per Sprache Workflows wie Dokumente, E-Mails, Slack-Zusammenfassungen, Websites und Browser-Aufgaben starten können."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Apple bringt neue Mac-Studio-Systeme in den Markt und positioniert sie ausdrücklich als lokale KI-Rechner statt reiner Cloud-Nutzung.",
-          "why_happening": "Unternehmen und Entwickler suchen Wege, große KI-Modelle lokal auszuführen und laufende Token- sowie Rechenzentrumskosten zu reduzieren.",
-          "who_is_affected": "KI-Entwickler, Unternehmen, Cloud-Anbieter sowie Nvidia- und Windows-PC-Ökosysteme.",
-          "personal_impact": "KI-Leistung könnte stärker vom Rechenzentrum auf lokale Geräte wandern, wodurch Datenschutz und laufende Kosten wichtiger werden.",
-          "action_now": "Entscheidend sind reale Modellgrößen, Energieverbrauch und Gesamtkosten im Vergleich zu Cloud-GPUs."
+          "what_happened": "ChatGPT verbindet Voice jetzt direkt mit Work auf Smartphones.",
+          "why_happening": "OpenAI macht komplexe Agentenaufgaben unterwegs per Sprache zugänglich.",
+          "who_is_affected": "Betroffen sind mobile ChatGPT-Nutzer mit unterstützten Funktionen und Plänen.",
+          "personal_impact": "Für dich werden echte Arbeitsabläufe vom Smartphone aus deutlich direkter.",
+          "action_now": "Prüfe in deiner App, ob Voice in Work bereits verfügbar ist."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Voice in Work ist auf Mobile verfügbar",
+            "Plugins und verbundene Apps können in Voice genutzt werden",
+            "Verfügbarkeit hängt von Plan und Funktion ab"
+          ],
+          "must_not_claim": [
+            "jede Funktion sei für alle Pläne freigeschaltet",
+            "ChatGPT arbeite ohne Nutzerfreigaben unbegrenzt autonom"
+          ],
+          "uncertainty_note": "Rollout und verfügbare Funktionen unterscheiden sich je nach Plan und Konto."
         }
       }
     },
     {
       "id": "2",
-      "title": "Claude Opus 5.5: Anthropic verspricht Spitzen-KI mit 40 Prozent weniger Betriebskosten und stärkeren Sicherheitsbremsen",
+      "title": "Claude findet in 21 Stunden ein neues CRISPR-ähnliches Enzymsystem – mit rund 950 KI-Agenten und 210 Millionen Tokens",
+      "score": 98,
+      "trend_scope": "science_future",
+      "regional_relevance": "global",
+      "criteria": {
+        "aktualitaet": 100,
+        "viralitaet": 99,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 99,
+        "visuell": 97
+      },
+      "growth_v2": {
+        "growth_score": 98,
+        "priority_score": 99,
+        "binding_score": 99
+      },
+      "sources": [
+        "https://www.anthropic.com/news/claude-discovers-novel-enzyme-system",
+        "https://techcrunch.com/2026/09/23/anthropic-says-its-biology-lab-has-already-found-something-big/"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "reach_gate": {
+          "scope": "global",
+          "why_now": "Anthropic veröffentlichte die Ergebnisse am 23. September 2026",
+          "momentum_evidence": "KI-Agenten erzeugen eine konkrete biologische Entdeckung mit Labor-Nachprüfung",
+          "cross_platform_signal_count": 2,
+          "breakout_proof": "Anthropic Primärquelle plus TechCrunch"
+        },
+        "sources": [
+          {
+            "publisher": "Anthropic",
+            "url": "https://www.anthropic.com/news/claude-discovers-novel-enzyme-system",
+            "supports": "Anthropic beschreibt ART, ein neues Enzymsystem mit CRISPR-ähnlichen Wiederholungen; rund 950 Agenten suchten 21 Stunden und nutzten 210 Millionen Tokens."
+          },
+          {
+            "publisher": "TechCrunch",
+            "url": "https://techcrunch.com/2026/09/23/anthropic-says-its-biology-lab-has-already-found-something-big/",
+            "supports": "TechCrunch ordnet die Entdeckung ein und weist darauf hin, dass die wissenschaftliche Bedeutung noch von der breiteren Forschungsgemeinschaft validiert werden muss."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Claude identifizierte ein bislang uncharakterisiertes CRISPR-ähnliches Enzymsystem.",
+          "why_happening": "Viele KI-Agenten durchsuchten riesige DNA-Datenbanken nach ungewöhnlichen Mustern.",
+          "who_is_affected": "Relevant ist das für Biologie, Medizin und KI-gestützte Forschung.",
+          "personal_impact": "Für dich zeigt das KI erstmals als aktiven Forschungspartner.",
+          "action_now": "Beobachte, ob unabhängige Labore die Funktion des Systems bestätigen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Anthropic nennt das System ART",
+            "rund 950 Agenten arbeiteten etwa 21 Stunden",
+            "210 Millionen Tokens wurden eingesetzt"
+          ],
+          "must_not_claim": [
+            "Claude habe CRISPR neu erfunden",
+            "die medizinische Nutzbarkeit sei bereits bewiesen",
+            "die Entdeckung sei vollständig autonom ohne menschliche Laborarbeit erfolgt"
+          ],
+          "uncertainty_note": "Die genaue Funktion des Systems ist noch Gegenstand weiterer Forschung."
+        }
+      }
+    },
+    {
+      "id": "3",
+      "title": "Apple baut den Mac Studio zum lokalen KI-Cluster aus: vier Geräte sollen riesige Open-Weight-Modelle gemeinsam stemmen",
       "score": 96,
       "trend_scope": "technology_ai",
       "regional_relevance": "global",
@@ -80,154 +154,189 @@
         "viralitaet": 96,
         "tayvoriq_passung": 99,
         "quellenqualitaet": 100,
-        "visuell": 94
+        "visuell": 98
       },
       "growth_v2": {
         "growth_score": 96,
         "priority_score": 97,
-        "binding_score": 98
+        "binding_score": 97
       },
       "sources": [
-        "https://www.reuters.com/business/anthropic-unveils-claude-opus-55-2026-09-22/",
-        "https://www.theverge.com/ai-artificial-intelligence/998868/anthropic-claude-opus-5-5-cybersecurity"
+        "https://www.reuters.com/business/retail-consumer/with-new-macs-apple-aims-take-microsoft-nvidia-rush-lower-ai-costs-2026-09-22/",
+        "https://www.apple.com/newsroom/2026/08/apple-introduces-new-mac-studio-with-m5-max-and-m5-ultra/"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "policy": "NATIONAL_EU_GLOBAL_FIRST",
           "scope": "global",
-          "why_now": "Opus 5.5 wurde am 22. September veröffentlicht und verbindet Kosten-, Leistungs- und Sicherheitsstory in einem aktuellen Modelllaunch.",
-          "momentum_evidence": "Reuters und The Verge berichten unabhängig über Launch, Kosten und neue Safeguards.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Claude ist ein weltweit genutztes Frontier-Modell und der Launch betrifft Entwickler und Unternehmen global."
+          "why_now": "Neue Macs sind seit 22. September verfügbar",
+          "momentum_evidence": "Apple positioniert lokale KI gegen laufende Cloud-Kosten",
+          "cross_platform_signal_count": 2,
+          "breakout_proof": "Reuters plus Apple"
         },
         "sources": [
           {
             "publisher": "Reuters",
-            "url": "https://www.reuters.com/business/anthropic-unveils-claude-opus-55-2026-09-22/",
-            "supports": "Reuters berichtet über Claude Opus 5.5, laut Anthropic vergleichbare Spitzenleistung bei 40 Prozent geringeren Betriebskosten als Opus 5 sowie externe Sicherheitstests."
+            "url": "https://www.reuters.com/business/retail-consumer/with-new-macs-apple-aims-take-microsoft-nvidia-rush-lower-ai-costs-2026-09-22/",
+            "supports": "Reuters berichtet, dass Apple neue Macs gezielt als Alternative für lokale KI-Workloads positioniert und demonstrierte einen sehr großen KI-Workload auf mehreren Mac Studios."
           },
           {
-            "publisher": "The Verge",
-            "url": "https://www.theverge.com/ai-artificial-intelligence/998868/anthropic-claude-opus-5-5-cybersecurity",
-            "supports": "The Verge bestätigt den Launch und beschreibt die verschärften Cybersecurity-Safeguards und Anthropic-eigenen Angaben zum reduzierten riskanten Verhalten."
+            "publisher": "Apple",
+            "url": "https://www.apple.com/newsroom/2026/08/apple-introduces-new-mac-studio-with-m5-max-and-m5-ultra/",
+            "supports": "Apple beschreibt Mac-Studio-Cluster über Thunderbolt 5 und RDMA sowie bis zu dreifache verteilte KI-Inferenz gegenüber einem Einzelsystem."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Anthropic hat Claude Opus 5.5 veröffentlicht und kombiniert niedrigere Kosten mit zusätzlichen Schutzmechanismen.",
-          "why_happening": "Der KI-Wettbewerb verschiebt sich von reiner Benchmark-Leistung hin zu Kosten, Zuverlässigkeit und sichererem Agentenverhalten.",
-          "who_is_affected": "Entwickler, Unternehmen, Cloud-Kunden und Nutzer leistungsfähiger KI-Agenten.",
-          "personal_impact": "Leistungsfähige KI kann günstiger werden, während Anbieter gleichzeitig stärkere Grenzen für riskante Aufgaben einziehen.",
-          "action_now": "Herstellerangaben sollten mit unabhängigen Praxis- und Sicherheitstests verglichen werden."
+          "what_happened": "Apple macht mehrere Mac Studios zu einem lokalen KI-Cluster.",
+          "why_happening": "Große Modelle sollen ohne dauernde Cloud-Kosten lokal laufen können.",
+          "who_is_affected": "Relevant ist das für Entwickler, Firmen und KI-Forschungsteams.",
+          "personal_impact": "Für dich wird leistungsfähige lokale KI deutlich realistischer.",
+          "action_now": "Vergleiche Anschaffungskosten und reale Inferenzleistung mit Cloud-Angeboten."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Mac Studio unterstützt Cluster über Thunderbolt 5 und RDMA",
+            "Apple nennt bis zu dreifache verteilte Inferenzleistung",
+            "bis zu 512 GB Unified Memory pro M5-Ultra-System"
+          ],
+          "must_not_claim": [
+            "vier Macs seien generell schneller als aktuelle Nvidia-Rechenzentren",
+            "lokale KI sei immer günstiger als Cloud",
+            "Apple habe ein fertiges eigenes Billionenparameter-Modell veröffentlicht"
+          ],
+          "uncertainty_note": "Performanceangaben hängen vom Modell, Cluster-Setup und tatsächlicher Softwareunterstützung ab."
         }
       }
     },
     {
-      "id": "3",
-      "title": "Diese „Feuer-Amöbe“ verschiebt die Grenze des Lebens: Sie teilt sich noch bei 63 Grad und überlebt kurzzeitig 70 Grad",
+      "id": "4",
+      "title": "Roboterhund läuft einen kompletten Marathon auf nur einer Akkuladung – 4:19:52 und effizienter als der menschliche Vergleichswert",
       "score": 97,
       "trend_scope": "science_future",
       "regional_relevance": "global",
       "criteria": {
-        "aktualitaet": 98,
+        "aktualitaet": 100,
         "viralitaet": 100,
-        "tayvoriq_passung": 97,
+        "tayvoriq_passung": 98,
         "quellenqualitaet": 100,
         "visuell": 100
       },
       "growth_v2": {
         "growth_score": 97,
         "priority_score": 99,
-        "binding_score": 97
+        "binding_score": 98
       },
       "sources": [
-        "https://www.reuters.com/business/environment/tenacious-hot-springs-amoeba-sets-heat-tolerance-record-2026-09-22/",
-        "https://www.livescience.com/planet-earth/evolution/newfound-fire-amoeba-from-the-cascades-sets-record-for-the-hottest-temperature-complex-life-can-survive-at"
+        "https://www.nature.com/articles/s41586-026-11102-5",
+        "https://www.scientificamerican.com/article/watch-a-robot-dog-run-a-marathon-faster-than-the-average-human/"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "policy": "NATIONAL_EU_GLOBAL_FIRST",
           "scope": "global",
-          "why_now": "Die neue Art und der Temperaturrekord wurden diese Woche veröffentlicht und verändern die bekannte Grenze für komplexes Leben.",
-          "momentum_evidence": "Reuters, Live Science, NASA und weitere Wissenschaftsmedien berichten über den Rekord.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Extremleben, 70 Grad und die Frage nach Leben auf anderen Welten sind global verständliche, visuell starke Hooks."
+          "why_now": "Nature veröffentlichte die Studie am 23. September 2026",
+          "momentum_evidence": "Klare visuelle Leistung mit sofort verständlicher Zahl",
+          "cross_platform_signal_count": 2,
+          "breakout_proof": "Nature-Studie plus Scientific American"
         },
         "sources": [
           {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/business/environment/tenacious-hot-springs-amoeba-sets-heat-tolerance-record-2026-09-22/",
-            "supports": "Reuters berichtet, dass Incendiamoeba cascadensis sich bis 63 °C teilen und sich nach kurzer Exposition bei 70 °C erholen kann, ein Rekord für komplexes Leben."
+            "publisher": "Nature",
+            "url": "https://www.nature.com/articles/s41586-026-11102-5",
+            "supports": "Die Nature-Studie berichtet, dass RAIBO2 einen Marathon in 4:19:52 auf einer Akkuladung absolvierte und einen Cost-of-Transport-Wert von 0,25 erreichte."
           },
           {
-            "publisher": "Live Science",
-            "url": "https://www.livescience.com/planet-earth/evolution/newfound-fire-amoeba-from-the-cascades-sets-record-for-the-hottest-temperature-complex-life-can-survive-at",
-            "supports": "Live Science bestätigt den neuen Hitzerekord und die Entdeckung in heißen Quellen des Lassen Volcanic National Park."
+            "publisher": "Scientific American",
+            "url": "https://www.scientificamerican.com/article/watch-a-robot-dog-run-a-marathon-faster-than-the-average-human/",
+            "supports": "Scientific American ordnet die Marathonleistung als Fortschritt bei Reichweite und Energieeffizienz von Laufrobotern ein."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Forscher haben eine neu beschriebene Amöbe untersucht, die bei Temperaturen wächst und sich teilt, die bisher für komplexes Leben als zu heiß galten.",
-          "why_happening": "Die Zelle besitzt Anpassungen für Protein- und DNA-Schutz und verändert unter extremer Hitze ihren Zustand.",
-          "who_is_affected": "Relevant ist die Entdeckung für Evolutionsbiologie, Astrobiologie und Forschung zu Extremophilen.",
-          "personal_impact": "Sie erweitert die Vorstellung davon, unter welchen Bedingungen komplexes Leben existieren könnte.",
-          "action_now": "Weitere Forschung muss klären, welche molekularen Mechanismen den Rekord ermöglichen und was davon auf andere Lebensformen übertragbar ist."
+          "what_happened": "RAIBO2 lief einen kompletten Marathon mit nur einer Akkuladung.",
+          "why_happening": "Neue Hardware und Laufsteuerung reduzieren den Energieverlust drastisch.",
+          "who_is_affected": "Das betrifft Robotik für Rettung, Industrie und Außeneinsätze.",
+          "personal_impact": "Für dich werden aus Laufrobotern langsam echte Langstreckenmaschinen.",
+          "action_now": "Achte darauf, wie schnell diese Effizienz in Praxisrobotern ankommt."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Marathonzeit 4 Stunden 19 Minuten 52 Sekunden",
+            "eine Akkuladung",
+            "Cost of Transport 0,25 gegenüber menschlichem Vergleichswert 0,37"
+          ],
+          "must_not_claim": [
+            "der Roboter sei generell schneller als die meisten Menschen",
+            "RAIBO2 könne bereits autonom Katastropheneinsätze durchführen"
+          ],
+          "uncertainty_note": "Die Studie demonstriert Reichweite und Effizienz; reale Einsätze stellen zusätzliche Anforderungen."
         }
       }
     },
     {
-      "id": "4",
-      "title": "NASA baut ein neues Fenster ins unsichtbare Universum: PRIMA soll Planeten, schwarze Löcher und sogar die Geschichte des Wassers verfolgen",
-      "score": 94,
+      "id": "5",
+      "title": "Starship vor dem ersten echten Orbit: Flight 14 soll sechs Erdumrundungen schaffen und 26 Starlink-V3-Satelliten aussetzen",
+      "score": 97,
       "trend_scope": "science_future",
       "regional_relevance": "global",
       "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 93,
-        "tayvoriq_passung": 96,
-        "quellenqualitaet": 100,
+        "aktualitaet": 99,
+        "viralitaet": 100,
+        "tayvoriq_passung": 99,
+        "quellenqualitaet": 99,
         "visuell": 100
       },
       "growth_v2": {
-        "growth_score": 94,
-        "priority_score": 95,
-        "binding_score": 96
+        "growth_score": 97,
+        "priority_score": 99,
+        "binding_score": 98
       },
       "sources": [
-        "https://www.nasa.gov/news-release/nasa-selects-far-infrared-telescope-as-first-in-new-mission-class/",
-        "https://www.caltech.edu/about/news/nasa-confirms-prima-mission-key-roles-for-caltech-jpl-and-ipac"
+        "https://www.spacex.com/",
+        "https://techcrunch.com/2026/09/15/spacex-will-try-to-put-starship-in-orbit-for-the-first-time-on-september-28/"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "policy": "NATIONAL_EU_GLOBAL_FIRST",
           "scope": "global",
-          "why_now": "NASA hat PRIMA am 23. September als erste Mission einer neuen Probe-Explorer-Klasse für die nächste Entwicklungsphase ausgewählt.",
-          "momentum_evidence": "NASA und Caltech/JPL veröffentlichten die Missionsentscheidung gleichzeitig mit konkreten Missionszielen und geplantem Start 2033.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Neue NASA-Missionsklasse plus schwarze Löcher, Planetenentstehung und Ursprung von Wasser bietet weltweite Science-Relevanz."
+          "why_now": "SpaceX listet Flight 14 für den 28. September 2026",
+          "momentum_evidence": "Erster geplanter Starship-Orbit und erste operative Starlink-V3-Nutzlast",
+          "cross_platform_signal_count": 2,
+          "breakout_proof": "SpaceX Terminseite plus TechCrunch-Bericht"
         },
         "sources": [
           {
-            "publisher": "NASA",
-            "url": "https://www.nasa.gov/news-release/nasa-selects-far-infrared-telescope-as-first-in-new-mission-class/",
-            "supports": "NASA bestätigt PRIMA als erste Mission der neuen Probe-Explorers-Klasse, Zielstart 2033 und Untersuchungen von Planetenentstehung, Galaxien, schwarzen Löchern und kosmischem Staub."
+            "publisher": "SpaceX",
+            "url": "https://www.spacex.com/",
+            "supports": "SpaceX führt Starship Flight 14 als bevorstehenden Start am 28. September 2026."
           },
           {
-            "publisher": "Caltech",
-            "url": "https://www.caltech.edu/about/news/nasa-confirms-prima-mission-key-roles-for-caltech-jpl-and-ipac",
-            "supports": "Caltech bestätigt die Auswahl von PRIMA, die Rolle von JPL/IPAC und die Nutzung von Ferninfrarotlicht zur Untersuchung des kalten, staubigen Universums."
+            "publisher": "TechCrunch",
+            "url": "https://techcrunch.com/2026/09/15/spacex-will-try-to-put-starship-in-orbit-for-the-first-time-on-september-28/",
+            "supports": "TechCrunch berichtet, dass Flight 14 erstmals Starship in den Orbit bringen und 26 Starlink-V3-Satelliten aussetzen soll."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "NASA hat PRIMA als erste Mission einer neuen Astrophysik-Missionsklasse für die nächste Entwicklungsphase ausgewählt.",
-          "why_happening": "Ferninfrarotlicht kann kalte und staubverdeckte Bereiche sichtbar machen, die Webb und Radioteleskope nicht auf dieselbe Weise abdecken.",
-          "who_is_affected": "Astronomen und Forschungsteams weltweit, darunter Partner aus mehreren Raumfahrtagenturen.",
-          "personal_impact": "Die Mission könnte erklären helfen, wie Planeten, Galaxien, schwarze Löcher und die chemischen Bausteine für Wasser entstanden.",
-          "action_now": "PRIMA muss noch die weitere Bestätigung und Entwicklung durchlaufen; bei Bestätigung ist der Start für 2033 vorgesehen."
+          "what_happened": "Starship Flight 14 soll erstmals einen echten Erdorbit erreichen.",
+          "why_happening": "SpaceX verbindet den Test erstmals mit operativen Starlink-V3-Satelliten.",
+          "who_is_affected": "Relevant ist das für Raumfahrt, Starlink und wiederverwendbare Raketen.",
+          "personal_impact": "Für dich steht ein entscheidender Starship-Meilenstein unmittelbar bevor.",
+          "action_now": "Beobachte den geplanten Start am 28. September und regulatorische Freigaben."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Start ist für 28. September 2026 geplant",
+            "etwa sechs Erdumrundungen sind vorgesehen",
+            "26 Starlink-V3-Satelliten sollen ausgesetzt werden"
+          ],
+          "must_not_claim": [
+            "der Start sei garantiert",
+            "Starship habe bereits erfolgreich den Orbit erreicht",
+            "eine vollständige Wiederverwendung werde bei Flight 14 demonstriert"
+          ],
+          "uncertainty_note": "Termin und Missionsablauf bleiben bis zum Start von technischen und regulatorischen Bedingungen abhängig."
         }
       }
     }
