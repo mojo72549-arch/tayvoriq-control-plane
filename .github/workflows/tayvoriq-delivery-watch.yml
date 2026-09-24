@@ -166,10 +166,27 @@ jobs:
         shell: bash
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
+          RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
         run: |
           set -euo pipefail
           gh run view "$RUN_ID" --log-failed > /tmp/tayvoriq-failed.log 2>&1 || true
           test -s /tmp/tayvoriq-failed.log || { echo 'DELIVERY_WATCH_FAILED_LOG_MISSING'; exit 1; }
+
+          # Prefer the producer's machine-readable failure contract. Raw Actions
+          # logs remain fallback evidence only; they can contain stale provider,
+          # voice and source-code text from earlier successful recovery stages.
+          rm -rf /tmp/tayvoriq-failed-diag
+          mkdir -p /tmp/tayvoriq-failed-diag
+          artifact="tayvoriq-x-diagnostics-${RUN_ID}-attempt-${RUN_ATTEMPT:-1}"
+          gh run download "$RUN_ID" -n "$artifact" -D /tmp/tayvoriq-failed-diag >/dev/null 2>&1 || true
+          structured="$(find /tmp/tayvoriq-failed-diag -type f -name failure-notification-policy.json -print -quit 2>/dev/null || true)"
+          if [ -n "$structured" ]; then
+            cp "$structured" /tmp/tayvoriq-structured-failure.json
+            echo "DELIVERY_WATCH_STRUCTURED_EVIDENCE_READY:$structured"
+          else
+            printf '{}\n' > /tmp/tayvoriq-structured-failure.json
+            echo "DELIVERY_WATCH_STRUCTURED_EVIDENCE_MISSING_FALLBACK_LOGS"
+          fi
 
       - name: Classify with shared recovery policy
         id: policy
@@ -185,6 +202,7 @@ jobs:
           # even at generation 0 after a deterministic codefix replay.
           python tools/tayvoriq_recovery_policy_v1.py \
             --logs-file /tmp/tayvoriq-failed.log \
+            --structured-evidence /tmp/tayvoriq-structured-failure.json \
             --run-attempt "${RUN_ATTEMPT:-1}" \
             --recovery-generation "${GENERATION:-0}" \
             --max-generations "$MAX_RECOVERY_GENERATIONS" \
@@ -204,8 +222,8 @@ jobs:
           print(data)
           PY
 
-      - name: Detect advanced Production Green for local voice retry
-        id: voice_green
+      - name: Detect advanced Production Green for local checkpoint retry
+        id: local_green
         if: steps.policy.outputs.mode == 'rerun' && steps.policy.outputs.retry_allowed == 'true'
         shell: bash
         env:
@@ -230,11 +248,11 @@ jobs:
           PY
           )"
           failed_impl=""
-          rm -rf /tmp/tayvoriq-voice-green-diag
-          mkdir -p /tmp/tayvoriq-voice-green-diag
+          rm -rf /tmp/tayvoriq-local-green-diag
+          mkdir -p /tmp/tayvoriq-local-green-diag
           artifact="tayvoriq-x-diagnostics-${RUN_ID}-attempt-${RUN_ATTEMPT:-1}"
-          gh run download "$RUN_ID" -n "$artifact" -D /tmp/tayvoriq-voice-green-diag >/dev/null 2>&1 || true
-          manifest="$(find /tmp/tayvoriq-voice-green-diag -type f -name production-manifest.json -print -quit 2>/dev/null || true)"
+          gh run download "$RUN_ID" -n "$artifact" -D /tmp/tayvoriq-local-green-diag >/dev/null 2>&1 || true
+          manifest="$(find /tmp/tayvoriq-local-green-diag -type f -name production-manifest.json -print -quit 2>/dev/null || true)"
           if [ -n "$manifest" ]; then
             failed_impl="$(python - "$manifest" <<'PY'
           import json,sys
@@ -254,13 +272,13 @@ jobs:
           echo "advanced=$advanced" >> "$GITHUB_OUTPUT"
           echo "current_green=$current_green" >> "$GITHUB_OUTPUT"
           echo "failed_impl=$failed_impl" >> "$GITHUB_OUTPUT"
-          echo "VOICE_RETRY_PRODUCTION_GREEN_CHECK:advanced=$advanced:failed=$failed_impl:current=$current_green"
+          echo "LOCAL_RETRY_PRODUCTION_GREEN_CHECK:advanced=$advanced:failed=$failed_impl:current=$current_green"
 
       - name: Same-run retry for transient failure only
         if: >-
           steps.policy.outputs.mode == 'rerun' &&
           steps.policy.outputs.retry_allowed == 'true' &&
-          steps.voice_green.outputs.advanced != 'true'
+          steps.local_green.outputs.advanced != 'true'
         shell: bash
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
@@ -269,11 +287,11 @@ jobs:
           gh run rerun "$RUN_ID" --failed
           echo "TRANSIENT_SAME_RUN_RETRY_REQUESTED:$RUN_ID"
 
-      - name: Replay local voice request on advanced Production Green
+      - name: Replay local checkpoint request on advanced Production Green
         if: >-
           steps.policy.outputs.mode == 'rerun' &&
           steps.policy.outputs.retry_allowed == 'true' &&
-          steps.voice_green.outputs.advanced == 'true'
+          steps.local_green.outputs.advanced == 'true'
         shell: bash
         env:
           OLD_RUN_ID: ${{ steps.owner.outputs.run_id }}
@@ -284,15 +302,15 @@ jobs:
           GENERATION: ${{ steps.owner.outputs.generation }}
           FAILURE_SIGNATURE: ${{ steps.policy.outputs.failure_signature }}
           FAILURE_STATE: ${{ steps.policy.outputs.state }}
-          FAILED_IMPL_SHA: ${{ steps.voice_green.outputs.failed_impl }}
-          CURRENT_IMPL_SHA: ${{ steps.voice_green.outputs.current_green }}
+          FAILED_IMPL_SHA: ${{ steps.local_green.outputs.failed_impl }}
+          CURRENT_IMPL_SHA: ${{ steps.local_green.outputs.current_green }}
         run: |
           set -euo pipefail
-          [[ "$OLD_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'VOICE_GREEN_REPLAY_OLD_RUN_INVALID'; exit 1; }
-          [[ "$GENERATION" =~ ^[0-9]+$ ]] || { echo 'VOICE_GREEN_REPLAY_GENERATION_INVALID'; exit 1; }
-          [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'VOICE_GREEN_REPLAY_FAILED_IMPL_INVALID'; exit 1; }
-          [[ "$CURRENT_IMPL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'VOICE_GREEN_REPLAY_CURRENT_IMPL_INVALID'; exit 1; }
-          [ "$FAILED_IMPL_SHA" != "$CURRENT_IMPL_SHA" ] || { echo 'VOICE_GREEN_REPLAY_NOT_NEEDED'; exit 1; }
+          [[ "$OLD_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'LOCAL_GREEN_REPLAY_OLD_RUN_INVALID'; exit 1; }
+          [[ "$GENERATION" =~ ^[0-9]+$ ]] || { echo 'LOCAL_GREEN_REPLAY_GENERATION_INVALID'; exit 1; }
+          [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'LOCAL_GREEN_REPLAY_FAILED_IMPL_INVALID'; exit 1; }
+          [[ "$CURRENT_IMPL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'LOCAL_GREEN_REPLAY_CURRENT_IMPL_INVALID'; exit 1; }
+          [ "$FAILED_IMPL_SHA" != "$CURRENT_IMPL_SHA" ] || { echo 'LOCAL_GREEN_REPLAY_NOT_NEEDED'; exit 1; }
 
           python - "$ACTIVE_REQUEST_POINTER" "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" <<'PY'
           import json,sys
@@ -301,9 +319,9 @@ jobs:
           pointer=json.loads(pp.read_text(encoding='utf-8'))
           request=json.loads(rp.read_text(encoding='utf-8'))
           if pointer.get('state')!='ACTIVE' or str(pointer.get('request_id') or '')!=rid or int(pointer.get('golden_path_run_id') or 0)!=old:
-              raise SystemExit('VOICE_GREEN_REPLAY_ACTIVE_OWNER_CHANGED')
+              raise SystemExit('LOCAL_GREEN_REPLAY_ACTIVE_OWNER_CHANGED')
           if str(request.get('request_id') or '')!=rid or int(request.get('golden_path_run_id') or 0)!=old:
-              raise SystemExit('VOICE_GREEN_REPLAY_REQUEST_OWNER_CHANGED')
+              raise SystemExit('LOCAL_GREEN_REPLAY_REQUEST_OWNER_CHANGED')
           PY
 
           before_ids="$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')"
@@ -314,13 +332,13 @@ jobs:
           # Give the binder a bounded window to expose the exact replacement run before rebinding ownership.
           for poll in $(seq 1 30); do
             sleep 4
-            gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId,createdAt > /tmp/voice-green-replay-runs.json
+            gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId,createdAt > /tmp/local-green-replay-runs.json
             candidate="$(python - "$before_ids" "$dispatch_epoch" <<'PY'
           import json,sys
           from datetime import datetime
           before={int(v) for v in sys.argv[1].split() if v.isdigit()}
           epoch=int(sys.argv[2]); found=[]
-          for item in json.load(open('/tmp/voice-green-replay-runs.json',encoding='utf-8')):
+          for item in json.load(open('/tmp/local-green-replay-runs.json',encoding='utf-8')):
               try:
                   rid=int(item.get('databaseId') or 0)
                   created=datetime.fromisoformat(str(item.get('createdAt') or '').replace('Z','+00:00')).timestamp()
@@ -336,7 +354,7 @@ jobs:
               break
             fi
           done
-          [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'VOICE_GREEN_REPLAY_DISPATCH_NOT_VERIFIED'; exit 1; }
+          [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'LOCAL_GREEN_REPLAY_DISPATCH_NOT_VERIFIED'; exit 1; }
 
           current_control_sha="$(git rev-parse HEAD)"
           git config user.name "github-actions[bot]"
@@ -355,9 +373,9 @@ jobs:
           pointer=json.loads(pp.read_text(encoding='utf-8'))
           data=json.loads(rp.read_text(encoding='utf-8'))
           if pointer.get('state')!='ACTIVE' or str(pointer.get('request_id') or '')!=rid or int(pointer.get('golden_path_run_id') or 0)!=old:
-              raise SystemExit('VOICE_GREEN_REPLAY_ACTIVE_OWNER_CHANGED')
+              raise SystemExit('LOCAL_GREEN_REPLAY_ACTIVE_OWNER_CHANGED')
           if str(data.get('request_id') or '')!=rid or int(data.get('golden_path_run_id') or 0)!=old:
-              raise SystemExit('VOICE_GREEN_REPLAY_REQUEST_OWNER_CHANGED')
+              raise SystemExit('LOCAL_GREEN_REPLAY_REQUEST_OWNER_CHANGED')
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           previous=list(data.get('previous_golden_path_run_ids') or [])
           if old not in previous:
@@ -367,7 +385,7 @@ jobs:
           data['status']='DISPATCHED'
           data['recovery_generation']=generation
           data['retry_of_run_id']=old
-          data['replacement_reason']='SAME_GENERATION_VERIFIED_GREEN_VOICE_REPLAY'
+          data['replacement_reason']='SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY'
           data['recovery_owner']='tayvoriq-delivery-watch'
           data['recovery_failure_signature']=signature
           data['recovery_dispatched_at']=now
@@ -397,7 +415,7 @@ jobs:
               'meta':{
                   'retry_of_run_id':old,'golden_path_run_id':new,
                   'recovery_generation':generation,'failure_signature':signature,
-                  'reason':'same-generation-verified-green-local-voice-replay',
+                  'reason':'same-generation-verified-green-local-checkpoint-replay',
                   'failed_implementation_sha':failed_impl,
                   'replay_implementation_sha':current_impl,
                   'quality_gates_weakened':False,'active_pointer_verified':True,
@@ -406,19 +424,19 @@ jobs:
           rp.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           pointer['golden_path_run_id']=new
           pointer['updated_at']=now
-          pointer['reason']='same-generation-verified-green-local-voice-replay'
+          pointer['reason']='same-generation-verified-green-local-checkpoint-replay'
           pp.write_text(json.dumps(pointer,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
             git add -- "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER"
-            git commit -m "ops: replay local voice request on verified green ${REQUEST_ID} to ${new_run_id}"
+            git commit -m "ops: replay local checkpoint request on verified green ${REQUEST_ID} to ${new_run_id}"
             if git push origin HEAD:main; then
               rebound=true
               break
             fi
             sleep $((attempt*2))
           done
-          [ "$rebound" = "true" ] || { echo 'VOICE_GREEN_REPLAY_BIND_FAILED'; exit 1; }
-          echo "VOICE_GREEN_REPLAY_DISPATCHED:$REQUEST_ID:$OLD_RUN_ID:$new_run_id:$CURRENT_IMPL_SHA"
+          [ "$rebound" = "true" ] || { echo 'LOCAL_GREEN_REPLAY_BIND_FAILED'; exit 1; }
+          echo "LOCAL_GREEN_REPLAY_DISPATCHED:$REQUEST_ID:$OLD_RUN_ID:$new_run_id:$CURRENT_IMPL_SHA"
 
       - name: Start bounded fresh request recovery
         id: fresh
