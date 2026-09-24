@@ -42,6 +42,14 @@ LOCAL_VOICE_RETRY_PATTERNS = (
 )
 
 
+LOCAL_VISUAL_RETRY_PATTERNS = (
+    r"local_visual_repair_required",
+    r"score_below_threshold:visual",
+    r"visual_agent_recommendation_block",
+    r"final_publication_local_repair_residual:[^\n]*visuals",
+)
+
+
 LOCAL_REPAIR_CODEFIX_PATTERNS = (
     r"bounded localized repair exhausted",
     r"localized checkpoint repair failed safely",
@@ -206,6 +214,24 @@ def classify_failure(
     if not owner_current:
         state = "SUPERSEDED_RECOVERY_EVENT"
         return RecoveryDecision("stale", state, False, "none", generation, None, maximum, _stable_signature(state, text), "A newer run already owns the request.")
+
+    # A strict visual audit can fail after a successful narrator repair. Visual
+    # checkpoint repair is local runtime work too; it must win over earlier voice
+    # evidence from the same log so the exact master can be repaired in-place.
+    if _matches(lowered, LOCAL_VISUAL_RETRY_PATTERNS):
+        if attempt < 3:
+            state = "LOCAL_VISUAL_RETRY_REQUIRED"
+            return RecoveryDecision(
+                "rerun", state, True, "same-run", generation, generation,
+                maximum, _stable_signature(state, text),
+                "The strict visual audit failed; retry the same bound run from its checkpoint so only the failed visual stage is repaired."
+            )
+        state = "LOCAL_VISUAL_RETRY_EXHAUSTED"
+        return RecoveryDecision(
+            "exhausted", state, False, "none", generation, None,
+            maximum, _stable_signature(state, text),
+            "The bounded local visual retries were exhausted. Stop without blind full regeneration."
+        )
 
     # Voice/post-mux misses are runtime output variance, not repository defects.
     # Retry the exact same request/checkpoint locally and never arm autonomous
