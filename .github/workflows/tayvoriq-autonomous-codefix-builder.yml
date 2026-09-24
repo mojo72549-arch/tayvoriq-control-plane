@@ -142,6 +142,11 @@ jobs:
               r'critical_pronunciation',
               r'number-pronunciation',
               r'pronunciation',
+              r'achtundvierzig\\.null',
+              r'48\\.000',
+              r'number_pronunciation_terms_(?:missing|passed)',
+              r'voice_repair_duration_exceeded',
+              r'spoken_contract_text',
               r'score_below_threshold',
               r'visual_agent',
               r'marketing_agent',
@@ -169,7 +174,7 @@ jobs:
           payload={
               'state':'CODE_REPAIR_REQUIRED',
               'self_heal_depth':0,
-              'action':'repair_publishability_quality_contract_then_resume_approved_request',
+              'action':'repair_exact_grouped_number_pronunciation_and_voice_duration_then_resume_approved_request',
               'request_id':os.environ['REQUEST_ID'],
               'failed_run_id':int(os.environ['RUN_ID']),
               'failure_state':os.environ['FAILURE_STATE'],
@@ -179,11 +184,11 @@ jobs:
               # verified-request runtime shim must not crowd out the actual
               # voice/pronunciation implementation for pronunciation failures.
               'traceback_files':[
-                  'runtime_patches/tayvoriq_brand_pronunciation_guard.py',
-                  'tools/tayvoriq_pronunciation_lexicon_v1.py',
+                  'tools/tayvoriq_speech_numbers_v23.py',
                   'tools/tayvoriq_voice_only_repair_v5.py',
-                  'tools/tayvoriq_preapproval_ai_audit_v6.py',
+                  'tools/tayvoriq_pronunciation_lexicon_v1.py',
                   'tests/test_tayvoriq_pronunciation_audit_contract.py',
+                  'tools/tayvoriq_preapproval_ai_audit_v6.py',
                   'runtime_patches/tayvoriq_verified_request_runtime_recovery.py',
               ],
               'log_excerpt':((quality_evidence + '\n\n' + failed_log[-7000:]).strip())[-14000:],
@@ -376,9 +381,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Studio modules are intentionally flat under tools/runtime_patches.
-          # Make the validation environment match the production import contract.
-          export PYTHONPATH="$PWD/tools:$PWD/runtime_patches:$PWD/src/runtime_hotfixes:$PWD/src:${PYTHONPATH:-}"
+          # The repository root must precede src so the real runtime_patches
+          # package wins over src/runtime_patches.py during regression collection.
+          export PYTHONPATH="$PWD:$PWD/tools:$PWD/src/runtime_hotfixes:$PWD/src:${PYTHONPATH:-}"
+          python - <<'PY'
+          from pathlib import Path
+          import runtime_patches
+          from runtime_patches import tayvoriq_deep_voice_contract  # noqa: F401
+          origin = Path(runtime_patches.__file__).resolve()
+          if origin.name != "__init__.py" or origin.parent.name != "runtime_patches":
+              raise SystemExit(f"AUTOCODEFIX_RUNTIME_PATCH_PACKAGE_SHADOWED:{origin}")
+          print(f"AUTOCODEFIX_RUNTIME_PATCH_PACKAGE_OK:{origin}")
+          PY
           python -m compileall -q tools runtime_patches src/runtime_hotfixes tests
 
           # Autonomous recovery must never weaken or bypass an already-tested
