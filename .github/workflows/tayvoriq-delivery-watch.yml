@@ -274,7 +274,7 @@ jobs:
           echo "failed_impl=$failed_impl" >> "$GITHUB_OUTPUT"
           echo "LOCAL_RETRY_PRODUCTION_GREEN_CHECK:advanced=$advanced:failed=$failed_impl:current=$current_green"
 
-      - name: Same-run retry for transient failure only
+      - name: Same-run retry for local or transient failure
         if: >-
           steps.policy.outputs.mode == 'rerun' &&
           steps.policy.outputs.retry_allowed == 'true' &&
@@ -402,7 +402,7 @@ jobs:
               'replayed_at':now,
               'replay_control_plane_sha':control_sha,
               'replay_implementation_sha':current_impl,
-              'codefix_detection_reason':'production-green-advanced-during-local-voice-retry',
+              'codefix_detection_reason':'production-green-advanced-during-local-checkpoint-retry',
               'recovery_generation':generation,
               'same_generation_replay_required':True,
               'exact_source_request_required':True,
