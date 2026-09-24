@@ -1,41 +1,41 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-24T14:12:29.692368Z",
-  "overall": "green",
+  "generated_at": "2026-09-24T17:56:36.720443Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2433-trend-1-source-repair-v1",
-    "golden_path_run_id": 35974025901,
-    "pointer_updated_at": "2026-09-24T08:49:58.821104Z"
+    "request_id": "telegram-2657-trend-1",
+    "golden_path_run_id": 36036332718,
+    "pointer_updated_at": "2026-09-24T17:43:55.964257Z"
   },
   "request": {
-    "request_id": "telegram-2433-trend-1-source-repair-v1",
-    "topic": "48.000 Auto-Beschäftigte in Baden-Württemberg protestieren gegen Stellenabbau und Standortverlagerungen",
+    "request_id": "telegram-2657-trend-1",
+    "topic": "ChatGPT bekommt auf dem Smartphone Voice→Work: Aufgaben per Sprache starten und in Dokumenten, Apps oder Browsern weiterarbeiten",
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 4,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_generation": 0,
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2433-trend-1-source-repair-v1.json"
+    "path": "requests/telegram-2657-trend-1.json"
   },
   "run": {
-    "id": 35974025901,
+    "id": 36036332718,
     "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35974025901",
-    "created_at": "2026-09-24T08:13:52Z",
-    "updated_at": "2026-09-24T08:50:23Z",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36036332718",
+    "created_at": "2026-09-24T17:43:48Z",
+    "updated_at": "2026-09-24T17:44:07Z",
     "attempt": 1,
-    "progress": 100,
+    "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Lightweight contract preflight",
+    "failed_step_number": 16,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -57,7 +57,7 @@
       },
       {
         "label": "Light Preflight",
-        "status": "success",
+        "status": "error",
         "step_number": 16,
         "step_name": "Lightweight contract preflight"
       },
@@ -69,37 +69,37 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
+        "status": "error",
         "step_number": 16,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "skipped",
         "step_number": 31,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "error",
         "step_number": 38,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "skipped",
         "step_number": 40,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "skipped",
         "step_number": 44,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "skipped",
         "step_number": 45,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "red",
+      "detail": "Lightweight contract preflight"
     },
     {
       "name": "Production Green",
@@ -119,69 +119,70 @@
     {
       "name": "Self-Heal",
       "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36036332718:16:none",
+    "severity": "critical",
+    "failure_state": null,
+    "failed_step": "Lightweight contract preflight",
+    "failed_step_number": 16,
+    "self_heal_status": "IDLE",
+    "same_generation_replay_required": false,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
+    "status": "IDLE",
+    "source_status": "IDLE",
     "failure_state": null,
-    "failed_run_id": 35924969209,
-    "replay_run_id": 35974025901,
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
-    "recovery_generation": 4,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
-    "same_generation_replay_required": true,
+    "recovery_generation": 0,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-24T08:13:59.023260Z",
+      "at": "2026-09-24T17:44:07Z",
+      "title": "Workflow-Fehler",
+      "detail": "Lightweight contract preflight"
+    },
+    {
+      "at": "2026-09-24T17:43:55.872181+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:36036305950"
     },
     {
-      "at": "2026-09-23T22:29:30.621739Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-09-24T17:43:42.502833+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:36036305950"
     },
     {
-      "at": "2026-09-23T21:51:29.048900Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-23T19:52:40.525986Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-23T16:16:22.361731Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-23T13:51:40.571349Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-09-24T17:43:31.557Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
