@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-23T23:58:09.783438Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-24T03:08:38.523851Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -25,17 +25,17 @@
   },
   "run": {
     "id": 35924969209,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/35924969209",
     "created_at": "2026-09-23T21:51:23Z",
-    "updated_at": "2026-09-23T23:57:39Z",
+    "updated_at": "2026-09-23T23:58:44Z",
     "attempt": 2,
     "progress": 30,
-    "current_step": "Restore production dependency cache",
-    "last_successful_step": "Checkout review pages",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Early recovery binding gate",
+    "failed_step_number": 24,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -75,31 +75,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 31,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 38,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 40,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 44,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 45,
         "step_name": "Send Telegram review"
       }
@@ -108,8 +108,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Restore production dependency cache"
+      "status": "red",
+      "detail": "Early recovery binding gate"
     },
     {
       "name": "Production Green",
@@ -124,20 +124,20 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
   "incident": {
-    "signature": "35924969209:none:PUBLISHABLE_CODEFIX_REQUIRED",
-    "severity": "warning",
+    "signature": "35924969209:24:PUBLISHABLE_CODEFIX_REQUIRED",
+    "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Early recovery binding gate",
+    "failed_step_number": 24,
     "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -146,8 +146,8 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
     "status": "ARMED",
@@ -164,6 +164,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-23T23:58:44Z",
+      "title": "Workflow-Fehler",
+      "detail": "Early recovery binding gate"
+    },
     {
       "at": "2026-09-23T22:29:30.621739Z",
       "title": "AWAITING_CODEFIX",
