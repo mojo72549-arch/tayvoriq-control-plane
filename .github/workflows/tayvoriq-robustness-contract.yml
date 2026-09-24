@@ -91,11 +91,11 @@ jobs:
               'tools/tayvoriq_voice_only_repair_v5.py'
           ).read_text(encoding='utf-8')
           for marker in (
-              'generated_geology_animation',
-              'world-forces-episode-2-fault-rupture-frames-v1',
-              'VISUAL_REPAIR_EPISODE2_UNVERIFIED_STOCK_FORBIDDEN',
+              'tayvoriq_visual_only_repair_v1_legacy',
+              'shared-geology-assets',
+              'geology_scene_{index:02d}.mp4',
               'actual_frame_semantics_prevalidated',
-              'world-forces-episode-2-source-bound-narrator-safe-v1',
+              'tayvoriq_vw_visual_contract_v1',
           ):
               assert marker in visual_repair_source, marker
           for marker in (
@@ -110,11 +110,8 @@ jobs:
               'if bool(strict.get("passed")) and _natural_wpm'
               not in voice_repair_source
           )
-          assert (
-              'EARTHQUAKE_EPISODE_AFFECTED = (\n'
-              '    "Besonders gefährdet sind Menschen in Regionen mit aktiven Bruchzonen."'
-              in visual_repair_source
-          )
+          assert 'return _legacy.repair(job_dir)' in visual_repair_source
+          assert 'quality_gates_weakened"] = False' in visual_repair_source
 
           for legacy in ('TAYVORIQ', 'Tai wo rik', 'Taiworik', 'Tai vor ik', 'Tayvorik'):
               assert brand.normalize_spoken_brand(f'Abonniere {legacy}.') == 'Abonniere Tayvorik.'
