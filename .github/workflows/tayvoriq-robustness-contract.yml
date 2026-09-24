@@ -231,6 +231,9 @@ jobs:
               '- name: Persist refreshed post-repair checkpoint',
               '-post-local-repair',
               'steps.checkpoint_recovery.outputs.state',
+              'PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED',
+              'replay_on_advanced_production_green',
+              'git -C .. fetch origin main --quiet',
           )
           for token in required_golden:
               if token not in golden_path:
