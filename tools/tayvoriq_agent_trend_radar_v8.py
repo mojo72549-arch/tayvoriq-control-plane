@@ -235,7 +235,7 @@ TAYVORIQ REACH POTENTIAL GATE — HARD RANKING REQUIREMENT:
 - For every candidate, set regional_relevance accurately to local|germany|europe|global.
 - Put a source_context.reach_gate object on each candidate when possible with: scope, why_now, momentum_evidence, cross_platform_signal_count, and breakout_proof.
 - Never invent cross-platform evidence. Use 0 when it is not verified.
-- If fewer than 4 strong broad-reach candidates pass, fail closed and rescan instead of forcing weak/local filler.
+- If fewer than 3 strong broad-reach candidates pass, fail closed and rescan instead of forcing weak/local filler.
 - A rejected Telegram selection is part of duplicate history: do not immediately recycle the same underlying stories with rewritten headlines.
 
 TAYVORIQ STRATEGIC ENTITY SWEEP — DISCOVERY REQUIREMENT:
