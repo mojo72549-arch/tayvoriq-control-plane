@@ -38,7 +38,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
-  actions: write
+  actions: read
   contents: write
 
 concurrency:
