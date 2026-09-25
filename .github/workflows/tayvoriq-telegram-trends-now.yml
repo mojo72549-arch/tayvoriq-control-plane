@@ -2,6 +2,8 @@ name: TAYVORIQ Telegram Trends Now
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types: [tayvoriq_telegram_trends_now]
   push:
     branches: [main]
     paths:
@@ -36,19 +38,35 @@ jobs:
       - name: Resolve explicit Telegram trend request
         id: control
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PAYLOAD_SLOT: ${{ github.event.client_payload.slot || '' }}
+          PAYLOAD_TARGET_DATE: ${{ github.event.client_payload.target_date || '' }}
+          PAYLOAD_REFRESH: ${{ github.event.client_payload.refresh || '' }}
+          PAYLOAD_REQUESTED_VIA: ${{ github.event.client_payload.requested_via || '' }}
         run: |
           set -euo pipefail
-          control=.github/run-now/tayvoriq-telegram-trends-now.txt
-          test -f "$control"
-          slot="$(sed -n 's/^slot=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
-          target_date="$(sed -n 's/^target_date=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            slot="$PAYLOAD_SLOT"
+            target_date="$PAYLOAD_TARGET_DATE"
+            refresh="$PAYLOAD_REFRESH"
+            test "$PAYLOAD_REQUESTED_VIA" = "telegram_command" || {
+              echo "Invalid Telegram operator dispatch origin: $PAYLOAD_REQUESTED_VIA"
+              exit 1
+            }
+          else
+            control=.github/run-now/tayvoriq-telegram-trends-now.txt
+            test -f "$control"
+            slot="$(sed -n 's/^slot=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+            target_date="$(sed -n 's/^target_date=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+            refresh="$(sed -n 's/^refresh=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+          fi
           case "$slot" in morning|evening) ;; *) echo "Invalid slot: $slot"; exit 1 ;; esac
           python - "$target_date" <<'PY'
           import datetime as dt, sys
           dt.date.fromisoformat(sys.argv[1])
           PY
           compact="${target_date//-/}"
-          refresh="$(sed -n 's/^refresh=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
           if [ -n "$refresh" ]; then
             case "$refresh" in
               r[1-9]|r[1-9][0-9]) ;;

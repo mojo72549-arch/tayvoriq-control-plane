@@ -26,6 +26,78 @@ export default {
       return new Response('ignored');
     }
 
+
+    const normalizedText = text.toLocaleLowerCase('de-DE').trim();
+    if (!callbackData && /^\/(?:trends|trend)(?:@\w+)?$/.test(normalizedText)) {
+      const now = berlinDateSlot();
+      const refresh = `r${(Math.floor(Date.now() / 1000) % 99) + 1}`;
+      const dispatch = await githubDispatch(env, 'tayvoriq_telegram_trends_now', {
+        slot: now.slot,
+        target_date: now.date,
+        refresh,
+        telegram_chat_id: chatId,
+        requested_at: new Date().toISOString(),
+        requested_via: 'telegram_command',
+      });
+      if (!dispatch.ok) {
+        const detail = await dispatch.text();
+        console.error('telegram trends dispatch failed', dispatch.status, detail);
+        await requireTelegramMessage(await telegram(
+          env,
+          chatId,
+          `❌ Trend-Suche konnte nicht gestartet werden. GitHub-Fehler: ${dispatch.status}`,
+        ));
+        return new Response('trend command dispatch failed', { status: 502 });
+      }
+      await requireTelegramMessage(await telegram(
+        env,
+        chatId,
+        [
+          '🔎 TAYVORIQ · V5 Trend-Suche gestartet',
+          '',
+          `Slot: ${now.slot === 'morning' ? 'Morgen' : 'Abend'}`,
+          `Datum: ${now.date}`,
+          '➡️ Ich melde mich hier mit exakt 5 geprüften Kandidaten.',
+          '✅ Vor deiner Trendfreigabe startet keine Produktion.',
+        ].join('\n'),
+      ));
+      return new Response('ok');
+    }
+
+    if (!callbackData && /^\/status(?:@\w+)?$/.test(normalizedText)) {
+      try {
+        const health = await loadOpsHealth(env);
+        await requireTelegramMessage(await telegram(env, chatId, operatorStatusText(health)));
+        return new Response('ok');
+      } catch (error) {
+        await requireTelegramMessage(await telegram(
+          env,
+          chatId,
+          `❌ Status konnte nicht geladen werden. Grund: ${String(error).slice(0, 300)}`,
+        ));
+        return new Response('status unavailable', { status: 502 });
+      }
+    }
+
+    if (!callbackData && /^\/(?:hilfe|help)(?:@\w+)?$/.test(normalizedText)) {
+      await requireTelegramMessage(await telegram(env, chatId, [
+        '🟣 TAYVORIQ · Telegram-Steuerung',
+        '',
+        '/trends – jetzt eine frische V5-Trendliste mit 5 Kandidaten anfordern',
+        '/status – aktuellen Auftrag, Fortschritt und Recovery-Status anzeigen',
+        '/hilfe – diese Übersicht anzeigen',
+        '',
+        'Danach steuerst du per Buttons:',
+        '1️⃣ Trend auswählen',
+        '✅ Trend freigeben',
+        '🔄 Liste/Format neu anfordern',
+        '✅ Video freigeben oder ❌ ablehnen',
+        '',
+        'Das Control Center ist nur Beobachtung. Veröffentlichung bleibt bis zu deiner Review-Freigabe gesperrt.',
+      ].join('\n')));
+      return new Response('ok');
+    }
+
     const selectTrend = callbackData.match(/^select_trend:([A-Za-z0-9_-]{4,40}):([1-5])$/);
     if (selectTrend) {
       const selectionId = selectTrend[1];
@@ -519,6 +591,76 @@ async function upsertApprovalRecord(env, { runId, youtubeVideoUrl, tiktokVideoUr
   const payload = { message: `Approve TAYVORIQ review ${runId} from Telegram`, content: btoa(binary), branch: 'main' };
   if (sha) payload.sha = sha;
   return fetch(apiUrl, { method: 'PUT', headers, body: JSON.stringify(payload) });
+}
+
+
+function berlinDateSlot(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const read = type => parts.find(part => part.type === type)?.value || '';
+  const year = read('year');
+  const month = read('month');
+  const day = read('day');
+  const hour = Number(read('hour') || 0);
+  return {
+    date: `${year}-${month}-${day}`,
+    slot: hour < 12 ? 'morning' : 'evening',
+  };
+}
+
+async function loadOpsHealth(env) {
+  const response = await fetch(
+    `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/contents/run-status/ops-health.json?ref=main`,
+    {
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'tayvoriq-telegram-approval',
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`GitHub ${response.status}`);
+  }
+  const payload = await response.json();
+  const encoded = String(payload?.content || '').replace(/\s+/g, '');
+  if (!encoded) throw new Error('ops-health content missing');
+  const decoded = decodeURIComponent(
+    Array.from(atob(encoded), ch => '%' + ch.charCodeAt(0).toString(16).padStart(2, '0')).join(''),
+  );
+  return JSON.parse(decoded);
+}
+
+function operatorStatusText(health) {
+  const request = health?.request && typeof health.request === 'object' ? health.request : {};
+  const run = health?.run && typeof health.run === 'object' ? health.run : {};
+  const recovery = health?.recovery && typeof health.recovery === 'object' ? health.recovery : {};
+  const overall = String(health?.overall || 'unknown').toUpperCase();
+  const topic = String(request?.topic || 'Kein aktiver Auftrag');
+  const state = String(request?.state || '–');
+  const progress = Number.isFinite(Number(run?.progress)) ? `${Number(run.progress)} %` : '–';
+  const step = String(run?.current_step || run?.last_successful_step || '–');
+  const recoveryStatus = String(recovery?.status || '–');
+  const action = health?.user_action_required === true ? '⚠️ Aktion erforderlich' : '✅ Keine Aktion nötig';
+  return [
+    `🟣 TAYVORIQ · Status ${overall}`,
+    '',
+    `Thema: ${topic}`,
+    `Request: ${String(request?.request_id || '–')}`,
+    `Status: ${state}`,
+    `Fortschritt: ${progress}`,
+    `Aktueller Schritt: ${step}`,
+    `Recovery: ${recoveryStatus}`,
+    '',
+    action,
+  ].join('\n');
 }
 
 async function githubDispatch(env, eventType, clientPayload) {
