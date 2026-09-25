@@ -12,6 +12,7 @@ on:
       - "tools/tayvoriq_agent_rss_v2.py"
       - "tools/tayvoriq_agent_gdelt_v2.py"
       - "tools/tayvoriq_agent_hf_v2.py"
+      - "tools/tayvoriq_agent_deterministic_source_fallback_v1.py"
       - "tools/tayvoriq_agent_research_resilience_v2.py"
       - "tools/tayvoriq_agent_series_request_v2.py"
       - "scripts/tayvoriq_ops_health.py"
@@ -54,6 +55,7 @@ jobs:
             tools/tayvoriq_agent_rss_v2.py \
             tools/tayvoriq_agent_gdelt_v2.py \
             tools/tayvoriq_agent_hf_v2.py \
+            tools/tayvoriq_agent_deterministic_source_fallback_v1.py \
             tools/tayvoriq_agent_research_resilience_v2.py \
             tools/tayvoriq_agent_series_request_v2.py \
             scripts/tayvoriq_ops_health.py
