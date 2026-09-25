@@ -206,6 +206,47 @@ jobs:
           audit.write_text(json.dumps(a,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
 
+      - name: Materialize Golden Path V5 retention ranking
+        if: steps.control.outputs.needs_delivery == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, 'tools')
+          import tayvoriq_agent_trend_radar_v8 as growth
+
+          path=Path('/tmp/tayvoriq-trend-request.json')
+          data=json.loads(path.read_text(encoding='utf-8'))
+          trends=data.get('trends') or []
+          for trend in trends:
+              report=trend.get('retention_v5') if isinstance(trend.get('retention_v5'),dict) else None
+              if not report or report.get('schema')!='tayvoriq-retention-v5':
+                  report=growth._retention_v5(trend, trend)
+                  trend['retention_v5']=report
+                  context=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
+                  context['retention_v5']=report
+                  trend['source_context']=context
+          trends.sort(
+              key=lambda item: int((item.get('retention_v5') or {}).get('trend_selection_score') or 0),
+              reverse=True,
+          )
+          for index,trend in enumerate(trends,1):
+              trend['id']=str(index)
+          data['trends']=trends
+          data['retention_v5_enabled']=True
+          data['retention_v5_schema']='tayvoriq-retention-v5'
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print({
+              'retention_v5':True,
+              'ranked':[(t.get('id'),(t.get('retention_v5') or {}).get('trend_selection_score')) for t in trends],
+              'quality_gates_weakened':False,
+          })
+          PY
+
       - name: Validate approval contract
         if: steps.control.outputs.needs_delivery == 'true'
         shell: bash
@@ -228,6 +269,24 @@ jobs:
           assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
           for trend in trends:
             assert len(trend.get('sources') or []) >= 2
+            retention=trend.get('retention_v5') if isinstance(trend.get('retention_v5'),dict) else {}
+            assert retention.get('schema') == 'tayvoriq-retention-v5', retention
+            assert retention.get('quality_gates_weakened') is False, retention
+            for field in (
+                'evidence_strength','viral_potential','novelty_score','tayvoriq_fit',
+                'series_fit_score','return_viewer_score','follow_conversion_potential',
+                'open_loop_potential','trend_selection_score',
+            ):
+                assert 0 <= int(retention.get(field)) <= 100, (field,retention)
+            assert str(retention.get('content_angle') or '').strip(), retention
+            assert str(retention.get('why_now') or '').strip(), retention
+            assert retention.get('recommended_cta_type') in {
+                'CURIOSITY','EXPERTISE','COMMUNITY','SERIES','DISCUSSION','IDENTITY'
+            }, retention
+            if retention.get('recommended_cta_type') == 'SERIES':
+                assert all(str(retention.get(field) or '').strip() for field in (
+                    'proposed_series_id','proposed_series_name','next_episode_candidate'
+                )), retention
             sc=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
             assert int(sc.get('independent_news_count') or 0) >= 2
             assert len(sc.get('sources') or []) >= 2
@@ -288,12 +347,28 @@ jobs:
           lines=[f"{label} · {weekday} {target:%d.%m.}",'','Frisch recherchierte Rangliste:']
           for t in d['trends']:
             growth=int((t.get('growth_v2') or {}).get('growth_score') or t.get('score') or 0)
+            r=t.get('retention_v5') if isinstance(t.get('retention_v5'),dict) else {}
             wildcard=(t.get('source_context') or {}).get('wildcard_type')
             marker=' 🎲' if wildcard else ''
-            lines.append(f"{t['id']}. {t['title']} — {growth} %{marker}")
+            lines.append(f"{t['id']}. {t['title']} — Growth {growth} %{marker}")
+            lines.append(
+                "   "
+                f"Viral {int(r.get('viral_potential') or 0)} · "
+                f"Fit {int(r.get('tayvoriq_fit') or 0)} · "
+                f"Serie {int(r.get('series_fit_score') or 0)} · "
+                f"Return {int(r.get('return_viewer_score') or 0)} · "
+                f"Follow {int(r.get('follow_conversion_potential') or 0)} · "
+                f"V5 {int(r.get('trend_selection_score') or 0)}"
+            )
+            why=' '.join(str(r.get('why_now') or '').split())
+            if why:
+                lines.append(f"   Warum jetzt: {why[:150]}")
+            next_ep=' '.join(str(r.get('next_episode_candidate') or '').split())
+            if next_ep:
+                lines.append(f"   ↪ Folge-Idee: {next_ep[:130]}")
           lines += [
             '',
-            f"{len(d['trends'])} Trends haben die aktuellen Growth-, Quellen-, Claim- und Dubletten-Gates bestanden · mindestens 2 unabhängige Quellen je Trend.",
+            f"{len(d['trends'])} Trends haben Growth-, Quellen-, Claim-, Dubletten- und V5-Retention-Gates bestanden · mindestens 2 unabhängige Quellen je Trend.",
             '',
             '🎲 = verifizierter ungewöhnlicher/spielerischer Wildcard-Trend.',
             '',
