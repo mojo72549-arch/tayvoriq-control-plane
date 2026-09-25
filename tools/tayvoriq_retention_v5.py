@@ -219,7 +219,7 @@ def apply_trend_contract(candidate: dict[str, Any], *, strict: bool = True) -> d
 def validate_trend_contract(candidate: dict[str, Any], *, strict: bool = True) -> None:
     if strict:
         required_text = (
-            "primary_hook", "viewer_question", "explanation_core",
+            "content_angle", "primary_hook", "viewer_question", "explanation_core",
             "surprise_or_reframe", "practical_relevance", "follow_reason", "cta_text",
         )
         for key in required_text:
