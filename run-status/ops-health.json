@@ -1,19 +1,19 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-25T20:43:05.175359Z",
-  "overall": "green",
+  "generated_at": "2026-09-25T21:58:57.528481Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2657-trend-1",
-    "golden_path_run_id": 36053053193,
-    "pointer_updated_at": "2026-09-24T20:42:44.859947Z"
+    "request_id": "telegram-2699-trend-1",
+    "golden_path_run_id": 36194108297,
+    "pointer_updated_at": "2026-09-25T21:55:27.522359Z"
   },
   "request": {
-    "request_id": "telegram-2657-trend-1",
-    "topic": "ChatGPT bekommt auf dem Smartphone Voice→Work: Aufgaben per Sprache starten und in Dokumenten, Apps oder Browsern weiterarbeiten",
+    "request_id": "telegram-2699-trend-1",
+    "topic": "Claude entdeckt ein CRISPR-ähnliches Enzymsystem: Wird KI zum echten Forschungspartner?",
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
@@ -21,30 +21,37 @@
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
     "episode_number": null,
-    "cta_type": null,
-    "follow_reason": null,
-    "open_loop_status": null,
+    "cta_type": "EXPERTISE",
+    "follow_reason": "TAYVORIQ verfolgt, ob unabhängige Labore diese KI-gestützte Entdeckung bestätigen und welche Folgen daraus entstehen.",
+    "open_loop_status": "SOFT",
     "next_episode_candidate": null,
-    "follow_conversion_gate": null,
-    "return_viewer_gate": null,
-    "golden_path_v5_state": null,
+    "follow_conversion_gate": {
+      "result": "PASS",
+      "repair": null,
+      "issues": []
+    },
+    "return_viewer_gate": {
+      "result": "PASS",
+      "issues": []
+    },
+    "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2657-trend-1.json"
+    "path": "requests/telegram-2699-trend-1.json"
   },
   "run": {
-    "id": 36053053193,
+    "id": 36194108297,
     "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36053053193",
-    "created_at": "2026-09-24T20:10:17Z",
-    "updated_at": "2026-09-24T20:42:51Z",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36194108297",
+    "created_at": "2026-09-25T21:55:21Z",
+    "updated_at": "2026-09-25T21:57:13Z",
     "attempt": 1,
-    "progress": 100,
+    "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -67,7 +74,7 @@
       {
         "label": "Light Preflight",
         "status": "success",
-        "step_number": 16,
+        "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
       {
@@ -79,37 +86,37 @@
       {
         "label": "Full Preflight",
         "status": "success",
-        "step_number": 16,
+        "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
         "status": "success",
-        "step_number": 31,
+        "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
-        "step_number": 38,
+        "status": "error",
+        "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
-        "step_number": 40,
+        "status": "skipped",
+        "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
-        "step_number": 44,
+        "status": "skipped",
+        "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
-        "step_number": 45,
+        "status": "skipped",
+        "step_number": 47,
         "step_name": "Send Telegram review"
       }
     ]
@@ -117,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -127,70 +134,91 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "status": "red",
+      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36194108297:40:none",
+    "severity": "critical",
+    "failure_state": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": true
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
+    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": null,
-    "failed_run_id": 36046977639,
-    "replay_run_id": 36053053193,
+    "failed_run_id": 36193780170,
+    "replay_run_id": 36194108297,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "inferred_from_run_terminal_state": true,
+    "needs_codefix": true
   },
   "events": [
     {
-      "at": "2026-09-24T20:10:23.735704Z",
+      "at": "2026-09-25T21:57:13Z",
+      "title": "Recovery-Replay fehlgeschlagen",
+      "detail": "Run 36194108297 · interner Codefix erforderlich · kein Eingriff von dir"
+    },
+    {
+      "at": "2026-09-25T21:57:13Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-25T21:55:27.522359Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
     },
     {
-      "at": "2026-09-24T20:09:56.689787Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-24T19:16:13.463871Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-24T19:15:59.834682Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-24T18:33:15.406416Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-24T17:56:46.329711Z",
+      "at": "2026-09-25T21:55:15.322791Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-25T21:51:36.129603Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-25T21:51:06.356000Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-25T21:44:33.374285Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-25T21:44:07.864384Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     }
   ]
 }
