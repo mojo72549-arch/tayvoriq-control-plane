@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_research_resilience_v2 as resilience
 import tayvoriq_agent_hf_v2 as hf
+import tayvoriq_agent_deterministic_source_fallback_v1 as deterministic
 
 
 def _http_error(code: int, **headers: str) -> urllib.error.HTTPError:
@@ -161,3 +162,85 @@ def test_all_provider_failure_creates_deferred_marker(monkeypatch, tmp_path) -> 
         raise AssertionError("expected deferred failure")
     payload = json.loads(marker.read_text(encoding="utf-8"))
     assert payload["status"] == "RESEARCH_DEFERRED"
+
+
+
+def _providerless_records() -> list[dict[str, str]]:
+    stories = [
+        ("OpenAI Orion", "technology platform rollout changes daily workflows"),
+        ("Nvidia Blackwell", "technology chip launch changes datacenter capacity"),
+        ("Tesla Battery", "mobility battery update changes electric vehicle range"),
+        ("NASA Europa", "science mission update changes space research planning"),
+        ("Football Final", "sports tournament final changes championship picture"),
+        ("Energy Market", "business energy market update changes consumer prices"),
+    ]
+    records = []
+    for index, (label, context) in enumerate(stories, start=1):
+        words = label.split()
+        records.extend([
+            {
+                "title": f"{label} confirmed development",
+                "context": f"{label} {context} confirmed by source coverage",
+                "url": f"https://source{index}a.example/story",
+                "domain": f"source{index}a.example",
+            },
+            {
+                "title": f"{label} development confirmed",
+                "context": f"{label} {context} independently described in detail",
+                "url": f"https://source{index}b.example/story",
+                "domain": f"source{index}b.example",
+            },
+        ])
+    return records
+
+
+def test_providerless_fallback_builds_native_v5_source_bounded_candidates() -> None:
+    data, chunks, model = deterministic.structure(_providerless_records(), "test")
+    assert model == "deterministic/test"
+    assert len(data["candidates"]) >= 5
+    assert len(chunks) >= 10
+    for candidate in data["candidates"][:5]:
+        assert len(candidate["sources"]) == 2
+        assert len({source["publisher"] for source in candidate["sources"]}) == 2
+        assert candidate["content_angle"]
+        assert candidate["viral_potential"] >= 0
+        assert candidate["tayvoriq_fit"] >= 0
+        assert candidate["novelty_score"] >= 0
+        assert candidate["return_viewer_score"] >= 0
+        assert candidate["follow_conversion_potential"] >= 0
+        assert candidate["cta_type"] == "CURIOSITY"
+        assert "TAYVORIQ" in candidate["cta_text"]
+        assert candidate["open_loop_status"] == "SOFT"
+        answers = candidate["fallback_editorial_answers"]
+        counts = [len(str(answers[key]).split()) for key in (
+            "what_happened", "why_happening", "who_is_affected", "personal_impact", "action_now"
+        )]
+        assert all(5 <= count <= 15 for count in counts)
+        assert 38 <= sum(counts) <= 49
+
+
+def test_resilience_uses_providerless_path_when_llm_providers_are_blocked(monkeypatch) -> None:
+    records = _providerless_records()
+    monkeypatch.setattr(
+        http,
+        "retry",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 429")),
+    )
+    monkeypatch.setattr(
+        resilience.provider,
+        "groq_browser_then_structure",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 429")),
+    )
+    monkeypatch.setattr(resilience.rss, "source_pool", lambda: records[:6])
+    monkeypatch.setattr(resilience.gdelt, "source_pool", lambda: records[6:])
+    monkeypatch.setattr(
+        resilience.hf,
+        "structure",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 402 Payment Required")),
+    )
+
+    data, chunks, model, provider_name = resilience.grounded("prompt", "gemini", "groq")
+    assert provider_name == "deterministic_sources"
+    assert model == "deterministic/rss+gdelt"
+    assert len(data["candidates"]) >= 5
+    assert len(chunks) >= 10
