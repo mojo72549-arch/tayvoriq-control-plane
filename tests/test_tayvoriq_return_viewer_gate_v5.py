@@ -102,5 +102,5 @@ def test_no_publish_before_human_review() -> None:
     assert "Send Telegram review" in golden
     assert "youtube_publish_approved.py" not in golden
     assert "platform_upload_performed" not in golden
-    assert "status') == 'APPROVED'" in approved
+    assert "str(data.get('status') or '') == 'APPROVED'" in approved
     assert "Upload approved YouTube master publicly" in approved
