@@ -137,3 +137,11 @@ def test_no_publish_before_review():
     request = {"approval_required_before_youtube_publish": True}
     assert v5.publish_allowed(request, review_approved=False) is False
     assert v5.publish_allowed(request, review_approved=True) is True
+
+
+def test_v5_state_machine_allows_local_repair_but_not_publish_jump():
+    assert v5.advance_lifecycle("PREFLIGHT_PASSED", "RETENTION_CONTRACT_LOCKED") == "RETENTION_CONTRACT_LOCKED"
+    assert v5.advance_lifecycle("RENDER_AVAILABLE", "LOCAL_REPAIR_RUNNING") == "LOCAL_REPAIR_RUNNING"
+    assert v5.advance_lifecycle("LOCAL_REPAIR_RUNNING", "RENDER_AVAILABLE") == "RENDER_AVAILABLE"
+    with pytest.raises(ValueError, match="ILLEGAL_V5_STATE_TRANSITION"):
+        v5.advance_lifecycle("APPROVED", "COMPLETED")
