@@ -595,7 +595,7 @@ jobs:
           set -euo pipefail
           request_path="requests/${SOURCE_REQUEST_ID_PIN}.json"
           test -f "$request_path" || { echo "RETENTION_REQUEST_MISSING"; exit 1; }
-          retention_version=$(python - "$request_path" <<'PY'
+          retention_version=$(python -S - "$request_path" <<'PY'
           import json,sys
           data=json.load(open(sys.argv[1],encoding='utf-8'))
           if str(data.get('request_id') or '') != sys.argv[1].split('/')[-1][:-5]:
@@ -608,9 +608,9 @@ jobs:
             exit 0
           fi
           contract_path="$GITHUB_WORKSPACE/implementation/out/control-plane/retention-contract.json"
-          python implementation/tools/tayvoriq_retention_v5.py lock \
+          python -S implementation/tools/tayvoriq_retention_v5.py lock \
             --request "$request_path" --out "$contract_path"
-          python implementation/tools/tayvoriq_retention_v5.py check \
+          python -S implementation/tools/tayvoriq_retention_v5.py check \
             --contract "$contract_path"
           echo "TAYVORIQ_RETENTION_CONTRACT_FILE=$contract_path" >> "$GITHUB_ENV"
           echo "RETENTION_NATIVE_V5_BOUND:$SOURCE_REQUEST_ID_PIN"
