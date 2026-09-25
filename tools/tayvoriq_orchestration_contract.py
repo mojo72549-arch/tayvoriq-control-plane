@@ -13,6 +13,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+import tayvoriq_retention_v5 as retention_v5
+
 CLAIMABLE = {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION"}
 ALL_STATES = CLAIMABLE | {"DISPATCHING", "DISPATCHED", "DISPATCH_FAILED"}
 SCOPES = {
@@ -47,6 +49,27 @@ IMMUTABLE_FIELDS = (
     "approval_key",
     "mode",
 )
+V5_IMMUTABLE_FIELDS = (
+    "retention_contract_version",
+    "content_angle",
+    "series_id",
+    "series_name",
+    "episode_id",
+    "episode_number",
+    "continuity_hook",
+    "next_episode_candidate",
+    "primary_hook",
+    "viewer_question",
+    "explanation_core",
+    "surprise_or_reframe",
+    "practical_relevance",
+    "follow_reason",
+    "open_loop",
+    "open_loop_status",
+    "cta_type",
+    "cta_text",
+    "retention_contract_sha256",
+)
 
 
 def utc_now() -> str:
@@ -60,7 +83,9 @@ def parse_iso(value: str) -> None:
 def contract_hash(data: dict) -> str:
     fields = IMMUTABLE_FIELDS
     if data.get("source_context_sha256"):
-        fields = IMMUTABLE_FIELDS + ("source_context_sha256",)
+        fields = fields + ("source_context_sha256",)
+    if str(data.get("retention_contract_version") or "").strip() == "v5":
+        fields = fields + V5_IMMUTABLE_FIELDS
     payload = {k: data.get(k) for k in fields}
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -120,6 +145,24 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
     actual = str(data.get("contract_sha256") or "").strip()
     if actual != expected:
         errors.append("contract_sha256 mismatch")
+
+    if str(data.get("retention_contract_version") or "").strip() == "v5":
+        v5_contract = {key: data.get(key) for key in retention_v5.REQUEST_FIELDS}
+        v5_contract["next_episode_queue_status"] = data.get("next_episode_queue_status")
+        follow = retention_v5.evaluate_follow_conversion(
+            v5_contract,
+            sensitive_story=bool(data.get("sensitive_story")),
+        )
+        if follow.get("result") == "REWRITE_REQUIRED":
+            errors.append(
+                "v5 follow conversion invalid: "
+                + ",".join(str(item) for item in follow.get("issues") or [])
+            )
+        expected_retention_hash = retention_v5.json_sha256({
+            key: data.get(key) for key in retention_v5.REQUEST_FIELDS
+        })
+        if str(data.get("retention_contract_sha256") or "") != expected_retention_hash:
+            errors.append("retention_contract_sha256 mismatch")
 
     source_context = data.get("source_context")
     source_sha256 = str(data.get("source_context_sha256") or "").strip()
@@ -227,6 +270,22 @@ def create_from_telegram(args: argparse.Namespace) -> None:
     ).encode("utf-8")
     source_sha256 = hashlib.sha256(source_raw).hexdigest()
 
+    try:
+        trend = retention_v5.apply_trend_contract(trend, strict=True)
+    except ValueError as exc:
+        raise SystemExit(f"V5_TREND_CONTRACT_FAILED:{exc}") from exc
+    v5_fields = retention_v5.request_fields_from_trend(trend)
+    follow_gate = retention_v5.evaluate_follow_conversion(
+        {**v5_fields, "next_episode_queue_status": trend.get("next_episode_queue_status")},
+        sensitive_story=bool(trend.get("sensitive_story")),
+    )
+    if follow_gate.get("result") == "REWRITE_REQUIRED":
+        raise SystemExit(
+            "V5_FOLLOW_CONVERSION_FAILED:"
+            + ",".join(str(item) for item in follow_gate.get("issues") or [])
+        )
+    retention_hash = retention_v5.json_sha256(v5_fields)
+
     request_id = f"telegram-{message_id}-trend-{trend_id}"
     path = Path(args.out_dir) / f"{request_id}.json"
     if path.exists():
@@ -259,8 +318,18 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "approval_key": f"telegram:{selection_id}:{message_id}:trend:{trend_id}",
         "mode": "full",
         "selection_id": selection_id,
+        "content_angle": str(trend.get("content_angle") or "").strip() or None,
+        "retention_contract_version": "v5",
+        **v5_fields,
+        "next_episode_queue_status": str(trend.get("next_episode_queue_status") or "").strip() or None,
+        "retention_contract_sha256": retention_hash,
         "source_context": source_context,
         "source_context_sha256": source_sha256,
+        "golden_path_v5_state": "APPROVED",
+        "golden_path_v5_history": [
+            {"state": "TREND_CANDIDATES_SCORED", "at": approved_at, "actor": "trend_radar_v5"},
+            {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"},
+        ],
         "state_history": [
             {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"}
         ],
