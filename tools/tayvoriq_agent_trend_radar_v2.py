@@ -381,6 +381,61 @@ def load_active_series_candidate(verified_at: str) -> dict[str, Any] | None:
         "red_thread": clean(state.get("red_thread"), 1200),
         "approval_required": True,
     }
+    episodes = state.get("episodes") if isinstance(state.get("episodes"), list) else []
+    current_episode = int(state.get("episode") or 0)
+    next_episode = next(
+        (item for item in episodes if isinstance(item, dict) and int(item.get("episode") or 0) == current_episode + 1),
+        None,
+    )
+    answers = candidate["source_context"].get("fallback_editorial_answers") or {}
+    series_title = clean(state.get("series_title"), 180)
+    next_title = clean((next_episode or {}).get("episode_title"), 180)
+    cta_type = "SERIES" if next_title else "IDENTITY"
+    follow_reason = (
+        f"Wenn du {series_title} Folge für Folge verstehen willst, folge TAYVORIQ."
+        if series_title else
+        "Wenn du diese Zusammenhänge Schritt für Schritt verstehen willst, folge TAYVORIQ."
+    )
+    candidate.update({
+        "viral_potential": int(candidate["criteria"].get("viralitaet") or 0),
+        "tayvoriq_fit": int(candidate["criteria"].get("tayvoriq_passung") or 0),
+        "novelty_score": int(candidate["criteria"].get("aktualitaet") or 0),
+        "series_fit_score": 100,
+        "return_viewer_score": 98,
+        "follow_conversion_potential": 94,
+        "open_loop_potential": 96 if next_title else 70,
+        "proposed_series_id": clean(state.get("series_id"), 120),
+        "proposed_series_name": series_title,
+        "next_episode_candidate": next_title,
+        "recommended_cta_type": cta_type,
+        "primary_hook": clean(state.get("hook") or answers.get("what_happened"), 600),
+        "viewer_question": clean(candidate.get("title"), 600),
+        "explanation_core": clean(answers.get("why_happening"), 900),
+        "surprise_or_reframe": clean(answers.get("what_happened"), 900),
+        "practical_relevance": clean(answers.get("personal_impact"), 900),
+        "follow_reason": follow_reason,
+        "open_loop": clean(state.get("bridge_out"), 900) if next_title else "",
+        "open_loop_status": "HARD" if next_title else "NONE",
+        "next_episode_queue_status": "PLANNED" if next_title else "",
+        "cta_type": cta_type,
+        "cta_text": (
+            f"Als Nächstes: {next_title}. Folge TAYVORIQ, damit du die Serie weiterverfolgst."
+            if next_title else follow_reason
+        ),
+        "series_history_exists": True,
+        "retention_v5_score_origin": "active_series_state",
+    })
+    candidate["source_context"]["retention_v5"] = {
+        key: candidate.get(key)
+        for key in (
+            "viral_potential", "tayvoriq_fit", "novelty_score", "series_fit_score",
+            "return_viewer_score", "follow_conversion_potential", "open_loop_potential",
+            "proposed_series_id", "proposed_series_name", "next_episode_candidate",
+            "recommended_cta_type", "primary_hook", "viewer_question", "explanation_core",
+            "surprise_or_reframe", "practical_relevance", "follow_reason", "open_loop",
+            "open_loop_status", "next_episode_queue_status", "cta_type", "cta_text"
+        )
+    }
     return candidate
 
 
