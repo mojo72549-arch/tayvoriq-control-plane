@@ -38,7 +38,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
-  actions: write
+  actions: read
   contents: write
 
 concurrency:
@@ -367,13 +367,3 @@ jobs:
           set -euo pipefail
           echo "TAYVORIQ_PRODUCTION_GREEN_VERIFIED:${{ steps.refs.outputs.candidate }}:changed=${{ steps.refs.outputs.changed }}"
           echo "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2."
-
-      - name: Resume deterministic codefix continuity after promotion
-        if: steps.refs.outputs.changed == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main
-          echo "TAYVORIQ_PRODUCTION_GREEN_CONTINUITY_RESUMED"
