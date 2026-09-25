@@ -405,6 +405,14 @@ def _legacy_request_to_contract(request: dict[str, Any]) -> dict[str, Any]:
     contract["contract_sha256"] = json_sha256({k: v for k, v in contract.items() if k != "contract_sha256"})
     return contract
 
+def publish_allowed(request: dict[str, Any], *, review_approved: bool) -> bool:
+    """V4/V5 invariant: platform release is impossible before explicit review approval."""
+    return bool(
+        request.get("approval_required_before_youtube_publish") is True
+        and review_approved is True
+    )
+
+
 def dry_run_request(request: dict[str, Any]) -> dict[str, Any]:
     native = all(key in request for key in ("primary_hook", "follow_reason", "cta_type", "cta_text", "open_loop_status"))
     contract = lock_retention_contract(request) if native else _legacy_request_to_contract(request)
