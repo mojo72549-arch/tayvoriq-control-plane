@@ -68,6 +68,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
+      - name: Install private production Python test dependencies
+        run: |
+          grep -vE '^[[:space:]]*chatterbox-tts[[:space:]]*@' implementation/requirements.txt > /tmp/tayvoriq-v5-requirements.txt
+          python -m pip install -q -r /tmp/tayvoriq-v5-requirements.txt
+
       - name: Compile private production V5 files
         run: |
           python -m py_compile \
