@@ -432,3 +432,22 @@ def test_advanced_green_preempts_stale_local_repair_without_new_generation():
     assert decision.state == "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED"
     assert decision.retry_kind == "same-run"
     assert decision.next_generation == 2
+
+def test_v5_shared_cta_semantic_gate_requires_verified_codefix():
+    decision = classify_failure(
+        "RuntimeError: CONTENT_REJECTED:v34-semantic-pre-render-gate:shared_cta_incomplete\n"
+        "Controller handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED reusable_master=false process_exit=1",
+        run_attempt=1,
+        recovery_generation=2,
+        max_generations=4,
+        exact_request_retry=True,
+        structured_evidence={
+            "state": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+            "failure_class": "INTERNAL_UNCLASSIFIED",
+            "repair_target_stages": ["RENDER"],
+        },
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "SEMANTIC_CODEFIX_REQUIRED"
+    assert decision.retry_allowed is False
+    assert decision.next_generation == 2
