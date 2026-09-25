@@ -15,9 +15,133 @@ import tayvoriq_agent_trend_radar_v7 as growth_v7
 base = growth_v7.base
 _original_prompt = base.prompt_for
 _original_diversify = base.diversify
+_original_normalized_candidate = base.normalized_candidate
 
 _BROAD_REACH = {"germany", "europe", "global"}
 _SCOPE_BONUS = {"global": 18, "europe": 16, "germany": 13, "local": -45}
+_CTA_TYPES = {"CURIOSITY", "EXPERTISE", "COMMUNITY", "SERIES", "DISCUSSION", "IDENTITY"}
+_SCOPE_CATEGORY = {
+    "technology_ai": "AI",
+    "sports": "SPORTS",
+    "world_society": "WORLD",
+    "business_economy": "TECH",
+    "science_future": "TECH",
+    "creator_media": "TECH",
+    "mobility_energy": "TECH",
+}
+
+
+def _score(value, default=0):
+    try:
+        return max(0, min(100, int(round(float(value)))))
+    except (TypeError, ValueError):
+        return max(0, min(100, int(default)))
+
+
+def _text(value, limit=280):
+    return " ".join(str(value or "").split()).strip()[:limit]
+
+
+def _retention_v5(candidate, raw):
+    """Materialize explicit V5 retention signals without weakening evidence gates."""
+    audience = candidate.get("audience_growth_v3") if isinstance(candidate.get("audience_growth_v3"), dict) else {}
+    criteria = candidate.get("criteria") if isinstance(candidate.get("criteria"), dict) else {}
+    ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
+    reach = ctx.get("reach_gate") if isinstance(ctx.get("reach_gate"), dict) else {}
+
+    risk_flags = [
+        _text(item, 80)
+        for item in (raw.get("risk_flags") or [])
+        if _text(item, 80)
+    ][:8]
+
+    novelty_raw = raw.get("novelty_score")
+    if novelty_raw in (None, ""):
+        novelty = 50
+        risk_flags.append("NOVELTY_SIGNAL_MISSING")
+        novelty_source = "neutral_default"
+    else:
+        novelty = _score(novelty_raw, 50)
+        novelty_source = "grounded_candidate"
+
+    content_angle = _text(raw.get("content_angle"), 320)
+    if not content_angle:
+        content_angle = _text(candidate.get("title"), 320)
+        risk_flags.append("CONTENT_ANGLE_FALLBACK_TITLE")
+
+    why_now = _text(raw.get("why_now"), 360) or _text(reach.get("why_now"), 360)
+    if not why_now:
+        answers = ctx.get("fallback_editorial_answers") if isinstance(ctx.get("fallback_editorial_answers"), dict) else {}
+        why_now = _text(answers.get("why_happening"), 360)
+        risk_flags.append("WHY_NOW_FALLBACK_CAUSAL_CONTEXT")
+
+    proposed_series_id = _text(raw.get("proposed_series_id"), 80) or None
+    proposed_series_name = _text(raw.get("proposed_series_name"), 120) or None
+    if bool(proposed_series_id) != bool(proposed_series_name):
+        proposed_series_id = None
+        proposed_series_name = None
+        risk_flags.append("INCOMPLETE_SERIES_PROPOSAL_DROPPED")
+
+    next_episode_candidate = _text(raw.get("next_episode_candidate"), 320) or None
+    recommended_cta_type = _text(raw.get("recommended_cta_type"), 40).upper()
+    if recommended_cta_type not in _CTA_TYPES:
+        recommended_cta_type = "SERIES" if proposed_series_id and next_episode_candidate else "IDENTITY"
+    if recommended_cta_type == "SERIES" and not (proposed_series_id and next_episode_candidate):
+        recommended_cta_type = "IDENTITY"
+        risk_flags.append("SERIES_CTA_WITHOUT_REAL_CONTINUATION_REJECTED")
+
+    viral = _score(criteria.get("viralitaet"))
+    fit = _score(criteria.get("tayvoriq_passung"))
+    evidence = _score(criteria.get("quellenqualitaet"))
+    series_fit = _score(audience.get("continuation_score"), 50)
+    returning = _score(audience.get("returning_viewer_score"), 50)
+    follow = _score(audience.get("subscriber_conversion_score"), 50)
+    hook = _score(audience.get("hook_strength_score"), 50)
+    open_loop = _score(series_fit * 0.60 + hook * 0.40, 50)
+
+    trend_selection_score = _score(
+        0.30 * viral
+        + 0.20 * fit
+        + 0.15 * novelty
+        + 0.15 * returning
+        + 0.10 * series_fit
+        + 0.10 * follow
+    )
+
+    return {
+        "schema": "tayvoriq-retention-v5",
+        "category": _SCOPE_CATEGORY.get(str(candidate.get("trend_scope") or ""), "TECH"),
+        "content_angle": content_angle,
+        "why_now": why_now,
+        "evidence_strength": evidence,
+        "viral_potential": viral,
+        "novelty_score": novelty,
+        "novelty_score_source": novelty_source,
+        "tayvoriq_fit": fit,
+        "series_fit_score": series_fit,
+        "return_viewer_score": returning,
+        "follow_conversion_potential": follow,
+        "open_loop_potential": open_loop,
+        "next_episode_candidate": next_episode_candidate,
+        "proposed_series_id": proposed_series_id,
+        "proposed_series_name": proposed_series_name,
+        "recommended_cta_type": recommended_cta_type,
+        "risk_flags": sorted(set(risk_flags)),
+        "trend_selection_score": trend_selection_score,
+        "quality_gates_weakened": False,
+    }
+
+
+def normalized_candidate(raw, verified_at):
+    candidate = _original_normalized_candidate(raw, verified_at)
+    if not candidate:
+        return None
+    report = _retention_v5(candidate, raw)
+    candidate["retention_v5"] = report
+    ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
+    ctx["retention_v5"] = report
+    candidate["source_context"] = ctx
+    return candidate
 
 
 def _reach_gate(candidate):
@@ -44,7 +168,9 @@ def _reach_gate(candidate):
 def _selection_key(candidate):
     audience = candidate.get("audience_growth_v3") if isinstance(candidate.get("audience_growth_v3"), dict) else {}
     growth = candidate.get("growth_v2") if isinstance(candidate.get("growth_v2"), dict) else {}
+    retention = candidate.get("retention_v5") if isinstance(candidate.get("retention_v5"), dict) else {}
     return (
+        int(retention.get("trend_selection_score") or 0),
         _reach_gate(candidate),
         int(audience.get("subscriber_conversion_score") or 0),
         int(growth.get("growth_score") or 0),
@@ -225,6 +351,17 @@ def prompt_for(slot, now):
     rejected_hints = _rejected_topic_hint_text()
     return _original_prompt(slot, now) + """
 
+TAYVORIQ GOLDEN PATH V5 — RETENTION CANDIDATE CONTRACT:
+- Keep every existing evidence, source, duplicate, reach and brand-safety gate unchanged.
+- For every candidate additionally return: content_angle, why_now, novelty_score (0-100), proposed_series_id, proposed_series_name, next_episode_candidate, recommended_cta_type, risk_flags.
+- recommended_cta_type must be one of CURIOSITY, EXPERTISE, COMMUNITY, SERIES, DISCUSSION, IDENTITY.
+- proposed_series_id and proposed_series_name may be null when no honest series fit exists.
+- next_episode_candidate may be null. Never invent a follow-up only to increase retention.
+- SERIES is allowed only when both a real proposed series and a plausible next episode exist; otherwise prefer IDENTITY, EXPERTISE, COMMUNITY, CURIOSITY or DISCUSSION.
+- novelty_score measures how distinct the underlying event/viewer takeaway is from recent TAYVORIQ history. Do not award novelty merely for rewritten wording.
+- risk_flags is a JSON list of short machine-readable concerns and may be empty.
+- These fields are planning metadata only. They never override evidence quality or authorize a HARD open loop.
+
 TAYVORIQ REACH POTENTIAL GATE — HARD RANKING REQUIREMENT:
 - The final Telegram ranking is reach-first, not locality-first.
 - Default eligible scope is Germany-wide, Europe-wide or global. Purely local/city/state stories are rejected before Telegram unless they demonstrably break out to a national or international audience.
@@ -304,6 +441,7 @@ TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 """.strip() + (("\n\n" + rejected_hints) if rejected_hints else "") + (("\n\n" + editorial_hints) if editorial_hints else "")
 
 
+base.normalized_candidate = normalized_candidate
 base.diversify = diversify
 base.prompt_for = prompt_for
 
