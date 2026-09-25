@@ -384,6 +384,75 @@ jobs:
           }, ensure_ascii=False))
           PY
 
+      - name: GP-35 lock story and follow-conversion contract
+        id: retention_contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_FILE="requests/${{ steps.source_context.outputs.request_id }}.json"
+          python tools/tayvoriq_orchestration_contract.py validate "$REQUEST_FILE"
+          mkdir -p out/control-plane
+          python - "$REQUEST_FILE" "$TAYVORIQ_SOURCE_CONTEXT_FILE" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, 'tools')
+          import tayvoriq_retention_contract_v5 as retention_v5
+
+          request_path=Path(sys.argv[1])
+          source_path=Path(sys.argv[2])
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          source=json.loads(source_path.read_text(encoding='utf-8'))
+
+          retention=request.get('retention_contract')
+          story=request.get('story_retention_contract')
+          if not isinstance(retention,dict) or retention.get('schema')!='tayvoriq-retention-v5':
+              raise SystemExit('GP35_RETENTION_CONTRACT_MISSING')
+          if retention.get('quality_gates_weakened') is not False:
+              raise SystemExit('GP35_RETENTION_QUALITY_GATE_INTEGRITY_FAILED')
+          if not isinstance(story,dict):
+              raise SystemExit('GP35_STORY_CONTRACT_MISSING')
+          retention_v5.validate_story_contract(story)
+
+          embedded=source.get('story_retention_contract_v5')
+          if embedded != story:
+              raise SystemExit('GP35_SOURCE_STORY_BINDING_MISMATCH')
+          audience=source.get('audience_cta_contract')
+          if not isinstance(audience,dict):
+              raise SystemExit('GP35_AUDIENCE_CTA_CONTRACT_MISSING')
+          if audience.get('ctas_by_platform') != story.get('cta_text'):
+              raise SystemExit('GP35_PLATFORM_CTA_BINDING_MISMATCH')
+          if audience.get('open_loop_status') != story.get('open_loop_status'):
+              raise SystemExit('GP35_OPEN_LOOP_BINDING_MISMATCH')
+          if audience.get('quality_gates_weakened') is not False:
+              raise SystemExit('GP35_AUDIENCE_CTA_QUALITY_GATE_INTEGRITY_FAILED')
+
+          raw=json.dumps(story,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')
+          digest=hashlib.sha256(raw).hexdigest()
+          if digest != str(request.get('story_retention_contract_sha256') or ''):
+              raise SystemExit('GP35_STORY_CONTRACT_HASH_MISMATCH')
+
+          report={
+              'schema':'tayvoriq-gp35-retention-gate-v1',
+              'state':'RETENTION_CONTRACT_LOCKED',
+              'request_id':request.get('request_id'),
+              'story_retention_contract_sha256':digest,
+              'follow_conversion_gate':story.get('follow_conversion_gate'),
+              'cta_type':story.get('cta_type'),
+              'open_loop_status':story.get('open_loop_status'),
+              'series_id':story.get('series_id'),
+              'next_episode_candidate':story.get('next_episode_candidate'),
+              'quality_gates_weakened':False,
+          }
+          Path('out/control-plane/gp35-retention-contract.json').write_text(
+              json.dumps(report,ensure_ascii=False,indent=2)+'\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+
       - name: Block global duplicate content before production
         id: duplicate_gate
         shell: bash
@@ -698,6 +767,7 @@ jobs:
               "approved_trend_pinned": True,
               "source_context_bound": True,
               "source_request_pinned": os.environ.get("SOURCE_REQUEST_ID_PIN", "") == sys.argv[6] and bool(sys.argv[6]),
+              "gp35_retention_contract_locked": True,
               "global_duplicate_gate_passed": True,
               "single_x_owner": True,
               "restored_recovery_checkpoint": os.environ.get("RESTORED_CHECKPOINT") == "true",
