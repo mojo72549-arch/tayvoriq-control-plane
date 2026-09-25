@@ -13,6 +13,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+import tayvoriq_retention_contract_v5 as retention_v5
+
 CLAIMABLE = {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION"}
 ALL_STATES = CLAIMABLE | {"DISPATCHING", "DISPATCHED", "DISPATCH_FAILED"}
 SCOPES = {
@@ -75,6 +77,8 @@ def contract_hash(data: dict) -> str:
         fields = fields + ("source_context_sha256",)
     if data.get("retention_contract_sha256"):
         fields = fields + ("retention_contract_sha256",)
+    if data.get("story_retention_contract_sha256"):
+        fields = fields + ("story_retention_contract_sha256",)
     payload = {k: data.get(k) for k in fields}
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -180,6 +184,28 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
                 if hashlib.sha256(retention_raw).hexdigest() != retention_sha256:
                     errors.append("retention_contract_sha256 mismatch")
 
+    story_contract = data.get("story_retention_contract")
+    story_sha256 = str(data.get("story_retention_contract_sha256") or "").strip()
+    if story_contract is not None or story_sha256:
+        if not isinstance(story_contract, dict) or not story_contract:
+            errors.append("story_retention_contract must be a non-empty object")
+        else:
+            try:
+                retention_v5.validate_story_contract(story_contract)
+            except ValueError as exc:
+                errors.append(str(exc))
+            if not story_sha256:
+                errors.append("missing story_retention_contract_sha256")
+            else:
+                story_raw = json.dumps(
+                    story_contract,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                if hashlib.sha256(story_raw).hexdigest() != story_sha256:
+                    errors.append("story_retention_contract_sha256 mismatch")
+
     source_context = data.get("source_context")
     source_sha256 = str(data.get("source_context_sha256") or "").strip()
     if source_context is not None or source_sha256:
@@ -278,6 +304,48 @@ def create_from_telegram(args: argparse.Namespace) -> None:
             raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no valid URL")
         if not str(item.get("supports") or "").strip():
             raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no claim support")
+    retention_contract = trend.get("retention_v5")
+    if not isinstance(retention_contract, dict) or not retention_contract:
+        raise SystemExit("RETENTION_V5_MISSING: selected trend has no retention contract")
+    if str(retention_contract.get("schema") or "") != "tayvoriq-retention-v5":
+        raise SystemExit("RETENTION_V5_SCHEMA_INVALID")
+    if retention_contract.get("quality_gates_weakened") is not False:
+        raise SystemExit("RETENTION_V5_QUALITY_GATE_INTEGRITY_FAILED")
+
+    recent_ctas = []
+    out_dir = Path(args.out_dir)
+    if out_dir.is_dir():
+        recent_paths = sorted(
+            out_dir.glob("*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )[:12]
+        for recent_path in recent_paths:
+            try:
+                recent_request = read_json(recent_path)
+            except Exception:
+                continue
+            story = recent_request.get("story_retention_contract")
+            if not isinstance(story, dict):
+                continue
+            ctas = story.get("cta_text")
+            if isinstance(ctas, dict):
+                recent_ctas.extend(str(value) for value in ctas.values() if str(value or "").strip())
+
+    try:
+        story_retention_contract = retention_v5.build_story_contract(
+            retention_contract,
+            source_context,
+            recent_ctas=recent_ctas,
+        )
+    except ValueError as exc:
+        raise SystemExit(f"GP35_STORY_RETENTION_FAILED:{exc}") from exc
+
+    source_context = retention_v5.bind_story_contract_to_source_context(
+        source_context,
+        story_retention_contract,
+    )
+
     source_raw = json.dumps(
         source_context,
         ensure_ascii=False,
@@ -286,13 +354,6 @@ def create_from_telegram(args: argparse.Namespace) -> None:
     ).encode("utf-8")
     source_sha256 = hashlib.sha256(source_raw).hexdigest()
 
-    retention_contract = trend.get("retention_v5")
-    if not isinstance(retention_contract, dict) or not retention_contract:
-        raise SystemExit("RETENTION_V5_MISSING: selected trend has no retention contract")
-    if str(retention_contract.get("schema") or "") != "tayvoriq-retention-v5":
-        raise SystemExit("RETENTION_V5_SCHEMA_INVALID")
-    if retention_contract.get("quality_gates_weakened") is not False:
-        raise SystemExit("RETENTION_V5_QUALITY_GATE_INTEGRITY_FAILED")
     retention_raw = json.dumps(
         retention_contract,
         ensure_ascii=False,
@@ -300,6 +361,13 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         separators=(",", ":"),
     ).encode("utf-8")
     retention_sha256 = hashlib.sha256(retention_raw).hexdigest()
+    story_raw = json.dumps(
+        story_retention_contract,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    story_sha256 = hashlib.sha256(story_raw).hexdigest()
 
     request_id = f"telegram-{message_id}-trend-{trend_id}"
     path = Path(args.out_dir) / f"{request_id}.json"
@@ -337,6 +405,8 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "source_context_sha256": source_sha256,
         "retention_contract": retention_contract,
         "retention_contract_sha256": retention_sha256,
+        "story_retention_contract": story_retention_contract,
+        "story_retention_contract_sha256": story_sha256,
         "state_history": [
             {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"}
         ],
