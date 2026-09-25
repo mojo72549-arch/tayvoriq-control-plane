@@ -234,6 +234,27 @@ For each candidate return:
   "trend_scope": "technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy",
   "regional_relevance": "local|germany|europe|global",
   "criteria": {{"aktualitaet":0-100,"viralitaet":0-100,"tayvoriq_passung":0-100,"quellenqualitaet":0-100,"visuell":0-100}},
+  "viral_potential": 0-100,
+  "tayvoriq_fit": 0-100,
+  "novelty_score": 0-100,
+  "series_fit_score": 0-100,
+  "return_viewer_score": 0-100,
+  "follow_conversion_potential": 0-100,
+  "open_loop_potential": 0-100,
+  "proposed_series_id": "stable-id or empty string",
+  "proposed_series_name": "natural German series name or empty string",
+  "next_episode_candidate": "concrete next part or empty string",
+  "recommended_cta_type": "CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY",
+  "primary_hook": "natural first-line hook",
+  "viewer_question": "the viewer question this short resolves",
+  "explanation_core": "source-grounded explanation core",
+  "surprise_or_reframe": "source-grounded surprising point or reframe",
+  "practical_relevance": "why this matters to the viewer",
+  "follow_reason": "specific future value of returning to TAYVORIQ",
+  "open_loop": "honest bridge; empty when NONE",
+  "open_loop_status": "NONE|SOFT|HARD",
+  "cta_type": "CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY",
+  "cta_text": "topic-specific CTA; never generic Bitte abonnieren",
   "sources": [
     {{"publisher":"...","url":"https://...","supports":"specific fact supported by this source"}},
     {{"publisher":"...","url":"https://...","supports":"specific fact supported by this source"}}
@@ -286,6 +307,31 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
         criteria["aktualitaet"] * .25 + criteria["viralitaet"] * .25 +
         criteria["tayvoriq_passung"] * .20 + criteria["quellenqualitaet"] * .15 + criteria["visuell"] * .15
     )
+    v5_scores = {
+        "viral_potential": clamp(raw.get("viral_potential") if raw.get("viral_potential") is not None else criteria["viralitaet"]),
+        "tayvoriq_fit": clamp(raw.get("tayvoriq_fit") if raw.get("tayvoriq_fit") is not None else criteria["tayvoriq_passung"]),
+        "novelty_score": clamp(raw.get("novelty_score")),
+        "series_fit_score": clamp(raw.get("series_fit_score")),
+        "return_viewer_score": clamp(raw.get("return_viewer_score")),
+        "follow_conversion_potential": clamp(raw.get("follow_conversion_potential")),
+        "open_loop_potential": clamp(raw.get("open_loop_potential")),
+    }
+    retention_v5 = {
+        "proposed_series_id": clean(raw.get("proposed_series_id"), 120),
+        "proposed_series_name": clean(raw.get("proposed_series_name"), 180),
+        "next_episode_candidate": clean(raw.get("next_episode_candidate"), 600),
+        "recommended_cta_type": clean(raw.get("recommended_cta_type"), 40).upper(),
+        "primary_hook": clean(raw.get("primary_hook"), 600),
+        "viewer_question": clean(raw.get("viewer_question"), 600),
+        "explanation_core": clean(raw.get("explanation_core"), 900),
+        "surprise_or_reframe": clean(raw.get("surprise_or_reframe"), 900),
+        "practical_relevance": clean(raw.get("practical_relevance"), 900),
+        "follow_reason": clean(raw.get("follow_reason"), 900),
+        "open_loop": clean(raw.get("open_loop"), 900),
+        "open_loop_status": clean(raw.get("open_loop_status"), 20).upper(),
+        "cta_type": clean(raw.get("cta_type") or raw.get("recommended_cta_type"), 40).upper(),
+        "cta_text": clean(raw.get("cta_text"), 900),
+    }
     return {
         "category": clean(raw.get("category"), 100) or scope,
         "trend_scope": scope,
@@ -293,12 +339,15 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
         "score": clamp(score),
         "criteria": criteria,
         "regional_relevance": clean(raw.get("regional_relevance"), 30) or "global",
+        **v5_scores,
+        **retention_v5,
         "sources": [s["url"] for s in sources[:3]],
         "source_context": {
             "verified_at": verified_at,
             "independent_news_count": len(sources[:3]),
             "sources": sources[:3],
             "fallback_editorial_answers": answers,
+            "retention_v5": {**v5_scores, **retention_v5},
         },
     }
 
