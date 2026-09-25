@@ -43,7 +43,10 @@ jobs:
           assert data.get('rejected_whole_selection', False) is not True, 'selection was rejected'
           assert data.get('production_started', False) is False, 'selection already started production'
           trends=data.get('trends') or []
-          assert len(trends) == 5, f'V5 requires exactly five trends, got {len(trends)}'
+          if data.get('mode') == 'active_series':
+              assert len(trends) == 1, f'active_series must contain exactly one bound episode, got {len(trends)}'
+          else:
+              assert len(trends) == 5, f'V5 requires exactly five trends, got {len(trends)}'
           assert [str(item.get('id')) for item in trends] == [str(i) for i in range(1,len(trends)+1)], trends
           required_criteria={'aktualitaet','viralitaet','tayvoriq_passung','quellenqualitaet','visuell'}
           required_answers={'what_happened','why_happening','who_is_affected','personal_impact','action_now'}
@@ -134,7 +137,8 @@ jobs:
           assert result.get('message_id'), result
           markup=result.get('reply_markup') or {}
           callbacks=[button.get('callback_data') for row in markup.get('inline_keyboard',[]) for button in row]
-          assert len(callbacks) == 5, callbacks
+          expected=1 if data.get('mode') == 'active_series' else 5
+          assert len(callbacks) == expected, callbacks
           assert all(str(value).startswith('select_trend:') for value in callbacks), callbacks
           assert not any(str(value).startswith('approve_trend:') for value in callbacks), callbacks
           print('telegram_message_id', result['message_id'])
