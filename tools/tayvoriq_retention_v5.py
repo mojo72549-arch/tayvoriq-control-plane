@@ -267,6 +267,17 @@ def validate_trend_contract(candidate: dict[str, Any], *, strict: bool = True) -
     if episode:
         if not clean(candidate.get("proposed_series_id")) or not bool(candidate.get("series_history_exists")):
             raise ValueError("SERIES_METADATA_REPAIR:episode_number_requires_real_series")
+    return_gate = evaluate_return_viewer({
+        "series_name": candidate.get("proposed_series_name"),
+        "follow_reason": candidate.get("follow_reason"),
+        "cta_text": candidate.get("cta_text"),
+        "open_loop_status": candidate.get("open_loop_status"),
+        "next_episode_candidate": candidate.get("next_episode_candidate"),
+    }, sensitive_story=bool(candidate.get("sensitive_story")))
+    if return_gate.get("result") == "IMPROVE":
+        raise ValueError(
+            "RETURN_VIEWER_IMPROVE:" + ",".join(str(item) for item in return_gate.get("issues") or [])
+        )
 
 def request_fields_from_trend(trend: dict[str, Any]) -> dict[str, Any]:
     series = _series_context(trend)
