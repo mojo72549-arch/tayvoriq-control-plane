@@ -10,7 +10,7 @@
     "growth_primary_min": 85,
     "growth_breakout_min": 90,
     "binding_primary_min": 60,
-    "telegram_candidates_min": 3,
+    "telegram_candidates_min": 5,
     "telegram_candidates_max": 5,
     "weak_fill_allowed": false,
     "max_grounded_scans": 2,
@@ -108,8 +108,8 @@
   "hard_rules": [
     "Growth never weakens existing quality or publication gates.",
     "A series episode is never selected merely because it is next.",
-    "Surface 3-5 strong candidates per editorial run; if fewer than three pass, rescan distinct angles without weakening any score or source rule.",
-    "Weak fill is forbidden: if two grounded scans still produce fewer than three strong candidates, fail closed instead of surfacing a thin list.",
+    "Surface exactly 5 strong candidates per editorial run; if fewer than five pass, rescan distinct angles without weakening any score or source rule.",
+    "Weak fill is forbidden: if grounded scans still produce fewer than five strong candidates, fail closed instead of surfacing a thin list.",
     "Raw views never replace engaged or qualified views silently.",
     "10k, 20k, 50k and 100k are targets, not guarantees.",
     "Paid promotion may never exceed 5 EUR per test or 10 EUR per calendar month."
