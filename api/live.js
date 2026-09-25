@@ -156,6 +156,7 @@ function buildStages(jobs=[]){
   const defs=[
     ['Freigabe gebunden',['resolve approved x request']],
     ['Quellen gesperrt',['materialize immutable verified source context']],
+    ['GP-35 Retention',['gp-35 lock story and follow-conversion contract']],
     ['Dublettenprüfung',['block global duplicate content']],
     ['Light Preflight',['lightweight contract preflight']],
     ['Dependencies',['install production dependencies']],
@@ -174,7 +175,7 @@ function buildStages(jobs=[]){
 
 function progressFromStages(stages=[],status,conclusion){
   if(conclusion==='success') return 100;
-  const weights=[8,16,22,30,38,45,65,72,82,92,96];
+  const weights=[8,15,22,28,35,42,50,68,75,84,93,96];
   let progress=0;
   for(let i=0;i<stages.length;i++){
     const s=stages[i]?.status;
@@ -446,6 +447,8 @@ export default async function handler(req,res){
     owner:requestData?.recovery_owner||snapshot?.recovery?.owner||'tayvoriq-agent-orchestrator-v2'
   };
 
+  const storyRetention=(requestData?.story_retention_contract&&typeof requestData.story_retention_contract==='object')?requestData.story_retention_contract:null;
+  const trendRetention=(requestData?.retention_contract&&typeof requestData.retention_contract==='object')?requestData.retention_contract:null;
   const canonicalRequest=requestData?{
     ...(snapshot?.request||{}),
     request_id:pointer?.request_id||requestData.request_id,
@@ -454,7 +457,22 @@ export default async function handler(req,res){
     trend_id:requestData.trend_id||pointer?.trend_id||null,
     recovery_generation:Number(requestData.recovery_generation??0),
     recovery_owner:requestData.recovery_owner||recovery.owner,
-    updated_at:pointer?.updated_at||requestData.recovery_dispatched_at||null
+    updated_at:pointer?.updated_at||requestData.recovery_dispatched_at||null,
+    retention_v5:storyRetention?{
+      available:true,
+      trend_selection_score:Number(trendRetention?.trend_selection_score??0),
+      return_viewer_score:Number(trendRetention?.return_viewer_score??0),
+      follow_conversion_potential:Number(trendRetention?.follow_conversion_potential??0),
+      series_name:storyRetention.series_name||null,
+      episode_number:storyRetention.episode_number??null,
+      cta_type:storyRetention.cta_type||null,
+      follow_reason:storyRetention.follow_reason||null,
+      open_loop_status:storyRetention.open_loop_status||null,
+      open_loop:storyRetention.open_loop||null,
+      next_episode_candidate:storyRetention.next_episode_candidate||null,
+      follow_conversion_gate:storyRetention.follow_conversion_gate||null,
+      return_viewer_gate:requestData.return_viewer_gate||null
+    }:{available:false}
   }:(snapshot?.request||{});
 
   const liveRun=canonicalRun?{

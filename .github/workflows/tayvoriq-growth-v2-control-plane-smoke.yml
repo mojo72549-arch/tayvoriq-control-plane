@@ -8,6 +8,15 @@ on:
       - "tools/tayvoriq_agent_trend_radar_v3.py"
       - "tools/tayvoriq_agent_trend_radar_v4.py"
       - "tools/tayvoriq_agent_trend_radar_v5.py"
+      - "tools/tayvoriq_agent_trend_radar_v6.py"
+      - "tools/tayvoriq_agent_trend_radar_v7.py"
+      - "tools/tayvoriq_agent_trend_radar_v8.py"
+      - "tools/tayvoriq_retention_contract_v5.py"
+      - "tools/tayvoriq_return_viewer_gate_v5.py"
+      - "tools/tayvoriq_orchestration_contract.py"
+      - ".github/workflows/tayvoriq-telegram-trends-now.yml"
+      - ".github/workflows/tayvoriq-trend-approval.yml"
+      - ".github/workflows/tayvoriq-deliver-video-now.yml"
       - "tools/tayvoriq_agent_research_http_v2.py"
       - "tools/tayvoriq_agent_rss_v2.py"
       - "tools/tayvoriq_agent_gdelt_v2.py"
@@ -50,6 +59,12 @@ jobs:
             tools/tayvoriq_agent_trend_radar_v3.py \
             tools/tayvoriq_agent_trend_radar_v4.py \
             tools/tayvoriq_agent_trend_radar_v5.py \
+            tools/tayvoriq_agent_trend_radar_v6.py \
+            tools/tayvoriq_agent_trend_radar_v7.py \
+            tools/tayvoriq_agent_trend_radar_v8.py \
+            tools/tayvoriq_retention_contract_v5.py \
+            tools/tayvoriq_return_viewer_gate_v5.py \
+            tools/tayvoriq_orchestration_contract.py \
             tools/tayvoriq_agent_research_http_v2.py \
             tools/tayvoriq_agent_rss_v2.py \
             tools/tayvoriq_agent_gdelt_v2.py \
@@ -71,4 +86,8 @@ jobs:
             tests/test_tayvoriq_global_duplicate_gate_v1.py \
             tests/test_tayvoriq_telegram_progress_v1.py \
             tests/test_control_center_realtime_contract.py \
-            tests/test_control_center_live_console_contract.py
+            tests/test_control_center_live_console_contract.py \
+            tests/test_tayvoriq_retention_v5.py \
+            tests/test_tayvoriq_retention_request_contract_v5.py \
+            tests/test_tayvoriq_story_retention_contract_v5.py \
+            tests/test_tayvoriq_return_viewer_gate_v5.py

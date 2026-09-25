@@ -54,3 +54,19 @@ def test_production_green_promoter_never_dispatches_codefix_helper():
     assert "gh workflow run tayvoriq-deterministic-codefix-continuity.yml" not in src
     assert "Report verified Production Green state to Orchestrator" in src
     assert "actions: read" in src
+
+
+def test_control_center_exposes_real_v5_retention_contract_fields():
+    for path in LIVE_APIS:
+        src = path.read_text(encoding="utf-8")
+        assert "story_retention_contract" in src
+        assert "retention_contract" in src
+        assert "follow_conversion_gate" in src
+        assert "return_viewer_gate" in src
+        assert "next_episode_candidate" in src
+
+    dashboard = Path("dashboard/live.html").read_text(encoding="utf-8")
+    assert "V5 · Serien & Follow Conversion" in dashboard
+    assert 'id="retentionFollowReason"' in dashboard
+    assert 'id="retentionReturnGate"' in dashboard
+    assert "Noch nicht erreicht" in dashboard

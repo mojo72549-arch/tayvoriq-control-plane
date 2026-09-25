@@ -52,6 +52,12 @@ jobs:
               assert 0 <= int(item.get('score')) <= 100, item
               assert required_criteria <= set((item.get('criteria') or {}).keys()), item
               assert len(item.get('sources') or []) >= 2, item
+              retention=item.get('retention_v5') if isinstance(item.get('retention_v5'),dict) else {}
+              assert retention.get('schema') == 'tayvoriq-retention-v5', retention
+              assert retention.get('quality_gates_weakened') is False, retention
+              assert retention.get('recommended_cta_type') in {'CURIOSITY','EXPERTISE','COMMUNITY','SERIES','DISCUSSION','IDENTITY'}, retention
+              for field in ('viral_potential','tayvoriq_fit','series_fit_score','return_viewer_score','follow_conversion_potential','trend_selection_score'):
+                  assert 0 <= int(retention.get(field)) <= 100, (field,retention)
               context=item.get('source_context') or {}
               assert int(context.get('independent_news_count') or 0) >= 2, item
               assert len(context.get('sources') or []) >= 2, item
@@ -72,10 +78,25 @@ jobs:
           data=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text(encoding='utf-8'))
           lines=['🌙 TAYVORIQ Abend-Trends', '', 'Rangliste:']
           for trend in data['trends']:
-              lines.append(f"{trend['id']}. {trend['title']} — {trend['score']} %")
+              r=trend.get('retention_v5') if isinstance(trend.get('retention_v5'),dict) else {}
+              lines.append(f"{trend['id']}. {trend['title']} — Basis {trend['score']} % · V5 {int(r.get('trend_selection_score') or 0)}")
+              lines.append(
+                  "   "
+                  f"Viral {int(r.get('viral_potential') or 0)} · "
+                  f"Fit {int(r.get('tayvoriq_fit') or 0)} · "
+                  f"Serie {int(r.get('series_fit_score') or 0)} · "
+                  f"Return {int(r.get('return_viewer_score') or 0)} · "
+                  f"Follow {int(r.get('follow_conversion_potential') or 0)}"
+              )
+              why=' '.join(str(r.get('why_now') or '').split())
+              if why:
+                  lines.append(f"   Warum jetzt: {why[:150]}")
+              next_ep=' '.join(str(r.get('next_episode_candidate') or '').split())
+              if next_ep:
+                  lines.append(f"   ↪ Folge-Idee: {next_ep[:130]}")
           lines += [
               '',
-              'Bewertet nach Aktualität · Viralität · TAYVORIQ-Passung · Quellenqualität · visueller Umsetzbarkeit.',
+              'Bewertet nach bestehender Qualität plus V5: Viralität · TAYVORIQ-Fit · Serie · Return-Viewer · Follow-Potenzial.',
               '',
               'Schritt 1: Tippe auf eine Nummer.',
               'Schritt 2: Prüfe Details und Quellen und tippe separat auf „Trend freigeben“.',
