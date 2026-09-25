@@ -74,20 +74,22 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
             self.assertIn(marker, step, marker)
         self.assertNotIn("quality_gates_weakened: true", continuity.casefold())
 
-    def test_successful_green_promotion_explicitly_resumes_continuity(self) -> None:
+    def test_successful_green_promotion_reports_to_orchestrator_without_self_dispatch(self) -> None:
         promoter = PROMOTER.read_text(encoding="utf-8")
-        self.assertIn("permissions:\n  actions: write\n  contents: write", promoter)
+        self.assertIn("permissions:\n  actions: read\n  contents: write", promoter)
         step = _step(
             promoter,
-            "Resume deterministic codefix continuity after promotion",
+            "Report verified Production Green state to Orchestrator",
         )
         for marker in (
-            "steps.refs.outputs.changed == 'true'",
-            "GH_TOKEN: ${{ github.token }}",
-            "gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main",
-            "TAYVORIQ_PRODUCTION_GREEN_CONTINUITY_RESUMED",
+            "TAYVORIQ_PRODUCTION_GREEN_VERIFIED",
+            "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2.",
         ):
             self.assertIn(marker, step, marker)
+        self.assertNotIn(
+            "gh workflow run tayvoriq-deterministic-codefix-continuity.yml",
+            promoter,
+        )
         self.assertNotIn("quality_gates_weakened: true", promoter.casefold())
 
 
