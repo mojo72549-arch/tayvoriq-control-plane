@@ -37,11 +37,29 @@ LIFECYCLE_STATES = (
     "PRODUCTION_RUNNING",
     "FOLLOW_CONVERSION_PASSED",
     "RENDER_AVAILABLE",
+    "LOCAL_REPAIR_RUNNING",
     "MASTER_PUBLISHABLE",
     "QUALITY_PASSED",
     "REVIEW_READY",
     "COMPLETED",
 )
+
+LIFECYCLE_TRANSITIONS = {
+    "TREND_CANDIDATES_SCORED": {"APPROVED"},
+    "APPROVED": {"REQUEST_LOCKED"},
+    "REQUEST_LOCKED": {"SOURCES_LOCKED"},
+    "SOURCES_LOCKED": {"PREFLIGHT_PASSED"},
+    "PREFLIGHT_PASSED": {"RETENTION_CONTRACT_LOCKED"},
+    "RETENTION_CONTRACT_LOCKED": {"PRODUCTION_RUNNING"},
+    "PRODUCTION_RUNNING": {"FOLLOW_CONVERSION_PASSED"},
+    "FOLLOW_CONVERSION_PASSED": {"RENDER_AVAILABLE"},
+    "RENDER_AVAILABLE": {"MASTER_PUBLISHABLE", "LOCAL_REPAIR_RUNNING"},
+    "LOCAL_REPAIR_RUNNING": {"RENDER_AVAILABLE", "MASTER_PUBLISHABLE"},
+    "MASTER_PUBLISHABLE": {"QUALITY_PASSED", "LOCAL_REPAIR_RUNNING"},
+    "QUALITY_PASSED": {"REVIEW_READY", "LOCAL_REPAIR_RUNNING"},
+    "REVIEW_READY": {"COMPLETED"},
+    "COMPLETED": set(),
+}
 
 REQUEST_FIELDS = (
     "series_id",
@@ -404,6 +422,16 @@ def _legacy_request_to_contract(request: dict[str, Any]) -> dict[str, Any]:
     }
     contract["contract_sha256"] = json_sha256({k: v for k, v in contract.items() if k != "contract_sha256"})
     return contract
+
+def advance_lifecycle(state: str, target: str) -> str:
+    current = clean(state).upper()
+    nxt = clean(target).upper()
+    if current not in LIFECYCLE_TRANSITIONS:
+        raise ValueError(f"UNKNOWN_V5_STATE:{current}")
+    if nxt not in LIFECYCLE_TRANSITIONS[current]:
+        raise ValueError(f"ILLEGAL_V5_STATE_TRANSITION:{current}->{nxt}")
+    return nxt
+
 
 def publish_allowed(request: dict[str, Any], *, review_approved: bool) -> bool:
     """V4/V5 invariant: platform release is impossible before explicit review approval."""
