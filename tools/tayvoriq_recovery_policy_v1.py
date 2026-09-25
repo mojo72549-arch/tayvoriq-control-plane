@@ -76,6 +76,7 @@ FINAL_PUBLICATION_VOICE_CODEFIX_PATTERNS = (
 SEMANTIC_CODEFIX_PATTERNS = (
     r"content_rejected:v34-semantic-repair-missing:",
     r"content_rejected:v34-semantic-contract",
+    r"content_rejected:v34-semantic-pre-render-gate:",
     r"v34-semantic-repair-missing:",
 )
 
