@@ -98,7 +98,7 @@ jobs:
           trends=p.get('trends') or []
           broad={'germany','europe','global'}
           def reach_contract(items):
-              return len(items) >= 3 and all(
+              return len(items) == 5 and all(
                   str(trend.get('regional_relevance') or '').strip().lower() in broad
                   for trend in items
               )
@@ -108,7 +108,7 @@ jobs:
               and p.get('slot') == sys.argv[4]
               and p.get('mode') == 'manual_verified_fallback_after_provider_limits'
               and p.get('quality_gates_weakened') is False
-              and 3 <= len(trends) <= 5
+              and len(trends) == 5
               and reach_contract(trends)
           )
           if ok:
@@ -120,6 +120,16 @@ jobs:
                   ok = ok and len(sc.get('sources') or []) >= 2
                   ok = ok and all(answers.get(k) for k in ('what_happened','why_happening','who_is_affected','personal_impact','action_now'))
                   ok = ok and sc.get('quality_gates_weakened', False) is False
+                  for key in ('viral_potential','tayvoriq_fit','novelty_score','series_fit_score','return_viewer_score','follow_conversion_potential','open_loop_potential','trend_selection_score'):
+                      ok = ok and 0 <= int(trend.get(key) or -1) <= 100
+                  ok = ok and str(trend.get('content_angle') or '').strip() != ''
+                  ok = ok and str(trend.get('cta_type') or '') in {'CURIOSITY','EXPERTISE','COMMUNITY','SERIES','DISCUSSION','IDENTITY'}
+                  ok = ok and str(trend.get('open_loop_status') or '') in {'NONE','SOFT','HARD'}
+                  ok = ok and str(trend.get('follow_reason') or '').strip() != ''
+                  ok = ok and str(trend.get('cta_text') or '').strip() != ''
+                  if str(trend.get('open_loop_status') or '') == 'HARD':
+                      ok = ok and str(trend.get('next_episode_candidate') or '').strip() != ''
+                      ok = ok and str(trend.get('next_episode_queue_status') or '') in {'PLANNED','QUEUED','READY'}
           raise SystemExit(0 if ok else 1)
           PY
             then
@@ -219,11 +229,11 @@ jobs:
           def reach_contract(items):
             scopes=[str(trend.get('regional_relevance') or '').strip().lower() for trend in items]
             assert all(scope in broad for scope in scopes), f'local/invalid scope blocked by reach gate: {scopes}'
-            assert len(items) >= 3, f'need at least 3 broad-reach trends, got {len(items)}'
+            assert len(items) == 5, f'V5 requires exactly 5 broad-reach trends, got {len(items)}'
           assert d.get('agent_orchestrator') == 'v2'
           assert d.get('slot') in {'morning','evening'}
           assert d.get('quality_gates_weakened', False) is False
-          assert 3 <= len(trends) <= 5, f'expected 3-5 strong trends, got {len(trends)}'
+          assert len(trends) == 5, f'V5 requires exactly 5 strong trends, got {len(trends)}'
           reach_contract(trends)
           assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
           for trend in trends:
@@ -234,7 +244,17 @@ jobs:
             assert sc.get('quality_gates_weakened', False) is False
             answers=sc.get('fallback_editorial_answers') if isinstance(sc.get('fallback_editorial_answers'),dict) else {}
             assert all(answers.get(k) for k in ['what_happened','why_happening','who_is_affected','personal_impact','action_now'])
-          print({'selection_id':d['selection_id'],'trend_count':len(trends),'contract':'passed'})
+            for key in ['viral_potential','tayvoriq_fit','novelty_score','series_fit_score','return_viewer_score','follow_conversion_potential','open_loop_potential','trend_selection_score']:
+                assert 0 <= int(trend.get(key)) <= 100, (key,trend)
+            assert str(trend.get('content_angle') or '').strip()
+            assert str(trend.get('cta_type') or '') in {'CURIOSITY','EXPERTISE','COMMUNITY','SERIES','DISCUSSION','IDENTITY'}
+            assert str(trend.get('open_loop_status') or '') in {'NONE','SOFT','HARD'}
+            assert str(trend.get('follow_reason') or '').strip()
+            assert str(trend.get('cta_text') or '').strip()
+            if str(trend.get('open_loop_status') or '') == 'HARD':
+                assert str(trend.get('next_episode_candidate') or '').strip()
+                assert str(trend.get('next_episode_queue_status') or '') in {'PLANNED','QUEUED','READY'}
+          print({'selection_id':d['selection_id'],'trend_count':len(trends),'contract':'passed','retention_v5':True})
           PY
 
       - name: Persist canonical Agent V2 selection
@@ -285,15 +305,26 @@ jobs:
           target=date.fromisoformat(os.environ['TARGET_DATE'])
           weekday=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][target.weekday()]
           label='🌅 TAYVORIQ Morgen-Trends' if os.environ['SLOT']=='morning' else '🌙 TAYVORIQ Abend-Trends'
-          lines=[f"{label} · {weekday} {target:%d.%m.}",'','Frisch recherchierte Rangliste:']
+          lines=[f"{label} · {weekday} {target:%d.%m.}",'','V5-Rangliste:']
           for t in d['trends']:
-            growth=int((t.get('growth_v2') or {}).get('growth_score') or t.get('score') or 0)
-            wildcard=(t.get('source_context') or {}).get('wildcard_type')
+            sc=t.get('source_context') or {}
+            reach=sc.get('reach_gate') or {}
+            wildcard=sc.get('wildcard_type')
             marker=' 🎲' if wildcard else ''
-            lines.append(f"{t['id']}. {t['title']} — {growth} %{marker}")
+            series=t.get('proposed_series_name') or 'NONE'
+            nxt=t.get('next_episode_candidate') or '—'
+            lines += [
+              f"{t['id']}. {t['title']} — Auswahl {int(t.get('trend_selection_score') or 0)}/100{marker}",
+              f"   Warum jetzt: {reach.get('why_now') or 'durch Quellenkontext belegt'}",
+              f"   Viralität: {int(t.get('viral_potential') or 0)}/100 · TAYVORIQ-Fit: {int(t.get('tayvoriq_fit') or 0)}/100",
+              f"   Serie: {series} · Serienpotenzial: {int(t.get('series_fit_score') or 0)}/100",
+              f"   Return-Viewer: {int(t.get('return_viewer_score') or 0)}/100 · Follow: {int(t.get('follow_conversion_potential') or 0)}/100",
+              f"   Möglicher nächster Teil: {nxt}",
+              ''
+            ]
           lines += [
             '',
-            f"{len(d['trends'])} Trends haben die aktuellen Growth-, Quellen-, Claim- und Dubletten-Gates bestanden · mindestens 2 unabhängige Quellen je Trend.",
+            'Alle fünf Trends haben Quellen-, Claim-, Dubletten- und V5-Retention-Gates bestanden; Evidence bleibt Mindestbedingung.',
             '',
             '🎲 = verifizierter ungewöhnlicher/spielerischer Wildcard-Trend.',
             '',
