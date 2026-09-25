@@ -58,7 +58,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: feature/multi-platform-distribution-package
+          ref: agent/gp-v5-legacy-compat-20260925
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
@@ -78,4 +78,8 @@ jobs:
 
       - name: Run private production V5 regressions
         working-directory: implementation
-        run: python -m pytest -q tests/test_tayvoriq_retention_v5.py
+        run: |
+          python -m pytest -q \
+            tests/test_tayvoriq_retention_v5.py \
+            tests/test_tayvoriq_quality_gates.py::test_publication_gate_v2_accepts_strict_chatterbox_primary \
+            tests/test_tayvoriq_review_actions.py::test_review_page_is_dual_platform_and_telegram_decision_status
