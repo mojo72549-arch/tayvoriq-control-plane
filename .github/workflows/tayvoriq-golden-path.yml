@@ -55,6 +55,8 @@ env:
   TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1200"
   TAYVORIQ_TELEGRAM_PROGRESS: "false"
   TAYVORIQ_SOURCE_CONTEXT_FILE: ${{ github.workspace }}/tayvoriq-source-context.json
+  TAYVORIQ_REQUEST_CONTRACT_FILE: ${{ github.workspace }}/tayvoriq-request-contract.json
+  TAYVORIQ_RETENTION_CONTRACT_FILE: ${{ github.workspace }}/implementation/out/control-plane/retention-contract-v5.json
   HF_HOME: ${{ github.workspace }}/.cache/huggingface
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -139,6 +141,9 @@ jobs:
 
           Path('tayvoriq-source-context.json').write_text(
               json.dumps(source, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+          Path('tayvoriq-request-contract.json').write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
           )
           print(json.dumps({
               'source_context': 'verified',
@@ -257,6 +262,15 @@ jobs:
           mkdir -p out/control-plane
           python -m compileall -q tools src
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+
+      - name: GP-35 Story and Retention Contract
+        if: inputs.mode == 'full'
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          test -f "$TAYVORIQ_REQUEST_CONTRACT_FILE"
+          python tools/tayvoriq_retention_v5.py lock             --request "$TAYVORIQ_REQUEST_CONTRACT_FILE"             --out "out/control-plane/retention-contract-v5.json"
+          python tools/tayvoriq_retention_v5.py check             --contract "out/control-plane/retention-contract-v5.json"
 
       - name: Stop after quality gate when requested
         if: inputs.mode == 'quality_gate_only'
