@@ -27,6 +27,18 @@ SCOPES = {
     "science_future",
 }
 EXECUTION_MODES = {"full", "quality_gate_only"}
+CTA_TYPES = {"CURIOSITY", "EXPERTISE", "COMMUNITY", "SERIES", "DISCUSSION", "IDENTITY"}
+RETENTION_V5_SCORE_FIELDS = (
+    "evidence_strength",
+    "viral_potential",
+    "novelty_score",
+    "tayvoriq_fit",
+    "series_fit_score",
+    "return_viewer_score",
+    "follow_conversion_potential",
+    "open_loop_potential",
+    "trend_selection_score",
+)
 TRANSITIONS = {
     "APPROVED": {"DISPATCHING"},
     "TREND_APPROVED": {"DISPATCHING"},
@@ -60,7 +72,9 @@ def parse_iso(value: str) -> None:
 def contract_hash(data: dict) -> str:
     fields = IMMUTABLE_FIELDS
     if data.get("source_context_sha256"):
-        fields = IMMUTABLE_FIELDS + ("source_context_sha256",)
+        fields = fields + ("source_context_sha256",)
+    if data.get("retention_contract_sha256"):
+        fields = fields + ("retention_contract_sha256",)
     payload = {k: data.get(k) for k in fields}
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -120,6 +134,51 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
     actual = str(data.get("contract_sha256") or "").strip()
     if actual != expected:
         errors.append("contract_sha256 mismatch")
+
+    retention_contract = data.get("retention_contract")
+    retention_sha256 = str(data.get("retention_contract_sha256") or "").strip()
+    if retention_contract is not None or retention_sha256:
+        if not isinstance(retention_contract, dict) or not retention_contract:
+            errors.append("retention_contract must be a non-empty object")
+        elif str(retention_contract.get("schema") or "") != "tayvoriq-retention-v5":
+            errors.append("invalid retention_contract schema")
+        elif retention_contract.get("quality_gates_weakened") is not False:
+            errors.append("retention contract may not weaken quality gates")
+        else:
+            for field in RETENTION_V5_SCORE_FIELDS:
+                try:
+                    score = int(retention_contract.get(field))
+                except (TypeError, ValueError):
+                    errors.append(f"retention score missing/invalid: {field}")
+                    continue
+                if not 0 <= score <= 100:
+                    errors.append(f"retention score out of range: {field}={score}")
+            cta_type = str(retention_contract.get("recommended_cta_type") or "").upper()
+            if cta_type not in CTA_TYPES:
+                errors.append(f"invalid recommended_cta_type={cta_type!r}")
+            if not str(retention_contract.get("content_angle") or "").strip():
+                errors.append("retention contract missing content_angle")
+            if not str(retention_contract.get("why_now") or "").strip():
+                errors.append("retention contract missing why_now")
+            if cta_type == "SERIES":
+                required_series = (
+                    retention_contract.get("proposed_series_id"),
+                    retention_contract.get("proposed_series_name"),
+                    retention_contract.get("next_episode_candidate"),
+                )
+                if any(not str(value or "").strip() for value in required_series):
+                    errors.append("SERIES CTA requires real series and next episode candidate")
+            if not retention_sha256:
+                errors.append("missing retention_contract_sha256")
+            else:
+                retention_raw = json.dumps(
+                    retention_contract,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                if hashlib.sha256(retention_raw).hexdigest() != retention_sha256:
+                    errors.append("retention_contract_sha256 mismatch")
 
     source_context = data.get("source_context")
     source_sha256 = str(data.get("source_context_sha256") or "").strip()
@@ -227,6 +286,21 @@ def create_from_telegram(args: argparse.Namespace) -> None:
     ).encode("utf-8")
     source_sha256 = hashlib.sha256(source_raw).hexdigest()
 
+    retention_contract = trend.get("retention_v5")
+    if not isinstance(retention_contract, dict) or not retention_contract:
+        raise SystemExit("RETENTION_V5_MISSING: selected trend has no retention contract")
+    if str(retention_contract.get("schema") or "") != "tayvoriq-retention-v5":
+        raise SystemExit("RETENTION_V5_SCHEMA_INVALID")
+    if retention_contract.get("quality_gates_weakened") is not False:
+        raise SystemExit("RETENTION_V5_QUALITY_GATE_INTEGRITY_FAILED")
+    retention_raw = json.dumps(
+        retention_contract,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    retention_sha256 = hashlib.sha256(retention_raw).hexdigest()
+
     request_id = f"telegram-{message_id}-trend-{trend_id}"
     path = Path(args.out_dir) / f"{request_id}.json"
     if path.exists():
@@ -261,6 +335,8 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "selection_id": selection_id,
         "source_context": source_context,
         "source_context_sha256": source_sha256,
+        "retention_contract": retention_contract,
+        "retention_contract_sha256": retention_sha256,
         "state_history": [
             {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"}
         ],
