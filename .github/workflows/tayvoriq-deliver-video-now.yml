@@ -588,6 +588,33 @@ jobs:
           echo "patch_sha256=$patch_sha" >> "$GITHUB_OUTPUT"
           echo "AUTOCODEFIX_OVERLAY_APPLIED:$SOURCE_REQUEST_ID_PIN:$patch_sha"
 
+      - name: Bind native V5 retention contract to exact approved request
+        if: steps.autocodefix_overlay.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          request_path="requests/${SOURCE_REQUEST_ID_PIN}.json"
+          test -f "$request_path" || { echo "RETENTION_REQUEST_MISSING"; exit 1; }
+          retention_version=$(python - "$request_path" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          if str(data.get('request_id') or '') != sys.argv[1].split('/')[-1][:-5]:
+              raise SystemExit('RETENTION_REQUEST_ID_MISMATCH')
+          print(str(data.get('retention_contract_version') or 'legacy'))
+          PY
+          )
+          if [ "$retention_version" != "v5" ]; then
+            echo "RETENTION_LEGACY_COMPATIBILITY"
+            exit 0
+          fi
+          contract_path="$GITHUB_WORKSPACE/implementation/out/control-plane/retention-contract.json"
+          python implementation/tools/tayvoriq_retention_v5.py lock \
+            --request "$request_path" --out "$contract_path"
+          python implementation/tools/tayvoriq_retention_v5.py check \
+            --contract "$contract_path"
+          echo "TAYVORIQ_RETENTION_CONTRACT_FILE=$contract_path" >> "$GITHUB_ENV"
+          echo "RETENTION_NATIVE_V5_BOUND:$SOURCE_REQUEST_ID_PIN"
+
       - name: Lightweight contract preflight
         id: lightweight_preflight
         working-directory: implementation
