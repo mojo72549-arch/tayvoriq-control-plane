@@ -58,6 +58,7 @@ V5_IMMUTABLE_FIELDS = (
     "episode_number",
     "continuity_hook",
     "next_episode_candidate",
+    "next_episode_queue_status",
     "primary_hook",
     "viewer_question",
     "explanation_core",
@@ -159,7 +160,8 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
                 + ",".join(str(item) for item in follow.get("issues") or [])
             )
         expected_retention_hash = retention_v5.json_sha256({
-            key: data.get(key) for key in retention_v5.REQUEST_FIELDS
+            **{key: data.get(key) for key in retention_v5.REQUEST_FIELDS},
+            "next_episode_queue_status": data.get("next_episode_queue_status"),
         })
         if str(data.get("retention_contract_sha256") or "") != expected_retention_hash:
             errors.append("retention_contract_sha256 mismatch")
@@ -284,7 +286,10 @@ def create_from_telegram(args: argparse.Namespace) -> None:
             "V5_FOLLOW_CONVERSION_FAILED:"
             + ",".join(str(item) for item in follow_gate.get("issues") or [])
         )
-    retention_hash = retention_v5.json_sha256(v5_fields)
+    retention_hash = retention_v5.json_sha256({
+        **v5_fields,
+        "next_episode_queue_status": str(trend.get("next_episode_queue_status") or "").strip() or None,
+    })
 
     request_id = f"telegram-{message_id}-trend-{trend_id}"
     path = Path(args.out_dir) / f"{request_id}.json"
