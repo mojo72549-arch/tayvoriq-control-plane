@@ -58,7 +58,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: agent/gp-v5-legacy-compat-20260925
+          ref: feature/multi-platform-distribution-package
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
