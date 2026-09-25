@@ -286,6 +286,15 @@ def create_from_telegram(args: argparse.Namespace) -> None:
             "V5_FOLLOW_CONVERSION_FAILED:"
             + ",".join(str(item) for item in follow_gate.get("issues") or [])
         )
+    return_viewer_gate = retention_v5.evaluate_return_viewer(
+        v5_fields,
+        sensitive_story=bool(trend.get("sensitive_story")),
+    )
+    if return_viewer_gate.get("result") == "IMPROVE":
+        raise SystemExit(
+            "V5_RETURN_VIEWER_FAILED:"
+            + ",".join(str(item) for item in return_viewer_gate.get("issues") or [])
+        )
     retention_hash = retention_v5.json_sha256({
         **v5_fields,
         "next_episode_queue_status": str(trend.get("next_episode_queue_status") or "").strip() or None,
@@ -328,6 +337,8 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         **v5_fields,
         "next_episode_queue_status": str(trend.get("next_episode_queue_status") or "").strip() or None,
         "retention_contract_sha256": retention_hash,
+        "follow_conversion_gate": follow_gate,
+        "return_viewer_gate": return_viewer_gate,
         "source_context": source_context,
         "source_context_sha256": source_sha256,
         "golden_path_v5_state": "APPROVED",
