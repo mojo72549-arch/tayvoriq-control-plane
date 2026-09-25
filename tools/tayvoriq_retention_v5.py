@@ -217,6 +217,14 @@ def apply_trend_contract(candidate: dict[str, Any], *, strict: bool = True) -> d
     return result
 
 def validate_trend_contract(candidate: dict[str, Any], *, strict: bool = True) -> None:
+    if strict:
+        required_text = (
+            "primary_hook", "viewer_question", "explanation_core",
+            "surprise_or_reframe", "practical_relevance", "follow_reason", "cta_text",
+        )
+        for key in required_text:
+            if not clean(candidate.get(key)):
+                raise ValueError(f"V5_TREND_CONTRACT_MISSING:{key}")
     for key in _SCORE_FIELDS:
         value = candidate.get(key)
         if value is None and strict:
@@ -231,8 +239,12 @@ def validate_trend_contract(candidate: dict[str, Any], *, strict: bool = True) -
     cta_type = clean(candidate.get("cta_type") or candidate.get("recommended_cta_type")).upper()
     if cta_type not in CTA_TYPES:
         raise ValueError("V5_TREND_CONTRACT_INVALID:cta_type")
-    if status == "HARD" and not clean(candidate.get("next_episode_candidate")):
-        raise ValueError("OPEN_LOOP_REWRITE_REQUIRED:false_hard_open_loop")
+    if status == "HARD":
+        if not clean(candidate.get("next_episode_candidate")):
+            raise ValueError("OPEN_LOOP_REWRITE_REQUIRED:false_hard_open_loop")
+        queue_status = clean(candidate.get("next_episode_queue_status")).upper()
+        if queue_status not in HARD_QUEUE_STATES:
+            raise ValueError("OPEN_LOOP_REWRITE_REQUIRED:hard_open_loop_requires_planned_queue")
     episode = candidate.get("episode_number")
     if episode:
         if not clean(candidate.get("proposed_series_id")) or not bool(candidate.get("series_history_exists")):
