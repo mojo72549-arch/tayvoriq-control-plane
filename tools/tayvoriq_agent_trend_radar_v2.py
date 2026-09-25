@@ -230,6 +230,7 @@ Editorial goals:
 For each candidate return:
 {{
   "title": "short German headline",
+  "content_angle": "specific approved viewer angle for this exact story",
   "category": "...",
   "trend_scope": "technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy",
   "regional_relevance": "local|germany|europe|global",
@@ -253,6 +254,7 @@ For each candidate return:
   "follow_reason": "specific future value of returning to TAYVORIQ",
   "open_loop": "honest bridge; empty when NONE",
   "open_loop_status": "NONE|SOFT|HARD",
+  "next_episode_queue_status": "PLANNED|QUEUED|READY or empty; HARD requires one of these",
   "cta_type": "CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY",
   "cta_text": "topic-specific CTA; never generic Bitte abonnieren",
   "sources": [
@@ -329,6 +331,7 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
         "follow_reason": clean(raw.get("follow_reason"), 900),
         "open_loop": clean(raw.get("open_loop"), 900),
         "open_loop_status": clean(raw.get("open_loop_status"), 20).upper(),
+        "next_episode_queue_status": clean(raw.get("next_episode_queue_status"), 20).upper(),
         "cta_type": clean(raw.get("cta_type") or raw.get("recommended_cta_type"), 40).upper(),
         "cta_text": clean(raw.get("cta_text"), 900),
     }
@@ -336,6 +339,7 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
         "category": clean(raw.get("category"), 100) or scope,
         "trend_scope": scope,
         "title": title,
+        "content_angle": clean(raw.get("content_angle"), 600),
         "score": clamp(score),
         "criteria": criteria,
         "regional_relevance": clean(raw.get("regional_relevance"), 30) or "global",
