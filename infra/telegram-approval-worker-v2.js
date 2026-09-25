@@ -119,7 +119,7 @@ export default {
         const next = trends[(currentIndex + 1) % trends.length];
         const body = [
           '🔄 TAYVORIQ Alternativ-Trend', '',
-          `Ausgewählt: ${next.id}`, `Thema: ${next.title}`, `Score: ${next.score} %`, '',
+          `Ausgewählt: ${next.id}`, `Thema: ${next.title}`, `V5-Auswahlscore: ${v5Score(next)}/100`, '',
           'Grund berücksichtigt: bisheriges Thema abgelehnt.',
           'Erst mit „Trend freigeben“ startet die Produktion.'
         ].join('\n');
@@ -325,13 +325,28 @@ function trendConfirmationKeyboard(selectionId, trendId) {
   };
 }
 
+function v5Score(trend) {
+  const value = Number(trend?.trend_selection_score);
+  return Number.isFinite(value) ? Math.round(value) : Math.round(Number(trend?.score || 0));
+}
+
 function trendListBody(requestData) {
   const heading = requestData?.slot === 'morning' ? '🌅 TAYVORIQ Morgen-Trends' : '🌙 TAYVORIQ Abend-Trends';
-  const lines = [heading, '', 'Rangliste:'];
+  const lines = [heading, '', 'V5-Rangliste:'];
   for (const trend of requestData.trends || []) {
-    lines.push(`${trend.id}. ${trend.title} — ${trend.score} %`);
+    const series = String(trend?.proposed_series_name || '').trim() || 'NONE';
+    const next = String(trend?.next_episode_candidate || '').trim() || '—';
+    lines.push(
+      `${trend.id}. ${trend.title} — Auswahl ${v5Score(trend)}/100`,
+      `   Viralität: ${Number(trend?.viral_potential || 0)}/100 · TAYVORIQ-Fit: ${Number(trend?.tayvoriq_fit || 0)}/100`,
+      `   Serie: ${series} · Serienpotenzial: ${Number(trend?.series_fit_score || 0)}/100`,
+      `   Return-Viewer: ${Number(trend?.return_viewer_score || 0)}/100 · Follow: ${Number(trend?.follow_conversion_potential || 0)}/100`,
+      `   Möglicher nächster Teil: ${next}`,
+      '',
+    );
   }
   lines.push(
+    'Evidence/Quellenqualität bleibt Mindestbedingung und kann durch den V5-Score nicht kompensiert werden.',
     '',
     'Schritt 1: Tippe auf eine Nummer.',
     'Schritt 2: Prüfe den Trend und tippe separat auf „Trend freigeben“.',
@@ -342,22 +357,25 @@ function trendListBody(requestData) {
 }
 
 function selectedTrendBody(trend) {
-  const criteria = trend.criteria || {};
-  const labels = [
-    ['Aktualität', criteria.aktualitaet],
-    ['Viralität', criteria.viralitaet],
-    ['TAYVORIQ', criteria.tayvoriq_passung],
-    ['Quellen', criteria.quellenqualitaet],
-    ['Visuals', criteria.visuell],
-  ].filter(([, value]) => Number.isFinite(Number(value)));
+  const series = String(trend?.proposed_series_name || '').trim() || 'NONE';
+  const next = String(trend?.next_episode_candidate || '').trim() || '—';
+  const followReason = String(trend?.follow_reason || '').trim() || '–';
   const lines = [
     '🟣 TAYVORIQ Trend ausgewählt',
     '',
     `Ausgewählt: ${trend.id}`,
     `Thema: ${trend.title}`,
-    `Gesamtscore: ${trend.score} %`,
+    `V5-Auswahlscore: ${v5Score(trend)}/100`,
+    '',
+    `Viralität: ${Number(trend?.viral_potential || 0)}/100 · TAYVORIQ-Fit: ${Number(trend?.tayvoriq_fit || 0)}/100`,
+    `Serienpotenzial: ${Number(trend?.series_fit_score || 0)}/100 · Return-Viewer: ${Number(trend?.return_viewer_score || 0)}/100`,
+    `Follow-Potenzial: ${Number(trend?.follow_conversion_potential || 0)}/100`,
+    `Serie: ${series}`,
+    `Möglicher nächster Teil: ${next}`,
+    `CTA-Typ: ${String(trend?.cta_type || trend?.recommended_cta_type || '–')}`,
+    `Open Loop: ${String(trend?.open_loop_status || 'NONE')}`,
+    `Follow-Grund: ${followReason}`,
   ];
-  if (labels.length) lines.push('', labels.map(([label, value]) => `${label} ${value}%`).join(' · '));
   const sources = Array.isArray(trend.sources) ? trend.sources.slice(0, 3) : [];
   if (sources.length) lines.push('', 'Geprüfte Quellen:', ...sources);
   lines.push('', 'Erst der folgende Button startet verbindlich die Produktion.');

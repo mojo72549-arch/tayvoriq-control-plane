@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 import tayvoriq_agent_trend_radar_v7 as growth_v7
+import tayvoriq_retention_v5 as retention_v5
 
 base = growth_v7.base
 _original_prompt = base.prompt_for
@@ -45,6 +46,7 @@ def _selection_key(candidate):
     audience = candidate.get("audience_growth_v3") if isinstance(candidate.get("audience_growth_v3"), dict) else {}
     growth = candidate.get("growth_v2") if isinstance(candidate.get("growth_v2"), dict) else {}
     return (
+        int(candidate.get("trend_selection_score") or 0),
         _reach_gate(candidate),
         int(audience.get("subscriber_conversion_score") or 0),
         int(growth.get("growth_score") or 0),
@@ -74,11 +76,36 @@ def _mark_research_deferred(reason: str, **meta):
 
 def diversify(candidates, slot):
     cfg = growth_v7._config().get("selection") or {}
-    minimum = int(cfg.get("telegram_candidates_min") or 4)
+    minimum = 5
+
+    # V5 is fail-closed: growth metadata must be native to the evidence-valid
+    # candidate. Retention scores never compensate for weak source quality.
+    v5_candidates = []
+    invalid_v5 = []
+    for candidate in candidates:
+        try:
+            enriched = retention_v5.apply_trend_contract(candidate, strict=True)
+        except ValueError as exc:
+            invalid_v5.append({"title": str(candidate.get("title") or ""), "reason": str(exc)})
+            continue
+        ctx = enriched.get("source_context") if isinstance(enriched.get("source_context"), dict) else {}
+        ctx["retention_v5"] = {
+            key: enriched.get(key)
+            for key in (
+                "viral_potential", "tayvoriq_fit", "novelty_score", "series_fit_score",
+                "return_viewer_score", "follow_conversion_potential", "open_loop_potential",
+                "proposed_series_id", "proposed_series_name", "next_episode_candidate",
+                "recommended_cta_type", "primary_hook", "viewer_question", "explanation_core",
+                "surprise_or_reframe", "practical_relevance", "follow_reason", "open_loop",
+                "open_loop_status", "cta_type", "cta_text", "trend_selection_score"
+            )
+        }
+        enriched["source_context"] = ctx
+        v5_candidates.append(enriched)
 
     # Reach-first: local-only stories do not enter Telegram by default.
     broad = [
-        candidate for candidate in candidates
+        candidate for candidate in v5_candidates
         if str(candidate.get("regional_relevance") or "").strip().lower() in _BROAD_REACH
     ]
     if len(broad) < minimum:
@@ -88,6 +115,7 @@ def diversify(candidates, slot):
             broad_reach_candidates=len(broad),
             required_broad_reach=minimum,
             total_candidates=len(candidates),
+            invalid_v5_candidates=invalid_v5,
         )
         raise SystemExit(
             f"REACH_RESCAN_REQUIRED: only {len(broad)} Germany/Europe/global candidates passed all gates"
@@ -121,7 +149,17 @@ def diversify(candidates, slot):
         ctx["reach_gate"] = gate
         candidate["source_context"] = ctx
 
-    return sorted(selected, key=_selection_key, reverse=True)
+    ordered = sorted(selected, key=_selection_key, reverse=True)
+    if len(ordered) != 5:
+        _mark_research_deferred(
+            "V5_EXACT_FIVE_RESCAN_REQUIRED",
+            slot=str(slot),
+            selected=len(ordered),
+            required=5,
+            invalid_v5_candidates=invalid_v5,
+        )
+        raise SystemExit(f"V5_RESCAN_REQUIRED: expected exactly 5 V5 candidates, got {len(ordered)}")
+    return ordered
 
 
 
@@ -293,6 +331,20 @@ TAYVORIQ SCRIPT HANDOFF — HARD REQUIREMENT:
 - source_context.research_notes should identify the strongest story spine and useful examples, not merely repeat source titles or the headline.
 - fallback_editorial_answers must remain downstream-contract-safe; never place editor instructions such as 'Im Short ...' in action_now. action_now is always a concrete viewer action.
 - The candidate should give production enough evidence to answer: What exactly happened? Which concrete examples prove it? Why is it relevant? What happens next?
+
+
+TAYVORIQ GOLDEN PATH V5 — RETENTION / SERIES / FOLLOW CONTRACT:
+- Every candidate MUST include native 0-100 fields: viral_potential, tayvoriq_fit, novelty_score, series_fit_score, return_viewer_score, follow_conversion_potential, open_loop_potential.
+- The final ranking uses exactly: 0.30 viral_potential + 0.20 tayvoriq_fit + 0.15 novelty_score + 0.15 return_viewer_score + 0.10 series_fit_score + 0.10 follow_conversion_potential.
+- Evidence/source quality remains a hard minimum and is NEVER part of a compensating weighted score.
+- Include proposed_series_id/proposed_series_name only when a real repeatable editorial family genuinely fits; otherwise use empty strings.
+- Include content_angle as the exact viewer-facing angle that will be locked if the user approves this trend.
+- Include next_episode_candidate only when there is a concrete, source-compatible follow-up worth planning.
+- Include recommended_cta_type and cta_type as exactly one of CURIOSITY, EXPERTISE, COMMUNITY, SERIES, DISCUSSION, IDENTITY.
+- Include primary_hook, viewer_question, explanation_core, surprise_or_reframe, practical_relevance, follow_reason, open_loop, open_loop_status and cta_text.
+- follow_reason and cta_text must be specific to THIS topic or series. Generic 'Bitte abonnieren' / 'Folge uns' is invalid. The CTA must name TAYVORIQ naturally so the return-viewer promise is brand-identifiable.
+- open_loop_status is NONE, SOFT or HARD. Fresh standalone trends MUST use NONE or SOFT. HARD is forbidden unless a persisted series/queue state already proves next_episode_candidate is PLANNED, QUEUED or READY. Never invent queue state and never promise 'Morgen zeigen wir ...' without a real queued next part.
+- The dramaturgical target is HOOK -> ERKLAERUNG -> UEBERRASCHENDER PUNKT -> NUTZEN/RELEVANZ -> FOLLOW-GRUND -> OPEN LOOP, expressed naturally rather than as a mechanical form.
 
 TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 - End source_context.research_notes with a compact line starting exactly with "HASHTAG_SEEDS:" followed by 5–8 topic-specific hashtag suggestions for production metadata.

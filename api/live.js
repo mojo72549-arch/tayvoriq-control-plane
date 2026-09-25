@@ -454,6 +454,15 @@ export default async function handler(req,res){
     trend_id:requestData.trend_id||pointer?.trend_id||null,
     recovery_generation:Number(requestData.recovery_generation??0),
     recovery_owner:requestData.recovery_owner||recovery.owner,
+    series_name:requestData.series_name||null,
+    episode_number:requestData.episode_number??null,
+    cta_type:requestData.cta_type||null,
+    follow_reason:requestData.follow_reason||null,
+    open_loop_status:requestData.open_loop_status||null,
+    next_episode_candidate:requestData.next_episode_candidate||null,
+    follow_conversion_gate:requestData.follow_conversion_gate||requestData.production_completion?.follow_conversion_gate||null,
+    return_viewer_gate:requestData.return_viewer_gate||requestData.production_completion?.return_viewer_gate||null,
+    golden_path_v5_state:requestData.golden_path_v5_state||null,
     updated_at:pointer?.updated_at||requestData.recovery_dispatched_at||null
   }:(snapshot?.request||{});
 

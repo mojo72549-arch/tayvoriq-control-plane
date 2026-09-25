@@ -43,7 +43,10 @@ jobs:
           assert data.get('rejected_whole_selection', False) is not True, 'selection was rejected'
           assert data.get('production_started', False) is False, 'selection already started production'
           trends=data.get('trends') or []
-          assert 3 <= len(trends) <= 5, len(trends)
+          if data.get('mode') == 'active_series':
+              assert len(trends) == 1, f'active_series must contain exactly one bound episode, got {len(trends)}'
+          else:
+              assert len(trends) == 5, f'V5 requires exactly five trends, got {len(trends)}'
           assert [str(item.get('id')) for item in trends] == [str(i) for i in range(1,len(trends)+1)], trends
           required_criteria={'aktualitaet','viralitaet','tayvoriq_passung','quellenqualitaet','visuell'}
           required_answers={'what_happened','why_happening','who_is_affected','personal_impact','action_now'}
@@ -56,7 +59,17 @@ jobs:
               assert int(context.get('independent_news_count') or 0) >= 2, item
               assert len(context.get('sources') or []) >= 2, item
               assert required_answers <= set((context.get('fallback_editorial_answers') or {}).keys()), item
-          print('two_step_request_valid', selection_id)
+              for key in ('viral_potential','tayvoriq_fit','novelty_score','series_fit_score','return_viewer_score','follow_conversion_potential','open_loop_potential','trend_selection_score'):
+                  assert 0 <= int(item.get(key)) <= 100, (key,item)
+              assert str(item.get('content_angle') or '').strip(), item
+              assert str(item.get('cta_type') or '') in {'CURIOSITY','EXPERTISE','COMMUNITY','SERIES','DISCUSSION','IDENTITY'}, item
+              assert str(item.get('open_loop_status') or '') in {'NONE','SOFT','HARD'}, item
+              assert str(item.get('follow_reason') or '').strip(), item
+              assert str(item.get('cta_text') or '').strip(), item
+              if str(item.get('open_loop_status') or '') == 'HARD':
+                  assert str(item.get('next_episode_candidate') or '').strip(), item
+                  assert str(item.get('next_episode_queue_status') or '') in {'PLANNED','QUEUED','READY'}, item
+          print('two_step_request_valid_v5', selection_id)
           PY
 
       - name: Send Telegram evening ranking with selection buttons
@@ -70,12 +83,24 @@ jobs:
           from pathlib import Path
 
           data=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text(encoding='utf-8'))
-          lines=['🌙 TAYVORIQ Abend-Trends', '', 'Rangliste:']
+          lines=['🌙 TAYVORIQ Abend-Trends', '', 'V5-Rangliste:']
           for trend in data['trends']:
-              lines.append(f"{trend['id']}. {trend['title']} — {trend['score']} %")
+              sc=trend.get('source_context') or {}
+              reach=sc.get('reach_gate') or {}
+              series=trend.get('proposed_series_name') or 'NONE'
+              nxt=trend.get('next_episode_candidate') or '—'
+              lines += [
+                  f"{trend['id']}. {trend['title']} — Auswahl {int(trend.get('trend_selection_score') or 0)}/100",
+                  f"   Warum jetzt: {reach.get('why_now') or 'durch Quellenkontext belegt'}",
+                  f"   Viralität: {int(trend.get('viral_potential') or 0)}/100 · TAYVORIQ-Fit: {int(trend.get('tayvoriq_fit') or 0)}/100",
+                  f"   Serie: {series} · Serienpotenzial: {int(trend.get('series_fit_score') or 0)}/100",
+                  f"   Return-Viewer: {int(trend.get('return_viewer_score') or 0)}/100 · Follow: {int(trend.get('follow_conversion_potential') or 0)}/100",
+                  f"   Möglicher nächster Teil: {nxt}",
+                  ''
+              ]
           lines += [
               '',
-              'Bewertet nach Aktualität · Viralität · TAYVORIQ-Passung · Quellenqualität · visueller Umsetzbarkeit.',
+              'Evidence/Quellenqualität bleibt Mindestbedingung; der V5-Score kann sie nicht kompensieren.',
               '',
               'Schritt 1: Tippe auf eine Nummer.',
               'Schritt 2: Prüfe Details und Quellen und tippe separat auf „Trend freigeben“.',
@@ -112,7 +137,8 @@ jobs:
           assert result.get('message_id'), result
           markup=result.get('reply_markup') or {}
           callbacks=[button.get('callback_data') for row in markup.get('inline_keyboard',[]) for button in row]
-          assert 3 <= len(callbacks) <= 5, callbacks
+          expected=1 if data.get('mode') == 'active_series' else 5
+          assert len(callbacks) == expected, callbacks
           assert all(str(value).startswith('select_trend:') for value in callbacks), callbacks
           assert not any(str(value).startswith('approve_trend:') for value in callbacks), callbacks
           print('telegram_message_id', result['message_id'])

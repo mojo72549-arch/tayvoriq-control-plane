@@ -82,28 +82,6 @@ def load_json(path):
         return None
 
 
-def newer_pending_request_exists(pointer_request_id, pointer_updated_at):
-    """Detect a newer approved/dispatching request only to suppress stale green notifications.
-
-    This does not replace the canonical active pointer and never drives recovery.
-    It only prevents Telegram from announcing an older completed topic as
-    "system healthy" while a newer approval is already waiting to be bound.
-    """
-    cutoff = parse_ts(pointer_updated_at)
-    pending_states = {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION", "DISPATCHING", "DISPATCHED"}
-    for path in Path("requests").glob("*.json"):
-        data = load_json(path)
-        if not isinstance(data, dict):
-            continue
-        if str(data.get("request_id") or "").strip() == str(pointer_request_id or "").strip():
-            continue
-        if latest_state(data) not in pending_states:
-            continue
-        if request_timestamp(data) > cutoff:
-            return True
-    return False
-
-
 def load_current_request():
     """Resolve only the request named by the canonical active pointer.
 
@@ -381,6 +359,15 @@ def main():
             "state": latest_state(request_data or {}),
             "recovery_generation": recovery_generation,
             "recovery_owner": recovery_owner,
+            "series_name": (request_data or {}).get("series_name"),
+            "episode_number": (request_data or {}).get("episode_number"),
+            "cta_type": (request_data or {}).get("cta_type"),
+            "follow_reason": (request_data or {}).get("follow_reason"),
+            "open_loop_status": (request_data or {}).get("open_loop_status"),
+            "next_episode_candidate": (request_data or {}).get("next_episode_candidate"),
+            "follow_conversion_gate": (request_data or {}).get("follow_conversion_gate") or ((request_data or {}).get("production_completion") or {}).get("follow_conversion_gate"),
+            "return_viewer_gate": (request_data or {}).get("return_viewer_gate") or ((request_data or {}).get("production_completion") or {}).get("return_viewer_gate"),
+            "golden_path_v5_state": (request_data or {}).get("golden_path_v5_state"),
             "source_count": len(((request_data or {}).get("source_context") or {}).get("sources") or []),
             "quality_gates_weakened": bool(((request_data or {}).get("source_context") or {}).get("quality_gates_weakened", False)),
             "path": str(request_path) if request_path else None,
@@ -464,13 +451,9 @@ def main():
         or ""
     )
     current_incident = incident.get("signature") if incident else None
-    stale_green_suppressed = bool(
-        overall == "green"
-        and newer_pending_request_exists(
-            pointer.get("request_id") if isinstance(pointer, dict) else None,
-            pointer.get("updated_at") if isinstance(pointer, dict) else None,
-        )
-    )
+    # Health/Telegram monitoring is canonical-pointer-only. It must never scan
+    # sibling requests to override or suppress the state of the bound request.
+    stale_green_suppressed = False
     notify = (
         previous_overall != overall
         or previous_incident != current_incident
