@@ -338,11 +338,12 @@ TAYVORIQ GOLDEN PATH V5 — RETENTION / SERIES / FOLLOW CONTRACT:
 - The final ranking uses exactly: 0.30 viral_potential + 0.20 tayvoriq_fit + 0.15 novelty_score + 0.15 return_viewer_score + 0.10 series_fit_score + 0.10 follow_conversion_potential.
 - Evidence/source quality remains a hard minimum and is NEVER part of a compensating weighted score.
 - Include proposed_series_id/proposed_series_name only when a real repeatable editorial family genuinely fits; otherwise use empty strings.
+- Include content_angle as the exact viewer-facing angle that will be locked if the user approves this trend.
 - Include next_episode_candidate only when there is a concrete, source-compatible follow-up worth planning.
 - Include recommended_cta_type and cta_type as exactly one of CURIOSITY, EXPERTISE, COMMUNITY, SERIES, DISCUSSION, IDENTITY.
 - Include primary_hook, viewer_question, explanation_core, surprise_or_reframe, practical_relevance, follow_reason, open_loop, open_loop_status and cta_text.
 - follow_reason and cta_text must be specific to THIS topic or series. Generic 'Bitte abonnieren' / 'Folge uns' is invalid.
-- open_loop_status is NONE, SOFT or HARD. HARD is forbidden unless next_episode_candidate is a real planned/queued follow-up. Never promise 'Morgen zeigen wir ...' without a real queued next part.
+- open_loop_status is NONE, SOFT or HARD. Fresh standalone trends MUST use NONE or SOFT. HARD is forbidden unless a persisted series/queue state already proves next_episode_candidate is PLANNED, QUEUED or READY. Never invent queue state and never promise 'Morgen zeigen wir ...' without a real queued next part.
 - The dramaturgical target is HOOK -> ERKLAERUNG -> UEBERRASCHENDER PUNKT -> NUTZEN/RELEVANZ -> FOLLOW-GRUND -> OPEN LOOP, expressed naturally rather than as a mechanical form.
 
 TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
