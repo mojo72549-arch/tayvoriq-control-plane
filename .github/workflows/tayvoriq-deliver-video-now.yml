@@ -589,6 +589,7 @@ jobs:
           echo "AUTOCODEFIX_OVERLAY_APPLIED:$SOURCE_REQUEST_ID_PIN:$patch_sha"
 
       - name: Bind native V5 retention contract to exact approved request
+        id: retention_lock
         if: steps.autocodefix_overlay.outcome == 'success'
         shell: bash
         run: |
@@ -612,8 +613,8 @@ jobs:
             --request "$request_path" --out "$contract_path"
           python -S implementation/tools/tayvoriq_retention_v5.py check \
             --contract "$contract_path"
-          echo "TAYVORIQ_RETENTION_CONTRACT_FILE=$contract_path" >> "$GITHUB_ENV"
-          echo "RETENTION_NATIVE_V5_BOUND:$SOURCE_REQUEST_ID_PIN"
+          echo "contract_path=$contract_path" >> "$GITHUB_OUTPUT"
+          echo "RETENTION_NATIVE_V5_LOCKED:$SOURCE_REQUEST_ID_PIN"
 
       - name: Lightweight contract preflight
         id: lightweight_preflight
@@ -895,6 +896,16 @@ jobs:
           set -euo pipefail
           python -m compileall -q tools src runtime_patches
           python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+
+      - name: Activate V5 contract after isolated preflight
+        if: steps.preflight.outcome == 'success' && steps.retention_lock.outputs.contract_path != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          contract_path="${{ steps.retention_lock.outputs.contract_path }}"
+          test -f "$contract_path" || { echo "RETENTION_LOCKED_CONTRACT_MISSING"; exit 1; }
+          echo "TAYVORIQ_RETENTION_CONTRACT_FILE=$contract_path" >> "$GITHUB_ENV"
+          echo "RETENTION_NATIVE_V5_BOUND:$SOURCE_REQUEST_ID_PIN"
 
       - name: Exact-request replay readiness gate
         id: replay_readiness
