@@ -1522,8 +1522,25 @@ jobs:
           test -n "$JOB_DIR" && test -d "$JOB_DIR"
           python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
 
-      - name: Telegram progress - quality passed
+      - name: GP-70 Return Viewer Gate
+        id: return_viewer_gate
         if: steps.publication_gate.outcome == 'success'
+        working-directory: implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_REQUEST_ID_PIN"
+          REQUEST_FILE="../requests/${SOURCE_REQUEST_ID_PIN}.json"
+          test -f "$REQUEST_FILE"
+          JOB_DIR=$(python -c 'import json,pathlib; d=json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text()); print(d.get("job_dir") or "")')
+          test -n "$JOB_DIR" && test -d "$JOB_DIR"
+          python ../tools/tayvoriq_return_viewer_gate_v5.py \
+            --request "$REQUEST_FILE" \
+            --job-dir "$JOB_DIR" \
+            --report-out out/control-plane/return-viewer-gate.json
+
+      - name: Telegram progress - quality passed
+        if: steps.publication_gate.outcome == 'success' && steps.return_viewer_gate.outcome == 'success'
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -1535,7 +1552,7 @@ jobs:
 
       - name: Publish review page
         id: publish_review
-        if: steps.publication_gate.outcome == 'success'
+        if: steps.publication_gate.outcome == 'success' && steps.return_viewer_gate.outcome == 'success'
         run: |
           set -euo pipefail
           mkdir -p pages-worktree/tayvoriq
@@ -1601,10 +1618,31 @@ jobs:
           pointer['reason']='golden-path-review-ready'
           pointer['completed_at']=now
           pointer['updated_at']=now
+          return_gate_path=Path('implementation/out/control-plane/return-viewer-gate.json')
+          if not return_gate_path.is_file():
+              raise SystemExit('RETURN_VIEWER_GATE_REPORT_MISSING_AT_FINALIZE')
+          return_gate=json.loads(return_gate_path.read_text(encoding='utf-8'))
+          if return_gate.get('status') not in {'PASS','NOT_APPLICABLE'}:
+              raise SystemExit('RETURN_VIEWER_GATE_NOT_PASSED:' + str(return_gate.get('status')))
+          if return_gate.get('quality_gates_weakened') is not False:
+              raise SystemExit('RETURN_VIEWER_GATE_INTEGRITY_INVALID')
+          request['return_viewer_gate']=return_gate.get('status')
+          request['return_viewer_gate_report']={
+              'schema':return_gate.get('schema'),
+              'status':return_gate.get('status'),
+              'return_viewer_score':return_gate.get('return_viewer_score'),
+              'follow_conversion_gate':return_gate.get('follow_conversion_gate'),
+              'cta_type':return_gate.get('cta_type'),
+              'open_loop_status':return_gate.get('open_loop_status'),
+              'issues':return_gate.get('issues') or [],
+              'quality_gates_weakened':False,
+          }
           request['production_completion']={
               'state':'REVIEW_READY',
               'golden_path_run_id':run_id,
               'completed_at':now,
+              'follow_conversion_gate':return_gate.get('follow_conversion_gate'),
+              'return_viewer_gate':return_gate.get('status'),
               'quality_gates_weakened':False,
           }
           request_path.write_text(json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
