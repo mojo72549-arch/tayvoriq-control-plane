@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-25T22:18:42.289029Z",
+  "generated_at": "2026-09-25T22:18:55.795699Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -47,9 +47,9 @@
     "created_at": "2026-09-25T22:18:32Z",
     "updated_at": "2026-09-25T22:18:36Z",
     "attempt": 1,
-    "progress": 22,
-    "current_step": "Checkout implementation",
-    "last_successful_step": "Validate immutable implementation policy",
+    "progress": 30,
+    "current_step": "Checkout review pages",
+    "last_successful_step": "Lightweight contract preflight",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -73,7 +73,7 @@
       },
       {
         "label": "Light Preflight",
-        "status": "pending",
+        "status": "success",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
@@ -85,7 +85,7 @@
       },
       {
         "label": "Full Preflight",
-        "status": "pending",
+        "status": "success",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout implementation"
+      "detail": "Checkout review pages"
     },
     {
       "name": "Production Green",
