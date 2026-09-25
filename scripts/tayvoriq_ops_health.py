@@ -82,28 +82,6 @@ def load_json(path):
         return None
 
 
-def newer_pending_request_exists(pointer_request_id, pointer_updated_at):
-    """Detect a newer approved/dispatching request only to suppress stale green notifications.
-
-    This does not replace the canonical active pointer and never drives recovery.
-    It only prevents Telegram from announcing an older completed topic as
-    "system healthy" while a newer approval is already waiting to be bound.
-    """
-    cutoff = parse_ts(pointer_updated_at)
-    pending_states = {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION", "DISPATCHING", "DISPATCHED"}
-    for path in Path("requests").glob("*.json"):
-        data = load_json(path)
-        if not isinstance(data, dict):
-            continue
-        if str(data.get("request_id") or "").strip() == str(pointer_request_id or "").strip():
-            continue
-        if latest_state(data) not in pending_states:
-            continue
-        if request_timestamp(data) > cutoff:
-            return True
-    return False
-
-
 def load_current_request():
     """Resolve only the request named by the canonical active pointer.
 
@@ -464,13 +442,10 @@ def main():
         or ""
     )
     current_incident = incident.get("signature") if incident else None
-    stale_green_suppressed = bool(
-        overall == "green"
-        and newer_pending_request_exists(
-            pointer.get("request_id") if isinstance(pointer, dict) else None,
-            pointer.get("updated_at") if isinstance(pointer, dict) else None,
-        )
-    )
+    # Canonical pointer/request state is the single monitoring truth.
+    # Do not scan sibling request files here; that can make Health disagree
+    # with the Control Center and the recovery owner.
+    stale_green_suppressed = False
     notify = (
         previous_overall != overall
         or previous_incident != current_incident
