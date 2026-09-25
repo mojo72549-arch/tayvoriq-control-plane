@@ -1,7 +1,8 @@
 slot=evening
 target_date=2026-09-25
-refresh=r2
+refresh=r3
 policy=reach_first
 canary=v5_end_to_end
 requested_via=chatgpt_operator
-repair_of=20260925-evening-agentv2-r1
+repair_of=20260925-evening-agentv2-r2
+fallback=manual_verified_fallback_after_provider_limits
