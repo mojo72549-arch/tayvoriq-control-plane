@@ -52,8 +52,8 @@ def test_hf_requires_two_exact_independent_source_urls(monkeypatch) -> None:
                         "regional_relevance": "europe",
                         "criteria": {"aktualitaet": 90, "viralitaet": 90, "tayvoriq_passung": 90, "quellenqualitaet": 90, "visuell": 90},
                         "sources": [
-                            {"publisher": "x", "url": "https://a.example/x", "supports": "x"},
-                            {"publisher": "x", "url": "https://a.example/x", "supports": "x"},
+                            {"source_id": "S001", "supports": "x"},
+                            {"source_id": "S003", "supports": "x"},
                         ],
                         "fallback_editorial_answers": {"what_happened": "x", "why_happening": "x", "who_is_affected": "x", "personal_impact": "x", "action_now": "x"},
                     }]
@@ -63,9 +63,87 @@ def test_hf_requires_two_exact_independent_source_urls(monkeypatch) -> None:
     }
     monkeypatch.setattr(http, "post_json", lambda *args, **kwargs: (fake, {}))
     monkeypatch.setattr(http, "retry", lambda label, call, attempts: call())
+    try:
+        hf.structure("editorial", "token", records)
+    except RuntimeError as exc:
+        assert "HF source contract insufficient" in str(exc)
+    else:
+        raise AssertionError("same-domain HF evidence must force the next source pool")
+
+
+def test_hf_fallback_prompt_is_v5_native_and_keeps_cross_domain_candidates(monkeypatch) -> None:
+    records = [
+        {"title": "A1", "context": "same current event alpha", "url": "https://a.example/1", "domain": "a.example"},
+        {"title": "B1", "context": "same current event alpha", "url": "https://b.example/1", "domain": "b.example"},
+        {"title": "A2", "context": "same current event beta", "url": "https://a.example/2", "domain": "a.example"},
+        {"title": "B2", "context": "same current event beta", "url": "https://b.example/2", "domain": "b.example"},
+    ] * 2
+    captured = {}
+
+    def candidate(title: str, first: str, second: str) -> dict:
+        return {
+            "title": title,
+            "content_angle": "Warum dieses Ereignis jetzt wichtig wird",
+            "category": "technology_ai",
+            "trend_scope": "technology_ai",
+            "regional_relevance": "global",
+            "criteria": {"aktualitaet": 90, "viralitaet": 90, "tayvoriq_passung": 90, "quellenqualitaet": 90, "visuell": 90},
+            "viral_potential": 90,
+            "tayvoriq_fit": 90,
+            "novelty_score": 88,
+            "series_fit_score": 70,
+            "return_viewer_score": 84,
+            "follow_conversion_potential": 82,
+            "open_loop_potential": 70,
+            "proposed_series_id": "",
+            "proposed_series_name": "",
+            "next_episode_candidate": "",
+            "recommended_cta_type": "CURIOSITY",
+            "primary_hook": "Das verändert gerade mehr als es zuerst aussieht.",
+            "viewer_question": "Was bedeutet das konkret für Nutzer?",
+            "explanation_core": "Zwei unabhängige Quellen beschreiben denselben aktuellen Vorgang.",
+            "surprise_or_reframe": "Entscheidend ist weniger die Schlagzeile als die direkte Folge.",
+            "practical_relevance": "Für Nutzer entsteht daraus ein klarer praktischer Effekt.",
+            "follow_reason": "TAYVORIQ ordnet die nächsten bestätigten Entwicklungen verständlich ein.",
+            "open_loop": "Die nächste bestätigte Entwicklung bleibt relevant.",
+            "open_loop_status": "SOFT",
+            "next_episode_queue_status": "",
+            "cta_type": "CURIOSITY",
+            "cta_text": "Folge TAYVORIQ für die nächste bestätigte Entwicklung zu diesem Thema.",
+            "sources": [
+                {"source_id": first, "supports": "supported fact"},
+                {"source_id": second, "supports": "supported fact"},
+            ],
+            "fallback_editorial_answers": {
+                "what_happened": "Zwei Quellen bestätigen heute denselben neuen technischen Entwicklungsschritt.",
+                "why_happening": "Das passiert, weil Anbieter ihre Systeme jetzt breiter verfügbar machen.",
+                "who_is_affected": "Betroffen sind vor allem Nutzer digitaler Dienste und Plattformen.",
+                "personal_impact": "Für dich kann sich die tägliche Nutzung dadurch spürbar verändern.",
+                "action_now": "Prüfe jetzt, ob die neue Funktion bei dir verfügbar ist.",
+            },
+        }
+
+    fake = {"choices": [{"message": {"content": json.dumps({"candidates": [
+        candidate("Alpha", "S001", "S002"),
+        candidate("Beta", "S003", "S004"),
+    ]})}}]}
+
+    def post_json(url, payload, headers, timeout):
+        captured["payload"] = payload
+        return fake, {}
+
+    monkeypatch.setattr(http, "post_json", post_json)
+    monkeypatch.setattr(http, "retry", lambda label, call, attempts: call())
     data, chunks, _ = hf.structure("editorial", "token", records)
-    assert data["candidates"][0]["sources"] == []
-    assert chunks == []
+    prompt = captured["payload"]["messages"][1]["content"]
+    assert '"content_angle"' in prompt
+    assert '"viral_potential"' in prompt
+    assert '"follow_conversion_potential"' in prompt
+    assert '"cta_text"' in prompt
+    assert "naturally mention TAYVORIQ" in prompt
+    assert len(data["candidates"]) == 2
+    assert len(chunks) == 4
+    assert all(len(item["sources"]) == 2 for item in data["candidates"])
 
 
 def test_all_provider_failure_creates_deferred_marker(monkeypatch, tmp_path) -> None:
