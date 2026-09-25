@@ -342,7 +342,7 @@ TAYVORIQ GOLDEN PATH V5 — RETENTION / SERIES / FOLLOW CONTRACT:
 - Include next_episode_candidate only when there is a concrete, source-compatible follow-up worth planning.
 - Include recommended_cta_type and cta_type as exactly one of CURIOSITY, EXPERTISE, COMMUNITY, SERIES, DISCUSSION, IDENTITY.
 - Include primary_hook, viewer_question, explanation_core, surprise_or_reframe, practical_relevance, follow_reason, open_loop, open_loop_status and cta_text.
-- follow_reason and cta_text must be specific to THIS topic or series. Generic 'Bitte abonnieren' / 'Folge uns' is invalid.
+- follow_reason and cta_text must be specific to THIS topic or series. Generic 'Bitte abonnieren' / 'Folge uns' is invalid. The CTA must name TAYVORIQ naturally so the return-viewer promise is brand-identifiable.
 - open_loop_status is NONE, SOFT or HARD. Fresh standalone trends MUST use NONE or SOFT. HARD is forbidden unless a persisted series/queue state already proves next_episode_candidate is PLANNED, QUEUED or READY. Never invent queue state and never promise 'Morgen zeigen wir ...' without a real queued next part.
 - The dramaturgical target is HOOK -> ERKLAERUNG -> UEBERRASCHENDER PUNKT -> NUTZEN/RELEVANZ -> FOLLOW-GRUND -> OPEN LOOP, expressed naturally rather than as a mechanical form.
 
