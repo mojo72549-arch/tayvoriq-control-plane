@@ -1,0 +1,44 @@
+name: TAYVORIQ V5 Contract CI
+
+on:
+  pull_request:
+    paths:
+      - "tools/tayvoriq_retention_v5.py"
+      - "tools/tayvoriq_agent_trend_radar_v2.py"
+      - "tools/tayvoriq_agent_trend_provider_v3.py"
+      - "tools/tayvoriq_agent_trend_radar_v8.py"
+      - "tools/tayvoriq_orchestration_contract.py"
+      - "tests/test_tayvoriq_retention_v5.py"
+      - ".github/workflows/tayvoriq-*.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retention-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -q pytest
+      - name: Compile V5 control-plane files
+        run: |
+          python -m py_compile             tools/tayvoriq_retention_v5.py             tools/tayvoriq_agent_trend_radar_v2.py             tools/tayvoriq_agent_trend_provider_v3.py             tools/tayvoriq_agent_trend_radar_v8.py             tools/tayvoriq_orchestration_contract.py
+      - name: Run V5 regressions
+        run: python -m pytest -q tests/test_tayvoriq_retention_v5.py
+      - name: Dry-run a real historical request without publication
+        run: |
+          python tools/tayvoriq_retention_v5.py dry-run             --request requests/telegram-2657-trend-1.json             --out /tmp/tayvoriq-v5-real-request-dry-run.json
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/tayvoriq-v5-real-request-dry-run.json',encoding='utf-8'))
+          assert p['dry_run'] is True
+          assert p['platform_upload_performed'] is False
+          assert p['review_required_before_publish'] is True
+          assert p['quality_gates_weakened'] is False
+          print(json.dumps(p,ensure_ascii=False,indent=2))
+          PY
