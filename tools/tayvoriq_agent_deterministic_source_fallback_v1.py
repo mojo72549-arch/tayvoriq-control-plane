@@ -36,6 +36,8 @@ _STOP = {
     # Generic / low-signal news words
     "latest","report","reports","update","updates","live","today","breaking","world","people",
     "could","would","should","amid","across","first","major","official","officials",
+    "confirmed","confirm","development","developments","source","sources","coverage","described",
+    "independently","detail","details","changes","change","current",
 }
 _CATEGORY_MARKERS = {
     "technology_ai": {
@@ -242,11 +244,13 @@ def structure(records: list[dict[str, Any]], source_label: str = "providerless-s
         urls = {str(a.get("url") or ""), str(b.get("url") or "")}
         if urls & used_urls:
             continue
-        signature = set(list(common)[:8])
-        if any(len(signature & previous) >= 2 for previous in signatures):
-            continue
         candidate = _candidate(a, b, common, score)
         if not candidate:
+            continue
+        # De-duplicate by the actual two-term story label, never by arbitrary
+        # set iteration order from the wider common-token pool.
+        signature = set(_tokens(candidate.get("title"))) - {"aktuell", "erklärt"}
+        if any(len(signature & previous) >= 2 for previous in signatures):
             continue
         candidates.append(candidate)
         signatures.append(signature)
