@@ -152,3 +152,76 @@ def test_series_cta_requires_real_next_episode() -> None:
 
     with pytest.raises(SystemExit, match="SERIES CTA requires real series"):
         contract.validate(request)
+
+
+def test_recovery_keeps_sources_and_angle(tmp_path: Path) -> None:
+    now = contract.utc_now()
+    source = source_context()
+    source_raw = json.dumps(source, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    retention = retention_v5()
+    retention_raw = json.dumps(retention, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    story = {
+        "schema": "tayvoriq-story-retention-contract-v5",
+        "primary_hook": "Europa erweitert seine KI-Rechenleistung.",
+        "viewer_question": retention["content_angle"],
+        "explanation_core": "Mehr Rechenleistung beeinflusst strategische Abhängigkeiten.",
+        "surprise_or_reframe": "Entscheidend ist auch, wer Zugriff erhält.",
+        "practical_relevance": "Neue europäische KI-Dienste können schneller entstehen.",
+        "follow_reason": "TAYVORIQ liefert weitere verifizierte KI-Entwicklungen mit verständlicher Einordnung statt leerem Hype.",
+        "open_loop": "",
+        "open_loop_status": "NONE",
+        "queue_status": None,
+        "cta_type": "IDENTITY",
+        "cta_text": {
+            "youtube_shorts": "Abonniere TAYVORIQ, wenn du verifizierte KI-Entwicklungen verständlich und ohne Hype verfolgen willst.",
+            "tiktok": "Folge TAYVORIQ, wenn du verifizierte KI-Entwicklungen verständlich und ohne Hype verfolgen willst.",
+        },
+        "cta_variant": {"youtube_shorts": 0, "tiktok": 0},
+        "series_id": None,
+        "series_name": None,
+        "episode_number": None,
+        "next_episode_candidate": None,
+        "continuity_hook": None,
+        "follow_conversion_gate": "PASS",
+        "quality_gates_weakened": False,
+    }
+    story_raw = json.dumps(story, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    request = {
+        "request_id": "test-v5-recovery",
+        "status": "APPROVED",
+        "trend_id": "1",
+        "topic": "Europa baut neue KI-Infrastruktur",
+        "trend_scope": "technology_ai",
+        "language": "Deutsch",
+        "platform": "youtube_tiktok",
+        "target_duration": 35,
+        "approval_required_before_youtube_publish": True,
+        "approval_key": "test:v5:recovery",
+        "mode": "full",
+        "approved_at": now,
+        "source_context": source,
+        "source_context_sha256": hashlib.sha256(source_raw).hexdigest(),
+        "retention_contract": retention,
+        "retention_contract_sha256": hashlib.sha256(retention_raw).hexdigest(),
+        "story_retention_contract": story,
+        "story_retention_contract_sha256": hashlib.sha256(story_raw).hexdigest(),
+        "state_history": [{"state": "APPROVED", "at": now, "actor": "test"}],
+    }
+    request["contract_sha256"] = contract.contract_hash(request)
+    path = tmp_path / "request.json"
+    path.write_text(json.dumps(request), encoding="utf-8")
+
+    args = argparse.Namespace(
+        path=str(path),
+        to="DISPATCHING",
+        actor="recovery-test",
+        meta=["recovery_generation=1"],
+    )
+    contract.transition(args)
+
+    recovered = json.loads(path.read_text(encoding="utf-8"))
+    assert recovered["source_context_sha256"] == request["source_context_sha256"]
+    assert recovered["retention_contract"]["content_angle"] == retention["content_angle"]
+    assert recovered["retention_contract_sha256"] == request["retention_contract_sha256"]
+    assert recovered["story_retention_contract_sha256"] == request["story_retention_contract_sha256"]
+    assert recovered["contract_sha256"] == request["contract_sha256"]
