@@ -54,11 +54,11 @@ jobs:
           print(json.dumps(p,ensure_ascii=False,indent=2))
           PY
 
-      - name: Checkout private production V5 branch
+      - name: Checkout canonical private production ref
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: agent/gp-v5-retention-20260925
+          ref: feature/multi-platform-distribution-package
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
