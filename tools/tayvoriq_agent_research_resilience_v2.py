@@ -39,7 +39,12 @@ def grounded(prompt:str,gemini_key:str,groq_key:str):
     except Exception as exc:
         errors.append('HuggingFace/GDELT fallback failed: '+http.summary(exc))
 
-    # The deterministic pool can pair syndicated mirrors and generates generic\n    # topic labels/hooks. Editorial quality and source independence are not\n    # established, so defer until a verified selection is available.\n    errors.append('Deterministic source fallback disabled: syndicated mirrors and generic hooks cannot pass editorial quality')\n\n    _defer(errors); raise RuntimeError('RESEARCH_DEFERRED: '+' | '.join(errors))
+    # The deterministic pool can pair syndicated mirrors and generates generic
+    # topic labels/hooks. Editorial quality and source independence are not
+    # established, so defer until a verified selection is available.
+    errors.append('Deterministic source fallback disabled: syndicated mirrors and generic hooks cannot pass editorial quality')
+
+    _defer(errors); raise RuntimeError('RESEARCH_DEFERRED: '+' | '.join(errors))
 
 def install()->None:
     base.gemini_call=http.gemini_grounded; base.grounded_call=grounded
