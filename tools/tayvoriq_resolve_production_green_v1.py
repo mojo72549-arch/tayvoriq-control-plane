@@ -51,7 +51,18 @@ def resolve() -> dict[str, object]:
         if not isinstance(recovery, dict):
             recovery = {}
         replay_sha_raw = str(recovery.get("replay_implementation_sha") or "").strip().lower()
-        if str(recovery.get("status") or "").upper() == "REPLAY_DISPATCHED" and replay_sha_raw:
+        # Dispatch starts the workflow before its run ID can be written back.
+        # The checkout may therefore still contain the predecessor's replay.
+        # Only this exact run can inherit a historical implementation pin;
+        # otherwise start from verified current Green and let the later live
+        # owner/readiness gate prove the newly persisted binding before render.
+        run_id = str(os.environ.get("GITHUB_RUN_ID") or "").strip()
+        exact_replay = (
+            run_id.isdigit()
+            and str(recovery.get("replay_run_id") or "") == run_id
+            and str(request.get("golden_path_run_id") or "") == run_id
+        )
+        if str(recovery.get("status") or "").upper() == "REPLAY_DISPATCHED" and replay_sha_raw and exact_replay:
             replay_sha = _require_sha(replay_sha_raw, "PRODUCTION_GREEN_REPLAY_SHA")
             if recovery.get("quality_gates_weakened") is not False:
                 raise SystemExit("PRODUCTION_GREEN_REPLAY_QUALITY_GATE_INTEGRITY_FAILED")

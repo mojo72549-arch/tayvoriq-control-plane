@@ -484,7 +484,12 @@ jobs:
                    '.github/workflows/tayvoriq-autonomous-codefix-builder.yml',
                    '.github/workflows/tayvoriq-delivery-watch.yml',
                    '.github/workflows/tayvoriq-production-green-promoter.yml',
-                   'tools/tayvoriq_codefix_orphan_reconcile_v1.py'}
+                   'tools/tayvoriq_codefix_orphan_reconcile_v1.py',
+                   'tools/tayvoriq_slot_serialization_v1.py',
+                   'tools/tayvoriq_autocodefix_budget_v1.py',
+                   '.github/workflows/tayvoriq-request-dispatch.yml',
+                   '.github/workflows/tayvoriq-slot-serialization-release.yml',
+                   '.github/workflows/tayvoriq-slot-serialization-contract.yml'}
           relevant=[]
           for path in paths:
               if (
