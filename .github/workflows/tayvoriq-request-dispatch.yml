@@ -358,7 +358,10 @@ jobs:
           import json,sys
           data=json.loads(sys.argv[1])
           print('true' if data.get('released') is True
-                and data.get('reason')=='VERIFIED_EDITORIAL_SOURCE_REPAIR_AFTER_FAILED_PREFLIGHT'
+                and data.get('reason') in {
+                  'VERIFIED_EDITORIAL_SOURCE_REPAIR_AFTER_FAILED_PREFLIGHT',
+                  'VERIFIED_CTA_CONTENT_REPAIR_AFTER_FAILED_PUBLISHABILITY',
+                }
                 and data.get('predecessor_request_id')==sys.argv[2]
                 and int(data.get('predecessor_run_id') or 0)==int(sys.argv[3]) else 'false')
           PY
