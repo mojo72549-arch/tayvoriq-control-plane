@@ -1,28 +1,28 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-26T16:49:52.335191Z",
-  "overall": "green",
+  "generated_at": "2026-09-26T17:00:58.890880Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2699-trend-1",
-    "golden_path_run_id": 36243464769,
-    "pointer_updated_at": "2026-09-26T13:11:33.108592Z"
+    "request_id": "telegram-2867-trend-5",
+    "golden_path_run_id": 36256856439,
+    "pointer_updated_at": "2026-09-26T16:49:56.713194Z"
   },
   "request": {
-    "request_id": "telegram-2699-trend-1",
-    "topic": "Claude entdeckt ein CRISPR-ähnliches Enzymsystem: Wird KI zum echten Forschungspartner?",
-    "trend_id": "1",
+    "request_id": "telegram-2867-trend-5",
+    "topic": "Ein Gehirn, zwei Entwicklungswege? Neue Studie zeigt frühe Trennung",
+    "trend_id": "5",
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
-    "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ verfolgt, ob unabhängige Labore diese KI-gestützte Entdeckung bestätigen und welche Folgen daraus entstehen.",
+    "cta_type": "CURIOSITY",
+    "follow_reason": "TAYVORIQ trennt die neuen Daten von der Schlagzeile über angeblich zwei Gehirne.",
     "open_loop_status": "SOFT",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -35,23 +35,23 @@
       "issues": []
     },
     "golden_path_v5_state": "APPROVED",
-    "source_count": 2,
+    "source_count": 3,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2699-trend-1.json"
+    "path": "requests/telegram-2867-trend-5.json"
   },
   "run": {
-    "id": 36243464769,
+    "id": 36256856439,
     "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36243464769",
-    "created_at": "2026-09-26T12:55:33Z",
-    "updated_at": "2026-09-26T13:11:50Z",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36256856439",
+    "created_at": "2026-09-26T16:49:50Z",
+    "updated_at": "2026-09-26T16:50:09Z",
     "attempt": 1,
-    "progress": 100,
+    "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Lightweight contract preflight",
+    "failed_step_number": 17,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -73,7 +73,7 @@
       },
       {
         "label": "Light Preflight",
-        "status": "success",
+        "status": "error",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
@@ -85,37 +85,37 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
+        "status": "error",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "skipped",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "error",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "skipped",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "skipped",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "red",
+      "detail": "Lightweight contract preflight"
     },
     {
       "name": "Production Green",
@@ -135,69 +135,75 @@
     {
       "name": "Self-Heal",
       "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36256856439:17:none",
+    "severity": "critical",
+    "failure_state": null,
+    "failed_step": "Lightweight contract preflight",
+    "failed_step_number": 17,
+    "self_heal_status": "IDLE",
+    "same_generation_replay_required": false,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
+    "status": "IDLE",
+    "source_status": "IDLE",
     "failure_state": null,
-    "failed_run_id": 36242845453,
-    "replay_run_id": 36243464769,
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
-    "same_generation_replay_required": true,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-26T12:55:40.356948Z",
+      "at": "2026-09-26T16:50:09Z",
+      "title": "Workflow-Fehler",
+      "detail": "Lightweight contract preflight"
+    },
+    {
+      "at": "2026-09-26T16:49:56.633393+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:36256847617"
     },
     {
-      "at": "2026-09-26T12:55:27.356296Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+      "at": "2026-09-26T16:49:47.627954+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:36256847617"
     },
     {
-      "at": "2026-09-26T12:44:03.061399Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
+      "at": "2026-09-26T15:09:15.008952Z",
+      "title": "APPROVED",
+      "detail": "tayvoriq-slot-serialization-gate"
     },
     {
-      "at": "2026-09-26T12:34:34.926807Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-09-26T12:31:46.497124Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-26T12:26:14.417819Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-09-26T15:09:05.822Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
