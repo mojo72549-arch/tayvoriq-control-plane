@@ -95,6 +95,40 @@ class SlotSerializationTests(unittest.TestCase):
             self.assertFalse(result["released"])
             self.assertEqual(result["reason"], "MORNING_REQUEST_MISSING")
 
+    def test_explicit_evening_without_morning_requires_verified_completed_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer = Path(tmp) / ".github/state/tayvoriq-active-production-request.json"
+            pointer.parent.mkdir(parents=True)
+            evening = root / "evening.json"
+            evening.write_text(json.dumps(request(
+                "20260926-evening-agentv2-r1", "telegram-2867-trend-5", "2026-09-26T15:09:05Z"
+            )), encoding="utf-8")
+            jobs = {"jobs": [{"name": "orchestrate", "steps": [
+                {"name": name, "conclusion": "success"} for name in gate.REQUIRED_FINAL_STEPS
+            ]}]}
+            for owner_state, expected in (("ACTIVE", False), ("COMPLETED", True)):
+                pointer.write_text(json.dumps({
+                    "schema": "tayvoriq-active-production-request-v1", "state": owner_state,
+                    "request_id": "telegram-2699-trend-1", "golden_path_run_id": 36243464769,
+                }))
+                with patch.object(gate, "github_json", side_effect=[
+                    {"status": "completed", "conclusion": "success"}, jobs,
+                ]):
+                    result = gate.check_request(evening, root, "repo", "token")
+                self.assertEqual(result["released"], expected)
+            self.assertEqual(result["reason"], "EXPLICIT_EVENING_APPROVAL_AFTER_COMPLETED_OWNER")
+            self.assertEqual(result["predecessor_run_id"], 36243464769)
+            self.assertEqual(set(result["verified_final_steps"]), set(gate.REQUIRED_FINAL_STEPS))
+            data = json.loads(evening.read_text(encoding="utf-8"))
+            data["source"] = "user_preapproved_preparation"
+            evening.write_text(json.dumps(data), encoding="utf-8")
+            with patch.object(gate, "github_json", side_effect=[
+                {"status": "completed", "conclusion": "success"}, jobs,
+            ]):
+                self.assertEqual(gate.check_request(evening, root, "repo", "token")["reason"], "MORNING_REQUEST_MISSING")
+
     def test_preapproved_preparation_is_valid_same_day_morning_predecessor(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
