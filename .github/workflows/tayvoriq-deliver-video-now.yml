@@ -113,10 +113,11 @@ jobs:
               or request.get("source_request_id")
               or ""
           ).strip()
-          generation_candidates = [
-              os.environ.get("EVENT_RECOVERY_GENERATION"),
-              request.get("recovery_generation"),
-          ]
+          # A workflow_dispatch pin owns its recovery generation, including zero.
+          # The run-now file may belong to a different request and must never
+          # contribute its generation to this exact-request replay.
+          event_generation = os.environ.get("EVENT_RECOVERY_GENERATION")
+          durable_generation = None
           if source_request_id:
               durable = Path("requests") / f"{source_request_id}.json"
               if durable.is_file():
@@ -124,15 +125,22 @@ jobs:
                       durable_request = json.loads(durable.read_text(encoding="utf-8"))
                   except Exception:
                       durable_request = {}
-                  generation_candidates.append(durable_request.get("recovery_generation"))
-          recovery_generation = 0
-          for value in generation_candidates:
-              if value in (None, ""):
-                  continue
-              try:
-                  recovery_generation = max(recovery_generation, int(value))
-              except (TypeError, ValueError):
-                  raise SystemExit("CONTROL_PLANE_RECOVERY_GENERATION_INVALID")
+                  if durable_request.get("request_id") == source_request_id:
+                      durable_generation = durable_request.get("recovery_generation")
+          request_generation = (
+              request.get("recovery_generation")
+              if request.get("source_request_id") == source_request_id else None
+          )
+          value = next(
+              (candidate for candidate in
+               (event_generation, durable_generation, request_generation, 0)
+               if candidate not in (None, "")),
+              0,
+          )
+          try:
+              recovery_generation = int(value)
+          except (TypeError, ValueError):
+              raise SystemExit("CONTROL_PLANE_RECOVERY_GENERATION_INVALID")
           if recovery_generation < 0:
               raise SystemExit("CONTROL_PLANE_RECOVERY_GENERATION_INVALID")
           if not topic or any(char in topic for char in "\r\n"):
