@@ -12,10 +12,26 @@ from pathlib import Path
 
 import tayvoriq_agent_trend_radar_v7 as growth_v7
 import tayvoriq_retention_v5 as retention_v5
+import tayvoriq_editorial_value_v1 as editorial_value
 
 base = growth_v7.base
 _original_prompt = base.prompt_for
 _original_diversify = base.diversify
+_original_normalized_candidate = base.normalized_candidate
+
+
+def normalized_candidate(raw, verified_at):
+    candidate = _original_normalized_candidate(raw, verified_at)
+    if candidate is None:
+        return None
+    source = raw.get("source_context") if isinstance(raw.get("source_context"), dict) else {}
+    # Keep the requested spoken story through normalization. Never replace the
+    # independently normalized sources or compact factual compatibility answers.
+    for key in ("story_first_script_body", "editorial_story_contract_version",
+                "research_notes", "factual_guardrails"):
+        if key in source:
+            candidate["source_context"][key] = source[key]
+    return candidate
 
 _BROAD_REACH = {"germany", "europe", "global"}
 _SCOPE_BONUS = {"global": 18, "europe": 16, "germany": 13, "local": -45}
@@ -159,7 +175,22 @@ def diversify(candidates, slot):
             invalid_v5_candidates=invalid_v5,
         )
         raise SystemExit(f"V5_RESCAN_REQUIRED: expected exactly 5 V5 candidates, got {len(ordered)}")
-    return ordered
+    try:
+        reviewed = editorial_value.review_candidates(ordered)
+        # A rewrite must still obey existing CTA/open-loop/brand invariants.
+        for candidate in reviewed:
+            retention_v5.validate_trend_contract(candidate, strict=True)
+            follow = retention_v5.evaluate_follow_conversion(candidate)
+            if follow["result"] == "REWRITE_REQUIRED":
+                raise ValueError("editorial_cta_contract_failed")
+        return reviewed
+    except Exception as exc:
+        # No media, codefix or new recovery generation for weak editorial copy.
+        # Provider responses may contain sensitive data; persist only the class.
+        _mark_research_deferred("EDITORIAL_REVIEW_DEFERRED", slot=str(slot),
+                                error_type=type(exc).__name__, production_started=False,
+                                editorial_issues=exc.issues if isinstance(exc, editorial_value.EditorialRejected) else {})
+        raise SystemExit("EDITORIAL_REVIEW_DEFERRED: story review did not pass") from None
 
 
 
@@ -261,7 +292,7 @@ def _rejected_topic_hint_text():
 def prompt_for(slot, now):
     editorial_hints = _editorial_hint_text(slot, now)
     rejected_hints = _rejected_topic_hint_text()
-    return _original_prompt(slot, now) + """
+    return _original_prompt(slot, now) + "\n\n" + editorial_value.STANDARD + "\n\n" + """
 
 TAYVORIQ REACH POTENTIAL GATE — HARD RANKING REQUIREMENT:
 - The final Telegram ranking is reach-first, not locality-first.
@@ -358,6 +389,7 @@ TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 
 base.diversify = diversify
 base.prompt_for = prompt_for
+base.normalized_candidate = normalized_candidate
 
 if __name__ == "__main__":
     raise SystemExit(base.main())
