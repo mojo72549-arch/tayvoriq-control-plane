@@ -81,8 +81,12 @@ async function getRun(repo,id,headers){
   return {...r,_repo:repo};
 }
 
-async function getJobs(repo,id,headers){
-  const p=await jsonFetch(`${API}/repos/${repo}/actions/runs/${id}/jobs?filter=latest&per_page=100`,headers);
+async function getJobs(repo,id,headers,attempt=1){
+  const runPath=`${API}/repos/${repo}/actions/runs/${id}`;
+  const jobsPath=Number(attempt)>1
+    ? `${runPath}/attempts/${Number(attempt)}/jobs?per_page=100`
+    : `${runPath}/jobs?filter=latest&per_page=100`;
+  const p=await jsonFetch(jobsPath,headers);
   return Array.isArray(p.jobs)?p.jobs:[];
 }
 
@@ -404,7 +408,8 @@ export default async function handler(req,res){
 
   if(canonicalRunId){
     canonicalRun=controlRuns.find(r=>Number(r.id)===canonicalRunId)||null;
-    if(!canonicalRun){try{canonicalRun=await getRun(CONTROL_REPO,canonicalRunId,gh.headers)}catch(error){errors.push(`canonical-run:${error?.message||error}`)}}
+    try{canonicalRun=await getRun(CONTROL_REPO,canonicalRunId,gh.headers)}
+    catch(error){errors.push(`canonical-run:${error?.message||error}`)}
   }
 
   const pilotRunId=Number(pilotState?.run_id||0)||null;
@@ -424,7 +429,7 @@ export default async function handler(req,res){
   const jobsByKey=new Map();
   await Promise.all([...targetMap.values()].map(async run=>{
     let jobs=[];
-    try{jobs=await getJobs(run._repo,run.id,gh.headers)}catch(error){errors.push(`jobs:${run._repo}:${run.id}:${error?.message||error}`)}
+    try{jobs=await getJobs(run._repo,run.id,gh.headers,run.run_attempt||1)}catch(error){errors.push(`jobs:${run._repo}:${run.id}:attempt-${run.run_attempt||1}:${error?.message||error}`)}
     jobsByKey.set(runKey(run._repo,run.id),jobs);
     telemetry.push(toActivity(run,jobs));
   }));
