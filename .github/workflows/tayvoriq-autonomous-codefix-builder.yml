@@ -232,19 +232,54 @@ jobs:
               'tools/tayvoriq_preapproval_ai_audit_v6.py',
               'runtime_patches/tayvoriq_verified_request_runtime_recovery.py',
           ]
+          visual_files=[
+              'tools/tayvoriq_visual_only_repair_v1.py',
+              'tools/tayvoriq_dual_platform_render_v34.py',
+              'tools/tayvoriq_dual_platform_render_v2.py',
+              'tools/tayvoriq_preapproval_ai_audit_v6.py',
+              'tests/test_tayvoriq_visual_audit_resilience.py',
+          ]
+          visual_failure=(
+              'visual_agent:' in quality_evidence.casefold()
+              and any(term in quality_evidence.casefold() for term in
+                      ('finanz', 'börse', 'trading', 'stock chart', 'themat', 'mismatch'))
+          )
+          pronunciation_failure=(
+              'pronunciation_interpretation:' in quality_evidence.casefold()
+              or 'maus und bullion' in quality_evidence.casefold()
+          )
+          number_failure=any(term in quality_evidence.casefold() for term in
+                             ('number-pronunciation', '48.000', 'achtundvierzig.null'))
+          if source_hash_failure:
+              action='repair_exact_approved_source_binding_at_v5_render_boundary'
+              traceback_files=source_files
+          elif visual_failure:
+              action='repair_topic_bound_visual_assets_and_critical_pronunciation'
+              traceback_files=visual_files + (voice_files[1:3] if pronunciation_failure else [])
+          elif number_failure:
+              action='repair_observed_number_pronunciation_then_resume_approved_request'
+              traceback_files=voice_files
+          elif pronunciation_failure:
+              action='repair_observed_critical_word_pronunciation_then_resume_approved_request'
+              traceback_files=voice_files[1:]
+          else:
+              action='repair_only_the_observed_publishability_failure'
+              traceback_files=['tools/tayvoriq_preapproval_ai_audit_v6.py']
           payload={
               'state':'CODE_REPAIR_REQUIRED',
               'self_heal_depth':0,
-              'action':(
-                  'repair_exact_approved_source_binding_at_v5_render_boundary'
-                  if source_hash_failure else
-                  'repair_exact_grouped_number_pronunciation_and_voice_duration_then_resume_approved_request'
-              ),
+              'action':action,
               'request_id':os.environ['REQUEST_ID'],
               'failed_run_id':int(os.environ['RUN_ID']),
               'failure_state':os.environ['FAILURE_STATE'],
               'failure_signature':os.environ['FAILURE_SIGNATURE'],
-              'traceback_files':source_files if source_hash_failure else voice_files,
+              'traceback_files':traceback_files,
+              'observed_failure_classes':{
+                  'source_hash':source_hash_failure,
+                  'visual_semantics':visual_failure,
+                  'critical_pronunciation':pronunciation_failure,
+                  'number_pronunciation':number_failure,
+              },
               'log_excerpt':((quality_evidence + '\n\n' + failed_log[-7000:]).strip())[-14000:],
               'quality_evidence_excerpt':quality_evidence,
               'full_log_tail':full_log[-7000:],
@@ -417,6 +452,24 @@ jobs:
             } >> "$GITHUB_OUTPUT"
             exit "$rc"
           fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          request=json.loads(Path('/tmp/tayvoriq-codefix-request.json').read_text(encoding='utf-8'))
+          report=json.loads(Path('out/tayvoriq-self-heal/autonomous-codefix-report.json').read_text(encoding='utf-8'))
+          changed={str(path) for path in report.get('changed_paths', [])}
+          observed=request.get('observed_failure_classes') or {}
+          if observed.get('visual_semantics') and not any(
+              'visual' in path or 'render' in path or 'asset' in path for path in changed
+          ):
+              raise SystemExit('AUTOCODEFIX_PATCH_IRRELEVANT_TO_OBSERVED_VISUAL_FAILURE')
+          if observed.get('number_pronunciation') is False and changed and all(
+              'speech_numbers' in path for path in changed
+          ):
+              raise SystemExit('AUTOCODEFIX_UNOBSERVED_NUMBER_REPAIR_BLOCKED')
+          print({'codefix_relevance_verified': True, 'changed_paths': sorted(changed)})
+          PY
           git diff --check
           test -n "$(git status --porcelain)" || { echo 'AUTOCODEFIX_NO_PATCH_PRODUCED'; exit 1; }
 
@@ -441,6 +494,11 @@ jobs:
           # The repository root must precede src so the real runtime_patches
           # package wins over src/runtime_patches.py during regression collection.
           export PYTHONPATH="$PWD:$PWD/tools:$PWD/src/runtime_hotfixes:$PWD/src:${PYTHONPATH:-}"
+          # src/tools is a regular package. Ensure the production tools directory
+          # wins package resolution when a pinned Studio commit lacks this marker.
+          if [ ! -f tools/__init__.py ]; then
+            printf '%s\n' '"""Production tools package for guarded regression imports."""' > tools/__init__.py
+          fi
           python - <<'PY'
           from pathlib import Path
           import runtime_patches
