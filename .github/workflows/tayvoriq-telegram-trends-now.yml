@@ -124,7 +124,7 @@ jobs:
               p.get('selection_id') == sys.argv[2]
               and str(p.get('target_date') or p.get('date') or '') == sys.argv[3]
               and p.get('slot') == sys.argv[4]
-              and p.get('mode') == 'manual_verified_fallback_after_provider_limits'
+              and p.get('mode') in {'manual_verified_fallback_after_provider_limits', 'manual_verified_editorial_repair'}
               and p.get('quality_gates_weakened') is False
               and len(trends) == 5
               and reach_contract(trends)
@@ -172,8 +172,8 @@ jobs:
               'target_date':p.get('target_date') or p.get('date'),
               'provider':'verified_repository_fallback',
               'model':'none',
-              'provider_failure_recovered':True,
-              'fallback_type':'preverified_source_bound',
+              'provider_failure_recovered':p.get('mode') == 'manual_verified_fallback_after_provider_limits',
+              'fallback_type':'preverified_editorial_repair' if p.get('mode') == 'manual_verified_editorial_repair' else 'preverified_source_bound',
               'grounding_chunks':chunks,
               'candidate_count':len(p.get('trends') or []),
               'valid_count':len(p.get('trends') or []),
