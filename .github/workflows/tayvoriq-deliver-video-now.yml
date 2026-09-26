@@ -1082,7 +1082,7 @@ jobs:
           # previous failed implementation changed to a different immutable
           # Production Green SHA and the current full preflight has passed.
           if python - "$runtime_request" "out/control-plane/production-manifest.json" <<'PY'
-          import json,re,sys
+          import json,re,subprocess,sys
           from pathlib import Path
           request=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
           manifest=json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
@@ -1100,6 +1100,23 @@ jobs:
           current_run=int(manifest.get('run_id') or 0)
           reason=str(codefix.get('codefix_detection_reason') or '')
           valid_sha=lambda value: bool(re.fullmatch(r'[0-9a-f]{40}', value))
+          def control_binding_safe():
+              if replay_control==current_control:
+                  return True
+              if not (valid_sha(replay_control) and valid_sha(current_control)):
+                  return False
+              ancestor=subprocess.run(
+                  ['git','-C','..','merge-base','--is-ancestor',replay_control,current_control],
+                  check=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+              )
+              if ancestor.returncode!=0:
+                  return False
+              changed=subprocess.run(
+                  ['git','-C','..','diff','--name-only',replay_control,current_control],
+                  check=False,capture_output=True,text=True,
+              )
+              paths=[path.strip() for path in changed.stdout.splitlines() if path.strip()]
+              return changed.returncode==0 and bool(paths) and set(paths)=={'run-status/ops-health.json'}
           passed=all((
               status=='REPLAY_DISPATCHED',
               substate=='DISPATCHED',
@@ -1110,7 +1127,7 @@ jobs:
               replay_impl==current_impl,
               replay_impl!=failed_impl,
               valid_sha(replay_control),
-              replay_control==current_control,
+              control_binding_safe(),
               current_request==request_id and bool(request_id),
               manifest.get('implementation_binding')=='production-green-immutable-sha',
               manifest.get('autocodefix_overlay_applied') is False,
@@ -1126,7 +1143,7 @@ jobs:
               'passed':True,
               'supported_topic':'verified-production-green-implementation-codefix',
               'issues':[],
-              'reason':'replay is bound to a different immutable Production Green implementation SHA than the failed run; current preflight passed and no request overlay is applied',
+              'reason':'replay is bound to a different immutable Production Green implementation SHA than the failed run; only an ancestry-proven ops-health status update may follow the dispatch control SHA',
               'failed_implementation_sha':failed_impl,
               'replay_implementation_sha':replay_impl,
               'control_plane_sha':current_control,
