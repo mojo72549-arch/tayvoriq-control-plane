@@ -1,0 +1,124 @@
+{
+  "request_id": "telegram-2867-trend-5-source-repair-v1",
+  "status": "APPROVED",
+  "source": "telegram_trend_approval_source_repair",
+  "trend_id": "5",
+  "topic": "Ein Gehirn, zwei Entwicklungswege? Neue Studie zeigt frühe Trennung",
+  "trend_scope": "science_future",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-26T15:09:05.822Z",
+  "telegram_message_id": 2867,
+  "approval_key": "telegram:20260926-evening-agentv2-r1:2867:trend:5:source-repair-v1",
+  "mode": "full",
+  "selection_id": "20260926-evening-agentv2-r1",
+  "content_angle": "Zwei frühe Vorläuferzelllinien für Vorder- und Hinterhirn, erklärt ohne die Schlagzeile von zwei fertigen Gehirnen.",
+  "retention_contract_version": "v5",
+  "series_id": null,
+  "series_name": null,
+  "episode_id": null,
+  "episode_number": null,
+  "continuity_hook": null,
+  "next_episode_candidate": null,
+  "primary_hook": "Unser Gehirn beginnt womöglich auf zwei getrennten Entwicklungswegen.",
+  "viewer_question": "Stammen Vorder- und Hinterhirn aus verschiedenen frühen Zelllinien?",
+  "explanation_core": "Eine Nature-Neuroscience-Studie verfolgt Zelllinien in Mausembryonen und untersucht menschliche Stammzellen; ihre Daten sprechen für getrennte frühe Vorläufer.",
+  "surprise_or_reframe": "Damit konnten Forschende Hinterhirn-Motorneuronen im Labor erzeugen, die zuvor schwer herzustellen waren.",
+  "practical_relevance": "Das könnte Forschungsmodelle für Erkrankungen des Hirnstamms verbessern, ist aber noch keine Therapie.",
+  "follow_reason": "TAYVORIQ trennt die neuen Daten von der Schlagzeile über angeblich zwei Gehirne.",
+  "open_loop": "Wie weit die Befunde auf menschliche Entwicklung übertragbar sind, muss weiter untersucht werden.",
+  "open_loop_status": "SOFT",
+  "cta_type": "CURIOSITY",
+  "cta_text": "Zwei frühe Zelllinien könnten die Hirnforschung verändern. Entscheidend sind die nächsten Bestätigungen – TAYVORIQ schaut genau hin.",
+  "next_episode_queue_status": null,
+  "retention_contract_sha256": "53fb881b4d13cfa56d05e5cf3f330783af812043b1931f4dd4cb9f9d384b103b",
+  "follow_conversion_gate": {
+    "result": "PASS",
+    "repair": null,
+    "issues": []
+  },
+  "return_viewer_gate": {
+    "result": "PASS",
+    "issues": []
+  },
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "reach_gate": {
+      "scope": "global",
+      "why_now": "Die September-Studie wird diese Woche international diskutiert.",
+      "momentum_evidence": "Unser Gehirn beginnt womöglich auf zwei getrennten Entwicklungswegen.",
+      "cross_platform_signal_count": 0,
+      "breakout_proof": "Nature Neuroscience und Smithsonian Magazine und Stanford Medicine"
+    },
+    "sources": [
+      {
+        "publisher": "Nature Neuroscience",
+        "url": "https://www.nature.com/articles/s41593-026-02433-7",
+        "supports": "Originalstudie mit Maus-Zelllinien und menschlichen Stammzellmodellen; Autoren formulieren eine Hypothese."
+      },
+      {
+        "publisher": "Smithsonian Magazine",
+        "url": "https://www.smithsonianmag.com/smart-news/scientists-say-the-human-brain-might-be-made-of-two-distinct-nervous-systems-that-got-squished-together-180989539/",
+        "supports": "Unabhängige wissenschaftsjournalistische Einordnung der Studie."
+      },
+      {
+        "publisher": "Stanford Medicine",
+        "url": "https://med.stanford.edu/news/all-news/2026/09/two-separate-brains.html",
+        "supports": "Forschungsteam erklärt Methode und Laborergebnis."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "In Mausembryonen fanden Forschende getrennte Vorläufer für Vorder- und Hinterhirn.",
+      "why_happening": "Durch Zellverfolgung und menschliche Stammzellmodelle prüften sie beide Entwicklungswege.",
+      "who_is_affected": "Das betrifft Forschende zu Gehirnentwicklung und Erkrankungen des Hirnstamms.",
+      "personal_impact": "Für dich bedeutet es neue Forschungsmodelle, noch keine Therapie.",
+      "action_now": "Beobachte, ob weitere Studien diese Entwicklungswege bestätigen."
+    },
+    "factual_guardrails": {
+      "must_include": [
+        "Eine Nature-Neuroscience-Studie verfolgt Zelllinien in Mausembryonen und untersucht menschliche Stammzellen; ihre Daten sprechen für getrennte frühe Vorläufer.",
+        "Damit konnten Forschende Hinterhirn-Motorneuronen im Labor erzeugen, die zuvor schwer herzustellen waren."
+      ],
+      "must_not_claim": [
+        "Nicht behaupten, Menschen hätten nachgewiesen zwei getrennte Gehirne oder eine neue Therapie."
+      ],
+      "uncertainty_note": "Wie weit die Befunde auf menschliche Entwicklung übertragbar sind, muss weiter untersucht werden."
+    }
+  },
+  "source_context_sha256": "70b0ed0d391068c816dccef4cff8555e86aa4aa2cc1d7005abc2104690ab0eb0",
+  "golden_path_v5_state": "APPROVED",
+  "golden_path_v5_history": [
+    {
+      "state": "TREND_CANDIDATES_SCORED",
+      "at": "2026-09-26T15:09:05.822Z",
+      "actor": "trend_radar_v5"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-09-26T15:09:05.822Z",
+      "actor": "telegram_callback"
+    }
+  ],
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-26T15:09:05.822Z",
+      "actor": "verified-editorial-source-repair",
+      "meta": {
+        "repair_of_request_id": "telegram-2867-trend-5",
+        "failed_run_id": 36256856439,
+        "source_scope": "fallback_editorial_answers_only"
+      }
+    }
+  ],
+  "contract_sha256": "938e72bc42513cb21075888171f07f60c5aa0265e4c9ffe45879d41a704b3ba5",
+  "repair_of_request_id": "telegram-2867-trend-5",
+  "source_repair_scope": "fallback_editorial_answers_only",
+  "source_repair_failed_run_id": 36256856439,
+  "source_repair_original_context_sha256": "2a21f3c3ec74d60ad25fd134c7d8259c434ccf010248ba87452e7b3ba842fb39",
+  "recovery_generation": 1
+}
