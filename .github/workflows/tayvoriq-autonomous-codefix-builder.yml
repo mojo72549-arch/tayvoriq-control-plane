@@ -240,15 +240,15 @@ jobs:
               'tests/test_tayvoriq_visual_audit_resilience.py',
           ]
           visual_failure=(
-              'visual_agent:' in quality_evidence.casefold()
-              and any(term in quality_evidence.casefold() for term in
+              'visual_agent' in full_log.casefold()
+              and any(term in full_log.casefold() for term in
                       ('finanz', 'börse', 'trading', 'stock chart', 'themat', 'mismatch'))
           )
           pronunciation_failure=(
-              'pronunciation_interpretation:' in quality_evidence.casefold()
-              or 'maus und bullion' in quality_evidence.casefold()
+              'pronunciation_interpretation' in full_log.casefold()
+              or 'maus und bullion' in full_log.casefold()
           )
-          number_failure=any(term in quality_evidence.casefold() for term in
+          number_failure=any(term in full_log.casefold() for term in
                              ('number-pronunciation', '48.000', 'achtundvierzig.null'))
           if source_hash_failure:
               action='repair_exact_approved_source_binding_at_v5_render_boundary'
