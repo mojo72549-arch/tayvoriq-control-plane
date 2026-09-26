@@ -528,17 +528,33 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-26T12:44:03.061399Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 36242347115,
+        "golden_path_run_id": 36242845453,
+        "recovery_generation": 0,
+        "failure_signature": "0671a7499de83fd18d25",
+        "reason": "same-generation-verified-green-local-checkpoint-replay",
+        "failed_implementation_sha": "21dbbf85a091bbeaaeaf306b85b8a8b1fbc37e9c",
+        "replay_implementation_sha": "59899d20e6efcd9e2fc80e41a339e0fabcb67f9d",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "c3cf424cf9721205cc81c6dc69f4b884747663afc51098441a9e31a82719a309",
   "dispatch_claim_run_id": 36188789706,
   "dispatch_contract_sha256": "c3cf424cf9721205cc81c6dc69f4b884747663afc51098441a9e31a82719a309",
-  "golden_path_run_id": 36242347115,
+  "golden_path_run_id": 36242845453,
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
-    "failed_run_id": 36242201211,
-    "failure_signature": "84b470fa448483cf7955",
+    "failed_run_id": 36242347115,
+    "failure_signature": "0671a7499de83fd18d25",
     "failure_state": "",
     "failed_control_plane_sha": "63e4e1a2c6baf440cda8e1c6c1b891c0864ee094",
     "failed_implementation_sha": "21dbbf85a091bbeaaeaf306b85b8a8b1fbc37e9c",
@@ -553,9 +569,9 @@
     "previous_codefix_failed_run_id": 36227869011,
     "previous_codefix_failure_signature": "3dcee822290522d5d349",
     "last_failure_state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
-    "replay_run_id": 36242347115,
-    "replayed_at": "2026-09-26T12:34:34.926807Z",
-    "replay_control_plane_sha": "4818411068325e9070297571b23b878ea09c6ce8",
+    "replay_run_id": 36242845453,
+    "replayed_at": "2026-09-26T12:44:03.061399Z",
+    "replay_control_plane_sha": "2075666f11ac54e5d96c673ace5f0dcd9dc7082d",
     "replay_implementation_sha": "59899d20e6efcd9e2fc80e41a339e0fabcb67f9d",
     "codefix_detection_reason": "production-green-advanced-during-local-checkpoint-retry"
   },
@@ -572,12 +588,13 @@
     36225829390,
     36227869011,
     36228078610,
-    36242201211
+    36242201211,
+    36242347115
   ],
   "recovery_generation": 0,
-  "retry_of_run_id": 36242201211,
+  "retry_of_run_id": 36242347115,
   "replacement_reason": "SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY",
   "recovery_owner": "tayvoriq-delivery-watch",
-  "recovery_failure_signature": "84b470fa448483cf7955",
-  "recovery_dispatched_at": "2026-09-26T12:34:34.926807Z"
+  "recovery_failure_signature": "0671a7499de83fd18d25",
+  "recovery_dispatched_at": "2026-09-26T12:44:03.061399Z"
 }
