@@ -1121,7 +1121,7 @@ jobs:
               status=='REPLAY_DISPATCHED',
               substate=='DISPATCHED',
               replay_run==current_run,
-              reason=='production-green-implementation-changed',
+              reason in {'production-green-implementation-changed', 'production-green-advanced-during-local-checkpoint-retry'},
               valid_sha(failed_impl),
               valid_sha(replay_impl),
               replay_impl==current_impl,
