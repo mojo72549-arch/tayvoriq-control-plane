@@ -165,6 +165,39 @@ class SlotSerializationTests(unittest.TestCase):
             path.write_text(json.dumps(tampered))
             self.assertFalse(check()["released"])
 
+    def test_failed_publishability_admits_cta_repair_with_unchanged_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer = Path(tmp) / ".github/state/tayvoriq-active-production-request.json"
+            pointer.parent.mkdir(parents=True)
+            old = request("20260926-evening-agentv2-r1", "source-repair", "2026-09-26T15:09:05Z", 124)
+            old.update(status="DISPATCHED", approval_key="telegram:selection:2867:trend:5:source-repair-v1",
+                       trend_id="5", topic="Brain study", telegram_message_id=2867,
+                       cta_text="TAYVORIQ prüft die nächsten Studien.",
+                       source_context={"sources": ["same", "evidence"]}, source_context_sha256="original")
+            (root / "source-repair.json").write_text(json.dumps(old))
+            new = dict(old)
+            new.update(request_id="source-repair-content-repair-v1", status="APPROVED",
+                       source="telegram_trend_approval_content_repair", repair_of_request_id="source-repair",
+                       approval_key=old["approval_key"] + ":content-repair-v1",
+                       cta_text="Folge TAYVORIQ: Wir prüfen die nächsten Studien.")
+            path = root / "cta-repair.json"
+            path.write_text(json.dumps(new))
+            pointer.write_text(json.dumps({"schema": "tayvoriq-active-production-request-v1",
+                                           "state": "ACTIVE", "request_id": "source-repair", "golden_path_run_id": 124}))
+            jobs = {"jobs": [{"name": "orchestrate", "steps": [
+                {"name": "Assert publishable production output", "conclusion": "failure"}]}]}
+            def check():
+                with patch.object(gate, "github_json", side_effect=[
+                    {"status": "completed", "conclusion": "failure"}, jobs,
+                ]):
+                    return gate.check_request(path, root, "repo", "token")
+            self.assertEqual(check()["reason"], "VERIFIED_CTA_CONTENT_REPAIR_AFTER_FAILED_PUBLISHABILITY")
+            new["source_context"] = {"sources": ["changed"]}
+            path.write_text(json.dumps(new))
+            self.assertFalse(check()["released"])
+
     def test_preapproved_preparation_is_valid_same_day_morning_predecessor(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
