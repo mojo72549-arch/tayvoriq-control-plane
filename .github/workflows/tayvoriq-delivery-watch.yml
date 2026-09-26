@@ -169,8 +169,12 @@ jobs:
           RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
         run: |
           set -euo pipefail
-          gh run view "$RUN_ID" --log-failed > /tmp/tayvoriq-failed.log 2>&1 || true
-          test -s /tmp/tayvoriq-failed.log || { echo 'DELIVERY_WATCH_FAILED_LOG_MISSING'; exit 1; }
+          gh run view "$RUN_ID" --log-failed > /tmp/tayvoriq-failed.log 2>/tmp/tayvoriq-failed-log-error || true
+          # Cancelled jobs can have a real failed step but an empty --log-failed
+          # response. Preserve full logs and prefer the structured contract below.
+          if [ ! -s /tmp/tayvoriq-failed.log ]; then
+            gh run view "$RUN_ID" --log > /tmp/tayvoriq-failed.log 2>/tmp/tayvoriq-failed-log-error || true
+          fi
 
           # Prefer the producer's machine-readable failure contract. Raw Actions
           # logs remain fallback evidence only; they can contain stale provider,
@@ -184,6 +188,7 @@ jobs:
             cp "$structured" /tmp/tayvoriq-structured-failure.json
             echo "DELIVERY_WATCH_STRUCTURED_EVIDENCE_READY:$structured"
           else
+            test -s /tmp/tayvoriq-failed.log || { echo 'DELIVERY_WATCH_FAILED_LOG_MISSING'; exit 1; }
             printf '{}\n' > /tmp/tayvoriq-structured-failure.json
             echo "DELIVERY_WATCH_STRUCTURED_EVIDENCE_MISSING_FALLBACK_LOGS"
           fi
