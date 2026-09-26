@@ -6,7 +6,6 @@ import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
 import tayvoriq_agent_gdelt_v2 as gdelt
 import tayvoriq_agent_hf_v2 as hf
-import tayvoriq_agent_deterministic_source_fallback_v1 as deterministic
 base=provider.base
 MARKER=Path('/tmp/tayvoriq-research-deferred.json')
 
@@ -40,18 +39,7 @@ def grounded(prompt:str,gemini_key:str,groq_key:str):
     except Exception as exc:
         errors.append('HuggingFace/GDELT fallback failed: '+http.summary(exc))
 
-    # Last-resort structure path: source discovery itself may still be healthy
-    # while every LLM structuring provider is rate/payment limited. Cluster only
-    # the already fetched live source records; downstream source/Growth/V5 gates
-    # remain authoritative and no quality threshold is weakened.
-    try:
-        source_records=[*rss_records,*gdelt_records]
-        data,chunks,model=deterministic.structure(source_records,'rss+gdelt')
-        return data,chunks,model,'deterministic_sources'
-    except Exception as exc:
-        errors.append('Deterministic source fallback failed: '+http.summary(exc))
-
-    _defer(errors); raise RuntimeError('RESEARCH_DEFERRED: '+' | '.join(errors))
+    # The deterministic pool can pair syndicated mirrors and generates generic\n    # topic labels/hooks. Editorial quality and source independence are not\n    # established, so defer until a verified selection is available.\n    errors.append('Deterministic source fallback disabled: syndicated mirrors and generic hooks cannot pass editorial quality')\n\n    _defer(errors); raise RuntimeError('RESEARCH_DEFERRED: '+' | '.join(errors))
 
 def install()->None:
     base.gemini_call=http.gemini_grounded; base.grounded_call=grounded
