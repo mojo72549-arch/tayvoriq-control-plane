@@ -74,6 +74,37 @@ def find_same_day_morning(request: dict, requests_dir: Path) -> tuple[Path, dict
     return path, data
 
 
+def is_verified_editorial_source_repair(request: dict, owner: dict, owner_id: str) -> bool:
+    """Allow a new immutable packet only for corrected editorial fallback text."""
+    if request.get("source") != "telegram_trend_approval_source_repair":
+        return False
+    if request.get("repair_of_request_id") != owner_id or owner.get("request_id") != owner_id:
+        return False
+    if owner.get("status") != "DISPATCHED":
+        return False
+    if request.get("request_id") != f"{owner_id}-source-repair-v1":
+        return False
+    if request.get("approval_key") != f'{owner.get("approval_key")}:source-repair-v1':
+        return False
+    for key in (
+        "selection_id", "trend_id", "topic", "trend_scope", "telegram_message_id",
+        "approved_at", "content_angle", "primary_hook", "viewer_question",
+        "explanation_core", "surprise_or_reframe", "practical_relevance",
+        "follow_reason", "open_loop", "cta_text", "retention_contract_sha256",
+    ):
+        if request.get(key) != owner.get(key):
+            return False
+    original = owner.get("source_context")
+    corrected = request.get("source_context")
+    if not isinstance(original, dict) or not isinstance(corrected, dict):
+        return False
+    if original.get("fallback_editorial_answers") == corrected.get("fallback_editorial_answers"):
+        return False
+    common_original = {k: v for k, v in original.items() if k != "fallback_editorial_answers"}
+    common_corrected = {k: v for k, v in corrected.items() if k != "fallback_editorial_answers"}
+    return common_original == common_corrected
+
+
 def evaluate_live_state(run: dict, jobs_payload: dict) -> tuple[bool, str, dict[str, str]]:
     status = str(run.get("status") or "")
     conclusion = str(run.get("conclusion") or "")
@@ -155,6 +186,16 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                     result["verified_final_steps"] = steps
                     result["reason"] = reason.replace("MORNING_", "ACTIVE_OWNER_", 1)
                     if not released:
+                        owner_path = requests_dir / f"{owner}.json"
+                        if owner_path.is_file() and str(run.get("status")) == "completed" and str(run.get("conclusion")) == "failure":
+                            failed_preflight = any(
+                                step.get("name") == "Lightweight contract preflight" and step.get("conclusion") == "failure"
+                                for job in jobs.get("jobs") or [] for step in job.get("steps") or []
+                            )
+                            if failed_preflight and is_verified_editorial_source_repair(request, read_json(owner_path), owner):
+                                result["released"] = True
+                                result["reason"] = "VERIFIED_EDITORIAL_SOURCE_REPAIR_AFTER_FAILED_PREFLIGHT"
+                                return result
                         return result
                     completed_owner_verified = pointer.get("state") == "COMPLETED"
             result["released"] = True
