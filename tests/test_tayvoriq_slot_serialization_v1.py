@@ -46,9 +46,11 @@ class SlotSerializationTests(unittest.TestCase):
             p = root / "next.json"
             p.write_text(json.dumps(request("20260926-morning-agentv2-r3", "next", "2026-09-26T06:00:00Z")))
             jobs = {"jobs": [{"name": "orchestrate", "steps": [{"name": n, "conclusion": "success"} for n in gate.REQUIRED_FINAL_STEPS]}]}
-            for status, conclusion, expected in (("in_progress", None, False), ("completed", "failure", False), ("completed", "success", True)):
-                with patch.object(gate, "github_json", side_effect=[{"status": status, "conclusion": conclusion}, jobs]):
-                    self.assertEqual(gate.check_request(p, root, "repo", "token")["released"], expected)
+            for owner_state in ("ACTIVE", "COMPLETED"):
+                pointer.write_text(json.dumps({"schema": "tayvoriq-active-production-request-v1", "state": owner_state, "request_id": "old", "golden_path_run_id": 123}))
+                for status, conclusion, expected in (("in_progress", None, False), ("completed", "failure", False), ("completed", "success", True)):
+                    with patch.object(gate, "github_json", side_effect=[{"status": status, "conclusion": conclusion}, jobs]):
+                        self.assertEqual(gate.check_request(p, root, "repo", "token")["released"], expected)
             with patch.object(gate, "github_json", side_effect=[{"status": "completed", "conclusion": "success"}, {"jobs": []}]):
                 self.assertFalse(gate.check_request(p, root, "repo", "token")["released"])
             with patch.object(gate, "github_json", side_effect=RuntimeError("unavailable")):
@@ -57,6 +59,8 @@ class SlotSerializationTests(unittest.TestCase):
             gate.mark_held(p, result)
             self.assertEqual(gate.held_candidates(root), [p])
             self.assertEqual(json.loads(p.read_text())["status"], "APPROVED")
+            pointer.write_text(json.dumps({"schema": "tayvoriq-active-production-request-v1", "state": "UNKNOWN"}))
+            self.assertEqual(gate.check_request(p, root, "repo", "token")["reason"], "ACTIVE_OWNER_POINTER_INVALID")
             pointer.write_text("broken json")
             self.assertEqual(gate.check_request(p, root, "repo", "token")["reason"], "ACTIVE_OWNER_POINTER_INVALID")
 
