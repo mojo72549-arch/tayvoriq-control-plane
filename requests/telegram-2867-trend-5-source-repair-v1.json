@@ -123,6 +123,22 @@
       "state": "DISPATCHED",
       "at": "2026-09-26T17:01:05.278755+00:00",
       "actor": "request-dispatcher:36257498107"
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-09-26T17:08:56.430785Z",
+      "actor": "tayvoriq-codefix-orphan-reconcile-v1",
+      "meta": {
+        "failed_run_id": 36257511086,
+        "failure_signature": "3dcee822290522d5d349",
+        "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "8746a777d1518eb29a474c0c536fb82b6a80c88f",
+        "failed_implementation_sha": "abd807e9540524e124b0b96318586c793239a94c",
+        "recovery_generation": 0,
+        "reason": "active-request-deterministic-failure-reconciled",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "938e72bc42513cb21075888171f07f60c5aa0265e4c9ffe45879d41a704b3ba5",
@@ -134,5 +150,24 @@
   "dispatch_claim_run_id": 36257498107,
   "dispatch_contract_sha256": "938e72bc42513cb21075888171f07f60c5aa0265e4c9ffe45879d41a704b3ba5",
   "golden_path_run_id": 36257511086,
-  "source_repair_generation_note": "Fresh immutable source repair request; prior failed run belongs to repair_of_request_id"
+  "source_repair_generation_note": "Fresh immutable source repair request; prior failed run belongs to repair_of_request_id",
+  "codefix_recovery": {
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 36257511086,
+    "failure_signature": "3dcee822290522d5d349",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_control_plane_sha": "8746a777d1518eb29a474c0c536fb82b6a80c88f",
+    "failed_implementation_sha": "abd807e9540524e124b0b96318586c793239a94c",
+    "recovery_generation": 0,
+    "armed_at": "2026-09-26T17:08:56.430785Z",
+    "same_generation_replay_required": true,
+    "exact_source_request_required": true,
+    "quality_gates_weakened": false,
+    "orphan_reconciled": true,
+    "active_pointer_verified": true,
+    "rearmed_after_failed_replay": false,
+    "previous_codefix_failed_run_id": 0,
+    "previous_codefix_failure_signature": ""
+  }
 }
