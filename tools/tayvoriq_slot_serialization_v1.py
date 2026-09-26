@@ -120,6 +120,7 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     # Admission happens before claiming or dispatching a new production. A
     # failed/unfinished owner remains authoritative even across dates and slots.
     pointer_path = requests_dir.parent / ".github/state/tayvoriq-active-production-request.json"
+    completed_owner_verified = False
     if pointer_path.is_file():
         result["requires_serialization"] = True
         result["released"] = False
@@ -155,6 +156,7 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                     result["reason"] = reason.replace("MORNING_", "ACTIVE_OWNER_", 1)
                     if not released:
                         return result
+                    completed_owner_verified = pointer.get("state") == "COMPLETED"
             result["released"] = True
         except (ValueError, TypeError, AttributeError, OSError):
             result["reason"] = "ACTIVE_OWNER_POINTER_INVALID"
@@ -165,6 +167,13 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     result["released"] = False
     predecessor = find_same_day_morning(request, requests_dir)
     if predecessor is None:
+        # A direct Telegram approval may target the evening when no morning
+        # request was ever approved. Preserve the active-owner and final-review
+        # gates; never apply this to a prepared or automatically queued request.
+        if completed_owner_verified and request.get("source") == "telegram_trend_approval":
+            result["released"] = True
+            result["reason"] = "EXPLICIT_EVENING_APPROVAL_AFTER_COMPLETED_OWNER"
+            return result
         result["reason"] = "MORNING_REQUEST_MISSING"
         return result
     _, morning = predecessor
