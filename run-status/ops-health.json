@@ -1,24 +1,24 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-26T18:02:14.836064Z",
-  "overall": "red",
+  "generated_at": "2026-09-26T18:03:51.748854Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2867-trend-5-source-repair-v1-content-repair-v1",
-    "golden_path_run_id": 36258256760,
-    "pointer_updated_at": "2026-09-26T17:13:39.677313Z"
+    "golden_path_run_id": 36261151170,
+    "pointer_updated_at": "2026-09-26T18:02:48.337627Z"
   },
   "request": {
     "request_id": "telegram-2867-trend-5-source-repair-v1-content-repair-v1",
     "topic": "Ein Gehirn, zwei Entwicklungswege? Neue Studie zeigt frühe Trennung",
     "trend_id": "5",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
     "episode_number": null,
     "cta_type": "CURIOSITY",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-2867-trend-5-source-repair-v1-content-repair-v1.json"
   },
   "run": {
-    "id": 36258256760,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36258256760",
-    "created_at": "2026-09-26T17:13:32Z",
-    "updated_at": "2026-09-26T17:48:38Z",
+    "id": 36261151170,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36261151170",
+    "created_at": "2026-09-26T18:02:42Z",
+    "updated_at": "2026-09-26T18:02:47Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "current_step": "Install or reuse production dependencies",
+    "last_successful_step": "Telegram progress - environment active",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,56 +124,45 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Install or reuse production dependencies"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "abd807e95405…"
+      "detail": "329cc8f3d98e…"
     },
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "36258256760:40:LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "severity": "critical",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
+    "last_step": "Telegram progress - environment active"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": null,
     "failed_run_id": 36258256760,
-    "replay_run_id": null,
+    "replay_run_id": 36261151170,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -181,9 +170,9 @@
   },
   "events": [
     {
-      "at": "2026-09-26T17:48:38Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-09-26T18:02:48.337627Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-26T17:51:18.493186Z",
