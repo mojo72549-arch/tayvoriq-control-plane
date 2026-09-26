@@ -1,0 +1,79 @@
+{
+  "schema": "tayvoriq-preproduction-candidate-v1",
+  "candidate_id": "20260926-raibo2-efficiency",
+  "state": "PREPARED_AWAITING_TOPIC_APPROVAL",
+  "topic": "RAIBO2: Warum ein Roboterhund einen Marathon mit einer Akkuladung schafft",
+  "prepared_for": "2026-09-26",
+  "target_duration": 35,
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "approval": {
+    "approved": false,
+    "telegram_message_id": null,
+    "production_started": false,
+    "publish_allowed": false
+  },
+  "freshness": {
+    "study_published": "2026-09-23",
+    "demonstration_year": 2024,
+    "checked_at": "2026-09-26",
+    "rule": "Do not present the 2024 marathon as a new run this week."
+  },
+  "sources": [
+    {
+      "url": "https://www.nature.com/articles/s41586-026-11102-5",
+      "role": "primary_research",
+      "supports": "RAIBO2 completed a marathon on one charge. Efficiency combines mechanical hardware, motor electronics and locomotion policy. Reference 7 dates the demonstration to 2024."
+    },
+    {
+      "url": "https://railab.kaist.ac.kr/sections/robots.html",
+      "role": "primary_lab",
+      "supports": "RAIBO2 is a quadruped developed by RAILAB for efficient locomotion."
+    },
+    {
+      "url": "https://www.scientificamerican.com/article/watch-a-robot-dog-run-a-marathon-faster-than-the-average-human/",
+      "role": "independent_reporting",
+      "reviewed": true
+    }
+  ],
+  "script_draft": "Dieser Roboterhund lief einen Marathon mit nur einer Akkuladung. Die neue Nature-Studie zeigt, wie RAIBO2 dafür Mechanik, Motorelektronik und Gangart auf geringen Energieverbrauch abstimmt. Der Lauf selbst war schon 2024. Entscheidend ist die Ausdauer. Ob der Roboter auch schwierige Rettungseinsätze bewältigt, muss gesondert geprüft werden.",
+  "cta_by_platform": {
+    "youtube_shorts": "Abonniere TAYVORIQ für Robotik-Rekorde und den Faktencheck dahinter.",
+    "tiktok": "Folge TAYVORIQ für Robotik-Rekorde und den Faktencheck dahinter."
+  },
+  "must_not_claim": [
+    "Fully autonomous navigation was demonstrated.",
+    "The marathon proves readiness for rescue operations.",
+    "The demonstration took place in September 2026."
+  ],
+  "visual_plan": [
+    {
+      "scene": "robot_running",
+      "requirement": "Authentic RAIBO2 material with usable rights; otherwise clearly labelled illustration."
+    },
+    {
+      "scene": "energy_efficiency",
+      "requirement": "Original explanatory graphic: mechanics, motor electronics, gait. No invented measurements."
+    },
+    {
+      "scene": "limits",
+      "requirement": "Show the difference between endurance demonstration and complex deployment."
+    }
+  ],
+  "outstanding_gates": [
+    "topic_approval",
+    "global_duplicate_check",
+    "exact_request_source_lock",
+    "script_and_platform_contract",
+    "pronunciation_audio_proof",
+    "visual_asset_rights_and_match",
+    "render_and_final_quality",
+    "review_delivery"
+  ],
+  "production_hold": {
+    "predecessor_request_id": "telegram-2699-trend-1",
+    "until": "verified_final_review_delivery",
+    "auto_dispatch": false
+  },
+  "quality_gates_weakened": false
+}
