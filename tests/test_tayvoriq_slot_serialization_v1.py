@@ -129,6 +129,42 @@ class SlotSerializationTests(unittest.TestCase):
             ]):
                 self.assertEqual(gate.check_request(evening, root, "repo", "token")["reason"], "MORNING_REQUEST_MISSING")
 
+    def test_failed_preflight_admits_only_exact_editorial_source_repair(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer = Path(tmp) / ".github/state/tayvoriq-active-production-request.json"
+            pointer.parent.mkdir(parents=True)
+            original = request("20260926-evening-agentv2-r1", "old", "2026-09-26T15:09:05Z", 123)
+            original.update(status="DISPATCHED", approval_key="telegram:selection:2867:trend:5",
+                            trend_id="5", topic="Brain study", telegram_message_id=2867,
+                            source_context={"sources": ["one", "two"], "fallback_editorial_answers": {"what_happened": "long"}})
+            (root / "old.json").write_text(json.dumps(original))
+            repaired = dict(original)
+            repaired.update(request_id="old-source-repair-v1", status="APPROVED",
+                            source="telegram_trend_approval_source_repair",
+                            repair_of_request_id="old",
+                            approval_key="telegram:selection:2867:trend:5:source-repair-v1",
+                            source_context={"sources": ["one", "two"], "fallback_editorial_answers": {"what_happened": "precise"}})
+            path = root / "repaired.json"
+            path.write_text(json.dumps(repaired))
+            pointer.write_text(json.dumps({"schema": "tayvoriq-active-production-request-v1",
+                                           "state": "ACTIVE", "request_id": "old", "golden_path_run_id": 123}))
+            jobs = {"jobs": [{"name": "orchestrate", "steps": [
+                {"name": "Lightweight contract preflight", "conclusion": "failure"}]}]}
+            def check(run_status="completed", conclusion="failure"):
+                with patch.object(gate, "github_json", side_effect=[
+                    {"status": run_status, "conclusion": conclusion}, jobs,
+                ]):
+                    return gate.check_request(path, root, "repo", "token")
+            self.assertEqual(check()["reason"], "VERIFIED_EDITORIAL_SOURCE_REPAIR_AFTER_FAILED_PREFLIGHT")
+            self.assertTrue(check()["released"])
+            self.assertFalse(check("in_progress", None)["released"])
+            tampered = dict(repaired)
+            tampered["source_context"] = {"sources": ["different"], "fallback_editorial_answers": {"what_happened": "precise"}}
+            path.write_text(json.dumps(tampered))
+            self.assertFalse(check()["released"])
+
     def test_preapproved_preparation_is_valid_same_day_morning_predecessor(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
