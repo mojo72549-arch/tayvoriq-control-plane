@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,52 @@ def request(selection_id: str, request_id: str, approved_at: str, run_id: int = 
 
 
 class SlotSerializationTests(unittest.TestCase):
+    def test_current_long_slot_names_cannot_bypass_gate(self) -> None:
+        for slot, expected in (("morning", "m"), ("evening", "e"), ("m", "m"), ("e", "e")):
+            self.assertEqual(gate.selection_parts({"selection_id": f"20260926-{slot}-agentv2-r3"}), ("20260926", expected))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            p = root / "evening.json"
+            p.write_text(json.dumps(request("20260926-evening-agentv2-r3", "e1", "2026-09-26T17:00:00Z")))
+            self.assertFalse(gate.check_request(p, root, "repo", "token")["released"])
+
+    def test_active_owner_blocks_every_new_slot_before_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer = Path(tmp) / ".github/state/tayvoriq-active-production-request.json"
+            pointer.parent.mkdir(parents=True)
+            pointer.write_text(json.dumps({"schema": "tayvoriq-active-production-request-v1", "state": "ACTIVE", "request_id": "old", "golden_path_run_id": 123}))
+            p = root / "next.json"
+            p.write_text(json.dumps(request("20260926-morning-agentv2-r3", "next", "2026-09-26T06:00:00Z")))
+            jobs = {"jobs": [{"name": "orchestrate", "steps": [{"name": n, "conclusion": "success"} for n in gate.REQUIRED_FINAL_STEPS]}]}
+            for status, conclusion, expected in (("in_progress", None, False), ("completed", "failure", False), ("completed", "success", True)):
+                with patch.object(gate, "github_json", side_effect=[{"status": status, "conclusion": conclusion}, jobs]):
+                    self.assertEqual(gate.check_request(p, root, "repo", "token")["released"], expected)
+            with patch.object(gate, "github_json", side_effect=[{"status": "completed", "conclusion": "success"}, {"jobs": []}]):
+                self.assertFalse(gate.check_request(p, root, "repo", "token")["released"])
+            with patch.object(gate, "github_json", side_effect=RuntimeError("unavailable")):
+                result = gate.check_request(p, root, "repo", "token")
+                self.assertFalse(result["released"])
+            gate.mark_held(p, result)
+            self.assertEqual(gate.held_candidates(root), [p])
+            self.assertEqual(json.loads(p.read_text())["status"], "APPROVED")
+            pointer.write_text("broken json")
+            self.assertEqual(gate.check_request(p, root, "repo", "token")["reason"], "ACTIVE_OWNER_POINTER_INVALID")
+
+    def test_same_request_recovery_does_not_query_other_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer = Path(tmp) / ".github/state/tayvoriq-active-production-request.json"
+            pointer.parent.mkdir(parents=True)
+            pointer.write_text(json.dumps({"schema": "tayvoriq-active-production-request-v1", "state": "ACTIVE", "request_id": "same", "golden_path_run_id": 123}))
+            p = root / "same.json"
+            p.write_text(json.dumps(request("20260926-evening-agentv2-r3", "same", "2026-09-26T06:00:00Z")))
+            with patch.object(gate, "github_json") as api:
+                self.assertTrue(gate.check_request(p, root, "repo", "token")["released"])
+                api.assert_not_called()
+
     def test_morning_request_never_waits_on_evening_gate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
