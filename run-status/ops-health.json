@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-26T12:26:02.799699Z",
+  "generated_at": "2026-09-26T12:27:44.054055Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "Claude entdeckt ein CRISPR-ähnliches Enzymsystem: Wird KI zum echten Forschungspartner?",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
@@ -134,8 +134,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -149,16 +149,16 @@
     }
   ],
   "incident": {
-    "signature": "36228078610:40:none",
+    "signature": "36228078610:40:PUBLISHABLE_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": null,
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 40,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
@@ -166,29 +166,29 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": null,
-    "failed_run_id": 36227869011,
-    "replay_run_id": 36228078610,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_run_id": 36228078610,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
       "at": "2026-09-26T12:12:55Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 36228078610 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-26T12:12:55Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-26T12:26:14.417819Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-09-26T07:52:06.840388Z",
@@ -214,11 +214,6 @@
       "at": "2026-09-26T07:07:47.848968Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-26T07:06:10.223339Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     }
   ]
 }
