@@ -1623,11 +1623,15 @@ jobs:
           REPLAY_READINESS_OUTCOME: ${{ steps.replay_readiness.outcome }}
           PUBLICATION_INITIAL_OUTCOME: ${{ steps.publication_gate_initial.outcome }}
           FINAL_VOICE_RECOVERY_OUTCOME: ${{ steps.final_publication_voice_recovery.outcome }}
+          CONTROLLER_STATE: ${{ steps.controller.outputs.state }}
+          RECOVERY_STATE: ${{ steps.checkpoint_recovery.outputs.state }}
+          REUSABLE_MASTER: ${{ steps.controller.outputs.reusable_master }}
         run: |
           set +e
           mkdir -p implementation/out/control-plane
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
           report_path = Path("implementation/out/tayvoriq-self-heal/report.json")
           preflight_path = Path("implementation/out/control-plane/preflight.json")
@@ -1644,8 +1648,16 @@ jobs:
           if duplicate_path.exists():
               try: duplicate = json.loads(duplicate_path.read_text(encoding="utf-8"))
               except Exception: duplicate = {}
+          # The report can retain PREFLIGHT_PASSED when a timed-out local
+          # repair is killed before it writes a final report. Step outputs are
+          # authoritative for the completed production attempt.
+          recovery_state = str(os.environ.get("RECOVERY_STATE") or "").strip()
+          controller_state = str(os.environ.get("CONTROLLER_STATE") or "").strip()
+          production_failed = os.environ.get("PRODUCTION_OUTCOME") == "failure"
           state = str(
               (duplicate.get("state") if duplicate.get("passed") is False else "")
+              or (recovery_state if production_failed and recovery_state != "SUCCESS" else "")
+              or (controller_state if production_failed and controller_state != "SUCCESS" else "")
               or report.get("state")
               or preflight.get("state")
               or "TECHNICAL_FAILURE"
@@ -1690,6 +1702,8 @@ jobs:
               failure_class = "LOCAL_VOICE"
           elif state == "CONTROL_PLANE_BINDING_FAILURE":
               failure_class = "CONTROL_PLANE_BINDING"
+          elif state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED":
+              failure_class = "PUBLISHABLE_CHECKPOINT"
           elif state.endswith("CODEFIX_REQUIRED") or state == "CODE_REPAIR_REQUIRED":
               failure_class = "DETERMINISTIC_CODE"
           elif state == "DUPLICATE_CONTENT_BLOCKED":
@@ -1706,8 +1720,8 @@ jobs:
               "failure_class": failure_class,
               "repair_target_stages": sorted(repair_targets),
               "same_request_required": True,
-              "master_reusable": bool(local_checkpoint or report.get("checkpoint_job_dir")),
-              "full_regeneration_allowed": False if local_checkpoint else None,
+              "master_reusable": bool(local_checkpoint or report.get("checkpoint_job_dir") or os.environ.get("REUSABLE_MASTER") == "true"),
+              "full_regeneration_allowed": False if local_checkpoint or failure_class == "PUBLISHABLE_CHECKPOINT" else None,
               "notification_owner": "tayvoriq-x-golden-path",
               "recovery_owner": "tayvoriq-delivery-watch",
               "telegram_technical_failure_expected": True,
