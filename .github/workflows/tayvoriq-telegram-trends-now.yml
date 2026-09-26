@@ -241,6 +241,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import json
+          from urllib.parse import urlparse
           d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
           trends=d.get('trends') or []
           broad={'germany','europe','global'}
@@ -259,6 +260,15 @@ jobs:
             sc=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
             assert int(sc.get('independent_news_count') or 0) >= 2
             assert len(sc.get('sources') or []) >= 2
+            title=str(trend.get('title') or '').casefold()
+            hook=str(trend.get('primary_hook') or '').casefold()
+            assert not title.startswith('aktuell erklärt:'), 'generic topic label blocked'
+            assert not (hook.startswith('was hinter ') and 'wichtiger als die schlagzeile' in hook), 'generic hook blocked'
+            evidence=sc.get('sources') or []
+            paths=[urlparse(str(source.get('url') or '')).path.rstrip('/').casefold() for source in evidence if isinstance(source,dict)]
+            supports=[' '.join(str(source.get('supports') or '').casefold().split()) for source in evidence if isinstance(source,dict)]
+            assert len(set(paths)) == len(paths), 'syndicated mirror article paths blocked'
+            assert len(set(supports)) == len(supports), 'identical source excerpts blocked'
             assert sc.get('quality_gates_weakened', False) is False
             answers=sc.get('fallback_editorial_answers') if isinstance(sc.get('fallback_editorial_answers'),dict) else {}
             assert all(answers.get(k) for k in ['what_happened','why_happening','who_is_affected','personal_impact','action_now'])
