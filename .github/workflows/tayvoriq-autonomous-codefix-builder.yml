@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-autonomous-codefix-builder
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-verified-candidate:
@@ -92,8 +92,47 @@ jobs:
           print(json.dumps(values,ensure_ascii=False))
           PY
 
+      - name: Reserve bounded codefix attempt before providers and notifications
+        id: admission
+        shell: bash
+        env:
+          STUDIO_LOOKUP_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          REQUEST_FILE: ${{ steps.owner.outputs.request_file }}
+        run: |
+          set -euo pipefail
+          implementation_sha=$(GH_TOKEN="$STUDIO_LOOKUP_TOKEN" gh api "repos/$IMPLEMENTATION_REPO/commits/$IMPLEMENTATION_BRANCH" --jq .sha)
+          python -m unittest discover -s tests -p test_tayvoriq_autocodefix_budget_v1.py
+          python tools/tayvoriq_autocodefix_budget_v1.py \
+            --request "$REQUEST_FILE" --implementation-sha "$implementation_sha" \
+            --builder-run-id "$GITHUB_RUN_ID" > /tmp/codefix-admission.json
+          readarray -t admission < <(python - <<'PY'
+          import json
+          data=json.load(open('/tmp/codefix-admission.json'))
+          print('true' if data['admitted'] else 'false')
+          print(data['ledger_path'])
+          print(data['implementation_sha'])
+          PY
+          )
+          if [ "${admission[0]}" != "true" ]; then
+            echo "admitted=false" >> "$GITHUB_OUTPUT"
+            echo "AUTOCODEFIX_DUPLICATE_EVIDENCE_BLOCKED: no provider call or Telegram notification"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "${admission[1]}"
+          git commit -m "ops: reserve one bounded codefix attempt for $GITHUB_RUN_ID"
+          persisted=false
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then persisted=true; break; fi
+            git pull --rebase origin main
+          done
+          [ "$persisted" = "true" ] || { echo "AUTOCODEFIX_BUDGET_PERSIST_FAILED"; exit 1; }
+          echo "admitted=true" >> "$GITHUB_OUTPUT"
+          echo "implementation_sha=${admission[2]}" >> "$GITHUB_OUTPUT"
+
       - name: Telegram codefix started
-        if: steps.owner.outputs.request_id != ''
+        if: steps.admission.outputs.admitted == 'true' && (steps.owner.outputs.request_id != '')
         shell: bash
         run: |
           set -euo pipefail
@@ -104,6 +143,7 @@ jobs:
             --data-urlencode "text=${text}" >/dev/null
 
       - name: Capture exact failed-run evidence
+        if: steps.admission.outputs.admitted == 'true'
         shell: bash
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
@@ -117,6 +157,7 @@ jobs:
           fi
 
       - name: Build guarded repair request
+        if: steps.admission.outputs.admitted == 'true'
         shell: bash
         env:
           REQUEST_ID: ${{ steps.owner.outputs.request_id }}
@@ -228,15 +269,17 @@ jobs:
           PY
 
       - name: Checkout Studio production branch
+        if: steps.admission.outputs.admitted == 'true'
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: ${{ env.IMPLEMENTATION_BRANCH }}
+          ref: ${{ steps.admission.outputs.implementation_sha }}
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 0
 
       - name: Hydrate prior verified overlay for cumulative repair
+        if: steps.admission.outputs.admitted == 'true'
         id: hydrate_overlay
         working-directory: implementation
         shell: bash
@@ -283,6 +326,7 @@ jobs:
           echo "AUTOCODEFIX_CUMULATIVE_OVERLAY_HYDRATED:$REQUEST_ID"
 
       - name: Resolve existing candidate
+        if: steps.admission.outputs.admitted == 'true'
         id: existing
         working-directory: implementation
         shell: bash
@@ -301,13 +345,13 @@ jobs:
           fi
 
       - name: Setup Python
-        if: steps.existing.outputs.ready != 'true'
+        if: steps.admission.outputs.admitted == 'true' && (steps.existing.outputs.ready != 'true')
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install guarded repair dependencies
-        if: steps.existing.outputs.ready != 'true'
+        if: steps.admission.outputs.admitted == 'true' && (steps.existing.outputs.ready != 'true')
         shell: bash
         run: |
           set -euo pipefail
@@ -324,7 +368,7 @@ jobs:
           python -m pip install -q requests pillow "moviepy==1.0.3" pytest
 
       - name: Telegram root cause context ready
-        if: steps.existing.outputs.ready != 'true'
+        if: steps.admission.outputs.admitted == 'true' && (steps.existing.outputs.ready != 'true')
         shell: bash
         run: |
           set -euo pipefail
@@ -336,7 +380,7 @@ jobs:
 
       - name: Generate guarded Studio patch
         id: generate
-        if: steps.existing.outputs.ready != 'true'
+        if: steps.admission.outputs.admitted == 'true' && (steps.existing.outputs.ready != 'true')
         working-directory: implementation
         shell: bash
         run: |
@@ -377,7 +421,7 @@ jobs:
           test -n "$(git status --porcelain)" || { echo 'AUTOCODEFIX_NO_PATCH_PRODUCED'; exit 1; }
 
       - name: Telegram Studio patch generated
-        if: steps.generate.outcome == 'success'
+        if: steps.admission.outputs.admitted == 'true' && (steps.generate.outcome == 'success')
         shell: bash
         run: |
           set -euo pipefail
@@ -389,7 +433,7 @@ jobs:
 
       - name: Validate generated patch
         id: validate
-        if: steps.existing.outputs.ready != 'true'
+        if: steps.admission.outputs.admitted == 'true' && (steps.existing.outputs.ready != 'true')
         working-directory: implementation
         shell: bash
         run: |
@@ -443,7 +487,7 @@ jobs:
           python tools/tayvoriq_lightweight_preflight.py
 
       - name: Telegram codefix verified
-        if: steps.validate.outcome == 'success'
+        if: steps.admission.outputs.admitted == 'true' && (steps.validate.outcome == 'success')
         shell: bash
         run: |
           set -euo pipefail
@@ -455,7 +499,7 @@ jobs:
 
       - name: Publish verified patch handoff
         id: handoff
-        if: steps.existing.outputs.ready != 'true'
+        if: steps.admission.outputs.admitted == 'true' && (steps.existing.outputs.ready != 'true')
         working-directory: implementation
         shell: bash
         env:
@@ -526,13 +570,13 @@ jobs:
           echo "AUTOCODEFIX_VERIFIED_HANDOFF_PUBLISHED:$REQUEST_ID:$patch_sha"
 
       - name: Handoff ready for request-bound overlay replay
-        if: steps.handoff.outputs.patch_sha256 != ''
+        if: steps.admission.outputs.admitted == 'true' && (steps.handoff.outputs.patch_sha256 != '')
         run: |
           echo "AUTOCODEFIX_VERIFIED_OVERLAY_READY:${{ steps.owner.outputs.request_id }}:${{ steps.handoff.outputs.patch_sha256 }}"
 
       - name: Dispatch and bind exact verified overlay replay
         id: overlay_replay
-        if: steps.handoff.outputs.patch_sha256 != ''
+        if: steps.admission.outputs.admitted == 'true' && (steps.handoff.outputs.patch_sha256 != '')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -732,7 +776,7 @@ jobs:
           echo "AUTOCODEFIX_OVERLAY_REPLAY_BOUND:$REQUEST_ID:$new_run_id:$PATCH_SHA256"
 
       - name: Telegram repaired recovery started
-        if: steps.overlay_replay.outputs.new_run_id != ''
+        if: steps.admission.outputs.admitted == 'true' && (steps.overlay_replay.outputs.new_run_id != '')
         shell: bash
         run: |
           set -euo pipefail
@@ -743,7 +787,7 @@ jobs:
             --data-urlencode "text=${text}" >/dev/null
 
       - name: Telegram codefix stopped
-        if: failure() && steps.owner.outputs.request_id != ''
+        if: steps.admission.outputs.admitted == 'true' && (failure() && steps.owner.outputs.request_id != '')
         shell: bash
         env:
           GENERATE_OUTCOME: ${{ steps.generate.outcome }}
