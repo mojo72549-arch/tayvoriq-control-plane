@@ -10,7 +10,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>[me])-.+$")
+SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
 REQUIRED_FINAL_STEPS = (
     "Assert publishable production output",
     "Validate publication quality",
@@ -41,7 +41,7 @@ def selection_parts(data: dict) -> tuple[str, str] | None:
     match = SELECTION_RE.fullmatch(str(data.get("selection_id") or "").strip())
     if not match:
         return None
-    return match.group("date"), match.group("slot")
+    return match.group("date"), match.group("slot")[0]
 
 
 def _approved_stamp(data: dict) -> float:
@@ -117,6 +117,46 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
         "predecessor_request_id": "",
         "predecessor_run_id": 0,
     }
+    # Admission happens before claiming or dispatching a new production. A
+    # failed/unfinished owner remains authoritative even across dates and slots.
+    pointer_path = requests_dir.parent / ".github/state/tayvoriq-active-production-request.json"
+    if pointer_path.is_file():
+        result["requires_serialization"] = True
+        result["released"] = False
+        try:
+            pointer = read_json(pointer_path)
+            if pointer.get("schema") != "tayvoriq-active-production-request-v1":
+                raise ValueError("invalid pointer schema")
+            if pointer.get("state") == "ACTIVE":
+                owner = str(pointer.get("request_id") or "")
+                run_id = int(pointer.get("golden_path_run_id") or 0)
+                if not owner or run_id <= 0:
+                    raise ValueError("unbound active owner")
+                if owner == result["request_id"]:
+                    result["released"] = True
+                    result["reason"] = "SAME_REQUEST_ACTIVE_OWNER"
+                    return result
+                if owner != result["request_id"]:
+                    result["predecessor_request_id"] = owner
+                    result["predecessor_run_id"] = run_id
+                    if not repo or not token:
+                        result["reason"] = "ACTIVE_OWNER_LIVE_STATE_UNAVAILABLE"
+                        return result
+                    try:
+                        run = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}", token)
+                        jobs = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100", token)
+                        released, reason, steps = evaluate_live_state(run, jobs)
+                    except Exception:
+                        result["reason"] = "ACTIVE_OWNER_LIVE_STATE_UNAVAILABLE"
+                        return result
+                    result["verified_final_steps"] = steps
+                    result["reason"] = reason.replace("MORNING_", "ACTIVE_OWNER_", 1)
+                    if not released:
+                        return result
+            result["released"] = True
+        except (ValueError, TypeError, AttributeError, OSError):
+            result["reason"] = "ACTIVE_OWNER_POINTER_INVALID"
+            return result
     if not parts or parts[1] != "e":
         return result
     result["requires_serialization"] = True
@@ -197,9 +237,9 @@ def held_candidates(requests_dir: Path) -> list[Path]:
             continue
         if data.get("slot_serialization_state") != HELD_STATE:
             continue
-        parts = selection_parts(data)
-        if parts and parts[1] == "e":
-            candidates.append((_approved_stamp(data), path))
+        # Holds may now be caused by any active predecessor, including a prior
+        # day's recovery. Resume every held approved request in approval order.
+        candidates.append((_approved_stamp(data), path))
     return [path for _, path in sorted(candidates, key=lambda item: item[0])]
 
 
