@@ -324,6 +324,8 @@ jobs:
           weekday=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][target.weekday()]
           label='🌅 TAYVORIQ Morgen-Trends' if os.environ['SLOT']=='morning' else '🌙 TAYVORIQ Abend-Trends'
           lines=[f"{label} · {weekday} {target:%d.%m.}",'','V5-Rangliste:']
+          if d.get('repair_of'):
+            lines += ['KORREKTUR: Die vorige Auswahl ist wegen schwacher Quellen und Hooks zurückgezogen. Bitte nur diese Liste verwenden.','']
           for t in d['trends']:
             sc=t.get('source_context') or {}
             reach=sc.get('reach_gate') or {}
