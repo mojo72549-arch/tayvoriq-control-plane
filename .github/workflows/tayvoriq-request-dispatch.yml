@@ -347,6 +347,26 @@ jobs:
               if [ "$previous_terminal" = "completed:success" ]; then
                 STALE_POINTER_TAKEOVER=true
                 echo "STALE_ACTIVE_POINTER_RELEASED previous_request=$previous_request_id previous_run=$previous_run_id"
+              elif [ "$previous_terminal" = "completed:failure" ]; then
+                # A source repair is a new immutable request. Transfer ownership
+                # only after the failed preflight and unchanged factual packet
+                # are checked again against the live canonical predecessor.
+                repair_gate=$(python tools/tayvoriq_slot_serialization_v1.py check \
+                  --request "$REQUEST_FILE" --requests-dir requests \
+                  --repo "$GITHUB_REPOSITORY" --token "$GH_TOKEN")
+                repair_verified=$(python - "$repair_gate" "$previous_request_id" "$previous_run_id" <<'PY'
+          import json,sys
+          data=json.loads(sys.argv[1])
+          print('true' if data.get('released') is True
+                and data.get('reason')=='VERIFIED_EDITORIAL_SOURCE_REPAIR_AFTER_FAILED_PREFLIGHT'
+                and data.get('predecessor_request_id')==sys.argv[2]
+                and int(data.get('predecessor_run_id') or 0)==int(sys.argv[3]) else 'false')
+          PY
+                )
+                if [ "$repair_verified" = "true" ]; then
+                  STALE_POINTER_TAKEOVER=true
+                  echo "VERIFIED_EDITORIAL_SOURCE_REPAIR_OWNER_TRANSFER previous_request=$previous_request_id previous_run=$previous_run_id"
+                fi
               fi
             fi
           fi
