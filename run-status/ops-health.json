@@ -1,18 +1,18 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-26T17:00:58.890880Z",
-  "overall": "red",
+  "generated_at": "2026-09-26T17:03:21.760506Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2867-trend-5",
-    "golden_path_run_id": 36256856439,
-    "pointer_updated_at": "2026-09-26T16:49:56.713194Z"
+    "request_id": "telegram-2867-trend-5-source-repair-v1",
+    "golden_path_run_id": 36257511086,
+    "pointer_updated_at": "2026-09-26T17:01:06.751071Z"
   },
   "request": {
-    "request_id": "telegram-2867-trend-5",
+    "request_id": "telegram-2867-trend-5-source-repair-v1",
     "topic": "Ein Gehirn, zwei Entwicklungswege? Neue Studie zeigt frühe Trennung",
     "trend_id": "5",
     "slot": null,
@@ -37,45 +37,45 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 3,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2867-trend-5.json"
+    "path": "requests/telegram-2867-trend-5-source-repair-v1.json"
   },
   "run": {
-    "id": 36256856439,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36256856439",
-    "created_at": "2026-09-26T16:49:50Z",
-    "updated_at": "2026-09-26T16:50:09Z",
-    "attempt": 1,
-    "progress": 30,
+    "id": 36257511086,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36257511086",
+    "created_at": "2026-09-26T17:00:58Z",
+    "updated_at": "2026-09-26T17:03:21Z",
+    "attempt": 2,
+    "progress": 0,
     "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Lightweight contract preflight",
-    "failed_step_number": 17,
+    "last_successful_step": null,
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 3,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 7,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
-        "status": "error",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dependencies",
@@ -85,47 +85,47 @@
       },
       {
         "label": "Full Preflight",
-        "status": "error",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Produktion / Master",
-        "status": "skipped",
-        "step_number": 33,
-        "step_name": "Produce approved master or reuse checkpoint"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
-        "status": "error",
-        "step_number": 40,
-        "step_name": "Assert publishable production output"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
-        "step_number": 42,
-        "step_name": "Validate publication quality initial"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
-        "step_number": 46,
-        "step_name": "Publish review page"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
-        "step_number": 47,
-        "step_name": "Send Telegram review"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Lightweight contract preflight"
+      "status": "yellow",
+      "detail": "in_progress"
     },
     {
       "name": "Production Green",
@@ -139,31 +139,20 @@
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "status": "yellow",
+      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "36256856439:17:none",
-    "severity": "critical",
-    "failure_state": null,
-    "failed_step": "Lightweight contract preflight",
-    "failed_step_number": 17,
-    "self_heal_status": "IDLE",
-    "same_generation_replay_required": false,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "status": "yellow",
+    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
+    "last_step": null
   },
   "recovery": {
     "status": "IDLE",
@@ -181,29 +170,19 @@
   },
   "events": [
     {
-      "at": "2026-09-26T16:50:09Z",
-      "title": "Workflow-Fehler",
-      "detail": "Lightweight contract preflight"
-    },
-    {
-      "at": "2026-09-26T16:49:56.633393+00:00",
+      "at": "2026-09-26T17:01:05.278755+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:36256847617"
+      "detail": "request-dispatcher:36257498107"
     },
     {
-      "at": "2026-09-26T16:49:47.627954+00:00",
+      "at": "2026-09-26T17:00:54.784178+00:00",
       "title": "DISPATCHING",
-      "detail": "request-dispatcher:36256847617"
-    },
-    {
-      "at": "2026-09-26T15:09:15.008952Z",
-      "title": "APPROVED",
-      "detail": "tayvoriq-slot-serialization-gate"
+      "detail": "request-dispatcher:36257498107"
     },
     {
       "at": "2026-09-26T15:09:05.822Z",
       "title": "APPROVED",
-      "detail": "telegram_callback"
+      "detail": "verified-editorial-source-repair"
     }
   ]
 }
