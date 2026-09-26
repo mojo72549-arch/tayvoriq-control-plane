@@ -255,6 +255,12 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         not str(answers.get(key) or "").strip() for key in required_answers
     ):
         raise SystemExit("SOURCE_CONTEXT_QUALITY_FAILED: complete five-answer evidence is required")
+    # The trend radar applies this gate to generated candidates. Curated or
+    # repaired lists must pass it too, before a Telegram approval can claim a
+    # production run and fail at the immutable lightweight preflight.
+    from tayvoriq_agent_trend_radar_v6 import _downstream_editorial_contract_valid
+    if not _downstream_editorial_contract_valid(answers):
+        raise SystemExit("SOURCE_CONTEXT_EDITORIAL_INVALID: fallback answers fail downstream contract")
     for index, item in enumerate(sources, start=1):
         if not isinstance(item, dict):
             raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} is not structured")
