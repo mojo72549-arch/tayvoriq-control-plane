@@ -24,6 +24,7 @@ permissions:
   actions: write
   contents: write
 
+# Reconcile exact failed run 36269227595 against verified Studio c59404a84638cf4e7e0e68d1b4199d82645db4ca.
 # One recovery owner at a time. Delivery Watch and deterministic continuity share
 # this lock, so a missed workflow_run event can be reconciled without duplicate
 # recovery dispatches.
