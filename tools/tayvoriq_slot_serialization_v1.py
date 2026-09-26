@@ -105,6 +105,36 @@ def is_verified_editorial_source_repair(request: dict, owner: dict, owner_id: st
     return common_original == common_corrected
 
 
+def is_verified_cta_content_repair(request: dict, owner: dict, owner_id: str) -> bool:
+    """Keep the evidence and story fixed while repairing an incomplete CTA."""
+    if request.get("source") != "telegram_trend_approval_content_repair":
+        return False
+    if request.get("repair_of_request_id") != owner_id or owner.get("request_id") != owner_id:
+        return False
+    if owner.get("status") != "DISPATCHED":
+        return False
+    if request.get("request_id") != f"{owner_id}-content-repair-v1":
+        return False
+    if request.get("approval_key") != f'{owner.get("approval_key")}:content-repair-v1':
+        return False
+    for key in (
+        "selection_id", "trend_id", "topic", "trend_scope", "telegram_message_id",
+        "approved_at", "content_angle", "primary_hook", "viewer_question",
+        "explanation_core", "surprise_or_reframe", "practical_relevance",
+        "follow_reason", "open_loop", "source_context", "source_context_sha256",
+    ):
+        if request.get(key) != owner.get(key):
+            return False
+    old_cta = str(owner.get("cta_text") or "").casefold()
+    new_cta = str(request.get("cta_text") or "").casefold()
+    return bool(
+        old_cta and "tayvoriq" in old_cta
+        and not any(marker in old_cta for marker in ("folg", "abonn"))
+        and "tayvoriq" in new_cta
+        and any(marker in new_cta for marker in ("folg", "abonn"))
+    )
+
+
 def evaluate_live_state(run: dict, jobs_payload: dict) -> tuple[bool, str, dict[str, str]]:
     status = str(run.get("status") or "")
     conclusion = str(run.get("conclusion") or "")
@@ -195,6 +225,14 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                             if failed_preflight and is_verified_editorial_source_repair(request, read_json(owner_path), owner):
                                 result["released"] = True
                                 result["reason"] = "VERIFIED_EDITORIAL_SOURCE_REPAIR_AFTER_FAILED_PREFLIGHT"
+                                return result
+                            failed_publishability = any(
+                                step.get("name") == "Assert publishable production output" and step.get("conclusion") == "failure"
+                                for job in jobs.get("jobs") or [] for step in job.get("steps") or []
+                            )
+                            if failed_publishability and is_verified_cta_content_repair(request, read_json(owner_path), owner):
+                                result["released"] = True
+                                result["reason"] = "VERIFIED_CTA_CONTENT_REPAIR_AFTER_FAILED_PUBLISHABILITY"
                                 return result
                         return result
                     completed_owner_verified = pointer.get("state") == "COMPLETED"
