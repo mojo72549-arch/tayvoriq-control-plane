@@ -1,0 +1,42 @@
+name: TAYVORIQ Studio neurodevelopment preflight
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tayvoriq-studio-neurodevelopment-preflight.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: feature/multi-platform-distribution-package
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install focused dependencies
+        run: python -m pip install -q requests pillow "moviepy==1.0.3" pytest
+      - name: Verify source and import resolution
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          export PYTHONPATH="$PWD:$PWD/tools:$PWD/src/runtime_hotfixes:$PWD/src"
+          python -m compileall -q tools/tayvoriq_cloud_render.py tools/tayvoriq_dual_platform_render_v34.py tests/test_tayvoriq_neurodevelopment_preflight.py
+          python - <<'PY'
+          import tools
+          from tools import tayvoriq_tts_router_v28
+          assert tools.__file__.endswith('/tools/__init__.py'), tools.__file__
+          print('production-tools-package-verified')
+          PY
+      - name: Focused pre-render regressions
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          export PYTHONPATH="$PWD:$PWD/tools:$PWD/src/runtime_hotfixes:$PWD/src"
+          python -m pytest -q tests/test_tayvoriq_neurodevelopment_preflight.py
