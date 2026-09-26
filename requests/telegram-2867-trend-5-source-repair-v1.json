@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-2867-trend-5-source-repair-v1",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "telegram_trend_approval_source_repair",
   "trend_id": "5",
   "topic": "Ein Gehirn, zwei Entwicklungswege? Neue Studie zeigt frühe Trennung",
@@ -113,6 +113,11 @@
         "failed_run_id": 36256856439,
         "source_scope": "fallback_editorial_answers_only"
       }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-09-26T17:00:54.784178+00:00",
+      "actor": "request-dispatcher:36257498107"
     }
   ],
   "contract_sha256": "938e72bc42513cb21075888171f07f60c5aa0265e4c9ffe45879d41a704b3ba5",
@@ -120,5 +125,7 @@
   "source_repair_scope": "fallback_editorial_answers_only",
   "source_repair_failed_run_id": 36256856439,
   "source_repair_original_context_sha256": "2a21f3c3ec74d60ad25fd134c7d8259c434ccf010248ba87452e7b3ba842fb39",
-  "recovery_generation": 1
+  "recovery_generation": 1,
+  "dispatch_claim_run_id": 36257498107,
+  "dispatch_contract_sha256": "938e72bc42513cb21075888171f07f60c5aa0265e4c9ffe45879d41a704b3ba5"
 }
