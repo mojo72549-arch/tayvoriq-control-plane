@@ -127,7 +127,9 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
             pointer = read_json(pointer_path)
             if pointer.get("schema") != "tayvoriq-active-production-request-v1":
                 raise ValueError("invalid pointer schema")
-            if pointer.get("state") == "ACTIVE":
+            if pointer.get("state") not in {"ACTIVE", "COMPLETED"}:
+                raise ValueError("invalid pointer state")
+            if pointer.get("state") in {"ACTIVE", "COMPLETED"}:
                 owner = str(pointer.get("request_id") or "")
                 run_id = int(pointer.get("golden_path_run_id") or 0)
                 if not owner or run_id <= 0:
