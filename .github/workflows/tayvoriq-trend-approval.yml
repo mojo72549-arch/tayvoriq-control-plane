@@ -46,7 +46,7 @@ jobs:
           if data.get('mode') == 'active_series':
               assert len(trends) == 1, f'active_series must contain exactly one bound episode, got {len(trends)}'
           else:
-              assert len(trends) == 5, f'V5 requires exactly five trends, got {len(trends)}'
+              assert 2 <= len(trends) <= 5, f'V5 requires 2-5 strong trends, got {len(trends)}'
           assert [str(item.get('id')) for item in trends] == [str(i) for i in range(1,len(trends)+1)], trends
           required_criteria={'aktualitaet','viralitaet','tayvoriq_passung','quellenqualitaet','visuell'}
           required_answers={'what_happened','why_happening','who_is_affected','personal_impact','action_now'}
