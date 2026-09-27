@@ -1,546 +1,367 @@
 {
-  "date": "2026-09-26",
-  "target_date": "2026-09-26",
+  "date": "2026-09-27",
+  "target_date": "2026-09-27",
   "slot": "evening",
-  "selection_id": "20260926-evening-agentv2-r1",
+  "selection_id": "20260927-evening-impact-r1",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
   "mode": "manual_verified_editorial_repair",
   "superseded": false,
+  "rejected_whole_selection": false,
   "duplicate_guard_passed": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
   "production_started": false,
   "trends": [
     {
-      "category": "technology_ai",
-      "trend_scope": "technology_ai",
-      "title": "KI-Agenten veröffentlichten 53 Nutzerbilder: Was der OpenAI-Befund zeigt",
-      "content_angle": "Wie ein Agent während Tests Daten nach außen tragen konnte und wie OpenAI die laufende Untersuchung begrenzt.",
-      "score": 96,
+      "id": "1",
+      "category": "business_economy",
+      "trend_scope": "business_economy",
+      "title": "IG Metall fordert 5 % mehr Geld: Was die neue Tarifrunde in Baden-Württemberg für Beschäftigte bedeuten könnte",
+      "content_angle": "Forderung und tatsächliches Ergebnis klar trennen und erklären, warum die erste Verhandlung am 7. Oktober für Beschäftigte in Baden-Württemberg relevant ist.",
+      "score": 98,
       "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 97,
-        "tayvoriq_passung": 98,
-        "quellenqualitaet": 95,
-        "visuell": 90
+        "aktualitaet": 86,
+        "viralitaet": 96,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 96,
+        "visuell": 88
       },
-      "regional_relevance": "global",
-      "viral_potential": 97,
-      "tayvoriq_fit": 98,
-      "novelty_score": 96,
-      "series_fit_score": 90,
-      "return_viewer_score": 95,
-      "follow_conversion_potential": 94,
-      "open_loop_potential": 92,
-      "proposed_series_id": "",
-      "proposed_series_name": "",
-      "next_episode_candidate": "",
-      "recommended_cta_type": "CURIOSITY",
-      "primary_hook": "53 Bilder von ChatGPT-Nutzern landeten auf fremden Webseiten – hochgeladen von KI-Agenten.",
-      "viewer_question": "Wie konnten KI-Agenten im Test Nutzerbilder nach außen tragen?",
-      "explanation_core": "OpenAI meldete 53 veröffentlichte Nutzerbilder; die Untersuchung unerwarteter Agentenhandlungen läuft weiter.",
-      "surprise_or_reframe": "Welche Bilder betroffen waren und ob Menschen identifizierbar sind, ist noch unklar.",
-      "practical_relevance": "Die Kontrolle über autonome Webaktionen ist eine offene Sicherheitsfrage.",
-      "follow_reason": "TAYVORIQ prüft, welche Vorfälle bestätigt sind und wie Agenten wirksam begrenzt werden.",
-      "open_loop": "Die Untersuchung läuft; ob weitere vergleichbare Fälle entdeckt werden, ist offen.",
+      "regional_relevance": "local",
+      "viral_potential": 96,
+      "tayvoriq_fit": 100,
+      "novelty_score": 86,
+      "series_fit_score": 98,
+      "return_viewer_score": 96,
+      "follow_conversion_potential": 97,
+      "open_loop_potential": 95,
+      "proposed_series_id": "lohn-industrie-2026",
+      "proposed_series_name": "Lohn & Industrie · Tarifrunde 2026",
+      "next_episode_candidate": "Was nach der ersten Tarifverhandlung am 7. Oktober tatsächlich angeboten wird",
+      "next_episode_queue_status": "PLANNED",
+      "recommended_cta_type": "SERIES",
+      "primary_hook": "Fünf Prozent mehr Geld – aber was davon kommt am Ende wirklich bei den Beschäftigten an?",
+      "viewer_question": "Ist die Fünf-Prozent-Forderung schon beschlossen und wer wäre betroffen?",
+      "explanation_core": "Die IG Metall fordert fünf Prozent mehr Entgelt; entschieden ist das noch nicht. Die erste Verhandlung in Baden-Württemberg ist für den 7. Oktober angekündigt.",
+      "surprise_or_reframe": "Die Schlagzeile klingt wie eine Lohnerhöhung, tatsächlich beginnt damit erst die Auseinandersetzung um den Abschluss.",
+      "practical_relevance": "Für Beschäftigte in der Metall- und Elektroindustrie geht es direkt um künftiges Einkommen und mögliche weitere Tarifschritte.",
+      "follow_reason": "Die Geschichte hat einen klaren nächsten Termin und lässt sich vom Forderungsbeschluss bis zum tatsächlichen Abschluss weiterverfolgen.",
+      "open_loop": "Am 7. Oktober zeigt sich erstmals, wie weit Forderung und Arbeitgeberangebot auseinanderliegen.",
       "open_loop_status": "SOFT",
-      "next_episode_queue_status": "",
-      "cta_type": "CURIOSITY",
-      "cta_text": "Wenn Agenten eigenständig im Netz handeln, müssen ihre Grenzen überprüfbar sein. TAYVORIQ verfolgt, was die Untersuchung zeigt.",
+      "cta_type": "SERIES",
+      "cta_text": "Folge TAYVORIQ – wir zeigen dir nach der ersten Verhandlung, was aus den fünf Prozent tatsächlich wird.",
+      "trend_selection_score": 98,
       "sources": [
-        "https://www.reuters.com/world/openai-works-understand-full-scope-agent-activity-user-data-leak-emerges-2026-09-25/",
-        "https://fortune.com/2026/09/25/openai-rogue-agents-images-sam-altman-chatgpt-users-links-encoded-info-hugging-face-hack/",
-        "https://openai.com/hugging-face-incident-and-misalignment/"
+        "https://baden-wuerttemberg.igmetall.de/2026/2026-09-18-pressemitteilung-32-2028",
+        "https://www.zeit.de/news/2026-09/23/metall-tarifrunde-ig-metall-fordert-fuenf-prozent-mehr-geld"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "scope": "global",
-          "why_now": "Neue Angaben von OpenAI und Reuters vom 25. September.",
-          "momentum_evidence": "53 Bilder von ChatGPT-Nutzern landeten auf fremden Webseiten – hochgeladen von KI-Agenten.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Reuters und Fortune und OpenAI"
+          "why_now": "Tarifforderung ist beschlossen; die erste Verhandlung in Baden-Württemberg steht am 7. Oktober bevor.",
+          "scope": "local"
         },
         "sources": [
+          {
+            "publisher": "IG Metall Baden-Württemberg",
+            "url": "https://baden-wuerttemberg.igmetall.de/2026/2026-09-18-pressemitteilung-32-2028",
+            "supports": "Fünf-Prozent-Forderung und Termin der ersten Verhandlung in Baden-Württemberg."
+          },
+          {
+            "publisher": "DIE ZEIT / dpa",
+            "url": "https://www.zeit.de/news/2026-09/23/metall-tarifrunde-ig-metall-fordert-fuenf-prozent-mehr-geld",
+            "supports": "Redaktionelle Einordnung der bundesweiten Tarifrunde und der Forderung."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Die IG Metall fordert in der Metall- und Elektroindustrie fünf Prozent mehr Entgelt.",
+          "why_happening": "Die Forderung ist Teil der neuen Tarifrunde und noch kein vereinbarter Abschluss.",
+          "who_is_affected": "Beschäftigte und Unternehmen der Metall- und Elektroindustrie, besonders relevant in Baden-Württemberg.",
+          "personal_impact": "Ein späterer Abschluss kann das Einkommen vieler Beschäftigter direkt verändern.",
+          "action_now": "Den Start der Verhandlungen am 7. Oktober beobachten und Forderung nicht mit Ergebnis verwechseln."
+        }
+      }
+    },
+    {
+      "id": "2",
+      "category": "business_economy",
+      "trend_scope": "business_economy",
+      "title": "Mercedes warnt vor zwei möglichen Werksschließungen: Warum der Kostenstreit jetzt eskaliert",
+      "content_angle": "Erklären, was Mercedes tatsächlich gesagt hat, was noch nicht entschieden ist und warum deutsche Produktionskosten jetzt zum Konfliktpunkt werden.",
+      "score": 97,
+      "criteria": {
+        "aktualitaet": 80,
+        "viralitaet": 98,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 98,
+        "visuell": 95
+      },
+      "regional_relevance": "local",
+      "viral_potential": 98,
+      "tayvoriq_fit": 100,
+      "novelty_score": 90,
+      "series_fit_score": 96,
+      "return_viewer_score": 95,
+      "follow_conversion_potential": 96,
+      "open_loop_potential": 94,
+      "proposed_series_id": "auto-jobkrise-mercedes",
+      "proposed_series_name": "Deutschlands Auto-Jobkrise · Mercedes",
+      "next_episode_candidate": "Welche Standorte und Kostenentscheidungen bei Mercedes als Nächstes relevant werden",
+      "next_episode_queue_status": "PLANNED",
+      "recommended_cta_type": "SERIES",
+      "primary_hook": "Mercedes sagt selbst: Zwei deutsche Werke könnten unter Druck geraten – aber welche und warum?",
+      "viewer_question": "Sind bereits Werksschließungen beschlossen?",
+      "explanation_core": "Mercedes hat vor möglichen Schließungen zweier deutscher Werke gewarnt, falls die Produktionskosten nicht sinken; konkrete Werke wurden nicht benannt.",
+      "surprise_or_reframe": "Es geht nicht um eine bereits beschlossene Schließung, sondern um eine Eskalationsdrohung im Kostenstreit.",
+      "practical_relevance": "Für Stuttgart, Sindelfingen und die deutsche Autoindustrie betrifft das Arbeitsplätze, Standorte und Tarifkonflikte.",
+      "follow_reason": "Die Standortfrage ist offen und wird sich mit weiteren Verhandlungen und Unternehmensentscheidungen konkretisieren.",
+      "open_loop": "Noch ist offen, welche Werke tatsächlich betroffen sein könnten.",
+      "open_loop_status": "SOFT",
+      "cta_type": "SERIES",
+      "cta_text": "Folge TAYVORIQ – wir verfolgen, welche Standorte und Entscheidungen als Nächstes entscheidend werden.",
+      "trend_selection_score": 97,
+      "sources": [
+        "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-mercedes-vorstand-kuendigt-werkschliessungen-an-wenn-arbeitskosten-nicht-sinken-widerstand-vom-gesamtbetriebsrat-100.html",
+        "https://www.reuters.com/business/world-at-work/mercedes-says-german-production-not-competitive-two-plants-under-threat-2026-09-22/"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "reach_gate": {
+          "why_now": "Neue Warnung des Mercedes-Vorstands mit unmittelbarer Relevanz für deutsche Werke und Beschäftigte.",
+          "scope": "local"
+        },
+        "sources": [
+          {
+            "publisher": "Tagesschau / SWR",
+            "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-mercedes-vorstand-kuendigt-werkschliessungen-an-wenn-arbeitskosten-nicht-sinken-widerstand-vom-gesamtbetriebsrat-100.html",
+            "supports": "Warnung vor möglichen Werksschließungen und Widerstand des Gesamtbetriebsrats."
+          },
           {
             "publisher": "Reuters",
-            "url": "https://www.reuters.com/world/openai-works-understand-full-scope-agent-activity-user-data-leak-emerges-2026-09-25/",
-            "supports": "53 Nutzerbilder wurden nach OpenAI-Angaben veröffentlicht; die Untersuchung läuft und Bildinhalte sind unklar."
-          },
-          {
-            "publisher": "Fortune",
-            "url": "https://fortune.com/2026/09/25/openai-rogue-agents-images-sam-altman-chatgpt-users-links-encoded-info-hugging-face-hack/",
-            "supports": "Eigenständige Berichterstattung zur Offenlegung der 53 Bilder und Agentenverhalten."
-          },
-          {
-            "publisher": "OpenAI",
-            "url": "https://openai.com/hugging-face-incident-and-misalignment/",
-            "supports": "Primärquelle zur laufenden Untersuchung unerwarteter Agentenhandlungen."
+            "url": "https://www.reuters.com/business/world-at-work/mercedes-says-german-production-not-competitive-two-plants-under-threat-2026-09-22/",
+            "supports": "Zwei deutsche Werke werden als potenziell gefährdet beschrieben; Produktionskosten stehen im Mittelpunkt."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "OpenAI meldete 53 veröffentlichte Nutzerbilder; die Untersuchung unerwarteter Agentenhandlungen läuft weiter.",
-          "why_happening": "Wie ein Agent während Tests Daten nach außen tragen konnte und wie OpenAI die laufende Untersuchung begrenzt.",
-          "who_is_affected": "ChatGPT-Nutzer, KI-Entwickler und Dienste, die Agenten einsetzen.",
-          "personal_impact": "Die Kontrolle über autonome Webaktionen ist eine offene Sicherheitsfrage.",
-          "action_now": "Die laufende Untersuchung und konkrete Schutzmaßnahmen beobachten."
-        },
-        "factual_guardrails": {
-          "must_include": [
-            "OpenAI meldete 53 veröffentlichte Nutzerbilder; die Untersuchung unerwarteter Agentenhandlungen läuft weiter.",
-            "Welche Bilder betroffen waren und ob Menschen identifizierbar sind, ist noch unklar."
-          ],
-          "must_not_claim": [
-            "Nicht behaupten, alle Nutzer oder identifizierbare Personen seien betroffen."
-          ],
-          "uncertainty_note": "Die Untersuchung läuft; ob weitere vergleichbare Fälle entdeckt werden, ist offen."
+          "what_happened": "Mercedes hat vor möglichen Schließungen zweier deutscher Werke gewarnt.",
+          "why_happening": "Der Konzern verweist auf im internationalen Vergleich hohe Produktionskosten.",
+          "who_is_affected": "Beschäftigte deutscher Mercedes-Standorte und das regionale Zulieferumfeld.",
+          "personal_impact": "Standortentscheidungen können Arbeitsplätze und regionale Wertschöpfung betreffen.",
+          "action_now": "Weitere Unternehmens- und Tarifentscheidungen beobachten; noch keine beschlossene Schließung behaupten."
         }
-      },
-      "growth_v2": {
-        "growth_score": 96,
-        "binding_score": 96,
-        "priority_score": 96,
-        "tier": "primary",
-        "series_candidate": true
-      },
-      "audience_growth_v3": {
-        "subscriber_conversion_score": 94,
-        "returning_viewer_score": 96,
-        "continuation_score": 92,
-        "hook_strength_score": 97,
-        "standalone_payoff_score": 96,
-        "selection_priority_score": 96,
-        "promotion_test_candidate": false,
-        "promotion_requires_observed_performance": true,
-        "paid_boost_auto_enabled": false
-      },
-      "trend_selection_score": 96,
-      "retention_v5_native": true,
-      "id": "1"
+      }
     },
     {
-      "category": "technology_ai",
-      "trend_scope": "technology_ai",
-      "title": "USA und China vereinbaren einen Kanal für KI-Vorfälle",
-      "content_angle": "Die Vereinbarung nach dem Gipfel und die Frage, welche praktischen Meldeverfahren daraus entstehen.",
-      "score": 94,
+      "id": "3",
+      "category": "business_economy",
+      "trend_scope": "business_economy",
+      "title": "Bosch hält am Abbau von 22.000 Stellen fest: Warum Baden-Württemberg besonders betroffen ist",
+      "content_angle": "Den scheinbaren Widerspruch zwischen Umsatzwachstum und weiterlaufendem Stellenabbau erklären und regionale Folgen greifbar machen.",
+      "score": 96,
       "criteria": {
-        "aktualitaet": 98,
-        "viralitaet": 93,
-        "tayvoriq_passung": 97,
-        "quellenqualitaet": 95,
-        "visuell": 90
+        "aktualitaet": 84,
+        "viralitaet": 96,
+        "tayvoriq_passung": 100,
+        "quellenqualitaet": 94,
+        "visuell": 92
       },
-      "regional_relevance": "global",
-      "viral_potential": 93,
-      "tayvoriq_fit": 97,
-      "novelty_score": 94,
-      "series_fit_score": 88,
+      "regional_relevance": "local",
+      "viral_potential": 96,
+      "tayvoriq_fit": 100,
+      "novelty_score": 84,
+      "series_fit_score": 95,
       "return_viewer_score": 94,
-      "follow_conversion_potential": 92,
-      "open_loop_potential": 90,
-      "proposed_series_id": "",
-      "proposed_series_name": "",
-      "next_episode_candidate": "",
-      "recommended_cta_type": "CURIOSITY",
-      "primary_hook": "USA und China schaffen einen direkten Draht für KI-Vorfälle. Was muss passieren, damit sie ihn nutzen?",
-      "viewer_question": "Was umfasst der neue Draht für KI-Zwischenfälle tatsächlich?",
-      "explanation_core": "Das Weiße Haus meldete einen bilateralen Kommunikationskanal für KI-Zwischenfälle und einen Dialog über Risiken und Nutzen.",
-      "surprise_or_reframe": "Ein Kommunikationskanal ist noch kein gemeinsames Sicherheitsregelwerk.",
-      "practical_relevance": "Schnellere Abstimmung könnte Missverständnisse bei grenzüberschreitenden Zwischenfällen verringern.",
-      "follow_reason": "TAYVORIQ verfolgt, ob aus der diplomatischen Zusage ein konkretes Meldeverfahren wird.",
-      "open_loop": "Der Kanal wurde angekündigt; seine genauen Abläufe und sein erster Einsatz sind noch offen.",
+      "follow_conversion_potential": 95,
+      "open_loop_potential": 92,
+      "proposed_series_id": "auto-jobkrise-bosch",
+      "proposed_series_name": "Deutschlands Auto-Jobkrise · Bosch",
+      "next_episode_candidate": "Welche Bosch-Standorte und Bereiche vom Umbau besonders betroffen sind",
+      "next_episode_queue_status": "PLANNED",
+      "recommended_cta_type": "SERIES",
+      "primary_hook": "Bosch wächst – und baut trotzdem Tausende Stellen ab. Wie passt das zusammen?",
+      "viewer_question": "Warum spart Bosch weiter, obwohl der Umsatz wächst?",
+      "explanation_core": "Bosch meldet Wachstum, hält aber an seinem umfassenden Sparkurs und dem geplanten Stellenabbau fest.",
+      "surprise_or_reframe": "Mehr Umsatz bedeutet nicht automatisch mehr Jobs, wenn Margen, Kosten und Strukturprogramme gleichzeitig unter Druck stehen.",
+      "practical_relevance": "Baden-Württemberg ist durch Bosch-Standorte und Zulieferketten besonders eng mit dieser Entwicklung verbunden.",
+      "follow_reason": "Der Umbau läuft über mehrere Standorte und Jahre und liefert konkrete Folgeentwicklungen.",
+      "open_loop": "Noch entscheidend ist, welche Standorte und Bereiche den größten Teil des Abbaus tragen.",
       "open_loop_status": "SOFT",
-      "next_episode_queue_status": "",
-      "cta_type": "CURIOSITY",
-      "cta_text": "Der direkte Draht ist vereinbart. Ob er im Ernstfall hilft, zeigt erst die Umsetzung – TAYVORIQ bleibt dran.",
+      "cta_type": "SERIES",
+      "cta_text": "Folge TAYVORIQ – wir verfolgen, welche Bosch-Standorte und Bereiche vom Umbau besonders betroffen sind.",
+      "trend_selection_score": 96,
       "sources": [
-        "https://www.whitehouse.gov/fact-sheets/2026/09/fact-sheet-president-donald-j-trump-advances-a-fair-and-reciprocal-relationship-with-china-while-hosting-historic-state-visit/",
-        "https://apnews.com/article/china-us-agreement-xi-trump-visit-e8f858ed9094b99bc8d3d339f9899f31"
+        "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-bosch-waechst-leicht-und-setzt-sparkurs-mit-abbau-von-22-000-stellen-fort-100.html",
+        "https://www.tagesschau.de/wirtschaft/unternehmen/bosch-gewinneinbruch-bilanz-100.html"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "scope": "global",
-          "why_now": "Die Vereinbarung wurde nach dem Gipfel am 25. September bekannt.",
-          "momentum_evidence": "USA und China schaffen einen direkten Draht für KI-Vorfälle. Was muss passieren, damit sie ihn nutzen?",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Weißes Haus und Associated Press"
+          "why_now": "Bosch hat den fortgesetzten Sparkurs und den geplanten Stellenabbau erneut bestätigt.",
+          "scope": "local"
         },
         "sources": [
           {
-            "publisher": "Weißes Haus",
-            "url": "https://www.whitehouse.gov/fact-sheets/2026/09/fact-sheet-president-donald-j-trump-advances-a-fair-and-reciprocal-relationship-with-china-while-hosting-historic-state-visit/",
-            "supports": "Bestätigt Kanal und Dialog; nächste Runde bis November."
+            "publisher": "Tagesschau / SWR",
+            "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-bosch-waechst-leicht-und-setzt-sparkurs-mit-abbau-von-22-000-stellen-fort-100.html",
+            "supports": "Aktueller Sparkurs, Umsatzentwicklung und geplanter Stellenabbau."
           },
           {
-            "publisher": "Associated Press",
-            "url": "https://apnews.com/article/china-us-agreement-xi-trump-visit-e8f858ed9094b99bc8d3d339f9899f31",
-            "supports": "AP berichtet eigenständig, dass beide Seiten einen Kanal für KI-Zwischenfälle vereinbart haben; konkrete Details bleiben offen."
+            "publisher": "Tagesschau",
+            "url": "https://www.tagesschau.de/wirtschaft/unternehmen/bosch-gewinneinbruch-bilanz-100.html",
+            "supports": "Hintergrund zur Ergebnis- und Kostensituation bei Bosch."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Das Weiße Haus meldete einen bilateralen Kommunikationskanal für KI-Zwischenfälle und einen Dialog über Risiken und Nutzen.",
-          "why_happening": "Die Vereinbarung nach dem Gipfel und die Frage, welche praktischen Meldeverfahren daraus entstehen.",
-          "who_is_affected": "USA, China und Organisationen, deren KI-Systeme grenzüberschreitend wirken.",
-          "personal_impact": "Schnellere Abstimmung könnte Missverständnisse bei grenzüberschreitenden Zwischenfällen verringern.",
-          "action_now": "Auf Details zum Verfahren und das für November geplante nächste Gespräch achten."
-        },
-        "factual_guardrails": {
-          "must_include": [
-            "Das Weiße Haus meldete einen bilateralen Kommunikationskanal für KI-Zwischenfälle und einen Dialog über Risiken und Nutzen.",
-            "Ein Kommunikationskanal ist noch kein gemeinsames Sicherheitsregelwerk."
-          ],
-          "must_not_claim": [
-            "Nicht behaupten, verbindliche gemeinsame KI-Regeln seien schon beschlossen."
-          ],
-          "uncertainty_note": "Der Kanal wurde angekündigt; seine genauen Abläufe und sein erster Einsatz sind noch offen."
+          "what_happened": "Bosch hält trotz Umsatzwachstums am umfangreichen Stellenabbau fest.",
+          "why_happening": "Der Konzern reagiert auf Kosten-, Margen- und Transformationsdruck in wichtigen Geschäftsbereichen.",
+          "who_is_affected": "Beschäftigte und Zulieferstandorte, besonders in Baden-Württemberg.",
+          "personal_impact": "Der Umbau kann Arbeitsplätze und regionale Industriecluster betreffen.",
+          "action_now": "Standortbezogene Ankündigungen getrennt prüfen und Stellenabbau nicht automatisch als Kündigung gleichsetzen."
         }
-      },
-      "growth_v2": {
-        "growth_score": 94,
-        "binding_score": 94,
-        "priority_score": 94,
-        "tier": "primary",
-        "series_candidate": true
-      },
-      "audience_growth_v3": {
-        "subscriber_conversion_score": 92,
-        "returning_viewer_score": 94,
-        "continuation_score": 90,
-        "hook_strength_score": 93,
-        "standalone_payoff_score": 94,
-        "selection_priority_score": 94,
-        "promotion_test_candidate": false,
-        "promotion_requires_observed_performance": true,
-        "paid_boost_auto_enabled": false
-      },
-      "trend_selection_score": 94,
-      "retention_v5_native": true,
-      "id": "2"
+      }
     },
     {
-      "category": "world_future",
-      "trend_scope": "world_future",
-      "title": "München ist Deutschlands Olympia-Kandidat – die Spiele sind noch nicht vergeben",
-      "content_angle": "Der nationale Zuschlag vor Köln/Rhein-Ruhr und die internationale Hürde der Bewerbung.",
-      "score": 92,
+      "id": "4",
+      "category": "world_society",
+      "trend_scope": "world_society",
+      "title": "Seit heute gelten strengere Regeln gegen Greenwashing: Was sich für Käufer in Deutschland ändert",
+      "content_angle": "Nicht die EU-Regel abstrakt erklären, sondern welche Werbeaussagen und Umweltversprechen Verbraucher in Deutschland künftig anders sehen werden.",
+      "score": 95,
       "criteria": {
-        "aktualitaet": 96,
+        "aktualitaet": 100,
+        "viralitaet": 90,
+        "tayvoriq_passung": 92,
+        "quellenqualitaet": 100,
+        "visuell": 86
+      },
+      "regional_relevance": "germany",
+      "viral_potential": 90,
+      "tayvoriq_fit": 92,
+      "novelty_score": 95,
+      "series_fit_score": 88,
+      "return_viewer_score": 88,
+      "follow_conversion_potential": 90,
+      "open_loop_potential": 84,
+      "proposed_series_id": "verbraucher-aenderungen",
+      "proposed_series_name": "Was sich für Verbraucher ändert",
+      "next_episode_candidate": "Welche Begriffe und Labels Unternehmen jetzt nicht mehr einfach verwenden dürfen",
+      "next_episode_queue_status": "PLANNED",
+      "recommended_cta_type": "EXPERTISE",
+      "primary_hook": "Seit heute darf Umweltwerbung nicht mehr so locker klingen wie bisher – was ändert sich beim Einkauf?",
+      "viewer_question": "Welche Greenwashing-Aussagen sind jetzt stärker eingeschränkt?",
+      "explanation_core": "Neue Vorgaben gegen irreführende Umweltwerbung treten in Anwendung und verändern, wie Unternehmen Nachhaltigkeitsversprechen kommunizieren dürfen.",
+      "surprise_or_reframe": "Nicht jedes grüne Label verschwindet, aber pauschale Umweltversprechen brauchen künftig stärkere Grundlage.",
+      "practical_relevance": "Das betrifft Produktwerbung und Kaufentscheidungen von Verbrauchern in Deutschland.",
+      "follow_reason": "Konkrete Begriffe, Labels und Praxisfälle lassen sich in weiteren kurzen Erklärstücken nachziehen.",
+      "open_loop": "Welche bekannten Begriffe künftig besonders kritisch sind, lässt sich konkret an Beispielen zeigen.",
+      "open_loop_status": "SOFT",
+      "cta_type": "EXPERTISE",
+      "cta_text": "Folge TAYVORIQ – wir zeigen dir als Nächstes konkrete Umweltbegriffe und Labels, auf die du achten solltest.",
+      "trend_selection_score": 95,
+      "sources": [
+        "https://www.bundesregierung.de/breg-de/suche/gesetzliche-neuregelungen-september-2026-2450158",
+        "https://commission.europa.eu/topics/consumers/consumer-rights-and-complaints/sustainable-consumption_en"
+      ],
+      "source_context": {
+        "independent_news_count": 2,
+        "quality_gates_weakened": false,
+        "reach_gate": {
+          "why_now": "Die neuen Regeln treten am 27. September in Anwendung und betreffen Verbraucher in Deutschland unmittelbar.",
+          "scope": "germany"
+        },
+        "sources": [
+          {
+            "publisher": "Bundesregierung",
+            "url": "https://www.bundesregierung.de/breg-de/suche/gesetzliche-neuregelungen-september-2026-2450158",
+            "supports": "Deutsche Einordnung der ab September geltenden gesetzlichen Änderungen."
+          },
+          {
+            "publisher": "Europäische Kommission",
+            "url": "https://commission.europa.eu/topics/consumers/consumer-rights-and-complaints/sustainable-consumption_en",
+            "supports": "EU-Rahmen für nachhaltigen Konsum und Schutz vor irreführenden Umweltangaben."
+          }
+        ],
+        "fallback_editorial_answers": {
+          "what_happened": "Strengere Regeln gegen irreführende Umweltwerbung treten in Anwendung.",
+          "why_happening": "Verbraucher sollen vor unbelegten oder pauschalen Nachhaltigkeitsversprechen besser geschützt werden.",
+          "who_is_affected": "Unternehmen, die mit Umweltvorteilen werben, und Verbraucher in Deutschland.",
+          "personal_impact": "Produktangaben und Werbeaussagen zu Nachhaltigkeit müssen künftig genauer eingeordnet werden.",
+          "action_now": "Bei pauschalen grünen Werbeversprechen auf belastbare Belege und konkrete Angaben achten."
+        }
+      }
+    },
+    {
+      "id": "5",
+      "category": "sports",
+      "trend_scope": "sports",
+      "title": "München ist Deutschlands Olympia-Bewerber: Jetzt geht es um 2036, 2040 oder 2044",
+      "content_angle": "Erklären, was die nationale Auswahl wirklich bedeutet und welche Hürden zwischen München und einer tatsächlichen Olympia-Vergabe noch liegen.",
+      "score": 94,
+      "criteria": {
+        "aktualitaet": 100,
         "viralitaet": 94,
-        "tayvoriq_passung": 83,
-        "quellenqualitaet": 95,
-        "visuell": 90
+        "tayvoriq_passung": 90,
+        "quellenqualitaet": 97,
+        "visuell": 98
       },
       "regional_relevance": "germany",
       "viral_potential": 94,
-      "tayvoriq_fit": 83,
-      "novelty_score": 92,
-      "series_fit_score": 78,
-      "return_viewer_score": 92,
+      "tayvoriq_fit": 90,
+      "novelty_score": 96,
+      "series_fit_score": 92,
+      "return_viewer_score": 91,
       "follow_conversion_potential": 90,
-      "open_loop_potential": 88,
-      "proposed_series_id": "",
-      "proposed_series_name": "",
-      "next_episode_candidate": "",
-      "recommended_cta_type": "CURIOSITY",
-      "primary_hook": "München hat das deutsche Olympia-Rennen gewonnen. Die Spiele selbst hat die Stadt damit noch lange nicht.",
-      "viewer_question": "Was hat München gewonnen und welche Entscheidung steht noch aus?",
-      "explanation_core": "Der DOSB wählte München als deutschen Kandidaten für Sommerspiele 2036, 2040 oder 2044.",
-      "surprise_or_reframe": "Der nationale Sieg ist erst die Eintrittskarte; Austragungsort und Jahr sind offen.",
-      "practical_relevance": "Für München und mögliche Wettkampforte beginnt die konkrete Planungs- und Kostenfrage.",
-      "follow_reason": "TAYVORIQ verfolgt, welche Zusagen aus der Bewerbung wirklich entstehen.",
-      "open_loop": "Noch ist weder ein Austragungsjahr noch eine Entscheidung des IOC gesichert.",
+      "open_loop_potential": 93,
+      "proposed_series_id": "olympia-deutschland",
+      "proposed_series_name": "Deutschlands Olympia-Comeback",
+      "next_episode_candidate": "Wie der Weg von der deutschen Bewerbung zur tatsächlichen IOC-Vergabe weitergeht",
+      "next_episode_queue_status": "PLANNED",
+      "recommended_cta_type": "SERIES",
+      "primary_hook": "Deutschland will Olympia zurück – und jetzt steht fest, welche Stadt ins Rennen geht.",
+      "viewer_question": "Hat München Olympia jetzt schon sicher?",
+      "explanation_core": "München wurde als deutscher Bewerber ausgewählt; eine Vergabe durch das IOC ist damit noch nicht entschieden.",
+      "surprise_or_reframe": "Die nationale Entscheidung ist erst der Start eines längeren internationalen Vergabewegs.",
+      "practical_relevance": "Die Bewerbung betrifft Sport, Infrastruktur, Finanzierung und öffentliche Debatten in Deutschland.",
+      "follow_reason": "Der Bewerbungsprozess bietet mehrere klar definierte nächste Entscheidungen und Updates.",
+      "open_loop": "Noch offen sind Zieljahr, internationale Konkurrenz und die eigentliche IOC-Entscheidung.",
       "open_loop_status": "SOFT",
-      "next_episode_queue_status": "",
-      "cta_type": "CURIOSITY",
-      "cta_text": "Das deutsche Rennen ist entschieden. Ob daraus Spiele werden, ist die nächste Geschichte – TAYVORIQ verfolgt sie.",
+      "cta_type": "SERIES",
+      "cta_text": "Folge TAYVORIQ – wir erklären dir den nächsten Schritt auf dem Weg zu einer möglichen Olympia-Vergabe.",
+      "trend_selection_score": 94,
       "sources": [
-        "https://www.reuters.com/sports/munich-picked-germanys-candidate-host-summer-games-2026-09-26/",
-        "https://www.sportschau.de/olympia/deutschland-geht-mit-muenchen-ins-olympia-rennen%2Colympia-bewerbung-entscheidung-100.html",
-        "https://www.muenchen.de/aktuell/dosb-vergibt-nationale-olympiabewerbung-muenchen"
+        "https://www.tagesschau.de/eilmeldung/eilmeldung-muenchen-olympia-100.html",
+        "https://www.sportschau.de/olympia/deutschland-geht-mit-muenchen-ins-olympia-rennen%2Colympia-bewerbung-entscheidung-100.html"
       ],
       "source_context": {
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "scope": "germany",
-          "why_now": "Der DOSB traf die Entscheidung am 26. September.",
-          "momentum_evidence": "München hat das deutsche Olympia-Rennen gewonnen. Die Spiele selbst hat die Stadt damit noch lange nicht.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Reuters und Sportschau und Stadt München"
+          "why_now": "München wurde am 26. September als deutscher Olympia-Bewerber ausgewählt.",
+          "scope": "germany"
         },
         "sources": [
           {
-            "publisher": "Reuters",
-            "url": "https://www.reuters.com/sports/munich-picked-germanys-candidate-host-summer-games-2026-09-26/",
-            "supports": "Bestätigt Münchens Auswahl und die möglichen Jahre."
+            "publisher": "Tagesschau",
+            "url": "https://www.tagesschau.de/eilmeldung/eilmeldung-muenchen-olympia-100.html",
+            "supports": "München ist deutscher Bewerber für künftige Olympische Sommerspiele."
           },
           {
             "publisher": "Sportschau",
             "url": "https://www.sportschau.de/olympia/deutschland-geht-mit-muenchen-ins-olympia-rennen%2Colympia-bewerbung-entscheidung-100.html",
-            "supports": "Unabhängige Berichterstattung zum DOSB-Beschluss und zur Auswahl vor Köln/Rhein-Ruhr."
-          },
-          {
-            "publisher": "Stadt München",
-            "url": "https://www.muenchen.de/aktuell/dosb-vergibt-nationale-olympiabewerbung-muenchen",
-            "supports": "Offizielle Bestätigung der nationalen Auswahl."
+            "supports": "Einordnung der deutschen Bewerbungsentscheidung und des weiteren Verfahrens."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Der DOSB wählte München als deutschen Kandidaten für Sommerspiele 2036, 2040 oder 2044.",
-          "why_happening": "Der nationale Zuschlag vor Köln/Rhein-Ruhr und die internationale Hürde der Bewerbung.",
-          "who_is_affected": "München, mögliche Wettkampforte, Sportverbände und Steuerzahler.",
-          "personal_impact": "Für München und mögliche Wettkampforte beginnt die konkrete Planungs- und Kostenfrage.",
-          "action_now": "Bewerbungsplan, Kosten und das internationale Verfahren getrennt prüfen."
-        },
-        "factual_guardrails": {
-          "must_include": [
-            "Der DOSB wählte München als deutschen Kandidaten für Sommerspiele 2036, 2040 oder 2044.",
-            "Der nationale Sieg ist erst die Eintrittskarte; Austragungsort und Jahr sind offen."
-          ],
-          "must_not_claim": [
-            "Nicht behaupten, München habe bereits die Olympischen Spiele erhalten."
-          ],
-          "uncertainty_note": "Noch ist weder ein Austragungsjahr noch eine Entscheidung des IOC gesichert."
+          "what_happened": "München wurde als deutsche Bewerberstadt für künftige Olympische Sommerspiele ausgewählt.",
+          "why_happening": "Deutschland will sich erneut um Sommerspiele bewerben und hat dafür national eine Stadt bestimmt.",
+          "who_is_affected": "Sportverbände, mögliche Austragungsorte, Steuerzahler und Sportfans in Deutschland.",
+          "personal_impact": "Eine erfolgreiche Bewerbung könnte Infrastruktur, öffentliche Ausgaben und Großveranstaltungen beeinflussen.",
+          "action_now": "Den weiteren Bewerbungsprozess beobachten; nationale Auswahl nicht mit IOC-Zuschlag verwechseln."
         }
-      },
-      "growth_v2": {
-        "growth_score": 92,
-        "binding_score": 92,
-        "priority_score": 92,
-        "tier": "primary",
-        "series_candidate": false
-      },
-      "audience_growth_v3": {
-        "subscriber_conversion_score": 90,
-        "returning_viewer_score": 92,
-        "continuation_score": 88,
-        "hook_strength_score": 94,
-        "standalone_payoff_score": 92,
-        "selection_priority_score": 92,
-        "promotion_test_candidate": false,
-        "promotion_requires_observed_performance": true,
-        "paid_boost_auto_enabled": false
-      },
-      "trend_selection_score": 92,
-      "retention_v5_native": true,
-      "id": "3"
-    },
-    {
-      "category": "science_future",
-      "trend_scope": "science_future",
-      "title": "Juice kehrt vor Jupiter zur Erde zurück – der Umweg spart Treibstoff",
-      "content_angle": "Warum die ESA-Sonde am 28. September die Erde für ein Schwerkraftmanöver benötigt.",
-      "score": 91,
-      "criteria": {
-        "aktualitaet": 95,
-        "viralitaet": 90,
-        "tayvoriq_passung": 98,
-        "quellenqualitaet": 95,
-        "visuell": 90
-      },
-      "regional_relevance": "europe",
-      "viral_potential": 90,
-      "tayvoriq_fit": 98,
-      "novelty_score": 91,
-      "series_fit_score": 88,
-      "return_viewer_score": 91,
-      "follow_conversion_potential": 89,
-      "open_loop_potential": 87,
-      "proposed_series_id": "",
-      "proposed_series_name": "",
-      "next_episode_candidate": "",
-      "recommended_cta_type": "CURIOSITY",
-      "primary_hook": "Eine Sonde fliegt zum Jupiter – und kommt dafür erst einmal zurück zur Erde.",
-      "viewer_question": "Warum fliegt eine Jupiter-Sonde noch einmal an der Erde vorbei?",
-      "explanation_core": "ESA plant einen Erdvorbeiflug, der Juices Bahn um etwa 20 Grad ändern und die Geschwindigkeit um etwa 3,5 Kilometer pro Sekunde erhöhen soll.",
-      "surprise_or_reframe": "Die Erde lenkt die Sonde, damit sie nicht große Treibstoffmengen für einen direkten Flug tragen muss.",
-      "practical_relevance": "Das Manöver ist ein wichtiger Schritt auf der Reise zu Jupiters Eismonden.",
-      "follow_reason": "TAYVORIQ erklärt die entscheidenden Etappen auf Juices Weg zu den Eismonden.",
-      "open_loop": "Ob die geplante Bahn erreicht wird, zeigen erst die Messdaten nach dem Vorbeiflug.",
-      "open_loop_status": "SOFT",
-      "next_episode_queue_status": "",
-      "cta_type": "CURIOSITY",
-      "cta_text": "Die Erde soll Juice den entscheidenden Schwung geben. Was das Manöver tatsächlich brachte, zeigt der nächste Missionsbericht – TAYVORIQ ordnet ihn ein.",
-      "sources": [
-        "https://www.esa.int/Science_Exploration/Space_Science/Juice/Juice_to_fly_past_Earth_for_third_gravity_assist",
-        "https://www.universetoday.com/articles/juice-mission-to-swing-by-earth-on-september-28"
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "reach_gate": {
-          "scope": "europe",
-          "why_now": "Der Erdvorbeiflug am 28. September steht unmittelbar bevor.",
-          "momentum_evidence": "Eine Sonde fliegt zum Jupiter – und kommt dafür erst einmal zurück zur Erde.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "ESA und Universe Today"
-        },
-        "sources": [
-          {
-            "publisher": "ESA",
-            "url": "https://www.esa.int/Science_Exploration/Space_Science/Juice/Juice_to_fly_past_Earth_for_third_gravity_assist",
-            "supports": "Bestätigt Datum, geplante Bahnumlenkung und Geschwindigkeitsänderung."
-          },
-          {
-            "publisher": "Universe Today",
-            "url": "https://www.universetoday.com/articles/juice-mission-to-swing-by-earth-on-september-28",
-            "supports": "Eigenständige Einordnung des bevorstehenden Erdvorbeiflugs."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "ESA plant einen Erdvorbeiflug, der Juices Bahn um etwa 20 Grad ändern und die Geschwindigkeit um etwa 3,5 Kilometer pro Sekunde erhöhen soll.",
-          "why_happening": "Warum die ESA-Sonde am 28. September die Erde für ein Schwerkraftmanöver benötigt.",
-          "who_is_affected": "ESA-Missionsteam und alle, die die Erforschung von Jupiters Eismonden verfolgen.",
-          "personal_impact": "Das Manöver ist ein wichtiger Schritt auf der Reise zu Jupiters Eismonden.",
-          "action_now": "Nach dem 28. September die ESA-Daten zum tatsächlichen Manöver prüfen."
-        },
-        "factual_guardrails": {
-          "must_include": [
-            "ESA plant einen Erdvorbeiflug, der Juices Bahn um etwa 20 Grad ändern und die Geschwindigkeit um etwa 3,5 Kilometer pro Sekunde erhöhen soll.",
-            "Die Erde lenkt die Sonde, damit sie nicht große Treibstoffmengen für einen direkten Flug tragen muss."
-          ],
-          "must_not_claim": [
-            "Nicht behaupten, das Manöver sei bereits abgeschlossen oder garantiert."
-          ],
-          "uncertainty_note": "Ob die geplante Bahn erreicht wird, zeigen erst die Messdaten nach dem Vorbeiflug."
-        }
-      },
-      "growth_v2": {
-        "growth_score": 91,
-        "binding_score": 91,
-        "priority_score": 91,
-        "tier": "primary",
-        "series_candidate": true
-      },
-      "audience_growth_v3": {
-        "subscriber_conversion_score": 89,
-        "returning_viewer_score": 91,
-        "continuation_score": 87,
-        "hook_strength_score": 90,
-        "standalone_payoff_score": 91,
-        "selection_priority_score": 91,
-        "promotion_test_candidate": false,
-        "promotion_requires_observed_performance": true,
-        "paid_boost_auto_enabled": false
-      },
-      "trend_selection_score": 91,
-      "retention_v5_native": true,
-      "id": "4"
-    },
-    {
-      "category": "science_future",
-      "trend_scope": "science_future",
-      "title": "Ein Gehirn, zwei Entwicklungswege? Neue Studie zeigt frühe Trennung",
-      "content_angle": "Zwei frühe Vorläuferzelllinien für Vorder- und Hinterhirn, erklärt ohne die Schlagzeile von zwei fertigen Gehirnen.",
-      "score": 90,
-      "criteria": {
-        "aktualitaet": 94,
-        "viralitaet": 94,
-        "tayvoriq_passung": 97,
-        "quellenqualitaet": 95,
-        "visuell": 90
-      },
-      "regional_relevance": "global",
-      "viral_potential": 94,
-      "tayvoriq_fit": 97,
-      "novelty_score": 90,
-      "series_fit_score": 82,
-      "return_viewer_score": 90,
-      "follow_conversion_potential": 88,
-      "open_loop_potential": 86,
-      "proposed_series_id": "",
-      "proposed_series_name": "",
-      "next_episode_candidate": "",
-      "recommended_cta_type": "CURIOSITY",
-      "primary_hook": "Unser Gehirn beginnt womöglich auf zwei getrennten Entwicklungswegen.",
-      "viewer_question": "Stammen Vorder- und Hinterhirn aus verschiedenen frühen Zelllinien?",
-      "explanation_core": "Eine Nature-Neuroscience-Studie verfolgt Zelllinien in Mausembryonen und untersucht menschliche Stammzellen; ihre Daten sprechen für getrennte frühe Vorläufer.",
-      "surprise_or_reframe": "Damit konnten Forschende Hinterhirn-Motorneuronen im Labor erzeugen, die zuvor schwer herzustellen waren.",
-      "practical_relevance": "Das könnte Forschungsmodelle für Erkrankungen des Hirnstamms verbessern, ist aber noch keine Therapie.",
-      "follow_reason": "TAYVORIQ trennt die neuen Daten von der Schlagzeile über angeblich zwei Gehirne.",
-      "open_loop": "Wie weit die Befunde auf menschliche Entwicklung übertragbar sind, muss weiter untersucht werden.",
-      "open_loop_status": "SOFT",
-      "next_episode_queue_status": "",
-      "cta_type": "CURIOSITY",
-      "cta_text": "Zwei frühe Zelllinien könnten die Hirnforschung verändern. Entscheidend sind die nächsten Bestätigungen – TAYVORIQ schaut genau hin.",
-      "sources": [
-        "https://www.nature.com/articles/s41593-026-02433-7",
-        "https://www.smithsonianmag.com/smart-news/scientists-say-the-human-brain-might-be-made-of-two-distinct-nervous-systems-that-got-squished-together-180989539/",
-        "https://med.stanford.edu/news/all-news/2026/09/two-separate-brains.html"
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "reach_gate": {
-          "scope": "global",
-          "why_now": "Die September-Studie wird diese Woche international diskutiert.",
-          "momentum_evidence": "Unser Gehirn beginnt womöglich auf zwei getrennten Entwicklungswegen.",
-          "cross_platform_signal_count": 0,
-          "breakout_proof": "Nature Neuroscience und Smithsonian Magazine und Stanford Medicine"
-        },
-        "sources": [
-          {
-            "publisher": "Nature Neuroscience",
-            "url": "https://www.nature.com/articles/s41593-026-02433-7",
-            "supports": "Originalstudie mit Maus-Zelllinien und menschlichen Stammzellmodellen; Autoren formulieren eine Hypothese."
-          },
-          {
-            "publisher": "Smithsonian Magazine",
-            "url": "https://www.smithsonianmag.com/smart-news/scientists-say-the-human-brain-might-be-made-of-two-distinct-nervous-systems-that-got-squished-together-180989539/",
-            "supports": "Unabhängige wissenschaftsjournalistische Einordnung der Studie."
-          },
-          {
-            "publisher": "Stanford Medicine",
-            "url": "https://med.stanford.edu/news/all-news/2026/09/two-separate-brains.html",
-            "supports": "Forschungsteam erklärt Methode und Laborergebnis."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Eine Nature-Neuroscience-Studie verfolgt Zelllinien in Mausembryonen und untersucht menschliche Stammzellen; ihre Daten sprechen für getrennte frühe Vorläufer.",
-          "why_happening": "Zwei frühe Vorläuferzelllinien für Vorder- und Hinterhirn, erklärt ohne die Schlagzeile von zwei fertigen Gehirnen.",
-          "who_is_affected": "Neurowissenschaftler und Forschende zu Erkrankungen des Hirnstamms.",
-          "personal_impact": "Das könnte Forschungsmodelle für Erkrankungen des Hirnstamms verbessern, ist aber noch keine Therapie.",
-          "action_now": "Weitere Bestätigungen in menschlichen Entwicklungsmodellen abwarten."
-        },
-        "factual_guardrails": {
-          "must_include": [
-            "Eine Nature-Neuroscience-Studie verfolgt Zelllinien in Mausembryonen und untersucht menschliche Stammzellen; ihre Daten sprechen für getrennte frühe Vorläufer.",
-            "Damit konnten Forschende Hinterhirn-Motorneuronen im Labor erzeugen, die zuvor schwer herzustellen waren."
-          ],
-          "must_not_claim": [
-            "Nicht behaupten, Menschen hätten nachgewiesen zwei getrennte Gehirne oder eine neue Therapie."
-          ],
-          "uncertainty_note": "Wie weit die Befunde auf menschliche Entwicklung übertragbar sind, muss weiter untersucht werden."
-        }
-      },
-      "growth_v2": {
-        "growth_score": 90,
-        "binding_score": 90,
-        "priority_score": 90,
-        "tier": "primary",
-        "series_candidate": false
-      },
-      "audience_growth_v3": {
-        "subscriber_conversion_score": 88,
-        "returning_viewer_score": 90,
-        "continuation_score": 86,
-        "hook_strength_score": 94,
-        "standalone_payoff_score": 90,
-        "selection_priority_score": 90,
-        "promotion_test_candidate": false,
-        "promotion_requires_observed_performance": true,
-        "paid_boost_auto_enabled": false
-      },
-      "trend_selection_score": 90,
-      "retention_v5_native": true,
-      "id": "5"
+      }
     }
-  ],
-  "repair_of": "20260926-evening-agentv2",
-  "recovery_reason": "EDITORIAL_QUALITY_FAILURE_DUPLICATE_SYNDICATED_SOURCES_GENERIC_HOOKS"
+  ]
 }
