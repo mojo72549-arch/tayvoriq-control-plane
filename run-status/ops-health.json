@@ -1,24 +1,24 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-27T15:35:03.319359Z",
-  "overall": "red",
+  "generated_at": "2026-09-27T17:43:13.016552Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2926-trend-2",
-    "golden_path_run_id": 36329229115,
-    "pointer_updated_at": "2026-09-27T15:21:15.934863Z"
+    "golden_path_run_id": 36330092526,
+    "pointer_updated_at": "2026-09-27T16:07:24.708392Z"
   },
   "request": {
     "request_id": "telegram-2926-trend-2",
     "topic": "Mercedes warnt vor zwei möglichen Werksschließungen: Warum der Kostenstreit jetzt eskaliert",
     "trend_id": "2",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": "Deutschlands Auto-Jobkrise · Mercedes",
     "episode_number": null,
     "cta_type": "SERIES",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-2926-trend-2.json"
   },
   "run": {
-    "id": 36329229115,
+    "id": 36330092526,
     "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36329229115",
-    "created_at": "2026-09-27T15:21:09Z",
-    "updated_at": "2026-09-27T15:25:06Z",
+    "conclusion": "success",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36330092526",
+    "created_at": "2026-09-27T15:35:04Z",
+    "updated_at": "2026-09-27T16:07:31Z",
     "attempt": 1,
-    "progress": 30,
+    "progress": 100,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -97,25 +97,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "success",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "success",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "success",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "success",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -134,46 +134,35 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "ARMED"
+      "status": "green",
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Send Telegram review"
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
-  "incident": {
-    "signature": "36329229115:40:LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "severity": "critical",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Send Telegram review",
+    "last_step": "Send Telegram review"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "status": "REPLAY_DISPATCHED",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": null,
     "failed_run_id": 36329229115,
-    "replay_run_id": null,
+    "replay_run_id": 36330092526,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -181,9 +170,9 @@
   },
   "events": [
     {
-      "at": "2026-09-27T15:25:06Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-09-27T15:35:10.530758Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-27T15:33:30.812641Z",
