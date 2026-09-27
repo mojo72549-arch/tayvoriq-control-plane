@@ -1,0 +1,70 @@
+{
+  "schema": "tayvoriq-trend-watchlist-v1",
+  "target_date": "2026-09-28",
+  "slot": "morning",
+  "timezone": "Europe/Berlin",
+  "status": "EDITORIAL_PREPARED_REVALIDATE_AT_SLOT",
+  "prepared_from": "2026-09-27 evening reporting",
+  "exclude_duplicate_topics": [
+    "Mercedes: mögliche Schließung zweier deutscher Werke (review-ready run 36330092526)"
+  ],
+  "candidates": [
+    {
+      "rank": 1,
+      "title": "Milch, Joghurt und Quark könnten teurer werden: Was hinter dem Preisdruck steckt",
+      "angle": "Die Molkereien fordern höhere Preise; ein konkreter neuer Ladenpreis ist noch nicht beschlossen. Dürre, Nachfrage und Proteinprodukte erklären den Druck.",
+      "why_now": "Neue Verbandsaussagen vom 27. September mit unmittelbarem Einkaufsbezug.",
+      "sources": [
+        "https://www.tagesschau.de/wirtschaft/verbraucher-milch-preise-100.html",
+        "https://www.sueddeutsche.de/wirtschaft/milchprodukte-deutschland-preise-nachfrage-wetter-li.3554616"
+      ],
+      "morning_check": "Prüfen, ob Händler oder Molkereien bis zum Slot konkrete Preise genannt haben."
+    },
+    {
+      "rank": 2,
+      "title": "Pflegereform im Koalitionsstreit: Was der geforderte Pflegedeckel bedeuten würde",
+      "angle": "SPD-Forderung und Ablehnung des Gesundheitsministers getrennt erklären; keine beschlossene Entlastung behaupten.",
+      "why_now": "Koalitionsgespräch am Montag nach Streit am 27. September berichtet.",
+      "sources": [
+        "https://www.tagesschau.de/inland/innenpolitik/pflegereform-streit-linnemann-100.html",
+        "https://www.zdfheute.de/politik/deutschland/pflegereform-bundesregierung-schwarz-rote-koalition-spd-union-zerreissprobe-100.html"
+      ],
+      "morning_check": "Verhandlungsergebnis und Kabinettstermin gegen aktuelle Meldungen abgleichen."
+    },
+    {
+      "rank": 3,
+      "title": "Neue Regeln gegen Greenwashing: Was Begriffe wie klimaneutral jetzt belegen müssen",
+      "angle": "An konkreten Werbeaussagen und Siegeln erklären, welche Nachweise nötig sind; Altwarenregel berücksichtigen.",
+      "why_now": "Anwendung seit 27. September.",
+      "sources": [
+        "https://www.tagesschau.de/ausland/europa/eu-greenwashing-100.html",
+        "https://www.umweltbundesamt.de/themen/neue-regeln-schutz-vor-greenwashing",
+        "https://www.bundesregierung.de/breg-de/suche/gesetzliche-neuregelungen-september-2026-2450158"
+      ],
+      "morning_check": "Geltungsbeginn, Ausnahmen und deutsche Umsetzung nochmals prüfen."
+    },
+    {
+      "rank": 4,
+      "title": "Rente nach 45 Versicherungsjahren: Welche Regel gilt und worüber gestritten wird",
+      "angle": "Bestehende Altersgrenzen von Reformdebatte trennen; 45 Versicherungsjahre bedeuten nicht automatischen sofortigen Rentenbeginn.",
+      "why_now": "Neue Debatte und Einordnung am 27. September.",
+      "sources": [
+        "https://www.tagesschau.de/inland/innenpolitik/rentensystem-deutschland-100.html",
+        "https://www.deutsche-rentenversicherung.de/DRV/DE/Rente/Allgemeine-Informationen/Rentenarten-und-Leistungen/Altersrente-fuer-langjaehrig-Versicherte/altersrente-fuer-langjaehrig-versicherte_node"
+      ],
+      "morning_check": "Auf neue Koalitionsentscheidung prüfen und Jahrgangsgrenzen korrekt darstellen."
+    },
+    {
+      "rank": 5,
+      "title": "OpenAI pausiert Modelltraining nach Test-Zwischenfall: Was gesichert ist",
+      "angle": "Sicherheitsvorfall und vorläufige Trainingspause nüchtern einordnen; keine Behauptung über ein entkommenes System.",
+      "why_now": "Berichte vom 27. September.",
+      "sources": [
+        "https://www.tagesschau.de/wirtschaft/unternehmen/openai-ki-entwicklung-102.html",
+        "https://www.zdfheute.de/wirtschaft/unternehmen/openai-ki-training-zwischenfall-100.html"
+      ],
+      "morning_check": "Originalmitteilung des Unternehmens suchen und technische Details unabhängig verifizieren; bei fehlender Primärquelle zurückstellen."
+    }
+  ],
+  "selection_rule": "Morgens aktuelle Nachrichten, Duplikate, zwei unabhängige Belege, Faktengenauigkeit und V5-Eignung neu prüfen. Nur danach Telegram-Auswahl; keine automatische Produktionsfreigabe."
+}
