@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-27T15:33:21.081948Z",
+  "generated_at": "2026-09-27T15:35:03.319359Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "Mercedes warnt vor zwei möglichen Werksschließungen: Warum der Kostenstreit jetzt eskaliert",
     "trend_id": "2",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": "Deutschlands Auto-Jobkrise · Mercedes",
@@ -130,12 +130,12 @@
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "c59404a84638…"
+      "detail": "63c683d16b4a…"
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -149,13 +149,13 @@
     }
   ],
   "incident": {
-    "signature": "36329229115:40:none",
+    "signature": "36329229115:40:LOCAL_REPAIR_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": null,
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 40,
-    "self_heal_status": "IDLE",
-    "same_generation_replay_required": false,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
@@ -166,15 +166,15 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
-    "failure_state": null,
-    "failed_run_id": null,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_run_id": 36329229115,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
-    "same_generation_replay_required": false,
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
@@ -184,6 +184,11 @@
       "at": "2026-09-27T15:25:06Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-27T15:33:30.812641Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-09-27T15:21:15.831301+00:00",
