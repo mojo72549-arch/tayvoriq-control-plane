@@ -72,7 +72,7 @@ jobs:
           print('two_step_request_valid_v5', selection_id)
           PY
 
-      - name: Send Telegram evening ranking with selection buttons
+      - name: Send Telegram ranking with selection buttons
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -83,7 +83,8 @@ jobs:
           from pathlib import Path
 
           data=json.loads(Path('.github/run-now/tayvoriq-trend-request.json').read_text(encoding='utf-8'))
-          lines=['🌙 TAYVORIQ Abend-Trends', '', 'V5-Rangliste:']
+          heading = '🌅 TAYVORIQ Morgen-Trends' if data.get('slot') == 'morning' else '🌙 TAYVORIQ Abend-Trends'
+          lines=[heading, '', 'V5-Rangliste:']
           for trend in data['trends']:
               sc=trend.get('source_context') or {}
               reach=sc.get('reach_gate') or {}
