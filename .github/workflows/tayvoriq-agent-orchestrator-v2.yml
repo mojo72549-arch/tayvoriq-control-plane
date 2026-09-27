@@ -172,6 +172,10 @@ jobs:
                   request=json.loads(path.read_text(encoding='utf-8'))
               except Exception:
                   continue
+              # Historical request files retain DISPATCHED after completion.
+              # Only the active production pointer may reserve a new trend slot.
+              if str(pointer.get('request_id') or '') != str(request.get('request_id') or path.stem):
+                  continue
               status=str(request.get('status') or '').strip().upper()
               recovery=request.get('codefix_recovery')
               recovery=recovery if isinstance(recovery,dict) else {}
