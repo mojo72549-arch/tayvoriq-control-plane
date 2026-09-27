@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-2926-trend-2",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "telegram_trend_approval",
   "trend_id": "2",
   "topic": "Mercedes warnt vor zwei möglichen Werksschließungen: Warum der Kostenstreit jetzt eskaliert",
@@ -90,7 +90,14 @@
       "state": "APPROVED",
       "at": "2026-09-27T12:30:29.731Z",
       "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-09-27T15:21:05.957889+00:00",
+      "actor": "request-dispatcher:36329219664"
     }
   ],
-  "contract_sha256": "452b4c350a2066d4eef62bf7771ecf63f18766cf979040985471879a75f21886"
+  "contract_sha256": "452b4c350a2066d4eef62bf7771ecf63f18766cf979040985471879a75f21886",
+  "dispatch_claim_run_id": 36329219664,
+  "dispatch_contract_sha256": "452b4c350a2066d4eef62bf7771ecf63f18766cf979040985471879a75f21886"
 }
