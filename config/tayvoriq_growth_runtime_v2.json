@@ -10,11 +10,23 @@
     "growth_primary_min": 85,
     "growth_breakout_min": 90,
     "binding_primary_min": 60,
-    "telegram_candidates_min": 5,
+    "telegram_candidates_min": 2,
     "telegram_candidates_max": 5,
     "weak_fill_allowed": false,
     "max_grounded_scans": 2,
-    "rescan_when_below_candidate_minimum": true
+    "rescan_when_below_candidate_minimum": true,
+    "editorial_policy": "REGIONAL_GERMANY_CHANNEL_EVIDENCE_V2",
+    "allowed_geographic_scopes": [
+      "local",
+      "germany"
+    ],
+    "local_focus": [
+      "Stuttgart",
+      "Baden-Württemberg"
+    ],
+    "excluded_trend_scopes": [
+      "science_future"
+    ]
   },
   "audience_growth": {
     "selection_weights": {
@@ -108,8 +120,8 @@
   "hard_rules": [
     "Growth never weakens existing quality or publication gates.",
     "A series episode is never selected merely because it is next.",
-    "Surface exactly 5 strong candidates per editorial run; if fewer than five pass, rescan distinct angles without weakening any score or source rule.",
-    "Weak fill is forbidden: if grounded scans still produce fewer than five strong candidates, fail closed instead of surfacing a thin list.",
+    "Surface 2-5 strong local/Germany candidates per run, aiming for 4-5 without filling weak slots.",
+    "Weak fill is forbidden: if grounded scans still produce fewer than two strong in-scope candidates, fail closed.",
     "Raw views never replace engaged or qualified views silently.",
     "10k, 20k, 50k and 100k are targets, not guarantees.",
     "Paid promotion may never exceed 5 EUR per test or 10 EUR per calendar month."

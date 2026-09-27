@@ -205,9 +205,9 @@ def grounded_call(prompt: str, gemini_key: str, groq_key: str) -> tuple[dict[str
 
 def prompt_for(slot: str, now: datetime) -> str:
     slot_rules = (
-        "MORNING: prioritize Germany + Europe + major global developments with strong visual/explainer potential."
+        "MORNING: prioritize Stuttgart/Baden-Württemberg and Germany ONLY: employment, companies, tariffs, costs, mobility, local services, German sport/gaming/practical technology. No Europe-only/global or abstract laboratory/research stories."
         if slot == "morning" else
-        "EVENING: prioritize Stuttgart/Baden-Württemberg/South Germany and Germany-wide youth/creator/local-interest trends, while still allowing a major global breaking story if clearly stronger."
+        "EVENING: prioritize Stuttgart/Baden-Württemberg and Germany ONLY: employment, companies, tariffs, costs, mobility, local services, German sport/gaming/practical technology. No Europe-only/global or abstract laboratory/research stories."
     )
     return f"""
 You are the TrendSourceAgent for the German short-video brand TAYVORIQ.
@@ -219,7 +219,7 @@ Use web search grounding and identify 6 CURRENT candidate stories from roughly t
 Editorial goals:
 - Audience: broad 16-44, especially 18-34, understandable without prior knowledge.
 - Strong hook within 1.5 seconds; 35-60 second vertical short potential.
-- Prefer technology/AI, world events, business/economy, science/future, mobility/energy, creator/media, sports, and useful local/regional developments.
+- Prefer German/local work and company changes, costs, mobility and local services; test domestic sport/gaming/practical technology. Exclude abstract research and science_future for this initial channel test.
 - Natural events (earthquake, volcano, eclipse, storm, wildfire, flood etc.) must include the deeper WHY/HOW explanation, not only the event.
 - For local/regional stories, prioritize direct personal relevance: weather, transport, safety, prices, events, unusual incidents and changes that affect daily life.
 - Avoid party-political advocacy, celebrity gossip, graphic violence, rumors, clickbait without evidence, and duplicate versions of the same story.

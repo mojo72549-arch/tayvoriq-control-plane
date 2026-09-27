@@ -63,9 +63,9 @@ def main() -> int:
             if "REGIONAL_RESCAN_REQUIRED" in previous_error or "REGIONAL_SELECTION_RESCAN_REQUIRED" in previous_error:
                 prompt += (
                     "\n\nAUTOMATIC REGIONAL CONTRACT RESCAN: the previous scan did not yield enough contract-valid "
-                    "local/Germany/Europe candidates. Run a FRESH, targeted Stuttgart/Baden-Wuerttemberg, Germany and EU discovery pass. "
+                    "local/Germany candidates. Run a FRESH, targeted Stuttgart/Baden-Wuerttemberg and Germany-only discovery pass. "
                     "Return distinct current stories that can survive every existing source, freshness, Growth, semantic, duplicate, "
-                    "claim-coherence and brand-safety gate. Aim for at least 5 genuinely regional raw candidates so that at least 3 can "
+                    "claim-coherence and brand-safety gate. Aim for at least 5 genuinely regional raw candidates so that at least 2 can "
                     "remain after validation. Do NOT relabel a global story as regional and do NOT weaken any threshold. "
                     "Exclude already-seen titles or equivalent angles: "
                     + " | ".join(prior_titles[:12])

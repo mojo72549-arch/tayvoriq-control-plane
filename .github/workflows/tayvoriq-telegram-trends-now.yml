@@ -114,10 +114,11 @@ jobs:
           import json, sys
           p=json.load(open(sys.argv[1],encoding='utf-8'))
           trends=p.get('trends') or []
-          broad={'germany','europe','global'}
+          broad={'local','germany'}
           def reach_contract(items):
-              return len(items) == 5 and all(
+              return 2 <= len(items) <= 5 and all(
                   str(trend.get('regional_relevance') or '').strip().lower() in broad
+                  and str(trend.get('trend_scope') or '') != 'science_future'
                   for trend in items
               )
           ok=(
@@ -126,7 +127,7 @@ jobs:
               and p.get('slot') == sys.argv[4]
               and p.get('mode') in {'manual_verified_fallback_after_provider_limits', 'manual_verified_editorial_repair'}
               and p.get('quality_gates_weakened') is False
-              and len(trends) == 5
+              and 2 <= len(trends) <= 5
               and reach_contract(trends)
           )
           if ok:
@@ -244,15 +245,16 @@ jobs:
           from urllib.parse import urlparse
           d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
           trends=d.get('trends') or []
-          broad={'germany','europe','global'}
+          broad={'local','germany'}
           def reach_contract(items):
             scopes=[str(trend.get('regional_relevance') or '').strip().lower() for trend in items]
-            assert all(scope in broad for scope in scopes), f'local/invalid scope blocked by reach gate: {scopes}'
-            assert len(items) == 5, f'V5 requires exactly 5 broad-reach trends, got {len(items)}'
+            assert all(scope in broad for scope in scopes), f'outside local/Germany scope: {scopes}'
+            assert all(str(t.get('trend_scope') or '') != 'science_future' for t in items), 'abstract research excluded in current test'
+            assert 2 <= len(items) <= 5, f'V5 requires 2-5 local/Germany trends, got {len(items)}'
           assert d.get('agent_orchestrator') == 'v2'
           assert d.get('slot') in {'morning','evening'}
           assert d.get('quality_gates_weakened', False) is False
-          assert len(trends) == 5, f'V5 requires exactly 5 strong trends, got {len(trends)}'
+          assert 2 <= len(trends) <= 5, f'V5 requires 2-5 strong trends, got {len(trends)}'
           reach_contract(trends)
           assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
           for trend in trends:
@@ -333,7 +335,7 @@ jobs:
           target=date.fromisoformat(os.environ['TARGET_DATE'])
           weekday=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][target.weekday()]
           label='🌅 TAYVORIQ Morgen-Trends' if os.environ['SLOT']=='morning' else '🌙 TAYVORIQ Abend-Trends'
-          lines=[f"{label} · {weekday} {target:%d.%m.}",'','V5-Rangliste:']
+          lines=[f"{label} · {weekday} {target:%d.%m.}",'','Regionale / Deutschland-Rangliste:']
           if d.get('repair_of'):
             lines += ['KORREKTUR: Die vorige Auswahl ist wegen schwacher Quellen und Hooks zurückgezogen. Bitte nur diese Liste verwenden.','']
           for t in d['trends']:
@@ -346,7 +348,7 @@ jobs:
             lines += [
               f"{t['id']}. {t['title']} — Auswahl {int(t.get('trend_selection_score') or 0)}/100{marker}",
               f"   Warum jetzt: {reach.get('why_now') or 'durch Quellenkontext belegt'}",
-              f"   Viralität: {int(t.get('viral_potential') or 0)}/100 · TAYVORIQ-Fit: {int(t.get('tayvoriq_fit') or 0)}/100",
+              f"   Redaktionelle Einschätzung (keine Prognose): {int(t.get('viral_potential') or 0)}/100 · TAYVORIQ-Fit: {int(t.get('tayvoriq_fit') or 0)}/100",
               f"   Serie: {series} · Serienpotenzial: {int(t.get('series_fit_score') or 0)}/100",
               f"   Return-Viewer: {int(t.get('return_viewer_score') or 0)}/100 · Follow: {int(t.get('follow_conversion_potential') or 0)}/100",
               f"   Möglicher nächster Teil: {nxt}",
@@ -354,7 +356,7 @@ jobs:
             ]
           lines += [
             '',
-            'Alle fünf Trends haben Quellen-, Claim-, Dubletten- und V5-Retention-Gates bestanden; Evidence bleibt Mindestbedingung.',
+            f"Alle {len(d['trends'])} Trends haben Quellen-, Claim-, Dubletten- und V5-Retention-Gates bestanden; Evidence bleibt Mindestbedingung.",
             '',
             '🎲 = verifizierter ungewöhnlicher/spielerischer Wildcard-Trend.',
             '',

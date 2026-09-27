@@ -17,8 +17,8 @@ base = growth_v7.base
 _original_prompt = base.prompt_for
 _original_diversify = base.diversify
 
-_BROAD_REACH = {"germany", "europe", "global"}
-_SCOPE_BONUS = {"global": 18, "europe": 16, "germany": 13, "local": -45}
+_BROAD_REACH = {"local", "germany"}
+_SCOPE_BONUS = {"local": 18, "germany": 13, "europe": -45, "global": -45}
 
 
 def _reach_gate(candidate):
@@ -76,7 +76,7 @@ def _mark_research_deferred(reason: str, **meta):
 
 def diversify(candidates, slot):
     cfg = growth_v7._config().get("selection") or {}
-    minimum = 5
+    minimum = max(2, min(5, int(cfg.get("telegram_candidates_min") or 2)))
 
     # V5 is fail-closed: growth metadata must be native to the evidence-valid
     # candidate. Retention scores never compensate for weak source quality.
@@ -103,14 +103,15 @@ def diversify(candidates, slot):
         enriched["source_context"] = ctx
         v5_candidates.append(enriched)
 
-    # Reach-first: local-only stories do not enter Telegram by default.
+    # Regional/Germany only; pure research has no slot in the current channel test.
     broad = [
         candidate for candidate in v5_candidates
         if str(candidate.get("regional_relevance") or "").strip().lower() in _BROAD_REACH
+        and str(candidate.get("trend_scope") or "") != "science_future"
     ]
     if len(broad) < minimum:
         _mark_research_deferred(
-            "REACH_RESCAN_REQUIRED",
+            "REGIONAL_RESCAN_REQUIRED",
             slot=str(slot),
             broad_reach_candidates=len(broad),
             required_broad_reach=minimum,
@@ -118,7 +119,7 @@ def diversify(candidates, slot):
             invalid_v5_candidates=invalid_v5,
         )
         raise SystemExit(
-            f"REACH_RESCAN_REQUIRED: only {len(broad)} Germany/Europe/global candidates passed all gates"
+            f"REGIONAL_RESCAN_REQUIRED: only {len(broad)} local/Germany candidates passed all gates"
         )
 
     selected = _original_diversify(sorted(broad, key=_selection_key, reverse=True), slot)
@@ -128,20 +129,20 @@ def diversify(candidates, slot):
     ]
     if len(selected) < minimum:
         _mark_research_deferred(
-            "REACH_SELECTION_RESCAN_REQUIRED",
+            "REGIONAL_SELECTION_RESCAN_REQUIRED",
             slot=str(slot),
             selected=len(selected),
             required=minimum,
         )
         raise SystemExit(
-            f"REACH_RESCAN_REQUIRED: selected={len(selected)}; require at least {minimum} broad-reach candidates"
+            f"REGIONAL_RESCAN_REQUIRED: selected={len(selected)}; require at least {minimum} local/Germany candidates"
         )
 
     for candidate in selected:
         ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
         gate = ctx.get("reach_gate") if isinstance(ctx.get("reach_gate"), dict) else {}
         gate.update({
-            "policy": "NATIONAL_EU_GLOBAL_FIRST",
+            "policy": "REGIONAL_GERMANY_CHANNEL_EVIDENCE_V2",
             "scope": str(candidate.get("regional_relevance") or "").strip().lower(),
             "local_only_rejected": False,
             "reach_score": _reach_gate(candidate),
@@ -150,15 +151,15 @@ def diversify(candidates, slot):
         candidate["source_context"] = ctx
 
     ordered = sorted(selected, key=_selection_key, reverse=True)
-    if len(ordered) != 5:
+    if not minimum <= len(ordered) <= 5:
         _mark_research_deferred(
-            "V5_EXACT_FIVE_RESCAN_REQUIRED",
+            "REGIONAL_SELECTION_RESCAN_REQUIRED",
             slot=str(slot),
             selected=len(ordered),
-            required=5,
+            required=minimum,
             invalid_v5_candidates=invalid_v5,
         )
-        raise SystemExit(f"V5_RESCAN_REQUIRED: expected exactly 5 V5 candidates, got {len(ordered)}")
+        raise SystemExit(f"V5_RESCAN_REQUIRED: expected 2-5 V5 candidates, got {len(ordered)}")
     return ordered
 
 
@@ -263,25 +264,23 @@ def prompt_for(slot, now):
     rejected_hints = _rejected_topic_hint_text()
     return _original_prompt(slot, now) + """
 
-TAYVORIQ REACH POTENTIAL GATE — HARD RANKING REQUIREMENT:
-- The final Telegram ranking is reach-first, not locality-first.
-- Default eligible scope is Germany-wide, Europe-wide or global. Purely local/city/state stories are rejected before Telegram unless they demonstrably break out to a national or international audience.
-- Do NOT fill the list just because a story is recent. "Trending somewhere" is not enough.
-- Prefer stories with verified momentum, broad audience relevance, strong short-form hookability, visual potential and at least two independent credible sources.
-- A Germany-wide story can outrank a global story when its momentum and viewer relevance are stronger; geography is not a substitute for momentum.
-- Global AI/Tech/Science/Sports/World stories are fully eligible without an artificial Germany angle when their audience potential is genuinely broad.
-- For every candidate, set regional_relevance accurately to local|germany|europe|global.
-- Put a source_context.reach_gate object on each candidate when possible with: scope, why_now, momentum_evidence, cross_platform_signal_count, and breakout_proof.
-- Never invent cross-platform evidence. Use 0 when it is not verified.
-- If fewer than 3 strong broad-reach candidates pass, fail closed and rescan instead of forcing weak/local filler.
-- A rejected Telegram selection is part of duplicate history: do not immediately recycle the same underlying stories with rewritten headlines.
-
-TAYVORIQ STRATEGIC ENTITY SWEEP — DISCOVERY REQUIREMENT:
-- Before finalizing candidates, explicitly check current high-impact developments around Microsoft, OpenAI, Google/Alphabet, Apple, Meta, Amazon/AWS and Nvidia only when they have a verified Germany/Europe angle or direct audience consequence.
-- For Microsoft, actively check Azure, Windows, Copilot, Microsoft 365, GitHub, Xbox and major AI/cloud/business moves instead of relying on generic AI or technology searches to surface them accidentally.
-- This is a discovery-coverage rule, NOT a quota: never force Microsoft or any named company into the final five when its story is weaker, stale, duplicated or insufficiently sourced.
-- Do not suppress a strong company story merely because another AI/technology candidate already exists. Deduplicate by the underlying event and viewer takeaway, not by the broad category or company size.
-- A strategically watched entity that has a fresh, independently verified story competing on the normal scores must be allowed into the candidate pool and ranked normally.
+TAYVORIQ REGIONAL / GERMANY POLICY V2 — HARD REQUIREMENT:
+- BOTH slots: local means Stuttgart, Baden-Württemberg and nearby German places; Germany means a concrete event or change in Germany. Europe-only and global stories are excluded for now.
+- A German brand, publisher or translated headline alone is NOT proof of German relevance. Sources must substantiate the German place, people affected and concrete consequence. Never relabel foreign events as local.
+- Start discovery with employment, employers, tariffs, costs, commuting and local services. Check Porsche, Mercedes-Benz, Bosch and regional suppliers for materially NEW events, not recycled layoffs headlines.
+- Then check German sport, gaming and practical technology with an immediately understandable payoff. These are test opportunities, never forced quotas.
+- Exclude abstract research, CRISPR, laboratory discoveries and science_future candidates in this initial test. Do not disguise them as technology or everyday impact.
+- Prefer recognizable entity/place + verified new change or number + concrete consequence. A large number alone is not evidence of momentum.
+- Preserve distinctions between a demand, proposal, announcement, denial and confirmed decision. Job reductions are not automatically dismissals.
+- Source-backed novelty and evidence stay hard gates. Every story needs two independent credible sources and a complete payoff.
+- Aim for 4-5 strong candidates; 2-3 are acceptable when only those qualify. Never fill slots with weak or out-of-scope stories.
+- Set regional_relevance accurately to local or germany. Reject europe and global.
+- In research_notes explain YouTube fit and TikTok fit separately; the screenshot view counts are small, age-uncontrolled observations, not causal proof or predicted viral probabilities.
+- YouTube examples: Stuttgart21 1240, MHP1222, DFB1128, gamescom932 vs CRISPR90. TikTok can differ: courts802 vs YouTube371; ChatGPT ads243 vs YouTube1120. Do not infer equal reach across platforms.
+- Plan truthful first-frame visuals: actual workplace, place, product or service. Never depict an IT-company sale with scrapped cars, nor a protest with stock-market footage.
+- No paid promotion is authorized by this trend run.
+- Recently surfaced/approved/published stories and user-rejected selections remain hard semantic exclusions unless a material new development supplies most of the value.
+- Never invent cross-platform signals. Use 0 when not verified.
 
 TAYVORIQ BRAND SAFETY — HARD REQUIREMENT:
 - Reject sexualized, erotic, sexually suggestive, fetishized or pornographic topics and angles.
@@ -300,7 +299,7 @@ TAYVORIQ DUPLICATE EXCLUSION — HARD REQUIREMENT:
 
 TAYVORIQ VARIETY — VERIFIED PLAYFUL WILDCARD:
 - When the live source pool supports it, try to include ONE surprising, playful, quirky or unusual but real candidate alongside harder news.
-- Good wildcard families include games, unusual experiments, odd engineering, local curiosities, science oddities, creator phenomena and unexpected everyday stories.
+- Good wildcard families include games, unusual experiments, odd engineering, local curiosities, German creator phenomena and unexpected everyday stories.
 - The wildcard must pass the SAME freshness, two-independent-source, claim-coherence, duplicate, visual and Growth thresholds as every other candidate.
 - Never force a wildcard when the evidence or quality is weaker than the existing gates.
 - The wildcard remains subject to the non-sexual brand-safety boundary above.
