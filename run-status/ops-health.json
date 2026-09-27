@@ -1,30 +1,30 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-27T17:53:04.269597Z",
-  "overall": "green",
+  "generated_at": "2026-09-27T20:24:50.279995Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2926-trend-2",
-    "golden_path_run_id": 36330092526,
-    "pointer_updated_at": "2026-09-27T16:07:24.708392Z"
+    "request_id": "telegram-2961-trend-2",
+    "golden_path_run_id": 36347604500,
+    "pointer_updated_at": "2026-09-27T20:19:37.662281Z"
   },
   "request": {
-    "request_id": "telegram-2926-trend-2",
-    "topic": "Mercedes warnt vor zwei möglichen Werksschließungen: Warum der Kostenstreit jetzt eskaliert",
+    "request_id": "telegram-2961-trend-2",
+    "topic": "Pflegereform im Koalitionsstreit: Was der geforderte Pflegedeckel bedeuten würde",
     "trend_id": "2",
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
-    "series_name": "Deutschlands Auto-Jobkrise · Mercedes",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "series_name": "Pflege: Wer zahlt künftig?",
     "episode_number": null,
     "cta_type": "SERIES",
-    "follow_reason": "Die Standortfrage ist offen und wird sich mit weiteren Verhandlungen und Unternehmensentscheidungen konkretisieren.",
+    "follow_reason": "Wir verfolgen die Koalitionsgespräche und die nächste Kabinettsentscheidung.",
     "open_loop_status": "SOFT",
-    "next_episode_candidate": "Welche Standorte und Kostenentscheidungen bei Mercedes als Nächstes relevant werden",
+    "next_episode_candidate": "Was die Koalitionsgespräche an der Pflegereform ändern",
     "follow_conversion_gate": {
       "result": "PASS",
       "repair": null,
@@ -37,19 +37,19 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2926-trend-2.json"
+    "path": "requests/telegram-2961-trend-2.json"
   },
   "run": {
-    "id": 36330092526,
-    "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36330092526",
-    "created_at": "2026-09-27T15:35:04Z",
-    "updated_at": "2026-09-27T16:07:31Z",
+    "id": 36347604500,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36347604500",
+    "created_at": "2026-09-27T20:19:31Z",
+    "updated_at": "2026-09-27T20:19:36Z",
     "attempt": 1,
-    "progress": 100,
-    "current_step": null,
-    "last_successful_step": "Complete job",
+    "progress": 30,
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "pending",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "yellow",
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -135,62 +135,52 @@
     {
       "name": "Self-Heal",
       "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
+    "status": "IDLE",
+    "source_status": "IDLE",
     "failure_state": null,
-    "failed_run_id": 36329229115,
-    "replay_run_id": 36330092526,
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
-    "same_generation_replay_required": true,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-27T15:35:10.530758Z",
+      "at": "2026-09-27T20:19:37.585175+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:36347592791"
     },
     {
-      "at": "2026-09-27T15:33:30.812641Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-27T15:21:15.831301+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:36329219664"
-    },
-    {
-      "at": "2026-09-27T15:21:05.957889+00:00",
+      "at": "2026-09-27T20:19:26.223753+00:00",
       "title": "DISPATCHING",
-      "detail": "request-dispatcher:36329219664"
+      "detail": "request-dispatcher:36347592791"
     },
     {
-      "at": "2026-09-27T12:30:29.731Z",
+      "at": "2026-09-27T20:19:18.199Z",
       "title": "APPROVED",
       "detail": "telegram_callback"
     }
