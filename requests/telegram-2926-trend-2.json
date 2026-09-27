@@ -1,0 +1,96 @@
+{
+  "request_id": "telegram-2926-trend-2",
+  "status": "APPROVED",
+  "source": "telegram_trend_approval",
+  "trend_id": "2",
+  "topic": "Mercedes warnt vor zwei möglichen Werksschließungen: Warum der Kostenstreit jetzt eskaliert",
+  "trend_scope": "business_economy",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-27T12:30:29.731Z",
+  "telegram_message_id": 2926,
+  "approval_key": "telegram:20260927-evening-impact-r1:2926:trend:2",
+  "mode": "full",
+  "selection_id": "20260927-evening-impact-r1",
+  "content_angle": "Erklären, was Mercedes tatsächlich gesagt hat, was noch nicht entschieden ist und warum deutsche Produktionskosten jetzt zum Konfliktpunkt werden.",
+  "retention_contract_version": "v5",
+  "series_id": "auto-jobkrise-mercedes",
+  "series_name": "Deutschlands Auto-Jobkrise · Mercedes",
+  "episode_id": null,
+  "episode_number": null,
+  "continuity_hook": null,
+  "next_episode_candidate": "Welche Standorte und Kostenentscheidungen bei Mercedes als Nächstes relevant werden",
+  "primary_hook": "Mercedes sagt selbst: Zwei deutsche Werke könnten unter Druck geraten – aber welche und warum?",
+  "viewer_question": "Sind bereits Werksschließungen beschlossen?",
+  "explanation_core": "Mercedes hat vor möglichen Schließungen zweier deutscher Werke gewarnt, falls die Produktionskosten nicht sinken; konkrete Werke wurden nicht benannt.",
+  "surprise_or_reframe": "Es geht nicht um eine bereits beschlossene Schließung, sondern um eine Eskalationsdrohung im Kostenstreit.",
+  "practical_relevance": "Für Stuttgart, Sindelfingen und die deutsche Autoindustrie betrifft das Arbeitsplätze, Standorte und Tarifkonflikte.",
+  "follow_reason": "Die Standortfrage ist offen und wird sich mit weiteren Verhandlungen und Unternehmensentscheidungen konkretisieren.",
+  "open_loop": "Noch ist offen, welche Werke tatsächlich betroffen sein könnten.",
+  "open_loop_status": "SOFT",
+  "cta_type": "SERIES",
+  "cta_text": "Folge TAYVORIQ – wir verfolgen, welche Standorte und Entscheidungen als Nächstes entscheidend werden.",
+  "next_episode_queue_status": "PLANNED",
+  "retention_contract_sha256": "cf6c68927051747e464435be98de3e4024b4ffdc25ed2c3a92a656f4ac2b1597",
+  "follow_conversion_gate": {
+    "result": "PASS",
+    "repair": null,
+    "issues": []
+  },
+  "return_viewer_gate": {
+    "result": "PASS",
+    "issues": []
+  },
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "reach_gate": {
+      "why_now": "Neue Warnung des Mercedes-Vorstands mit unmittelbarer Relevanz für deutsche Werke und Beschäftigte.",
+      "scope": "local"
+    },
+    "sources": [
+      {
+        "publisher": "Tagesschau / SWR",
+        "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-mercedes-vorstand-kuendigt-werkschliessungen-an-wenn-arbeitskosten-nicht-sinken-widerstand-vom-gesamtbetriebsrat-100.html",
+        "supports": "Warnung vor möglichen Werksschließungen und Widerstand des Gesamtbetriebsrats."
+      },
+      {
+        "publisher": "Reuters",
+        "url": "https://www.reuters.com/business/world-at-work/mercedes-says-german-production-not-competitive-two-plants-under-threat-2026-09-22/",
+        "supports": "Zwei deutsche Werke werden als potenziell gefährdet beschrieben; Produktionskosten stehen im Mittelpunkt."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Mercedes warnt vor der möglichen Schließung zweier deutscher Werke.",
+      "why_happening": "Weil Arbeitskosten sinken sollen, erhöht der Vorstand den Verhandlungsdruck.",
+      "who_is_affected": "Betroffen wären Beschäftigte eines Aufbauwerks und eines Powertrainwerks.",
+      "personal_impact": "Für dich in der Region könnten Arbeitsplätze betroffen sein.",
+      "action_now": "Beobachte die Verhandlungen; konkrete Standorte und Beschlüsse stehen noch aus."
+    }
+  },
+  "source_context_sha256": "03c779030e2b85a5869c32305640f91e64c48abe5b0cbb5761c18082bf0f4f39",
+  "golden_path_v5_state": "APPROVED",
+  "golden_path_v5_history": [
+    {
+      "state": "TREND_CANDIDATES_SCORED",
+      "at": "2026-09-27T12:30:29.731Z",
+      "actor": "trend_radar_v5"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-09-27T12:30:29.731Z",
+      "actor": "telegram_callback"
+    }
+  ],
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-27T12:30:29.731Z",
+      "actor": "telegram_callback"
+    }
+  ],
+  "contract_sha256": "452b4c350a2066d4eef62bf7771ecf63f18766cf979040985471879a75f21886"
+}
