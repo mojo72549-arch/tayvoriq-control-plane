@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-27T20:48:42.275104Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-27T23:11:33.617096Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -16,7 +16,7 @@
     "topic": "Pflegereform im Koalitionsstreit: Was der geforderte Pflegedeckel bedeuten würde",
     "trend_id": "2",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": "Pflege: Wer zahlt künftig?",
@@ -41,17 +41,17 @@
   },
   "run": {
     "id": 36347604500,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36347604500",
     "created_at": "2026-09-27T20:19:31Z",
-    "updated_at": "2026-09-27T20:19:36Z",
-    "attempt": 1,
+    "updated_at": "2026-09-27T23:00:34Z",
+    "attempt": 3,
     "progress": 30,
-    "current_step": "Produce approved master or reuse checkpoint",
-    "last_successful_step": "Restore production model cache",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Finalize active production ownership",
+    "failed_step_number": 48,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "running",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "success",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "success",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "success",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "success",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Produce approved master or reuse checkpoint"
+      "status": "red",
+      "detail": "Finalize active production ownership"
     },
     {
       "name": "Production Green",
@@ -134,41 +134,62 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36347604500:48:LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "severity": "critical",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_step": "Finalize active production ownership",
+    "failed_step_number": 48,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
-    "failure_state": null,
-    "failed_run_id": null,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_run_id": 36347604500,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
-    "same_generation_replay_required": false,
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-27T23:00:34Z",
+      "title": "Workflow-Fehler",
+      "detail": "Finalize active production ownership"
+    },
+    {
+      "at": "2026-09-27T21:59:12.463892Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
     {
       "at": "2026-09-27T20:19:37.585175+00:00",
       "title": "DISPATCHED",
