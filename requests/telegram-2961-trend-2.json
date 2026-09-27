@@ -1,0 +1,103 @@
+{
+  "request_id": "telegram-2961-trend-2",
+  "status": "DISPATCHING",
+  "source": "telegram_trend_approval",
+  "trend_id": "2",
+  "topic": "Pflegereform im Koalitionsstreit: Was der geforderte Pflegedeckel bedeuten würde",
+  "trend_scope": "world_society",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-27T20:19:18.199Z",
+  "telegram_message_id": 2961,
+  "approval_key": "telegram:20260928-morning-prepared-r1:2961:trend:2",
+  "mode": "full",
+  "selection_id": "20260928-morning-prepared-r1",
+  "content_angle": "Forderung nach Eigenanteilsdeckel und Ablehnung getrennt erklären; keine Entlastung als beschlossen darstellen.",
+  "retention_contract_version": "v5",
+  "series_id": "pflegereform-2026",
+  "series_name": "Pflege: Wer zahlt künftig?",
+  "episode_id": null,
+  "episode_number": null,
+  "continuity_hook": null,
+  "next_episode_candidate": "Was die Koalitionsgespräche an der Pflegereform ändern",
+  "primary_hook": "Ein Deckel für Pflegekosten? Darüber streitet die Koalition.",
+  "viewer_question": "Ist ein Pflegedeckel bereits beschlossen?",
+  "explanation_core": "Die SPD fordert einen Deckel auf bestimmte Pflege-Eigenanteile; der Gesundheitsminister lehnt ihn ab.",
+  "surprise_or_reframe": "Die genannten 1.500 Euro betreffen nur einen Teil der gesamten Heimkosten.",
+  "practical_relevance": "Für Familien mit Pflegebedarf hängt eine Entlastung von weiteren Entscheidungen ab.",
+  "follow_reason": "Wir verfolgen die Koalitionsgespräche und die nächste Kabinettsentscheidung.",
+  "open_loop": "Ob die Koalition sich einigt, ist noch offen.",
+  "open_loop_status": "SOFT",
+  "cta_type": "SERIES",
+  "cta_text": "Folge TAYVORIQ – wir verfolgen die nächsten Entscheidungen und erklären, was sich wirklich ändert.",
+  "next_episode_queue_status": "PLANNED",
+  "retention_contract_sha256": "f0674e8175893b719cc5e00d5454e4615f50ab4a5089fcbc01a2b4d0fc88573a",
+  "follow_conversion_gate": {
+    "result": "PASS",
+    "repair": null,
+    "issues": []
+  },
+  "return_viewer_gate": {
+    "result": "PASS",
+    "issues": []
+  },
+  "source_context": {
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "reach_gate": {
+      "why_now": "Koalitionsgespräche sind für Montag nach neuem Streit angekündigt.",
+      "scope": "germany"
+    },
+    "sources": [
+      {
+        "publisher": "www.tagesschau.de",
+        "url": "https://www.tagesschau.de/inland/innenpolitik/pflegereform-streit-linnemann-100.html",
+        "supports": "Aktuelle Kernmeldung und Einordnung."
+      },
+      {
+        "publisher": "www.zdfheute.de",
+        "url": "https://www.zdfheute.de/politik/deutschland/pflegereform-bundesregierung-schwarz-rote-koalition-spd-union-zerreissprobe-100.html",
+        "supports": "Zusätzlicher unabhängiger Kontext oder Primärangaben."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Die Koalition streitet über einen Pflegedeckel und die geplante Reform.",
+      "why_happening": "Weil die Finanzierung umkämpft ist, verlangt die SPD Änderungen am Entwurf.",
+      "who_is_affected": "Betroffen wären Pflegebedürftige, Angehörige, Pflegekassen und Beitragszahler.",
+      "personal_impact": "Für dich könnten Eigenanteile relevant sein, doch Entlastungen sind unbeschlossen.",
+      "action_now": "Beobachte die Gespräche; ein Pflegedeckel ist bisher nur Forderung."
+    }
+  },
+  "source_context_sha256": "065acb91a7b6375aa4f54f5ad4a5fa3e1343e5463fd023be1a5b6d3f3d9bf845",
+  "golden_path_v5_state": "APPROVED",
+  "golden_path_v5_history": [
+    {
+      "state": "TREND_CANDIDATES_SCORED",
+      "at": "2026-09-27T20:19:18.199Z",
+      "actor": "trend_radar_v5"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-09-27T20:19:18.199Z",
+      "actor": "telegram_callback"
+    }
+  ],
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-27T20:19:18.199Z",
+      "actor": "telegram_callback"
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-09-27T20:19:26.223753+00:00",
+      "actor": "request-dispatcher:36347592791"
+    }
+  ],
+  "contract_sha256": "127c7e3d5ef5d779a6ef7c8cb735c0d7506897778d260d222ebfc3bd7c3f7d71",
+  "dispatch_claim_run_id": 36347592791,
+  "dispatch_contract_sha256": "127c7e3d5ef5d779a6ef7c8cb735c0d7506897778d260d222ebfc3bd7c3f7d71"
+}
