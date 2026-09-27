@@ -162,6 +162,11 @@ jobs:
           active=False
           request_id=''
           state=''
+          pointer_path=Path('.github/state/tayvoriq-active-production-request.json')
+          try:
+              pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
+          except (OSError, ValueError):
+              pointer={}
           for path in sorted(Path('requests').glob('*.json')):
               try:
                   request=json.loads(path.read_text(encoding='utf-8'))
@@ -172,6 +177,19 @@ jobs:
               recovery=recovery if isinstance(recovery,dict) else {}
               recovery_status=str(recovery.get('status') or '').strip().upper()
               substate=str(recovery.get('request_substate') or '').strip().upper()
+              completion=request.get('production_completion')
+              completion=completion if isinstance(completion,dict) else {}
+              run_id=int(request.get('golden_path_run_id') or 0)
+              completed=(
+                  str(pointer.get('state') or '').strip().upper() == 'COMPLETED'
+                  and str(pointer.get('request_id') or '') == str(request.get('request_id') or path.stem)
+                  and int(pointer.get('golden_path_run_id') or 0) == run_id
+                  and run_id > 0
+                  and str(completion.get('state') or '').strip().upper() == 'REVIEW_READY'
+                  and int(completion.get('golden_path_run_id') or 0) == run_id
+              )
+              if completed:
+                  continue
               if status in {'APPROVED','DISPATCHING','DISPATCHED'} and (
                   recovery_status in {'ARMED','REPLAY_DISPATCHED'}
                   or substate in {'AWAITING_CODEFIX','DISPATCHED'}
