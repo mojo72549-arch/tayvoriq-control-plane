@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T21:18:47.031532Z",
+  "generated_at": "2026-09-28T21:19:05.576266Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -45,7 +45,7 @@
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36484784340",
     "created_at": "2026-09-28T21:14:43Z",
-    "updated_at": "2026-09-28T21:16:06Z",
+    "updated_at": "2026-09-28T21:18:52Z",
     "attempt": 1,
     "progress": 30,
     "current_step": "Repair only failed local checkpoints",
@@ -135,7 +135,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -154,7 +154,7 @@
     "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
     "failed_step": null,
     "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
+    "self_heal_status": "REPLAY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -166,11 +166,11 @@
     "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "REPLAY_DISPATCHED",
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
     "failed_run_id": 36469942238,
-    "replay_run_id": 36484784340,
+    "replay_run_id": 36485245017,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-manual-canonical-supersede",
@@ -180,6 +180,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-28T21:18:50Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-checkpoint-provenance-replay"
+    },
     {
       "at": "2026-09-28T21:14:50Z",
       "title": "DISPATCHED",
