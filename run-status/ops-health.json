@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T21:16:15.998410Z",
+  "generated_at": "2026-09-28T21:18:47.031532Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -48,8 +48,8 @@
     "updated_at": "2026-09-28T21:16:06Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -91,7 +91,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout review pages"
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
@@ -140,7 +140,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
     },
     {
       "name": "Quality Gates",
@@ -149,9 +149,9 @@
     }
   ],
   "incident": {
-    "signature": "36484784340:none:PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
+    "signature": "36484784340:none:LOCAL_VISUAL_REPAIR_REQUIRED",
     "severity": "warning",
-    "failure_state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
+    "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
     "failed_step": null,
     "failed_step_number": null,
     "self_heal_status": "REPLAY_RUNNING",
@@ -162,14 +162,14 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
+    "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
     "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
-    "failed_run_id": 36483607386,
+    "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
+    "failed_run_id": 36469942238,
     "replay_run_id": 36484784340,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
