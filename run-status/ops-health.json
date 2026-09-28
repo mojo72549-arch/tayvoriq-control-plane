@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T21:22:07.101296Z",
-  "overall": "red",
+  "generated_at": "2026-09-28T21:22:49.635491Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-    "golden_path_run_id": 36485245017,
-    "pointer_updated_at": "2026-09-28T21:18:52Z"
+    "golden_path_run_id": 36485446867,
+    "pointer_updated_at": "2026-09-28T21:21:32Z"
   },
   "request": {
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
@@ -18,7 +18,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-manual-canonical-supersede",
+    "recovery_owner": "tayvoriq-canonical-serialized-replay",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-2991-trend-1-visual-repair-real-video-v1.json"
   },
   "run": {
-    "id": 36485245017,
-    "status": "completed",
-    "conclusion": "cancelled",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36485245017",
-    "created_at": "2026-09-28T21:18:46Z",
-    "updated_at": "2026-09-28T21:21:45Z",
+    "id": 36485446867,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36485446867",
+    "created_at": "2026-09-28T21:20:34Z",
+    "updated_at": "2026-09-28T21:21:50Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "current_step": "Restore prebuilt production virtualenv",
+    "last_successful_step": "Restore production dependency cache",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Restore prebuilt production virtualenv"
     },
     {
       "name": "Production Green",
@@ -134,61 +134,56 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": {
-    "signature": "36485245017:40:LOCAL_VISUAL_REPAIR_REQUIRED",
-    "severity": "critical",
+    "signature": "36485446867:none:LOCAL_VISUAL_REPAIR_REQUIRED",
+    "severity": "warning",
     "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_RUNNING",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
-    "last_step": "Telegram progress - environment active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
+    "last_step": "Telegram progress - sources locked"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "status": "REPLAY_RUNNING",
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
     "failed_run_id": 36469942238,
-    "replay_run_id": 36485245017,
+    "replay_run_id": 36485446867,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-manual-canonical-supersede",
+    "owner": "tayvoriq-canonical-serialized-replay",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-28T21:21:45Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 36485245017 · interner Codefix erforderlich · kein Eingriff von dir"
-    },
-    {
-      "at": "2026-09-28T21:21:45Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-09-28T21:21:30Z",
+      "title": "DISPATCHED",
+      "detail": "final-serialized-checkpoint-replay"
     },
     {
       "at": "2026-09-28T21:18:50Z",
@@ -214,11 +209,6 @@
       "at": "2026-09-28T19:06:38.822859+00:00",
       "title": "DISPATCHING",
       "detail": "request-dispatcher:36469916684"
-    },
-    {
-      "at": "2026-09-28T19:05:30Z",
-      "title": "APPROVED",
-      "detail": "user_real_video_visual_repair_authorization"
     }
   ]
 }
