@@ -5,14 +5,14 @@
   "selection_id": "20260928-evening-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
-  "mode": "manual_verified_fallback_after_provider_limits",
+  "mode": "manual_verified_editorial_repair",
   "superseded": false,
   "duplicate_guard_passed": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
   "production_started": false,
   "recovery_origin_mode": "manual_verified_fallback_after_provider_limits",
-  "recovery_reason": "LIVE_RESEARCH_PROVIDERS_RATE_OR_PAYMENT_LIMITED",
+  "recovery_reason": "EDITORIAL_CONTRACT_REPAIR_BEFORE_REQUEST_LOCK",
   "repair_of": "",
   "trends": [
     {
@@ -21,7 +21,7 @@
       "content_angle": "Der Bundestag senkt die Energiesteuer befristet. Warum die rechnerische Bruttoentlastung nicht automatisch den beobachteten Preisrückgang an jeder Tankstelle beschreibt.",
       "score": 90,
       "trend_selection_score": 90,
-      "trend_scope": "economy_consumer",
+      "trend_scope": "business_economy",
       "category": "economy_consumer",
       "regional_relevance": "germany",
       "criteria": {
@@ -87,11 +87,11 @@
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Der Bundestag beschloss einen befristeten Tankrabatt ab dem 1. Oktober 2026.",
-          "why_happening": "Die Energiesteuer wird wegen hoher Kraftstoffpreise um 14,04 Cent pro Liter gesenkt.",
-          "who_is_affected": "Autofahrende und Unternehmen mit Benzin- oder Dieselverbrauch in Deutschland.",
-          "personal_impact": "Rechnerisch beträgt die Bruttoentlastung rund 17 Cent je Liter; der tatsächliche Tankstellenpreis kann anders verlaufen.",
-          "action_now": "Nach dem Start bundesweite Benzin- und Dieselpreise mit den Preisen vor dem 1. Oktober vergleichen."
+          "what_happened": "Der Bundestag beschloss Tankrabatt für Oktober bis Dezember.",
+          "why_happening": "Wegen hoher Spritpreise sinkt die Energiesteuer um 14,04 Cent.",
+          "who_is_affected": "Betroffen sind Autofahrende und Betriebe mit Fahrzeugen.",
+          "personal_impact": "Für dich sind rechnerisch rund 17 Cent brutto möglich.",
+          "action_now": "Vergleiche nach dem Start die tatsächlichen Spritpreise an Tankstellen."
         },
         "factual_guardrails": {
           "must_include": [
@@ -203,5 +203,16 @@
         "research_notes": "Story: niedriger Füllstand ist relevant, doch aktuelle Versorgung ist stabil. Unterschied zwischen Mengenrisiko und Preisrisiko sichtbar machen. HASHTAG_SEEDS: #Gasspeicher #Gasversorgung #Heizkosten #Energiepreise #Winter #Deutschland"
       }
     }
-  ]
+  ],
+  "editorial_repair_audit": {
+    "original_snapshot_sha": "f6192681b8fe9a95501a46d0af776e1b57cfc1dd",
+    "failed_dispatch_run_id": 36392984596,
+    "telegram_message_id": 2991,
+    "approval_at": "2026-09-28T07:40:59.797Z",
+    "changed_fields": [
+      "trends[0].trend_scope",
+      "trends[0].source_context.fallback_editorial_answers"
+    ],
+    "reason": "Downstream editorial contract and scope enum; approved title, hook, follow reason, CTA and sources unchanged."
+  }
 }
