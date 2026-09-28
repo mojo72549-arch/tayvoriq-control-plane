@@ -152,6 +152,22 @@
         "replay_implementation_sha": "8b56320f5f04f90b6bc3cfef00e3633248eaab8a",
         "quality_gates_weakened": false
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-28T21:18:50Z",
+      "actor": "chatgpt-final-checkpoint-provenance-replay",
+      "meta": {
+        "retry_of_run_id": 36484784340,
+        "golden_path_run_id": 36485245017,
+        "recovery_generation": 1,
+        "reason": "same-generation-checkpoint-provenance-replay",
+        "codefix_detection_reason": "production-green-implementation-changed",
+        "checkpoint_implementation_sha": "0ae904941b6dc5e69dcba239681eb04487ff2a21",
+        "replay_control_plane_sha": "92df1662399a100848cd6fe9c9eefb3c20a02d6f",
+        "replay_implementation_sha": "8b56320f5f04f90b6bc3cfef00e3633248eaab8a",
+        "quality_gates_weakened": false
+      }
     }
   ],
   "contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
@@ -166,7 +182,7 @@
   "visual_provider_contract": "pexels_video_only_distinct_moving_clips_v2",
   "dispatch_claim_run_id": 36469916684,
   "dispatch_contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
-  "golden_path_run_id": 36484784340,
+  "golden_path_run_id": 36485245017,
   "recovery_generation": 1,
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
@@ -184,19 +200,20 @@
     "codefix_detection_reason": "production-green-implementation-changed",
     "desired_studio_candidate_sha": "8b56320f5f04f90b6bc3cfef00e3633248eaab8a",
     "last_failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
-    "replay_run_id": 36484784340,
-    "replayed_at": "2026-09-28T21:14:50Z",
-    "replay_control_plane_sha": "f0c7ff479d9b8d3619864df865783fa9913c94bf",
+    "replay_run_id": 36485245017,
+    "replayed_at": "2026-09-28T21:18:50Z",
+    "replay_control_plane_sha": "92df1662399a100848cd6fe9c9eefb3c20a02d6f",
     "replay_implementation_sha": "8b56320f5f04f90b6bc3cfef00e3633248eaab8a",
     "active_pointer_verified": true
   },
   "previous_golden_path_run_ids": [
     36469942238,
-    36483607386
+    36483607386,
+    36484784340
   ],
-  "retry_of_run_id": 36483607386,
+  "retry_of_run_id": 36484784340,
   "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
   "recovery_owner": "tayvoriq-manual-canonical-supersede",
   "recovery_failure_signature": "d90eaeb517ce61f533d1",
-  "recovery_dispatched_at": "2026-09-28T21:14:50Z"
+  "recovery_dispatched_at": "2026-09-28T21:18:50Z"
 }
