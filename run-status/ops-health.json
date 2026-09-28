@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T12:56:03.083246Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-28T13:50:28.137834Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -41,41 +41,41 @@
   },
   "run": {
     "id": 36424545840,
-    "status": "queued",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36424545840",
     "created_at": "2026-09-28T12:51:33Z",
-    "updated_at": "2026-09-28T12:55:58Z",
+    "updated_at": "2026-09-28T13:35:12Z",
     "attempt": 2,
-    "progress": 3,
+    "progress": 30,
     "current_step": null,
-    "last_successful_step": null,
-    "failed_step": null,
-    "failed_step_number": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 3,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 7,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 8,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 17,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
@@ -85,47 +85,47 @@
       },
       {
         "label": "Full Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 17,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 33,
+        "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "error",
+        "step_number": 40,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 42,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 46,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 47,
+        "step_name": "Send Telegram review"
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "queued"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -139,20 +139,31 @@
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
+      "status": "green",
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36424545840:40:none",
+    "severity": "critical",
+    "failure_state": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "IDLE",
+    "same_generation_replay_required": false,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
-    "status": "yellow",
-    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
-    "last_step": null
+    "status": "green",
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
     "status": "IDLE",
@@ -169,6 +180,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-28T13:35:12Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
     {
       "at": "2026-09-28T12:51:40.297838+00:00",
       "title": "DISPATCHED",
