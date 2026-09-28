@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T13:52:18.783534Z",
+  "generated_at": "2026-09-28T15:54:56.506566Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2991-trend-1-visual-repair-v1",
-    "golden_path_run_id": 36424545840,
-    "pointer_updated_at": "2026-09-28T12:51:40.380413Z"
+    "golden_path_run_id": 36431801432,
+    "pointer_updated_at": "2026-09-28T13:53:04.663280Z"
   },
   "request": {
     "request_id": "telegram-2991-trend-1-visual-repair-v1",
@@ -18,7 +18,7 @@
     "slot": null,
     "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -40,13 +40,13 @@
     "path": "requests/telegram-2991-trend-1-visual-repair-v1.json"
   },
   "run": {
-    "id": 36424545840,
+    "id": 36431801432,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36424545840",
-    "created_at": "2026-09-28T12:51:33Z",
-    "updated_at": "2026-09-28T13:35:12Z",
-    "attempt": 2,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36431801432",
+    "created_at": "2026-09-28T13:52:58Z",
+    "updated_at": "2026-09-28T14:25:56Z",
+    "attempt": 1,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
@@ -149,9 +149,9 @@
     }
   ],
   "incident": {
-    "signature": "36424545840:40:LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "signature": "36431801432:40:PUBLISHABLE_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 40,
     "self_heal_status": "ARMED",
@@ -168,12 +168,12 @@
   "recovery": {
     "status": "ARMED",
     "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_run_id": 36424545840,
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_run_id": 36431801432,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -181,9 +181,19 @@
   },
   "events": [
     {
-      "at": "2026-09-28T13:35:12Z",
+      "at": "2026-09-28T14:25:56Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-28T15:18:33.139002Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-28T13:53:04.663280Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-28T13:50:43.219924Z",
