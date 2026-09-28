@@ -1,30 +1,30 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T08:09:15.188577Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-28T08:31:42.272090Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2961-trend-2",
-    "golden_path_run_id": 36347604500,
-    "pointer_updated_at": "2026-09-27T20:19:37.662281Z"
+    "request_id": "telegram-2991-trend-1",
+    "golden_path_run_id": 36396095050,
+    "pointer_updated_at": "2026-09-28T08:30:38.608985Z"
   },
   "request": {
-    "request_id": "telegram-2961-trend-2",
-    "topic": "Pflegereform im Koalitionsstreit: Was der geforderte Pflegedeckel bedeuten würde",
-    "trend_id": "2",
+    "request_id": "telegram-2991-trend-1",
+    "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
+    "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-agent-orchestrator-v2",
-    "series_name": "Pflege: Wer zahlt künftig?",
+    "series_name": null,
     "episode_number": null,
-    "cta_type": "SERIES",
-    "follow_reason": "Wir verfolgen die Koalitionsgespräche und die nächste Kabinettsentscheidung.",
+    "cta_type": "EXPERTISE",
+    "follow_reason": "TAYVORIQ vergleicht nach dem Start die tatsächlichen Benzin- und Dieselpreise und erklärt, wie viel Entlastung ankommt.",
     "open_loop_status": "SOFT",
-    "next_episode_candidate": "Was die Koalitionsgespräche an der Pflegereform ändern",
+    "next_episode_candidate": "Preischeck nach dem 1. Oktober: tatsächliche Benzin- und Dieselpreise gegen Vorwoche",
     "follow_conversion_gate": {
       "result": "PASS",
       "repair": null,
@@ -37,19 +37,19 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2961-trend-2.json"
+    "path": "requests/telegram-2991-trend-1.json"
   },
   "run": {
-    "id": 36347604500,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36347604500",
-    "created_at": "2026-09-27T20:19:31Z",
-    "updated_at": "2026-09-28T08:07:38Z",
-    "attempt": 8,
-    "progress": 30,
-    "current_step": "Install or reuse production dependencies",
-    "last_successful_step": "Telegram progress - environment active",
+    "id": 36396095050,
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36396095050",
+    "created_at": "2026-09-28T08:13:36Z",
+    "updated_at": "2026-09-28T08:30:45Z",
+    "attempt": 1,
+    "progress": 100,
+    "current_step": null,
+    "last_successful_step": "Complete job",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "success",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "success",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "success",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "success",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Install or reuse production dependencies"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -134,74 +134,63 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "ARMED"
+      "status": "green",
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
+      "detail": "Zuletzt erfolgreich: Send Telegram review"
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
-  "incident": {
-    "signature": "36347604500:none:LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "severity": "warning",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
-    "last_step": "Telegram progress - environment active"
+    "detail": "Zuletzt erfolgreich: Send Telegram review",
+    "last_step": "Send Telegram review"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_run_id": 36347604500,
+    "status": "IDLE",
+    "source_status": "IDLE",
+    "failure_state": null,
+    "failed_run_id": null,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
-    "same_generation_replay_required": true,
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-28T08:08:55.213Z",
+      "at": "2026-09-28T08:13:43.447375+00:00",
       "title": "DISPATCHED",
-      "detail": "Restore request state history after historical codefix marker; approved source and publication unchanged."
+      "detail": "request-dispatcher:36396072910"
     },
     {
-      "at": "2026-09-27T21:59:12.463892Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-27T20:19:37.585175+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:36347592791"
-    },
-    {
-      "at": "2026-09-27T20:19:26.223753+00:00",
+      "at": "2026-09-28T08:13:31.348077+00:00",
       "title": "DISPATCHING",
-      "detail": "request-dispatcher:36347592791"
+      "detail": "request-dispatcher:36396072910"
     },
     {
-      "at": "2026-09-27T20:19:18.199Z",
+      "at": "2026-09-28T08:13:20.086394Z",
+      "title": "APPROVED",
+      "detail": "tayvoriq-slot-serialization-releaser"
+    },
+    {
+      "at": "2026-09-28T08:07:20.218747Z",
+      "title": "APPROVED",
+      "detail": "tayvoriq-slot-serialization-gate"
+    },
+    {
+      "at": "2026-09-28T07:40:59.797Z",
       "title": "APPROVED",
       "detail": "telegram_callback"
     }
