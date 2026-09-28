@@ -15,6 +15,7 @@ from typing import Any
 
 METRIC_FIELDS = (
     "views",
+    "engaged_views",
     "average_view_duration_seconds",
     "average_percentage_viewed",
     "completion_rate",
@@ -23,6 +24,7 @@ METRIC_FIELDS = (
     "shares",
     "saves_favorites",
     "follow_subscriber_signal",
+    "profile_visits",
     "returning_viewer_signal",
 )
 
@@ -30,6 +32,10 @@ CONTRACT_FIELDS = (
     "cta_type",
     "series_id",
     "open_loop_status",
+    "topic",
+    "content_angle",
+    "primary_hook",
+    "follow_reason",
 )
 
 def clean(value: Any, limit: int = 500) -> str:
@@ -66,6 +72,10 @@ def normalize_observation(payload: dict[str, Any]) -> dict[str, Any]:
         "cta_type": clean(contract_in.get("cta_type"), 40).upper() or None,
         "series_id": clean(contract_in.get("series_id"), 160) or None,
         "open_loop_status": clean(contract_in.get("open_loop_status"), 20).upper() or None,
+        "topic": clean(contract_in.get("topic"), 240) or None,
+        "content_angle": clean(contract_in.get("content_angle"), 500) or None,
+        "primary_hook": clean(contract_in.get("primary_hook"), 240) or None,
+        "follow_reason": clean(contract_in.get("follow_reason"), 500) or None,
     }
     if contract["open_loop_status"] not in {None, "NONE", "SOFT", "HARD"}:
         raise ValueError("ANALYTICS_INVALID_OPEN_LOOP_STATUS")
@@ -110,11 +120,63 @@ def store_observation(payload: dict[str, Any], out_dir: Path) -> Path:
     target.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return target
 
+def growth_review(out_dir: Path) -> dict[str, Any]:
+    """Report observed conversion with an explicit denominator and no ranking."""
+    rows: list[dict[str, Any]] = []
+    for path in sorted(out_dir.glob("*/*.json")):
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if record.get("schema") != "tayvoriq-analytics-v5":
+            continue
+        metrics = record.get("metrics") if isinstance(record.get("metrics"), dict) else {}
+        contract = record.get("content_contract") if isinstance(record.get("content_contract"), dict) else {}
+        follows = _number_or_none(metrics.get("follow_subscriber_signal"))
+        views = _number_or_none(metrics.get("views"))
+        engaged = _number_or_none(metrics.get("engaged_views"))
+        def rate(denominator: int | float | None) -> float | None:
+            if follows is None or denominator is None or denominator <= 0:
+                return None
+            return round(1000 * follows / denominator, 2)
+        rows.append({
+            "platform": record.get("platform"),
+            "video_id": record.get("video_id"),
+            "request_id": record.get("request_id"),
+            "published_at": record.get("published_at"),
+            "observed_at": record.get("observed_at"),
+            "topic": contract.get("topic"),
+            "primary_hook": contract.get("primary_hook"),
+            "follow_reason": contract.get("follow_reason"),
+            "cta_type": contract.get("cta_type"),
+            "views": views,
+            "engaged_views": engaged,
+            "average_percentage_viewed": _number_or_none(metrics.get("average_percentage_viewed")),
+            "completion_rate": _number_or_none(metrics.get("completion_rate")),
+            "follow_subscriber_signal": follows,
+            "follows_per_1000_views": rate(views),
+            "follows_per_1000_engaged_views": rate(engaged),
+            "conversion_data_available": follows is not None and views is not None and views > 0,
+        })
+    return {
+        "schema": "tayvoriq-growth-review-v1",
+        "videos": rows,
+        "video_count": len(rows),
+        "conversion_data_available_count": sum(row["conversion_data_available"] for row in rows),
+        "automatic_topic_ranking_performed": False,
+        "missing_metrics_estimated": False,
+    }
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--input")
+    mode.add_argument("--review-dir")
     parser.add_argument("--out-dir", default="analytics/tayvoriq-v5")
     args = parser.parse_args()
+    if args.review_dir:
+        print(json.dumps(growth_review(Path(args.review_dir)), ensure_ascii=False, indent=2))
+        return 0
     payload = json.loads(Path(args.input).read_text(encoding="utf-8"))
     target = store_observation(payload, Path(args.out_dir))
     print(json.dumps({
