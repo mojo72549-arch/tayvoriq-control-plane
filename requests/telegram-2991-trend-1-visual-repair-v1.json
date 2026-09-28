@@ -123,10 +123,7 @@
   "contract_sha256": "f567a9119979991b6e4b57497c4ab7e7479a41f1454e25b8726e58abbd105ba1",
   "repair_of_request_id": "telegram-2991-trend-1",
   "rejected_review_run_id": 36396095050,
-  "previous_golden_path_run_ids": [
-    36396095050
-  ],
-  "recovery_generation": 1,
+  "recovery_generation": 0,
   "visual_repair_scope": "rejected_review_scene_relevance_and_visual_diversity",
   "visual_repair_facts_changed": false,
   "visual_repair_sources_changed": false,
@@ -134,5 +131,7 @@
   "repair_authorized_at": "2026-09-28T12:49:22.760207Z",
   "dispatch_claim_run_id": 36424521566,
   "dispatch_contract_sha256": "f567a9119979991b6e4b57497c4ab7e7479a41f1454e25b8726e58abbd105ba1",
-  "golden_path_run_id": 36424545840
+  "golden_path_run_id": 36424545840,
+  "technical_retry_of_run_id": 36424545840,
+  "technical_retry_reason": "first visual repair request incorrectly marked as repeat of its own failed run; reviewed predecessor remains repair_of_request_id"
 }
