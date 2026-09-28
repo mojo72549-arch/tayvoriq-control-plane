@@ -30,7 +30,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-x-golden-path
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   PYTHONUTF8: "1"
