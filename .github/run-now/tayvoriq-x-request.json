@@ -2,8 +2,8 @@
   "request": "tayvoriq-x-production",
   "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
   "trend_id": "1",
-  "requested_at": "2026-09-28T21:17:10Z",
-  "request_nonce": "tankrabatt-final-checkpoint-provenance-0ae-to-8b56320-v1",
+  "requested_at": "2026-09-28T21:20:10Z",
+  "request_nonce": "tankrabatt-serialize-current-canonical-374-v1",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "implementation_sha_expected": "8b56320f5f04f90b6bc3cfef00e3633248eaab8a",
@@ -40,6 +40,6 @@
     "strict_pronunciation_audit_required": true,
     "generic_visual_fallback_forbidden": true
   },
-  "reason": "Final canonical replay with original checkpoint provenance 0ae904... and verified Production Green 8b56320.... Reuse master only as untrusted repair input; remove stale quality proof; perform targeted VISUALS/VOICE repair and full re-audit.",
+  "reason": "Serialization guard only: keep current canonical checkpoint-repair run 36484784340 alive; any queued replay must wait and fail ownership binding if no longer needed.",
   "slot": "recovery"
 }
