@@ -1,24 +1,24 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T19:06:42.162851Z",
-  "overall": "green",
+  "generated_at": "2026-09-28T20:59:00.006476Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2991-trend-1-visual-repair-v1",
-    "golden_path_run_id": 36460829682,
-    "pointer_updated_at": "2026-09-28T18:26:07.202563Z"
+    "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
+    "golden_path_run_id": 36469942238,
+    "pointer_updated_at": "2026-09-28T20:58:46.777Z"
   },
   "request": {
-    "request_id": "telegram-2991-trend-1-visual-repair-v1",
+    "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
     "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_generation": 1,
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -37,21 +37,21 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2991-trend-1-visual-repair-v1.json"
+    "path": "requests/telegram-2991-trend-1-visual-repair-real-video-v1.json"
   },
   "run": {
-    "id": 36460829682,
+    "id": 36469942238,
     "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36460829682",
-    "created_at": "2026-09-28T17:49:11Z",
-    "updated_at": "2026-09-28T18:26:14Z",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36469942238",
+    "created_at": "2026-09-28T19:06:42Z",
+    "updated_at": "2026-09-28T20:06:50Z",
     "attempt": 1,
-    "progress": 100,
+    "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -97,25 +97,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "error",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "skipped",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "skipped",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -134,35 +134,46 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36469942238:40:LOCAL_VISUAL_REPAIR_REQUIRED",
+    "severity": "critical",
+    "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": null,
-    "failed_run_id": 36454889739,
-    "replay_run_id": 36460829682,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
+    "failed_run_id": 36469942238,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
-    "recovery_generation": 0,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_generation": 1,
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -170,34 +181,24 @@
   },
   "events": [
     {
-      "at": "2026-09-28T17:49:18.062422Z",
+      "at": "2026-09-28T20:06:50Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-28T19:06:49.730518+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:36469916684"
     },
     {
-      "at": "2026-09-28T17:46:23.189877Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-09-28T19:06:38.822859+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:36469916684"
     },
     {
-      "at": "2026-09-28T16:58:55.450104Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-28T15:18:33.139002Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-28T13:53:04.663280Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-28T13:50:43.219924Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+      "at": "2026-09-28T19:05:30Z",
+      "title": "APPROVED",
+      "detail": "user_real_video_visual_repair_authorization"
     }
   ]
 }
