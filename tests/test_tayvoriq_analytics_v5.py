@@ -60,6 +60,7 @@ def test_growth_review_uses_only_observed_per_video_conversion(tmp_path):
     analytics.store_observation({
         "platform": "youtube_shorts",
         "video_id": "pflege-1",
+        "metric_scope": "video",
         "metrics": {
             "views": 1200,
             "engaged_views": 800,
@@ -88,3 +89,16 @@ def test_growth_review_uses_only_observed_per_video_conversion(tmp_path):
     assert tiktok["follows_per_1000_views"] is None
     assert report["conversion_data_available_count"] == 1
     assert report["automatic_topic_ranking_performed"] is False
+
+
+def test_growth_review_does_not_treat_account_growth_as_video_conversion(tmp_path):
+    analytics.store_observation({
+        "platform": "tiktok",
+        "video_id": "pflege",
+        "metric_scope": "account",
+        "metrics": {"views": 1000, "follow_subscriber_signal": 10},
+    }, tmp_path)
+    row = analytics.growth_review(tmp_path)["videos"][0]
+    assert row["follow_subscriber_signal"] == 10
+    assert row["follows_per_1000_views"] is None
+    assert row["conversion_data_available"] is False
