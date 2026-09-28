@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "source": "review_rejection_real_video_visual_repair",
   "trend_id": "1",
   "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
@@ -110,6 +110,11 @@
         "production_green_implementation_sha": "0ae904941b6dc5e69dcba239681eb04487ff2a21",
         "visual_policy": "real_moving_pexels_video_only_no_generated_static_fallback"
       }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-09-28T19:06:38.822859+00:00",
+      "actor": "request-dispatcher:36469916684"
     }
   ],
   "contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
@@ -121,5 +126,7 @@
   "quality_gates_weakened": false,
   "repair_authorized_at": "2026-09-28T19:05:30Z",
   "repair_generation": 2,
-  "visual_provider_contract": "pexels_video_only_distinct_moving_clips_v2"
+  "visual_provider_contract": "pexels_video_only_distinct_moving_clips_v2",
+  "dispatch_claim_run_id": 36469916684,
+  "dispatch_contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad"
 }
