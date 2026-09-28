@@ -120,11 +120,22 @@
         "slot_serialization_predecessor_run_id": 36347604500,
         "slot_serialization_reason": "ACTIVE_OWNER_RUN_FAILURE"
       }
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-09-28T08:13:20.086394Z",
+      "actor": "tayvoriq-slot-serialization-releaser",
+      "meta": {
+        "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
+        "predecessor_request_id": "telegram-2961-trend-2",
+        "predecessor_run_id": 36347604500
+      }
     }
   ],
   "contract_sha256": "ee61763b8286b206e6dbd9a584d4e3b8933ad85add312f35967e6fe8c7a39566",
-  "slot_serialization_state": "HELD_WAITING_FOR_MORNING_REVIEW",
+  "slot_serialization_state": "RELEASED_AFTER_MORNING_REVIEW",
   "slot_serialization_predecessor_request_id": "telegram-2961-trend-2",
   "slot_serialization_predecessor_run_id": 36347604500,
-  "slot_serialization_reason": "ACTIVE_OWNER_RUN_FAILURE"
+  "slot_serialization_reason": "MORNING_FINAL_REVIEW_VERIFIED",
+  "slot_serialization_released_at": "2026-09-28T08:13:20.086383Z"
 }
