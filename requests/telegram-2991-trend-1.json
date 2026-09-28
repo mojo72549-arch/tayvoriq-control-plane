@@ -1,0 +1,115 @@
+{
+  "request_id": "telegram-2991-trend-1",
+  "status": "APPROVED",
+  "source": "telegram_trend_approval",
+  "trend_id": "1",
+  "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
+  "trend_scope": "business_economy",
+  "language": "Deutsch",
+  "platform": "youtube_tiktok",
+  "target_duration": 35,
+  "approval_required_before_youtube_publish": true,
+  "tiktok_delivery": "telegram_manual",
+  "approved_at": "2026-09-28T07:40:59.797Z",
+  "telegram_message_id": 2991,
+  "approval_key": "telegram:20260928-evening-agentv2:2991:trend:1",
+  "mode": "full",
+  "selection_id": "20260928-evening-agentv2",
+  "content_angle": "Der Bundestag senkt die Energiesteuer befristet. Warum die rechnerische Bruttoentlastung nicht automatisch den beobachteten Preisrückgang an jeder Tankstelle beschreibt.",
+  "retention_contract_version": "v5",
+  "series_id": null,
+  "series_name": null,
+  "episode_id": null,
+  "episode_number": null,
+  "continuity_hook": null,
+  "next_episode_candidate": "Preischeck nach dem 1. Oktober: tatsächliche Benzin- und Dieselpreise gegen Vorwoche",
+  "primary_hook": "17 Cent Tankrabatt ab Oktober: Kommen die wirklich an der Zapfsäule an?",
+  "viewer_question": "Wie viel vom neuen Tankrabatt kommt bei Autofahrern tatsächlich an?",
+  "explanation_core": "Der Bundestag beschloss für Oktober bis Dezember eine Senkung der Energiesteuer um 14,04 Cent je Liter; inklusive Umsatzsteuer entspricht das rechnerisch rund 17 Cent brutto.",
+  "surprise_or_reframe": "Der Steuerbetrag ist fest, doch der beobachtete Zapfsäulenpreis hängt zusätzlich von Ölpreis, Wechselkurs und Großhandel ab.",
+  "practical_relevance": "Für Autofahrende zählen die tatsächlichen Preise nach dem Start, nicht allein die rechnerische Steuerentlastung.",
+  "follow_reason": "TAYVORIQ vergleicht nach dem Start die tatsächlichen Benzin- und Dieselpreise und erklärt, wie viel Entlastung ankommt.",
+  "open_loop": "Ob die rechnerischen 17 Cent im Preisvergleich sichtbar werden, lässt sich erst nach dem Start am 1. Oktober prüfen.",
+  "open_loop_status": "SOFT",
+  "cta_type": "EXPERTISE",
+  "cta_text": "Folge TAYVORIQ: Wir prüfen ab dem 1. Oktober, was vom Tankrabatt tatsächlich an der Zapfsäule ankommt.",
+  "next_episode_queue_status": null,
+  "retention_contract_sha256": "548d0e0c47941017a3f729cb19accf62752ac5eaa82958a7a3cb719c3a20735c",
+  "follow_conversion_gate": {
+    "result": "PASS",
+    "repair": null,
+    "issues": []
+  },
+  "return_viewer_gate": {
+    "result": "PASS",
+    "issues": []
+  },
+  "source_context": {
+    "editorial_story_contract_version": 2,
+    "story_first_script_body": "Der Bundestag hat den Tankrabatt für Oktober bis Dezember beschlossen: Die Energiesteuer sinkt um 14,04 Cent pro Liter. Mit der Umsatzsteuer sind das rechnerisch rund 17 Cent. Aber der Preis an der Zapfsäule hängt auch von Ölpreis, Wechselkurs und Großhandel ab. Entscheidend wird der Vergleich nach dem Start.",
+    "independent_news_count": 2,
+    "quality_gates_weakened": false,
+    "reach_gate": {
+      "scope": "germany",
+      "why_now": "Der Bundestag hat den Rabatt am 25. September beschlossen; Start ist für den 1. Oktober vorgesehen.",
+      "momentum_evidence": "Bundesweite Kostenfrage mit unmittelbarem Termin für einen überprüfbaren Folgebeitrag.",
+      "cross_platform_signal_count": 2,
+      "breakout_proof": "Bundestagsbeschluss und eigenständige ADAC-Preisanalyse; keine Reichweitenmessung behauptet."
+    },
+    "sources": [
+      {
+        "publisher": "Deutscher Bundestag",
+        "url": "https://www.bundestag.de/dokumente/textarchiv/2026/kw39-de-versicherung-aufsicht-1216898",
+        "supports": "Der Bundestag beschloss am 25. September eine Energiesteuersenkung um 14,04 Cent je Liter für Oktober bis Dezember 2026; rund 17 Cent brutto sind rechnerisch."
+      },
+      {
+        "publisher": "ADAC",
+        "url": "https://www.adac.de/news/aktueller-spritpreis/",
+        "supports": "ADAC ordnet die knapp 17 Cent ein, fordert vollständige Weitergabe und erklärt weitere Preistreiber sowie den Vergleich tatsächlicher Zapfsäulenpreise."
+      }
+    ],
+    "fallback_editorial_answers": {
+      "what_happened": "Der Bundestag beschloss Tankrabatt für Oktober bis Dezember.",
+      "why_happening": "Wegen hoher Spritpreise sinkt die Energiesteuer um 14,04 Cent.",
+      "who_is_affected": "Betroffen sind Autofahrende und Betriebe mit Fahrzeugen.",
+      "personal_impact": "Für dich sind rechnerisch rund 17 Cent brutto möglich.",
+      "action_now": "Vergleiche nach dem Start die tatsächlichen Spritpreise an Tankstellen."
+    },
+    "factual_guardrails": {
+      "must_include": [
+        "Bundestagsbeschluss vom 25. September; Laufzeit 1. Oktober bis 31. Dezember 2026.",
+        "14,04 Cent Energiesteuer und rund 17 Cent inklusive Umsatzsteuer pro Liter.",
+        "Tatsächliche Zapfsäulenpreise werden auch von weiteren Faktoren beeinflusst."
+      ],
+      "must_not_claim": [
+        "Jede Tankstelle müsse exakt 17 Cent billiger werden.",
+        "Eine vollständige Weitergabe sei bereits gemessen.",
+        "Der zusätzlich diskutierte Spritpreisdeckel sei bereits beschlossen."
+      ],
+      "uncertainty_note": "Die Weitergabe kann erst anhand tatsächlicher Preise nach Beginn des Rabatts beurteilt werden."
+    },
+    "research_notes": "Story: fester Steuerbetrag gegen beweglichen Endpreis. Folgebeitrag ab Oktober anhand belastbarer ADAC-Preisdaten. HASHTAG_SEEDS: #Tankrabatt #Spritpreise #Benzin #Diesel #Energiesteuer #Verbraucher"
+  },
+  "source_context_sha256": "47641d08f81c93cf75d71e11a40e7c121a2e307f665c286d66b50e744942b030",
+  "golden_path_v5_state": "APPROVED",
+  "golden_path_v5_history": [
+    {
+      "state": "TREND_CANDIDATES_SCORED",
+      "at": "2026-09-28T07:40:59.797Z",
+      "actor": "trend_radar_v5"
+    },
+    {
+      "state": "APPROVED",
+      "at": "2026-09-28T07:40:59.797Z",
+      "actor": "telegram_callback"
+    }
+  ],
+  "state_history": [
+    {
+      "state": "APPROVED",
+      "at": "2026-09-28T07:40:59.797Z",
+      "actor": "telegram_callback"
+    }
+  ],
+  "contract_sha256": "ee61763b8286b206e6dbd9a584d4e3b8933ad85add312f35967e6fe8c7a39566"
+}
