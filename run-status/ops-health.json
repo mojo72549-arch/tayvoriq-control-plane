@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T21:14:55.673890Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-28T21:15:21.936440Z",
+  "overall": "unknown",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-    "golden_path_run_id": 36483607386,
-    "pointer_updated_at": "2026-09-28T21:04:30.333595Z"
+    "golden_path_run_id": 36484784340,
+    "pointer_updated_at": "2026-09-28T21:14:52Z"
   },
   "request": {
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
@@ -18,7 +18,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-manual-canonical-supersede",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -40,42 +40,42 @@
     "path": "requests/telegram-2991-trend-1-visual-repair-real-video-v1.json"
   },
   "run": {
-    "id": 36483607386,
-    "status": "in_progress",
+    "id": 36484784340,
+    "status": "pending",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36483607386",
-    "created_at": "2026-09-28T21:04:22Z",
-    "updated_at": "2026-09-28T21:04:27Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36484784340",
+    "created_at": "2026-09-28T21:14:43Z",
+    "updated_at": "2026-09-28T21:14:44Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Produce approved master or reuse checkpoint",
-    "last_successful_step": "Restore production model cache",
+    "progress": 0,
+    "current_step": null,
+    "last_successful_step": null,
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 3,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 7,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
-        "status": "success",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dependencies",
@@ -85,47 +85,47 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Produktion / Master",
-        "status": "running",
-        "step_number": 33,
-        "step_name": "Produce approved master or reuse checkpoint"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": 40,
-        "step_name": "Assert publishable production output"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": 42,
-        "step_name": "Validate publication quality initial"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": 46,
-        "step_name": "Publish review page"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": 47,
-        "step_name": "Send Telegram review"
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Produce approved master or reuse checkpoint"
+      "status": "unknown",
+      "detail": "pending"
     },
     {
       "name": "Production Green",
@@ -135,12 +135,12 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "status": "yellow",
+      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
     },
     {
       "name": "Quality Gates",
@@ -148,27 +148,43 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36484784340:none:PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
+    "severity": "warning",
+    "failure_state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_DISPATCHED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "status": "yellow",
+    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
+    "last_step": null
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "REPLAY_DISPATCHED",
     "source_status": "REPLAY_DISPATCHED",
-    "failure_state": null,
-    "failed_run_id": 36469942238,
-    "replay_run_id": 36483607386,
+    "failure_state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
+    "failed_run_id": 36483607386,
+    "replay_run_id": 36484784340,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "owner": "tayvoriq-manual-canonical-supersede",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-28T21:14:50Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-checkpoint-migration"
+    },
     {
       "at": "2026-09-28T21:04:30.333595Z",
       "title": "DISPATCHED",
