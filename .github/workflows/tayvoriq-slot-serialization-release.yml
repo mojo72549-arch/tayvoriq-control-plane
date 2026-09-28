@@ -6,6 +6,12 @@ on:
       - TAYVORIQ-X Golden Path
     types:
       - completed
+  push:
+    branches:
+      - main
+    paths:
+      - 'requests/*.json'
+      - '.github/workflows/tayvoriq-slot-serialization-release.yml'
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
