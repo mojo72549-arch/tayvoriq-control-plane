@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T21:19:05.576266Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-28T21:19:19.004176Z",
+  "overall": "unknown",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-    "golden_path_run_id": 36484784340,
-    "pointer_updated_at": "2026-09-28T21:14:52Z"
+    "golden_path_run_id": 36485245017,
+    "pointer_updated_at": "2026-09-28T21:18:52Z"
   },
   "request": {
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
@@ -40,42 +40,42 @@
     "path": "requests/telegram-2991-trend-1-visual-repair-real-video-v1.json"
   },
   "run": {
-    "id": 36484784340,
-    "status": "in_progress",
+    "id": 36485245017,
+    "status": "pending",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36484784340",
-    "created_at": "2026-09-28T21:14:43Z",
-    "updated_at": "2026-09-28T21:18:52Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36485245017",
+    "created_at": "2026-09-28T21:18:46Z",
+    "updated_at": "2026-09-28T21:18:47Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Repair only failed local checkpoints",
-    "last_successful_step": "Telegram progress - checkpoint repair",
+    "progress": 0,
+    "current_step": null,
+    "last_successful_step": null,
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 3,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 7,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
-        "status": "success",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dependencies",
@@ -85,47 +85,47 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
-        "step_number": 33,
-        "step_name": "Produce approved master or reuse checkpoint"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": 40,
-        "step_name": "Assert publishable production output"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": 42,
-        "step_name": "Validate publication quality initial"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": 46,
-        "step_name": "Publish review page"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": 47,
-        "step_name": "Send Telegram review"
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Repair only failed local checkpoints"
+      "status": "unknown",
+      "detail": "pending"
     },
     {
       "name": "Production Green",
@@ -139,8 +139,8 @@
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
+      "status": "yellow",
+      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
     },
     {
       "name": "Quality Gates",
@@ -149,7 +149,7 @@
     }
   ],
   "incident": {
-    "signature": "36484784340:none:LOCAL_VISUAL_REPAIR_REQUIRED",
+    "signature": "36485245017:none:LOCAL_VISUAL_REPAIR_REQUIRED",
     "severity": "warning",
     "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
     "failed_step": null,
@@ -161,9 +161,9 @@
     "recovery_replay_failed": false
   },
   "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
-    "last_step": "Telegram progress - checkpoint repair"
+    "status": "yellow",
+    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
+    "last_step": null
   },
   "recovery": {
     "status": "REPLAY_DISPATCHED",
