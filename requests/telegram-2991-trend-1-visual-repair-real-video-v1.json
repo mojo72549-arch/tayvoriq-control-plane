@@ -134,5 +134,22 @@
   "visual_provider_contract": "pexels_video_only_distinct_moving_clips_v2",
   "dispatch_claim_run_id": 36469916684,
   "dispatch_contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
-  "golden_path_run_id": 36469942238
+  "golden_path_run_id": 36469942238,
+  "recovery_generation": 1,
+  "codefix_recovery": {
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 36469942238,
+    "failure_signature": "d90eaeb517ce61f533d1",
+    "failure_state": "LOCAL_VISUAL_REPAIR_REQUIRED",
+    "failed_control_plane_sha": "1dd5498fe35b9a64c6679ae8067452e9543bf871",
+    "failed_implementation_sha": "0ae904941b6dc5e69dcba239681eb04487ff2a21",
+    "recovery_generation": 1,
+    "armed_at": "2026-09-28T20:58:42.190Z",
+    "same_generation_replay_required": true,
+    "exact_source_request_required": true,
+    "quality_gates_weakened": false,
+    "codefix_detection_reason": "tankrabatt-pexels-audit-contract-and-number-pronunciation-fix",
+    "desired_studio_candidate_sha": "3ffba1203b911c53c6056815887e01ef50bce71c"
+  }
 }
