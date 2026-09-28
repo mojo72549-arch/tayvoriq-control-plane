@@ -81,6 +81,9 @@ def normalize_observation(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("ANALYTICS_INVALID_OPEN_LOOP_STATUS")
 
     observed_at = clean(payload.get("observed_at"), 80) or datetime.now(timezone.utc).isoformat()
+    metric_scope = clean(payload.get("metric_scope"), 40).lower() or "unspecified"
+    if metric_scope not in {"video", "account", "unspecified"}:
+        raise ValueError("ANALYTICS_INVALID_METRIC_SCOPE")
     return {
         "schema": "tayvoriq-analytics-v5",
         "platform": platform,
@@ -88,6 +91,7 @@ def normalize_observation(payload: dict[str, Any]) -> dict[str, Any]:
         "request_id": clean(payload.get("request_id"), 240) or None,
         "published_at": clean(payload.get("published_at"), 80) or None,
         "observed_at": observed_at,
+        "metric_scope": metric_scope,
         "metrics": metrics,
         "available_metrics": available,
         "content_contract": contract,
@@ -135,8 +139,9 @@ def growth_review(out_dir: Path) -> dict[str, Any]:
         follows = _number_or_none(metrics.get("follow_subscriber_signal"))
         views = _number_or_none(metrics.get("views"))
         engaged = _number_or_none(metrics.get("engaged_views"))
+        video_attributed = record.get("metric_scope") == "video"
         def rate(denominator: int | float | None) -> float | None:
-            if follows is None or denominator is None or denominator <= 0:
+            if not video_attributed or follows is None or denominator is None or denominator <= 0:
                 return None
             return round(1000 * follows / denominator, 2)
         rows.append({
@@ -145,6 +150,7 @@ def growth_review(out_dir: Path) -> dict[str, Any]:
             "request_id": record.get("request_id"),
             "published_at": record.get("published_at"),
             "observed_at": record.get("observed_at"),
+            "metric_scope": record.get("metric_scope") or "unspecified",
             "topic": contract.get("topic"),
             "primary_hook": contract.get("primary_hook"),
             "follow_reason": contract.get("follow_reason"),
@@ -156,7 +162,7 @@ def growth_review(out_dir: Path) -> dict[str, Any]:
             "follow_subscriber_signal": follows,
             "follows_per_1000_views": rate(views),
             "follows_per_1000_engaged_views": rate(engaged),
-            "conversion_data_available": follows is not None and views is not None and views > 0,
+            "conversion_data_available": video_attributed and follows is not None and views is not None and views > 0,
         })
     return {
         "schema": "tayvoriq-growth-review-v1",
