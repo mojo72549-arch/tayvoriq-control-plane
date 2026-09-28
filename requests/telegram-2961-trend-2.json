@@ -116,6 +116,17 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-28T08:08:55.213Z",
+      "actor": "operator:verified-state-reconciliation",
+      "meta": {
+        "reason": "Restore request state history after historical codefix marker; approved source and publication unchanged.",
+        "previous_state": "AWAITING_CODEFIX",
+        "published_run_id": 36347604500,
+        "quality_gates_weakened": false
+      }
     }
   ],
   "contract_sha256": "127c7e3d5ef5d779a6ef7c8cb735c0d7506897778d260d222ebfc3bd7c3f7d71",
