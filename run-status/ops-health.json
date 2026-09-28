@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-28T15:54:56.506566Z",
+  "generated_at": "2026-09-28T16:43:19.067298Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -45,13 +45,13 @@
     "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36431801432",
     "created_at": "2026-09-28T13:52:58Z",
-    "updated_at": "2026-09-28T14:25:56Z",
-    "attempt": 1,
+    "updated_at": "2026-09-28T15:57:29Z",
+    "attempt": 2,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "failed_step": "Early recovery binding gate",
+    "failed_step_number": 25,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,7 +91,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "skipped",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "Assert publishable production output"
+      "detail": "Early recovery binding gate"
     },
     {
       "name": "Production Green",
@@ -149,11 +149,11 @@
     }
   ],
   "incident": {
-    "signature": "36431801432:40:PUBLISHABLE_CODEFIX_REQUIRED",
+    "signature": "36431801432:25:PUBLISHABLE_CODEFIX_REQUIRED",
     "severity": "critical",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "failed_step": "Early recovery binding gate",
+    "failed_step_number": 25,
     "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -181,9 +181,9 @@
   },
   "events": [
     {
-      "at": "2026-09-28T14:25:56Z",
+      "at": "2026-09-28T15:57:29Z",
       "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "detail": "Early recovery binding gate"
     },
     {
       "at": "2026-09-28T15:18:33.139002Z",
