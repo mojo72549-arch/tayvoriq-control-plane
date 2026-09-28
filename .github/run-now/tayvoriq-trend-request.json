@@ -1,366 +1,206 @@
 {
-  "date": "2026-09-27",
+  "date": "2026-09-28",
   "target_date": "2026-09-28",
-  "slot": "morning",
-  "selection_id": "20260928-morning-prepared-r1",
+  "slot": "evening",
+  "selection_id": "20260928-evening-agentv2",
   "selected_trend_id": null,
   "agent_orchestrator": "v2",
-  "mode": "manual_verified_editorial",
+  "mode": "manual_verified_fallback_after_provider_limits",
   "superseded": false,
-  "rejected_whole_selection": false,
   "duplicate_guard_passed": true,
   "telegram_only_user_path": true,
   "quality_gates_weakened": false,
   "production_started": false,
+  "recovery_origin_mode": "manual_verified_fallback_after_provider_limits",
+  "recovery_reason": "LIVE_RESEARCH_PROVIDERS_RATE_OR_PAYMENT_LIMITED",
+  "repair_of": "",
   "trends": [
     {
       "id": "1",
-      "category": "business_economy",
-      "trend_scope": "business_economy",
-      "title": "Milch, Joghurt und Quark könnten teurer werden: Was hinter dem Preisdruck steckt",
-      "content_angle": "Preisforderungen der Molkereien erklären, ohne neue Ladenpreise als beschlossen darzustellen.",
-      "score": 96,
-      "criteria": {
-        "aktualitaet": 96,
-        "viralitaet": 96,
-        "tayvoriq_passung": 96,
-        "quellenqualitaet": 95,
-        "visuell": 88
-      },
+      "title": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
+      "content_angle": "Der Bundestag senkt die Energiesteuer befristet. Warum die rechnerische Bruttoentlastung nicht automatisch den beobachteten Preisrückgang an jeder Tankstelle beschreibt.",
+      "score": 90,
+      "trend_selection_score": 90,
+      "trend_scope": "economy_consumer",
+      "category": "economy_consumer",
       "regional_relevance": "germany",
-      "viral_potential": 96,
-      "tayvoriq_fit": 96,
-      "novelty_score": 94,
-      "series_fit_score": 91,
-      "return_viewer_score": 91,
-      "follow_conversion_potential": 92,
-      "open_loop_potential": 88,
-      "proposed_series_id": "lebensmittelpreise-2026",
-      "proposed_series_name": "Was im Alltag teurer wird",
-      "next_episode_candidate": "Wann und ob Händler Milchprodukte teurer anbieten",
-      "next_episode_queue_status": "PLANNED",
-      "recommended_cta_type": "SERIES",
-      "primary_hook": "Milch, Joghurt, Quark: Wird dein Einkauf bald teurer?",
-      "viewer_question": "Sind die Preise bereits erhöht?",
-      "explanation_core": "Molkereien wollen höhere Preise durchsetzen; allgemeine neue Handelspreise stehen noch nicht fest.",
-      "surprise_or_reframe": "Neben Dürre und Nachfrage treibt der Proteinboom bestimmte Milchprodukte.",
-      "practical_relevance": "Für dich könnte der Wocheneinkauf teurer werden, falls Händler nachziehen.",
-      "follow_reason": "Wir prüfen, ob daraus konkrete höhere Regalpreise werden.",
-      "open_loop": "Noch offen ist, welche Preise Händler tatsächlich verlangen.",
+      "criteria": {
+        "aktualitaet": 93,
+        "viralitaet": 90,
+        "tayvoriq_passung": 91,
+        "quellenqualitaet": 96,
+        "visuell": 83
+      },
+      "viral_potential": 88,
+      "tayvoriq_fit": 91,
+      "novelty_score": 78,
+      "series_fit_score": 89,
+      "return_viewer_score": 92,
+      "follow_conversion_potential": 90,
+      "open_loop_potential": 91,
+      "proposed_series_id": "",
+      "proposed_series_name": "",
+      "next_episode_candidate": "Preischeck nach dem 1. Oktober: tatsächliche Benzin- und Dieselpreise gegen Vorwoche",
+      "recommended_cta_type": "EXPERTISE",
+      "primary_hook": "17 Cent Tankrabatt ab Oktober: Kommen die wirklich an der Zapfsäule an?",
+      "viewer_question": "Wie viel vom neuen Tankrabatt kommt bei Autofahrern tatsächlich an?",
+      "explanation_core": "Der Bundestag beschloss für Oktober bis Dezember eine Senkung der Energiesteuer um 14,04 Cent je Liter; inklusive Umsatzsteuer entspricht das rechnerisch rund 17 Cent brutto.",
+      "surprise_or_reframe": "Der Steuerbetrag ist fest, doch der beobachtete Zapfsäulenpreis hängt zusätzlich von Ölpreis, Wechselkurs und Großhandel ab.",
+      "practical_relevance": "Für Autofahrende zählen die tatsächlichen Preise nach dem Start, nicht allein die rechnerische Steuerentlastung.",
+      "follow_reason": "TAYVORIQ vergleicht nach dem Start die tatsächlichen Benzin- und Dieselpreise und erklärt, wie viel Entlastung ankommt.",
+      "open_loop": "Ob die rechnerischen 17 Cent im Preisvergleich sichtbar werden, lässt sich erst nach dem Start am 1. Oktober prüfen.",
       "open_loop_status": "SOFT",
-      "cta_type": "SERIES",
-      "cta_text": "Folge TAYVORIQ – wir verfolgen die nächsten Entscheidungen und erklären, was sich wirklich ändert.",
-      "trend_selection_score": 96,
+      "next_episode_queue_status": "",
+      "cta_type": "EXPERTISE",
+      "cta_text": "Folge TAYVORIQ: Wir prüfen ab dem 1. Oktober, was vom Tankrabatt tatsächlich an der Zapfsäule ankommt.",
+      "growth_v2": {
+        "growth_score": 90,
+        "priority_score": 92,
+        "binding_score": 90
+      },
       "sources": [
-        "https://www.tagesschau.de/wirtschaft/verbraucher-milch-preise-100.html",
-        "https://www.sueddeutsche.de/wirtschaft/milchprodukte-deutschland-preise-nachfrage-wetter-li.3554616"
+        "https://www.bundestag.de/dokumente/textarchiv/2026/kw39-de-versicherung-aufsicht-1216898",
+        "https://www.adac.de/news/aktueller-spritpreis/"
       ],
       "source_context": {
+        "editorial_story_contract_version": 2,
+        "story_first_script_body": "Der Bundestag hat den Tankrabatt für Oktober bis Dezember beschlossen: Die Energiesteuer sinkt um 14,04 Cent pro Liter. Mit der Umsatzsteuer sind das rechnerisch rund 17 Cent. Aber der Preis an der Zapfsäule hängt auch von Ölpreis, Wechselkurs und Großhandel ab. Entscheidend wird der Vergleich nach dem Start.",
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "why_now": "Neue Preisforderungen vom 27. September betreffen den Alltagseinkauf.",
-          "scope": "germany"
+          "scope": "germany",
+          "why_now": "Der Bundestag hat den Rabatt am 25. September beschlossen; Start ist für den 1. Oktober vorgesehen.",
+          "momentum_evidence": "Bundesweite Kostenfrage mit unmittelbarem Termin für einen überprüfbaren Folgebeitrag.",
+          "cross_platform_signal_count": 2,
+          "breakout_proof": "Bundestagsbeschluss und eigenständige ADAC-Preisanalyse; keine Reichweitenmessung behauptet."
         },
         "sources": [
           {
-            "publisher": "www.tagesschau.de",
-            "url": "https://www.tagesschau.de/wirtschaft/verbraucher-milch-preise-100.html",
-            "supports": "Aktuelle Kernmeldung und Einordnung."
+            "publisher": "Deutscher Bundestag",
+            "url": "https://www.bundestag.de/dokumente/textarchiv/2026/kw39-de-versicherung-aufsicht-1216898",
+            "supports": "Der Bundestag beschloss am 25. September eine Energiesteuersenkung um 14,04 Cent je Liter für Oktober bis Dezember 2026; rund 17 Cent brutto sind rechnerisch."
           },
           {
-            "publisher": "www.sueddeutsche.de",
-            "url": "https://www.sueddeutsche.de/wirtschaft/milchprodukte-deutschland-preise-nachfrage-wetter-li.3554616",
-            "supports": "Zusätzlicher unabhängiger Kontext oder Primärangaben."
+            "publisher": "ADAC",
+            "url": "https://www.adac.de/news/aktueller-spritpreis/",
+            "supports": "ADAC ordnet die knapp 17 Cent ein, fordert vollständige Weitergabe und erklärt weitere Preistreiber sowie den Vergleich tatsächlicher Zapfsäulenpreise."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "Molkereien fordern höhere Preise für Milch, Joghurt und Quark.",
-          "why_happening": "Weil Nachfrage steigt und Milch regional knapper wurde, wächst der Preisdruck.",
-          "who_is_affected": "Betroffen wären Verbraucher, Händler, Molkereien und Milchbauern in Deutschland.",
-          "personal_impact": "Für dich könnte der Wocheneinkauf teurer werden, falls Händler nachziehen.",
-          "action_now": "Prüfe konkrete Regalpreise; pauschale Erhöhungen sind bislang nicht beschlossen."
-        }
+          "what_happened": "Der Bundestag beschloss einen befristeten Tankrabatt ab dem 1. Oktober 2026.",
+          "why_happening": "Die Energiesteuer wird wegen hoher Kraftstoffpreise um 14,04 Cent pro Liter gesenkt.",
+          "who_is_affected": "Autofahrende und Unternehmen mit Benzin- oder Dieselverbrauch in Deutschland.",
+          "personal_impact": "Rechnerisch beträgt die Bruttoentlastung rund 17 Cent je Liter; der tatsächliche Tankstellenpreis kann anders verlaufen.",
+          "action_now": "Nach dem Start bundesweite Benzin- und Dieselpreise mit den Preisen vor dem 1. Oktober vergleichen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "Bundestagsbeschluss vom 25. September; Laufzeit 1. Oktober bis 31. Dezember 2026.",
+            "14,04 Cent Energiesteuer und rund 17 Cent inklusive Umsatzsteuer pro Liter.",
+            "Tatsächliche Zapfsäulenpreise werden auch von weiteren Faktoren beeinflusst."
+          ],
+          "must_not_claim": [
+            "Jede Tankstelle müsse exakt 17 Cent billiger werden.",
+            "Eine vollständige Weitergabe sei bereits gemessen.",
+            "Der zusätzlich diskutierte Spritpreisdeckel sei bereits beschlossen."
+          ],
+          "uncertainty_note": "Die Weitergabe kann erst anhand tatsächlicher Preise nach Beginn des Rabatts beurteilt werden."
+        },
+        "research_notes": "Story: fester Steuerbetrag gegen beweglichen Endpreis. Folgebeitrag ab Oktober anhand belastbarer ADAC-Preisdaten. HASHTAG_SEEDS: #Tankrabatt #Spritpreise #Benzin #Diesel #Energiesteuer #Verbraucher"
       }
     },
     {
       "id": "2",
-      "category": "world_society",
-      "trend_scope": "world_society",
-      "title": "Pflegereform im Koalitionsstreit: Was der geforderte Pflegedeckel bedeuten würde",
-      "content_angle": "Forderung nach Eigenanteilsdeckel und Ablehnung getrennt erklären; keine Entlastung als beschlossen darstellen.",
-      "score": 95,
-      "criteria": {
-        "aktualitaet": 96,
-        "viralitaet": 95,
-        "tayvoriq_passung": 96,
-        "quellenqualitaet": 95,
-        "visuell": 88
-      },
+      "title": "Gasspeicher nur 57 Prozent voll: Was bedeutet das für den Winter?",
+      "content_angle": "Niedriger Speicherstand gegen aktuell stabile Versorgung: erklären, welche Rolle Importe, Kälte und Preise spielen, ohne eine Gasmangellage zu behaupten.",
+      "score": 85,
+      "trend_selection_score": 85,
+      "trend_scope": "energy_consumer",
+      "category": "energy_consumer",
       "regional_relevance": "germany",
-      "viral_potential": 95,
-      "tayvoriq_fit": 96,
-      "novelty_score": 94,
-      "series_fit_score": 91,
-      "return_viewer_score": 91,
-      "follow_conversion_potential": 92,
-      "open_loop_potential": 88,
-      "proposed_series_id": "pflegereform-2026",
-      "proposed_series_name": "Pflege: Wer zahlt künftig?",
-      "next_episode_candidate": "Was die Koalitionsgespräche an der Pflegereform ändern",
-      "next_episode_queue_status": "PLANNED",
-      "recommended_cta_type": "SERIES",
-      "primary_hook": "Ein Deckel für Pflegekosten? Darüber streitet die Koalition.",
-      "viewer_question": "Ist ein Pflegedeckel bereits beschlossen?",
-      "explanation_core": "Die SPD fordert einen Deckel auf bestimmte Pflege-Eigenanteile; der Gesundheitsminister lehnt ihn ab.",
-      "surprise_or_reframe": "Die genannten 1.500 Euro betreffen nur einen Teil der gesamten Heimkosten.",
-      "practical_relevance": "Für Familien mit Pflegebedarf hängt eine Entlastung von weiteren Entscheidungen ab.",
-      "follow_reason": "Wir verfolgen die Koalitionsgespräche und die nächste Kabinettsentscheidung.",
-      "open_loop": "Ob die Koalition sich einigt, ist noch offen.",
-      "open_loop_status": "SOFT",
-      "cta_type": "SERIES",
-      "cta_text": "Folge TAYVORIQ – wir verfolgen die nächsten Entscheidungen und erklären, was sich wirklich ändert.",
-      "trend_selection_score": 95,
-      "sources": [
-        "https://www.tagesschau.de/inland/innenpolitik/pflegereform-streit-linnemann-100.html",
-        "https://www.zdfheute.de/politik/deutschland/pflegereform-bundesregierung-schwarz-rote-koalition-spd-union-zerreissprobe-100.html"
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "reach_gate": {
-          "why_now": "Koalitionsgespräche sind für Montag nach neuem Streit angekündigt.",
-          "scope": "germany"
-        },
-        "sources": [
-          {
-            "publisher": "www.tagesschau.de",
-            "url": "https://www.tagesschau.de/inland/innenpolitik/pflegereform-streit-linnemann-100.html",
-            "supports": "Aktuelle Kernmeldung und Einordnung."
-          },
-          {
-            "publisher": "www.zdfheute.de",
-            "url": "https://www.zdfheute.de/politik/deutschland/pflegereform-bundesregierung-schwarz-rote-koalition-spd-union-zerreissprobe-100.html",
-            "supports": "Zusätzlicher unabhängiger Kontext oder Primärangaben."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Die Koalition streitet über einen Pflegedeckel und die geplante Reform.",
-          "why_happening": "Weil die Finanzierung umkämpft ist, verlangt die SPD Änderungen am Entwurf.",
-          "who_is_affected": "Betroffen wären Pflegebedürftige, Angehörige, Pflegekassen und Beitragszahler.",
-          "personal_impact": "Für dich könnten Eigenanteile relevant sein, doch Entlastungen sind unbeschlossen.",
-          "action_now": "Beobachte die Gespräche; ein Pflegedeckel ist bisher nur Forderung."
-        }
-      }
-    },
-    {
-      "id": "3",
-      "category": "world_society",
-      "trend_scope": "world_society",
-      "title": "Rente nach 45 Versicherungsjahren: Welche Regel gilt und worüber gestritten wird",
-      "content_angle": "Aktuelle Altersgrenzen und geplante Reform auseinanderhalten; 45 Jahre allein reichen nicht für sofortigen Rentenbeginn.",
-      "score": 93,
       "criteria": {
-        "aktualitaet": 96,
-        "viralitaet": 93,
-        "tayvoriq_passung": 96,
-        "quellenqualitaet": 95,
-        "visuell": 88
-      },
-      "regional_relevance": "germany",
-      "viral_potential": 93,
-      "tayvoriq_fit": 96,
-      "novelty_score": 94,
-      "series_fit_score": 91,
-      "return_viewer_score": 91,
-      "follow_conversion_potential": 92,
-      "open_loop_potential": 88,
-      "proposed_series_id": "rentenreform-2026",
-      "proposed_series_name": "Rente: Was sich wirklich ändert",
-      "next_episode_candidate": "Welche Altersjahrgänge von einer Reform betroffen wären",
-      "next_episode_queue_status": "PLANNED",
-      "recommended_cta_type": "SERIES",
-      "primary_hook": "45 Jahre gearbeitet – und trotzdem nicht sofort in Rente?",
-      "viewer_question": "Was gilt bereits und was steht nur zur Debatte?",
-      "explanation_core": "45 Versicherungsjahre und eine jahrgangsabhängige Altersgrenze bestimmen derzeit den Anspruch; Änderungen sind politisch umstritten.",
-      "surprise_or_reframe": "45 Jahre allein lösen keinen sofortigen Rentenanspruch aus.",
-      "practical_relevance": "Für dich zählen anrechenbare Zeiten und dein Jahrgang.",
-      "follow_reason": "Wir erklären, welche Reformen für welche Jahrgänge beschlossen werden.",
-      "open_loop": "Reform und Übergangsregeln sind noch offen.",
-      "open_loop_status": "SOFT",
-      "cta_type": "SERIES",
-      "cta_text": "Folge TAYVORIQ – wir verfolgen die nächsten Entscheidungen und erklären, was sich wirklich ändert.",
-      "trend_selection_score": 93,
-      "sources": [
-        "https://www.tagesschau.de/inland/innenpolitik/rentensystem-deutschland-100.html",
-        "https://www.deutsche-rentenversicherung.de/DRV/DE/Rente/Allgemeine-Informationen/Rentenarten-und-Leistungen/Altersrente-fuer-langjaehrig-Versicherte/altersrente-fuer-langjaehrig-versicherte_node"
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "reach_gate": {
-          "why_now": "Die Debatte um 45 Versicherungsjahre erhielt am 27. September neue Einordnung.",
-          "scope": "germany"
-        },
-        "sources": [
-          {
-            "publisher": "www.tagesschau.de",
-            "url": "https://www.tagesschau.de/inland/innenpolitik/rentensystem-deutschland-100.html",
-            "supports": "Aktuelle Kernmeldung und Einordnung."
-          },
-          {
-            "publisher": "www.deutsche-rentenversicherung.de",
-            "url": "https://www.deutsche-rentenversicherung.de/DRV/DE/Rente/Allgemeine-Informationen/Rentenarten-und-Leistungen/Altersrente-fuer-langjaehrig-Versicherte/altersrente-fuer-langjaehrig-versicherte_node",
-            "supports": "Zusätzlicher unabhängiger Kontext oder Primärangaben."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Die abschlagsfreie Rente nach 45 Versicherungsjahren wird politisch diskutiert.",
-          "why_happening": "Weil die Finanzierung umstritten ist, stehen bestehende Vergünstigungen zur Debatte.",
-          "who_is_affected": "Betroffen sind Versicherte mit langen Erwerbsbiografien und jüngere Beitragszahler.",
-          "personal_impact": "Für dich zählen Versicherungszeiten und Jahrgang, nicht nur Arbeitsjahre.",
-          "action_now": "Prüfe deine Rentenauskunft; die Reform ist noch nicht beschlossen."
-        }
-      }
-    },
-    {
-      "id": "4",
-      "category": "world_society",
-      "trend_scope": "world_society",
-      "title": "Neue Regeln gegen Greenwashing: Was sich beim Einkauf jetzt ändert",
-      "content_angle": "Nicht die EU-Regel abstrakt erklären, sondern welche Werbeaussagen und Umweltversprechen Verbraucher in Deutschland künftig anders sehen werden.",
-      "score": 95,
-      "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 90,
-        "tayvoriq_passung": 92,
-        "quellenqualitaet": 100,
-        "visuell": 86
-      },
-      "regional_relevance": "germany",
-      "viral_potential": 90,
-      "tayvoriq_fit": 92,
-      "novelty_score": 95,
-      "series_fit_score": 88,
-      "return_viewer_score": 88,
-      "follow_conversion_potential": 90,
-      "open_loop_potential": 84,
-      "proposed_series_id": "verbraucher-aenderungen",
-      "proposed_series_name": "Was sich für Verbraucher ändert",
-      "next_episode_candidate": "Welche Begriffe und Labels Unternehmen jetzt nicht mehr einfach verwenden dürfen",
-      "next_episode_queue_status": "PLANNED",
-      "recommended_cta_type": "EXPERTISE",
-      "primary_hook": "Seit heute darf Umweltwerbung nicht mehr so locker klingen wie bisher – was ändert sich beim Einkauf?",
-      "viewer_question": "Welche Greenwashing-Aussagen sind jetzt stärker eingeschränkt?",
-      "explanation_core": "Neue Vorgaben gegen irreführende Umweltwerbung treten in Anwendung und verändern, wie Unternehmen Nachhaltigkeitsversprechen kommunizieren dürfen.",
-      "surprise_or_reframe": "Nicht jedes grüne Label verschwindet, aber pauschale Umweltversprechen brauchen künftig stärkere Grundlage.",
-      "practical_relevance": "Das betrifft Produktwerbung und Kaufentscheidungen von Verbrauchern in Deutschland.",
-      "follow_reason": "Konkrete Begriffe, Labels und Praxisfälle lassen sich in weiteren kurzen Erklärstücken nachziehen.",
-      "open_loop": "Welche bekannten Begriffe künftig besonders kritisch sind, lässt sich konkret an Beispielen zeigen.",
-      "open_loop_status": "SOFT",
-      "cta_type": "EXPERTISE",
-      "cta_text": "Folge TAYVORIQ – wir zeigen dir als Nächstes konkrete Umweltbegriffe und Labels, auf die du achten solltest.",
-      "trend_selection_score": 95,
-      "sources": [
-        "https://www.bundesregierung.de/breg-de/suche/gesetzliche-neuregelungen-september-2026-2450158",
-        "https://commission.europa.eu/topics/consumers/consumer-rights-and-complaints/sustainable-consumption_en"
-      ],
-      "source_context": {
-        "independent_news_count": 2,
-        "quality_gates_weakened": false,
-        "reach_gate": {
-          "why_now": "Die Regeln werden seit dem 27. September angewendet.",
-          "scope": "germany"
-        },
-        "sources": [
-          {
-            "publisher": "Bundesregierung",
-            "url": "https://www.bundesregierung.de/breg-de/suche/gesetzliche-neuregelungen-september-2026-2450158",
-            "supports": "Deutsche Einordnung der ab September geltenden gesetzlichen Änderungen."
-          },
-          {
-            "publisher": "Europäische Kommission",
-            "url": "https://commission.europa.eu/topics/consumers/consumer-rights-and-complaints/sustainable-consumption_en",
-            "supports": "EU-Rahmen für nachhaltigen Konsum und Schutz vor irreführenden Umweltangaben."
-          }
-        ],
-        "fallback_editorial_answers": {
-          "what_happened": "Seit dem 27. September gelten strengere Regeln gegen irreführende Umweltwerbung.",
-          "why_happening": "Weil pauschale grüne Versprechen täuschen können, verlangt die EU bessere Belege.",
-          "who_is_affected": "Betroffen sind werbende Unternehmen und Verbraucher beim Einkauf.",
-          "personal_impact": "Für dich können Verpackungen und Umweltlabels künftig genauer überprüfbar werden.",
-          "action_now": "Prüfe Belege für grüne Aussagen und beachte bestehende Warenbestände."
-        }
-      }
-    },
-    {
-      "id": "5",
-      "category": "sports",
-      "trend_scope": "sports",
-      "title": "München ist Deutschlands Olympia-Bewerber: Jetzt geht es um 2036, 2040 oder 2044",
-      "content_angle": "Erklären, was die nationale Auswahl wirklich bedeutet und welche Hürden zwischen München und einer tatsächlichen Olympia-Vergabe noch liegen.",
-      "score": 94,
-      "criteria": {
-        "aktualitaet": 100,
-        "viralitaet": 94,
+        "aktualitaet": 92,
+        "viralitaet": 87,
         "tayvoriq_passung": 90,
-        "quellenqualitaet": 97,
-        "visuell": 98
+        "quellenqualitaet": 94,
+        "visuell": 78
       },
-      "regional_relevance": "germany",
-      "viral_potential": 94,
+      "viral_potential": 86,
       "tayvoriq_fit": 90,
-      "novelty_score": 96,
-      "series_fit_score": 92,
-      "return_viewer_score": 91,
-      "follow_conversion_potential": 90,
-      "open_loop_potential": 93,
-      "proposed_series_id": "olympia-deutschland",
-      "proposed_series_name": "Deutschlands Olympia-Comeback",
-      "next_episode_candidate": "Wie der Weg von der deutschen Bewerbung zur tatsächlichen IOC-Vergabe weitergeht",
-      "next_episode_queue_status": "PLANNED",
-      "recommended_cta_type": "SERIES",
-      "primary_hook": "Deutschland will Olympia zurück – und jetzt steht fest, welche Stadt ins Rennen geht.",
-      "viewer_question": "Hat München Olympia jetzt schon sicher?",
-      "explanation_core": "München wurde als deutscher Bewerber ausgewählt; eine Vergabe durch das IOC ist damit noch nicht entschieden.",
-      "surprise_or_reframe": "Die nationale Entscheidung ist erst der Start eines längeren internationalen Vergabewegs.",
-      "practical_relevance": "Die Bewerbung betrifft Sport, Infrastruktur, Finanzierung und öffentliche Debatten in Deutschland.",
-      "follow_reason": "Der Bewerbungsprozess bietet mehrere klar definierte nächste Entscheidungen und Updates.",
-      "open_loop": "Noch offen sind Zieljahr, internationale Konkurrenz und die eigentliche IOC-Entscheidung.",
+      "novelty_score": 75,
+      "series_fit_score": 86,
+      "return_viewer_score": 88,
+      "follow_conversion_potential": 85,
+      "open_loop_potential": 84,
+      "proposed_series_id": "",
+      "proposed_series_name": "",
+      "next_episode_candidate": "Füllstand und Lageeinschätzung vor Beginn der Heizperiode prüfen",
+      "recommended_cta_type": "EXPERTISE",
+      "primary_hook": "Gasspeicher bei 57 Prozent: Droht Deutschland im Winter Gasmangel?",
+      "viewer_question": "Sind die niedrigen Gasspeicher ein akutes Versorgungsproblem?",
+      "explanation_core": "Laut NDR waren die Speicher zum Datenstand 26. September zu 57 Prozent gefüllt, 27 Prozentpunkte unter dem Mittel 2017 bis 2021. Die Bundesnetzagentur bewertet die aktuelle Versorgung als stabil und das Risiko als gering.",
+      "surprise_or_reframe": "Speicher sind nur ein Teil der Versorgung; laufende Importe und ein besonders kalter Winter verändern die Lage, Preise können unabhängig davon steigen.",
+      "practical_relevance": "Haushalte sollten Versorgungslage und Preisrisiko getrennt betrachten; konkrete Vertragsbedingungen bestimmen, wann Kosten ankommen.",
+      "follow_reason": "TAYVORIQ verfolgt Speicherstände und offizielle Lagebewertungen im Winter und erklärt, wann daraus ein tatsächliches Risiko wird.",
+      "open_loop": "Vor der Heizperiode bleibt offen, wie sich Speicherstand, Importe und Verbrauch bei Kälte entwickeln.",
       "open_loop_status": "SOFT",
-      "cta_type": "SERIES",
-      "cta_text": "Folge TAYVORIQ – wir erklären dir den nächsten Schritt auf dem Weg zu einer möglichen Olympia-Vergabe.",
-      "trend_selection_score": 94,
+      "next_episode_queue_status": "",
+      "cta_type": "EXPERTISE",
+      "cta_text": "Folge TAYVORIQ: Wir prüfen die Speicherstände weiter und erklären, ob sich das Risiko für den Winter verändert.",
+      "growth_v2": {
+        "growth_score": 85,
+        "priority_score": 86,
+        "binding_score": 86
+      },
       "sources": [
-        "https://www.tagesschau.de/eilmeldung/eilmeldung-muenchen-olympia-100.html",
-        "https://www.sportschau.de/olympia/deutschland-geht-mit-muenchen-ins-olympia-rennen%2Colympia-bewerbung-entscheidung-100.html"
+        "https://www.ndr.de/nachrichten/info/Gasspeicher-in-Deutschland-So-steht-es-um-die-Fuellstaende,gasspeicher120.html",
+        "https://www.bundesnetzagentur.de/DE/Gasversorgung/aktuelle_gasversorgung/start.html"
       ],
       "source_context": {
+        "editorial_story_contract_version": 2,
+        "story_first_script_body": "Deutschlands Gasspeicher waren am 26. September zu 57 Prozent gefüllt, deutlich weniger als im langjährigen Mittel. Das ist ein Warnsignal für die Wintervorsorge, aber noch keine akute Mangellage: Die Bundesnetzagentur nennt die Versorgung stabil. Importe können fehlende Mengen ausgleichen. Bei extremer Kälte und höheren Weltmarktpreisen bleibt die Entwicklung wichtig.",
         "independent_news_count": 2,
         "quality_gates_weakened": false,
         "reach_gate": {
-          "why_now": "München wurde am 26. September als deutscher Olympia-Bewerber ausgewählt.",
-          "scope": "germany"
+          "scope": "germany",
+          "why_now": "NDR-Lageübersicht vom 28. September mit Datenstand 26. September unmittelbar vor der Heizperiode.",
+          "momentum_evidence": "Bundesweite Heizkosten- und Versorgungssorge bei deutlich unterdurchschnittlichem Speicherstand.",
+          "cross_platform_signal_count": 2,
+          "breakout_proof": "Eigenständige NDR-Dateneinordnung und offizielle Bundesnetzagentur-Lagebewertung; keine Social-Reichweite behauptet."
         },
         "sources": [
           {
-            "publisher": "Tagesschau",
-            "url": "https://www.tagesschau.de/eilmeldung/eilmeldung-muenchen-olympia-100.html",
-            "supports": "München ist deutscher Bewerber für künftige Olympische Sommerspiele."
+            "publisher": "NDR Info",
+            "url": "https://www.ndr.de/nachrichten/info/Gasspeicher-in-Deutschland-So-steht-es-um-die-Fuellstaende,gasspeicher120.html",
+            "supports": "Stand 28. September: 57 Prozent Füllstand mit Datenstand 26. September, 27 Prozentpunkte unter dem Mittel 2017–2021; Importmöglichkeit und Kälterisiko werden getrennt erklärt."
           },
           {
-            "publisher": "Sportschau",
-            "url": "https://www.sportschau.de/olympia/deutschland-geht-mit-muenchen-ins-olympia-rennen%2Colympia-bewerbung-entscheidung-100.html",
-            "supports": "Einordnung der deutschen Bewerbungsentscheidung und des weiteren Verfahrens."
+            "publisher": "Bundesnetzagentur",
+            "url": "https://www.bundesnetzagentur.de/DE/Gasversorgung/aktuelle_gasversorgung/start.html",
+            "supports": "Die Behörde bewertet die Gasversorgung aktuell als stabil und Gefahr einer angespannten Versorgung als gering; Importmöglichkeiten vorhanden, Preiseffekte abhängig von Markt und Verträgen."
           }
         ],
         "fallback_editorial_answers": {
-          "what_happened": "München wurde als deutsche Bewerberstadt für künftige Sommerspiele bestimmt.",
-          "why_happening": "Weil Deutschland erneut Olympia ausrichten will, wählte der Sportbund seinen Kandidaten.",
-          "who_is_affected": "Betroffen sind mögliche Austragungsorte, Sportverbände, Steuerzahler und Fans.",
-          "personal_impact": "Für dich könnte die Bewerbung Infrastruktur und öffentliche Ausgaben beeinflussen.",
-          "action_now": "Beobachte das Vergabeverfahren; ein IOC-Zuschlag ist noch nicht erfolgt."
-        }
+          "what_happened": "Die Gasspeicher waren zum 26. September zu 57 Prozent gefüllt.",
+          "why_happening": "Die Befüllung verlief bei höheren Gaspreisen langsamer; Speicherstände liegen deutlich unter dem langjährigen Vergleich.",
+          "who_is_affected": "Gasverbrauchende Haushalte, Versorger und Betriebe in Deutschland.",
+          "personal_impact": "Eine aktuelle Gasmangellage ist nicht festgestellt; Preisentwicklung und Winterwetter können dennoch relevant werden.",
+          "action_now": "Offizielle Lageberichte und Speicherstände vor und während der Heizperiode weiter prüfen."
+        },
+        "factual_guardrails": {
+          "must_include": [
+            "57 Prozent zum Datenstand 26. September 2026 laut NDR.",
+            "27 Prozentpunkte unter dem Mittel 2017 bis 2021.",
+            "Bundesnetzagentur: Versorgung aktuell stabil und Risiko einer angespannten Lage gering."
+          ],
+          "must_not_claim": [
+            "Deutschland habe jetzt Gasmangel.",
+            "Die Heizung falle im Winter sicher aus.",
+            "Jeder private Gaspreis steige unmittelbar wegen des Speicherstands."
+          ],
+          "uncertainty_note": "Extremes Winterwetter, Importlage und Marktpreise können die Einschätzung später ändern."
+        },
+        "research_notes": "Story: niedriger Füllstand ist relevant, doch aktuelle Versorgung ist stabil. Unterschied zwischen Mengenrisiko und Preisrisiko sichtbar machen. HASHTAG_SEEDS: #Gasspeicher #Gasversorgung #Heizkosten #Energiepreise #Winter #Deutschland"
       }
     }
   ]

@@ -1,0 +1,34 @@
+{
+  "selection_id": "20260928-evening-agentv2",
+  "slot": "evening",
+  "target_date": "2026-09-28",
+  "provider": "verified_repository_fallback",
+  "model": "none",
+  "provider_failure_recovered": true,
+  "fallback_type": "preverified_source_bound",
+  "grounding_chunks": [
+    {
+      "title": "Deutscher Bundestag",
+      "uri": "https://www.bundestag.de/dokumente/textarchiv/2026/kw39-de-versicherung-aufsicht-1216898"
+    },
+    {
+      "title": "ADAC",
+      "uri": "https://www.adac.de/news/aktueller-spritpreis/"
+    },
+    {
+      "title": "NDR Info",
+      "uri": "https://www.ndr.de/nachrichten/info/Gasspeicher-in-Deutschland-So-steht-es-um-die-Fuellstaende,gasspeicher120.html"
+    },
+    {
+      "title": "Bundesnetzagentur",
+      "uri": "https://www.bundesnetzagentur.de/DE/Gasversorgung/aktuelle_gasversorgung/start.html"
+    }
+  ],
+  "candidate_count": 2,
+  "valid_count": 2,
+  "selected_count": 2,
+  "quality_gates_weakened": false,
+  "weak_fill_allowed": false,
+  "production_started": false,
+  "explicit_fresh_trend_ranking": true
+}
