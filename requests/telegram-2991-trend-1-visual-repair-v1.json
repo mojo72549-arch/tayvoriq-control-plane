@@ -200,6 +200,23 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-28T17:49:18.062422Z",
+      "actor": "tayvoriq-deterministic-codefix-continuity",
+      "meta": {
+        "retry_of_run_id": 36454889739,
+        "golden_path_run_id": 36460829682,
+        "recovery_generation": 0,
+        "failure_signature": "d68ac00bac2757f0e555",
+        "reason": "same-generation-production-green-codefix-replay",
+        "codefix_detection_reason": "production-green-implementation-changed",
+        "replay_control_plane_sha": "39cb95ef017b2d2f6ae39271925781e5492838c6",
+        "replay_implementation_sha": "36f0c44fe3a1749582862e20b4154df5be530b2b",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "f567a9119979991b6e4b57497c4ab7e7479a41f1454e25b8726e58abbd105ba1",
@@ -213,15 +230,15 @@
   "repair_authorized_at": "2026-09-28T12:49:22.760207Z",
   "dispatch_claim_run_id": 36424521566,
   "dispatch_contract_sha256": "f567a9119979991b6e4b57497c4ab7e7479a41f1454e25b8726e58abbd105ba1",
-  "golden_path_run_id": 36454889739,
+  "golden_path_run_id": 36460829682,
   "technical_retry_of_run_id": 36424545840,
   "technical_retry_reason": "first visual repair request incorrectly marked as repeat of its own failed run; reviewed predecessor remains repair_of_request_id",
   "codefix_recovery": {
-    "status": "ARMED",
-    "request_substate": "AWAITING_CODEFIX",
+    "status": "REPLAY_DISPATCHED",
+    "request_substate": "DISPATCHED",
     "failed_run_id": 36454889739,
     "failure_signature": "d68ac00bac2757f0e555",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failure_state": "",
     "failed_control_plane_sha": "adab9fa80aa61715d57f983c2c94495a9daaa08e",
     "failed_implementation_sha": "8d6b34b93f99f01d1129f61721982db7c0549f91",
     "recovery_generation": 0,
@@ -233,15 +250,22 @@
     "active_pointer_verified": true,
     "rearmed_after_failed_replay": true,
     "previous_codefix_failed_run_id": 36431801432,
-    "previous_codefix_failure_signature": "d68ac00bac2757f0e555"
+    "previous_codefix_failure_signature": "d68ac00bac2757f0e555",
+    "last_failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "replay_run_id": 36460829682,
+    "replayed_at": "2026-09-28T17:49:18.062422Z",
+    "replay_control_plane_sha": "39cb95ef017b2d2f6ae39271925781e5492838c6",
+    "replay_implementation_sha": "36f0c44fe3a1749582862e20b4154df5be530b2b",
+    "codefix_detection_reason": "production-green-implementation-changed"
   },
   "previous_golden_path_run_ids": [
     36424545840,
-    36431801432
+    36431801432,
+    36454889739
   ],
-  "retry_of_run_id": 36431801432,
+  "retry_of_run_id": 36454889739,
   "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
   "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
   "recovery_failure_signature": "d68ac00bac2757f0e555",
-  "recovery_dispatched_at": "2026-09-28T16:58:55.450104Z"
+  "recovery_dispatched_at": "2026-09-28T17:49:18.062422Z"
 }
