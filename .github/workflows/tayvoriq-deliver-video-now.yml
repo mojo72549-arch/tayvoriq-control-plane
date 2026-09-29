@@ -545,10 +545,17 @@ jobs:
               )
               raise SystemExit(2)
 
-          if str(meta.get('base_sha') or '')!=expected_impl:
-              raise SystemExit(
-                  f"AUTOCODEFIX_OVERLAY_BASE_MISMATCH:{meta.get('base_sha')}:{expected_impl}"
+          meta_base=str(meta.get('base_sha') or '').strip()
+          if meta_base!=expected_impl:
+              # The current Production Green is independently full-preflight
+              # verified. A patch created against an older implementation must
+              # never be force-applied to a newer Green. Treat it as superseded
+              # and replay the exact request on the verified Green instead.
+              print(
+                  f"AUTOCODEFIX_OVERLAY_SUPERSEDED_BY_PRODUCTION_GREEN:"
+                  f"{meta_base}:{expected_impl}"
               )
+              raise SystemExit(2)
           if int(codefix.get('failed_run_id') or 0)!=int(meta.get('failed_run_id') or 0):
               raise SystemExit('AUTOCODEFIX_OVERLAY_FAILED_RUN_MISMATCH')
           if str(codefix.get('failure_signature') or '')!=str(meta.get('failure_signature') or ''):
