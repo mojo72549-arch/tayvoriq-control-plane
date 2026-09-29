@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-29T09:12:23.238171Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-29T09:19:38.536096Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-    "golden_path_run_id": 36533606421,
-    "pointer_updated_at": "2026-09-29T06:55:02.979135Z"
+    "golden_path_run_id": 36547666383,
+    "pointer_updated_at": "2026-09-29T09:12:40.487593Z"
   },
   "request": {
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
@@ -40,42 +40,42 @@
     "path": "requests/telegram-2991-trend-1-visual-repair-real-video-v1.json"
   },
   "run": {
-    "id": 36533606421,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36533606421",
-    "created_at": "2026-09-29T06:54:56Z",
-    "updated_at": "2026-09-29T09:02:13Z",
-    "attempt": 2,
-    "progress": 30,
-    "current_step": "Repair only failed local checkpoints",
-    "last_successful_step": "Telegram progress - checkpoint repair",
+    "id": 36547666383,
+    "status": "completed",
+    "conclusion": "cancelled",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36547666383",
+    "created_at": "2026-09-29T09:12:32Z",
+    "updated_at": "2026-09-29T09:16:43Z",
+    "attempt": 1,
+    "progress": 0,
+    "current_step": null,
+    "last_successful_step": null,
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 3,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 7,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
-        "status": "success",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dependencies",
@@ -85,47 +85,47 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
-        "step_number": 17,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
-        "step_number": 33,
-        "step_name": "Produce approved master or reuse checkpoint"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": 40,
-        "step_name": "Assert publishable production output"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": 42,
-        "step_name": "Validate publication quality initial"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": 46,
-        "step_name": "Publish review page"
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": 47,
-        "step_name": "Send Telegram review"
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Repair only failed local checkpoints"
+      "status": "red",
+      "detail": "cancelled"
     },
     {
       "name": "Production Green",
@@ -139,8 +139,8 @@
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
+      "status": "yellow",
+      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
     },
     {
       "name": "Quality Gates",
@@ -149,9 +149,9 @@
     }
   ],
   "incident": {
-    "signature": "36533606421:none:LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "severity": "warning",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "signature": "36547666383:none:CONTROL_PLANE_BINDING_FAILURE",
+    "severity": "critical",
+    "failure_state": "CONTROL_PLANE_BINDING_FAILURE",
     "failed_step": null,
     "failed_step_number": null,
     "self_heal_status": "ARMED",
@@ -161,15 +161,15 @@
     "recovery_replay_failed": false
   },
   "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
-    "last_step": "Telegram progress - checkpoint repair"
+    "status": "yellow",
+    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
+    "last_step": null
   },
   "recovery": {
     "status": "ARMED",
     "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_run_id": 36533606421,
+    "failure_state": "CONTROL_PLANE_BINDING_FAILURE",
+    "failed_run_id": 36547666383,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
@@ -180,6 +180,16 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-29T09:17:40Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "CONTROL_PLANE_BINDING_FAILURE"
+    },
+    {
+      "at": "2026-09-29T09:12:40.487593Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
     {
       "at": "2026-09-29T09:10:39.452994Z",
       "title": "AWAITING_CODEFIX",
@@ -199,16 +209,6 @@
       "at": "2026-09-29T05:18:42Z",
       "title": "DISPATCHED",
       "detail": "same-generation-verified-production-green-decimal-recovery"
-    },
-    {
-      "at": "2026-09-29T05:10:06.369019Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-28T21:39:58.863367Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     }
   ]
 }
