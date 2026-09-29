@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import worker from '../infra/telegram-approval-worker-v3.js';
@@ -182,4 +183,22 @@ test('an unexpired manifest activates both recovery selections without replacing
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+
+test('review approval verifies committed package with authenticated retry and no callback chat spam', () => {
+  const source = readFileSync(new URL('../infra/telegram-approval-worker-v2.js', import.meta.url), 'utf8');
+  const verifier = source.split('async function verifyCommittedReviewPackage', 2)[1]
+    .split('async function upsertApprovalRecord', 1)[0];
+  assert.match(source, /verifyCommittedReviewPackage\(env, runId\)/);
+  assert.match(verifier, /Authorization: `Bearer \$\{env\.GITHUB_TOKEN\}`/);
+  assert.match(verifier, /cache: 'no-store'/);
+  assert.match(verifier, /attempt <= 3/);
+  assert.match(verifier, /transient: true/);
+
+  const approval = source.split('const packageCheck = await verifyCommittedReviewPackage\(env, runId\);', 2)[1]
+    .split('const approval = await upsertApprovalRecord', 1)[0];
+  assert.match(approval, /if \(callback\?\.id\)/);
+  assert.match(approval, /await answerCallback\(env, callback\.id, callbackText, true\)/);
+  assert.match(approval, /else \{[\s\S]*await requireTelegramMessage/);
 });

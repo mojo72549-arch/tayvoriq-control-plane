@@ -336,12 +336,30 @@ export default {
     const tiktokVideoUrl = `${base}/short_tiktok.mp4`;
     const reviewUrl = `${base}/`;
 
-    const packageCheck = await verifyCommittedReviewPackage(runId);
+    const packageCheck = await verifyCommittedReviewPackage(env, runId);
     if (!packageCheck.ok) {
-      if (callback?.id) await answerCallback(env, callback.id, 'Review-Paket ist im Quell-Repository noch nicht vollständig.', true);
-      const missing = packageCheck.missing.length ? packageCheck.missing.join(', ') : 'Verzeichnis nicht erreichbar';
-      await requireTelegramMessage(await telegram(env, chatId, `❌ Review ${runId} ist noch nicht vollständig committed. Fehlend: ${missing}. Keine Freigabe gespeichert.`));
-      return new Response('platform package unavailable', { status: 409 });
+      const transient = packageCheck.transient === true;
+      const missing = packageCheck.missing.length ? packageCheck.missing.join(', ') : '';
+      const callbackText = transient
+        ? 'Review-Paket konnte gerade nicht verifiziert werden. Bitte erneut versuchen.'
+        : (missing ? `Review-Paket noch nicht vollständig: ${missing}` : 'Review-Paket noch nicht vollständig.');
+      if (callback?.id) {
+        // Button callbacks must never flood the chat with the same transient
+        // repository error. Telegram's callback alert is the single response.
+        await answerCallback(env, callback.id, callbackText, true);
+      } else {
+        const detail = transient ? `GitHub-Prüfung vorübergehend nicht verfügbar (HTTP ${packageCheck.status || 0})`
+          : `Fehlend: ${missing || 'Review-Paket'}`;
+        await requireTelegramMessage(await telegram(
+          env,
+          chatId,
+          `❌ Review ${runId} kann noch nicht freigegeben werden. ${detail}. Keine Freigabe gespeichert.`,
+        ));
+      }
+      return new Response(
+        transient ? 'review package verification temporarily unavailable' : 'platform package unavailable',
+        { status: transient ? 503 : 409 },
+      );
     }
 
     const approval = await upsertApprovalRecord(env, {
@@ -517,29 +535,63 @@ async function loadTrendRequest(env, selectionId = '') {
   throw new Error(`Trend request HTTP ${lastStatus} for selection ${safeSelection || 'current'}`);
 }
 
-async function verifyCommittedReviewPackage(runId) {
+async function verifyCommittedReviewPackage(env, runId) {
   const safeRunId = String(runId || '').trim();
   if (!/^\d+$/.test(safeRunId)) {
-    return { ok: false, missing: ['ungueltige Review-ID'], status: 400 };
+    return { ok: false, missing: ['ungueltige Review-ID'], status: 400, transient: false };
   }
 
   const required = ['index.html', 'job.json', 'preapproval_ai_audit.json', 'short_youtube.mp4', 'short_tiktok.mp4'];
   const url = `https://api.github.com/repos/mojo72549-arch/mind-reset-daily/contents/tayvoriq/runs/${safeRunId}?ref=main`;
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'tayvoriq-telegram-approval',
-    },
-  });
-  if (!response.ok) {
-    return { ok: false, missing: required, status: response.status };
+  const headers = {
+    Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'tayvoriq-telegram-approval',
+    'Cache-Control': 'no-cache',
+  };
+
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(url, { headers, cache: 'no-store' });
+    } catch {
+      lastStatus = 0;
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, attempt * 250));
+        continue;
+      }
+      return { ok: false, missing: [], status: 0, transient: true };
+    }
+
+    lastStatus = response.status;
+    if (response.ok) {
+      const items = await response.json();
+      if (!Array.isArray(items)) {
+        return { ok: false, missing: [], status: response.status, transient: true };
+      }
+      const names = new Set(items.map(item => String(item?.name || '')));
+      const missing = required.filter(name => !names.has(name));
+      return { ok: missing.length === 0, missing, status: response.status, transient: false };
+    }
+
+    const retryable = [403, 404, 429].includes(response.status) || response.status >= 500;
+    if (!retryable) {
+      return { ok: false, missing: [], status: response.status, transient: true };
+    }
+    if (attempt < 3) {
+      await new Promise(resolve => setTimeout(resolve, attempt * 250));
+    }
   }
 
-  const items = await response.json();
-  const names = new Set(Array.isArray(items) ? items.map(item => String(item?.name || '')) : []);
-  const missing = required.filter(name => !names.has(name));
-  return { ok: missing.length === 0, missing, status: response.status };
+  // A persistent 404 means the review commit is genuinely not visible on main.
+  // Rate limits and 5xx failures are repository availability problems, not
+  // evidence that every review artifact is missing.
+  if (lastStatus === 404) {
+    return { ok: false, missing: required, status: lastStatus, transient: false };
+  }
+  return { ok: false, missing: [], status: lastStatus, transient: true };
 }
 
 async function upsertApprovalRecord(env, { runId, youtubeVideoUrl, tiktokVideoUrl, reviewUrl, telegramMessageId }) {
@@ -704,8 +756,12 @@ async function requireTelegramMessage(response) {
   return data.result.message_id;
 }
 
-async function answerCallback(env, callbackQueryId, text) {
-  return telegramMethod(env, 'answerCallbackQuery', { callback_query_id: callbackQueryId, text, show_alert: false });
+async function answerCallback(env, callbackQueryId, text, alert = false) {
+  return telegramMethod(env, 'answerCallbackQuery', {
+    callback_query_id: callbackQueryId,
+    text,
+    show_alert: Boolean(alert),
+  });
 }
 
 async function clearKeyboard(env, chatId, messageId) {
