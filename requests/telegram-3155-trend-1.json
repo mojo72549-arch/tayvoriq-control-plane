@@ -241,12 +241,26 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-29T13:40:52.042623Z",
+      "actor": "tayvoriq-autonomous-codefix-builder",
+      "meta": {
+        "retry_of_run_id": 36576759257,
+        "golden_path_run_id": 36576869975,
+        "reason": "verified-request-bound-autocodefix-overlay-replay",
+        "replay_implementation_sha": "83c86323ad90a4add40ee04c57b76a1e7fc7b3b8",
+        "verified_overlay_patch_sha256": "f71a7bcf18e48be7dbbac241c844df1d13f62c7313e9dadcfc5e2cad4e0e2196",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
   "dispatch_claim_run_id": 36565744124,
   "dispatch_contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
-  "golden_path_run_id": 36576759257,
+  "golden_path_run_id": 36576869975,
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
@@ -266,11 +280,11 @@
     "previous_codefix_failed_run_id": 36567882950,
     "previous_codefix_failure_signature": "3dcee822290522d5d349",
     "last_failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "replay_run_id": 36576759257,
-    "replayed_at": "2026-09-29T13:40:00.376968Z",
+    "replay_run_id": 36576869975,
+    "replayed_at": "2026-09-29T13:40:52.042623Z",
     "replay_control_plane_sha": "41ca73c0c2ae6346b9d15d7dd4155be7019dea44",
     "replay_implementation_sha": "83c86323ad90a4add40ee04c57b76a1e7fc7b3b8",
-    "codefix_detection_reason": "relevant-control-code-changed-same-production-green",
+    "codefix_detection_reason": "verified-request-bound-overlay",
     "verified_overlay_patch_sha256": "f71a7bcf18e48be7dbbac241c844df1d13f62c7313e9dadcfc5e2cad4e0e2196",
     "verified_overlay_base_sha": "83c86323ad90a4add40ee04c57b76a1e7fc7b3b8",
     "verified_overlay_at": "2026-09-29T13:40:37.052589Z"
@@ -278,12 +292,13 @@
   "previous_golden_path_run_ids": [
     36566251540,
     36567882950,
-    36576474913
+    36576474913,
+    36576759257
   ],
   "recovery_generation": 0,
-  "retry_of_run_id": 36576474913,
-  "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
-  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "retry_of_run_id": 36576759257,
+  "replacement_reason": "VERIFIED_AUTOCODEFIX_OVERLAY_REPLAY",
+  "recovery_owner": "tayvoriq-autonomous-codefix-builder",
   "recovery_failure_signature": "3dcee822290522d5d349",
-  "recovery_dispatched_at": "2026-09-29T13:40:00.376968Z"
+  "recovery_dispatched_at": "2026-09-29T13:40:52.042623Z"
 }
