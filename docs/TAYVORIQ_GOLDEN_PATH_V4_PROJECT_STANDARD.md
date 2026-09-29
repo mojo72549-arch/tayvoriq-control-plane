@@ -505,3 +505,54 @@ Canonical State Event Stream
 ## 12. Änderungsregel
 
 Dieser Standard darf nicht stillschweigend durch Hotfixes umgangen werden. Änderungen am Zielbild müssen bewusst dokumentiert werden und dürfen insbesondere keine Qualitäts-, Request-Binding-, Recovery- oder Slot-Serialisierungsinvarianten schwächen.
+
+
+---
+
+## 13. RETENTION STORY V3 – verbindlicher Inhaltsstandard
+
+Ab sofort reicht es nicht, einen Trend korrekt zusammenzufassen. Jeder freigegebene Short muss einen eigenständigen Erkenntnisgewinn liefern, der über die Überschrift hinausgeht.
+
+### 13.1 Pflicht-Dramaturgie
+
+```text
+KONFLIKT / KONSEQUENZ
+→ KONKRETER FAKT
+→ ERKLÄRUNG DES MECHANISMUS
+→ AHA / REFRAME
+→ BEDEUTUNG FÜR ZUSCHAUER
+→ KLARE EINSCHRÄNKUNG
+→ SPEZIFISCHER FOLLOW-GRUND
+```
+
+### 13.2 Inhaltliche Mindestqualität
+
+- Der Hook muss innerhalb der ersten 1–3 Sekunden eine erkennbare Spannung, Konsequenz, bekannte Marke/Person/Ort oder starke Zahl liefern.
+- `explanation_core` erklärt **warum** etwas passiert; eine Wiederholung der Meldung genügt nicht.
+- `surprise_or_reframe` muss mindestens einen neuen Vergleich, Mechanismus, Widerspruch, Rechenschritt oder eine nicht offensichtliche Konsequenz liefern.
+- Enthalten die Quellen geeignete Zahlen, soll eine transparente, mathematisch korrekte Zuschauer-Rechnung genutzt werden, sofern sie den Sachverhalt wirklich verständlicher macht.
+- Abgeleitete Werte werden ausdrücklich als Rechnung/Schätzung gekennzeichnet und niemals als direkt zitierte Quellenzahl ausgegeben.
+- `practical_relevance` benennt eine konkrete Folge für Arbeit, Einkommen, Haushalt, Region, Unternehmen oder eine reale Alltagsentscheidung.
+- Die im Hook versprochene Hauptantwort wird im selben Short geliefert.
+- Open Loops dürfen nur auf die nächste reale Entwicklung verweisen und niemals die Hauptantwort künstlich zurückhalten.
+- Der CTA formuliert ein konkretes TAYVORIQ-Kanalversprechen zum Themenfeld. Ein generisches „Folge uns“ reicht nicht.
+
+### 13.3 Visual-Bindung
+
+Jeder gesprochene Beat benötigt ein inhaltlich passendes Motiv. Zahlen- oder Vergleichspassagen sollen bevorzugt mit lokalen Motion-Grafiken/Infografiken visualisiert werden, wenn Stockmaterial keinen echten Mehrwert liefert.
+
+Standardmäßig unzulässig:
+
+- generischer Mann vor Börsen- oder Kurscharts ohne Sachbezug
+- beliebige Luxusauto-Aufnahmen als Ersatz für Arbeits-/Standortthemen
+- beschädigte oder gestapelte Autos als Symbol für Stellenabbau oder Werksschließung
+- erfundene Protest- oder Krisenaufnahmen
+- wiederholte identische Szenen ohne erzählerische Funktion
+
+### 13.4 Qualitätsfrage vor Produktion
+
+Vor `REQUEST_LOCKED` muss die Redaktion in einem Satz beantworten können:
+
+> **Was versteht der Zuschauer nach diesem Short, das er aus der Überschrift allein noch nicht wusste?**
+
+Ist darauf keine konkrete Antwort möglich, darf der Inhalt nicht in die Produktion.
