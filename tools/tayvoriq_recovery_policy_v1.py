@@ -369,19 +369,6 @@ def classify_failure(
             "The bounded local narrator retries were exhausted; preserve the exact request and continue only after a verified relevant code revision."
         )
 
-    # A failed codefix replay is already the bounded second execution of the exact
-    # approved request. If that replay reaches the terminal publishability handoff,
-    # generic timeout/circuit words elsewhere in the Actions log must never turn it
-    # into another blind same-run retry. Keep the same generation armed for a new
-    # verified code revision instead.
-    if codefix_replay and re.search(r"\bpublishable_output_retry_required\b", lowered, flags=re.IGNORECASE):
-        state = "PUBLISHABLE_CODEFIX_REQUIRED"
-        return RecoveryDecision(
-            "deterministic", state, False, "verified-codefix-replay", generation, generation,
-            maximum, _stable_signature(state, text),
-            "The exact request already failed after a verified codefix replay. Preserve it in the same recovery generation and require another verified relevant code revision; do not blind-rerun transient log noise.",
-        )
-
     if _matches(lowered, LOCAL_REPAIR_CODEFIX_PATTERNS):
         state = "LOCAL_REPAIR_CODEFIX_REQUIRED"
         return RecoveryDecision(
@@ -412,6 +399,22 @@ def classify_failure(
             "deterministic", state, False, "verified-codefix-replay", generation, generation,
             maximum, _stable_signature(state, text),
             "The verified editorial packet failed a deterministic validator/budget authority contract. Preserve the exact request for a verified codefix replay; this is not an external credential, billing or permission blocker.",
+        )
+
+    # Prefer precise semantic/editorial evidence before falling back to the
+    # generic codefix-replay publishability handoff. Otherwise a deterministic
+    # validator defect is mislabeled as PUBLISHABLE_CODEFIX_REQUIRED.
+    # A failed codefix replay is already the bounded second execution of the exact
+    # approved request. If that replay reaches the terminal publishability handoff,
+    # generic timeout/circuit words elsewhere in the Actions log must never turn it
+    # into another blind same-run retry. Keep the same generation armed for a new
+    # verified code revision instead.
+    if codefix_replay and re.search(r"\bpublishable_output_retry_required\b", lowered, flags=re.IGNORECASE):
+        state = "PUBLISHABLE_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            maximum, _stable_signature(state, text),
+            "The exact request already failed after a verified codefix replay. Preserve it in the same recovery generation and require another verified relevant code revision; do not blind-rerun transient log noise.",
         )
 
     if _matches(lowered, PUBLISHABLE_RETRY_PATTERNS):
