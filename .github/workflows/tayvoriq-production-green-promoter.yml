@@ -1,3 +1,4 @@
+# Immediate verification requested for Tankrabatt EV-filter + decimal-map hardening candidate 366da802ee367eed7aba5dab5332caf3ba7e44d3.
 # Immediate verification requested for exact Tankrabatt decimal/recovery candidate 3db0e8f611c001e99a3dd5abd98fb0eca12e6e89.
 # Immediate verification requested for checkpoint-safe Tankrabatt recovery candidate 8b56320f5f04f90b6bc3cfef00e3633248eaab8a.
 # Latest-candidate-only promoter: cancel stale verification runs for c2690a3f5d842ad1c2a28ad75c38ced75c6e8783.
@@ -178,7 +179,8 @@ jobs:
             tests/test_tayvoriq_pronunciation_audit_contract.py \
             tests/test_tayvoriq_voice_v4_postmux.py \
             tests/test_tayvoriq_voice_v5_human_narrator.py \
-            tests/test_tayvoriq_number_pronunciation_gate.py
+            tests/test_tayvoriq_number_pronunciation_gate.py \
+            tests/test_tayvoriq_voice_v5_package_pronunciation.py
 
       - name: Exact Voice Work editorial regression gate
         if: steps.refs.outputs.changed == 'true'
@@ -230,6 +232,7 @@ jobs:
             tests/test_tayvoriq_checkpoint_resume_policy.py \
             tests/test_tayvoriq_tankrabatt_providerless_audit.py \
             tests/test_tayvoriq_tankrabatt_visual_contract.py \
+            tests/test_tayvoriq_voice_v5_package_pronunciation.py \
             tests/test_tayvoriq_autonomous_code_repair_provider_resilience.py \
             tests/test_tayvoriq_semantic_voice_scope_regression.py \
             tests/test_tayvoriq_vw_visual_repair.py
