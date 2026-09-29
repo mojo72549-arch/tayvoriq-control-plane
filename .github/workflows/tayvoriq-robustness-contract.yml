@@ -139,6 +139,9 @@ jobs:
               'world_forces_visual_contract': True,
               'episode2_actual_frame_semantics': True,
               'episode2_semantic_voice_terms': True,
+              'adaptive_content_personality': True,
+              'story_depth_publish_gate': True,
+              'content_personality_extra_provider_calls': 0,
               'quality_gates_weakened': False,
           })
           PY
@@ -159,6 +162,9 @@ jobs:
           series_state = Path('tools/tayvoriq_agent_series_state_v2.py').read_text(encoding='utf-8')
           entrypoint = Path('implementation/tools/tayvoriq_autonomous_entrypoint.py').read_text(encoding='utf-8')
           bootstrap = Path('implementation/tools/tayvoriq_production_render_bootstrap.py').read_text(encoding='utf-8')
+          personality = Path('implementation/tools/tayvoriq_content_personality_v1.py').read_text(encoding='utf-8')
+          render_entry = Path('implementation/tools/tayvoriq_dual_platform_render_v23_entry.py').read_text(encoding='utf-8')
+          retention = Path('implementation/tools/tayvoriq_retention_v5.py').read_text(encoding='utf-8')
 
           def position(text: str, token: str) -> int:
               value = text.find(token)
@@ -353,6 +359,34 @@ jobs:
           for token in required_bootstrap:
               if token not in bootstrap:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_BOOTSTRAP_MISSING:{token}')
+
+          required_content_personality = (
+              'def classify_personality(',
+              'SERIOUS_DRY_WIT',
+              'MEME_LIGHT',
+              'sensitive-topic-guard',
+              '"extra_provider_calls": 0',
+              '"extra_image_generation": False',
+              'no_extra_provider_call',
+          )
+          for token in required_content_personality:
+              if token not in personality:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_CONTENT_PERSONALITY_MISSING:{token}')
+          for token in (
+              'import tayvoriq_content_personality_v1 as content_personality',
+              'content_personality.apply_content_personality(',
+              '_apply_approved_story_contract_v3',
+              '_platform_specific_approved_cta',
+          ):
+              if token not in render_entry:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_RENDER_STORY_PERSONALITY_MISSING:{token}')
+          for token in (
+              'def story_depth_gate(',
+              'STORY_DEPTH_FAILED:',
+              '"story_depth_gate": story_depth_gate(contract)',
+          ):
+              if token not in retention:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_STORY_DEPTH_MISSING:{token}')
 
           print({
               'state': 'TAYVORIQ_ROBUSTNESS_CONTRACT_PASSED',
