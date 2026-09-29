@@ -1,9 +1,9 @@
 {
   "request": "stop-stale-golden-path",
-  "target_run_id": 36242201211,
-  "reason": "Queue-only control change triggered replay on superseded implementation 21dbbf85. Verified voice fix 59899d20 is now Production Green; preserve request and checkpoint for exact fixed-code recovery.",
-  "request_id": "telegram-2699-trend-1",
-  "requested_at": "2026-09-26T12:36:00Z",
+  "target_run_id": 36533606421,
+  "reason": "Superseded by exact same Telegram-approved request replay 36547666383 on verified Production Green 366da802ee367eed7aba5dab5332caf3ba7e44d3. Cancel only the stale Golden Path concurrency owner so the verified visual/voice hardening replay can start.",
+  "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
+  "requested_at": "2026-09-29T09:13:00Z",
   "publication_allowed": false,
   "suppress_user_facing_recovery_noise": true
 }
