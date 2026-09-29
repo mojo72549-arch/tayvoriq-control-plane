@@ -70,6 +70,28 @@ def test_semantic_contract_failure_wins_over_publishable_retry_handoff():
     assert decision.next_generation == 0
 
 
+def test_editorial_validator_failure_wins_during_codefix_replay():
+    logs = """
+    RuntimeError: CONTENT_REJECTED:v34-legacy-validator:editorial_answer_too_long:personal_impact,editorial_body_too_long:50:max=49
+    RuntimeError: Keiner der geprüften Trendkandidaten bestand Skript-, Sprach- und Render-Gates.
+    Controller handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED reusable_master=false process_exit=1
+    Production is not publishable: controller=PUBLISHABLE_OUTPUT_RETRY_REQUIRED/1 recovery=/
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=0,
+        max_generations=4,
+        exact_request_retry=True,
+        codefix_replay=True,
+    )
+    assert decision.mode == "deterministic"
+    assert decision.state == "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED"
+    assert decision.retry_kind == "verified-codefix-replay"
+    assert decision.retry_allowed is False
+    assert decision.next_generation == 0
+
+
 def test_plain_publishability_failure_still_uses_bounded_fresh_recovery():
     decision = classify_failure(
         "Checkpoint handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED process_exit=1",
