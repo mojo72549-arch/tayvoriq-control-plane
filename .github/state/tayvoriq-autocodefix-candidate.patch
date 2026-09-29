@@ -1,5 +1,5 @@
 diff --git a/tools/tayvoriq_preapproval_ai_audit_v6.py b/tools/tayvoriq_preapproval_ai_audit_v6.py
-index 8bd9aff3..e00f5d1b 100644
+index 8bd9aff3..c6ba7f4a 100644
 --- a/tools/tayvoriq_preapproval_ai_audit_v6.py
 +++ b/tools/tayvoriq_preapproval_ai_audit_v6.py
 @@ -42,7 +42,7 @@ def _conversion_gate(targets: tuple[str, ...]) -> Callable[[dict[str, Any]], tup
@@ -7,7 +7,7 @@ index 8bd9aff3..e00f5d1b 100644
          target_presence_ok = all(platform in ctas for platform in targets)
          actions_ok = target_presence_ok and all(
 -            ctas[platform].casefold().startswith(expected[platform]) for platform in targets
-+            ctas[platform].casefold().startswith(expected.get(platform, "")) for platform in targets
++            _clean(ctas[platform].casefold()).startswith(expected[platform]) for platform in targets
          )
          folded = " ".join(ctas.values()).casefold()
          benefits = [marker for marker in ("verifiziert", "warnlag", "reisehinweis", "konkrete schritte", "prüfen") if marker in folded]
