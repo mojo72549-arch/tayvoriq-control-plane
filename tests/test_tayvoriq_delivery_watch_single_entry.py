@@ -65,7 +65,10 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
 
         self.assertIn('state = "LOCAL_VISUAL_REPAIR_REQUIRED"', workflow)
         self.assertIn("CODEFIX_FINALIZER_SKIPPED_LOCAL_VISUAL_FAILURE", workflow)
-        self.assertIn('"full_regeneration_allowed": False if local_checkpoint else None', workflow)
+        self.assertIn(
+            '"full_regeneration_allowed": False if local_checkpoint or failure_class == "PUBLISHABLE_CHECKPOINT" else None',
+            workflow,
+        )
         self.assertIn('"schema": "tayvoriq-failure-contract-v2"', workflow)
 
 
