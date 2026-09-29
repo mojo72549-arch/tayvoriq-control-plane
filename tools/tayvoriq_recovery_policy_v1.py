@@ -47,6 +47,9 @@ LOCAL_VISUAL_RETRY_PATTERNS = (
     r"score_below_threshold:visual",
     r"visual_agent_recommendation_block",
     r"final_publication_local_repair_residual:[^\n]*visuals",
+    # Missing/undownloadable Pexels footage is a scene-local runtime/media
+    # problem, not evidence that the approved request or editorial code is bad.
+    r"real_video_scene_required:",
 )
 
 
