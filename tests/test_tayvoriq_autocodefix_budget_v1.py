@@ -26,7 +26,10 @@ class CodefixBudgetTests(unittest.TestCase):
             self.assertEqual(Path(first["ledger_path"]).read_bytes(), snapshot)
             self.assertEqual(json.loads(snapshot)["schema"], "tayvoriq-autocodefix-budget-v2")
             self.assertEqual(json.loads(snapshot)["failed_run_id"], 123)
-            self.assertTrue(budget.reserve(request, "b" * 40, ledger, "3")["admitted"])
+            self.assertFalse(budget.reserve(request, "b" * 40, ledger, "3")["admitted"])
+            different_failure = copy.deepcopy(request)
+            different_failure["codefix_recovery"]["failure_signature"] = "visual"
+            self.assertTrue(budget.reserve(different_failure, "b" * 40, ledger, "4")["admitted"])
             self.assertEqual(json.loads(snapshot)["max_provider_attempts"], 3)
 
     def test_incomplete_or_unarmed_identity_never_reserves(self):
