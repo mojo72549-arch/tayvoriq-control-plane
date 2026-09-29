@@ -51,9 +51,9 @@ MILESTONES = {
     ),
     "master_ready": Milestone(
         85,
-        "Finaler Videomaster verifiziert",
-        "Der lokal reparierte YouTube-/TikTok-Master ist vollständig erzeugt und als publishbarer Kandidat verifiziert.",
-        "Finale Sprach-, Bild-, Fakten- und Plattform-Gates.",
+        "Videomaster erzeugt · finale Gates offen",
+        "Der YouTube-/TikTok-Master ist vollständig erzeugt und als wiederverwendbarer Kandidat gesichert. Er ist noch nicht final freigegeben.",
+        "Finale Voice/Post-Mux-, Bild-, Fakten- und Plattform-Gates; erst danach gilt der Master als final bestätigt.",
     ),
     "quality_passed": Milestone(
         95,
