@@ -264,6 +264,22 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-09-29T09:10:39.452994Z",
+      "actor": "chatgpt-verified-quality-rearm",
+      "meta": {
+        "failed_run_id": 36533606421,
+        "failure_signature": "3dcee822290522d5d349",
+        "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+        "failed_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
+        "verified_replacement_implementation_sha": "366da802ee367eed7aba5dab5332caf3ba7e44d3",
+        "recovery_generation": 1,
+        "reason": "verified-tankrabatt-visual-and-voice-codefix-ready",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
@@ -281,25 +297,24 @@
   "golden_path_run_id": 36533606421,
   "recovery_generation": 1,
   "codefix_recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failed_run_id": 36525566010,
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 36533606421,
     "failure_signature": "3dcee822290522d5d349",
-    "failure_state": "",
-    "failed_control_plane_sha": "a824096b66c67872fdc0c857f290966acfc056fa",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_control_plane_sha": "abbd212a2be69b9fe4c9e95e209fd6fbf8db14ee",
     "failed_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
     "recovery_generation": 1,
-    "armed_at": "2026-09-29T05:25:05.367883Z",
+    "armed_at": "2026-09-29T09:10:39.452994Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
     "active_pointer_verified": true,
-    "last_failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "replay_run_id": 36533606421,
-    "replayed_at": "2026-09-29T06:55:02.979135Z",
-    "replay_control_plane_sha": "abbd212a2be69b9fe4c9e95e209fd6fbf8db14ee",
-    "replay_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
-    "codefix_detection_reason": "relevant-control-code-changed-same-production-green"
+    "rearmed_after_failed_replay": true,
+    "previous_codefix_failed_run_id": 36525566010,
+    "previous_codefix_failure_signature": "3dcee822290522d5d349",
+    "verified_replacement_implementation_sha": "366da802ee367eed7aba5dab5332caf3ba7e44d3",
+    "verified_replacement_at": "2026-09-29T09:10:39.452994Z"
   },
   "previous_golden_path_run_ids": [
     36469942238,
