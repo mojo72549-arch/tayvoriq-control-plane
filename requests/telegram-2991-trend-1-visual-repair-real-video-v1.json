@@ -231,6 +231,22 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-09-29T05:25:05.367883Z",
+      "actor": "tayvoriq-deterministic-codefix-continuity",
+      "meta": {
+        "failed_run_id": 36525566010,
+        "failure_signature": "3dcee822290522d5d349",
+        "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "a824096b66c67872fdc0c857f290966acfc056fa",
+        "failed_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
+        "recovery_generation": 1,
+        "reason": "active-owner-deterministic-failure",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
@@ -248,25 +264,19 @@
   "golden_path_run_id": 36525566010,
   "recovery_generation": 1,
   "codefix_recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failed_run_id": 36485446867,
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 36525566010,
     "failure_signature": "3dcee822290522d5d349",
-    "failure_state": "",
-    "failed_control_plane_sha": "79435cd2288bc1af93aabea1046c65ea960dd464",
-    "failed_implementation_sha": "8b56320f5f04f90b6bc3cfef00e3633248eaab8a",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_control_plane_sha": "a824096b66c67872fdc0c857f290966acfc056fa",
+    "failed_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
     "recovery_generation": 1,
-    "armed_at": "2026-09-28T21:39:58.863367Z",
+    "armed_at": "2026-09-29T05:25:05.367883Z",
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
-    "active_pointer_verified": true,
-    "last_failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "replay_run_id": 36525566010,
-    "replayed_at": "2026-09-29T05:18:42Z",
-    "replay_control_plane_sha": "a824096b66c67872fdc0c857f290966acfc056fa",
-    "replay_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
-    "codefix_detection_reason": "verified-production-green-decimal-and-recovery-hardening"
+    "active_pointer_verified": true
   },
   "previous_golden_path_run_ids": [
     36469942238,
