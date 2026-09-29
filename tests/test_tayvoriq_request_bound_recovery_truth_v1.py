@@ -38,3 +38,24 @@ def test_request_bound_recovery_dispatcher_uses_direct_workflow_dispatch() -> No
     assert "data['status']='DISPATCHED'" in workflow
     assert "data['golden_path_run_id']=new_run" in workflow
     assert "AUTONOMOUS_REQUEST_BOUND_RECOVERY_DISPATCH_PASSED" in workflow
+
+def test_same_run_retry_accepts_armed_codefix_without_weakening_binding() -> None:
+    workflow = (
+        ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml"
+    ).read_text(encoding="utf-8")
+    required = (
+        '"$GITHUB_RUN_ATTEMPT"',
+        "armed_same_run",
+        "run_attempt > 1",
+        "codefix.get('status')=='ARMED'",
+        "codefix.get('request_substate')=='AWAITING_CODEFIX'",
+        "int(codefix.get('failed_run_id') or 0)==run_id",
+        "codefix.get('same_generation_replay_required') is True",
+        "codefix.get('exact_source_request_required') is True",
+        "codefix.get('quality_gates_weakened') is False",
+        "codefix.get('active_pointer_verified') is True",
+        "request_bound and (deterministic_bound or fresh_bound or armed_same_run)",
+    )
+    for marker in required:
+        assert marker in workflow, marker
+
