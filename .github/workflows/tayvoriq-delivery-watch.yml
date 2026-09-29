@@ -113,12 +113,23 @@ jobs:
                       for field in ('approval_key','source_context_sha256','contract_sha256'):
                           pv=str(pointer.get(field) or '').strip(); rv=str(data.get(field) or '').strip()
                           if pv and pv != rv: immutable_ok=False
-                      telegram_bound=str(data.get('source') or '').strip().startswith('telegram_trend_approval')
+                      pointer_approval=str(pointer.get('approval_key') or '').strip()
+                      request_approval=str(data.get('approval_key') or '').strip()
+                      pointer_message=str(pointer.get('telegram_message_id') or '').strip()
+                      request_message=str(data.get('telegram_message_id') or '').strip()
+                      approval_bound=bool(
+                          pointer_approval
+                          and request_approval == pointer_approval
+                          and pointer_approval.startswith('telegram:')
+                          and pointer_message
+                          and request_message == pointer_message
+                          and str(data.get('approved_at') or '').strip()
+                      )
                       if (
                           str(data.get('request_id') or '').strip()==request_id
                           and str(data.get('status') or '')=='DISPATCHED'
                           and request_run==pointer_run
-                          and immutable_ok and telegram_bound
+                          and immutable_ok and approval_bound
                       ):
                           out.update({
                               'found':'true','request_file':str(request_path),'request_id':request_id,
