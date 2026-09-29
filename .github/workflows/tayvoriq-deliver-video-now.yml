@@ -1676,9 +1676,38 @@ jobs:
               for item in (report.get("repair_target_stages") or [])
               if str(item or "").strip()
           }
+          # repair_target_stages describes the audit findings before bounded
+          # checkpoint repair. When VISUALS succeeds and VOICE fails afterwards,
+          # the report can legitimately still contain both targets. Route by the
+          # last checkpoint that actually returned non-zero instead of reviving
+          # an already repaired visual defect.
+          controller_console_path = Path("implementation/out/tayvoriq-self-heal/controller-console.log")
+          controller_console = (
+              controller_console_path.read_text(encoding="utf-8", errors="replace")
+              if controller_console_path.exists()
+              else ""
+          )
+          failed_checkpoint = ""
+          for line in controller_console.splitlines():
+              try:
+                  event = json.loads(line.strip())
+              except Exception:
+                  continue
+              stage = str(event.get("checkpoint_stage") or "").strip().upper()
+              if not stage or str(event.get("status") or "").strip().lower() != "completed":
+                  continue
+              try:
+                  returncode = int(event.get("returncode") or 0)
+              except (TypeError, ValueError):
+                  returncode = 0
+              if returncode != 0:
+                  failed_checkpoint = stage
+          voice_checkpoint_failed = failed_checkpoint.startswith("VOICE_")
+          visual_checkpoint_failed = failed_checkpoint.startswith("VISUAL_")
           local_visual_failure = (
               state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
               and "VISUALS" in repair_targets
+              and not voice_checkpoint_failed
           )
           late_voice_failure = (
               __import__("os").environ.get("PRODUCTION_OUTCOME") == "success"
@@ -1688,8 +1717,11 @@ jobs:
           )
           local_voice_failure = (
               state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
-              and repair_targets
-              and repair_targets <= {"VOICE"}
+              and (
+                  voice_checkpoint_failed
+                  or (repair_targets and repair_targets <= {"VOICE"})
+              )
+              and not visual_checkpoint_failed
           )
           control_plane_binding_failure = (
               __import__("os").environ.get("PREFLIGHT_OUTCOME") == "success"
