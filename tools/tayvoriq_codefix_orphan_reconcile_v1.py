@@ -52,11 +52,21 @@ def _parse_time(value: Any) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def _telegram_approval_identity(data: dict[str, Any]) -> bool:
+    approval_key = str(data.get("approval_key") or "").strip()
+    try:
+        message_id = int(data.get("telegram_message_id") or 0)
+    except (TypeError, ValueError):
+        message_id = 0
+    return approval_key.startswith("telegram:") and message_id > 0
+
+
 def _telegram_bound(data: dict[str, Any]) -> bool:
     source = data.get("source_context") if isinstance(data.get("source_context"), dict) else {}
     source_name = str(data.get("source") or "").strip()
     return (
         source_name.startswith("telegram_trend_approval")
+        or _telegram_approval_identity(data)
         or data.get("telegram_only_user_path") is True
         or source.get("telegram_only_user_path") is True
         or str(data.get("communication_channel") or "").strip() == "telegram"
@@ -70,6 +80,7 @@ def _auto_repair(data: dict[str, Any]) -> bool:
         data.get("auto_repair_until_review") is True
         or source.get("auto_repair_until_review") is True
         or source_name.startswith("telegram_trend_approval")
+        or _telegram_approval_identity(data)
     )
 
 
