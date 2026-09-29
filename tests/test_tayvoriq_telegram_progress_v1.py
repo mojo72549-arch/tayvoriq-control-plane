@@ -30,8 +30,10 @@ class TelegramProgressUnitTests(unittest.TestCase):
         text = payload["text"]
         self.assertIn("TAYVORIQ 85 %", text)
         self.assertIn("Wenn die Erde plötzlich bricht", text)
-        self.assertIn("Finaler Videomaster verifiziert", text)
-        self.assertIn("publishbarer Kandidat", text)
+        self.assertIn("Videomaster erzeugt · finale Gates offen", text)
+        self.assertIn("wiederverwendbarer Kandidat", text)
+        self.assertIn("noch nicht final freigegeben", text)
+        self.assertIn("erst danach gilt der Master als final bestätigt", text)
         self.assertIn("Keine Aktion nötig", text)
         self.assertNotIn("fehlgeschlagen", text.casefold())
 
