@@ -388,6 +388,25 @@ jobs:
               if token not in retention:
                   raise SystemExit(f'ROBUSTNESS_CONTRACT_STORY_DEPTH_MISSING:{token}')
 
+          production_slo = (
+              'timeout-minutes: 60',
+              'TAYVORIQ_TARGET_REVIEW_READY_SECONDS: "1800"',
+              'TAYVORIQ_END_TO_END_SLO_SECONDS: "3600"',
+              'TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1500"',
+              'TAYVORIQ_RENDER_TIMEOUT_SECONDS: "600"',
+              'TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "120"',
+              'TAYVORIQ_AUDIT_RETRY_DELAYS: "0,8"',
+              'TAYVORIQ_VISUAL_REPAIR_TIMEOUT_SECONDS: "480"',
+              'TAYVORIQ_VOICE_REPAIR_TIMEOUT_SECONDS: "600"',
+              'TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "1"',
+              'TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS: "900"',
+          )
+          for token in production_slo:
+              if token not in golden_path:
+                  raise SystemExit(f'ROBUSTNESS_CONTRACT_PRODUCTION_SLO_MISSING:{token}')
+          if "MAX_RECOVERY_GENERATIONS: '1'" not in watcher:
+              raise SystemExit('ROBUSTNESS_CONTRACT_RECOVERY_GENERATION_CAP_MISSING')
+
           print({
               'state': 'TAYVORIQ_ROBUSTNESS_CONTRACT_PASSED',
               'lightweight_before_heavy_runtime': True,
@@ -402,6 +421,10 @@ jobs:
               'single_recovery_owner': True,
               'series_lifecycle_bounded': True,
               'noop_polling_removed': True,
+              'target_review_ready_seconds': 1800,
+              'hard_end_to_end_seconds': 3600,
+              'local_quality_repair_attempts': 1,
+              'max_recovery_generations': 1,
               'quality_gates_weakened': False,
           })
           PY
