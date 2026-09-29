@@ -26,6 +26,7 @@ REPAIR_STATES = {
     "SERIES_METADATA_REPAIR",
     "FOLLOW_CONVERSION_FAILED",
     "RETURN_VIEWER_IMPROVE",
+    "CONTENT_DEPTH_REWRITE_REQUIRED",
 }
 LIFECYCLE_STATES = (
     "TREND_CANDIDATES_SCORED",
@@ -278,6 +279,12 @@ def validate_trend_contract(candidate: dict[str, Any], *, strict: bool = True) -
         raise ValueError(
             "RETURN_VIEWER_IMPROVE:" + ",".join(str(item) for item in return_gate.get("issues") or [])
         )
+    depth_gate = evaluate_content_depth(candidate)
+    if depth_gate.get("result") == "REWRITE_REQUIRED":
+        raise ValueError(
+            "CONTENT_DEPTH_REWRITE_REQUIRED:"
+            + ",".join(str(item) for item in depth_gate.get("issues") or [])
+        )
 
 def request_fields_from_trend(trend: dict[str, Any]) -> dict[str, Any]:
     series = _series_context(trend)
@@ -315,6 +322,61 @@ def is_generic_cta(text: Any) -> bool:
 
 def _repeated_cta(text: str, previous_cta: str) -> bool:
     return bool(clean(previous_cta) and clean(text).casefold() == clean(previous_cta).casefold())
+
+def _content_words(value: Any) -> set[str]:
+    stop = {
+        "aber", "auch", "dass", "dem", "den", "der", "des", "die", "eine", "einem",
+        "einen", "einer", "für", "hat", "ist", "mit", "nicht", "oder", "sich", "sind",
+        "und", "von", "war", "werden", "wird",
+    }
+    return {
+        token
+        for token in re.findall(r"[a-zäöüß0-9]+", clean(value).casefold())
+        if len(token) >= 4 and token not in stop
+    }
+
+
+def evaluate_content_depth(contract: dict[str, Any]) -> dict[str, Any]:
+    """Fail closed when a Short is structurally correct but editorially thin.
+
+    The gate is deliberately topic-agnostic: it does not require a number, drama,
+    negativity or a specific category. It requires enough material for a real
+    explanation plus a reframe that adds information beyond the explanation.
+    """
+    issues: list[str] = []
+    hook = clean(contract.get("primary_hook"))
+    question = clean(contract.get("viewer_question"))
+    explanation = clean(contract.get("explanation_core"))
+    reframe = clean(contract.get("surprise_or_reframe"))
+    relevance = clean(contract.get("practical_relevance"))
+    follow_reason = clean(contract.get("follow_reason"))
+
+    if len(hook.split()) < 8:
+        issues.append("hook_too_thin")
+    if len(question.split()) < 6:
+        issues.append("viewer_question_too_thin")
+    if len(explanation.split()) < 14:
+        issues.append("explanation_lacks_depth")
+    if len(reframe.split()) < 10:
+        issues.append("reframe_too_thin")
+    if len(relevance.split()) < 8:
+        issues.append("practical_relevance_too_thin")
+    if len(follow_reason.split()) < 8:
+        issues.append("follow_reason_too_thin")
+
+    explanation_words = _content_words(explanation)
+    reframe_words = _content_words(reframe)
+    if len(reframe_words - explanation_words) < 3:
+        issues.append("reframe_repeats_explanation")
+
+    if not issues:
+        return {"result": "PASS", "repair": None, "issues": []}
+    return {
+        "result": "REWRITE_REQUIRED",
+        "repair": "CONTENT_DEPTH_REWRITE_REQUIRED",
+        "issues": issues,
+    }
+
 
 def evaluate_follow_conversion(
     contract: dict[str, Any],
