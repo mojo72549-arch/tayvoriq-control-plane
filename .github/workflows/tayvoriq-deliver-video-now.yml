@@ -83,7 +83,10 @@ env:
 jobs:
   orchestrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    # Performance SLO: one approved trend must either reach review or fail safely
+    # inside one hour. The controller itself remains capped at 30 minutes; the
+    # remaining budget is reserved only for strict local checkpoint/quality work.
+    timeout-minutes: 60
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
