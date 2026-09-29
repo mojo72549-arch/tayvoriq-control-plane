@@ -326,7 +326,7 @@
   "contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
   "dispatch_claim_run_id": 36565744124,
   "dispatch_contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
-  "golden_path_run_id": 36578273338,
+  "golden_path_run_id": 36578413588,
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
@@ -361,12 +361,17 @@
     36576474913,
     36576759257,
     36576869975,
-    36577028080
+    36577028080,
+    36578273338
   ],
   "recovery_generation": 0,
-  "retry_of_run_id": 36577028080,
+  "retry_of_run_id": 36578273338,
   "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
   "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
   "recovery_failure_signature": "d68ac00bac2757f0e555",
-  "recovery_dispatched_at": "2026-09-29T13:51:58.321903Z"
+  "recovery_dispatched_at": "2026-09-29T13:51:58.321903Z",
+  "replay_bound_by": "tayvoriq-x-replay-start-guard",
+  "replay_trigger_sha": "98bfe2f62d7b443eb9f1215812af53d8e3c61759",
+  "replay_start_mode": "push_verified",
+  "replay_dispatched_at": "2026-09-29T13:53:18.513556Z"
 }
