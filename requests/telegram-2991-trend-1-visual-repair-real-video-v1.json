@@ -216,6 +216,21 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-29T05:18:42Z",
+      "actor": "chatgpt-verified-production-green-replay",
+      "meta": {
+        "retry_of_run_id": 36524889612,
+        "golden_path_run_id": 36525566010,
+        "recovery_generation": 1,
+        "reason": "same-generation-verified-production-green-decimal-recovery",
+        "replay_control_plane_sha": "a824096b66c67872fdc0c857f290966acfc056fa",
+        "replay_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
@@ -230,7 +245,7 @@
   "visual_provider_contract": "pexels_video_only_distinct_moving_clips_v2",
   "dispatch_claim_run_id": 36469916684,
   "dispatch_contract_sha256": "f237ddbd4cf5fb24db33b793bd58ce418f8c2716597799f59f0cef3ef9d261ad",
-  "golden_path_run_id": 36524889612,
+  "golden_path_run_id": 36525566010,
   "recovery_generation": 1,
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
@@ -247,22 +262,23 @@
     "quality_gates_weakened": false,
     "active_pointer_verified": true,
     "last_failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "replay_run_id": 36524889612,
-    "replayed_at": "2026-09-29T05:10:06.369019Z",
-    "replay_control_plane_sha": "d90205fa137aaa664a46e67be877435630dd37ac",
-    "replay_implementation_sha": "8b56320f5f04f90b6bc3cfef00e3633248eaab8a",
-    "codefix_detection_reason": "relevant-control-code-changed-same-production-green"
+    "replay_run_id": 36525566010,
+    "replayed_at": "2026-09-29T05:18:42Z",
+    "replay_control_plane_sha": "a824096b66c67872fdc0c857f290966acfc056fa",
+    "replay_implementation_sha": "3db0e8f611c001e99a3dd5abd98fb0eca12e6e89",
+    "codefix_detection_reason": "verified-production-green-decimal-and-recovery-hardening"
   },
   "previous_golden_path_run_ids": [
     36469942238,
     36483607386,
     36484784340,
     36485245017,
-    36485446867
+    36485446867,
+    36524889612
   ],
-  "retry_of_run_id": 36485446867,
-  "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
-  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "retry_of_run_id": 36524889612,
+  "replacement_reason": "SAME_GENERATION_VERIFIED_GREEN_DECIMAL_RECOVERY",
+  "recovery_owner": "chatgpt-verified-production-green-replay",
   "recovery_failure_signature": "3dcee822290522d5d349",
-  "recovery_dispatched_at": "2026-09-29T05:10:06.369019Z"
+  "recovery_dispatched_at": "2026-09-29T05:18:42Z"
 }
