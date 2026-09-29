@@ -2,11 +2,11 @@
   "request": "tayvoriq-x-production",
   "topic": "Mercedes: 38 Stunden ohne mehr Geld – und zwei Werke stehen zur Debatte",
   "trend_id": "1",
-  "requested_at": "2026-09-29T13:40:41.464796Z",
-  "request_nonce": "autocodefix-overlay-telegram-3155-trend-1-83c86323ad90-f71a7bcf18e4",
+  "requested_at": "2026-09-29T13:52:30Z",
+  "request_nonce": "same-request-green-af9fdab70e79-20260929t135230z",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
-  "implementation_sha_expected": "83c86323ad90a4add40ee04c57b76a1e7fc7b3b8",
+  "implementation_sha_expected": "af9fdab70e79a08f8f18bccaac1cc88449e46d48",
   "approved_trend_pinned": true,
   "source_request_id": "telegram-3155-trend-1",
   "technical_replay": true,
@@ -14,9 +14,9 @@
   "reuse_exact_source_request": true,
   "suppress_start_notification": true,
   "execution_backend": "github_hosted_public",
-  "retry_of_run_id": 36576474913,
+  "retry_of_run_id": 36577028080,
   "recovery_generation": 0,
-  "recovery_strategy": "same-approved-request-verified-autocodefix-overlay",
+  "recovery_strategy": "same-approved-request-production-green-replay",
   "checkpoint_policy": "discard_if_implementation_binding_missing",
   "hardening": {
     "checkpoint_source_context_required": true,
@@ -40,6 +40,6 @@
     "strict_pronunciation_audit_required": true,
     "generic_visual_fallback_forbidden": true
   },
-  "reason": "Replay the exact approved Tankrabatt request on verified Production Green 3db0e8f611c0 after fixing decimal pronunciation, checkpoint failure classification, codefix test dependencies, and active repair-request binding.",
+  "reason": "Replay the exact approved Mercedes request on verified Production Green af9fdab70e79 after deterministic strong-story and spoken-CTA budget repair; no new trend, source, approval, or recovery generation.",
   "slot": "recovery"
 }
