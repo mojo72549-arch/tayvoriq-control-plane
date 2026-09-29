@@ -29,3 +29,26 @@ def test_nontelegram_source_is_not_implicitly_auto_repairable() -> None:
 
     assert orphan._telegram_bound(request) is False
     assert orphan._auto_repair(request) is False
+
+def test_review_repair_request_keeps_telegram_binding_from_approval_identity() -> None:
+    request = {
+        "source": "review_rejection_real_video_visual_repair",
+        "source_context": {},
+        "telegram_message_id": 2991,
+        "approval_key": "telegram:20260928-evening-agentv2:2991:trend:1:visual-repair-real-video-v1",
+        "approved_at": "2026-09-28T19:05:30Z",
+    }
+
+    assert orphan._telegram_bound(request) is True
+    assert orphan._auto_repair(request) is True
+
+
+def test_review_repair_without_telegram_identity_is_not_auto_repairable() -> None:
+    request = {
+        "source": "review_rejection_real_video_visual_repair",
+        "source_context": {},
+    }
+
+    assert orphan._telegram_bound(request) is False
+    assert orphan._auto_repair(request) is False
+
