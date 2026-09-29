@@ -19,7 +19,6 @@ def reserve(request: dict, implementation_sha: str, ledger: Path, run_id: str) -
         "failure_signature": codefix.get("failure_signature"),
         "source_context_sha256": request.get("source_context_sha256"),
         "contract_sha256": request.get("contract_sha256"),
-        "implementation_sha": implementation_sha,
     }
     if (
         codefix.get("status") != "ARMED"
@@ -36,7 +35,8 @@ def reserve(request: dict, implementation_sha: str, ledger: Path, run_id: str) -
     ledger.mkdir(parents=True, exist_ok=True)
     try:
         with path.open("x", encoding="utf-8") as handle:
-            json.dump({**identity, "failed_run_id": failed_run_id,
+            json.dump({**identity, "implementation_sha": implementation_sha,
+                       "failed_run_id": failed_run_id,
                        "builder_run_id": str(run_id), "state": "RESERVED",
                        "reserved_at": datetime.now(timezone.utc).isoformat(),
                        "max_provider_attempts": 3, "quality_gates_weakened": False},
