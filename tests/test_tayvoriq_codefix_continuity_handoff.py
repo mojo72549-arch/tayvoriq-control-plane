@@ -54,6 +54,16 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
         ):
             self.assertIn(marker, hardener, marker)
 
+    def test_stale_overlay_is_safe_skipped_on_newer_verified_green(self) -> None:
+        golden = GOLDEN.read_text(encoding="utf-8")
+        step = _step(golden, "Apply exact verified autonomous codefix overlay")
+        self.assertIn(
+            "AUTOCODEFIX_OVERLAY_SUPERSEDED_BY_PRODUCTION_GREEN",
+            step,
+        )
+        self.assertIn("raise SystemExit(2)", step)
+        self.assertNotIn("AUTOCODEFIX_OVERLAY_BASE_MISMATCH", step)
+
     def test_armed_codefix_requests_event_driven_green_reconciliation_once(
         self,
     ) -> None:
