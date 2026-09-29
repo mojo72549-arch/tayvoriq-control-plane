@@ -400,7 +400,7 @@ jobs:
           fi
           command -v ffmpeg >/dev/null || { echo 'AUTOCODEFIX_FFMPEG_MISSING'; exit 1; }
           command -v ffprobe >/dev/null || { echo 'AUTOCODEFIX_FFPROBE_MISSING'; exit 1; }
-          python -m pip install -q requests pillow "moviepy==1.0.3" pytest
+          python -m pip install -q requests pillow "moviepy==1.0.3" pytest edge-tts
 
       - name: Telegram root cause context ready
         if: steps.admission.outputs.admitted == 'true' && (steps.existing.outputs.ready != 'true')
