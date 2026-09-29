@@ -473,3 +473,24 @@ def test_v5_shared_cta_semantic_gate_requires_verified_codefix():
     assert decision.state == "SEMANTIC_CODEFIX_REQUIRED"
     assert decision.retry_allowed is False
     assert decision.next_generation == 2
+
+
+def test_real_video_scene_required_is_local_visual_even_during_codefix_replay():
+    logs = """
+    RuntimeError: REAL_VIDEO_SCENE_REQUIRED:scene=6:query=Mercedes factory:
+    no usable moving clip was downloaded; generated/static fallback is forbidden
+    Controller handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED reusable_master=false process_exit=1
+    """
+    decision = classify_failure(
+        logs,
+        run_attempt=1,
+        recovery_generation=0,
+        max_generations=4,
+        exact_request_retry=True,
+        codefix_replay=True,
+    )
+    assert decision.mode == "rerun"
+    assert decision.state == "LOCAL_VISUAL_RETRY_REQUIRED"
+    assert decision.retry_kind == "same-run"
+    assert decision.retry_allowed is True
+    assert decision.next_generation == 0
