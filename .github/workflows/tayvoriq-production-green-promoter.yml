@@ -177,7 +177,8 @@ jobs:
             tests/test_tayvoriq_pronunciation_lexicon_v1.py \
             tests/test_tayvoriq_pronunciation_audit_contract.py \
             tests/test_tayvoriq_voice_v4_postmux.py \
-            tests/test_tayvoriq_voice_v5_human_narrator.py
+            tests/test_tayvoriq_voice_v5_human_narrator.py \
+            tests/test_tayvoriq_number_pronunciation_gate.py
 
       - name: Exact Voice Work editorial regression gate
         if: steps.refs.outputs.changed == 'true'
