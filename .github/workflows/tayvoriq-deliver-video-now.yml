@@ -762,10 +762,11 @@ jobs:
           for poll in $(seq 1 10); do
             git fetch origin main --quiet
             if git show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
-              if python -S - "$runtime_request" "$GITHUB_RUN_ID" <<'PY'
+              if python -S - "$runtime_request" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" <<'PY'
           import json,sys
           data=json.load(open(sys.argv[1],encoding='utf-8'))
           run_id=int(sys.argv[2])
+          run_attempt=max(1,int(sys.argv[3]))
           previous=list(data.get('previous_golden_path_run_ids') or [])
           generation=max(0,int(data.get('recovery_generation') or 0))
           if not previous and generation <= 0:
@@ -786,7 +787,21 @@ jobs:
               and int(codefix.get('fresh_recovery_run_id') or 0)==run_id
               and str(data.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY'
           )
-          if request_bound and (deterministic_bound or fresh_bound):
+          # A rerun of the exact same GitHub run may already be armed by Delivery
+          # Watch after the previous attempt failed. Accept that state only when
+          # every durable binding guard still proves this exact request/run pair.
+          armed_same_run=(
+              run_attempt > 1
+              and codefix.get('status')=='ARMED'
+              and codefix.get('request_substate')=='AWAITING_CODEFIX'
+              and int(codefix.get('failed_run_id') or 0)==run_id
+              and int(codefix.get('recovery_generation') or generation)==generation
+              and codefix.get('same_generation_replay_required') is True
+              and codefix.get('exact_source_request_required') is True
+              and codefix.get('quality_gates_weakened') is False
+              and codefix.get('active_pointer_verified') is True
+          )
+          if request_bound and (deterministic_bound or fresh_bound or armed_same_run):
               raise SystemExit(0)
           raise SystemExit(1)
           PY
