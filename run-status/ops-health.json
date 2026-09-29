@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-29T09:10:53.913112Z",
+  "generated_at": "2026-09-29T09:12:23.238171Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
@@ -135,7 +135,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -148,18 +148,29 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "36533606421:none:LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "severity": "warning",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "green",
     "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
     "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": null,
-    "failed_run_id": 36525566010,
-    "replay_run_id": 36533606421,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_run_id": 36533606421,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-deterministic-codefix-continuity",
@@ -169,6 +180,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-29T09:10:39.452994Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
     {
       "at": "2026-09-29T06:55:02.979135Z",
       "title": "DISPATCHED",
@@ -193,11 +209,6 @@
       "at": "2026-09-28T21:39:58.863367Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-28T21:21:30Z",
-      "title": "DISPATCHED",
-      "detail": "final-serialized-checkpoint-replay"
     }
   ]
 }
