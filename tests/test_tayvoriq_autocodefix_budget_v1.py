@@ -21,8 +21,11 @@ class CodefixBudgetTests(unittest.TestCase):
             snapshot = Path(first["ledger_path"]).read_bytes()
             repeated = copy.deepcopy(request)
             repeated["state_history"] = ["status-only update"]
+            repeated["codefix_recovery"]["failed_run_id"] = 999
             self.assertFalse(budget.reserve(repeated, "a" * 40, ledger, "2")["admitted"])
             self.assertEqual(Path(first["ledger_path"]).read_bytes(), snapshot)
+            self.assertEqual(json.loads(snapshot)["schema"], "tayvoriq-autocodefix-budget-v2")
+            self.assertEqual(json.loads(snapshot)["failed_run_id"], 123)
             self.assertTrue(budget.reserve(request, "b" * 40, ledger, "3")["admitted"])
             self.assertEqual(json.loads(snapshot)["max_provider_attempts"], 3)
 
