@@ -43,7 +43,10 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      MAX_RECOVERY_GENERATIONS: '4'
+      # Performance SLO: after the original production run, allow at most
+      # one fresh request-bound recovery generation. Deterministic defects stay
+      # on the same approved request and require a verified Green revision.
+      MAX_RECOVERY_GENERATIONS: '1'
       ACTIVE_REQUEST_POINTER: .github/state/tayvoriq-active-production-request.json
     steps:
       - name: Checkout control plane
