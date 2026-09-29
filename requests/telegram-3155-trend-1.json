@@ -321,12 +321,26 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-09-29T13:59:10Z",
+      "actor": "continuity-owner-reconcile",
+      "meta": {
+        "golden_path_run_id": 36578273338,
+        "displaced_noncanonical_run_id": 36578413588,
+        "recovery_generation": 0,
+        "reason": "restore-durable-continuity-owner-after-noncanonical-direct-replay",
+        "quality_gates_weakened": false,
+        "source_context_changed": false,
+        "contract_changed": false
+      }
     }
   ],
   "contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
   "dispatch_claim_run_id": 36565744124,
   "dispatch_contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
-  "golden_path_run_id": 36578413588,
+  "golden_path_run_id": 36578273338,
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
@@ -362,7 +376,7 @@
     36576759257,
     36576869975,
     36577028080,
-    36578273338
+    36578413588
   ],
   "recovery_generation": 0,
   "retry_of_run_id": 36578273338,
