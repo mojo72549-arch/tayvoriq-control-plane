@@ -1,79 +1,13 @@
-diff --git a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-index d4aa1cd4..140072f5 100644
---- a/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-+++ b/runtime_patches/tayvoriq_verified_request_runtime_recovery.py
-@@ -52,6 +52,14 @@ def _verified_source_packet(source: dict[str, Any]) -> bool:
-         and int(source.get("independent_news_count") or 0) >= 2
-     )
- 
-+def _ensure_runtime_recovery_success(contract: dict[str, Any]) -> None:
-+    """Force success status for verified recovery packets."""
-+    failure_states = ("PREFLIGHT_FAILURE_RECOVERABLE", "PUBLISHABLE_OUTPUT_RETRY_REQUIRED", "failure", "FAILURE", None, "", "PREFLIGHT_OUTCOME: failure")
-+    if contract.get("status") in failure_states or contract.get("preflight_outcome") in ("failure", "FAILURE", None, "", "PREFLIGHT_OUTCOME: failure"):
-+        contract["status"] = "SUCCESS"
-+        contract["preflight_outcome"] = "success"
-+        contract["preflight_status"] = "verified_recovered"
-+        contract["preflight_status"] = "verified_recovered"
- 
- def _install_verified_request_viewer_frame(v11: Any) -> None:
-     current = v11._verified_request_editorial
-diff --git a/tools/tayvoriq_dual_platform_render_local_repair.py b/tools/tayvoriq_dual_platform_render_local_repair.py
-index f4ce9f1b..845c7cd4 100644
---- a/tools/tayvoriq_dual_platform_render_local_repair.py
-+++ b/tools/tayvoriq_dual_platform_render_local_repair.py
-@@ -3,11 +3,25 @@ from __future__ import annotations
- import json
- import os
- import re
-+import sys
-+import subprocess
-+try:
-+    import requests
-+    from PIL import Image
-+except ImportError:
-+    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "Pillow"])
- from pathlib import Path
- from typing import Any
- 
- import tayvoriq_dual_platform_render_v23_entry as base
- 
-+def _safe_git_config(key: str, value: str) -> None:
-+    """Apply local git config without polluting global scope."""
-+    try:
-+        subprocess.run(["git", "config", "--local", key, value], check=True, capture_output=True)
-+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-+        pass
-+
- 
- _ORIGINAL_PEXELS_SEARCH = base.core.pexels_search
- _ORIGINAL_NARRATION_TEXT = base.tts_router_v28.v24.engine.narration_text
-diff --git a/tools/tayvoriq_voice_only_repair_v5.py b/tools/tayvoriq_voice_only_repair_v5.py
-index 20e1a02c..78c082d0 100644
---- a/tools/tayvoriq_voice_only_repair_v5.py
-+++ b/tools/tayvoriq_voice_only_repair_v5.py
-@@ -30,7 +30,7 @@ v2 = base.v2
- v4 = base.v4
- tts_v28 = base.tts_v28
- 
--FULL_TAKE_ATTEMPTS = 3
-+FULL_TAKE_ATTEMPTS = 5
- NATURAL_WPM_MIN = base.NATURAL_WPM_MIN
- NATURAL_WPM_MAX = base.NATURAL_WPM_MAX
- NATURAL_WPM_TARGET = base.NATURAL_WPM_TARGET
-@@ -49,6 +49,16 @@ _BASE_REPAIR_PLATFORM = base._repair_platform
- _BASE_VERIFIED_CONTRACT_FIELDS = base._verified_contract_fields
- 
- 
-+def _ensure_publishable_recovery(contract: dict[str, Any]) -> bool:
-+    """Ensure the recovery state does not exit 1 if the contract is valid."""
-+    if contract.get("status") in ("PUBLISHABLE_OUTPUT_RETRY_REQUIRED", "PREFLIGHT_FAILURE_RECOVERABLE", "failure", "FAILURE") or contract.get("preflight_outcome") in ("failure", "FAILURE", None):
-+        contract["status"] = "SUCCESS"
-+        contract["preflight_outcome"] = "success"
-+        contract["preflight_status"] = "verified_recovered"
-+        return True
-+    return False
-+
-+
- def _pronunciation_term_status(contract: str, transcript: str) -> dict[str, Any]:
-     """Require every router-owned spoken surface that is active in this script."""
-     replacements = dict(pronunciation.replacements_present(contract) or {})
+diff --git a/tools/tayvoriq_preapproval_ai_audit_v6.py b/tools/tayvoriq_preapproval_ai_audit_v6.py
+index 8bd9aff3..084df116 100644
+--- a/tools/tayvoriq_preapproval_ai_audit_v6.py
++++ b/tools/tayvoriq_preapproval_ai_audit_v6.py
+@@ -42,7 +42,7 @@ def _conversion_gate(targets: tuple[str, ...]) -> Callable[[dict[str, Any]], tup
+         expected = {"youtube_shorts": "abonniere ", "tiktok": "folge "}
+         target_presence_ok = all(platform in ctas for platform in targets)
+         actions_ok = target_presence_ok and all(
+-            ctas[platform].casefold().startswith(expected[platform]) for platform in targets
++            ctas[platform].casefold().lstrip().startswith(expected[platform]) for platform in targets
+         )
+         folded = " ".join(ctas.values()).casefold()
+         benefits = [marker for marker in ("verifiziert", "warnlag", "reisehinweis", "konkrete schritte", "prüfen") if marker in folded]
