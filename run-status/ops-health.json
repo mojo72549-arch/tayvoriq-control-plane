@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-29T05:20:36.123598Z",
+  "generated_at": "2026-09-29T05:22:47.152984Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -45,11 +45,11 @@
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36525566010",
     "created_at": "2026-09-29T05:18:42Z",
-    "updated_at": "2026-09-29T05:20:23Z",
-    "attempt": 1,
-    "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
+    "updated_at": "2026-09-29T05:22:36Z",
+    "attempt": 2,
+    "progress": 22,
+    "current_step": "Checkout implementation",
+    "last_successful_step": "Validate immutable implementation policy",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -73,7 +73,7 @@
       },
       {
         "label": "Light Preflight",
-        "status": "success",
+        "status": "pending",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
@@ -85,7 +85,7 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
+        "status": "pending",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout review pages"
+      "detail": "Checkout implementation"
     },
     {
       "name": "Production Green",
