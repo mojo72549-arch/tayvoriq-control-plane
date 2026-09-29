@@ -1,30 +1,30 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-29T09:19:38.536096Z",
+  "generated_at": "2026-09-29T12:24:11.145037Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-    "golden_path_run_id": 36547666383,
-    "pointer_updated_at": "2026-09-29T09:12:40.487593Z"
+    "request_id": "telegram-3155-trend-1",
+    "golden_path_run_id": 36566251540,
+    "pointer_updated_at": "2026-09-29T12:09:26.222896Z"
   },
   "request": {
-    "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-    "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
+    "request_id": "telegram-3155-trend-1",
+    "topic": "Mercedes: 38 Stunden ohne mehr Geld – und zwei Werke stehen zur Debatte",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
-    "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
-    "series_name": null,
+    "state": "DISPATCHED",
+    "recovery_generation": 0,
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ vergleicht nach dem Start die tatsächlichen Benzin- und Dieselpreise und erklärt, wie viel Entlastung ankommt.",
+    "follow_reason": "TAYVORIQ rechnet solche Konzernforderungen auf den Arbeitsalltag herunter und verfolgt, was Mercedes tatsächlich vereinbart und welche Standorte danach konkret betroffen sind.",
     "open_loop_status": "SOFT",
-    "next_episode_candidate": "Preischeck nach dem 1. Oktober: tatsächliche Benzin- und Dieselpreise gegen Vorwoche",
+    "next_episode_candidate": "Mercedes-Einigung im Faktencheck: Kommen die 38 Stunden wirklich – und welche Standorte betrifft der Kompromiss?",
     "follow_conversion_gate": {
       "result": "PASS",
       "repair": null,
@@ -37,45 +37,45 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-2991-trend-1-visual-repair-real-video-v1.json"
+    "path": "requests/telegram-3155-trend-1.json"
   },
   "run": {
-    "id": 36547666383,
+    "id": 36566251540,
     "status": "completed",
-    "conclusion": "cancelled",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36547666383",
-    "created_at": "2026-09-29T09:12:32Z",
-    "updated_at": "2026-09-29T09:16:43Z",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36566251540",
+    "created_at": "2026-09-29T12:09:19Z",
+    "updated_at": "2026-09-29T12:12:57Z",
     "attempt": 1,
-    "progress": 0,
+    "progress": 30,
     "current_step": null,
-    "last_successful_step": null,
-    "failed_step": null,
-    "failed_step_number": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 3,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 7,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 8,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 17,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
@@ -85,39 +85,39 @@
       },
       {
         "label": "Full Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 17,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 33,
+        "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "error",
+        "step_number": 40,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 42,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 46,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 47,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -125,90 +125,80 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "cancelled"
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "366da802ee36…"
+      "detail": "f88abfae831e…"
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "ARMED"
+      "status": "green",
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
+      "status": "green",
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
   "incident": {
-    "signature": "36547666383:none:CONTROL_PLANE_BINDING_FAILURE",
+    "signature": "36566251540:40:none",
     "severity": "critical",
-    "failure_state": "CONTROL_PLANE_BINDING_FAILURE",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
+    "failure_state": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "IDLE",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
   },
   "telegram": {
-    "status": "yellow",
-    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
-    "last_step": null
+    "status": "green",
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "CONTROL_PLANE_BINDING_FAILURE",
-    "failed_run_id": 36547666383,
+    "status": "IDLE",
+    "source_status": "IDLE",
+    "failure_state": null,
+    "failed_run_id": null,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
-    "recovery_generation": 1,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
-    "same_generation_replay_required": true,
+    "recovery_generation": 0,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-09-29T09:17:40Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "CONTROL_PLANE_BINDING_FAILURE"
+      "at": "2026-09-29T12:12:57Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
     },
     {
-      "at": "2026-09-29T09:12:40.487593Z",
+      "at": "2026-09-29T12:09:26.115847+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:36565744124"
     },
     {
-      "at": "2026-09-29T09:10:39.452994Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+      "at": "2026-09-29T12:09:16.240588+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:36565744124"
     },
     {
-      "at": "2026-09-29T06:55:02.979135Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-29T05:25:05.367883Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-29T05:18:42Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-production-green-decimal-recovery"
+      "at": "2026-09-29T12:04:32.327Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
