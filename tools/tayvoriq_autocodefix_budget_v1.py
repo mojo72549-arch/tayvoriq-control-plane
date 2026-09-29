@@ -12,16 +12,20 @@ from pathlib import Path
 
 def reserve(request: dict, implementation_sha: str, ledger: Path, run_id: str) -> dict:
     codefix = request.get("codefix_recovery") or {}
+    failed_run_id = codefix.get("failed_run_id")
     identity = {
-        "schema": "tayvoriq-autocodefix-budget-v1",
+        "schema": "tayvoriq-autocodefix-budget-v2",
         "request_id": request.get("request_id"),
-        "failed_run_id": codefix.get("failed_run_id"),
         "failure_signature": codefix.get("failure_signature"),
         "source_context_sha256": request.get("source_context_sha256"),
         "contract_sha256": request.get("contract_sha256"),
         "implementation_sha": implementation_sha,
     }
-    if codefix.get("status") != "ARMED" or not all(identity.values()):
+    if (
+        codefix.get("status") != "ARMED"
+        or not failed_run_id
+        or not all(identity.values())
+    ):
         raise ValueError("AUTOCODEFIX_BUDGET_IDENTITY_INCOMPLETE")
     if not re.fullmatch(r"[0-9a-f]{40}", implementation_sha):
         raise ValueError("AUTOCODEFIX_BUDGET_IMPLEMENTATION_INVALID")
@@ -32,7 +36,8 @@ def reserve(request: dict, implementation_sha: str, ledger: Path, run_id: str) -
     ledger.mkdir(parents=True, exist_ok=True)
     try:
         with path.open("x", encoding="utf-8") as handle:
-            json.dump({**identity, "builder_run_id": str(run_id), "state": "RESERVED",
+            json.dump({**identity, "failed_run_id": failed_run_id,
+                       "builder_run_id": str(run_id), "state": "RESERVED",
                        "reserved_at": datetime.now(timezone.utc).isoformat(),
                        "max_provider_attempts": 3, "quality_gates_weakened": False},
                       handle, ensure_ascii=False, indent=2)
