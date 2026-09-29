@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-29T13:37:33.513818Z",
+  "generated_at": "2026-09-29T13:42:00.258371Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3155-trend-1",
-    "golden_path_run_id": 36567882950,
-    "pointer_updated_at": "2026-09-29T12:24:28.622631Z"
+    "golden_path_run_id": 36576869975,
+    "pointer_updated_at": "2026-09-29T13:40:52.042623Z"
   },
   "request": {
     "request_id": "telegram-3155-trend-1",
@@ -18,7 +18,7 @@
     "slot": null,
     "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-autonomous-codefix-builder",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-3155-trend-1.json"
   },
   "run": {
-    "id": 36567882950,
+    "id": 36576869975,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36567882950",
-    "created_at": "2026-09-29T12:24:21Z",
-    "updated_at": "2026-09-29T12:27:11Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36576869975",
+    "created_at": "2026-09-29T13:40:44Z",
+    "updated_at": "2026-09-29T13:41:04Z",
     "attempt": 1,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "failed_step": "Validate immutable implementation policy",
+    "failed_step_number": 12,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -73,7 +73,7 @@
       },
       {
         "label": "Light Preflight",
-        "status": "success",
+        "status": "skipped",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
@@ -85,13 +85,13 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
+        "status": "skipped",
         "step_number": 17,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "skipped",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,12 +125,12 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "Assert publishable production output"
+      "detail": "Validate immutable implementation policy"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "83c86323ad90…"
+      "detail": "f81801c537e2…"
     },
     {
       "name": "Self-Heal",
@@ -149,11 +149,11 @@
     }
   ],
   "incident": {
-    "signature": "36567882950:40:LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "signature": "36576869975:12:LOCAL_REPAIR_CODEFIX_REQUIRED",
     "severity": "critical",
     "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "failed_step": "Validate immutable implementation policy",
+    "failed_step_number": 12,
     "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -169,11 +169,11 @@
     "status": "ARMED",
     "source_status": "ARMED",
     "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_run_id": 36567882950,
+    "failed_run_id": 36576869975,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "owner": "tayvoriq-autonomous-codefix-builder",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -181,39 +181,39 @@
   },
   "events": [
     {
-      "at": "2026-09-29T12:27:11Z",
+      "at": "2026-09-29T13:41:04Z",
       "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "detail": "Validate immutable implementation policy"
+    },
+    {
+      "at": "2026-09-29T13:41:54.523209Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-29T13:40:52.042623Z",
+      "title": "DISPATCHED",
+      "detail": "verified-request-bound-autocodefix-overlay-replay"
+    },
+    {
+      "at": "2026-09-29T13:40:00.376968Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-29T13:38:35.865626Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-09-29T13:37:43.664619Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-09-29T13:26:29.901546Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-29T12:24:28.622631Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-29T12:24:14.571716Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-29T12:09:26.115847+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:36565744124"
-    },
-    {
-      "at": "2026-09-29T12:09:16.240588+00:00",
-      "title": "DISPATCHING",
-      "detail": "request-dispatcher:36565744124"
-    },
-    {
-      "at": "2026-09-29T12:04:32.327Z",
-      "title": "APPROVED",
-      "detail": "telegram_callback"
     }
   ]
 }
