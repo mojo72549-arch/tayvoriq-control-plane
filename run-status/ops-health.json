@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-29T05:09:50.519816Z",
+  "generated_at": "2026-09-29T05:11:24.484548Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,17 +8,17 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
-    "golden_path_run_id": 36485446867,
-    "pointer_updated_at": "2026-09-28T21:21:32Z"
+    "golden_path_run_id": 36524889612,
+    "pointer_updated_at": "2026-09-29T05:10:06.369019Z"
   },
   "request": {
     "request_id": "telegram-2991-trend-1-visual-repair-real-video-v1",
     "topic": "Tankrabatt ab 1. Oktober: Kommen die rund 17 Cent an der Zapfsäule an?",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-canonical-serialized-replay",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -40,13 +40,13 @@
     "path": "requests/telegram-2991-trend-1-visual-repair-real-video-v1.json"
   },
   "run": {
-    "id": 36485446867,
+    "id": 36524889612,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36485446867",
-    "created_at": "2026-09-28T21:20:34Z",
-    "updated_at": "2026-09-29T05:09:40Z",
-    "attempt": 2,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36524889612",
+    "created_at": "2026-09-29T05:09:59Z",
+    "updated_at": "2026-09-29T05:11:17Z",
+    "attempt": 1,
     "progress": 30,
     "current_step": "Checkout review pages",
     "last_successful_step": "Lightweight contract preflight",
@@ -135,7 +135,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
@@ -148,38 +148,32 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "36485446867:none:LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "severity": "warning",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
     "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
     "last_step": "Telegram progress - sources locked"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": null,
     "failed_run_id": 36485446867,
-    "replay_run_id": null,
+    "replay_run_id": 36524889612,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-canonical-serialized-replay",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-09-29T05:10:06.369019Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
     {
       "at": "2026-09-28T21:39:58.863367Z",
       "title": "AWAITING_CODEFIX",
@@ -204,11 +198,6 @@
       "at": "2026-09-28T21:04:30.333595Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-28T19:06:49.730518+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:36469916684"
     }
   ]
 }
