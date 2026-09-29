@@ -179,7 +179,7 @@ def validate(text: str) -> None:
         required_overlay_markers = (
             "production-green-sha+verified-request-codefix-overlay",
             "AUTOCODEFIX_OVERLAY_PATCH_HASH_MISMATCH",
-            "AUTOCODEFIX_OVERLAY_BASE_MISMATCH",
+            "AUTOCODEFIX_OVERLAY_SUPERSEDED_BY_PRODUCTION_GREEN",
             "AUTOCODEFIX_OVERLAY_PATH_NOT_ALLOWLISTED",
             "quality_gates_weakened",
         )
