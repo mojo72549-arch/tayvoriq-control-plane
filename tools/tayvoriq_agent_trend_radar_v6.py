@@ -194,6 +194,20 @@ STRICT FALLBACK CONTRACT BEFORE TELEGRAM:
 - personal_impact must explicitly contain 'Für dich' and state a concrete viewer consequence/relevance supported by the sources.
 - action_now must begin with one of: Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze, Speichere.
 - Do not use the fallback fields for long research prose; keep detail in source supports instead.
+
+RETENTION STORY V3 — CONTENT DEPTH IS MANDATORY:
+- A correct headline summary is NOT enough. Every candidate must contain one clear viewer payoff that is not obvious from the headline.
+- Build the story as: CONFLICT/CONSEQUENCE → FACT → EXPLANATION → AHA/REFRAME → MEANING → LIMITATION → SPECIFIC FOLLOW REASON.
+- primary_hook must lead with a concrete conflict, consequence, recognizable company/person/place, or strong number. No generic intro.
+- explanation_core must explain a causal mechanism, not merely repeat what happened.
+- surprise_or_reframe must add a genuinely new comparison, calculation, mechanism, contradiction, or implication.
+- If the source facts contain useful numbers, derive one transparent viewer-friendly comparison when mathematically valid (for example percentage change, per-person effect, time/cost delta). Label derived values as calculations/estimates and never present them as source quotes.
+- practical_relevance must say what changes for a person, job, household, region, company or daily decision. Avoid abstract phrases like "this is relevant for the economy".
+- The answer promised by the hook must be delivered in the same Short. Open loops may only point to a later development, never withhold the main answer.
+- cta_text must express a specific TAYVORIQ promise tied to the topic class; generic "Folge uns" is insufficient.
+- story_first_script_body should normally fit 35–60 seconds and prioritize one main insight over fact stacking.
+- Visual planning must follow the spoken beat. For numeric explanations prefer local motion graphics/infographics over unrelated stock footage.
+- Forbidden default visuals: generic trader/man in front of charts, unrelated luxury footage, damaged cars as a proxy for layoffs/closures, fabricated protests.
 """.strip()
 
 
