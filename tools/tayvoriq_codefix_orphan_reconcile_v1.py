@@ -527,9 +527,6 @@ def main() -> int:
             if codefix_replay and structured is None:
                 print(f"CODEFIX_ORPHAN_REPLAY_REARM_BLOCKED_NO_STRUCTURED_EVIDENCE:{run_id}")
                 continue
-            if _structured_local_failure(structured):
-                print(f"CODEFIX_ORPHAN_LOCAL_FAILURE_NOT_CODEFIX:{run_id}")
-                continue
             policy = _policy(
                 logs,
                 run_attempt,
@@ -544,6 +541,14 @@ def main() -> int:
             mode = str(policy.get("mode") or "")
             state = str(policy.get("state") or "")
             print(f"CODEFIX_ORPHAN_POLICY_DECISION:{run_id}:mode={mode}:state={state}")
+            # Local voice/visual failures remain local during the bounded retry
+            # budget. Once the shared recovery policy explicitly escalates the
+            # exhausted class to deterministic codefix, the canonical request
+            # must be allowed to arm; otherwise Delivery Watch deadlocks between
+            # "LOCAL_*_CODEFIX_REQUIRED" and an owner that can never become ARMED.
+            if _structured_local_failure(structured) and mode != "deterministic":
+                print(f"CODEFIX_ORPHAN_LOCAL_FAILURE_NOT_CODEFIX:{run_id}")
+                continue
             if mode != "deterministic":
                 continue
             failed_control, failed_impl = _diagnostic_shas(run_id, run_attempt, run_meta, temp)
