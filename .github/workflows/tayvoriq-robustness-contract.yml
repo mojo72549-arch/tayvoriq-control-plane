@@ -399,7 +399,7 @@ jobs:
               'TAYVORIQ_VISUAL_REPAIR_TIMEOUT_SECONDS: "480"',
               'TAYVORIQ_VOICE_REPAIR_TIMEOUT_SECONDS: "600"',
               'TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "1"',
-              'TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS: "900"',
+              'TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS: "1500"',
           )
           for token in production_slo:
               if token not in golden_path:
