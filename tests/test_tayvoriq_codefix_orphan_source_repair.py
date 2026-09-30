@@ -52,3 +52,58 @@ def test_review_repair_without_telegram_identity_is_not_auto_repairable() -> Non
     assert orphan._telegram_bound(request) is False
     assert orphan._auto_repair(request) is False
 
+
+
+def test_structured_local_voice_failure_can_never_be_rearmed_as_codefix(tmp_path: Path) -> None:
+    evidence = tmp_path / "failure-notification-policy.json"
+    evidence.write_text(
+        """{
+  "state": "TRANSIENT_AUDIO_FAILURE",
+  "failure_class": "LOCAL_VOICE",
+  "repair_target_stages": [],
+  "quality_gates_weakened": false
+}
+""",
+        encoding="utf-8",
+    )
+
+    assert orphan._structured_local_failure(evidence) is True
+
+
+def test_structured_local_visual_failure_can_never_be_rearmed_as_codefix(tmp_path: Path) -> None:
+    evidence = tmp_path / "failure-notification-policy.json"
+    evidence.write_text(
+        """{
+  "state": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+  "failure_class": "LOCAL_VISUAL",
+  "repair_target_stages": ["VISUALS"],
+  "quality_gates_weakened": false
+}
+""",
+        encoding="utf-8",
+    )
+
+    assert orphan._structured_local_failure(evidence) is True
+
+
+def test_deterministic_structured_failure_remains_eligible_for_codefix(tmp_path: Path) -> None:
+    evidence = tmp_path / "failure-notification-policy.json"
+    evidence.write_text(
+        """{
+  "state": "CODE_REPAIR_REQUIRED",
+  "failure_class": "DETERMINISTIC_CODE",
+  "repair_target_stages": [],
+  "quality_gates_weakened": false
+}
+""",
+        encoding="utf-8",
+    )
+
+    assert orphan._structured_local_failure(evidence) is False
+
+
+def test_orphan_reconcile_passes_structured_failure_contract_to_recovery_policy() -> None:
+    source = MODULE.read_text(encoding="utf-8")
+    assert "--structured-evidence" in source
+    assert "CODEFIX_ORPHAN_REPLAY_REARM_BLOCKED_NO_STRUCTURED_EVIDENCE" in source
+    assert "CODEFIX_ORPHAN_LOCAL_FAILURE_NOT_CODEFIX" in source
