@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-30T20:20:18.656547Z",
-  "overall": "yellow",
+  "generated_at": "2026-09-30T22:37:02.959571Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3155-trend-1",
-    "golden_path_run_id": 36760333864,
-    "pointer_updated_at": "2026-09-30T18:41:10.034447Z"
+    "golden_path_run_id": 36776917323,
+    "pointer_updated_at": "2026-09-30T21:03:44.663520Z"
   },
   "request": {
     "request_id": "telegram-3155-trend-1",
@@ -18,7 +18,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-3155-trend-1.json"
   },
   "run": {
-    "id": 36760333864,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36760333864",
-    "created_at": "2026-09-30T18:41:03Z",
-    "updated_at": "2026-09-30T20:18:38Z",
-    "attempt": 3,
+    "id": 36776917323,
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36776917323",
+    "created_at": "2026-09-30T21:03:37Z",
+    "updated_at": "2026-09-30T21:06:49Z",
+    "attempt": 1,
     "progress": 30,
-    "current_step": "Install or reuse production dependencies",
-    "last_successful_step": "Telegram progress - environment active",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Install or reuse production dependencies"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -134,41 +134,67 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "status": "red",
+      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
-  "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
-    "last_step": "Telegram progress - environment active"
-  },
-  "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_DISPATCHED",
+  "incident": {
+    "signature": "36776917323:40:none",
+    "severity": "critical",
     "failure_state": null,
-    "failed_run_id": 36743465012,
-    "replay_run_id": 36760333864,
-    "fresh_recovery_run_id": null,
-    "recovery_generation": 0,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "user_action_required": false,
+    "recovery_replay_failed": true
+  },
+  "telegram": {
+    "status": "green",
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
+  },
+  "recovery": {
+    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": null,
+    "failed_run_id": 36760333864,
+    "replay_run_id": 36776917323,
+    "fresh_recovery_run_id": null,
+    "recovery_generation": 0,
+    "owner": "tayvoriq-delivery-watch",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "inferred_from_run_terminal_state": true,
+    "needs_codefix": true
   },
   "events": [
+    {
+      "at": "2026-09-30T21:06:49Z",
+      "title": "Recovery-Replay fehlgeschlagen",
+      "detail": "Run 36776917323 · interner Codefix erforderlich · kein Eingriff von dir"
+    },
+    {
+      "at": "2026-09-30T21:06:49Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-30T21:03:44.663520Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-09-30T18:41:10.034447Z",
       "title": "DISPATCHED",
@@ -193,11 +219,6 @@
       "at": "2026-09-30T06:55:14.276705Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-30T06:54:42.476010Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     }
   ]
 }
