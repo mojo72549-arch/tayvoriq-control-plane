@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-30T18:40:24.262094Z",
+  "generated_at": "2026-09-30T20:18:19.742210Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3155-trend-1",
-    "golden_path_run_id": 36743465012,
-    "pointer_updated_at": "2026-09-30T16:20:31.436395Z"
+    "golden_path_run_id": 36760333864,
+    "pointer_updated_at": "2026-09-30T18:41:10.034447Z"
   },
   "request": {
     "request_id": "telegram-3155-trend-1",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-3155-trend-1.json"
   },
   "run": {
-    "id": 36743465012,
+    "id": 36760333864,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36743465012",
-    "created_at": "2026-09-30T16:20:24Z",
-    "updated_at": "2026-09-30T16:54:58Z",
-    "attempt": 3,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36760333864",
+    "created_at": "2026-09-30T18:41:03Z",
+    "updated_at": "2026-09-30T20:09:02Z",
+    "attempt": 2,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,7 +91,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "skipped",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "Exact-request replay readiness gate"
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -149,11 +149,11 @@
     }
   ],
   "incident": {
-    "signature": "36743465012:30:none",
+    "signature": "36760333864:40:none",
     "severity": "critical",
     "failure_state": null,
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -169,8 +169,8 @@
     "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": null,
-    "failed_run_id": 36680773303,
-    "replay_run_id": 36743465012,
+    "failed_run_id": 36743465012,
+    "replay_run_id": 36760333864,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-deterministic-codefix-continuity",
@@ -181,14 +181,24 @@
   },
   "events": [
     {
-      "at": "2026-09-30T16:54:58Z",
+      "at": "2026-09-30T20:09:02Z",
       "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 36743465012 · interner Codefix erforderlich · kein Eingriff von dir"
+      "detail": "Run 36760333864 · interner Codefix erforderlich · kein Eingriff von dir"
     },
     {
-      "at": "2026-09-30T16:54:58Z",
+      "at": "2026-09-30T20:09:02Z",
       "title": "Workflow-Fehler",
-      "detail": "Exact-request replay readiness gate"
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-09-30T18:41:10.034447Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-09-30T18:40:39.724503Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_VISUAL_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-09-30T16:20:31.436395Z",
@@ -209,16 +219,6 @@
       "at": "2026-09-30T06:54:42.476010Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-30T06:32:34.311261Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-09-30T06:05:00.550286Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
