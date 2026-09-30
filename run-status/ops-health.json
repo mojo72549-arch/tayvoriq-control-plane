@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-30T16:23:01.031135Z",
+  "generated_at": "2026-09-30T16:34:44.456598Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -41,41 +41,41 @@
   },
   "run": {
     "id": 36743465012,
-    "status": "queued",
+    "status": "in_progress",
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36743465012",
     "created_at": "2026-09-30T16:20:24Z",
-    "updated_at": "2026-09-30T16:22:56Z",
+    "updated_at": "2026-09-30T16:23:01Z",
     "attempt": 2,
-    "progress": 3,
-    "current_step": null,
-    "last_successful_step": null,
+    "progress": 30,
+    "current_step": "Install or reuse production dependencies",
+    "last_successful_step": "Telegram progress - environment active",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 3,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 7,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 8,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 17,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
@@ -85,39 +85,39 @@
       },
       {
         "label": "Full Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 17,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 33,
+        "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 40,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 42,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 46,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 47,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "queued"
+      "detail": "Install or reuse production dependencies"
     },
     {
       "name": "Production Green",
@@ -139,8 +139,8 @@
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
+      "status": "green",
+      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
     },
     {
       "name": "Quality Gates",
@@ -150,9 +150,9 @@
   ],
   "incident": null,
   "telegram": {
-    "status": "yellow",
-    "detail": "Noch kein bestätigter Telegram-Schritt im aktuellen Run",
-    "last_step": null
+    "status": "green",
+    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
+    "last_step": "Telegram progress - environment active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
