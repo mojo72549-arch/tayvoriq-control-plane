@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-30T06:42:18.977084Z",
+  "generated_at": "2026-09-30T06:42:55.258232Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -48,8 +48,8 @@
     "updated_at": "2026-09-30T06:39:35Z",
     "attempt": 2,
     "progress": 30,
-    "current_step": "Restore production model cache",
-    "last_successful_step": "Telegram progress - production active",
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -91,7 +91,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Restore production model cache"
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
