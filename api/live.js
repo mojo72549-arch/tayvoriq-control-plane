@@ -199,6 +199,35 @@ function userActionRequired(failureState){
   return /(EXTERNAL|SECRET|AUTH|PAYMENT|BILLING|PERMISSION|QUOTA|ACCOUNT)/i.test(String(failureState||''));
 }
 
+function recoveryTruth(requestData,canonicalRun,snapshot={}){
+  const data=(requestData?.codefix_recovery&&typeof requestData.codefix_recovery==='object')?requestData.codefix_recovery:{};
+  const raw=String(data.status||snapshot?.recovery?.status||'UNKNOWN').toUpperCase();
+  const rawFailure=String(data.failure_state||'').toUpperCase();
+  const lastFailure=String(data.last_failure_state||rawFailure||'').toUpperCase();
+  const runStatus=String(canonicalRun?.status||'').toLowerCase();
+  const conclusion=String(canonicalRun?.conclusion||'').toLowerCase();
+  const failed=runStatus==='completed' && Boolean(conclusion) && conclusion!=='success';
+  const active=ACTIVE_STATUSES.has(runStatus);
+
+  if(raw==='REPLAY_DISPATCHED'){
+    if(active){
+      if(lastFailure.includes('LOCAL_VOICE')) return {status:'LOCAL_VOICE_RETRY_RUNNING',failure_state:lastFailure||null};
+      if(lastFailure.includes('LOCAL_VISUAL')) return {status:'LOCAL_VISUAL_RETRY_RUNNING',failure_state:lastFailure||null};
+      return {status:'REPLAY_RUNNING',failure_state:rawFailure||null};
+    }
+    if(failed){
+      if(lastFailure.includes('LOCAL_VOICE')) return {status:'LOCAL_VOICE_RETRY_REQUIRED',failure_state:lastFailure};
+      if(lastFailure.includes('LOCAL_VISUAL')) return {status:'LOCAL_VISUAL_RETRY_REQUIRED',failure_state:lastFailure};
+      return {status:'RECOVERY_CLASSIFICATION_PENDING',failure_state:rawFailure||lastFailure||null};
+    }
+  }
+
+  return {
+    status:raw,
+    failure_state:rawFailure||snapshot?.incident?.failure_state||null,
+  };
+}
+
 function pilotFailureClass(stage='',step='',message=''){
   const value=`${stage} ${step} ${message}`.toUpperCase();
   if(/SECRET|TOKEN|AUTH|PAYMENT|BILLING|QUOTA|ACCOUNT|PERMISSION/.test(value)) return 'EXTERNAL_BLOCKER';
@@ -443,10 +472,11 @@ export default async function handler(req,res){
   const activeStage=stages.find(x=>x.status==='running')||null;
   const lastSuccess=[...stages].reverse().find(x=>x.status==='success')||null;
   const recoveryData=(requestData?.codefix_recovery&&typeof requestData.codefix_recovery==='object')?requestData.codefix_recovery:{};
+  const recoveryTruthState=recoveryTruth(requestData,canonicalRun,snapshot||{});
   const recovery={
     ...(snapshot?.recovery||{}),
     ...recoveryData,
-    status:recoveryData.status||snapshot?.recovery?.status||'UNKNOWN',
+    status:recoveryTruthState.status,
     recovery_generation:Number(requestData?.recovery_generation??recoveryData.fresh_recovery_generation??recoveryData.recovery_generation??snapshot?.recovery?.recovery_generation??0),
     owner:requestData?.recovery_owner||snapshot?.recovery?.owner||'tayvoriq-agent-orchestrator-v2'
   };
@@ -489,7 +519,7 @@ export default async function handler(req,res){
     stages
   }:(snapshot?.run||{});
 
-  const failureState=recoveryData.failure_state||snapshot?.incident?.failure_state||null;
+  const failureState=recoveryTruthState.failure_state||null;
   const incident=failedStage?{
     ...(snapshot?.incident||{}),
     failure_state:failureState||'WORKFLOW_FAILURE',
@@ -500,12 +530,17 @@ export default async function handler(req,res){
   }:(snapshot?.incident||null);
 
   const active=telemetry.filter(x=>ACTIVE_STATUSES.has(x.status));
-  const current=active[0]||canonicalActivity||telemetry[0]||null;
+  const canonicalActive=Boolean(canonicalRun&&ACTIVE_STATUSES.has(String(canonicalRun.status)));
+  // Background recovery/promoter workflows may be active, but they must never
+  // replace the canonical Golden Path as the user-facing production truth.
+  const current=canonicalActivity||active[0]||telemetry[0]||null;
   const latestAt=current?.updated_at||telemetry[0]?.updated_at||pointer?.updated_at||snapshot?.generated_at||null;
   const latestAge=latestAt?Math.max(0,Math.round((Date.now()-Date.parse(latestAt))/1000)):null;
   const snapshotAt=snapshot?.generated_at||null;
   const snapshotAge=snapshotAt?Math.max(0,Math.round((Date.now()-Date.parse(snapshotAt))/1000)):null;
-  const overall=active.length?'yellow':canonicalRun?colorForRun(canonicalRun):(snapshot?.overall||'unknown');
+  const overall=canonicalRun
+    ? (canonicalActive?'yellow':colorForRun(canonicalRun))
+    : (active.length?'yellow':(snapshot?.overall||'unknown'));
   const healthchecks=liveHealthchecks(snapshot,canonicalRun,stages,recovery,telemetry);
 
   const liveEvents=[];
@@ -541,6 +576,7 @@ export default async function handler(req,res){
       latest_activity_at:latestAt,
       latest_activity_age_seconds:latestAge,
       active_count:active.length,
+      canonical_active:canonicalActive,
       active_activity:active,
       current,
       telemetry_count:telemetry.length,
