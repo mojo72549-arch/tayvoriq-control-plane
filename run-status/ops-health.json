@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-30T06:32:39.337656Z",
+  "generated_at": "2026-09-30T06:33:56.801046Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -48,8 +48,8 @@
     "updated_at": "2026-09-30T06:32:26Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
+    "current_step": "Install or reuse production dependencies",
+    "last_successful_step": "Telegram progress - environment active",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout review pages"
+      "detail": "Install or reuse production dependencies"
     },
     {
       "name": "Production Green",
@@ -140,7 +140,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
     },
     {
       "name": "Quality Gates",
@@ -151,8 +151,8 @@
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
+    "last_step": "Telegram progress - environment active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
