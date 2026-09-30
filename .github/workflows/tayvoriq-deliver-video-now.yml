@@ -1701,12 +1701,18 @@ jobs:
           if report_path.exists():
               try: report = json.loads(report_path.read_text(encoding="utf-8"))
               except Exception: report = {}
+          if not isinstance(report, dict):
+              report = {}
           if preflight_path.exists():
               try: preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
               except Exception: preflight = {}
+          if not isinstance(preflight, dict):
+              preflight = {}
           if duplicate_path.exists():
               try: duplicate = json.loads(duplicate_path.read_text(encoding="utf-8"))
               except Exception: duplicate = {}
+          if not isinstance(duplicate, dict):
+              duplicate = {}
           # The report can retain PREFLIGHT_PASSED when a timed-out local
           # repair is killed before it writes a final report. Step outputs are
           # authoritative for the completed production attempt.
@@ -1742,6 +1748,8 @@ jobs:
               try:
                   event = json.loads(line.strip())
               except Exception:
+                  continue
+              if not isinstance(event, dict):
                   continue
               stage = str(event.get("checkpoint_stage") or "").strip().upper()
               if not stage or str(event.get("status") or "").strip().lower() != "completed":
