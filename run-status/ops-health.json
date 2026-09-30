@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-09-30T06:42:04.908948Z",
+  "generated_at": "2026-09-30T06:42:18.977084Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -48,8 +48,8 @@
     "updated_at": "2026-09-30T06:39:35Z",
     "attempt": 2,
     "progress": 30,
-    "current_step": "Exact-request replay readiness gate",
-    "last_successful_step": "Activate V5 contract after isolated preflight",
+    "current_step": "Restore production model cache",
+    "last_successful_step": "Telegram progress - production active",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Exact-request replay readiness gate"
+      "detail": "Restore production model cache"
     },
     {
       "name": "Production Green",
@@ -140,7 +140,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
@@ -151,8 +151,8 @@
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
-    "last_step": "Telegram progress - environment active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
