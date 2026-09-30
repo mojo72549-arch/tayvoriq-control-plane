@@ -54,3 +54,23 @@ def test_production_green_promoter_never_dispatches_codefix_helper():
     assert "gh workflow run tayvoriq-deterministic-codefix-continuity.yml" not in src
     assert "Report verified Production Green state to Orchestrator" in src
     assert "actions: read" in src
+
+
+def test_control_center_never_lets_background_recovery_override_canonical_run_truth():
+    for path in LIVE_APIS:
+        src = path.read_text(encoding="utf-8")
+        assert "function recoveryTruth(requestData,canonicalRun,snapshot={})" in src
+        assert "LOCAL_VOICE_RETRY_RUNNING" in src
+        assert "LOCAL_VOICE_RETRY_REQUIRED" in src
+        assert "RECOVERY_CLASSIFICATION_PENDING" in src
+        assert "const current=canonicalActivity||active[0]||telemetry[0]||null;" in src
+        assert "const canonicalActive=Boolean(canonicalRun&&ACTIVE_STATUSES.has(String(canonicalRun.status)))" in src
+        assert "const overall=canonicalRun" in src
+
+
+def test_control_center_codefix_state_requires_actual_codefix_not_replay_failure_inference():
+    for path in LIVE_APIS:
+        src = path.read_text(encoding="utf-8")
+        assert "REPLAY_FAILED_CODEFIX_REQUIRED" not in src
+        assert "if(lastFailure.includes('LOCAL_VOICE')) return {status:'LOCAL_VOICE_RETRY_REQUIRED'" in src
+        assert "if(lastFailure.includes('LOCAL_VISUAL')) return {status:'LOCAL_VISUAL_RETRY_REQUIRED'" in src
