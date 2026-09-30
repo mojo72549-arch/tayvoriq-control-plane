@@ -222,32 +222,38 @@ def _failed_logs(run_id: int, target: Path) -> bool:
     return target.is_file() and bool(target.read_text(encoding="utf-8", errors="replace").strip())
 
 
-def _policy(logs: Path, run_attempt: int, generation: int, codefix_replay: bool, target: Path) -> dict[str, Any] | None:
-    result = _run(
-        [
-            sys.executable,
-            str(POLICY),
-            "--logs-file",
-            str(logs),
-            "--run-attempt",
-            str(max(1, run_attempt)),
-            "--recovery-generation",
-            str(max(0, generation)),
-            "--max-generations",
-            "4",
-            "--owner-found",
-            "true",
-            "--owner-current",
-            "true",
-            "--exact-request-retry",
-            "true",
-            "--codefix-replay",
-            "true" if codefix_replay else "false",
-            "--output-json",
-            str(target),
-        ],
-        check=False,
-    )
+def _policy(
+    logs: Path,
+    run_attempt: int,
+    generation: int,
+    codefix_replay: bool,
+    target: Path,
+    structured_evidence: Path | None = None,
+) -> dict[str, Any] | None:
+    command = [
+        sys.executable,
+        str(POLICY),
+        "--logs-file",
+        str(logs),
+        "--run-attempt",
+        str(max(1, run_attempt)),
+        "--recovery-generation",
+        str(max(0, generation)),
+        "--max-generations",
+        "4",
+        "--owner-found",
+        "true",
+        "--owner-current",
+        "true",
+        "--exact-request-retry",
+        "true",
+        "--codefix-replay",
+        "true" if codefix_replay else "false",
+    ]
+    if structured_evidence is not None and structured_evidence.is_file():
+        command.extend(["--structured-evidence", str(structured_evidence)])
+    command.extend(["--output-json", str(target)])
+    result = _run(command, check=False)
     if result.returncode != 0 or not target.is_file():
         print(f"CODEFIX_ORPHAN_POLICY_FAILED:{result.stdout[-500:]}")
         return None
@@ -255,6 +261,73 @@ def _policy(logs: Path, run_attempt: int, generation: int, codefix_replay: bool,
         return json.loads(target.read_text(encoding="utf-8"))
     except Exception:
         return None
+
+
+def _structured_failure_evidence(
+    run_id: int,
+    run_attempt: int,
+    temp: Path,
+) -> Path | None:
+    """Return the producer's machine-readable failure contract.
+
+    Raw Actions logs may contain stale failure words from earlier local retries.
+    A replay may only be promoted to deterministic codefix after consulting the
+    exact failed attempt's structured failure contract. If a replay has no such
+    contract, callers fail closed instead of guessing from logs.
+    """
+    diag = temp / "structured-diagnostics"
+    diag.mkdir(parents=True, exist_ok=True)
+    artifact = f"tayvoriq-x-diagnostics-{run_id}-attempt-{max(1, run_attempt)}"
+    downloaded = _run(
+        ["gh", "run", "download", str(run_id), "-n", artifact, "-D", str(diag)],
+        check=False,
+    )
+    if downloaded.returncode != 0:
+        print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_DOWNLOAD_FAILED:{run_id}")
+        return None
+    matches = list(diag.rglob("failure-notification-policy.json"))
+    if not matches:
+        print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_MISSING:{run_id}")
+        return None
+    try:
+        data = json.loads(matches[0].read_text(encoding="utf-8"))
+    except Exception:
+        print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_INVALID:{run_id}")
+        return None
+    if not isinstance(data, dict) or data.get("quality_gates_weakened") is not False:
+        print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_UNTRUSTED:{run_id}")
+        return None
+    return matches[0]
+
+
+def _structured_local_failure(evidence: Path | None) -> bool:
+    if evidence is None or not evidence.is_file():
+        return False
+    try:
+        data = json.loads(evidence.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    state = str(data.get("state") or "").strip().upper()
+    failure_class = str(data.get("failure_class") or "").strip().upper()
+    targets = {
+        str(value or "").strip().upper()
+        for value in (data.get("repair_target_stages") or [])
+        if str(value or "").strip()
+    }
+    if state in {
+        "TRANSIENT_AUDIO_FAILURE",
+        "LOCAL_VOICE_RETRY_REQUIRED",
+        "LOCAL_VISUAL_REPAIR_REQUIRED",
+        "LOCAL_VISUAL_RETRY_REQUIRED",
+    }:
+        return True
+    if failure_class in {"LOCAL_VOICE", "LOCAL_VISUAL"}:
+        return True
+    return (
+        state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
+        and bool(targets)
+        and targets <= {"VOICE", "VISUALS"}
+    )
 
 
 def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], temp: Path) -> tuple[str, str]:
@@ -449,7 +522,22 @@ def main() -> int:
                 or
                 (status == "FRESH_RECOVERY_DISPATCHED" and _int(codefix.get("fresh_recovery_run_id")) == run_id)
             )
-            policy = _policy(logs, _int(run_meta.get("run_attempt")) or 1, generation, codefix_replay, policy_path)
+            run_attempt = _int(run_meta.get("run_attempt")) or 1
+            structured = _structured_failure_evidence(run_id, run_attempt, temp)
+            if codefix_replay and structured is None:
+                print(f"CODEFIX_ORPHAN_REPLAY_REARM_BLOCKED_NO_STRUCTURED_EVIDENCE:{run_id}")
+                continue
+            if _structured_local_failure(structured):
+                print(f"CODEFIX_ORPHAN_LOCAL_FAILURE_NOT_CODEFIX:{run_id}")
+                continue
+            policy = _policy(
+                logs,
+                run_attempt,
+                generation,
+                codefix_replay,
+                policy_path,
+                structured,
+            )
             if not policy:
                 print(f"CODEFIX_ORPHAN_POLICY_UNAVAILABLE:{run_id}")
                 continue
@@ -458,7 +546,7 @@ def main() -> int:
             print(f"CODEFIX_ORPHAN_POLICY_DECISION:{run_id}:mode={mode}:state={state}")
             if mode != "deterministic":
                 continue
-            failed_control, failed_impl = _diagnostic_shas(run_id, _int(run_meta.get("run_attempt")) or 1, run_meta, temp)
+            failed_control, failed_impl = _diagnostic_shas(run_id, run_attempt, run_meta, temp)
             relative = path.relative_to(ROOT)
             armed, request_id, topic, armed_generation = _arm_request(
                 relative,
