@@ -44,6 +44,7 @@ jobs:
         with:
           repository: mojo72549-arch/shorts-agent-studio
           ref: ad0127e8385a015dd7c56561d046d8cddc0c5b51
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
 
