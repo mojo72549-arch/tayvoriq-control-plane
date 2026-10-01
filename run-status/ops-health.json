@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-01T19:52:48.048518Z",
+  "generated_at": "2026-10-01T22:54:43.656446Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "Mercedes: 38 Stunden ohne mehr Geld – und zwei Werke stehen zur Debatte",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": "DEUTSCHLAND IM UMBAU",
@@ -45,13 +45,13 @@
     "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36907774806",
     "created_at": "2026-10-01T18:33:58Z",
-    "updated_at": "2026-10-01T19:04:19Z",
-    "attempt": 1,
+    "updated_at": "2026-10-01T22:16:51Z",
+    "attempt": 3,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "failed_step": "Exact-request replay readiness gate",
+    "failed_step_number": 30,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,7 +91,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "skipped",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "Assert publishable production output"
+      "detail": "Exact-request replay readiness gate"
     },
     {
       "name": "Production Green",
@@ -134,8 +134,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "red",
-      "detail": "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -149,16 +149,16 @@
     }
   ],
   "incident": {
-    "signature": "36907774806:40:none",
+    "signature": "36907774806:30:LOCAL_REPAIR_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": null,
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
-    "self_heal_status": "REPLAY_FAILED_CODEFIX_REQUIRED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_step": "Exact-request replay readiness gate",
+    "failed_step_number": 30,
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": true
+    "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
@@ -166,29 +166,29 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_FAILED_CODEFIX_REQUIRED",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": null,
-    "failed_run_id": 36776917323,
-    "replay_run_id": 36907774806,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_run_id": 36907774806,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": true,
-    "needs_codefix": true
+    "inferred_from_run_terminal_state": false,
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-10-01T19:04:19Z",
-      "title": "Recovery-Replay fehlgeschlagen",
-      "detail": "Run 36907774806 · interner Codefix erforderlich · kein Eingriff von dir"
+      "at": "2026-10-01T22:16:51Z",
+      "title": "Workflow-Fehler",
+      "detail": "Exact-request replay readiness gate"
     },
     {
-      "at": "2026-10-01T19:04:19Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-10-01T19:52:58.353384Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-10-01T18:34:05.178438Z",
@@ -214,11 +214,6 @@
       "at": "2026-09-30T18:40:39.724503Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_VISUAL_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-09-30T16:20:31.436395Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
