@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-02T23:15:43.549272Z",
+  "generated_at": "2026-10-02T23:16:02.594614Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -149,9 +149,9 @@
     }
   ],
   "incident": {
-    "signature": "36907774806:30:LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "signature": "36907774806:30:CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
     "failed_step": "Exact-request replay readiness gate",
     "failed_step_number": 30,
     "self_heal_status": "ARMED",
@@ -168,7 +168,7 @@
   "recovery": {
     "status": "ARMED",
     "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
     "failed_run_id": 36907774806,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
@@ -184,6 +184,11 @@
       "at": "2026-10-01T22:16:51Z",
       "title": "Workflow-Fehler",
       "detail": "Exact-request replay readiness gate"
+    },
+    {
+      "at": "2026-10-02T23:15:45.418112Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-10-01T19:52:58.353384Z",
@@ -209,11 +214,6 @@
       "at": "2026-09-30T18:41:10.034447Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-09-30T18:40:39.724503Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_VISUAL_CODEFIX_REQUIRED"
     }
   ]
 }
