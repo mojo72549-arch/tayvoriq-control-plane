@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - tools/tayvoriq_recovery_policy_v1.py
+      - tools/tayvoriq_lifecycle_controller_v1.py
+      - tests/test_tayvoriq_lifecycle_controller.py
       - tests/test_tayvoriq_recovery_policy_v1.py
       - tests/test_tayvoriq_recovery_policy_external_hardening.py
       - tests/test_tayvoriq_request_continuity_latest_request_v2.py
@@ -21,6 +23,8 @@ on:
     branches: [main]
     paths:
       - tools/tayvoriq_recovery_policy_v1.py
+      - tools/tayvoriq_lifecycle_controller_v1.py
+      - tests/test_tayvoriq_lifecycle_controller.py
       - tests/test_tayvoriq_recovery_policy_v1.py
       - tests/test_tayvoriq_recovery_policy_external_hardening.py
       - tests/test_tayvoriq_request_continuity_latest_request_v2.py
@@ -53,14 +57,16 @@ jobs:
             tools/tayvoriq_recovery_policy_v1.py \
             tests/test_tayvoriq_recovery_policy_v1.py \
             tests/test_tayvoriq_recovery_policy_external_hardening.py \
-            tests/test_tayvoriq_request_continuity_latest_request_v2.py
+            tests/test_tayvoriq_request_continuity_latest_request_v2.py \
+            tests/test_tayvoriq_lifecycle_controller.py
       - name: Run recovery policy regressions
         run: |
           python -m pip install pytest pyyaml -q
           python -m pytest -q \
             tests/test_tayvoriq_recovery_policy_v1.py \
             tests/test_tayvoriq_recovery_policy_external_hardening.py \
-            tests/test_tayvoriq_request_continuity_latest_request_v2.py
+            tests/test_tayvoriq_request_continuity_latest_request_v2.py \
+            tests/test_tayvoriq_lifecycle_controller.py
       - name: Parse recovery workflows as YAML
         run: |
           python - <<'PY'
@@ -83,7 +89,7 @@ jobs:
           import yaml
           delivery=yaml.safe_load(Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8'))
           job=(delivery.get('jobs') or {}).get('classify-and-recover') or {}
-          assert str((job.get('env') or {}).get('MAX_RECOVERY_GENERATIONS')) == '4'
+          assert str((job.get('env') or {}).get('MAX_RECOVERY_GENERATIONS')) == '1'
           PY
           grep -q 'lifecycle-controller:' .github/workflows/tayvoriq-agent-orchestrator-v2.yml
           grep -q 'Enforce single active executor' .github/workflows/tayvoriq-agent-orchestrator-v2.yml
