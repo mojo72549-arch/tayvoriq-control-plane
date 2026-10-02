@@ -21,6 +21,8 @@ def test_failure_handoff_prefers_failed_recovery_over_stale_preflight(tmp_path):
 
     report = tmp_path / "implementation/out/tayvoriq-self-heal/report.json"
     report.parent.mkdir(parents=True)
+    # The workflow creates this directory immediately before the extracted Python.
+    (tmp_path / "implementation/out/control-plane").mkdir(parents=True)
     report.write_text(json.dumps({"state": "PREFLIGHT_PASSED"}), encoding="utf-8")
     env = {
         **os.environ,

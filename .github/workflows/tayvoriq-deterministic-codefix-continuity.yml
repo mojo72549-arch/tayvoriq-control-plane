@@ -2,23 +2,6 @@
 name: TAYVORIQ Deterministic Codefix Continuity
 
 on:
-  workflow_run:
-    workflows:
-      - TAYVORIQ-X Golden Path
-      - TAYVORIQ Production Green Promoter
-    types: [completed]
-  push:
-    branches: [main]
-    paths:
-      - .github/state/tayvoriq-production-green.json
-      - .github/state/tayvoriq-active-production-request.json
-      - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
-      - .github/workflows/tayvoriq-autonomous-codefix-builder.yml
-      - .github/workflows/tayvoriq-deliver-video-now.yml
-      - tools/tayvoriq_codefix_orphan_reconcile_v1.py
-      - tools/tayvoriq_recovery_policy_v1.py
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       failed_run_id:
@@ -330,7 +313,7 @@ jobs:
               existing_replay_run=int(existing.get('replay_run_id') or 0)
           except (TypeError,ValueError):
               existing_replay_run=0
-          if existing_status == 'ARMED':
+          if existing_status == 'ARMED' and existing.get('failure_signature') == signature and existing.get('failure_state') == state:
               print('ALREADY_HANDLED'); raise SystemExit(0)
           if existing_status == 'REPLAY_DISPATCHED' and existing_replay_run != run_id:
               print('ALREADY_HANDLED_OTHER_REPLAY'); raise SystemExit(0)
@@ -420,7 +403,7 @@ jobs:
           import json,sys
           from pathlib import Path
           pp=Path(sys.argv[1]); outp=Path(sys.argv[2])
-          out={'found':'false','request_file':'','request_id':'','topic':'','trend_id':'','run_id':'','generation':'0','failed_control_sha':'','failed_impl_sha':'','failure_signature':''}
+          out={'found':'false','request_file':'','request_id':'','topic':'','trend_id':'','run_id':'','generation':'0','failed_control_sha':'','failed_impl_sha':'','failure_signature':'','failure_state':''}
           if pp.is_file():
               try: p=json.loads(pp.read_text(encoding='utf-8'))
               except Exception: p={}
@@ -439,6 +422,7 @@ jobs:
                       out.update({'found':'true','request_file':str(rp),'request_id':rid,'topic':str(d.get('topic') or ''),
                           'trend_id':str(d.get('trend_id') or ''),'run_id':str(prun),
                           'generation':str(max(0,int(d.get('recovery_generation') or 0))),
+                          'failure_state':str(c.get('failure_state') or ''),
                           'failed_control_sha':str(c.get('failed_control_plane_sha') or ''),
                           'failed_impl_sha':str(c.get('failed_implementation_sha') or ''),
                           'failure_signature':str(c.get('failure_signature') or '')})
@@ -533,6 +517,7 @@ jobs:
         if: >-
           steps.pending.outputs.found == 'true' &&
           steps.revision.outputs.detected != 'true' &&
+          !startsWith(steps.pending.outputs.failure_state, 'CONTROL_PLANE_BINDING') &&
           (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'TAYVORIQ Production Green Promoter')
         shell: bash
         env:
@@ -576,6 +561,13 @@ jobs:
           fi
           gh workflow run tayvoriq-production-green-promoter.yml --ref main
           echo "CODEFIX_PRODUCTION_GREEN_RECONCILIATION_DISPATCHED:${{ steps.pending.outputs.request_id }}:${{ steps.pending.outputs.run_id }}"
+
+      - name: Verify control-plane continuation before replay
+        if: steps.revision.outputs.detected == 'true'
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p test_tayvoriq_lifecycle_controller.py
+          python -m unittest discover -s tests -p test_tayvoriq_green_replay_readiness.py
 
       - name: Replay exact active request after verified codefix
         id: replay
@@ -628,6 +620,9 @@ jobs:
             if [[ "$candidate" =~ ^[0-9]+$ ]] && [ "$candidate" != "$OLD_RUN_ID" ]; then new_run_id="$candidate"; break; fi
           done
           [[ "$new_run_id" =~ ^[0-9]+$ ]] || { echo 'CODEFIX_REPLAY_DISPATCH_NOT_VERIFIED'; exit 1; }
+          CURRENT_CONTROL_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${new_run_id}" --jq .head_sha)
+          [[ "$CURRENT_CONTROL_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'CODEFIX_REPLAY_CONTROL_SHA_INVALID'; exit 1; }
+
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

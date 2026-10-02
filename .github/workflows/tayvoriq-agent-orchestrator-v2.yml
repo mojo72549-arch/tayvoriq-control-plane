@@ -16,12 +16,18 @@ on:
       - TAYVORIQ Deterministic Codefix Continuity
       - TAYVORIQ Delivery Watch
       - TAYVORIQ Request Continuity Watchdog
+      - TAYVORIQ Autonomous Codefix Builder
     types: [completed]
   push:
     branches: [main]
     paths:
       - ".github/run-now/tayvoriq-agent-trigger.txt"
+      - ".github/run-now/tayvoriq-lifecycle-trigger.txt"
+      - ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"
+      - ".github/workflows/tayvoriq-deliver-video-now.yml"
+      - "tools/tayvoriq_lifecycle_controller_v1.py"
   schedule:
+    - cron: "*/5 * * * *"
     # GitHub cron is UTC; the resolver below selects the DST-correct Berlin pair.
     - cron: "30 3 * * *"
     - cron: "30 4 * * *"
@@ -79,6 +85,10 @@ jobs:
           slot = requested if event == 'workflow_dispatch' else ''
           should = now.date().isoformat() >= '2026-08-15'
           if event == 'push':
+              import subprocess
+              changed=subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).splitlines()
+              should=should and '.github/run-now/tayvoriq-agent-trigger.txt' in changed
+          if event == 'push' and should:
               slot = 'morning' if now.hour < 12 else 'evening'
           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
@@ -454,7 +464,6 @@ jobs:
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
   lifecycle-controller:
-    if: github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -468,110 +477,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Resolve canonical request and one lifecycle decision
         id: decision
         shell: bash
         run: |
           set -euo pipefail
-          python - "$GITHUB_OUTPUT" <<'PY'
-          import json, os, subprocess, sys
-          from pathlib import Path
-
-          out_path = Path(sys.argv[1])
-          pointer_path = Path(os.environ['ACTIVE_REQUEST_POINTER'])
-          decision = {
-              'action':'NONE', 'reason':'NO_ACTIVE_REQUEST', 'request_id':'',
-              'run_id':'0', 'generation':'0', 'request_status':'', 'request_substate':''
-          }
-
-          if pointer_path.is_file():
-              try:
-                  pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
-              except Exception:
-                  pointer={}
-              if pointer.get('schema') == 'tayvoriq-active-production-request-v1' and pointer.get('state') == 'ACTIVE':
-                  request_id=str(pointer.get('request_id') or '').strip()
-                  run_id=int(pointer.get('golden_path_run_id') or 0)
-                  generation=int(pointer.get('recovery_generation') or 0)
-                  request={}
-                  request_path=Path('requests')/f'{request_id}.json'
-                  if request_path.is_file():
-                      try: request=json.loads(request_path.read_text(encoding='utf-8'))
-                      except Exception: request={}
-                  status=str(request.get('status') or '').strip().upper()
-                  substate=str(request.get('request_substate') or '').strip().upper()
-                  latest_failure={}
-                  history=request.get('history') if isinstance(request.get('history'),list) else []
-                  for item in reversed(history):
-                      if not isinstance(item,dict):
-                          continue
-                      text=' '.join(str(item.get(k) or '') for k in ('state','status','failure_state','error_class','reason')).upper()
-                      if any(x in text for x in ('FAIL','CODEFIX','RECOVERY','ERROR')):
-                          latest_failure=item
-                          break
-                  failure_text=' '.join([
-                      status, substate,
-                      str(request.get('failure_state') or ''),
-                      str(request.get('error_class') or ''),
-                      str((request.get('codefix_recovery') or {}).get('status') if isinstance(request.get('codefix_recovery'),dict) else ''),
-                      ' '.join(str(latest_failure.get(k) or '') for k in ('state','status','failure_state','error_class','reason')),
-                  ]).upper()
-
-                  event_name=os.environ.get('EVENT_WORKFLOW','')
-                  event_run=int(os.environ.get('EVENT_RUN_ID') or 0)
-                  event_conclusion=(os.environ.get('EVENT_CONCLUSION') or '').lower()
-
-                  decision.update({
-                      'request_id':request_id,'run_id':str(run_id),'generation':str(generation),
-                      'request_status':status,'request_substate':substate,
-                  })
-
-                  external=any(x in failure_text for x in ('EXTERNAL_BLOCKER','PAYMENT','SECRET_MISSING','PERMISSION_REQUIRED'))
-                  deterministic=(
-                      status == 'AWAITING_CODEFIX' or substate == 'AWAITING_CODEFIX' or
-                      any(x in failure_text for x in ('PUBLISHABLE_CODEFIX_REQUIRED','CODE_REPAIR_REQUIRED','DETERMINISTIC_STOP'))
-                  )
-
-                  if external:
-                      decision.update(action='NONE', reason='EXTERNAL_BLOCKER_FAIL_CLOSED')
-                  elif event_name == 'TAYVORIQ Production Green Promoter' and event_conclusion == 'success' and deterministic:
-                      decision.update(action='CODEFIX_CONTINUITY', reason='PRODUCTION_GREEN_READY')
-                  elif event_name == 'TAYVORIQ-X Golden Path' and event_conclusion != 'success':
-                      if run_id and event_run and run_id != event_run:
-                          decision.update(action='NONE', reason='STALE_GOLDEN_PATH_EVENT')
-                      elif deterministic:
-                          decision.update(action='CODEFIX_CONTINUITY', reason='DETERMINISTIC_GOLDEN_PATH_FAILURE')
-                      else:
-                          decision.update(action='DELIVERY_WATCH', reason='NONDETERMINISTIC_GOLDEN_PATH_FAILURE')
-                  elif event_name == 'TAYVORIQ Request Continuity Watchdog':
-                      run_status=''; run_conclusion=''
-                      if run_id:
-                          try:
-                              raw=subprocess.check_output(['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}'], text=True)
-                              run=json.loads(raw)
-                              run_status=str(run.get('status') or '').lower()
-                              run_conclusion=str(run.get('conclusion') or '').lower()
-                          except Exception:
-                              pass
-                      if deterministic:
-                          decision.update(action='CODEFIX_CONTINUITY', reason='WATCHDOG_OBSERVED_AWAITING_CODEFIX')
-                      elif run_status == 'completed' and run_conclusion not in ('','success'):
-                          decision.update(action='DELIVERY_WATCH', reason='WATCHDOG_OBSERVED_FAILED_ACTIVE_RUN')
-                      else:
-                          decision.update(action='NONE', reason='WATCHDOG_OBSERVED_HEALTHY_OR_RUNNING')
-                  elif event_name in ('TAYVORIQ Deterministic Codefix Continuity','TAYVORIQ Delivery Watch'):
-                      decision.update(action='NONE', reason='EXECUTOR_COMPLETED_WAIT_FOR_NEXT_SIGNAL')
-                  else:
-                      decision.update(action='NONE', reason='NO_RECOVERY_ACTION_REQUIRED')
-
-          with out_path.open('a',encoding='utf-8') as h:
-              for key,value in decision.items():
-                  safe=str(value).replace('\n',' ')
-                  h.write(f'{key}={safe}\n')
-          print(json.dumps({'decision_owner':'tayvoriq-agent-orchestrator-v2', **decision}, ensure_ascii=False))
-          PY
+          python -S tools/tayvoriq_lifecycle_controller_v1.py
 
       - name: Enforce single active executor
         id: guard
@@ -596,6 +509,7 @@ jobs:
           fi
 
       - name: Dispatch deterministic executor for exact request
+        id: codefix_dispatch
         if: steps.decision.outputs.action == 'CODEFIX_CONTINUITY' && steps.guard.outputs.dispatch == 'true'
         shell: bash
         env:
@@ -611,6 +525,7 @@ jobs:
           echo "ORCHESTRATOR_DISPATCHED:CODEFIX_CONTINUITY:${REQUEST_ID}:${RUN_ID}"
 
       - name: Dispatch recovery classifier for exact failed run
+        id: delivery_dispatch
         if: steps.decision.outputs.action == 'DELIVERY_WATCH' && steps.guard.outputs.dispatch == 'true'
         shell: bash
         env:
@@ -620,6 +535,38 @@ jobs:
           [[ "$RUN_ID" =~ ^[0-9]+$ ]] && [ "$RUN_ID" != "0" ]
           gh workflow run tayvoriq-delivery-watch.yml --ref main -f run_id="$RUN_ID"
           echo "ORCHESTRATOR_DISPATCHED:DELIVERY_WATCH:${RUN_ID}"
+
+      - name: Persist actual lifecycle result
+        if: always() && steps.decision.outcome == 'success'
+        env:
+          DISPATCH_VERIFIED: ${{ steps.codefix_dispatch.outcome == 'success' || steps.delivery_dispatch.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          python -S - <<'PYCODE'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          result=json.loads(Path('/tmp/tayvoriq-lifecycle-decision.json').read_text())
+          result['checked_at']=datetime.now(timezone.utc).isoformat()
+          result['orchestrator_run_id']=int(os.environ['GITHUB_RUN_ID'])
+          if os.environ['DISPATCH_VERIFIED']=='true':
+              result['dispatch_verified']=True
+              result['state']='RECOVERY_DISPATCHED'
+              result['last_dispatch']={k:result[k] for k in ('decision_key','request_id','run_id','dispatch_verified','checked_at','orchestrator_run_id')}
+          target=Path('.github/state/tayvoriq-lifecycle-decision.json')
+          target.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          PYCODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/state/tayvoriq-lifecycle-decision.json
+          git diff --cached --quiet && exit 0
+          git commit -m "ops: record verified lifecycle decision"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
 
       - name: Publish lifecycle decision summary
         if: always()
@@ -631,6 +578,7 @@ jobs:
             echo '- Request: `${{ steps.decision.outputs.request_id }}`'
             echo '- Golden Path run: `${{ steps.decision.outputs.run_id }}`'
             echo '- Recovery generation: `${{ steps.decision.outputs.generation }}`'
+            echo '- State: **${{ steps.decision.outputs.state }}**'
             echo '- Action: **${{ steps.decision.outputs.action }}**'
             echo '- Reason: `${{ steps.decision.outputs.reason }}`'
             echo '- Watchdogs never dispatch or cancel production.'

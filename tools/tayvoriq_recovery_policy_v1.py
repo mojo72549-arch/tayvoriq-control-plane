@@ -293,14 +293,19 @@ def classify_failure(
             "The same narrator/post-mux class survived bounded local retries; preserve the exact request and require a verified relevant code revision."
         )
 
-    if evidence_state == "CONTROL_PLANE_BINDING_FAILURE":
-        if attempt < 3:
-            state = "CONTROL_PLANE_BINDING_FAILURE"
-            return RecoveryDecision(
-                "rerun", state, True, "same-run", generation, generation,
-                maximum, _structured_signature(state, evidence),
-                "Structured evidence shows a request-binding race; retry the same workflow without Studio mutation."
-            )
+    runtime_binding_failure = any(
+        _matches(line, CONTROL_PLANE_BINDING_PATTERNS)
+        and not any(token in line for token in ('\x1b[36', 'echo ', 'raise ', 'if ', '${', 'r"', "r'"))
+        for line in text.splitlines()
+    )
+    if evidence_state == "CONTROL_PLANE_BINDING_FAILURE" or (not evidence_state and runtime_binding_failure):
+        state = "CONTROL_PLANE_BINDING_FAILURE" if attempt < 3 else "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED"
+        return RecoveryDecision(
+            "rerun" if attempt < 3 else "deterministic", state, attempt < 3,
+            "same-run" if attempt < 3 else "verified-codefix-replay", generation, generation,
+            maximum, _structured_signature(state, evidence) if evidence_state else _stable_signature(state, text),
+            "Repair the exact request binding in the control plane; never route this failure to Studio providers."
+        )
 
     if evidence_state in {"CODE_REPAIR_REQUIRED", "LOCAL_REPAIR_CODEFIX_REQUIRED", "PUBLISHABLE_CODEFIX_REQUIRED"}:
         state = evidence_state

@@ -30,7 +30,7 @@ def test_orchestrator_is_single_lifecycle_decision_owner() -> None:
     assert "TAYVORIQ Deterministic Codefix Continuity" in text
     assert "TAYVORIQ Delivery Watch" in text
     assert "TAYVORIQ Request Continuity Watchdog" in text
-    assert "decision_owner':'tayvoriq-agent-orchestrator-v2'" in text
+    assert "tools/tayvoriq_lifecycle_controller_v1.py" in text
     assert "Enforce single active executor" in text
     assert "queued" in text and "in_progress" in text
 
@@ -41,9 +41,10 @@ def test_orchestrator_dispatches_only_bound_recovery_executors() -> None:
     assert "source_request_id=\"$REQUEST_ID\"" in text
     assert "failed_run_id=\"$RUN_ID\"" in text
     assert "run_id=\"$RUN_ID\"" in text
-    assert "STALE_GOLDEN_PATH_EVENT" in text
-    assert "EXTERNAL_BLOCKER_FAIL_CLOSED" in text
-    assert "PRODUCTION_GREEN_READY" in text
+    controller = (ROOT / "tools/tayvoriq_lifecycle_controller_v1.py").read_text()
+    assert "STALE_GOLDEN_PATH_EVENT" in controller
+    assert "EXTERNAL_BLOCKER_FAIL_CLOSED" in controller
+    assert "PRODUCTION_GREEN_READY" in controller
 
 
 def test_watchdog_no_longer_rebinds_or_owns_recovery() -> None:
