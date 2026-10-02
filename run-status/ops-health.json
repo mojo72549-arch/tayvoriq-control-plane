@@ -1,22 +1,22 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-02T23:16:02.594614Z",
-  "overall": "red",
+  "generated_at": "2026-10-02T23:27:01.735772Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3155-trend-1",
-    "golden_path_run_id": 36907774806,
-    "pointer_updated_at": "2026-10-01T18:34:05.178438Z"
+    "golden_path_run_id": 37076732345,
+    "pointer_updated_at": "2026-10-02T23:16:04.264038Z"
   },
   "request": {
     "request_id": "telegram-3155-trend-1",
     "topic": "Mercedes: 38 Stunden ohne mehr Geld – und zwei Werke stehen zur Debatte",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": "DEUTSCHLAND IM UMBAU",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-3155-trend-1.json"
   },
   "run": {
-    "id": 36907774806,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/36907774806",
-    "created_at": "2026-10-01T18:33:58Z",
-    "updated_at": "2026-10-01T22:16:51Z",
-    "attempt": 3,
+    "id": 37076732345,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37076732345",
+    "created_at": "2026-10-02T23:15:52Z",
+    "updated_at": "2026-10-02T23:15:57Z",
+    "attempt": 1,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "skipped",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Exact-request replay readiness gate"
+      "status": "yellow",
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -135,42 +135,31 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "36907774806:30:CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
-    "severity": "critical",
-    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": null,
     "failed_run_id": 36907774806,
-    "replay_run_id": null,
+    "replay_run_id": 37076732345,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-deterministic-codefix-continuity",
@@ -181,9 +170,9 @@
   },
   "events": [
     {
-      "at": "2026-10-01T22:16:51Z",
-      "title": "Workflow-Fehler",
-      "detail": "Exact-request replay readiness gate"
+      "at": "2026-10-02T23:16:04.264038Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-10-02T23:15:45.418112Z",
@@ -209,11 +198,6 @@
       "at": "2026-09-30T21:03:44.663520Z",
       "title": "DISPATCHED",
       "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-09-30T18:41:10.034447Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
