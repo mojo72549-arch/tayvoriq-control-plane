@@ -199,6 +199,7 @@ jobs:
             tests/test_tayvoriq_voice_v5_human_narrator.py \
             tests/test_tayvoriq_number_pronunciation_gate.py \
             tests/test_tayvoriq_voice_v5_embedded_number_guard.py \
+            tests/test_tayvoriq_checkpoint_voice_migration.py \
             tests/test_tayvoriq_voice_v5_package_pronunciation.py
 
       - name: Exact Voice Work editorial regression gate
