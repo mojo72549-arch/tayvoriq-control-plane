@@ -1,5 +1,5 @@
-# Reconcile exhausted local voice failures through verified deterministic codefix.
-# Canonical active-request recovery only; prefer verified Production Green over repeated codefix loops.
+# Canonical active-request recovery. Local voice/visual runtime failures stay local;
+# only producer-classified deterministic code defects may enter codefix continuity.
 name: TAYVORIQ Delivery Watch
 
 on:
@@ -465,8 +465,7 @@ jobs:
         id: fresh
         if: >-
           steps.policy.outputs.mode == 'fresh' &&
-          steps.policy.outputs.retry_allowed == 'true' &&
-          steps.owner.outputs.verified_codefix_required != 'true'
+          steps.policy.outputs.retry_allowed == 'true'
         shell: bash
         env:
           OLD_RUN_ID: ${{ steps.owner.outputs.run_id }}
@@ -476,6 +475,7 @@ jobs:
           TREND_ID: ${{ steps.owner.outputs.trend_id }}
           NEXT_GENERATION: ${{ steps.policy.outputs.next_generation }}
           FAILURE_SIGNATURE: ${{ steps.policy.outputs.failure_signature }}
+          FAILURE_STATE: ${{ steps.policy.outputs.state }}
         run: |
           set -euo pipefail
           [[ "$NEXT_GENERATION" =~ ^[0-9]+$ ]] || { echo 'RECOVERY_GENERATION_INVALID'; exit 1; }
@@ -532,12 +532,12 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch origin main --quiet
             git reset --hard origin/main
-            if python - "$ACTIVE_REQUEST_POINTER" "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" "$new_run_id" "$NEXT_GENERATION" "$FAILURE_SIGNATURE" <<'PY'
+            if python - "$ACTIVE_REQUEST_POINTER" "$REQUEST_FILE" "$REQUEST_ID" "$OLD_RUN_ID" "$new_run_id" "$NEXT_GENERATION" "$FAILURE_SIGNATURE" "$FAILURE_STATE" <<'PY'
           import json,sys
           from datetime import datetime,timezone
           from pathlib import Path
           pp=Path(sys.argv[1]); rp=Path(sys.argv[2]); rid=sys.argv[3]
-          old_run=int(sys.argv[4]); new_run=int(sys.argv[5]); generation=int(sys.argv[6]); signature=sys.argv[7]
+          old_run=int(sys.argv[4]); new_run=int(sys.argv[5]); generation=int(sys.argv[6]); signature=sys.argv[7]; failure_state=sys.argv[8]
           pointer=json.loads(pp.read_text(encoding='utf-8')); data=json.loads(rp.read_text(encoding='utf-8'))
           if pointer.get('state')!='ACTIVE' or str(pointer.get('request_id') or '')!=rid or int(pointer.get('golden_path_run_id') or 0)!=old_run:
               raise SystemExit('DELIVERY_RECOVERY_ACTIVE_OWNER_CHANGED')
@@ -558,6 +558,7 @@ jobs:
               'status':'FRESH_RECOVERY_DISPATCHED','request_substate':'DISPATCHED',
               'fresh_recovery_run_id':new_run,'fresh_recovery_of_run_id':old_run,
               'fresh_recovery_generation':generation,'fresh_recovery_at':now,
+              'last_failure_state':failure_state,'failure_state':'',
               'quality_gates_weakened':False,'active_pointer_verified':True,
           })
           data['codefix_recovery']=codefix
@@ -605,61 +606,12 @@ jobs:
           python -m py_compile tools/tayvoriq_codefix_orphan_reconcile_v1.py
           python tools/tayvoriq_codefix_orphan_reconcile_v1.py
 
-      - name: Continue deterministic recovery after verified re-arm
+      - name: Hand deterministic decision back to Agent Orchestrator
         if: steps.policy.outputs.mode == 'deterministic'
         shell: bash
-        env:
-          FAILED_RUN_ID: ${{ steps.owner.outputs.run_id }}
-          ACTIVE_REQUEST_ID: ${{ steps.owner.outputs.request_id }}
         run: |
           set -euo pipefail
-          [[ "$FAILED_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'DELIVERY_WATCH_CONTINUITY_RUN_ID_INVALID'; exit 1; }
-          [ -n "$ACTIVE_REQUEST_ID" ] || { echo 'DELIVERY_WATCH_CONTINUITY_REQUEST_ID_MISSING'; exit 1; }
-
-          git fetch origin main --quiet
-          git reset --hard origin/main
-          python - "$ACTIVE_REQUEST_POINTER" "$ACTIVE_REQUEST_ID" "$FAILED_RUN_ID" <<'PY'
-          import json,sys
-          from pathlib import Path
-          pointer=Path(sys.argv[1]); request_id=sys.argv[2]; run_id=int(sys.argv[3])
-          if not pointer.is_file():
-              raise SystemExit('DELIVERY_WATCH_CONTINUITY_POINTER_MISSING')
-          p=json.loads(pointer.read_text(encoding='utf-8'))
-          rp=Path('requests')/f'{request_id}.json'
-          if not rp.is_file():
-              raise SystemExit('DELIVERY_WATCH_CONTINUITY_REQUEST_MISSING')
-          d=json.loads(rp.read_text(encoding='utf-8'))
-          c=d.get('codefix_recovery') if isinstance(d.get('codefix_recovery'),dict) else {}
-          if (
-              p.get('state')!='ACTIVE'
-              or str(p.get('request_id') or '')!=request_id
-              or int(p.get('golden_path_run_id') or 0)!=run_id
-              or str(d.get('request_id') or '')!=request_id
-              or int(d.get('golden_path_run_id') or 0)!=run_id
-              or c.get('status')!='ARMED'
-              or c.get('request_substate')!='AWAITING_CODEFIX'
-              or int(c.get('failed_run_id') or 0)!=run_id
-              or c.get('quality_gates_weakened') is not False
-          ):
-              raise SystemExit('DELIVERY_WATCH_CONTINUITY_OWNER_NOT_ARMED')
-          print(f'DELIVERY_WATCH_CONTINUITY_OWNER_VERIFIED:{request_id}:{run_id}')
-          PY
-
-          active_count=$(gh run list \
-            --workflow tayvoriq-deterministic-codefix-continuity.yml \
-            --limit 30 \
-            --json status \
-            --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
-          if [ "$active_count" -gt 0 ]; then
-            echo "DELIVERY_WATCH_CONTINUITY_ALREADY_ACTIVE:$active_count"
-            exit 0
-          fi
-
-          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main \
-            -f "failed_run_id=$FAILED_RUN_ID" \
-            -f "source_request_id=$ACTIVE_REQUEST_ID"
-          echo "DELIVERY_WATCH_CONTINUITY_DISPATCHED:$ACTIVE_REQUEST_ID:$FAILED_RUN_ID"
-
+          echo "DELIVERY_WATCH_DETERMINISTIC_ARMED_ORCHESTRATOR_OWNS_NEXT_DISPATCH:${{ steps.owner.outputs.request_id }}:${{ steps.owner.outputs.run_id }}"
       - name: Telegram external blocker
         if: steps.policy.outputs.mode == 'external'
         shell: bash
