@@ -1,0 +1,76 @@
+name: TAYVORIQ Deep Fire Safety Contract Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/tayvoriq-deep-fire-safety-contract-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout control plane
+        uses: actions/checkout@v4
+
+      - name: Checkout private fix
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: fix/deep-documentary-fire-safety-v29
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install focused dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r implementation/requirements.txt pytest
+
+      - name: Run focused contracts and capture output
+        id: contracts
+        working-directory: implementation
+        shell: bash
+        run: |
+          set +e
+          export PYTHONPATH="$PWD:$PWD/tools"
+          python -m compileall -q tools src 2>&1 | tee contract-tests.log
+          compile_status=${PIPESTATUS[0]}
+          python -m pytest -vv \
+            tests/test_tayvoriq_fire_safety_documentary_v2.py \
+            tests/test_tayvoriq_documentary_voice_gate_v29.py \
+            tests/test_tayvoriq_speech_intelligibility_gate.py \
+            2>&1 | tee -a contract-tests.log
+          pytest_status=${PIPESTATUS[0]}
+          printf 'compile_status=%s\npytest_status=%s\n' "$compile_status" "$pytest_status" | tee contract-status.txt
+          exit 0
+
+      - name: Upload complete contract diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-fire-safety-contract-diagnostics-${{ github.run_id }}
+          path: |
+            implementation/contract-tests.log
+            implementation/contract-status.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce contract result
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          source contract-status.txt
+          test "$compile_status" = "0"
+          test "$pytest_status" = "0"
