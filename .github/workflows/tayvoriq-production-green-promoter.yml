@@ -82,7 +82,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -198,6 +198,7 @@ jobs:
             tests/test_tayvoriq_voice_v4_postmux.py \
             tests/test_tayvoriq_voice_v5_human_narrator.py \
             tests/test_tayvoriq_number_pronunciation_gate.py \
+            tests/test_tayvoriq_voice_v5_embedded_number_guard.py \
             tests/test_tayvoriq_voice_v5_package_pronunciation.py
 
       - name: Exact Voice Work editorial regression gate
@@ -412,8 +413,11 @@ jobs:
           echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$CANDIDATE_SHA"
 
       - name: Report verified Production Green state to Orchestrator
+        if: steps.refs.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           echo "TAYVORIQ_PRODUCTION_GREEN_VERIFIED:${{ steps.refs.outputs.candidate }}:changed=${{ steps.refs.outputs.changed }}"
-          echo "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2."
+          python -S tools/tayvoriq_lifecycle_handoff_v1.py

@@ -1984,3 +1984,10 @@ jobs:
           PY
           echo "DELIVERY_WATCH_HANDOFF_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
           echo "The completed Golden Path workflow_run event is the single recovery trigger; no duplicate continuity dispatch is issued here."
+
+      - name: Signal terminal work to Agent Orchestrator
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: python -S tools/tayvoriq_lifecycle_handoff_v1.py

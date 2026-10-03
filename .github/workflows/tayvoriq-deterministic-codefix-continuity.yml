@@ -691,3 +691,10 @@ jobs:
               raise SystemExit("TELEGRAM_DELIVERY_NOT_VERIFIED")
           print(json.dumps({"status":"sent","telegram_message_id":message_id},ensure_ascii=False))
           PY
+
+      - name: Signal terminal work to Agent Orchestrator
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: python -S tools/tayvoriq_lifecycle_handoff_v1.py

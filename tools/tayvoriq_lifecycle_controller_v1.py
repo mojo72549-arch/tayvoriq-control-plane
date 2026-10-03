@@ -7,10 +7,12 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from tayvoriq_lifecycle_handoff_v1 import await_completion
 
 ACTIVE = {'queued', 'in_progress', 'waiting', 'requested', 'pending'}
 EXECUTORS = ('tayvoriq-deterministic-codefix-continuity.yml',
-             'tayvoriq-delivery-watch.yml', 'tayvoriq-autonomous-codefix-builder.yml')
+             'tayvoriq-delivery-watch.yml', 'tayvoriq-autonomous-codefix-builder.yml',
+             'tayvoriq-production-green-promoter.yml')
 STATE = Path('.github/state/tayvoriq-lifecycle-decision.json')
 
 
@@ -92,6 +94,16 @@ def read(path):
 
 
 def main():
+    signal_id = int(os.environ.get('SIGNAL_RUN_ID') or 0)
+    signal_attempt = int(os.environ.get('SIGNAL_RUN_ATTEMPT') or 0)
+    receipt = ''
+    if signal_id:
+        receipt = await_completion(
+            lambda rid: api(f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{rid}'),
+            signal_id, signal_attempt)
+        # The producer may have committed the final request state while its
+        # post steps completed. Reconcile that committed state, not checkout age.
+        subprocess.run(['git', 'pull', '--ff-only', 'origin', 'main'], check=True)
     pointer = read('.github/state/tayvoriq-active-production-request.json')
     rid = str(pointer.get('request_id') or '')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}', rid):
@@ -116,6 +128,11 @@ def main():
                               executor_run_id=active[0]['id'])
                 break
     result['decision_owner'] = 'tayvoriq-agent-orchestrator-v2'
+    if signal_id:
+        result.update(signal_run_id=signal_id, signal_run_attempt=signal_attempt,
+                      signal_receipt=receipt)
+        if receipt == 'TIMEOUT':
+            result.update(action='NONE', state='BLOCKED', reason='COMPLETION_HANDOFF_TIMEOUT')
     result['last_dispatch'] = previous.get('last_dispatch', {})
     Path('/tmp/tayvoriq-lifecycle-decision.json').write_text(json.dumps(result, indent=2) + '\n')
     with open(os.environ['GITHUB_OUTPUT'], 'a') as handle:

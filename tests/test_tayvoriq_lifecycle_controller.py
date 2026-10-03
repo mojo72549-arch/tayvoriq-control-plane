@@ -5,6 +5,28 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from tayvoriq_lifecycle_controller_v1 import decide
 from tayvoriq_recovery_policy_v1 import classify_failure
+from tayvoriq_lifecycle_handoff_v1 import await_completion
+
+
+def test_completion_signal_waits_for_real_terminal_status():
+    replies = iter(['in_progress', 'in_progress', 'completed'])
+    sleeps = []
+    def fetch(rid):
+        return dict(id=rid, name='TAYVORIQ-X Golden Path', run_attempt=2, status=next(replies))
+    assert await_completion(fetch, 42, 2, pause=sleeps.append) == 'COMPLETED'
+    assert sleeps == [5, 5]
+
+
+def test_handoff_is_bounded_and_old_attempt_does_not_hold_new_attempt():
+    run = dict(id=42, name='TAYVORIQ Delivery Watch', run_attempt=3, status='in_progress')
+    assert await_completion(lambda _: run, 42, 2) == 'SUPERSEDED'
+    assert await_completion(lambda _: run, 42, 3, pause=lambda _: None, polls=2) == 'TIMEOUT'
+    try:
+        await_completion(lambda _: {**run, 'name': 'unrelated workflow'}, 42, 3)
+    except ValueError as exc:
+        assert 'WORKFLOW_INVALID' in str(exc)
+    else:
+        raise AssertionError('unknown signal source accepted')
 
 
 def fixture():

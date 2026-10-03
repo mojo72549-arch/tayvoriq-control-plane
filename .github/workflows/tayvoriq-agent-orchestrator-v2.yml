@@ -3,6 +3,16 @@ name: TAYVORIQ Agent Orchestrator V2
 on:
   workflow_dispatch:
     inputs:
+      reconcile_only:
+        description: Reconcile the approved request without a new trend scan
+        type: boolean
+        default: false
+      signal_run_id:
+        description: Completing producer or recovery executor
+        type: string
+      signal_run_attempt:
+        description: Exact signalling attempt
+        type: string
       slot:
         description: Trend-Slot
         required: true
@@ -72,6 +82,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           EVENT_SCHEDULE: ${{ github.event.schedule }}
           INPUT_SLOT: ${{ inputs.slot || '' }}
+          RECONCILE_ONLY: ${{ inputs.reconcile_only || false }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -99,6 +110,8 @@ jobs:
               slot = next((name for name, cron in expected.items() if cron == schedule), '')
               should = should and bool(slot)
           if slot not in {'morning','evening'}:
+              should = False
+          if os.environ.get('RECONCILE_ONLY') == 'true':
               should = False
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
               h.write(f"should_run={'true' if should else 'false'}\n")
@@ -472,6 +485,8 @@ jobs:
       EVENT_WORKFLOW: ${{ github.event.workflow_run.name }}
       EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
       EVENT_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      SIGNAL_RUN_ID: ${{ inputs.signal_run_id || '' }}
+      SIGNAL_RUN_ATTEMPT: ${{ inputs.signal_run_attempt || '' }}
     steps:
       - name: Checkout canonical control plane
         uses: actions/checkout@v4

@@ -683,3 +683,10 @@ jobs:
         shell: bash
         run: |
           echo 'DELIVERY_WATCH_NOOP_NO_FAILED_ACTIVE_REQUEST'
+
+      - name: Signal terminal work to Agent Orchestrator
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: python -S tools/tayvoriq_lifecycle_handoff_v1.py
