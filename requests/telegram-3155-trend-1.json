@@ -988,18 +988,32 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-10-03T09:26:53.069793Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 37109413731,
+        "golden_path_run_id": 37113072774,
+        "recovery_generation": 1,
+        "failure_signature": "67dea872bcf40ae19de6",
+        "reason": "bounded-shared-policy-recovery",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
   "dispatch_claim_run_id": 36565744124,
   "dispatch_contract_sha256": "66dc05a871c2df0c9436bdc4af340de2b2cd892e2e162bcdf824752c3a159944",
-  "golden_path_run_id": 37109413731,
+  "golden_path_run_id": 37113072774,
   "codefix_recovery": {
-    "status": "ARMED",
-    "request_substate": "AWAITING_CODEFIX",
+    "status": "FRESH_RECOVERY_DISPATCHED",
+    "request_substate": "DISPATCHED",
     "failed_run_id": 37109413731,
     "failure_signature": "3dcee822290522d5d349",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failure_state": "",
     "failed_control_plane_sha": "e05b17ecd7c7a617ac1078da6ff1a7571a40719f",
     "failed_implementation_sha": "815e0ef1733df992abedd3d97f83cc3d3d763869",
     "recovery_generation": 0,
@@ -1007,10 +1021,14 @@
     "same_generation_replay_required": true,
     "exact_source_request_required": true,
     "quality_gates_weakened": false,
-    "active_pointer_verified": true
+    "active_pointer_verified": true,
+    "fresh_recovery_run_id": 37113072774,
+    "fresh_recovery_of_run_id": 37109413731,
+    "fresh_recovery_generation": 1,
+    "fresh_recovery_at": "2026-10-03T09:26:53.069793Z",
+    "last_failure_state": "LOCAL_VOICE_RECOVERY_REQUIRED"
   },
   "previous_golden_path_run_ids": [
-    36578273338,
     36579983802,
     36587644814,
     36589651077,
@@ -1029,14 +1047,15 @@
     36907774806,
     37076732345,
     37107741608,
-    37107931680
+    37107931680,
+    37109413731
   ],
-  "recovery_generation": 0,
-  "retry_of_run_id": 37107931680,
-  "replacement_reason": "SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY",
+  "recovery_generation": 1,
+  "retry_of_run_id": 37109413731,
+  "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
   "recovery_owner": "tayvoriq-delivery-watch",
-  "recovery_failure_signature": "225eeace88b2113b7660",
-  "recovery_dispatched_at": "2026-10-03T08:21:22.067915Z",
+  "recovery_failure_signature": "67dea872bcf40ae19de6",
+  "recovery_dispatched_at": "2026-10-03T09:26:53.069793Z",
   "replay_bound_by": "tayvoriq-x-replay-start-guard",
   "replay_trigger_sha": "98bfe2f62d7b443eb9f1215812af53d8e3c61759",
   "replay_start_mode": "push_verified",
