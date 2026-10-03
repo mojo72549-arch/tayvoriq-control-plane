@@ -1,15 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-03T08:13:25.318277Z",
-  "overall": "yellow",
+  "generated_at": "2026-10-03T13:18:42.187281Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3155-trend-1",
-    "golden_path_run_id": 37107931680,
-    "pointer_updated_at": "2026-10-03T07:55:00.421724Z"
+    "golden_path_run_id": 37113072774,
+    "pointer_updated_at": "2026-10-03T09:36:09.635092Z"
   },
   "request": {
     "request_id": "telegram-3155-trend-1",
@@ -17,7 +17,7 @@
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 0,
+    "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
@@ -40,16 +40,16 @@
     "path": "requests/telegram-3155-trend-1.json"
   },
   "run": {
-    "id": 37107931680,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37107931680",
-    "created_at": "2026-10-03T07:54:54Z",
-    "updated_at": "2026-10-03T07:54:59Z",
+    "id": 37113072774,
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37113072774",
+    "created_at": "2026-10-03T09:26:46Z",
+    "updated_at": "2026-10-03T09:36:18Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Produce approved master or reuse checkpoint",
-    "last_successful_step": "Restore production model cache",
+    "progress": 100,
+    "current_step": null,
+    "last_successful_step": "Complete job",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "running",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "success",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "success",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "success",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "success",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Produce approved master or reuse checkpoint"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -134,34 +134,34 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "status": "green",
+      "detail": "FRESH_RECOVERY_DISPATCHED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Send Telegram review"
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Send Telegram review",
+    "last_step": "Send Telegram review"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_DISPATCHED",
+    "status": "FRESH_RECOVERY_DISPATCHED",
+    "source_status": "FRESH_RECOVERY_DISPATCHED",
     "failure_state": null,
-    "failed_run_id": 37107741608,
-    "replay_run_id": 37107931680,
-    "fresh_recovery_run_id": null,
-    "recovery_generation": 0,
+    "failed_run_id": 37109413731,
+    "replay_run_id": null,
+    "fresh_recovery_run_id": 37113072774,
+    "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -169,6 +169,26 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-10-03T09:26:53.069793Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
+    },
+    {
+      "at": "2026-10-03T08:57:34.440841Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-10-03T08:57:17.332516Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_VOICE_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-10-03T08:21:22.067915Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-10-03T07:55:00.421724Z",
       "title": "DISPATCHED",
@@ -178,26 +198,6 @@
       "at": "2026-10-03T07:51:41.059923Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-10-03T07:51:28.095829Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-10-03T07:51:09.247318Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_VOICE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-10-02T23:16:04.264038Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-10-02T23:15:45.418112Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED"
     }
   ]
 }
