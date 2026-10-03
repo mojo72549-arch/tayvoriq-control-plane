@@ -293,7 +293,7 @@ def test_final_publication_voice_failure_stays_local_even_during_codefix_replay(
     assert decision.next_generation == 2
 
 
-def test_local_voice_retry_exhaustion_escalates_to_verified_codefix():
+def test_local_voice_retry_exhaustion_uses_bounded_fresh_runtime_recovery():
     decision = classify_failure(
         "RuntimeError: VOICE_V5_NO_NATURAL_FULL_TAKE:youtube_shorts",
         run_attempt=3,
@@ -302,11 +302,11 @@ def test_local_voice_retry_exhaustion_escalates_to_verified_codefix():
         exact_request_retry=True,
         codefix_replay=True,
     )
-    assert decision.mode == "deterministic"
-    assert decision.state == "LOCAL_VOICE_CODEFIX_REQUIRED"
-    assert decision.retry_allowed is False
-    assert decision.retry_kind == "verified-codefix-replay"
-    assert decision.next_generation == 2
+    assert decision.mode == "fresh"
+    assert decision.state == "LOCAL_VOICE_RECOVERY_REQUIRED"
+    assert decision.retry_allowed is True
+    assert decision.retry_kind == "fresh-run"
+    assert decision.next_generation == 3
 
 
 def test_visual_failure_after_voice_repair_wins_over_earlier_voice_markers():
@@ -332,7 +332,7 @@ def test_visual_failure_after_voice_repair_wins_over_earlier_voice_markers():
     assert decision.next_generation == 2
 
 
-def test_local_visual_retry_exhaustion_escalates_to_verified_codefix():
+def test_local_visual_retry_exhaustion_uses_bounded_fresh_runtime_recovery():
     decision = classify_failure(
         "score_below_threshold:visual:45<78 visual_agent_recommendation_block",
         run_attempt=3,
@@ -340,11 +340,11 @@ def test_local_visual_retry_exhaustion_escalates_to_verified_codefix():
         max_generations=4,
         exact_request_retry=True,
     )
-    assert decision.mode == "deterministic"
-    assert decision.state == "LOCAL_VISUAL_CODEFIX_REQUIRED"
-    assert decision.retry_allowed is False
-    assert decision.retry_kind == "verified-codefix-replay"
-    assert decision.next_generation == 2
+    assert decision.mode == "fresh"
+    assert decision.state == "LOCAL_VISUAL_RECOVERY_REQUIRED"
+    assert decision.retry_allowed is True
+    assert decision.retry_kind == "fresh-run"
+    assert decision.next_generation == 3
 
 
 def test_structured_visual_evidence_wins_over_earlier_voice_log_noise():
@@ -371,7 +371,7 @@ def test_structured_visual_evidence_wins_over_earlier_voice_log_noise():
     assert decision.next_generation == 2
 
 
-def test_structured_visual_retry_exhaustion_escalates_without_new_generation():
+def test_structured_visual_retry_exhaustion_stops_without_fake_codefix_at_ceiling():
     decision = classify_failure(
         "old voice and provider noise",
         run_attempt=3,
@@ -384,10 +384,10 @@ def test_structured_visual_retry_exhaustion_escalates_without_new_generation():
             "quality_gates_weakened": False,
         },
     )
-    assert decision.mode == "deterministic"
-    assert decision.state == "LOCAL_VISUAL_CODEFIX_REQUIRED"
-    assert decision.retry_kind == "verified-codefix-replay"
-    assert decision.next_generation == 4
+    assert decision.mode == "exhausted"
+    assert decision.state == "LOCAL_VISUAL_RECOVERY_EXHAUSTED"
+    assert decision.retry_kind == "none"
+    assert decision.next_generation is None
 
 
 def test_structured_voice_evidence_wins_over_generic_publishability_text():
@@ -405,6 +405,52 @@ def test_structured_voice_evidence_wins_over_generic_publishability_text():
     assert decision.mode == "rerun"
     assert decision.state == "LOCAL_VOICE_RETRY_REQUIRED"
     assert decision.next_generation == 1
+
+
+def test_structured_transient_audio_after_attempt_three_stays_voice_recovery_not_codefix():
+    decision = classify_failure(
+        "old codefix and provider noise must not win",
+        run_attempt=3,
+        recovery_generation=0,
+        max_generations=1,
+        exact_request_retry=True,
+        codefix_replay=True,
+        structured_evidence={
+            "state": "TRANSIENT_AUDIO_FAILURE",
+            "failure_class": "LOCAL_VOICE",
+            "repair_target_stages": ["VOICE"],
+            "same_request_required": True,
+            "master_reusable": True,
+            "quality_gates_weakened": False,
+        },
+    )
+    assert decision.mode == "fresh"
+    assert decision.state == "LOCAL_VOICE_RECOVERY_REQUIRED"
+    assert decision.retry_kind == "fresh-run"
+    assert decision.retry_allowed is True
+    assert decision.next_generation == 1
+
+
+def test_structured_transient_audio_at_generation_ceiling_never_becomes_codefix():
+    decision = classify_failure(
+        "VOICE_V5_NO_NATURAL_FULL_TAKE",
+        run_attempt=7,
+        recovery_generation=1,
+        max_generations=1,
+        exact_request_retry=True,
+        structured_evidence={
+            "state": "TRANSIENT_AUDIO_FAILURE",
+            "failure_class": "LOCAL_VOICE",
+            "repair_target_stages": ["VOICE"],
+            "same_request_required": True,
+            "master_reusable": True,
+            "quality_gates_weakened": False,
+        },
+    )
+    assert decision.mode == "exhausted"
+    assert decision.state == "LOCAL_VOICE_RECOVERY_EXHAUSTED"
+    assert decision.retry_allowed is False
+    assert decision.next_generation is None
 
 
 def test_structured_failure_signature_distinguishes_repair_stage():
