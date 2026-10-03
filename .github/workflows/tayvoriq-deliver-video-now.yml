@@ -1983,7 +1983,7 @@ jobs:
           print(f'CODEFIX_FINALIZER_DISPATCH_OWNER_VERIFIED:{request_id}:{run_id}')
           PY
           echo "DELIVERY_WATCH_HANDOFF_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
-          echo "The completed Golden Path workflow_run event is the single recovery trigger; no duplicate continuity dispatch is issued here."
+          echo "The terminal signal below hands completion to Agent Orchestrator; canonical request reconciliation owns continuation."
 
       - name: Signal terminal work to Agent Orchestrator
         if: always()
