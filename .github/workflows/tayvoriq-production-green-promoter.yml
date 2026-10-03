@@ -413,12 +413,13 @@ jobs:
           }
           echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$CANDIDATE_SHA"
 
-      - name: Report verified Production Green state to Orchestrator
-        if: steps.refs.outputs.changed == 'true'
+      - name: Report Production Green outcome to Orchestrator
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          VERIFICATION_STATUS: ${{ job.status }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "TAYVORIQ_PRODUCTION_GREEN_VERIFIED:${{ steps.refs.outputs.candidate }}:changed=${{ steps.refs.outputs.changed }}"
+          echo "TAYVORIQ_PRODUCTION_GREEN_OUTCOME:$VERIFICATION_STATUS:${{ steps.refs.outputs.candidate }}:changed=${{ steps.refs.outputs.changed }}"
           python -S tools/tayvoriq_lifecycle_handoff_v1.py

@@ -84,17 +84,18 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
             self.assertIn(marker, step, marker)
         self.assertNotIn("quality_gates_weakened: true", continuity.casefold())
 
-    def test_successful_green_promotion_signals_orchestrator_without_direct_recovery(self) -> None:
+    def test_all_green_outcomes_signal_orchestrator_without_direct_recovery(self) -> None:
         promoter = PROMOTER.read_text(encoding="utf-8")
         self.assertIn("permissions:\n  actions: write\n  contents: write", promoter)
         step = _step(
             promoter,
-            "Report verified Production Green state to Orchestrator",
+            "Report Production Green outcome to Orchestrator",
         )
         for marker in (
-            "TAYVORIQ_PRODUCTION_GREEN_VERIFIED",
+            "TAYVORIQ_PRODUCTION_GREEN_OUTCOME:$VERIFICATION_STATUS",
             "python -S tools/tayvoriq_lifecycle_handoff_v1.py",
-            "steps.refs.outputs.changed == 'true'",
+            "if: always()",
+            "VERIFICATION_STATUS: ${{ job.status }}",
         ):
             self.assertIn(marker, step, marker)
         self.assertNotIn(
