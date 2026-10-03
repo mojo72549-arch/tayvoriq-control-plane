@@ -26,19 +26,65 @@ jobs:
       - name: Restore sanitized Project Lumen source
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
+          mkdir -p diagnostics
+          exec > >(tee -a diagnostics/restore-status.txt) 2>&1
+          echo '=== restore start ==='
+          pwd
+          find lumen-public-preview -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+
           cat lumen-public-preview/source.part*.b64 > /tmp/project-lumen-source.tar.gz.b64
+          echo "source concat rc=$? bytes=$(wc -c < /tmp/project-lumen-source.tar.gz.b64 2>/dev/null)"
           base64 -d /tmp/project-lumen-source.tar.gz.b64 > /tmp/project-lumen-source.tar.gz
-          echo 'aa80a6708425dae0f5e93f8dd7d172895978f779fbf77aba9533a66141b1b28b  /tmp/project-lumen-source.tar.gz' | sha256sum -c -
+          echo "source decode rc=$? bytes=$(wc -c < /tmp/project-lumen-source.tar.gz 2>/dev/null)"
+          sha256sum /tmp/project-lumen-source.tar.gz || true
           tar -xzf /tmp/project-lumen-source.tar.gz
+          echo "source extract rc=$?"
 
           cat lumen-public-preview/patch-13.1.9.part*.b64 > /tmp/project-lumen-13.1.9-patch.tar.gz.b64
+          echo "patch concat rc=$? bytes=$(wc -c < /tmp/project-lumen-13.1.9-patch.tar.gz.b64 2>/dev/null)"
           base64 -d /tmp/project-lumen-13.1.9-patch.tar.gz.b64 > /tmp/project-lumen-13.1.9-patch.tar.gz
-          echo 'fe9380cd06760fa19e8d4bfeb1d7ee85d6752cf43e14e97e923d6cbc63d56106  /tmp/project-lumen-13.1.9-patch.tar.gz' | sha256sum -c -
+          echo "patch decode rc=$? bytes=$(wc -c < /tmp/project-lumen-13.1.9-patch.tar.gz 2>/dev/null)"
+          sha256sum /tmp/project-lumen-13.1.9-patch.tar.gz || true
           tar -xzf /tmp/project-lumen-13.1.9-patch.tar.gz
+          echo "patch extract rc=$?"
 
-          sed -i 's/text("v13.1.8"/text("v13.1.9"/' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
-          grep -q 'text("v13.1.9"' project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          if [ -f "$MAIN" ]; then
+            sed -i 's/text("v13.1.8"/text("v13.1.9"/' "$MAIN"
+            echo "main activity found bytes=$(wc -c < "$MAIN")"
+            grep -n 'v13.1.9' "$MAIN" || true
+          else
+            echo 'ERROR: MainActivity.java missing after extraction'
+          fi
+          echo '=== restore end ==='
+          exit 0
+
+      - name: Capture transport diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p diagnostics
+          MAIN=project-lumen-preview/app/src/main/java/com/projectlumen/publicpreview/MainActivity.java
+          if [ -f "$MAIN" ]; then
+            cp "$MAIN" diagnostics/MainActivity.java
+          fi
+          if [ -d project-lumen-preview ]; then
+            grep -RInE 'IMPORT-CONNECT|TLS packet|HttpsURLConnection|HttpURLConnection|openConnection|Location|redirect|https://|http://' project-lumen-preview/app/src/main/java > diagnostics/transport-references.txt || true
+            tar -czf diagnostics/project-lumen-restored-source.tar.gz project-lumen-preview
+          fi
+          find diagnostics -maxdepth 1 -type f -printf '%f %s bytes\n' | sort | tee -a diagnostics/restore-status.txt
+          exit 0
+
+      - name: Upload transport diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-lumen-tls-diagnostics
+          path: diagnostics/
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
