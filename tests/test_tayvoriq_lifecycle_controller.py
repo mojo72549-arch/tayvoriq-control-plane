@@ -36,6 +36,7 @@ def fixture():
                'contract_sha256': 'contract', 'recovery_generation': 0}
     request = {**pointer, 'source': 'telegram_trend_approval', 'status': 'DISPATCHED',
                'codefix_recovery': {'status': 'ARMED', 'request_substate': 'AWAITING_CODEFIX',
+                                   'failed_run_id': 42,
                                    'failure_state': 'LOCAL_REPAIR_CODEFIX_REQUIRED',
                                    'failure_signature': 'same-failure'}}
     run = {'id': 42, 'status': 'completed', 'conclusion': 'failure', 'run_attempt': 3}
@@ -47,6 +48,27 @@ def test_nested_armed_request_is_taken_over_on_builder_completion_and_timer():
         result = decide(*fixture(), event_name=event)
         assert result['action'] == 'CODEFIX_CONTINUITY'
         assert result['state'] == 'RECOVERY_REQUIRED'
+
+
+def test_stale_codefix_flags_cannot_override_current_local_voice_failure():
+    pointer, request, run = fixture()
+    request['codefix_recovery'].update({
+        'status': 'ARMED',
+        'request_substate': 'AWAITING_CODEFIX',
+        'failed_run_id': 42,
+        'failure_state': 'TRANSIENT_AUDIO_FAILURE',
+    })
+    result = decide(pointer, request, run)
+    assert result['action'] == 'DELIVERY_WATCH'
+    assert result['state'] == 'RECOVERY_REQUIRED'
+
+
+def test_armed_codefix_for_other_run_cannot_bypass_delivery_watch():
+    pointer, request, run = fixture()
+    request['codefix_recovery']['failed_run_id'] = 41
+    result = decide(pointer, request, run)
+    assert result['action'] == 'DELIVERY_WATCH'
+    assert result['state'] == 'RECOVERY_REQUIRED'
 
 
 def test_successful_helper_without_progress_cannot_create_dispatch_loop():

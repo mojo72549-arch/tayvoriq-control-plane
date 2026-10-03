@@ -71,6 +71,30 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
         )
         self.assertIn('"schema": "tayvoriq-failure-contract-v2"', workflow)
 
+    def test_delivery_watch_never_dispatches_deterministic_continuity_directly(self):
+        workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn(
+            "gh workflow run tayvoriq-deterministic-codefix-continuity.yml",
+            workflow,
+        )
+        self.assertIn(
+            "DELIVERY_WATCH_DETERMINISTIC_ARMED_ORCHESTRATOR_OWNS_NEXT_DISPATCH",
+            workflow,
+        )
+
+    def test_fresh_local_recovery_clears_stale_codefix_failure_state(self):
+        workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("'last_failure_state':failure_state,'failure_state':''", workflow)
+        self.assertIn("FAILURE_STATE: ${{ steps.policy.outputs.state }}", workflow)
+        self.assertNotIn(
+            "steps.owner.outputs.verified_codefix_required != 'true'",
+            workflow,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

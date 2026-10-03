@@ -249,8 +249,22 @@ jobs:
           gh run view "$run_id" --log-failed > /tmp/codefix-failed.log 2>&1 || true
           test -s /tmp/codefix-failed.log || { echo 'CODEFIX_ACTIVE_NO_FAILED_LOGS'; echo 'armed=false' >> "$GITHUB_OUTPUT"; exit 0; }
 
+          # The producer's structured failure contract is authoritative. Raw logs
+          # can contain earlier codefix/local-repair text and must never upgrade a
+          # LOCAL_VOICE/LOCAL_VISUAL runtime failure into deterministic codefix.
+          rm -rf /tmp/codefix-diag; mkdir -p /tmp/codefix-diag
+          artifact_name="tayvoriq-x-diagnostics-${run_id}-attempt-${run_attempt}"
+          gh run download "$run_id" -n "$artifact_name" -D /tmp/codefix-diag >/dev/null 2>&1 || true
+          structured=$(find /tmp/codefix-diag -type f -name failure-notification-policy.json -print -quit 2>/dev/null || true)
+          if [ -n "$structured" ]; then
+            cp "$structured" /tmp/codefix-structured-failure.json
+          else
+            printf '{}\n' > /tmp/codefix-structured-failure.json
+          fi
+
           python tools/tayvoriq_recovery_policy_v1.py \
             --logs-file /tmp/codefix-failed.log \
+            --structured-evidence /tmp/codefix-structured-failure.json \
             --run-attempt "$run_attempt" \
             --recovery-generation "$GENERATION" \
             --max-generations 4 \
@@ -261,13 +275,12 @@ jobs:
           mode=$(python -c "import json; print(json.load(open('/tmp/codefix-policy.json')) .get('mode',''))")
           if [ "$mode" != "deterministic" ]; then
             echo "CODEFIX_ACTIVE_NOT_DETERMINISTIC:$mode"
+            echo 'eligible=false' >> "$GITHUB_OUTPUT"
             echo 'armed=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo 'eligible=true' >> "$GITHUB_OUTPUT"
 
-          rm -rf /tmp/codefix-diag; mkdir -p /tmp/codefix-diag
-          artifact_name="tayvoriq-x-diagnostics-${run_id}-attempt-${run_attempt}"
-          gh run download "$run_id" -n "$artifact_name" -D /tmp/codefix-diag >/dev/null 2>&1 || true
           manifest=$(find /tmp/codefix-diag -type f -name production-manifest.json -print -quit 2>/dev/null || true)
           readarray -t vals < <(python - "$manifest" <<'PY'
           import json,sys
@@ -309,15 +322,27 @@ jobs:
               print('STALE_REQUEST_OWNER'); raise SystemExit(0)
           existing=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
           existing_status=str(existing.get('status') or '')
+          generation=max(0,int(data.get('recovery_generation') or 0))
           try:
               existing_replay_run=int(existing.get('replay_run_id') or 0)
           except (TypeError,ValueError):
               existing_replay_run=0
-          if existing_status == 'ARMED' and existing.get('failure_signature') == signature and existing.get('failure_state') == state:
+          try:
+              existing_failed_run=int(existing.get('failed_run_id') or 0)
+              existing_generation=int(existing.get('recovery_generation') or generation)
+          except (TypeError,ValueError):
+              existing_failed_run=0; existing_generation=-1
+          # One terminal run/generation may be armed and announced only once.
+          # Later classifier wording/signature drift is not a new failure.
+          if (
+              existing_status == 'ARMED'
+              and existing_failed_run == run_id
+              and existing_generation == generation
+          ):
               print('ALREADY_HANDLED'); raise SystemExit(0)
           if existing_status == 'REPLAY_DISPATCHED' and existing_replay_run != run_id:
               print('ALREADY_HANDLED_OTHER_REPLAY'); raise SystemExit(0)
-          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z'); generation=max(0,int(data.get('recovery_generation') or 0))
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           data['codefix_recovery']={
               'status':'ARMED','request_substate':'AWAITING_CODEFIX','failed_run_id':run_id,
               'failure_signature':signature,'failure_state':state,
@@ -375,9 +400,7 @@ jobs:
           PY
 
       - name: Reconcile only active orphan
-        if: >-
-          github.event_name != 'workflow_run' ||
-          (github.event.workflow_run.name == 'TAYVORIQ Production Green Promoter' && github.event.workflow_run.conclusion == 'success')
+        if: steps.arm.outputs.eligible == 'true'
         shell: bash
         env:
           TAYVORIQ_RECOVERY_TARGET_REQUEST_ID: ${{ steps.active.outputs.request_id }}
@@ -391,9 +414,7 @@ jobs:
 
       - name: Resolve active armed request
         id: pending
-        if: >-
-          github.event_name != 'workflow_run' ||
-          (github.event.workflow_run.name == 'TAYVORIQ Production Green Promoter' && github.event.workflow_run.conclusion == 'success')
+        if: steps.arm.outputs.eligible == 'true'
         shell: bash
         run: |
           set -euo pipefail

@@ -70,8 +70,23 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
     result.update(request_status=status, request_substate=substate)
     if any(t in failure for t in ('EXTERNAL', 'PAYMENT', 'SECRET_MISSING', 'PERMISSION_REQUIRED')):
         return finish('BLOCKED', 'EXTERNAL_BLOCKER_FAIL_CLOSED')
-    deterministic = (codefix.get('status') == 'ARMED' or substate == 'AWAITING_CODEFIX'
-                     or 'CODEFIX' in failure or failure in {'CODE_REPAIR_REQUIRED', 'DETERMINISTIC_STOP'})
+    try:
+        codefix_failed_run = int(codefix.get('failed_run_id') or 0)
+    except (TypeError, ValueError):
+        codefix_failed_run = 0
+    deterministic_failure = (
+        'CODEFIX' in failure
+        or failure in {'CODE_REPAIR_REQUIRED', 'DETERMINISTIC_STOP', 'DETERMINISTIC_PREFLIGHT_FAILURE'}
+    )
+    # Only an exact, already-armed deterministic handoff may bypass Delivery Watch.
+    # A stale ARMED/AWAITING_CODEFIX flag from an earlier classifier must never
+    # override the current producer failure contract.
+    deterministic = (
+        codefix.get('status') == 'ARMED'
+        and substate == 'AWAITING_CODEFIX'
+        and codefix_failed_run == run_id
+        and deterministic_failure
+    )
     # State-only commits and helper workflow successes are not new repair evidence.
     identity = [rid, run_id, run.get('run_attempt', 1), result['generation'],
                 codefix.get('failure_signature'), revision, green]

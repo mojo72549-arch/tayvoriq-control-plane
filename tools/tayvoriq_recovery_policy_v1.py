@@ -267,11 +267,18 @@ def classify_failure(
                 maximum, _structured_signature(state, evidence),
                 "Structured failure evidence localizes the defect to visuals; retry only the same bound checkpoint."
             )
-        state = "LOCAL_VISUAL_CODEFIX_REQUIRED"
+        if generation < maximum:
+            state = "LOCAL_VISUAL_RECOVERY_REQUIRED"
+            return RecoveryDecision(
+                "fresh", state, True, "fresh-run", generation, generation + 1,
+                maximum, _structured_signature(state, evidence),
+                "Structured evidence still localizes the defect to visuals after the same-run retry budget; preserve the exact approved request and checkpoint in one bounded fresh recovery generation."
+            )
+        state = "LOCAL_VISUAL_RECOVERY_EXHAUSTED"
         return RecoveryDecision(
-            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            "exhausted", state, False, "none", generation, None,
             maximum, _structured_signature(state, evidence),
-            "The same visual checkpoint class survived bounded local retries; preserve the exact request and require a verified relevant code revision."
+            "Local visual runtime recovery reached its generation ceiling. Stop safely without inventing a repository code defect."
         )
 
     if evidence_state == "TRANSIENT_AUDIO_FAILURE" or (
@@ -286,11 +293,18 @@ def classify_failure(
                 maximum, _structured_signature(state, evidence),
                 "Structured failure evidence localizes the defect to narrator/post-mux output; retry only the same bound checkpoint."
             )
-        state = "LOCAL_VOICE_CODEFIX_REQUIRED"
+        if generation < maximum:
+            state = "LOCAL_VOICE_RECOVERY_REQUIRED"
+            return RecoveryDecision(
+                "fresh", state, True, "fresh-run", generation, generation + 1,
+                maximum, _structured_signature(state, evidence),
+                "Structured evidence still localizes the defect to narrator/post-mux output after the same-run retry budget; preserve the exact approved request and reusable master in one bounded fresh recovery generation."
+            )
+        state = "LOCAL_VOICE_RECOVERY_EXHAUSTED"
         return RecoveryDecision(
-            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            "exhausted", state, False, "none", generation, None,
             maximum, _structured_signature(state, evidence),
-            "The same narrator/post-mux class survived bounded local retries; preserve the exact request and require a verified relevant code revision."
+            "Local narrator runtime recovery reached its generation ceiling. Stop safely without inventing a repository code defect."
         )
 
     runtime_binding_failure = any(
@@ -352,11 +366,18 @@ def classify_failure(
                 maximum, _stable_signature(state, text),
                 "The strict visual audit failed; retry the same bound run from its checkpoint so only the failed visual stage is repaired."
             )
-        state = "LOCAL_VISUAL_CODEFIX_REQUIRED"
+        if generation < maximum:
+            state = "LOCAL_VISUAL_RECOVERY_REQUIRED"
+            return RecoveryDecision(
+                "fresh", state, True, "fresh-run", generation, generation + 1,
+                maximum, _stable_signature(state, text),
+                "The bounded same-run visual retries were exhausted; preserve the exact approved request and checkpoint in one bounded fresh recovery generation."
+            )
+        state = "LOCAL_VISUAL_RECOVERY_EXHAUSTED"
         return RecoveryDecision(
-            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            "exhausted", state, False, "none", generation, None,
             maximum, _stable_signature(state, text),
-            "The bounded local visual retries were exhausted; preserve the exact request and continue only after a verified relevant code revision."
+            "Local visual runtime recovery reached its generation ceiling. Stop safely without inventing a repository code defect."
         )
 
     # Voice/post-mux misses are runtime output variance, not repository defects.
@@ -370,11 +391,18 @@ def classify_failure(
                 maximum, _stable_signature(state, text),
                 "The local narrator/post-mux proof failed; retry the same bound run from its checkpoint without changing code or request."
             )
-        state = "LOCAL_VOICE_CODEFIX_REQUIRED"
+        if generation < maximum:
+            state = "LOCAL_VOICE_RECOVERY_REQUIRED"
+            return RecoveryDecision(
+                "fresh", state, True, "fresh-run", generation, generation + 1,
+                maximum, _stable_signature(state, text),
+                "The bounded same-run narrator retries were exhausted; preserve the exact approved request and reusable master in one bounded fresh recovery generation."
+            )
+        state = "LOCAL_VOICE_RECOVERY_EXHAUSTED"
         return RecoveryDecision(
-            "deterministic", state, False, "verified-codefix-replay", generation, generation,
+            "exhausted", state, False, "none", generation, None,
             maximum, _stable_signature(state, text),
-            "The bounded local narrator retries were exhausted; preserve the exact request and continue only after a verified relevant code revision."
+            "Local narrator runtime recovery reached its generation ceiling. Stop safely without inventing a repository code defect."
         )
 
     if _matches(lowered, LOCAL_REPAIR_CODEFIX_PATTERNS):
