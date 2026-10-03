@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-03T07:53:22.832394Z",
+  "generated_at": "2026-10-03T08:01:35.644861Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3155-trend-1",
-    "golden_path_run_id": 37107741608,
-    "pointer_updated_at": "2026-10-03T07:51:41.059923Z"
+    "golden_path_run_id": 37107931680,
+    "pointer_updated_at": "2026-10-03T07:55:00.421724Z"
   },
   "request": {
     "request_id": "telegram-3155-trend-1",
@@ -18,7 +18,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -40,16 +40,16 @@
     "path": "requests/telegram-3155-trend-1.json"
   },
   "run": {
-    "id": 37107741608,
+    "id": 37107931680,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37107741608",
-    "created_at": "2026-10-03T07:51:34Z",
-    "updated_at": "2026-10-03T07:51:39Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37107931680",
+    "created_at": "2026-10-03T07:54:54Z",
+    "updated_at": "2026-10-03T07:54:59Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Install or reuse production dependencies",
-    "last_successful_step": "Telegram progress - environment active",
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -91,7 +91,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,7 +125,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Install or reuse production dependencies"
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -140,7 +140,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
@@ -151,24 +151,29 @@
   "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
-    "last_step": "Telegram progress - environment active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": null,
-    "failed_run_id": 37076732345,
-    "replay_run_id": 37107741608,
+    "failed_run_id": 37107741608,
+    "replay_run_id": 37107931680,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-10-03T07:55:00.421724Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-10-03T07:51:41.059923Z",
       "title": "DISPATCHED",
@@ -193,11 +198,6 @@
       "at": "2026-10-02T23:15:45.418112Z",
       "title": "AWAITING_CODEFIX",
       "detail": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-10-01T19:52:58.353384Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     }
   ]
 }
