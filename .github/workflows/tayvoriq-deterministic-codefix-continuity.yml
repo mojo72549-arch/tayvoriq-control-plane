@@ -438,6 +438,7 @@ jobs:
         env:
           FAILED_CONTROL_SHA: ${{ steps.pending.outputs.failed_control_sha }}
           FAILED_IMPL_SHA: ${{ steps.pending.outputs.failed_impl_sha }}
+          FAILURE_STATE: ${{ steps.pending.outputs.failure_state }}
         run: |
           set -euo pipefail
           git fetch origin main --quiet
@@ -497,6 +498,12 @@ jobs:
             if [[ "$current_impl" != "$FAILED_IMPL_SHA" && "$current_impl" != "$FAILED_IMPL_SHA"* ]]; then implementation_changed=true; fi
           fi
           detected=false; reason=''
+          # Scheduling/control changes cannot repair Studio voice or visual code.
+          # Keep the checkpoint armed until a verified implementation advances.
+          case "$FAILURE_STATE" in
+            LOCAL_VOICE_CODEFIX_REQUIRED|LOCAL_VISUAL_CODEFIX_REQUIRED|FINAL_PUBLICATION_VOICE_CODEFIX_REQUIRED)
+              relevant_control=false ;;
+          esac
           if [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
             if [ "$implementation_changed" = "true" ]; then
               detected=true; reason='production-green-implementation-changed'
@@ -524,6 +531,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          promoting=$(gh run list --workflow tayvoriq-production-green-promoter.yml --limit 20 --json status \
+            --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
+          if [ "$promoting" -gt 0 ]; then
+            echo "CODEFIX_WAITING_FOR_VERIFIED_CANDIDATE:$promoting"
+            exit 0
+          fi
           active_count=$(gh run list \
             --workflow tayvoriq-autonomous-codefix-builder.yml \
             --limit 20 \

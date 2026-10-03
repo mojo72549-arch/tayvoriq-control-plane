@@ -84,16 +84,17 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
             self.assertIn(marker, step, marker)
         self.assertNotIn("quality_gates_weakened: true", continuity.casefold())
 
-    def test_successful_green_promotion_reports_to_orchestrator_without_self_dispatch(self) -> None:
+    def test_successful_green_promotion_signals_orchestrator_without_direct_recovery(self) -> None:
         promoter = PROMOTER.read_text(encoding="utf-8")
-        self.assertIn("permissions:\n  actions: read\n  contents: write", promoter)
+        self.assertIn("permissions:\n  actions: write\n  contents: write", promoter)
         step = _step(
             promoter,
             "Report verified Production Green state to Orchestrator",
         )
         for marker in (
             "TAYVORIQ_PRODUCTION_GREEN_VERIFIED",
-            "Lifecycle continuation is owned exclusively by TAYVORIQ Agent Orchestrator V2.",
+            "python -S tools/tayvoriq_lifecycle_handoff_v1.py",
+            "steps.refs.outputs.changed == 'true'",
         ):
             self.assertIn(marker, step, marker)
         self.assertNotIn(
@@ -101,6 +102,22 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
             promoter,
         )
         self.assertNotIn("quality_gates_weakened: true", promoter.casefold())
+
+    def test_voice_failure_needs_studio_revision_not_control_only_change(self) -> None:
+        import subprocess
+        step = _step(CONTINUITY.read_text(), "Detect verified revision from Production Green")
+        decision = step.split("          detected=false; reason=''", 1)[1].split('          echo "detected=', 1)[0]
+        for state, changed, expected in [
+            ('LOCAL_VOICE_CODEFIX_REQUIRED', 'false', 'false'),
+            ('LOCAL_VISUAL_CODEFIX_REQUIRED', 'false', 'false'),
+            ('LOCAL_VOICE_CODEFIX_REQUIRED', 'true', 'true'),
+            ('CONTROL_PLANE_BINDING_CODEFIX_REQUIRED', 'false', 'true'),
+        ]:
+            script = (f"FAILURE_STATE={state}; implementation_changed={changed}; "
+                      "FAILED_IMPL_SHA=1234567; relevant_control=true; detected=false\n" + decision
+                      + '\necho "$detected"')
+            result = subprocess.run(['bash', '-c', script], text=True, capture_output=True, check=True)
+            self.assertEqual(result.stdout.strip(), expected)
 
 
 if __name__ == "__main__":
