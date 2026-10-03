@@ -275,9 +275,11 @@ jobs:
           mode=$(python -c "import json; print(json.load(open('/tmp/codefix-policy.json')) .get('mode',''))")
           if [ "$mode" != "deterministic" ]; then
             echo "CODEFIX_ACTIVE_NOT_DETERMINISTIC:$mode"
+            echo 'eligible=false' >> "$GITHUB_OUTPUT"
             echo 'armed=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo 'eligible=true' >> "$GITHUB_OUTPUT"
 
           manifest=$(find /tmp/codefix-diag -type f -name production-manifest.json -print -quit 2>/dev/null || true)
           readarray -t vals < <(python - "$manifest" <<'PY'
@@ -398,9 +400,7 @@ jobs:
           PY
 
       - name: Reconcile only active orphan
-        if: >-
-          github.event_name != 'workflow_run' ||
-          (github.event.workflow_run.name == 'TAYVORIQ Production Green Promoter' && github.event.workflow_run.conclusion == 'success')
+        if: steps.arm.outputs.eligible == 'true'
         shell: bash
         env:
           TAYVORIQ_RECOVERY_TARGET_REQUEST_ID: ${{ steps.active.outputs.request_id }}
@@ -414,9 +414,7 @@ jobs:
 
       - name: Resolve active armed request
         id: pending
-        if: >-
-          github.event_name != 'workflow_run' ||
-          (github.event.workflow_run.name == 'TAYVORIQ Production Green Promoter' && github.event.workflow_run.conclusion == 'success')
+        if: steps.arm.outputs.eligible == 'true'
         shell: bash
         run: |
           set -euo pipefail
