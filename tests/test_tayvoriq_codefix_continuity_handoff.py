@@ -120,6 +120,21 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
             result = subprocess.run(['bash', '-c', script], text=True, capture_output=True, check=True)
             self.assertEqual(result.stdout.strip(), expected)
 
+    def test_continuity_prefers_structured_failure_evidence_before_arming(self) -> None:
+        continuity = CONTINUITY.read_text(encoding="utf-8")
+        step = _step(continuity, "Arm deterministic active Golden Path failure")
+        self.assertIn("failure-notification-policy.json", step)
+        self.assertIn("/tmp/codefix-structured-failure.json", step)
+        self.assertIn("--structured-evidence /tmp/codefix-structured-failure.json", step)
+
+    def test_codefix_arm_is_idempotent_per_failed_run_and_generation(self) -> None:
+        continuity = CONTINUITY.read_text(encoding="utf-8")
+        step = _step(continuity, "Arm deterministic active Golden Path failure")
+        self.assertIn("existing_failed_run == run_id", step)
+        self.assertIn("existing_generation == generation", step)
+        self.assertIn("ALREADY_HANDLED", step)
+        self.assertIn("One terminal run/generation may be armed and announced only once.", step)
+
 
 if __name__ == "__main__":
     unittest.main()
