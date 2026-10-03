@@ -127,6 +127,17 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
         self.assertIn("/tmp/codefix-structured-failure.json", step)
         self.assertIn("--structured-evidence /tmp/codefix-structured-failure.json", step)
 
+    def test_non_deterministic_failure_cannot_reach_pending_codefix_builder(self) -> None:
+        continuity = CONTINUITY.read_text(encoding="utf-8")
+        arm = _step(continuity, "Arm deterministic active Golden Path failure")
+        reconcile = _step(continuity, "Reconcile only active orphan")
+        pending = _step(continuity, "Resolve active armed request")
+        self.assertIn("eligible=false", arm)
+        self.assertIn("eligible=true", arm)
+        self.assertIn("if: steps.arm.outputs.eligible == 'true'", reconcile)
+        self.assertIn("if: steps.arm.outputs.eligible == 'true'", pending)
+
+
     def test_codefix_arm_is_idempotent_per_failed_run_and_generation(self) -> None:
         continuity = CONTINUITY.read_text(encoding="utf-8")
         step = _step(continuity, "Arm deterministic active Golden Path failure")
