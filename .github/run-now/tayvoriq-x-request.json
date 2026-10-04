@@ -2,8 +2,8 @@
   "request": "tayvoriq-x-production",
   "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
   "trend_id": "1",
-  "requested_at": "2026-10-04T09:34:33.824Z",
-  "request_nonce": "local-retry-telegram-3401-trend-1-1791106473824",
+  "requested_at": "2026-10-04T09:41:00Z",
+  "request_nonce": "cariad-local-replay-r4",
   "workflow": ".github/workflows/tayvoriq-deliver-video-now.yml",
   "implementation_branch": "feature/multi-platform-distribution-package",
   "implementation_sha_expected": "1b8fdee607928bf046c4f382564c2d83933c1711",
@@ -14,7 +14,7 @@
   "reuse_exact_source_request": true,
   "suppress_start_notification": true,
   "execution_backend": "github_hosted_public",
-  "retry_of_run_id": 37184825892,
+  "retry_of_run_id": 37192603997,
   "recovery_generation": 0,
   "recovery_strategy": "same-approved-request-local-checkpoint-replay-current-main",
   "checkpoint_policy": "reuse_only_if_request_source_and_implementation_binding_match",
@@ -41,5 +41,7 @@
     "generic_visual_fallback_forbidden": true
   },
   "reason": "Replay the exact approved Cariad request on current Golden Path after verified LOCAL_VISUAL_RETRY_REQUIRED; same approval, sources and recovery generation, with repaired same-run binding contract.",
-  "slot": "recovery"
+  "slot": "recovery",
+  "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+  "failure_signature": "28e41034d878ba43118c"
 }
