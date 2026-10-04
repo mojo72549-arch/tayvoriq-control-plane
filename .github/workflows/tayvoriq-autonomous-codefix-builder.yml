@@ -182,6 +182,10 @@ jobs:
               r'retention_contract_source_hash_mismatch',
               r'retention_request_source_hash_mismatch',
               r'preapproval-ai quality-gate',
+              r'editorial-quality-gate',
+              r'script_too_short',
+              r'verified-editorial-postcondition-drift',
+              r'v34-(?:editorial-body|script)-outside-gate',
               r'critical_pronunciation',
               r'number-pronunciation',
               r'pronunciation',
@@ -214,15 +218,23 @@ jobs:
               selected.append(lines[index])
           quality_evidence='\n'.join(selected)[-14000:]
 
+          failure_focus=(quality_evidence + '\n' + failed_log).casefold()
           source_hash_failure=(
-              'RETENTION_CONTRACT_SOURCE_HASH_MISMATCH' in full_log
-              or 'RETENTION_REQUEST_SOURCE_HASH_MISMATCH' in full_log
+              'retention_contract_source_hash_mismatch' in failure_focus
+              or 'retention_request_source_hash_mismatch' in failure_focus
           )
           source_files=[
               'tools/tayvoriq_retention_v5.py',
               'tests/test_tayvoriq_retention_v5.py',
               'tools/tayvoriq_dual_platform_render_v34.py',
               'runtime_patches/tayvoriq_verified_request_runtime_recovery.py',
+          ]
+          editorial_files=[
+              'runtime_patches/tayvoriq_german_hyphen_guard.py',
+              'tools/tayvoriq_dual_platform_render_v34.py',
+              'runtime_patches/tayvoriq_verified_request_runtime_recovery.py',
+              'runtime_patches/tayvoriq_v20_final_length_guard.py',
+              'tests/test_tayvoriq_german_hyphen_guard.py',
           ]
           voice_files=[
               'tools/tayvoriq_speech_numbers_v23.py',
@@ -239,20 +251,41 @@ jobs:
               'tools/tayvoriq_preapproval_ai_audit_v6.py',
               'tests/test_tayvoriq_visual_audit_resilience.py',
           ]
+          editorial_length_failure=any(
+              term in failure_focus for term in (
+                  'script_too_short',
+                  'verified-editorial-postcondition-drift',
+                  'v34-editorial-body-outside-gate',
+                  'v34-script-outside-gate',
+                  'editorial-quality-gate blockiert',
+              )
+          )
           visual_failure=(
-              'visual_agent' in full_log.casefold()
-              and any(term in full_log.casefold() for term in
+              'visual_agent' in failure_focus
+              and any(term in failure_focus for term in
                       ('finanz', 'börse', 'trading', 'stock chart', 'themat', 'mismatch'))
           )
-          pronunciation_failure=(
-              'pronunciation_interpretation' in full_log.casefold()
-              or 'maus und bullion' in full_log.casefold()
+          pronunciation_failure=any(
+              term in failure_focus for term in (
+                  'critical_pronunciation_missing',
+                  'pronunciation_interpretation',
+                  'pronunciation-not-confirmed',
+                  'maus und bullion',
+              )
           )
-          number_failure=any(term in full_log.casefold() for term in
-                             ('number-pronunciation', '48.000', 'achtundvierzig.null'))
+          number_failure=any(
+              term in failure_focus for term in (
+                  'number-pronunciation-not-confirmed',
+                  'number_pronunciation_terms_missing',
+                  'achtundvierzig.null',
+              )
+          )
           if source_hash_failure:
               action='repair_exact_approved_source_binding_at_v5_render_boundary'
               traceback_files=source_files
+          elif editorial_length_failure:
+              action='repair_bounded_v20_length_contract_then_resume_approved_request'
+              traceback_files=editorial_files
           elif visual_failure:
               action='repair_topic_bound_visual_assets_and_critical_pronunciation'
               traceback_files=visual_files + (voice_files[1:3] if pronunciation_failure else [])
