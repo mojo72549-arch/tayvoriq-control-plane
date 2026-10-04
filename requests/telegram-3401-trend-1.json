@@ -219,6 +219,20 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-10-04T09:33:38.155Z",
+      "actor": "chatgpt-hotfix",
+      "meta": {
+        "golden_path_run_id": 37184825892,
+        "reason": "legacy-run-workflow-compatible-local-retry-binding",
+        "local_retry_kind": "same-run",
+        "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+        "failure_signature": "28e41034d878ba43118c",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "29f43450af39eca8e5e9399a54d0b6d28ed502ceed3216cd33e4d4185d40cc39",
@@ -226,7 +240,7 @@
   "dispatch_contract_sha256": "29f43450af39eca8e5e9399a54d0b6d28ed502ceed3216cd33e4d4185d40cc39",
   "golden_path_run_id": 37184825892,
   "codefix_recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
+    "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
     "failed_run_id": 37184825892,
     "failure_signature": "3dcee822290522d5d349",
@@ -248,7 +262,10 @@
     "local_retry_kind": "same-run",
     "local_retry_failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "local_retry_failure_signature": "28e41034d878ba43118c",
-    "local_retry_dispatched_at": "2026-10-04T09:31:36.791352Z"
+    "local_retry_dispatched_at": "2026-10-04T09:31:36.791352Z",
+    "replay_run_id": 37184825892,
+    "codefix_detection_reason": "compatibility-binding-for-same-run-local-retry-on-legacy-run-workflow",
+    "legacy_run_workflow_compatibility": true
   },
   "previous_golden_path_run_ids": [
     37181286540,
