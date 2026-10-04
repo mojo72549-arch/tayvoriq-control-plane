@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-04T09:47:41.421146Z",
+  "generated_at": "2026-10-04T14:08:12.204799Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": "DEUTSCHLAND IM UMBAU",
@@ -135,7 +135,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_DISPATCHED"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -149,12 +149,12 @@
     }
   ],
   "incident": {
-    "signature": "37192912521:none",
+    "signature": "37192912521:CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
     "severity": "critical",
-    "failure_state": null,
+    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
     "failed_step": "Exact-request replay readiness gate",
     "failed_step_number": 30,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -166,10 +166,10 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": null,
-    "failed_run_id": 37192603997,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
+    "failed_run_id": 37192912521,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
@@ -184,6 +184,11 @@
       "at": "2026-10-04T09:47:29Z",
       "title": "Workflow-Fehler",
       "detail": "Exact-request replay readiness gate"
+    },
+    {
+      "at": "2026-10-04T09:47:46.543284Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-10-04T09:45:29.224010Z",
@@ -209,11 +214,6 @@
       "at": "2026-10-04T09:35:39.647Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-10-04T09:33:57.609526Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     }
   ]
 }
