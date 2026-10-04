@@ -65,3 +65,21 @@ def test_hardening_never_weakens_quality_gates():
     replay = REPLAY_GUARD.read_text(encoding="utf-8")
     assert "quality_gates_weakened: true" not in replay.casefold()
     assert "source_request_id" in dispatch
+
+
+def test_local_checkpoint_replay_is_atomically_bound_before_golden_path_gate():
+    text = REPLAY_GUARD.read_text(encoding="utf-8")
+    required = (
+        "'recovery_strategy': str(pointer.get('recovery_strategy') or '').strip()",
+        "ACTIVE_REQUEST_POINTER: .github/state/tayvoriq-active-production-request.json",
+        "same-approved-request-local-checkpoint-replay-current-main",
+        "'status': 'LOCAL_RETRY_DISPATCHED'",
+        "'request_substate': 'DISPATCHED'",
+        "'local_retry_run_id': new_run",
+        "'local_retry_kind': 'same-run'",
+        "active_pointer['golden_path_run_id'] = new_run",
+        'git add -- "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER"',
+        "atomic-local-checkpoint-replay-bind",
+    )
+    for marker in required:
+        assert marker in text, marker
