@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-04T09:43:09.424280Z",
-  "overall": "red",
+  "generated_at": "2026-10-04T09:43:32.392421Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
@@ -41,17 +41,17 @@
   },
   "run": {
     "id": 37192912521,
-    "status": "completed",
-    "conclusion": "failure",
+    "status": "in_progress",
+    "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37192912521",
     "created_at": "2026-10-04T09:40:36Z",
-    "updated_at": "2026-10-04T09:42:56Z",
-    "attempt": 1,
+    "updated_at": "2026-10-04T09:43:20Z",
+    "attempt": 2,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
+    "current_step": "Checkout review pages",
+    "last_successful_step": "Lightweight contract preflight",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Exact-request replay readiness gate"
+      "status": "yellow",
+      "detail": "Checkout review pages"
     },
     {
       "name": "Production Green",
@@ -140,30 +140,19 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "37192912521:none",
-    "severity": "critical",
-    "failure_state": null,
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
+    "last_step": "Telegram progress - sources locked"
   },
   "recovery": {
     "status": "LOCAL_RETRY_DISPATCHED",
@@ -181,9 +170,9 @@
   },
   "events": [
     {
-      "at": "2026-10-04T09:42:56Z",
-      "title": "Workflow-Fehler",
-      "detail": "Exact-request replay readiness gate"
+      "at": "2026-10-04T09:43:13.364355Z",
+      "title": "DISPATCHED",
+      "detail": "CONTROL_PLANE_BINDING_FAILURE"
     },
     {
       "at": "2026-10-04T09:40:45.090326Z",
@@ -207,11 +196,6 @@
     },
     {
       "at": "2026-10-04T09:33:38.155Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-10-04T09:31:36.791352Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
