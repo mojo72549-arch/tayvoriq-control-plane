@@ -1,30 +1,30 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-04T02:37:25.049737Z",
-  "overall": "green",
+  "generated_at": "2026-10-04T06:47:27.212247Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3155-trend-1",
-    "golden_path_run_id": 37113072774,
-    "pointer_updated_at": "2026-10-03T09:36:09.635092Z"
+    "request_id": "telegram-3401-trend-1",
+    "golden_path_run_id": 37181286540,
+    "pointer_updated_at": "2026-10-04T05:55:54.188717Z"
   },
   "request": {
-    "request_id": "telegram-3155-trend-1",
-    "topic": "Mercedes: 38 Stunden ohne mehr Geld – und zwei Werke stehen zur Debatte",
+    "request_id": "telegram-3401-trend-1",
+    "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
-    "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "state": "AWAITING_CODEFIX",
+    "recovery_generation": 0,
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
-    "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ rechnet solche Konzernforderungen auf den Arbeitsalltag herunter und verfolgt, was Mercedes tatsächlich vereinbart und welche Standorte danach konkret betroffen sind.",
+    "cta_type": "SERIES",
+    "follow_reason": "TAYVORIQ verfolgt, wie viele Stellen tatsächlich entfallen und welche Softwarekompetenz bei VW intern bleibt.",
     "open_loop_status": "SOFT",
-    "next_episode_candidate": "Mercedes-Einigung im Faktencheck: Kommen die 38 Stunden wirklich – und welche Standorte betrifft der Kompromiss?",
+    "next_episode_candidate": "Welche Software-Aufgaben behält Cariad selbst – und was wandert zu Rivian, Xpeng oder anderen Partnern?",
     "follow_conversion_gate": {
       "result": "PASS",
       "repair": null,
@@ -35,23 +35,23 @@
       "issues": []
     },
     "golden_path_v5_state": "APPROVED",
-    "source_count": 2,
+    "source_count": 3,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3155-trend-1.json"
+    "path": "requests/telegram-3401-trend-1.json"
   },
   "run": {
-    "id": 37113072774,
+    "id": 37181286540,
     "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37113072774",
-    "created_at": "2026-10-03T09:26:46Z",
-    "updated_at": "2026-10-03T09:36:18Z",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37181286540",
+    "created_at": "2026-10-04T05:55:47Z",
+    "updated_at": "2026-10-04T05:58:49Z",
     "attempt": 1,
-    "progress": 100,
+    "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -97,25 +97,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "error",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "skipped",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "skipped",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -134,35 +134,46 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "FRESH_RECOVERY_DISPATCHED"
+      "status": "yellow",
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Send Telegram review"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "37181286540:40:LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "severity": "critical",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Send Telegram review",
-    "last_step": "Send Telegram review"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "FRESH_RECOVERY_DISPATCHED",
-    "source_status": "FRESH_RECOVERY_DISPATCHED",
-    "failure_state": null,
-    "failed_run_id": 37109413731,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_run_id": 37181286540,
     "replay_run_id": null,
-    "fresh_recovery_run_id": 37113072774,
-    "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "fresh_recovery_run_id": null,
+    "recovery_generation": 0,
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -170,34 +181,29 @@
   },
   "events": [
     {
-      "at": "2026-10-03T09:26:53.069793Z",
-      "title": "DISPATCHED",
-      "detail": "bounded-shared-policy-recovery"
+      "at": "2026-10-04T05:58:49Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
     },
     {
-      "at": "2026-10-03T08:57:34.440841Z",
+      "at": "2026-10-04T05:59:11.258165Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     },
     {
-      "at": "2026-10-03T08:57:17.332516Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_VOICE_CODEFIX_REQUIRED"
+      "at": "2026-10-04T05:55:54.095100+00:00",
+      "title": "DISPATCHED",
+      "detail": "request-dispatcher:37181279806"
     },
     {
-      "at": "2026-10-03T08:21:22.067915Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
+      "at": "2026-10-04T05:55:44.885527+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:37181279806"
     },
     {
-      "at": "2026-10-03T07:55:00.421724Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-10-03T07:51:41.059923Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "at": "2026-10-04T05:55:36.581Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
