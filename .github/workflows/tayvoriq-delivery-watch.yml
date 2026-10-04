@@ -305,8 +305,96 @@ jobs:
         shell: bash
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          REQUEST_FILE: ${{ steps.owner.outputs.request_file }}
+          FAILURE_STATE: ${{ steps.policy.outputs.state }}
+          FAILURE_SIGNATURE: ${{ steps.policy.outputs.failure_signature }}
         run: |
           set -euo pipefail
+
+          # A same-run retry is still a new recovery execution state. Clear any
+          # stale deterministic ARMED/AWAITING_CODEFIX marker before GitHub starts
+          # the next run attempt, otherwise the Golden Path binding gate correctly
+          # rejects the retry as an unverified codefix execution.
+          rebound=false
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main --quiet
+            git reset --hard origin/main
+            python - "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER" "$REQUEST_ID" "$RUN_ID" "$FAILURE_STATE" "$FAILURE_SIGNATURE" <<'PY'
+          import json,sys
+          from datetime import datetime,timezone
+          from pathlib import Path
+
+          request_path=Path(sys.argv[1]); pointer_path=Path(sys.argv[2])
+          request_id=sys.argv[3]; run_id=int(sys.argv[4])
+          failure_state=sys.argv[5]; failure_signature=sys.argv[6]
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
+          if (
+              pointer.get('state')!='ACTIVE'
+              or str(pointer.get('request_id') or '')!=request_id
+              or int(pointer.get('golden_path_run_id') or 0)!=run_id
+          ):
+              raise SystemExit('SAME_RUN_RETRY_ACTIVE_OWNER_CHANGED')
+          if (
+              str(request.get('request_id') or '')!=request_id
+              or str(request.get('status') or '')!='DISPATCHED'
+              or int(request.get('golden_path_run_id') or 0)!=run_id
+          ):
+              raise SystemExit('SAME_RUN_RETRY_REQUEST_OWNER_CHANGED')
+
+          now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          codefix=request.get('codefix_recovery')
+          if not isinstance(codefix,dict):
+              codefix={}
+          previous_failure=str(codefix.get('failure_state') or '').strip()
+          if previous_failure:
+              codefix['last_failure_state']=previous_failure
+          codefix.update({
+              'status':'LOCAL_RETRY_DISPATCHED',
+              'request_substate':'DISPATCHED',
+              'failure_state':'',
+              'local_retry_run_id':run_id,
+              'local_retry_kind':'same-run',
+              'local_retry_failure_state':failure_state,
+              'local_retry_failure_signature':failure_signature,
+              'local_retry_dispatched_at':now,
+              'quality_gates_weakened':False,
+              'active_pointer_verified':True,
+          })
+          request['codefix_recovery']=codefix
+          request['recovery_owner']='tayvoriq-delivery-watch'
+          request['state_history']=list(request.get('state_history') or [])+[{
+              'state':'DISPATCHED',
+              'at':now,
+              'actor':'tayvoriq-delivery-watch',
+              'meta':{
+                  'golden_path_run_id':run_id,
+                  'reason':'same-run-local-retry',
+                  'failure_state':failure_state,
+                  'failure_signature':failure_signature,
+                  'quality_gates_weakened':False,
+                  'active_pointer_verified':True,
+              },
+          }]
+          request_path.write_text(json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$REQUEST_FILE"
+            if git diff --cached --quiet; then
+              rebound=true
+              break
+            fi
+            git commit -m "ops(tayvoriq): bind same-run local retry ${REQUEST_ID} to ${RUN_ID}"
+            if git push origin HEAD:main; then
+              rebound=true
+              break
+            fi
+            sleep $((attempt*2))
+          done
+          [ "$rebound" = "true" ] || { echo 'SAME_RUN_RETRY_BIND_FAILED'; exit 1; }
+
           gh run rerun "$RUN_ID" --failed
           echo "TRANSIENT_SAME_RUN_RETRY_REQUESTED:$RUN_ID"
 

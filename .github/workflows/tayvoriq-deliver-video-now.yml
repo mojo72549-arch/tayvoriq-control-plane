@@ -798,8 +798,16 @@ jobs:
               and int(codefix.get('fresh_recovery_run_id') or 0)==run_id
               and str(data.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY'
           )
+          local_retry_bound=(
+              codefix.get('status')=='LOCAL_RETRY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('local_retry_run_id') or 0)==run_id
+              and str(codefix.get('local_retry_kind') or '')=='same-run'
+          )
           # ARMED is awaiting a verified fix, not permission to run production.
-          if request_bound and (deterministic_bound or fresh_bound):
+          # LOCAL_RETRY_DISPATCHED is explicit Delivery-Watch permission for the
+          # next attempt of this exact run after a localized checkpoint failure.
+          if request_bound and (deterministic_bound or fresh_bound or local_retry_bound):
               raise SystemExit(0)
           raise SystemExit(1)
           PY
@@ -969,7 +977,13 @@ jobs:
               and int(codefix.get('fresh_recovery_run_id') or 0)==run_id
               and str(data.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY'
           )
-          if request_bound and (deterministic_bound or fresh_bound):
+          local_retry_bound=(
+              codefix.get('status')=='LOCAL_RETRY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('local_retry_run_id') or 0)==run_id
+              and str(codefix.get('local_retry_kind') or '')=='same-run'
+          )
+          if request_bound and (deterministic_bound or fresh_bound or local_retry_bound):
               raise SystemExit(0)
           raise SystemExit(1)
           PY

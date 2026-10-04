@@ -95,6 +95,25 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
             workflow,
         )
 
+    def test_same_run_local_retry_rebinds_request_before_github_rerun(self):
+        delivery = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
+            encoding="utf-8"
+        )
+        golden = (ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("'status':'LOCAL_RETRY_DISPATCHED'", delivery)
+        self.assertIn("'local_retry_run_id':run_id", delivery)
+        self.assertIn("SAME_RUN_RETRY_BIND_FAILED", delivery)
+        self.assertLess(
+            delivery.index("'status':'LOCAL_RETRY_DISPATCHED'"),
+            delivery.index('gh run rerun "$RUN_ID" --failed'),
+        )
+        self.assertIn("local_retry_bound=(", golden)
+        self.assertIn("codefix.get('status')=='LOCAL_RETRY_DISPATCHED'", golden)
+        self.assertIn("deterministic_bound or fresh_bound or local_retry_bound", golden)
+
 
 if __name__ == "__main__":
     unittest.main()

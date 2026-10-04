@@ -74,3 +74,10 @@ def test_control_center_codefix_state_requires_actual_codefix_not_replay_failure
         assert "REPLAY_FAILED_CODEFIX_REQUIRED" not in src
         assert "if(lastFailure.includes('LOCAL_VOICE')) return {status:'LOCAL_VOICE_RETRY_REQUIRED'" in src
         assert "if(lastFailure.includes('LOCAL_VISUAL')) return {status:'LOCAL_VISUAL_RETRY_REQUIRED'" in src
+
+
+def test_ops_health_dedupes_same_run_incident_when_only_failed_step_changes():
+    src = Path("scripts/tayvoriq_ops_health.py").read_text(encoding="utf-8")
+    assert '/jobs?filter=latest&per_page=100' in src
+    assert 'return f"{run_id or \'none\'}:{failure_state or \'none\'}"' in src
+    assert 'or (recovery_changed and overall != "red")' in src
