@@ -213,7 +213,10 @@ def health_color(run_status, conclusion, run_id):
 
 
 def incident_signature(run_id, failed_step, failure_state):
-    return f"{run_id or 'none'}:{(failed_step or {}).get('number') or 'none'}:{failure_state or 'none'}"
+    # A GitHub rerun keeps the same run id but can expose a different failed
+    # step while the underlying recovery class is unchanged. Step movement is
+    # diagnostic detail, not a new user-facing incident.
+    return f"{run_id or 'none'}:{failure_state or 'none'}"
 
 
 def main():
@@ -233,7 +236,7 @@ def main():
     if run_id:
         try:
             run = api_get(f"/repos/{REPO}/actions/runs/{run_id}")
-            jobs_payload = api_get(f"/repos/{REPO}/actions/runs/{run_id}/jobs?per_page=100")
+            jobs_payload = api_get(f"/repos/{REPO}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
             jobs = jobs_payload.get("jobs") or []
         except Exception as exc:
             api_error = str(exc)
@@ -454,10 +457,16 @@ def main():
     # Health/Telegram monitoring is canonical-pointer-only. It must never scan
     # sibling requests to override or suppress the state of the bound request.
     stale_green_suppressed = False
+    incident_changed = previous_incident != current_incident
+    overall_changed = previous_overall != overall
+    recovery_changed = previous_recovery != self_heal_status
     notify = (
-        previous_overall != overall
-        or previous_incident != current_incident
-        or previous_recovery != self_heal_status
+        overall_changed
+        or incident_changed
+        # Internal recovery-state churn must not resend the same red incident.
+        # The Control Center still updates the stored state; Telegram speaks again
+        # when the incident identity changes or health moves out of red.
+        or (recovery_changed and overall != "red")
     ) and (overall in {"red", "yellow", "green"}) and not stale_green_suppressed
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
