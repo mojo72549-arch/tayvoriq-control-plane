@@ -75,6 +75,9 @@ jobs:
               'topic': topic,
               'trend_id': trend_id,
               'old_run_id': str(int(request.get('golden_path_run_id') or 0)),
+              'recovery_strategy': str(pointer.get('recovery_strategy') or '').strip(),
+              'retry_failure_state': str(pointer.get('failure_state') or '').strip(),
+              'retry_failure_signature': str(pointer.get('failure_signature') or '').strip(),
           }
           with open(sys.argv[1], 'a', encoding='utf-8') as handle:
               for key, value in values.items():
@@ -168,6 +171,10 @@ jobs:
           OLD_RUN_ID: ${{ steps.request.outputs.old_run_id }}
           NEW_RUN_ID: ${{ steps.start.outputs.run_id }}
           START_MODE: ${{ steps.start.outputs.start_mode }}
+          RECOVERY_STRATEGY: ${{ steps.request.outputs.recovery_strategy }}
+          RETRY_FAILURE_STATE: ${{ steps.request.outputs.retry_failure_state }}
+          RETRY_FAILURE_SIGNATURE: ${{ steps.request.outputs.retry_failure_signature }}
+          ACTIVE_REQUEST_POINTER: .github/state/tayvoriq-active-production-request.json
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -177,18 +184,24 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
-            python - "$REQUEST_FILE" <<'PY'
+            python - "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER" <<'PY'
           import json, os, sys
           from datetime import datetime, timezone
           from pathlib import Path
 
           path = Path(sys.argv[1])
+          active_pointer_path = Path(sys.argv[2])
           data = json.loads(path.read_text(encoding='utf-8'))
+          active_pointer = json.loads(active_pointer_path.read_text(encoding='utf-8'))
           request_id = os.environ['REQUEST_ID']
           topic = os.environ['TOPIC']
           trend_id = os.environ['TREND_ID']
           new_run = int(os.environ['NEW_RUN_ID'])
           old_run = int(data.get('golden_path_run_id') or 0)
+          strategy = str(os.environ.get('RECOVERY_STRATEGY') or '').strip()
+          retry_failure_state = str(os.environ.get('RETRY_FAILURE_STATE') or '').strip()
+          retry_failure_signature = str(os.environ.get('RETRY_FAILURE_SIGNATURE') or '').strip()
+          now = datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
 
           if str(data.get('request_id') or '').strip() != request_id:
               raise SystemExit('REPLAY_BIND_REQUEST_CHANGED')
@@ -196,26 +209,97 @@ jobs:
               raise SystemExit('REPLAY_BIND_TOPIC_CHANGED')
           if str(data.get('trend_id') or '').strip() != trend_id:
               raise SystemExit('REPLAY_BIND_TREND_CHANGED')
-          if old_run == new_run:
-              print('REPLAY_ALREADY_BOUND')
-              raise SystemExit(0)
+          if (
+              active_pointer.get('schema') != 'tayvoriq-active-production-request-v1'
+              or active_pointer.get('state') != 'ACTIVE'
+              or str(active_pointer.get('request_id') or '') != request_id
+          ):
+              raise SystemExit('REPLAY_BIND_ACTIVE_POINTER_CHANGED')
 
           previous = list(data.get('previous_golden_path_run_ids') or [])
-          if old_run and old_run not in previous:
+          if old_run and old_run != new_run and old_run not in previous:
               previous.append(old_run)
           data['previous_golden_path_run_ids'] = previous[-20:]
           data['golden_path_run_id'] = new_run
           data['status'] = 'DISPATCHED'
-          data['retry_of_run_id'] = old_run or None
+          if old_run and old_run != new_run:
+              data['retry_of_run_id'] = old_run
           data['replay_bound_by'] = 'tayvoriq-x-replay-start-guard'
           data['replay_trigger_sha'] = os.environ.get('GITHUB_SHA')
           data['replay_start_mode'] = os.environ['START_MODE']
-          data['replay_dispatched_at'] = datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          data['replay_dispatched_at'] = now
+
+          if strategy == 'same-approved-request-local-checkpoint-replay-current-main':
+              codefix = data.get('codefix_recovery')
+              if not isinstance(codefix, dict):
+                  codefix = {}
+              prior_failure = str(codefix.get('failure_state') or '').strip()
+              if prior_failure:
+                  codefix['last_failure_state'] = prior_failure
+              local_state = retry_failure_state or str(
+                  codefix.get('local_retry_failure_state') or 'LOCAL_VISUAL_RETRY_REQUIRED'
+              ).strip()
+              local_signature = retry_failure_signature or str(
+                  codefix.get('local_retry_failure_signature') or ''
+              ).strip()
+              codefix.update({
+                  'status': 'LOCAL_RETRY_DISPATCHED',
+                  'request_substate': 'DISPATCHED',
+                  'failure_state': '',
+                  'local_retry_run_id': new_run,
+                  'local_retry_kind': 'same-run',
+                  'local_retry_execution_mode': 'same-approved-request-new-run-current-main',
+                  'local_retry_failure_state': local_state,
+                  'local_retry_failure_signature': local_signature,
+                  'local_retry_dispatched_at': now,
+                  'quality_gates_weakened': False,
+                  'active_pointer_verified': True,
+              })
+              data['codefix_recovery'] = codefix
+              data['replacement_reason'] = 'SAME_GENERATION_LOCAL_CHECKPOINT_REPLAY'
+              data['recovery_owner'] = 'tayvoriq-delivery-watch'
+              data['recovery_dispatched_at'] = now
+              data['state_history'] = list(data.get('state_history') or []) + [{
+                  'state': 'DISPATCHED',
+                  'at': now,
+                  'actor': 'tayvoriq-x-replay-start-guard',
+                  'meta': {
+                      'retry_of_run_id': old_run or None,
+                      'golden_path_run_id': new_run,
+                      'recovery_generation': int(data.get('recovery_generation') or 0),
+                      'reason': 'atomic-local-checkpoint-replay-bind',
+                      'failure_state': local_state,
+                      'failure_signature': local_signature,
+                      'quality_gates_weakened': False,
+                      'active_pointer_verified': True,
+                  },
+              }]
+
+          active_pointer['golden_path_run_id'] = new_run
+          active_pointer['recovery_generation'] = int(data.get('recovery_generation') or 0)
+          active_pointer['reason'] = (
+              'same-generation-local-checkpoint-replay-current-main'
+              if strategy == 'same-approved-request-local-checkpoint-replay-current-main'
+              else 'verified-replay-start'
+          )
+          active_pointer['updated_at'] = now
+
           path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print({'request_id': request_id, 'old_run': old_run, 'new_run': new_run, 'mode': os.environ['START_MODE']})
+          active_pointer_path.write_text(
+              json.dumps(active_pointer, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          print({
+              'request_id': request_id,
+              'old_run': old_run,
+              'new_run': new_run,
+              'mode': os.environ['START_MODE'],
+              'strategy': strategy,
+              'atomic_pointer_bind': True,
+          })
           PY
 
-            git add -- "$REQUEST_FILE"
+            git add -- "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER"
             if git diff --cached --quiet; then
               bound=true
               break
@@ -234,15 +318,29 @@ jobs:
           REQUEST_FILE: ${{ steps.request.outputs.request_file }}
           REQUEST_ID: ${{ steps.request.outputs.request_id }}
           RUN_ID: ${{ steps.start.outputs.run_id }}
+          RECOVERY_STRATEGY: ${{ steps.request.outputs.recovery_strategy }}
+          ACTIVE_REQUEST_POINTER: .github/state/tayvoriq-active-production-request.json
         run: |
           set -euo pipefail
           git fetch origin main
           git show "origin/main:${REQUEST_FILE}" > /tmp/bound-request.json
+          git show "origin/main:${ACTIVE_REQUEST_POINTER}" > /tmp/bound-pointer.json
           python - <<'PY'
           import json, os
           data = json.load(open('/tmp/bound-request.json', encoding='utf-8'))
+          pointer = json.load(open('/tmp/bound-pointer.json', encoding='utf-8'))
+          run_id = int(os.environ['RUN_ID'])
           assert str(data.get('request_id') or '') == os.environ['REQUEST_ID'], data
-          assert int(data.get('golden_path_run_id') or 0) == int(os.environ['RUN_ID']), data
+          assert int(data.get('golden_path_run_id') or 0) == run_id, data
           assert str(data.get('status') or '') == 'DISPATCHED', data
+          assert str(pointer.get('request_id') or '') == os.environ['REQUEST_ID'], pointer
+          assert int(pointer.get('golden_path_run_id') or 0) == run_id, pointer
+          if os.environ.get('RECOVERY_STRATEGY') == 'same-approved-request-local-checkpoint-replay-current-main':
+              codefix = data.get('codefix_recovery') or {}
+              assert codefix.get('status') == 'LOCAL_RETRY_DISPATCHED', codefix
+              assert codefix.get('request_substate') == 'DISPATCHED', codefix
+              assert int(codefix.get('local_retry_run_id') or 0) == run_id, codefix
+              assert codefix.get('local_retry_kind') == 'same-run', codefix
+              assert str(codefix.get('failure_state') or '') == '', codefix
           print('REPLAY_REQUEST_BINDING_VERIFIED')
           PY
