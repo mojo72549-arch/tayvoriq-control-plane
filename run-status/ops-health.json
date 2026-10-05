@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-05T05:44:54.138715Z",
+  "generated_at": "2026-10-05T09:06:27.219056Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -149,7 +149,7 @@
     }
   ],
   "incident": {
-    "signature": "37192912521:CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
+    "signature": "37192912521:CONTROL_PLANE_BINDING",
     "severity": "critical",
     "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
     "failed_step": "Exact-request replay readiness gate",
@@ -177,7 +177,7 @@
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "needs_codefix": true
   },
   "events": [
     {
