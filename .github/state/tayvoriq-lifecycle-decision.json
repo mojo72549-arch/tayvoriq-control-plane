@@ -1,15 +1,18 @@
 {
   "action": "NONE",
-  "state": "BLOCKED",
-  "reason": "EXECUTOR_COMPLETED_WITHOUT_REQUEST_PROGRESS",
+  "state": "RUNNING",
+  "reason": "VERIFIED_ACTIVE_PRODUCTION",
   "request_id": "telegram-3401-trend-1",
   "run_id": "37371986965",
   "generation": "1",
-  "request_status": "DISPATCHED",
-  "request_substate": "AWAITING_CODEFIX",
-  "decision_key": "58930e90157a67fec539e228120cf8a1c34aa2d592f8dfd17a021d8bb69f7bdb",
+  "request_status": "",
+  "request_substate": "",
+  "decision_key": "",
   "dispatch_verified": false,
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
+  "signal_run_id": 37380681880,
+  "signal_run_attempt": 1,
+  "signal_receipt": "COMPLETED",
   "last_dispatch": {
     "decision_key": "58930e90157a67fec539e228120cf8a1c34aa2d592f8dfd17a021d8bb69f7bdb",
     "request_id": "telegram-3401-trend-1",
@@ -18,6 +21,6 @@
     "checked_at": "2026-10-05T21:18:27.390528+00:00",
     "orchestrator_run_id": 37374896950
   },
-  "checked_at": "2026-10-05T21:52:15.749902+00:00",
-  "orchestrator_run_id": 37378711792
+  "checked_at": "2026-10-05T22:10:23.967483+00:00",
+  "orchestrator_run_id": 37380711978
 }
