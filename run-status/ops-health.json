@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-05T11:52:10.191781Z",
+  "generated_at": "2026-10-05T12:40:44.787708Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,9 +16,9 @@
     "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "SERIES",
@@ -45,8 +45,8 @@
     "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37289413275",
     "created_at": "2026-10-05T09:20:43Z",
-    "updated_at": "2026-10-05T09:23:58Z",
-    "attempt": 1,
+    "updated_at": "2026-10-05T11:55:38Z",
+    "attempt": 2,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
@@ -135,7 +135,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -149,12 +149,12 @@
     }
   ],
   "incident": {
-    "signature": "37289413275:LOCAL_REPAIR",
+    "signature": "37289413275:LOCAL_VISUAL",
     "severity": "critical",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 40,
-    "self_heal_status": "ARMED",
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -166,24 +166,29 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": 37289413275,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": true
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-10-05T09:23:58Z",
+      "at": "2026-10-05T11:55:38Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-10-05T11:52:21.660792Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     },
     {
       "at": "2026-10-05T09:24:27.611082Z",
@@ -209,11 +214,6 @@
       "at": "2026-10-05T09:10:37.774035Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-10-05T09:07:19.299838Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
