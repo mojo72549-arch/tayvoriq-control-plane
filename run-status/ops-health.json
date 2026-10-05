@@ -1,22 +1,22 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-05T09:09:47.464344Z",
-  "overall": "yellow",
+  "generated_at": "2026-10-05T09:18:02.457396Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3401-trend-1",
-    "golden_path_run_id": 37287934051,
-    "pointer_updated_at": "2026-10-05T09:07:19.299838Z"
+    "golden_path_run_id": 37288374253,
+    "pointer_updated_at": "2026-10-05T09:11:20.201807Z"
   },
   "request": {
     "request_id": "telegram-3401-trend-1",
     "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": "DEUTSCHLAND IM UMBAU",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-3401-trend-1.json"
   },
   "run": {
-    "id": 37287934051,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37287934051",
-    "created_at": "2026-10-05T09:07:12Z",
-    "updated_at": "2026-10-05T09:07:17Z",
+    "id": 37288374253,
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37288374253",
+    "created_at": "2026-10-05T09:11:13Z",
+    "updated_at": "2026-10-05T09:14:49Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Produce approved master or reuse checkpoint",
-    "last_successful_step": "Restore production model cache",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "running",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Produce approved master or reuse checkpoint"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -135,26 +135,26 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
   "incident": {
-    "signature": "37287934051:CONTROL_PLANE_BINDING",
-    "severity": "warning",
-    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
+    "signature": "37288374253:LOCAL_REPAIR",
+    "severity": "critical",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -162,24 +162,44 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
-    "failed_run_id": 37192912521,
-    "replay_run_id": 37287934051,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failed_run_id": 37288374253,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "needs_codefix": true
   },
   "events": [
+    {
+      "at": "2026-10-05T09:14:49Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-10-05T09:15:17.260321Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-10-05T09:11:20.201807Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-10-05T09:10:37.774035Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
     {
       "at": "2026-10-05T09:07:19.299838Z",
       "title": "DISPATCHED",
@@ -194,21 +214,6 @@
       "at": "2026-10-04T09:45:29.224010Z",
       "title": "DISPATCHED",
       "detail": "CONTROL_PLANE_BINDING_FAILURE"
-    },
-    {
-      "at": "2026-10-04T09:43:13.364355Z",
-      "title": "DISPATCHED",
-      "detail": "CONTROL_PLANE_BINDING_FAILURE"
-    },
-    {
-      "at": "2026-10-04T09:40:45.090326Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-10-04T09:36:53.691060Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
     }
   ]
 }
