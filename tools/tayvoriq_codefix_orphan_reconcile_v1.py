@@ -136,6 +136,13 @@ def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int) -> bool:
             return True
         print(f"CODEFIX_FRESH_RECOVERY_BINDING_MISMATCH:fresh={fresh_run}:active={run_id}")
         return False
+    if status == "LOCAL_RETRY_DISPATCHED":
+        local_run = _int(codefix.get("local_retry_run_id"))
+        if local_run == run_id:
+            print(f"CODEFIX_LOCAL_RETRY_OWNED_BY_DELIVERY_WATCH:{run_id}")
+            return False
+        print(f"CODEFIX_LOCAL_RETRY_BINDING_MISMATCH:local={local_run}:active={run_id}")
+        return False
     return True
 
 

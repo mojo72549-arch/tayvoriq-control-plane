@@ -79,5 +79,15 @@ def test_control_center_codefix_state_requires_actual_codefix_not_replay_failure
 def test_ops_health_dedupes_same_run_incident_when_only_failed_step_changes():
     src = Path("scripts/tayvoriq_ops_health.py").read_text(encoding="utf-8")
     assert '/jobs?filter=latest&per_page=100' in src
-    assert 'return f"{run_id or \'none\'}:{failure_state or \'none\'}"' in src
+    assert "def incident_failure_family" in src
+    assert '"_CODEFIX_REQUIRED"' in src
+    assert '"_RETRY_REQUIRED"' in src
+    assert "incident_failure_family(failure_state)" in src
     assert 'or (recovery_changed and overall != "red")' in src
+
+
+def test_ops_health_never_infers_codefix_from_failed_replay():
+    src = Path("scripts/tayvoriq_ops_health_postprocess.py").read_text(encoding="utf-8")
+    assert "REPLAY_FAILED_CODEFIX_REQUIRED" not in src
+    assert "RECOVERY_CLASSIFICATION_PENDING" in src
+    assert "changed and not inferred" in src
