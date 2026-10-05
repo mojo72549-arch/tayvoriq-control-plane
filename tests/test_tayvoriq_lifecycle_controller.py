@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from tayvoriq_lifecycle_controller_v1 import decide
 from tayvoriq_recovery_policy_v1 import classify_failure
 from tayvoriq_lifecycle_handoff_v1 import await_completion
+from tayvoriq_codefix_orphan_reconcile_v1 import _replay_status_allows_rearm
 
 
 def test_completion_signal_waits_for_real_terminal_status():
@@ -161,3 +162,23 @@ def load_tests(loader, tests, pattern):
     import unittest
     return unittest.TestSuite(unittest.FunctionTestCase(value) for name, value in globals().items()
                               if name.startswith('test_') and callable(value))
+
+
+def test_local_retry_dispatch_cannot_be_rearmed_by_codefix_orphan_reconcile():
+    current = {
+        'status': 'LOCAL_RETRY_DISPATCHED',
+        'request_substate': 'DISPATCHED',
+        'local_retry_run_id': 42,
+        'local_retry_kind': 'same-run',
+    }
+    assert _replay_status_allows_rearm(current, 42) is False
+
+
+def test_local_retry_binding_mismatch_also_fails_closed_for_codefix_rearm():
+    stale = {
+        'status': 'LOCAL_RETRY_DISPATCHED',
+        'request_substate': 'DISPATCHED',
+        'local_retry_run_id': 41,
+        'local_retry_kind': 'same-run',
+    }
+    assert _replay_status_allows_rearm(stale, 42) is False
