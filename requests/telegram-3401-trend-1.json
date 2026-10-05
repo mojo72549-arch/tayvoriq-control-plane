@@ -436,6 +436,19 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-10-05T11:52:21.660792Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "golden_path_run_id": 37289413275,
+        "reason": "same-run-local-retry",
+        "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+        "failure_signature": "28e41034d878ba43118c",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "29f43450af39eca8e5e9399a54d0b6d28ed502ceed3216cd33e4d4185d40cc39",
@@ -443,11 +456,11 @@
   "dispatch_contract_sha256": "29f43450af39eca8e5e9399a54d0b6d28ed502ceed3216cd33e4d4185d40cc39",
   "golden_path_run_id": 37289413275,
   "codefix_recovery": {
-    "status": "ARMED",
-    "request_substate": "AWAITING_CODEFIX",
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "request_substate": "DISPATCHED",
     "failed_run_id": 37289413275,
     "failure_signature": "3dcee822290522d5d349",
-    "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "failure_state": "",
     "failed_control_plane_sha": "73aa2e965e3159e90b1732903c7309ecebd3353c",
     "failed_implementation_sha": "5127c20d84a25cf40db0a55fc482c7955efc37d5",
     "recovery_generation": 0,
@@ -459,7 +472,13 @@
     "active_pointer_verified": true,
     "rearmed_after_failed_replay": true,
     "previous_codefix_failed_run_id": 37288374253,
-    "previous_codefix_failure_signature": "3dcee822290522d5d349"
+    "previous_codefix_failure_signature": "3dcee822290522d5d349",
+    "last_failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
+    "local_retry_run_id": 37289413275,
+    "local_retry_kind": "same-run",
+    "local_retry_failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "local_retry_failure_signature": "28e41034d878ba43118c",
+    "local_retry_dispatched_at": "2026-10-05T11:52:21.660792Z"
   },
   "previous_golden_path_run_ids": [
     37181286540,
@@ -473,7 +492,7 @@
   "recovery_generation": 0,
   "retry_of_run_id": 37288374253,
   "replacement_reason": "SAME_GENERATION_CODEFIX_REPLAY",
-  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "recovery_owner": "tayvoriq-delivery-watch",
   "recovery_failure_signature": "3dcee822290522d5d349",
   "recovery_dispatched_at": "2026-10-05T09:20:50.707257Z",
   "replay_bound_by": "tayvoriq-x-replay-start-guard",
