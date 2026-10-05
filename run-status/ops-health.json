@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-05T09:08:03.428798Z",
+  "generated_at": "2026-10-05T09:09:47.464344Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -48,8 +48,8 @@
     "updated_at": "2026-10-05T09:07:17Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -91,7 +91,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "pending",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -125,12 +125,12 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout review pages"
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "1b8fdee60792…"
+      "detail": "79ef54957777…"
     },
     {
       "name": "Self-Heal",
@@ -140,7 +140,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
@@ -162,8 +162,8 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
-    "last_step": "Telegram progress - sources locked"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
