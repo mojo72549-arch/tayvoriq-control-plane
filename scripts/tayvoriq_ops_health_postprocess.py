@@ -38,9 +38,9 @@ def main():
     elif conclusion in FAILURES and replay_is_current and source_status in {
         "REPLAY_DISPATCHED", "DISPATCHED", "REPLAY_RUNNING"
     }:
-        effective = "REPLAY_FAILED_CODEFIX_REQUIRED"
-        detail = "Recovery-Replay fehlgeschlagen · Codefix erforderlich"
-        health = "red"
+        effective = "RECOVERY_CLASSIFICATION_PENDING"
+        detail = "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
+        health = "yellow"
         inferred = True
     elif source_status not in {"", "IDLE", "NONE"} and str(state.get("overall") or "") != "green":
         health = "yellow"
@@ -48,12 +48,12 @@ def main():
     recovery["source_status"] = source_status
     recovery["status"] = effective
     recovery["inferred_from_run_terminal_state"] = inferred
-    recovery["needs_codefix"] = effective == "REPLAY_FAILED_CODEFIX_REQUIRED"
+    recovery["needs_codefix"] = source_status in {"ARMED", "CODEFIX_REQUIRED"}
     state["recovery"] = recovery
 
     if incident:
         incident["self_heal_status"] = effective
-        incident["recovery_replay_failed"] = effective == "REPLAY_FAILED_CODEFIX_REQUIRED"
+        incident["recovery_replay_failed"] = effective == "RECOVERY_CLASSIFICATION_PENDING"
         state["incident"] = incident
 
     for item in state.get("healthchecks") or []:
@@ -62,12 +62,12 @@ def main():
             item["detail"] = detail
             break
 
-    if effective == "REPLAY_FAILED_CODEFIX_REQUIRED":
+    if effective == "RECOVERY_CLASSIFICATION_PENDING":
         events = state.get("events") or []
         marker = {
             "at": run.get("updated_at"),
-            "title": "Recovery-Replay fehlgeschlagen",
-            "detail": f"Run {run.get('id')} · interner Codefix erforderlich · kein Eingriff von dir",
+            "title": "Recovery-Replay wartet auf Klassifizierung",
+            "detail": f"Run {run.get('id')} · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt",
         }
         if not events or events[0].get("title") != marker["title"] or events[0].get("at") != marker["at"]:
             state["events"] = [marker] + events[:7]
@@ -79,7 +79,7 @@ def main():
     output_file = os.environ.get("GITHUB_OUTPUT")
     if output_file:
         with open(output_file, "a", encoding="utf-8") as handle:
-            handle.write(f"notify={'true' if changed else 'false'}\n")
+            handle.write(f"notify={'true' if changed and not inferred else 'false'}\n")
             handle.write(f"effective_self_heal={effective}\n")
 
     print(json.dumps({
