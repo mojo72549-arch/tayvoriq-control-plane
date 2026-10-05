@@ -212,11 +212,27 @@ def health_color(run_status, conclusion, run_id):
     return "unknown"
 
 
+def incident_failure_family(failure_state):
+    value = str(failure_state or "").strip().upper()
+    for suffix in (
+        "_CODEFIX_REQUIRED",
+        "_RETRY_REQUIRED",
+        "_RECOVERY_REQUIRED",
+        "_REPAIR_REQUIRED",
+    ):
+        if value.endswith(suffix):
+            value = value[: -len(suffix)]
+            break
+    if value.endswith("_FAILURE"):
+        value = value[:-8]
+    return value or "none"
+
+
 def incident_signature(run_id, failed_step, failure_state):
-    # A GitHub rerun keeps the same run id but can expose a different failed
-    # step while the underlying recovery class is unchanged. Step movement is
-    # diagnostic detail, not a new user-facing incident.
-    return f"{run_id or 'none'}:{failure_state or 'none'}"
+    # A GitHub rerun can expose a different failed step or move from local retry
+    # to codefix for the same root failure. Those are state transitions inside one
+    # incident, not new user-facing incidents.
+    return f"{run_id or 'none'}:{incident_failure_family(failure_state)}"
 
 
 def main():
@@ -256,9 +272,17 @@ def main():
     recovery = (request_data or {}).get("codefix_recovery") or {}
     if not isinstance(recovery, dict):
         recovery = {}
-    failure_state = str(recovery.get("failure_state") or "") or None
-    user_action_required = bool(failure_state and any(token in failure_state.upper() for token in USER_ACTION_TOKENS))
     self_heal_status = str(recovery.get("status") or "IDLE")
+    raw_failure_state = str(recovery.get("failure_state") or "").strip()
+    local_retry_failure_state = str(recovery.get("local_retry_failure_state") or "").strip()
+    last_failure_state = str(recovery.get("last_failure_state") or "").strip()
+    failure_state = (
+        raw_failure_state
+        or (local_retry_failure_state if self_heal_status == "LOCAL_RETRY_DISPATCHED" else "")
+        or last_failure_state
+        or None
+    )
+    user_action_required = bool(failure_state and any(token in failure_state.upper() for token in USER_ACTION_TOKENS))
     recovery_generation = int((request_data or {}).get("recovery_generation") or recovery.get("fresh_recovery_generation") or recovery.get("recovery_generation") or 0)
     recovery_owner = str((request_data or {}).get("recovery_owner") or "tayvoriq-agent-orchestrator-v2")
 
