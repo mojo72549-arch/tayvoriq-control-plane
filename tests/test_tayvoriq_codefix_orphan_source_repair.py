@@ -107,3 +107,23 @@ def test_orphan_reconcile_passes_structured_failure_contract_to_recovery_policy(
     assert "--structured-evidence" in source
     assert "CODEFIX_ORPHAN_REPLAY_REARM_BLOCKED_NO_STRUCTURED_EVIDENCE" in source
     assert "CODEFIX_ORPHAN_LOCAL_FAILURE_NOT_CODEFIX" in source
+
+
+def test_local_retry_dispatch_remains_owned_by_delivery_watch() -> None:
+    codefix = {
+        "status": "LOCAL_RETRY_DISPATCHED",
+        "local_retry_run_id": 42,
+        "request_substate": "DISPATCHED",
+    }
+
+    assert orphan._replay_status_allows_rearm(codefix, 42) is False
+
+
+def test_local_retry_for_other_run_fails_closed() -> None:
+    codefix = {
+        "status": "LOCAL_RETRY_DISPATCHED",
+        "local_retry_run_id": 41,
+        "request_substate": "DISPATCHED",
+    }
+
+    assert orphan._replay_status_allows_rearm(codefix, 42) is False
