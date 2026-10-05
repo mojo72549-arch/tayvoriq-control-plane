@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-05T20:47:18.663256Z",
+  "generated_at": "2026-10-05T21:02:48.536172Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3401-trend-1",
-    "golden_path_run_id": 37289413275,
-    "pointer_updated_at": "2026-10-05T09:20:50.707257Z"
+    "golden_path_run_id": 37371986965,
+    "pointer_updated_at": "2026-10-05T20:48:15.732283Z"
   },
   "request": {
     "request_id": "telegram-3401-trend-1",
@@ -17,7 +17,7 @@
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 0,
+    "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
@@ -40,13 +40,13 @@
     "path": "requests/telegram-3401-trend-1.json"
   },
   "run": {
-    "id": 37289413275,
+    "id": 37371986965,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37289413275",
-    "created_at": "2026-10-05T09:20:43Z",
-    "updated_at": "2026-10-05T15:41:27Z",
-    "attempt": 3,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37371986965",
+    "created_at": "2026-10-05T20:48:08Z",
+    "updated_at": "2026-10-05T21:02:16Z",
+    "attempt": 1,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
@@ -135,7 +135,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_DISPATCHED"
+      "detail": "FRESH_RECOVERY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -149,12 +149,12 @@
     }
   ],
   "incident": {
-    "signature": "37289413275:LOCAL_VISUAL",
+    "signature": "37371986965:LOCAL_VISUAL",
     "severity": "critical",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failure_state": "LOCAL_VISUAL_RECOVERY_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 40,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "self_heal_status": "FRESH_RECOVERY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -166,13 +166,13 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "status": "FRESH_RECOVERY_DISPATCHED",
+    "source_status": "FRESH_RECOVERY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RECOVERY_REQUIRED",
     "failed_run_id": 37289413275,
     "replay_run_id": null,
-    "fresh_recovery_run_id": null,
-    "recovery_generation": 0,
+    "fresh_recovery_run_id": 37371986965,
+    "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -181,9 +181,14 @@
   },
   "events": [
     {
-      "at": "2026-10-05T15:41:27Z",
+      "at": "2026-10-05T21:02:16Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-10-05T20:48:15.732283Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
     },
     {
       "at": "2026-10-05T15:38:00.904223Z",
@@ -209,11 +214,6 @@
       "at": "2026-10-05T09:15:17.260321Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-10-05T09:11:20.201807Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
