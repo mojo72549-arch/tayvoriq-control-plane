@@ -1,24 +1,24 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-05T09:06:27.219056Z",
-  "overall": "red",
+  "generated_at": "2026-10-05T09:07:49.611972Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3401-trend-1",
-    "golden_path_run_id": 37192912521,
-    "pointer_updated_at": "2026-10-04T09:40:45.090326Z"
+    "golden_path_run_id": 37287934051,
+    "pointer_updated_at": "2026-10-05T09:07:19.299838Z"
   },
   "request": {
     "request_id": "telegram-3401-trend-1",
     "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "SERIES",
@@ -40,18 +40,18 @@
     "path": "requests/telegram-3401-trend-1.json"
   },
   "run": {
-    "id": 37192912521,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37192912521",
-    "created_at": "2026-10-04T09:40:36Z",
-    "updated_at": "2026-10-04T09:47:29Z",
-    "attempt": 3,
+    "id": 37287934051,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37287934051",
+    "created_at": "2026-10-05T09:07:12Z",
+    "updated_at": "2026-10-05T09:07:17Z",
+    "attempt": 1,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
+    "current_step": "Checkout review pages",
+    "last_successful_step": "Lightweight contract preflight",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -91,31 +91,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -124,8 +124,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Exact-request replay readiness gate"
+      "status": "yellow",
+      "detail": "Checkout review pages"
     },
     {
       "name": "Production Green",
@@ -135,26 +135,26 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - sources locked"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": {
-    "signature": "37192912521:CONTROL_PLANE_BINDING",
-    "severity": "critical",
+    "signature": "37287934051:CONTROL_PLANE_BINDING",
+    "severity": "warning",
     "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
-    "failed_step": "Exact-request replay readiness gate",
-    "failed_step_number": 30,
-    "self_heal_status": "ARMED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_RUNNING",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -162,28 +162,28 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - sources locked",
+    "last_step": "Telegram progress - sources locked"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_DISPATCHED",
     "failure_state": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED",
     "failed_run_id": 37192912521,
-    "replay_run_id": null,
+    "replay_run_id": 37287934051,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": true
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-10-04T09:47:29Z",
-      "title": "Workflow-Fehler",
-      "detail": "Exact-request replay readiness gate"
+      "at": "2026-10-05T09:07:19.299838Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-10-04T09:47:46.543284Z",
@@ -209,11 +209,6 @@
       "at": "2026-10-04T09:36:53.691060Z",
       "title": "AWAITING_CODEFIX",
       "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-10-04T09:35:39.647Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
   ]
 }
