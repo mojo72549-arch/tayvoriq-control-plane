@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-05T09:20:17.770041Z",
+  "generated_at": "2026-10-05T11:52:10.191781Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -8,8 +8,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3401-trend-1",
-    "golden_path_run_id": 37288374253,
-    "pointer_updated_at": "2026-10-05T09:11:20.201807Z"
+    "golden_path_run_id": 37289413275,
+    "pointer_updated_at": "2026-10-05T09:20:50.707257Z"
   },
   "request": {
     "request_id": "telegram-3401-trend-1",
@@ -40,12 +40,12 @@
     "path": "requests/telegram-3401-trend-1.json"
   },
   "run": {
-    "id": 37288374253,
+    "id": 37289413275,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37288374253",
-    "created_at": "2026-10-05T09:11:13Z",
-    "updated_at": "2026-10-05T09:14:49Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/37289413275",
+    "created_at": "2026-10-05T09:20:43Z",
+    "updated_at": "2026-10-05T09:23:58Z",
     "attempt": 1,
     "progress": 30,
     "current_step": null,
@@ -149,7 +149,7 @@
     }
   ],
   "incident": {
-    "signature": "37288374253:LOCAL_REPAIR",
+    "signature": "37289413275:LOCAL_REPAIR",
     "severity": "critical",
     "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
@@ -169,7 +169,7 @@
     "status": "ARMED",
     "source_status": "ARMED",
     "failure_state": "LOCAL_REPAIR_CODEFIX_REQUIRED",
-    "failed_run_id": 37288374253,
+    "failed_run_id": 37289413275,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
@@ -181,9 +181,19 @@
   },
   "events": [
     {
-      "at": "2026-10-05T09:14:49Z",
+      "at": "2026-10-05T09:23:58Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-10-05T09:24:27.611082Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_REPAIR_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-10-05T09:20:50.707257Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-10-05T09:15:17.260321Z",
@@ -204,16 +214,6 @@
       "at": "2026-10-05T09:07:19.299838Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-10-04T09:47:46.543284Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "CONTROL_PLANE_BINDING_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-10-04T09:45:29.224010Z",
-      "title": "DISPATCHED",
-      "detail": "CONTROL_PLANE_BINDING_FAILURE"
     }
   ]
 }
