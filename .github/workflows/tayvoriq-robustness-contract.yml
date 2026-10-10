@@ -54,6 +54,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Verify dependency-free production continuation
+        run: |
+          python -S -m unittest discover -s tests -p test_tayvoriq_lifecycle_controller.py
+          python -S -m unittest discover -s tests -p test_tayvoriq_green_replay_readiness.py
+
       - name: Run control-plane unit contracts
         run: |
           python -m pip install pytest requests pillow -q

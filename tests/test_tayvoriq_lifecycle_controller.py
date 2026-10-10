@@ -1,5 +1,6 @@
 import json
 import sys
+import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
@@ -13,8 +14,7 @@ def test_correlated_executor_completion_uses_stable_workflow_identity():
                name='TAYVORIQ lifecycle ' + 'a' * 64,
                path='.github/workflows/tayvoriq-delivery-watch.yml')
     assert await_completion(lambda _: run, 42, 2) == 'COMPLETED'
-    import pytest
-    with pytest.raises(ValueError, match='WORKFLOW_INVALID'):
+    with unittest.TestCase().assertRaisesRegex(ValueError, 'WORKFLOW_INVALID'):
         await_completion(lambda _: {**run, 'name': 'TAYVORIQ Delivery Watch',
                                    'path': '.github/workflows/unrelated.yml'}, 42, 2)
 from tayvoriq_codefix_orphan_reconcile_v1 import _replay_status_allows_rearm
