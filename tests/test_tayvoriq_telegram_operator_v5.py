@@ -26,7 +26,7 @@ def test_trends_command_enters_existing_v5_trend_workflow():
     assert 'PAYLOAD_REQUESTED_VIA: ${{ github.event.client_payload.requested_via || \'\' }}' in src
     assert 'test "$PAYLOAD_REQUESTED_VIA" = "telegram_command"' in src
     assert 'case "$slot" in morning|evening)' in src
-    assert "len(trends) == 5" in src
+    assert "2 <= len(trends) <= 5" in src
     assert "quality_gates_weakened" in src
     assert "telegram_only_user_path" in src
 
@@ -35,3 +35,4 @@ def test_operator_does_not_add_unbounded_stop_or_publish_command():
     src = WORKER.read_text(encoding="utf-8").casefold()
     assert "/stop" not in src
     assert "tayvoriq_telegram_publish_now" not in src
+

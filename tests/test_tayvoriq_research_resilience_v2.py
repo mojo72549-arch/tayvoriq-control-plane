@@ -219,7 +219,9 @@ def test_providerless_fallback_builds_native_v5_source_bounded_candidates() -> N
         assert 38 <= sum(counts) <= 49
 
 
-def test_resilience_uses_providerless_path_when_llm_providers_are_blocked(monkeypatch) -> None:
+def test_resilience_defers_when_no_verified_source_path_remains(monkeypatch, tmp_path) -> None:
+    marker = tmp_path / 'deferred.json'
+    monkeypatch.setattr(resilience, 'MARKER', marker)
     records = _providerless_records()
     monkeypatch.setattr(
         http,
@@ -239,8 +241,12 @@ def test_resilience_uses_providerless_path_when_llm_providers_are_blocked(monkey
         lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 402 Payment Required")),
     )
 
-    data, chunks, model, provider_name = resilience.grounded("prompt", "gemini", "groq")
-    assert provider_name == "deterministic_sources"
-    assert model == "deterministic/rss+gdelt"
-    assert len(data["candidates"]) >= 5
-    assert len(chunks) >= 10
+    try:
+        resilience.grounded("prompt", "gemini", "groq")
+    except RuntimeError as exc:
+        assert 'RESEARCH_DEFERRED' in str(exc)
+        assert 'generic hooks cannot pass editorial quality' in str(exc)
+    else:
+        raise AssertionError('unverified generic filler must not enter production')
+    assert json.loads(marker.read_text())['status'] == 'RESEARCH_DEFERRED'
+
