@@ -76,6 +76,7 @@ def test_local_checkpoint_replay_is_atomically_bound_before_golden_path_gate():
         "'status': 'LOCAL_RETRY_DISPATCHED'",
         "'request_substate': 'DISPATCHED'",
         "'local_retry_run_id': new_run",
+        "'local_retry_run_attempt': 1",
         "'local_retry_kind': 'same-run'",
         "active_pointer['golden_path_run_id'] = new_run",
         'git add -- "$REQUEST_FILE" "$ACTIVE_REQUEST_POINTER"',
@@ -83,3 +84,4 @@ def test_local_checkpoint_replay_is_atomically_bound_before_golden_path_gate():
     )
     for marker in required:
         assert marker in text, marker
+

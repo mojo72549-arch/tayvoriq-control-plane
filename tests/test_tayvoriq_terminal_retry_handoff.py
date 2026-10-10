@@ -21,6 +21,16 @@ class TerminalRetryHandoffTests(unittest.TestCase):
         codefix, run, evidence = self.fixture()
         self.assertTrue(_replay_status_allows_rearm(codefix, 42, run, evidence))
 
+    def test_new_run_cannot_inherit_the_previous_runs_attempt_number(self):
+        codefix, run, evidence = self.fixture()
+        codefix['local_retry_run_id'] = 43
+        run.update(id=43, run_attempt=1)
+        evidence.update(run_id=43, run_attempt=1)
+        self.assertFalse(_replay_status_allows_rearm(codefix, 43, run, evidence))
+        # Replay-start binding must reset this when creating a different run.
+        codefix['local_retry_run_attempt'] = 1
+        self.assertTrue(_replay_status_allows_rearm(codefix, 43, run, evidence))
+
     def test_live_old_or_local_failure_cannot_release_owner(self):
         codefix, run, evidence = self.fixture()
         cases = [({**run, 'status': 'in_progress'}, evidence),
