@@ -11,6 +11,13 @@ WORKFLOWS = {
     'TAYVORIQ Deterministic Codefix Continuity', 'TAYVORIQ Delivery Watch',
     'TAYVORIQ Autonomous Codefix Builder',
 }
+WORKFLOW_PATHS = {
+    '.github/workflows/tayvoriq-deliver-video-now.yml',
+    '.github/workflows/tayvoriq-production-green-promoter.yml',
+    '.github/workflows/tayvoriq-deterministic-codefix-continuity.yml',
+    '.github/workflows/tayvoriq-delivery-watch.yml',
+    '.github/workflows/tayvoriq-autonomous-codefix-builder.yml',
+}
 
 
 def await_completion(fetch, run_id, attempt, *, pause=time.sleep, polls=25):
@@ -19,7 +26,11 @@ def await_completion(fetch, run_id, attempt, *, pause=time.sleep, polls=25):
         raise ValueError('LIFECYCLE_SIGNAL_ID_INVALID')
     for index in range(polls):
         run = fetch(run_id)
-        if int(run.get('id') or 0) != run_id or run.get('name') not in WORKFLOWS:
+        # GitHub reports a configured run-name as name as well as display_title.
+        # Correlated lifecycle executors therefore need their stable API path.
+        path = str(run.get('path') or '').split('@', 1)[0]
+        known = path in WORKFLOW_PATHS if path else run.get('name') in WORKFLOWS
+        if int(run.get('id') or 0) != run_id or not known:
             raise ValueError('LIFECYCLE_SIGNAL_WORKFLOW_INVALID')
         if int(run.get('run_attempt') or 0) != attempt:
             return 'SUPERSEDED'
@@ -45,3 +56,4 @@ def signal():
 
 if __name__ == '__main__':
     signal()
+

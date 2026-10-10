@@ -190,13 +190,14 @@ jobs:
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
           RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
         run: |
           set -euo pipefail
-          gh run view "$RUN_ID" --log-failed > /tmp/tayvoriq-failed.log 2>/tmp/tayvoriq-failed-log-error || true
-          # Cancelled jobs can have a real failed step but an empty --log-failed
-          # response. Preserve full logs and prefer the structured contract below.
+          gh run view "$RUN_ID" --attempt "${RUN_ATTEMPT:-1}" --log > /tmp/tayvoriq-failed.log 2>/tmp/tayvoriq-failed-log-error || true
+          # A successful controller step may have retained the actual exception;
+          # only its final assert is marked failed. Keep the full exact attempt.
           if [ ! -s /tmp/tayvoriq-failed.log ]; then
-            gh run view "$RUN_ID" --log > /tmp/tayvoriq-failed.log 2>/tmp/tayvoriq-failed-log-error || true
+            gh run view "$RUN_ID" --attempt "${RUN_ATTEMPT:-1}" --log-failed > /tmp/tayvoriq-failed.log 2>/tmp/tayvoriq-failed-log-error || true
           fi
 
           # Prefer the producer's machine-readable failure contract. Raw Actions
@@ -215,6 +216,9 @@ jobs:
             printf '{}\n' > /tmp/tayvoriq-structured-failure.json
             echo "DELIVERY_WATCH_STRUCTURED_EVIDENCE_MISSING_FALLBACK_LOGS"
           fi
+          python -S tools/tayvoriq_current_failure_contract_v1.py \
+            --logs-file /tmp/tayvoriq-failed.log --contract-file /tmp/tayvoriq-structured-failure.json \
+            --run-id "$RUN_ID" --run-attempt "${RUN_ATTEMPT:-1}" --request-id "$REQUEST_ID"
 
       - name: Classify with shared recovery policy
         id: policy

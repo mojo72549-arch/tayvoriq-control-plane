@@ -13,14 +13,14 @@ from pathlib import Path
 from typing import Any
 
 if __package__:
-    from .tayvoriq_current_failure_contract_v1 import bind_current_failure
+    from .tayvoriq_current_failure_contract_v1 import bind_current_failure, recover_failure_contract
 else:
     try:
-        from tools.tayvoriq_current_failure_contract_v1 import bind_current_failure
+        from tools.tayvoriq_current_failure_contract_v1 import bind_current_failure, recover_failure_contract
     except ModuleNotFoundError as error:
         if error.name != "tools":
             raise
-        from tayvoriq_current_failure_contract_v1 import bind_current_failure
+        from tayvoriq_current_failure_contract_v1 import bind_current_failure, recover_failure_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -255,7 +255,10 @@ def _run_metadata(repo: str, run_id: int, approved_at: datetime) -> dict[str, An
 
 
 def _failed_logs(run_id: int, target: Path, run_attempt: int) -> bool:
-    result = _run(["gh", "run", "view", str(run_id), "--attempt", str(run_attempt), "--log-failed"], check=False)
+    # The producer may return a failed controller state in a successful step;
+    # its final assert is then the only failed step. The actual exception and
+    # producer contract are available only in the full exact-attempt console.
+    result = _run(["gh", "run", "view", str(run_id), "--attempt", str(run_attempt), "--log"], check=False)
     target.write_text(result.stdout or "", encoding="utf-8")
     return target.is_file() and bool(target.read_text(encoding="utf-8", errors="replace").strip())
 
@@ -331,14 +334,14 @@ def _structured_failure_evidence(
         data = json.loads(matches[0].read_text(encoding="utf-8"))
     except Exception:
         print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_INVALID:{run_id}")
-        return None
+        raise RuntimeError("CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_INVALID")
     if not isinstance(data, dict) or data.get("quality_gates_weakened") is not False:
         print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_UNTRUSTED:{run_id}")
-        return None
+        raise RuntimeError("CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_UNTRUSTED")
     if ((data.get("run_id") is not None and _int(data["run_id"]) != run_id)
             or (data.get("run_attempt") is not None and _int(data["run_attempt"]) != run_attempt)):
         print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_ATTEMPT_MISMATCH:{run_id}")
-        return None
+        raise RuntimeError("CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_ATTEMPT_MISMATCH")
     # Legacy contracts lack identity fields. Their provenance is the exact
     # run-and-attempt artifact downloaded above, never a request's old status.
     data.update(run_id=run_id, run_attempt=run_attempt)
@@ -376,9 +379,20 @@ def _structured_local_failure(evidence: Path | None) -> bool:
     )
 
 
-def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], temp: Path) -> tuple[str, str]:
+def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], temp: Path,
+                     failure_evidence: dict[str, Any] | None = None) -> tuple[str, str]:
     failed_control = str(run_meta.get("head_sha") or "").strip()
     failed_impl = ""
+    evidence = failure_evidence or {}
+    if (evidence.get('evidence_provenance') == 'exact-run-attempt-console'
+            and _int(evidence.get('run_id')) == run_id
+            and _int(evidence.get('run_attempt')) == run_attempt
+            and evidence.get('quality_gates_weakened') is False):
+        control = str(evidence.get('failed_control_plane_sha') or '')
+        impl = str(evidence.get('failed_implementation_sha') or '')
+        if all(len(sha) == 40 and all(c in '0123456789abcdef' for c in sha) for sha in (control, impl)):
+            print(f'CODEFIX_DIAGNOSTIC_EXACT_CONSOLE_MANIFEST:{run_id}:{run_attempt}:{impl}')
+            return control, impl
     diag = temp / "diagnostics"
     diag.mkdir(parents=True, exist_ok=True)
     artifact = f"tayvoriq-x-diagnostics-{run_id}-attempt-{max(1, run_attempt)}"
@@ -391,21 +405,8 @@ def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], te
             failed_impl = str(data.get("implementation_sha") or "").strip()
         except Exception:
             pass
-    if not failed_impl and PRODUCTION_GREEN_POINTER.is_file():
-        try:
-            pointer = json.loads(PRODUCTION_GREEN_POINTER.read_text(encoding="utf-8"))
-            candidate = str(pointer.get("implementation_sha") or "").strip().lower()
-            if (
-                pointer.get("schema") == "tayvoriq-production-green-v1"
-                and pointer.get("full_preflight_passed") is True
-                and pointer.get("quality_gates_weakened") is False
-                and len(candidate) == 40
-                and all(c in "0123456789abcdef" for c in candidate)
-            ):
-                failed_impl = candidate
-                print(f"CODEFIX_DIAGNOSTIC_IMPL_FALLBACK_TO_PRODUCTION_GREEN:{failed_impl}")
-        except Exception:
-            pass
+    # Today's Green is not evidence of which revision failed in an older run.
+    # An unavailable diagnostic must never label the newly fixed code as failed.
     return failed_control, failed_impl
 
 
@@ -456,6 +457,9 @@ def _arm_request(
         if any(not pointer.get(field) or pointer.get(field) != data.get(field)
                for field in ("approval_key", "source_context_sha256", "contract_sha256")):
             raise RuntimeError("CODEFIX_ARM_IMMUTABLE_OWNER_MISMATCH")
+        producer_hash = (failure_evidence or {}).get('producer_source_context_sha256')
+        if producer_hash and producer_hash != data.get('source_context_sha256'):
+            raise RuntimeError('CODEFIX_ARM_PRODUCER_SOURCE_MISMATCH')
 
         existing_status = str(existing.get("status") or "")
         replay_rearm = (
@@ -579,6 +583,15 @@ def main() -> int:
                 (status == "FRESH_RECOVERY_DISPATCHED" and _int(codefix.get("fresh_recovery_run_id")) == run_id)
             )
             structured = _structured_failure_evidence(run_id, run_attempt, temp)
+            if structured is None:
+                recovered = recover_failure_contract(
+                    logs.read_text(encoding="utf-8"), run_id=run_id,
+                    run_attempt=run_attempt, request_id=str(data.get("request_id") or path.stem),
+                )
+                if recovered:
+                    structured = temp / "console-failure-contract.json"
+                    structured.write_text(json.dumps(recovered), encoding="utf-8")
+                    print(f"CODEFIX_ORPHAN_EXACT_CONSOLE_CONTRACT_RECOVERED:{run_id}:{run_attempt}")
             if codefix_replay and structured is None:
                 print(f"CODEFIX_ORPHAN_REPLAY_REARM_BLOCKED_NO_STRUCTURED_EVIDENCE:{run_id}")
                 continue
@@ -616,7 +629,7 @@ def main() -> int:
                 continue
             if mode != "deterministic":
                 continue
-            failed_control, failed_impl = _diagnostic_shas(run_id, run_attempt, run_meta, temp)
+            failed_control, failed_impl = _diagnostic_shas(run_id, run_attempt, run_meta, temp, failure_evidence)
             relative = path.relative_to(ROOT)
             armed, request_id, topic, armed_generation = _arm_request(
                 relative,

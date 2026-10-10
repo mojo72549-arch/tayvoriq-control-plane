@@ -162,7 +162,15 @@ def _matches(text: str, patterns: tuple[str, ...]) -> bool:
 def runtime_log_text(logs: str) -> str:
     """Exclude Actions' echoed shell source from runtime failure evidence."""
     lines = []
+    echoed_run = False
     for line in str(logs or "").splitlines():
+        if re.search(r'##\[group\]Run\b', line):
+            echoed_run = True
+            continue
+        if echoed_run:
+            if '##[endgroup]' in line:
+                echoed_run = False
+            continue
         if "\x1b[36" in line:
             continue
         clean = re.sub(r"\x1b\[[0-9;]*m", "", line)
