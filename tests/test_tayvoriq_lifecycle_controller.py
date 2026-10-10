@@ -6,6 +6,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from tayvoriq_lifecycle_controller_v1 import decide
 from tayvoriq_recovery_policy_v1 import classify_failure
 from tayvoriq_lifecycle_handoff_v1 import await_completion
+
+
+def test_correlated_executor_completion_uses_stable_workflow_identity():
+    run = dict(id=42, run_attempt=2, status='completed',
+               name='TAYVORIQ lifecycle ' + 'a' * 64,
+               path='.github/workflows/tayvoriq-delivery-watch.yml')
+    assert await_completion(lambda _: run, 42, 2) == 'COMPLETED'
+    import pytest
+    with pytest.raises(ValueError, match='WORKFLOW_INVALID'):
+        await_completion(lambda _: {**run, 'name': 'TAYVORIQ Delivery Watch',
+                                   'path': '.github/workflows/unrelated.yml'}, 42, 2)
 from tayvoriq_codefix_orphan_reconcile_v1 import _replay_status_allows_rearm
 
 
@@ -182,3 +193,4 @@ def test_local_retry_binding_mismatch_also_fails_closed_for_codefix_rearm():
         'local_retry_kind': 'same-run',
     }
     assert _replay_status_allows_rearm(stale, 42) is False
+
