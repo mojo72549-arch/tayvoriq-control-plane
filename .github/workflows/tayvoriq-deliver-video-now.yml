@@ -1829,6 +1829,12 @@ jobs:
               "quality_gates_weakened": False,
           }
           target = Path("implementation/out/control-plane/failure-notification-policy.json")
+          from tools.tayvoriq_current_failure_contract_v1 import bind_current_failure
+          payload = bind_current_failure(
+              payload, controller_console, run_id=os.environ["GITHUB_RUN_ID"],
+              run_attempt=os.environ["GITHUB_RUN_ATTEMPT"],
+              request_id=os.environ.get("SOURCE_REQUEST_ID_PIN", ""),
+          )
           target.write_text(
               json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8",
@@ -2005,3 +2011,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: python -S tools/tayvoriq_lifecycle_handoff_v1.py
+

@@ -12,6 +12,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+if __package__:
+    from .tayvoriq_current_failure_contract_v1 import bind_current_failure
+else:
+    try:
+        from tools.tayvoriq_current_failure_contract_v1 import bind_current_failure
+    except ModuleNotFoundError as error:
+        if error.name != "tools":
+            raise
+        from tayvoriq_current_failure_contract_v1 import bind_current_failure
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUESTS = ROOT / "requests"
@@ -110,7 +120,9 @@ def _active_pointer() -> dict[str, Any] | None:
     return data
 
 
-def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int) -> bool:
+def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int,
+                               terminal_run: dict[str, Any] | None = None,
+                               failure_evidence: dict[str, Any] | None = None) -> bool:
     """Allow a completed failed replay to become the next codefix owner.
 
     ARMED already owns its failed run and must never be duplicated. A
@@ -139,6 +151,21 @@ def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int) -> bool:
     if status == "LOCAL_RETRY_DISPATCHED":
         local_run = _int(codefix.get("local_retry_run_id"))
         if local_run == run_id:
+            run = terminal_run or {}
+            evidence = failure_evidence or {}
+            finished = _parse_time(run.get("updated_at"))
+            dispatched = _parse_time(codefix.get("local_retry_dispatched_at"))
+            failure_state = str(evidence.get("state") or "")
+            deterministic = (failure_state.endswith("CODEFIX_REQUIRED") or failure_state in {
+                "CODE_REPAIR_REQUIRED", "DETERMINISTIC_PREFLIGHT_FAILURE"})
+            if (run.get("status") == "completed" and run.get("conclusion") == "failure"
+                    and _int(run.get("id")) == run_id
+                    and _int(evidence.get("run_id")) == run_id
+                    and _int(evidence.get("run_attempt")) == _int(run.get("run_attempt")) > 0
+                    and finished and dispatched and finished > dispatched
+                    and _int(run.get("run_attempt")) >= _int(codefix.get("local_retry_run_attempt"))
+                    and evidence.get("quality_gates_weakened") is False and deterministic):
+                return True
             print(f"CODEFIX_LOCAL_RETRY_OWNED_BY_DELIVERY_WATCH:{run_id}")
             return False
         print(f"CODEFIX_LOCAL_RETRY_BINDING_MISMATCH:local={local_run}:active={run_id}")
@@ -190,7 +217,11 @@ def _candidate_requests() -> list[tuple[datetime, int, Path]]:
         return []
 
     codefix = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
-    if not _replay_status_allows_rearm(codefix, run_id):
+    # A local retry may be inspected after completion; only current terminal
+    # metadata plus the exact attempt's artifact can release its ownership.
+    inspect_local = (codefix.get("status") == "LOCAL_RETRY_DISPATCHED"
+                     and _int(codefix.get("local_retry_run_id")) == run_id)
+    if not inspect_local and not _replay_status_allows_rearm(codefix, run_id):
         return []
 
     for field in ("approval_key", "source_context_sha256", "contract_sha256"):
@@ -223,8 +254,8 @@ def _run_metadata(repo: str, run_id: int, approved_at: datetime) -> dict[str, An
     return data
 
 
-def _failed_logs(run_id: int, target: Path) -> bool:
-    result = _run(["gh", "run", "view", str(run_id), "--log-failed"], check=False)
+def _failed_logs(run_id: int, target: Path, run_attempt: int) -> bool:
+    result = _run(["gh", "run", "view", str(run_id), "--attempt", str(run_attempt), "--log-failed"], check=False)
     target.write_text(result.stdout or "", encoding="utf-8")
     return target.is_file() and bool(target.read_text(encoding="utf-8", errors="replace").strip())
 
@@ -304,6 +335,14 @@ def _structured_failure_evidence(
     if not isinstance(data, dict) or data.get("quality_gates_weakened") is not False:
         print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_UNTRUSTED:{run_id}")
         return None
+    if ((data.get("run_id") is not None and _int(data["run_id"]) != run_id)
+            or (data.get("run_attempt") is not None and _int(data["run_attempt"]) != run_attempt)):
+        print(f"CODEFIX_ORPHAN_STRUCTURED_EVIDENCE_ATTEMPT_MISMATCH:{run_id}")
+        return None
+    # Legacy contracts lack identity fields. Their provenance is the exact
+    # run-and-attempt artifact downloaded above, never a request's old status.
+    data.update(run_id=run_id, run_attempt=run_attempt)
+    matches[0].write_text(json.dumps(data), encoding="utf-8")
     return matches[0]
 
 
@@ -387,6 +426,8 @@ def _arm_request(
     state: str,
     failed_control: str,
     failed_impl: str,
+    terminal_run: dict[str, Any] | None = None,
+    failure_evidence: dict[str, Any] | None = None,
 ) -> tuple[bool, str, str, int]:
     _run(["git", "config", "user.name", "github-actions[bot]"])
     _run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
@@ -408,14 +449,20 @@ def _arm_request(
             return False, "", "", 0
 
         existing = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
-        if not _replay_status_allows_rearm(existing, run_id):
+        if not _replay_status_allows_rearm(existing, run_id, terminal_run, failure_evidence):
             return False, "", "", 0
+
+        pointer = _active_pointer() or {}
+        if any(not pointer.get(field) or pointer.get(field) != data.get(field)
+               for field in ("approval_key", "source_context_sha256", "contract_sha256")):
+            raise RuntimeError("CODEFIX_ARM_IMMUTABLE_OWNER_MISMATCH")
 
         existing_status = str(existing.get("status") or "")
         replay_rearm = (
             (existing_status == "REPLAY_DISPATCHED" and _int(existing.get("replay_run_id")) == run_id)
             or
             (existing_status == "FRESH_RECOVERY_DISPATCHED" and _int(existing.get("fresh_recovery_run_id")) == run_id)
+            or existing_status == "LOCAL_RETRY_DISPATCHED"
         )
         effective_failed_control = str(failed_control or "").strip()
         effective_failed_impl = str(failed_impl or "").strip()
@@ -432,6 +479,7 @@ def _arm_request(
             "failed_run_id": run_id,
             "failure_signature": signature,
             "failure_state": state,
+            "failed_run_attempt": _int((terminal_run or {}).get("run_attempt")),
             "failed_control_plane_sha": effective_failed_control,
             "failed_implementation_sha": effective_failed_impl,
             "recovery_generation": generation,
@@ -518,7 +566,8 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix="tayvoriq-codefix-orphan-") as raw_temp:
             temp = Path(raw_temp)
             logs = temp / "failed.log"
-            if not _failed_logs(run_id, logs):
+            run_attempt = _int(run_meta.get("run_attempt")) or 1
+            if not _failed_logs(run_id, logs, run_attempt):
                 print(f"CODEFIX_ORPHAN_NO_FAILED_LOGS:{run_id}")
                 continue
             policy_path = temp / "policy.json"
@@ -529,11 +578,20 @@ def main() -> int:
                 or
                 (status == "FRESH_RECOVERY_DISPATCHED" and _int(codefix.get("fresh_recovery_run_id")) == run_id)
             )
-            run_attempt = _int(run_meta.get("run_attempt")) or 1
             structured = _structured_failure_evidence(run_id, run_attempt, temp)
             if codefix_replay and structured is None:
                 print(f"CODEFIX_ORPHAN_REPLAY_REARM_BLOCKED_NO_STRUCTURED_EVIDENCE:{run_id}")
                 continue
+            failure_evidence = json.loads(structured.read_text()) if structured else {}
+            if structured:
+                # Legacy producers could preserve an earlier checkpoint finding
+                # after this exact attempt terminated on an editorial error.
+                failure_evidence = bind_current_failure(
+                    failure_evidence, logs.read_text(encoding="utf-8"),
+                    run_id=run_id, run_attempt=run_attempt,
+                    request_id=str(data.get("request_id") or path.stem),
+                )
+                structured.write_text(json.dumps(failure_evidence), encoding="utf-8")
             policy = _policy(
                 logs,
                 run_attempt,
@@ -567,6 +625,8 @@ def main() -> int:
                 state or "CODE_REPAIR_REQUIRED",
                 failed_control,
                 failed_impl,
+                run_meta,
+                failure_evidence,
             )
             if armed:
                 refreshed = json.loads((ROOT / relative).read_text(encoding="utf-8"))
@@ -595,3 +655,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

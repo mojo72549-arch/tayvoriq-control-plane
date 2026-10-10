@@ -71,6 +71,11 @@ def base_trend():
 
 def test_trend_selection_score_exact_weights():
     trend = base_trend()
+    trend.update(
+        primary_hook='Europa plant deutlich mehr KI-Rechenleistung für Forschende und Unternehmen.',
+        explanation_core='Mehr Rechenkapazität verkürzt Forschungsschleifen, weil KI-Modelle parallel trainiert werden können und Teams weniger lange auf verfügbare Systeme warten.',
+        practical_relevance='Das beeinflusst, wie schnell Forschende und Unternehmen neue KI-Dienste entwickeln können.',
+    )
     enriched = v5.apply_trend_contract(trend, strict=True)
     expected = round(.30*90 + .20*95 + .15*88 + .15*84 + .10*70 + .10*82)
     assert enriched["trend_selection_score"] == expected
@@ -145,3 +150,4 @@ def test_v5_state_machine_allows_local_repair_but_not_publish_jump():
     assert v5.advance_lifecycle("LOCAL_REPAIR_RUNNING", "RENDER_AVAILABLE") == "RENDER_AVAILABLE"
     with pytest.raises(ValueError, match="ILLEGAL_V5_STATE_TRANSITION"):
         v5.advance_lifecycle("APPROVED", "COMPLETED")
+

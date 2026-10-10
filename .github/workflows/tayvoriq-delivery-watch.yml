@@ -1,6 +1,7 @@
 # Canonical active-request recovery. Local voice/visual runtime failures stay local;
 # only producer-classified deterministic code defects may enter codefix continuity.
 name: TAYVORIQ Delivery Watch
+run-name: ${{ inputs.orchestrator_decision_key && format('TAYVORIQ lifecycle {0}', inputs.orchestrator_decision_key) || 'TAYVORIQ Delivery Watch' }}
 
 on:
   workflow_run:
@@ -10,6 +11,10 @@ on:
       - completed
   workflow_dispatch:
     inputs:
+      orchestrator_decision_key:
+        description: Exact lifecycle dispatch correlation
+        required: false
+        type: string
       run_id:
         description: Optional failed Golden Path run; defaults to canonical active run
         required: false
@@ -355,6 +360,7 @@ jobs:
               'request_substate':'DISPATCHED',
               'failure_state':'',
               'local_retry_run_id':run_id,
+              'local_retry_run_attempt':int(os.environ.get('RUN_ATTEMPT') or 1)+1,
               'local_retry_kind':'same-run',
               'local_retry_failure_state':failure_state,
               'local_retry_failure_signature':failure_signature,
@@ -693,6 +699,19 @@ jobs:
           set -euo pipefail
           python -m py_compile tools/tayvoriq_codefix_orphan_reconcile_v1.py
           python tools/tayvoriq_codefix_orphan_reconcile_v1.py
+          python -S - <<'PY'
+          import json, os
+          from pathlib import Path
+          pointer=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
+          rid=os.environ['TAYVORIQ_RECOVERY_TARGET_REQUEST_ID']
+          request=json.loads((Path('requests') / (rid+'.json')).read_text())
+          codefix=request.get('codefix_recovery') or {}
+          if not (pointer.get('request_id') == rid
+                  and codefix.get('status') == 'ARMED'
+                  and codefix.get('request_substate') == 'AWAITING_CODEFIX'
+                  and codefix.get('failed_run_id') == pointer.get('golden_path_run_id')):
+              raise SystemExit('DETERMINISTIC_HANDOFF_NOT_ACKNOWLEDGED')
+          PY
 
       - name: Hand deterministic decision back to Agent Orchestrator
         if: steps.policy.outputs.mode == 'deterministic'
@@ -730,3 +749,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: python -S tools/tayvoriq_lifecycle_handoff_v1.py
+

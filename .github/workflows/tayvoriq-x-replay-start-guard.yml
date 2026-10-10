@@ -247,6 +247,7 @@ jobs:
                   'request_substate': 'DISPATCHED',
                   'failure_state': '',
                   'local_retry_run_id': new_run,
+                  'local_retry_run_attempt': 1,
                   'local_retry_kind': 'same-run',
                   'local_retry_execution_mode': 'same-approved-request-new-run-current-main',
                   'local_retry_failure_state': local_state,
@@ -344,3 +345,4 @@ jobs:
               assert str(codefix.get('failure_state') or '') == '', codefix
           print('REPLAY_REQUEST_BINDING_VERIFIED')
           PY
+

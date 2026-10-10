@@ -25,7 +25,7 @@ def test_runtime_contract_is_two_runs_every_day_and_series_has_no_reserved_slot(
     assert cfg["selection"]["always_run_fresh_trend_scan"] is True
     assert cfg["selection"]["series_reserved_slots"] == 0
     assert cfg["selection"]["series_competes_with_trends"] is True
-    assert cfg["selection"]["telegram_candidates_min"] == 5
+    assert cfg["selection"]["telegram_candidates_min"] == 2
     assert cfg["selection"]["telegram_candidates_max"] == 5
     assert cfg["selection"]["weak_fill_allowed"] is False
     assert cfg["selection"]["rescan_when_below_candidate_minimum"] is True
@@ -38,7 +38,7 @@ def test_one_strong_candidate_requests_rescan_instead_of_thin_telegram_list() ->
         growth.diversify(items, "evening")
 
 
-def test_four_strong_candidates_request_rescan_instead_of_thin_list() -> None:
+def test_four_strong_candidates_are_kept_without_weak_filler() -> None:
     items = [
         _candidate("a", 96, 94, scope="world_society"),
         _candidate("b", 95, 93, scope="technology_ai"),
@@ -46,8 +46,9 @@ def test_four_strong_candidates_request_rescan_instead_of_thin_list() -> None:
         _candidate("d", 93, 91, scope="mobility_energy"),
         _candidate("weak", 70, 79, scope="sports"),
     ]
-    with pytest.raises(SystemExit, match="GROWTH_RESCAN_REQUIRED"):
-        growth.diversify(items, "evening")
+    selected = growth.diversify(items, "evening")
+    assert len(selected) == 4
+    assert {item['title'] for item in selected} == {'a', 'b', 'c', 'd'}
 
 
 def test_series_is_not_forced_when_five_stronger_fresh_candidates_exist() -> None:
@@ -61,3 +62,4 @@ def test_series_can_win_when_it_is_competitive() -> None:
     items = [_candidate("series", 99, 96, series=True), _candidate("a", 95, 93, scope="world_society"), _candidate("b", 94, 92, scope="technology_ai"), _candidate("c", 93, 91, scope="business_economy"), _candidate("d", 92, 90, scope="mobility_energy"), _candidate("e", 91, 89, scope="sports")]
     selected = growth.diversify(items, "evening")
     assert selected[0]["title"] == "series"
+

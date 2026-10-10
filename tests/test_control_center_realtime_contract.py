@@ -52,8 +52,11 @@ def test_quality_health_is_execution_state_not_only_policy_state():
 def test_production_green_promoter_never_dispatches_codefix_helper():
     src = Path(".github/workflows/tayvoriq-production-green-promoter.yml").read_text(encoding="utf-8")
     assert "gh workflow run tayvoriq-deterministic-codefix-continuity.yml" not in src
-    assert "Report verified Production Green state to Orchestrator" in src
-    assert "actions: read" in src
+    assert "Report Production Green outcome to Orchestrator" in src
+    assert "python -S tools/tayvoriq_lifecycle_handoff_v1.py" in src
+    # The exact lifecycle handoff requires dispatch permission; the promoter
+    # still delegates every recovery decision to the one orchestrator owner.
+    assert "actions: write" in src
 
 
 def test_control_center_never_lets_background_recovery_override_canonical_run_truth():
@@ -91,3 +94,4 @@ def test_ops_health_never_infers_codefix_from_failed_replay():
     assert "REPLAY_FAILED_CODEFIX_REQUIRED" not in src
     assert "RECOVERY_CLASSIFICATION_PENDING" in src
     assert "changed and not inferred" in src
+

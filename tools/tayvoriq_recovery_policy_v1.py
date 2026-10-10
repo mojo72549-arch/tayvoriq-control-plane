@@ -93,6 +93,7 @@ EDITORIAL_CODEFIX_PATTERNS = (
     r"content_rejected:v34-legacy-validator:.*editorial_(?:answer|body)_too_long",
     r"content_rejected:v48-bounded-overflow-outside-range",
     r"content_rejected:verified-editorial-postcondition",
+    r"content_rejected:verified-editorial-source-bound-",
     r"content_rejected:verified-budget-postcondition",
 )
 
@@ -156,6 +157,21 @@ class RecoveryDecision:
 
 def _matches(text: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns)
+
+
+def runtime_log_text(logs: str) -> str:
+    """Exclude Actions' echoed shell source from runtime failure evidence."""
+    lines = []
+    for line in str(logs or "").splitlines():
+        if "\x1b[36" in line:
+            continue
+        clean = re.sub(r"\x1b\[[0-9;]*m", "", line)
+        if re.search(r"\b(?:echo|printf|raise|if|elif)\s", clean) and any(
+            token in clean for token in ('${', '"', "'", 'RuntimeError(')
+        ):
+            continue
+        lines.append(clean)
+    return "\n".join(lines)
 
 
 def _external_blocker_detected(text: str) -> bool:
@@ -224,7 +240,7 @@ def classify_failure(
     codefix_replay: bool = False,
     structured_evidence: dict | None = None,
 ) -> RecoveryDecision:
-    text = str(logs or "")
+    text = runtime_log_text(logs)
     lowered = text.casefold()
     attempt = max(1, int(run_attempt or 1))
     generation = max(0, int(recovery_generation or 0))
@@ -249,6 +265,20 @@ def classify_failure(
         for item in (evidence.get("repair_target_stages") or [])
         if str(item or "").strip()
     }
+    try:
+        evidence_attempt = int(evidence.get("run_attempt", attempt))
+    except (TypeError, ValueError):
+        evidence_attempt = -1
+    if evidence_attempt != attempt:
+        return RecoveryDecision("stale", "FAILURE_EVIDENCE_ATTEMPT_MISMATCH", False,
+                                "none", generation, None, maximum,
+                                _structured_signature(evidence_state, evidence),
+                                "Failure evidence belongs to a different production attempt.")
+    if evidence_state in {"EDITORIAL_VALIDATOR_CODEFIX_REQUIRED", "SEMANTIC_CODEFIX_REQUIRED"}:
+        return RecoveryDecision("deterministic", evidence_state, False,
+                                "verified-codefix-replay", generation, generation, maximum,
+                                _structured_signature(evidence_state, evidence),
+                                "The current producer attempt identified a deterministic editorial contract failure.")
     if evidence_state == "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED":
         state = evidence_state
         return RecoveryDecision(
@@ -574,3 +604,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
