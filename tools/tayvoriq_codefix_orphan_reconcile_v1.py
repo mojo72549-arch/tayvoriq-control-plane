@@ -379,9 +379,20 @@ def _structured_local_failure(evidence: Path | None) -> bool:
     )
 
 
-def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], temp: Path) -> tuple[str, str]:
+def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], temp: Path,
+                     failure_evidence: dict[str, Any] | None = None) -> tuple[str, str]:
     failed_control = str(run_meta.get("head_sha") or "").strip()
     failed_impl = ""
+    evidence = failure_evidence or {}
+    if (evidence.get('evidence_provenance') == 'exact-run-attempt-console'
+            and _int(evidence.get('run_id')) == run_id
+            and _int(evidence.get('run_attempt')) == run_attempt
+            and evidence.get('quality_gates_weakened') is False):
+        control = str(evidence.get('failed_control_plane_sha') or '')
+        impl = str(evidence.get('failed_implementation_sha') or '')
+        if all(len(sha) == 40 and all(c in '0123456789abcdef' for c in sha) for sha in (control, impl)):
+            print(f'CODEFIX_DIAGNOSTIC_EXACT_CONSOLE_MANIFEST:{run_id}:{run_attempt}:{impl}')
+            return control, impl
     diag = temp / "diagnostics"
     diag.mkdir(parents=True, exist_ok=True)
     artifact = f"tayvoriq-x-diagnostics-{run_id}-attempt-{max(1, run_attempt)}"
@@ -394,21 +405,8 @@ def _diagnostic_shas(run_id: int, run_attempt: int, run_meta: dict[str, Any], te
             failed_impl = str(data.get("implementation_sha") or "").strip()
         except Exception:
             pass
-    if not failed_impl and PRODUCTION_GREEN_POINTER.is_file():
-        try:
-            pointer = json.loads(PRODUCTION_GREEN_POINTER.read_text(encoding="utf-8"))
-            candidate = str(pointer.get("implementation_sha") or "").strip().lower()
-            if (
-                pointer.get("schema") == "tayvoriq-production-green-v1"
-                and pointer.get("full_preflight_passed") is True
-                and pointer.get("quality_gates_weakened") is False
-                and len(candidate) == 40
-                and all(c in "0123456789abcdef" for c in candidate)
-            ):
-                failed_impl = candidate
-                print(f"CODEFIX_DIAGNOSTIC_IMPL_FALLBACK_TO_PRODUCTION_GREEN:{failed_impl}")
-        except Exception:
-            pass
+    # Today's Green is not evidence of which revision failed in an older run.
+    # An unavailable diagnostic must never label the newly fixed code as failed.
     return failed_control, failed_impl
 
 
@@ -459,6 +457,9 @@ def _arm_request(
         if any(not pointer.get(field) or pointer.get(field) != data.get(field)
                for field in ("approval_key", "source_context_sha256", "contract_sha256")):
             raise RuntimeError("CODEFIX_ARM_IMMUTABLE_OWNER_MISMATCH")
+        producer_hash = (failure_evidence or {}).get('producer_source_context_sha256')
+        if producer_hash and producer_hash != data.get('source_context_sha256'):
+            raise RuntimeError('CODEFIX_ARM_PRODUCER_SOURCE_MISMATCH')
 
         existing_status = str(existing.get("status") or "")
         replay_rearm = (
@@ -628,7 +629,7 @@ def main() -> int:
                 continue
             if mode != "deterministic":
                 continue
-            failed_control, failed_impl = _diagnostic_shas(run_id, run_attempt, run_meta, temp)
+            failed_control, failed_impl = _diagnostic_shas(run_id, run_attempt, run_meta, temp, failure_evidence)
             relative = path.relative_to(ROOT)
             armed, request_id, topic, armed_generation = _arm_request(
                 relative,

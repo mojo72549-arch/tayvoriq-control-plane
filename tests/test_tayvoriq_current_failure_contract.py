@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from tayvoriq_current_failure_contract_v1 import bind_current_failure, recover_failure_contract
+from tayvoriq_current_failure_contract_v1 import bind_current_failure, recover_failure_contract, recover_production_manifest
 from tayvoriq_recovery_policy_v1 import classify_failure
 
 
@@ -91,6 +91,24 @@ class CurrentFailureContractTests(unittest.TestCase):
         console = self.legacy_log().split('job 2026 ##[endgroup]', 1)[0] + 'job 2026 ##[endgroup]'
         self.assertIsNone(recover_failure_contract(console,run_id=42,run_attempt=3,
                                                  request_id='telegram-42-trend-1'))
+
+    def test_failed_revision_comes_from_exact_bound_producer_manifest(self):
+        import json
+        manifest = dict(control_plane_schema='x-v3', implementation_binding='production-green-immutable-sha',
+                        run_id='42', run_attempt='3', source_request_id='telegram-42-trend-1',
+                        approved_trend_pinned=True, source_context_bound=True, source_request_pinned=True,
+                        quality_gates_weakened=False, implementation_sha='a'*40,
+                        control_plane_sha='b'*40, source_context_sha256='c'*64)
+        console = json.dumps(manifest) + '\n' + self.legacy_log()
+        proof = recover_failure_contract(console,run_id=42,run_attempt=3,request_id='telegram-42-trend-1')
+        self.assertEqual(proof['failed_implementation_sha'], 'a'*40)
+        self.assertEqual(proof['failed_control_plane_sha'], 'b'*40)
+        self.assertEqual(proof['producer_source_context_sha256'], 'c'*64)
+        for changes in ({'run_attempt': 2}, {'source_request_id': 'other'},
+                        {'quality_gates_weakened': True}, {'source_request_pinned': False}):
+            with self.subTest(changes=changes):
+                self.assertIsNone(recover_production_manifest(json.dumps({**manifest,**changes}),
+                    run_id=42,run_attempt=3,request_id='telegram-42-trend-1'))
 
 
 if __name__ == '__main__':

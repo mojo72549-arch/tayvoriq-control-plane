@@ -143,3 +143,18 @@ def test_untrusted_artifact_cannot_be_replaced_by_console_fallback(tmp_path, mon
         with pytest.raises(RuntimeError, match='STRUCTURED_EVIDENCE_'):
             orphan._structured_failure_evidence(42, 3, tmp_path)
 
+
+def test_missing_diagnostics_never_labels_current_green_as_failed_code(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+    green = tmp_path / 'green.json'
+    green.write_text(json.dumps({'schema':'tayvoriq-production-green-v1',
+        'implementation_sha':'d'*40,'full_preflight_passed':True,'quality_gates_weakened':False}))
+    monkeypatch.setattr(orphan,'PRODUCTION_GREEN_POINTER',green)
+    monkeypatch.setattr(orphan,'_run',lambda *args,**kwargs:SimpleNamespace(returncode=1))
+    assert orphan._diagnostic_shas(42,3,{'head_sha':'c'*40},tmp_path) == ('c'*40,'')
+    proof=dict(run_id=42,run_attempt=3,quality_gates_weakened=False,
+               evidence_provenance='exact-run-attempt-console',
+               failed_control_plane_sha='b'*40,failed_implementation_sha='a'*40)
+    assert orphan._diagnostic_shas(42,3,{'head_sha':'c'*40},tmp_path,proof) == ('b'*40,'a'*40)
+
