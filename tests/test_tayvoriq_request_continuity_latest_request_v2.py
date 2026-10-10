@@ -38,9 +38,14 @@ def test_orchestrator_is_single_lifecycle_decision_owner() -> None:
 def test_orchestrator_dispatches_only_bound_recovery_executors() -> None:
     text = ORCHESTRATOR.read_text(encoding="utf-8")
 
-    assert "source_request_id=\"$REQUEST_ID\"" in text
-    assert "failed_run_id=\"$RUN_ID\"" in text
-    assert "run_id=\"$RUN_ID\"" in text
+    assert '--request-id "$REQUEST_ID" --run-id "$RUN_ID" --decision-key "$DECISION_KEY"' in text
+    assert '--action CODEFIX_CONTINUITY' in text
+    assert '--action DELIVERY_WATCH' in text
+    assert 'steps.codefix_dispatch.outputs.dispatch_verified' in text
+    dispatch = (ROOT / 'tools/tayvoriq_lifecycle_dispatch_v1.py').read_text()
+    assert "'failed_run_id=' + run_id" in dispatch
+    assert "'source_request_id=' + request_id" in dispatch
+    assert "'run_id=' + run_id" in dispatch
     controller = (ROOT / "tools/tayvoriq_lifecycle_controller_v1.py").read_text()
     assert "STALE_GOLDEN_PATH_EVENT" in controller
     assert "EXTERNAL_BLOCKER_FAIL_CLOSED" in controller
@@ -58,3 +63,4 @@ def test_watchdog_no_longer_rebinds_or_owns_recovery() -> None:
     )
     for marker in legacy_mutation_markers:
         assert marker not in text
+

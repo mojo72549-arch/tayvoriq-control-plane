@@ -88,13 +88,17 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
         and deterministic_failure
     )
     # State-only commits and helper workflow successes are not new repair evidence.
+    # Classification and codefix continuity are different acknowledged handoffs.
+    # A verified ARMED transition must unlock continuity without reopening the
+    # already completed classifier or requiring another code change.
+    action = 'CODEFIX_CONTINUITY' if deterministic else 'DELIVERY_WATCH'
     identity = [rid, run_id, run.get('run_attempt', 1), result['generation'],
-                codefix.get('failure_signature'), revision, green]
+                codefix.get('failure_signature'), revision, green, action]
     result['decision_key'] = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
     if previous and previous.get('decision_key') == result['decision_key'] and previous.get('dispatch_verified'):
         return finish('BLOCKED', 'EXECUTOR_COMPLETED_WITHOUT_REQUEST_PROGRESS')
     reason = 'PRODUCTION_GREEN_READY' if event_name == 'TAYVORIQ Production Green Promoter' else 'ACTIVE_REQUEST_REQUIRES_CONTINUATION'
-    return finish('RECOVERY_REQUIRED', reason, 'CODEFIX_CONTINUITY' if deterministic else 'DELIVERY_WATCH')
+    return finish('RECOVERY_REQUIRED', reason, action)
 
 
 def api(path):
@@ -159,3 +163,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

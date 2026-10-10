@@ -530,13 +530,13 @@ jobs:
         env:
           REQUEST_ID: ${{ steps.decision.outputs.request_id }}
           RUN_ID: ${{ steps.decision.outputs.run_id }}
+          DECISION_KEY: ${{ steps.decision.outputs.decision_key }}
         run: |
           set -euo pipefail
           [ -n "$REQUEST_ID" ]
           [[ "$RUN_ID" =~ ^[0-9]+$ ]] && [ "$RUN_ID" != "0" ]
-          gh workflow run tayvoriq-deterministic-codefix-continuity.yml --ref main \
-            -f failed_run_id="$RUN_ID" \
-            -f source_request_id="$REQUEST_ID"
+          python -S tools/tayvoriq_lifecycle_dispatch_v1.py --action CODEFIX_CONTINUITY \
+            --request-id "$REQUEST_ID" --run-id "$RUN_ID" --decision-key "$DECISION_KEY"
           echo "ORCHESTRATOR_DISPATCHED:CODEFIX_CONTINUITY:${REQUEST_ID}:${RUN_ID}"
 
       - name: Dispatch recovery classifier for exact failed run
@@ -545,16 +545,21 @@ jobs:
         shell: bash
         env:
           RUN_ID: ${{ steps.decision.outputs.run_id }}
+          REQUEST_ID: ${{ steps.decision.outputs.request_id }}
+          DECISION_KEY: ${{ steps.decision.outputs.decision_key }}
         run: |
           set -euo pipefail
           [[ "$RUN_ID" =~ ^[0-9]+$ ]] && [ "$RUN_ID" != "0" ]
-          gh workflow run tayvoriq-delivery-watch.yml --ref main -f run_id="$RUN_ID"
+          python -S tools/tayvoriq_lifecycle_dispatch_v1.py --action DELIVERY_WATCH \
+            --request-id "$REQUEST_ID" --run-id "$RUN_ID" --decision-key "$DECISION_KEY"
           echo "ORCHESTRATOR_DISPATCHED:DELIVERY_WATCH:${RUN_ID}"
 
       - name: Persist actual lifecycle result
         if: always() && steps.decision.outcome == 'success'
         env:
-          DISPATCH_VERIFIED: ${{ steps.codefix_dispatch.outcome == 'success' || steps.delivery_dispatch.outcome == 'success' }}
+          DISPATCH_VERIFIED: ${{ steps.codefix_dispatch.outputs.dispatch_verified == 'true' || steps.delivery_dispatch.outputs.dispatch_verified == 'true' }}
+          EXECUTOR_RUN_ID: ${{ steps.codefix_dispatch.outputs.executor_run_id || steps.delivery_dispatch.outputs.executor_run_id }}
+          EXECUTOR_WORKFLOW: ${{ steps.codefix_dispatch.outputs.executor_workflow || steps.delivery_dispatch.outputs.executor_workflow }}
         run: |
           set -euo pipefail
           python -S - <<'PYCODE'
@@ -566,8 +571,10 @@ jobs:
           result['orchestrator_run_id']=int(os.environ['GITHUB_RUN_ID'])
           if os.environ['DISPATCH_VERIFIED']=='true':
               result['dispatch_verified']=True
+              result['executor_run_id']=int(os.environ['EXECUTOR_RUN_ID'])
+              result['executor_workflow']=os.environ['EXECUTOR_WORKFLOW']
               result['state']='RECOVERY_DISPATCHED'
-              result['last_dispatch']={k:result[k] for k in ('decision_key','request_id','run_id','dispatch_verified','checked_at','orchestrator_run_id')}
+              result['last_dispatch']={k:result[k] for k in ('decision_key','request_id','run_id','dispatch_verified','checked_at','orchestrator_run_id','executor_run_id','executor_workflow')}
           target=Path('.github/state/tayvoriq-lifecycle-decision.json')
           target.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
           PYCODE
@@ -581,6 +588,12 @@ jobs:
             if git push origin HEAD:main; then exit 0; fi
             sleep 2
           done
+          exit 1
+
+      - name: Fail internal stall instead of reporting healthy recovery
+        if: always() && steps.decision.outputs.reason == 'EXECUTOR_COMPLETED_WITHOUT_REQUEST_PROGRESS'
+        run: |
+          echo 'LIFECYCLE_INTERNAL_STALL: acknowledged executor completed without request progress' >&2
           exit 1
 
       - name: Publish lifecycle decision summary
@@ -598,3 +611,4 @@ jobs:
             echo '- Reason: `${{ steps.decision.outputs.reason }}`'
             echo '- Watchdogs never dispatch or cancel production.'
           } >> "$GITHUB_STEP_SUMMARY"
+

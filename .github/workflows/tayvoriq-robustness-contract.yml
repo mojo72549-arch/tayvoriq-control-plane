@@ -3,6 +3,8 @@ name: TAYVORIQ Robustness Contract
 # implementation-contract-revision: v24-verified-request-budget-compaction
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
     paths:
@@ -16,6 +18,11 @@ on:
       - .github/workflows/tayvoriq-robustness-contract.yml
       - infra/telegram-approval-worker-v2.js
       - tools/tayvoriq_agent_*.py
+      - tools/tayvoriq_lifecycle_*.py
+      - tools/tayvoriq_codefix_orphan_reconcile_v1.py
+      - tools/tayvoriq_recovery_policy_v1.py
+      - tools/tayvoriq_current_failure_contract_v1.py
+      - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
       - tools/tayvoriq_telegram_progress_v1.py
       - tools/tayvoriq_global_duplicate_gate_v1.py
       - state/tayvoriq-active-series.json
@@ -51,6 +58,16 @@ jobs:
         run: |
           python -m pip install pytest requests pillow -q
           python -m unittest discover -s tests -p 'test_*.py'
+          python -m pytest -q \
+            tests/test_tayvoriq_lifecycle_controller.py \
+            tests/test_tayvoriq_lifecycle_dispatch.py \
+            tests/test_tayvoriq_terminal_retry_handoff.py \
+            tests/test_tayvoriq_current_failure_contract.py \
+            tests/test_tayvoriq_failure_handoff_recovery_state.py \
+            tests/test_tayvoriq_codefix_orphan_source_repair.py \
+            tests/test_tayvoriq_recovery_policy_v1.py \
+            tests/test_tayvoriq_recovery_policy_external_hardening.py \
+            tests/test_tayvoriq_request_continuity_latest_request_v2.py
 
       - name: Run zero-heavy-dependency implementation contracts
         working-directory: implementation
@@ -428,3 +445,4 @@ jobs:
               'quality_gates_weakened': False,
           })
           PY
+

@@ -1,9 +1,14 @@
 # Immediate continuity replay requested for verified Tankrabatt Green 36f0c44fe3a1749582862e20b4154df5be530b2b.
 name: TAYVORIQ Deterministic Codefix Continuity
+run-name: ${{ inputs.orchestrator_decision_key && format('TAYVORIQ lifecycle {0}', inputs.orchestrator_decision_key) || 'TAYVORIQ Deterministic Codefix Continuity' }}
 
 on:
   workflow_dispatch:
     inputs:
+      orchestrator_decision_key:
+        description: Exact lifecycle dispatch correlation
+        required: false
+        type: string
       failed_run_id:
         description: Exact failed Golden Path run to finalize
         required: false
@@ -732,3 +737,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: python -S tools/tayvoriq_lifecycle_handoff_v1.py
+

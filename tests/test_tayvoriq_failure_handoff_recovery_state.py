@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-def test_failure_handoff_prefers_failed_recovery_over_stale_preflight(tmp_path):
+def run_failure_handoff(tmp_path, report_data, console=''):
     workflow = Path(".github/workflows/tayvoriq-deliver-video-now.yml").read_text(
         encoding="utf-8"
     )
@@ -23,9 +23,14 @@ def test_failure_handoff_prefers_failed_recovery_over_stale_preflight(tmp_path):
     report.parent.mkdir(parents=True)
     # The workflow creates this directory immediately before the extracted Python.
     (tmp_path / "implementation/out/control-plane").mkdir(parents=True)
-    report.write_text(json.dumps({"state": "PREFLIGHT_PASSED"}), encoding="utf-8")
+    report.write_text(json.dumps(report_data), encoding="utf-8")
+    (report.parent / 'controller-console.log').write_text(console, encoding='utf-8')
     env = {
         **os.environ,
+        "PYTHONPATH": str(Path.cwd().resolve()) + os.pathsep + os.environ.get('PYTHONPATH', ''),
+        "GITHUB_RUN_ID": "42",
+        "GITHUB_RUN_ATTEMPT": "3",
+        "SOURCE_REQUEST_ID_PIN": "telegram-42-trend-1",
         "PRODUCTION_OUTCOME": "failure",
         "RECOVERY_STATE": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
         "CONTROLLER_STATE": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
@@ -40,7 +45,27 @@ def test_failure_handoff_prefers_failed_recovery_over_stale_preflight(tmp_path):
         (tmp_path / "implementation/out/control-plane/failure-notification-policy.json")
         .read_text(encoding="utf-8")
     )
+    assert policy['run_id'] == 42
+    assert policy['run_attempt'] == 3
+    assert policy['request_id'] == 'telegram-42-trend-1'
+    assert policy['quality_gates_weakened'] is False
+    return policy
+
+
+def test_failure_handoff_prefers_failed_recovery_over_stale_preflight(tmp_path):
+    policy = run_failure_handoff(tmp_path, {"state": "PREFLIGHT_PASSED"})
     assert policy["state"] == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
     assert policy["failure_class"] == "PUBLISHABLE_CHECKPOINT"
     assert policy["master_reusable"] is True
     assert policy["full_regeneration_allowed"] is False
+
+
+def test_current_editorial_failure_overrides_earlier_visual_checkpoint(tmp_path):
+    policy = run_failure_handoff(tmp_path, {
+        'state': 'PUBLISHABLE_OUTPUT_RETRY_REQUIRED', 'repair_target_stages': ['VISUALS']
+    }, 'RuntimeError: CONTENT_REJECTED:verified-editorial-postcondition-drift:fields=action_now:body_words=46')
+    assert policy['state'] == 'EDITORIAL_VALIDATOR_CODEFIX_REQUIRED'
+    assert policy['failure_class'] == 'DETERMINISTIC_CODE'
+    assert policy['repair_target_stages'] == []
+    assert policy['master_reusable'] is False
+
