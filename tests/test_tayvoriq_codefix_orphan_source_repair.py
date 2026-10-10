@@ -127,3 +127,19 @@ def test_local_retry_for_other_run_fails_closed() -> None:
     }
 
     assert orphan._replay_status_allows_rearm(codefix, 42) is False
+
+
+def test_untrusted_artifact_cannot_be_replaced_by_console_fallback(tmp_path, monkeypatch):
+    import json
+    import pytest
+    from types import SimpleNamespace
+    folder = tmp_path / 'structured-diagnostics'
+    folder.mkdir()
+    evidence = folder / 'failure-notification-policy.json'
+    monkeypatch.setattr(orphan, '_run', lambda *args, **kwargs: SimpleNamespace(returncode=0))
+    for changes in ({'quality_gates_weakened': True}, {'run_id': 41}, {'run_attempt': 2}):
+        evidence.write_text(json.dumps({'quality_gates_weakened': False, 'run_id': 42,
+                                       'run_attempt': 3, **changes}))
+        with pytest.raises(RuntimeError, match='STRUCTURED_EVIDENCE_'):
+            orphan._structured_failure_evidence(42, 3, tmp_path)
+
