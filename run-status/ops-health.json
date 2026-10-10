@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-10T23:14:59.212203Z",
+  "generated_at": "2026-10-10T23:32:42.555489Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -16,7 +16,7 @@
     "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": "DEUTSCHLAND IM UMBAU",
@@ -135,7 +135,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_DISPATCHED"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -149,12 +149,12 @@
     }
   ],
   "incident": {
-    "signature": "37371986965:LOCAL_VISUAL",
+    "signature": "37371986965:EDITORIAL_VALIDATOR",
     "severity": "critical",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failure_state": "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 40,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -166,9 +166,9 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED",
     "failed_run_id": 37371986965,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
@@ -177,13 +177,18 @@
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "needs_codefix": true
   },
   "events": [
     {
       "at": "2026-10-06T01:01:28Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-10-10T23:29:40.547443Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-10-06T00:58:54.346125Z",
@@ -207,11 +212,6 @@
     },
     {
       "at": "2026-10-05T15:38:00.904223Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-10-05T11:52:21.660792Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
