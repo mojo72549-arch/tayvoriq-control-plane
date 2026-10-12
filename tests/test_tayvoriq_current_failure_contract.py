@@ -46,6 +46,21 @@ class CurrentFailureContractTests(unittest.TestCase):
         self.assertEqual(report['run_attempt'], 3)
         self.assertEqual(report['request_id'], 'telegram-42-trend-1')
 
+    def test_observed_native_voice_retry_budget_override_requires_verified_codefix(self):
+        console = ('RuntimeError: POST_AUDIO_QUALITY_GATE_BLOCKED:pre-render-transcript-contract-failed\n'
+                   '{"self_heal_retry": 3, "classification": "TRANSIENT_AUDIO_FAILURE"}\n'
+                   'TAYVORIQ_CONTROLLER_RUNTIME_BUDGET_EXCEEDED:1500s')
+        report = self.contract(console)
+        self.assertEqual(report['state'], 'VOICE_RETRY_BUDGET_CODEFIX_REQUIRED')
+        self.assertEqual(report['failure_class'], 'DETERMINISTIC_CODE')
+        self.assertFalse(report['master_reusable'])
+        late = self.contract(console + '\nRuntimeError: LOCAL_VISUAL_REPAIR_REQUIRED')
+        self.assertEqual(late['state'], 'LOCAL_VISUAL_REPAIR_REQUIRED')
+        for marker in ('POST_AUDIO_QUALITY_GATE_BLOCKED:', 'self_heal_retry',
+                       'TAYVORIQ_CONTROLLER_RUNTIME_BUDGET_EXCEEDED:'):
+            reduced = '\n'.join(line for line in console.splitlines() if marker not in line)
+            self.assertNotEqual(self.contract(reduced)['state'], 'VOICE_RETRY_BUDGET_CODEFIX_REQUIRED')
+
     def test_later_local_failure_does_not_revive_an_earlier_editorial_error(self):
         report = self.contract(
             'RuntimeError: CONTENT_REJECTED:verified-editorial-postcondition-drift\n'

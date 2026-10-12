@@ -41,6 +41,24 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
         result.update(state=state, failure_class="DETERMINISTIC_CODE",
                       repair_target_stages=[], master_reusable=False,
                       failure_detail=detail[-1000:])
+    # The canonical producer configures one pipeline invocation; native voice
+    # owns its bounded takes. An observed second/third full pipeline retry plus
+    # the exhausted controller wall budget proves the legacy budget override.
+    # A normal three-take voice rejection alone is not repository-code evidence.
+    runtime = runtime_log_text(console)
+    repeated_pipeline = any(
+        isinstance(event.get('self_heal_retry'), int)
+        and event['self_heal_retry'] >= 2
+        and event.get('classification') == 'TRANSIENT_AUDIO_FAILURE'
+        for event in _runtime_objects(runtime))
+    budget_tail = runtime.rpartition('TAYVORIQ_CONTROLLER_RUNTIME_BUDGET_EXCEEDED:')[2]
+    later_local_failure = _matches(budget_tail, LOCAL_VOICE_RETRY_PATTERNS + LOCAL_VISUAL_RETRY_PATTERNS)
+    if (repeated_pipeline and 'TAYVORIQ_CONTROLLER_RUNTIME_BUDGET_EXCEEDED:' in runtime
+            and not later_local_failure
+            and 'POST_AUDIO_QUALITY_GATE_BLOCKED:pre-render-transcript-contract-failed' in runtime):
+        result.update(state='VOICE_RETRY_BUDGET_CODEFIX_REQUIRED',
+                      failure_class='DETERMINISTIC_CODE', repair_target_stages=[],
+                      master_reusable=False, failure_detail='native voice retries were multiplied into full pipeline retries')
     return result
 
 
