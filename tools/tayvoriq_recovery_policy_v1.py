@@ -90,6 +90,7 @@ SEMANTIC_CODEFIX_PATTERNS = (
 # secret/billing incident merely because unrelated workflow source text contains
 # those words.
 EDITORIAL_CODEFIX_PATTERNS = (
+    r"runtimeerror:\s*tayvoriq v20 quality-gate blockiert das video:\s*script_too_short:\d+:min=\d+",
     r"content_rejected:v34-legacy-validator:.*editorial_(?:answer|body)_too_long",
     r"content_rejected:v48-bounded-overflow-outside-range",
     r"content_rejected:verified-editorial-postcondition",
