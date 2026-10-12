@@ -110,6 +110,41 @@ class CurrentFailureContractTests(unittest.TestCase):
                 self.assertIsNone(recover_production_manifest(json.dumps({**manifest,**changes}),
                     run_id=42,run_attempt=3,request_id='telegram-42-trend-1'))
 
+    def broken_writer_log(self, **changes):
+        import json
+        manifest = dict(control_plane_schema='x-v3', implementation_binding='production-green-immutable-sha',
+                        run_id='42', run_attempt='3', source_request_id='telegram-42-trend-1',
+                        approved_trend_pinned=True, source_context_bound=True, source_request_pinned=True,
+                        quality_gates_weakened=False, implementation_sha='a'*40,
+                        control_plane_sha='b'*40, source_context_sha256='c'*64)
+        return (json.dumps({**manifest, **changes}) + '\n'
+                'RuntimeError: TAYVORIQ V20 Quality-Gate blockiert das Video: script_too_short:47:min=51\n'
+                'Controller handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED reusable_master=false process_exit=1\n'
+                "ModuleNotFoundError: No module named 'tools.tayvoriq_current_failure_contract_v1'")
+
+    def test_broken_historical_writer_recovers_only_bound_native_failure(self):
+        proof = recover_failure_contract(self.broken_writer_log(), run_id=42,
+                    run_attempt=3, request_id='telegram-42-trend-1')
+        self.assertEqual(proof['state'], 'EDITORIAL_VALIDATOR_CODEFIX_REQUIRED')
+        self.assertEqual(proof['failed_implementation_sha'], 'a'*40)
+        self.assertEqual(proof['evidence_provenance'], 'exact-run-attempt-console')
+        self.assertFalse(proof['master_reusable'])
+        self.assertFalse(proof['quality_gates_weakened'])
+
+    def test_broken_writer_recovery_requires_all_provenance_and_terminal_evidence(self):
+        for changes in ({'run_id': '41'}, {'run_attempt': '2'}, {'source_request_id': 'other'},
+                        {'source_context_bound': False}, {'quality_gates_weakened': True}):
+            with self.subTest(changes=changes):
+                self.assertIsNone(recover_failure_contract(self.broken_writer_log(**changes),
+                    run_id=42, run_attempt=3, request_id='telegram-42-trend-1'))
+        for marker in ('RuntimeError:', 'Controller handoff:', 'ModuleNotFoundError:'):
+            log = '\n'.join(line for line in self.broken_writer_log().splitlines() if marker not in line)
+            self.assertIsNone(recover_failure_contract(log, run_id=42,
+                    run_attempt=3, request_id='telegram-42-trend-1'))
+        log = self.broken_writer_log() + '\nRuntimeError: LOCAL_VISUAL_REPAIR_REQUIRED'
+        self.assertIsNone(recover_failure_contract(log, run_id=42,
+                    run_attempt=3, request_id='telegram-42-trend-1'))
+
 
 if __name__ == '__main__':
     unittest.main()

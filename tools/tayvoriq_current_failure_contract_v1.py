@@ -97,13 +97,29 @@ def recover_failure_contract(console, *, run_id, run_attempt, request_id):
             if name in payload and str(payload[name]) != str(expected):
                 return None
         recovered = payload
+    manifest = recover_production_manifest(console, run_id=run_id,
+                                           run_attempt=run_attempt, request_id=request_id)
     if recovered is None:
-        return None
+        # A historical writer crashed because implementation/tools shadowed the
+        # control-plane module. Recover only its explicit pre-voice editorial
+        # failure, with all request/run/source/quality proof from the real manifest.
+        runtime = runtime_log_text(console)
+        writer_failed = "ModuleNotFoundError: No module named 'tools.tayvoriq_current_failure_contract_v1'" in runtime
+        terminal = "Controller handoff: state=PUBLISHABLE_OUTPUT_RETRY_REQUIRED" in runtime
+        probe = bind_current_failure({}, runtime, run_id=run_id,
+                                     run_attempt=run_attempt, request_id=request_id)
+        if (not manifest or not writer_failed or not terminal
+                or probe.get('state') != 'EDITORIAL_VALIDATOR_CODEFIX_REQUIRED'):
+            return None
+        recovered = dict(schema='tayvoriq-failure-contract-v2',
+                         state='EDITORIAL_VALIDATOR_CODEFIX_REQUIRED',
+                         failure_class='DETERMINISTIC_CODE', same_request_required=True,
+                         master_reusable=False, repair_target_stages=[],
+                         quality_gates_weakened=manifest['quality_gates_weakened'],
+                         contract_recovery='verified-manifest-and-terminal-editorial-error')
     result = bind_current_failure(recovered, console, run_id=run_id,
                                   run_attempt=run_attempt, request_id=request_id)
     result['evidence_provenance'] = 'exact-run-attempt-console'
-    manifest = recover_production_manifest(console, run_id=run_id,
-                                           run_attempt=run_attempt, request_id=request_id)
     if manifest:
         result.update(failed_implementation_sha=manifest['implementation_sha'],
                       failed_control_plane_sha=manifest['control_plane_sha'],

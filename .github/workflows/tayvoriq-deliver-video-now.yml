@@ -1676,7 +1676,6 @@ jobs:
           exit 1
       - name: Record internal failure for Delivery Watch
         if: failure()
-        continue-on-error: true
         env:
           PRODUCTION_OUTCOME: ${{ steps.production.outcome }}
           PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
@@ -1687,9 +1686,9 @@ jobs:
           RECOVERY_STATE: ${{ steps.checkpoint_recovery.outputs.state }}
           REUSABLE_MASTER: ${{ steps.controller.outputs.reusable_master }}
         run: |
-          set +e
+          set -euo pipefail
           mkdir -p implementation/out/control-plane
-          python - <<'PY'
+          python -S - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -1829,7 +1828,9 @@ jobs:
               "quality_gates_weakened": False,
           }
           target = Path("implementation/out/control-plane/failure-notification-policy.json")
-          from tools.tayvoriq_current_failure_contract_v1 import bind_current_failure
+          import sys
+          sys.path.insert(0, str(Path("tools").resolve()))
+          from tayvoriq_current_failure_contract_v1 import bind_current_failure
           payload = bind_current_failure(
               payload, controller_console, run_id=os.environ["GITHUB_RUN_ID"],
               run_attempt=os.environ["GITHUB_RUN_ATTEMPT"],
