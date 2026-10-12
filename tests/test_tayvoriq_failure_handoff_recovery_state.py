@@ -86,3 +86,26 @@ def test_native_final_length_failure_is_written_in_real_checkout_environment(tmp
     assert policy['failure_class'] == 'DETERMINISTIC_CODE'
     assert policy['master_reusable'] is False
 
+
+def test_pre_render_voice_proof_is_archived_without_a_completed_master(tmp_path):
+    workflow = Path('.github/workflows/tayvoriq-deliver-video-now.yml').read_text()
+    section = workflow.split('- name: Build lean diagnostics bundle', 1)[1]
+    match = re.search(r"python - <<'PY'\n(.*?)\n          PY", section, re.S)
+    assert match
+    program = '\n'.join(line.removeprefix('          ') for line in match.group(1).splitlines())
+    voice = tmp_path/'out/tayvoriq-youtube-tiktok/current/youtube_shorts'
+    voice.mkdir(parents=True)
+    (voice/'voice.mp3').write_bytes(b'failed-audio'*200)
+    (tmp_path/'outside.mp3').write_bytes(b'outside-audio')
+    for voice_path in ('voice.mp3', '../../../../outside.mp3'):
+        (voice/'pre-render-voice-diagnostics.json').write_text(json.dumps({
+            'quality_gates_weakened': False, 'attempts': [{'voice_path': voice_path}]}))
+        shutil.rmtree(tmp_path/'out/diagnostics-bundle', ignore_errors=True)
+        result = subprocess.run([sys.executable, '-S', '-c', program], cwd=tmp_path,
+                                capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        archive = tmp_path/'out/diagnostics-bundle/pre-render-voice/current/youtube_shorts'
+        assert (archive/'pre-render-voice-diagnostics.json').is_file()
+        assert (archive/'voice.mp3').is_file() is (voice_path == 'voice.mp3')
+        assert not list((tmp_path/'out/diagnostics-bundle').rglob('outside.mp3'))
+
