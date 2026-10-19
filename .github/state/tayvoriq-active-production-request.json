@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-active-production-request-v1",
-  "state": "ACTIVE",
+  "state": "EXPIRED",
   "request_id": "telegram-3401-trend-1",
   "selection_id": "20261004-morning-agentv2-r1",
   "trend_id": "1",
@@ -11,9 +11,15 @@
   "source_context_sha256": "b057820b321db08171753f5af39cec38a7de0735245afea7ca1fe775004846fe",
   "contract_sha256": "29f43450af39eca8e5e9399a54d0b6d28ed502ceed3216cd33e4d4185d40cc39",
   "recovery_generation": 1,
-  "reason": "same-generation-verified-green-local-checkpoint-replay",
-  "allow_recovery": true,
+  "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
+  "allow_recovery": false,
   "allow_publish": false,
   "allow_notifications": true,
-  "updated_at": "2026-10-12T12:35:06.391273Z"
+  "updated_at": "2026-10-19T20:43:11.084Z",
+  "stale_quarantine": {
+    "at": "2026-10-19T20:43:11.084Z",
+    "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
+    "request_id": "telegram-3401-trend-1",
+    "run_id": 38249921806
+  }
 }
