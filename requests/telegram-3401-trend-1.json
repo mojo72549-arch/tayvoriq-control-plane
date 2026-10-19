@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-3401-trend-1",
-  "status": "DISPATCHED",
+  "status": "EXPIRED",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
@@ -600,6 +600,18 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "EXPIRED",
+      "at": "2026-10-19T20:43:11.084Z",
+      "actor": "tayvoriq-stale-news-safety",
+      "meta": {
+        "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
+        "run_id": 38249921806,
+        "prior_status": "DISPATCHED",
+        "review_delivered": false,
+        "quality_gates_weakened": false
+      }
     }
   ],
   "contract_sha256": "29f43450af39eca8e5e9399a54d0b6d28ed502ceed3216cd33e4d4185d40cc39",
@@ -648,11 +660,21 @@
   "recovery_generation": 1,
   "retry_of_run_id": 38241946451,
   "replacement_reason": "SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY",
-  "recovery_owner": "tayvoriq-delivery-watch",
+  "recovery_owner": "none",
   "recovery_failure_signature": "83a54c70c4dfd26c5e3f",
   "recovery_dispatched_at": "2026-10-12T12:35:06.391273Z",
   "replay_bound_by": "tayvoriq-x-replay-start-guard",
   "replay_trigger_sha": "f741de9dc06e6b0fea8516c031ae306b7e0433a9",
   "replay_start_mode": "push_verified",
-  "replay_dispatched_at": "2026-10-04T09:40:45.090326Z"
+  "replay_dispatched_at": "2026-10-04T09:40:45.090326Z",
+  "stale_quarantine": {
+    "schema": "tayvoriq-stale-news-quarantine-v1",
+    "at": "2026-10-19T20:43:11.084Z",
+    "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
+    "prior_status": "DISPATCHED",
+    "prior_run_id": 38249921806,
+    "review_delivered": false,
+    "upload_permitted": false,
+    "quality_gates_weakened": false
+  }
 }
