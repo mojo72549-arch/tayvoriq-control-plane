@@ -53,12 +53,13 @@ def _balanced_compact_records(records:list[dict[str,str]],max_chars:int=56000)->
         bounded.append(rec)
     return bounded
 
-def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool"):
-    if not token: raise RuntimeError("HF_TOKEN/HUGGINGFACE_TOKEN missing")
+def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface"):
+    if provider_kind not in {"huggingface", "groq"}: raise ValueError("UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER")
+    if not token: raise RuntimeError(f"{provider_kind.upper()}_API_KEY_MISSING")
     if len(records)<8 or len({r['domain'] for r in records})<2: raise RuntimeError("source pool too small for safe fallback")
     balanced=_balanced_compact_records(records)
     if len(balanced)<8 or len({r['domain'] for r in balanced})<2: raise RuntimeError("balanced source pool too small for safe fallback")
-    model=base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest"
+    model=(base.clean(os.getenv("TAYVORIQ_GROQ_RSS_MODEL"),160) or "openai/gpt-oss-20b") if provider_kind=="groq" else (base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest")
     indexed=[]; by_id={}; by_url={}
     for idx,record in enumerate(balanced, start=1):
         sid=f"S{idx:03d}"
@@ -100,11 +101,18 @@ EDITORIAL FALLBACK CONTRACT:
 - action_now must start with a concrete verb such as Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze or Speichere.
 
 Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them. Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return up to SIX candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:2500]}\nSOURCE RECORDS ({source_label}):\n{blob}'''
-    payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"max_tokens":8000,"stream":False}
+    payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"stream":False}
+    if provider_kind=="groq":
+        payload.update({"max_completion_tokens":8000,"response_format":{"type":"json_object"}})
+    else:
+        payload["max_tokens"]=8000
     def call()->dict[str,Any]:
+        if provider_kind=="groq":
+            raw=provider.post_groq(payload,token,timeout=150)
+            print(json.dumps({"event":"provider_success","provider":"groq_rss","model":model,"source_label":source_label},ensure_ascii=False)); return raw
         raw,hs=http.post_json(HF_URL,payload,{"Content-Type":"application/json","Authorization":f"Bearer {token}","User-Agent":"tayvoriq-agent-v3-hf"},150)
         print(json.dumps({"event":"provider_success","provider":"huggingface","model":model,"source_label":source_label,"rate_limit":{k:hs[k] for k in http.RATE_HEADERS if k in hs}},ensure_ascii=False)); return raw
-    raw=http.retry("huggingface",call,2); data=base.extract_json(provider.content_of(raw)); chunks=[]
+    raw=(call() if provider_kind=="groq" else http.retry("huggingface",call,2)); data=base.extract_json(provider.content_of(raw)); chunks=[]
     for c in data.get("candidates") or []:
         if not isinstance(c,dict): continue
         raw_sources=[s for s in (c.get("sources") or []) if isinstance(s,dict)]
@@ -150,4 +158,4 @@ Aim for SIX distinct candidates across technology/AI, business/economy, world/so
             f"valid_candidates={len(valid_candidates)} grounding_chunks={len(chunks)}"
         )
     data["candidates"]=valid_candidates
-    return data,chunks,f"huggingface/{model}+{source_label}"
+    return data,chunks,f"{provider_kind}/{model}+{source_label}"
