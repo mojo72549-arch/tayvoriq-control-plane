@@ -7,6 +7,8 @@ on:
       - '.github/workflows/tayvoriq-recovery-refactor-checks.yml'
       - 'tools/tayvoriq_recovery_rebind_v1.py'
       - 'tests/test_tayvoriq_recovery_rebind_v1.py'
+      - 'tools/tayvoriq_recovery_attempt_ack_v1.py'
+      - 'tests/test_tayvoriq_recovery_attempt_ack_v1.py'
       - 'tests/test_tayvoriq_delivery_watch_single_entry.py'
   workflow_dispatch:
 
@@ -25,9 +27,13 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile recovery binder
-        run: python -m py_compile tools/tayvoriq_recovery_rebind_v1.py
+        run: |
+          python -m py_compile tools/tayvoriq_recovery_rebind_v1.py
+          python -m py_compile tools/tayvoriq_recovery_attempt_ack_v1.py
       - name: Run isolated retry contract tests
         run: python -m unittest discover -s tests -p 'test_tayvoriq_recovery_rebind_v1.py' -v
+      - name: Run acknowledged dispatch regressions
+        run: python -m unittest discover -s tests -p 'test_tayvoriq_recovery_attempt_ack_v1.py' -v
       - name: Verify existing Delivery Watch integration contracts
         run: python -m unittest discover -s tests -p 'test_tayvoriq_delivery_watch_single_entry.py' -v
       - name: Parse Delivery Watch YAML
@@ -40,5 +46,6 @@ jobs:
           assert workflow.get('jobs', {}).get('classify-and-recover')
           text = Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8')
           assert 'python tools/tayvoriq_recovery_rebind_v1.py' in text
+          assert 'python tools/tayvoriq_recovery_attempt_ack_v1.py' in text
           assert 'RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}' in text
           PY
