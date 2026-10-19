@@ -42,6 +42,20 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
     if request.get('source') != 'telegram_trend_approval':
         return finish('BLOCKED', 'TELEGRAM_APPROVAL_REQUIRED')
     completion = request.get('production_completion') or {}
+    # A separately audited, unpublished and expired news request is terminal
+    # history, not an active delivery blocker. Keep hard contract checks above.
+    quarantine = request.get('stale_quarantine') or {}
+    if (pointer.get('state') == 'EXPIRED'
+            and request.get('status') == 'EXPIRED'
+            and pointer.get('allow_publish') is False
+            and pointer.get('allow_recovery') is False
+            and not completion
+            and isinstance(quarantine, dict)
+            and quarantine.get('reason') == 'STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW'
+            and quarantine.get('review_delivered') is False
+            and quarantine.get('upload_permitted') is False):
+        result.update(request_status='EXPIRED', request_substate='EXPIRED')
+        return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
     if (pointer.get('state') == 'COMPLETED'
             and completion.get('state') == 'REVIEW_READY'
             and int(completion.get('golden_path_run_id') or 0) == run_id
