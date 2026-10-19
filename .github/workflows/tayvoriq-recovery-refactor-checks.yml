@@ -1,0 +1,51 @@
+name: TAYVORIQ Recovery Refactor Checks
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tayvoriq-delivery-watch.yml'
+      - '.github/workflows/tayvoriq-recovery-refactor-checks.yml'
+      - 'tools/tayvoriq_recovery_rebind_v1.py'
+      - 'tests/test_tayvoriq_recovery_rebind_v1.py'
+      - 'tools/tayvoriq_recovery_attempt_ack_v1.py'
+      - 'tests/test_tayvoriq_recovery_attempt_ack_v1.py'
+      - 'tests/test_tayvoriq_delivery_watch_single_entry.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-recovery-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout current ref, not production main
+        uses: actions/checkout@v4
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile recovery binder
+        run: |
+          python -m py_compile tools/tayvoriq_recovery_rebind_v1.py
+          python -m py_compile tools/tayvoriq_recovery_attempt_ack_v1.py
+      - name: Run isolated retry contract tests
+        run: python -m unittest discover -s tests -p 'test_tayvoriq_recovery_rebind_v1.py' -v
+      - name: Run acknowledged dispatch regressions
+        run: python -m unittest discover -s tests -p 'test_tayvoriq_recovery_attempt_ack_v1.py' -v
+      - name: Verify existing Delivery Watch integration contracts
+        run: python -m unittest discover -s tests -p 'test_tayvoriq_delivery_watch_single_entry.py' -v
+      - name: Parse Delivery Watch YAML
+        run: |
+          python -m pip install 'PyYAML==6.0.2'
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+          workflow = yaml.safe_load(Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8'))
+          assert workflow.get('jobs', {}).get('classify-and-recover')
+          text = Path('.github/workflows/tayvoriq-delivery-watch.yml').read_text(encoding='utf-8')
+          assert 'python tools/tayvoriq_recovery_rebind_v1.py' in text
+          assert 'python tools/tayvoriq_recovery_attempt_ack_v1.py' in text
+          assert 'RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}' in text
+          PY
