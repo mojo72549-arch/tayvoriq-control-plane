@@ -113,9 +113,10 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
         self.assertIn('"local_retry_run_id": run_id', binder)
         self.assertIn("SAME_RUN_RETRY_BIND_FAILED", delivery)
         self.assertIn("SAME_RUN_RETRY_BIND_FAILED", binder)
+        self.assertIn('python tools/tayvoriq_recovery_attempt_ack_v1.py', delivery)
         self.assertLess(
             delivery.index("python tools/tayvoriq_recovery_rebind_v1.py"),
-            delivery.index('gh run rerun "$RUN_ID" --failed'),
+            delivery.index("python tools/tayvoriq_recovery_attempt_ack_v1.py"),
         )
         self.assertIn("local_retry_bound=(", golden)
         self.assertIn("codefix.get('status')=='LOCAL_RETRY_DISPATCHED'", golden)
