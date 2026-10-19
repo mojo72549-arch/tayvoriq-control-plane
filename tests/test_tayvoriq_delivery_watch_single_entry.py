@@ -103,11 +103,18 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("'status':'LOCAL_RETRY_DISPATCHED'", delivery)
-        self.assertIn("'local_retry_run_id':run_id", delivery)
+        binder = (ROOT / "tools/tayvoriq_recovery_rebind_v1.py").read_text(
+            encoding="utf-8"
+        )
+        # Workflow owns dispatch; the extracted binder owns the state mutation.
+        self.assertIn("python tools/tayvoriq_recovery_rebind_v1.py", delivery)
+        self.assertIn("RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}", delivery)
+        self.assertIn('"status": "LOCAL_RETRY_DISPATCHED"', binder)
+        self.assertIn('"local_retry_run_id": run_id', binder)
         self.assertIn("SAME_RUN_RETRY_BIND_FAILED", delivery)
+        self.assertIn("SAME_RUN_RETRY_BIND_FAILED", binder)
         self.assertLess(
-            delivery.index("'status':'LOCAL_RETRY_DISPATCHED'"),
+            delivery.index("python tools/tayvoriq_recovery_rebind_v1.py"),
             delivery.index('gh run rerun "$RUN_ID" --failed'),
         )
         self.assertIn("local_retry_bound=(", golden)
