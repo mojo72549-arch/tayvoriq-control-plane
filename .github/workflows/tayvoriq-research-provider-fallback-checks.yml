@@ -1,0 +1,30 @@
+name: TAYVORIQ Free Source Fallback Tests
+
+on:
+  pull_request:
+    paths:
+      - 'tools/tayvoriq_agent_hf_v2.py'
+      - 'tools/tayvoriq_agent_research_resilience_v2.py'
+      - 'tests/test_tayvoriq_groq_source_fallback_v1.py'
+      - '.github/workflows/tayvoriq-research-provider-fallback-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-bound-resilience:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile source-bound fallback
+        run: |
+          python -m py_compile tools/tayvoriq_agent_hf_v2.py
+          python -m py_compile tools/tayvoriq_agent_research_resilience_v2.py
+          python -m py_compile tests/test_tayvoriq_groq_source_fallback_v1.py
+      - name: Verify Groq structure and strict two-publisher URL binding
+        run: python -m unittest discover -s tests -p 'test_tayvoriq_groq_source_fallback_v1.py' -v

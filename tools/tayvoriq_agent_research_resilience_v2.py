@@ -28,16 +28,41 @@ def grounded(prompt:str,gemini_key:str,groq_key:str):
     gdelt_records=[]
     try:
         rss_records=rss.source_pool()
-        data,chunks,model=hf.structure(prompt,token,rss_records,'multi-publisher-rss')
-        return data,chunks,model,'huggingface_rss'
     except Exception as exc:
-        errors.append('HuggingFace/RSS fallback failed: '+http.summary(exc))
+        errors.append('RSS source collection unavailable: '+http.summary(exc))
+    # The Groq browser tool can return a too-short dossier while the regular
+    # Groq JSON API still works. Structure only verified, URL-bound RSS records
+    # with Groq before falling back to a metered HF model.
+    if groq_key and rss_records:
+        try:
+            data,chunks,model=hf.structure(
+                prompt,groq_key,rss_records,'multi-publisher-rss',provider_kind='groq')
+            return data,chunks,model,'groq_rss'
+        except Exception as exc:
+            errors.append('Groq/RSS fallback failed: '+http.summary(exc))
+    if token and rss_records:
+        try:
+            data,chunks,model=hf.structure(prompt,token,rss_records,'multi-publisher-rss')
+            return data,chunks,model,'huggingface_rss'
+        except Exception as exc:
+            errors.append('HuggingFace/RSS fallback failed: '+http.summary(exc))
     try:
         gdelt_records=gdelt.source_pool()
-        data,chunks,model=hf.structure(prompt,token,gdelt_records,'gdelt-context')
-        return data,chunks,model,'huggingface_gdelt'
     except Exception as exc:
-        errors.append('HuggingFace/GDELT fallback failed: '+http.summary(exc))
+        errors.append('GDELT source collection unavailable: '+http.summary(exc))
+    if groq_key and gdelt_records:
+        try:
+            data,chunks,model=hf.structure(
+                prompt,groq_key,gdelt_records,'gdelt-context',provider_kind='groq')
+            return data,chunks,model,'groq_gdelt'
+        except Exception as exc:
+            errors.append('Groq/GDELT fallback failed: '+http.summary(exc))
+    if token and gdelt_records:
+        try:
+            data,chunks,model=hf.structure(prompt,token,gdelt_records,'gdelt-context')
+            return data,chunks,model,'huggingface_gdelt'
+        except Exception as exc:
+            errors.append('HuggingFace/GDELT fallback failed: '+http.summary(exc))
 
     # The deterministic pool can pair syndicated mirrors and generates generic
     # topic labels/hooks. Editorial quality and source independence are not
