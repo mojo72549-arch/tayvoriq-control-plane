@@ -240,14 +240,21 @@ def is_retired_unpublished(pointer, request, run_id):
     if not isinstance(pointer, dict) or not isinstance(request, dict):
         return False
     quarantine = request.get("stale_quarantine") or {}
+    try:
+        owner_run = int(pointer.get("golden_path_run_id") or 0)
+        request_run = int(request.get("golden_path_run_id") or 0)
+        current_run = int(run_id or 0)
+    except (TypeError, ValueError):
+        return False
     return bool(
         pointer.get("schema") == "tayvoriq-active-production-request-v1"
         and pointer.get("state") == "EXPIRED"
         and request.get("status") == "EXPIRED"
         and pointer.get("request_id")
         and pointer.get("request_id") == request.get("request_id")
-        and int(pointer.get("golden_path_run_id") or 0) == int(run_id or 0)
-        and int(request.get("golden_path_run_id") or 0) == int(run_id or 0)
+        and owner_run > 0
+        and owner_run == current_run
+        and request_run == current_run
         and pointer.get("allow_publish") is False
         and pointer.get("allow_recovery") is False
         and quarantine.get("reason") == "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
