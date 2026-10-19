@@ -354,8 +354,10 @@ jobs:
           done
           [ "$rebound" = "true" ] || { echo 'SAME_RUN_RETRY_BIND_FAILED'; exit 1; }
 
-          gh run rerun "$RUN_ID" --failed
-          echo "TRANSIENT_SAME_RUN_RETRY_REQUESTED:$RUN_ID"
+          # A successful CLI dispatch is not proof until GitHub reports N+1.
+          # The helper also handles ambiguous transport failures idempotently.
+          python tools/tayvoriq_recovery_attempt_ack_v1.py \
+            --run-id "$RUN_ID" --failed-attempt "$RUN_ATTEMPT"
 
       - name: Replay local checkpoint request on advanced Production Green
         if: >-
