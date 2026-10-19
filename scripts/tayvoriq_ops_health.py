@@ -235,6 +235,28 @@ def incident_signature(run_id, failed_step, failure_state):
     return f"{run_id or 'none'}:{incident_failure_family(failure_state)}"
 
 
+def is_retired_unpublished(pointer, request, run_id):
+    """Do not re-open historical incidents after an exact approved news archive."""
+    if not isinstance(pointer, dict) or not isinstance(request, dict):
+        return False
+    quarantine = request.get("stale_quarantine") or {}
+    return bool(
+        pointer.get("schema") == "tayvoriq-active-production-request-v1"
+        and pointer.get("state") == "EXPIRED"
+        and request.get("status") == "EXPIRED"
+        and pointer.get("request_id")
+        and pointer.get("request_id") == request.get("request_id")
+        and int(pointer.get("golden_path_run_id") or 0) == int(run_id or 0)
+        and int(request.get("golden_path_run_id") or 0) == int(run_id or 0)
+        and pointer.get("allow_publish") is False
+        and pointer.get("allow_recovery") is False
+        and quarantine.get("reason") == "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
+        and quarantine.get("review_delivered") is False
+        and quarantine.get("upload_permitted") is False
+        and not request.get("production_completion")
+    )
+
+
 def main():
     previous = load_json(OUT) or {}
     pointer = load_json(ACTIVE_POINTER) or {}
@@ -286,6 +308,15 @@ def main():
     recovery_generation = int((request_data or {}).get("recovery_generation") or recovery.get("fresh_recovery_generation") or recovery.get("recovery_generation") or 0)
     recovery_owner = str((request_data or {}).get("recovery_owner") or "tayvoriq-agent-orchestrator-v2")
 
+    retired = is_retired_unpublished(pointer, request_data, run_id)
+    if retired:
+        # Last run is preserved as HISTORY, never as an active incident.
+        overall = "yellow"
+        self_heal_status = "IDLE"
+        failure_state = None
+        user_action_required = False
+        recovery_owner = "none"
+
     telegram_steps = [s for s in steps if "telegram" in str(s.get("name") or "").casefold()]
     telegram_failed = next((s for s in telegram_steps if str(s.get("conclusion") or "").lower() == "failure"), None)
     telegram_success = next((s for s in reversed(telegram_steps) if str(s.get("conclusion") or "").lower() == "success"), None)
@@ -298,6 +329,10 @@ def main():
     else:
         telegram_status = "yellow" if run_id else "unknown"
         telegram_detail = "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
+
+    if retired:
+        telegram_status = "yellow"
+        telegram_detail = "Archivierter Auftrag: kein aktueller Video-Review"
 
     green_pointer = load_json(".github/state/tayvoriq-production-green.json") or {}
     green_ok = bool(green_pointer.get("full_preflight_passed") is True and green_pointer.get("quality_gates_weakened") is False)
@@ -331,6 +366,10 @@ def main():
     else:
         quality_status = "unknown"
         quality_detail = "Kein aktiver Run"
+
+    if retired:
+        quality_status = "yellow"
+        quality_detail = "Historischer Fehler archiviert · neuer Auftrag ausstehend"
 
     incident = None
     if overall == "red" or failure_state:
@@ -401,6 +440,7 @@ def main():
         },
         "run": {
             "id": run_id,
+            "historical": retired,
             "status": run_status,
             "conclusion": conclusion,
             "html_url": run.get("html_url") if run else (f"https://github.com/{REPO}/actions/runs/{run_id}" if run_id else None),
@@ -418,7 +458,7 @@ def main():
             {
                 "name": "Golden Path",
                 "status": overall,
-                "detail": (failed_step.get("name") if failed_step else (running_step.get("name") if running_step else (conclusion or run_status))),
+                "detail": ("Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert" if retired else (failed_step.get("name") if failed_step else (running_step.get("name") if running_step else (conclusion or run_status)))),
             },
             {
                 "name": "Production Green",
