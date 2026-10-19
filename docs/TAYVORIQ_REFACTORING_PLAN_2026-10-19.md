@@ -21,7 +21,7 @@ Die derzeitige Sperre durch telegram-3401-trend-1 darf beim Umbau nicht still ge
 6. **Observability:** Ein maschinenlesbarer Status mit last_successful_gate, active_gate, failure_class, retry_budget, owner, last_progress_at, next_action. Ein fehlerhafter Recovery-Executor muss eigene FATAL/NEEDS_CODEFIX-Ausgangsbedingung melden; keine endlosen HEALTH-Commits.
 
 ## Inkrementeller Lieferplan
-- **Slice R1 (dieser Branch):** Same-run-Retry-Binding aus Inline-Python lösen; canonical owner, approval und immutable hashes prüfen; aktuellen Golden-Path-Versuch explizit übergeben; atomare JSON-Aktualisierung; Idempotenz und Fail-Closed-Tests. Keine automatische Production-Aktivierung.
+- **Slice R1 (dieser Branch):** Same-run-Retry-Binding aus Inline-Python lösen; canonical owner, approval und immutable hashes prüfen; aktuellen Golden-Path-Versuch explizit übergeben; atomare JSON-Aktualisierung; Idempotenz und Fail-Closed-Tests. Zusätzlich GitHub-Rerun nur mit exakter N+1-Acknowledgment-Quittung und Schutz gegen doppeltes Dispatch. Keine automatische Production-Aktivierung.
 - **Slice R2:** Sprach-/Transkript-Gate analysieren und gezielte Eigennamen-/ASR-Reparatur in Tests nachstellen. Publikationsstandard beibehalten.
 - **Slice R3:** Retry-Policy und Lifecycle-Controller auf gemeinsamen typed Decision Contract führen; kein Churn zwischen Delivery Watch, Codefix, Orchestrator.
 - **Slice R4:** Master/Review/Telegram/YouTube mit Receipt-Ledger und Recovery nach Crash; TikTok als eigene Integrationsentscheidung.
