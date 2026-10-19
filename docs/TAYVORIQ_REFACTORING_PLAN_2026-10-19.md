@@ -22,7 +22,7 @@ Die derzeitige Sperre durch telegram-3401-trend-1 darf beim Umbau nicht still ge
 
 ## Inkrementeller Lieferplan
 - **Slice R1 (dieser Branch):** Same-run-Retry-Binding aus Inline-Python lösen; canonical owner, approval und immutable hashes prüfen; aktuellen Golden-Path-Versuch explizit übergeben; atomare JSON-Aktualisierung; Idempotenz und Fail-Closed-Tests. Zusätzlich GitHub-Rerun nur mit exakter N+1-Acknowledgment-Quittung und Schutz gegen doppeltes Dispatch. Keine automatische Production-Aktivierung.
-- **Slice R2:** Sprach-/Transkript-Gate analysieren und gezielte Eigennamen-/ASR-Reparatur in Tests nachstellen. Publikationsstandard beibehalten.
+- **Slice R2:** Sprach-/Transkript-Gate analysieren und gezielte Eigennamen-/ASR-Reparatur in Tests nachstellen. Publikationsstandard beibehalten. Studio-Fixkandidat: `mojo72549-arch/shorts-agent-studio` PR #299 (Basis: zuletzt verifizierter Production-Green-SHA `edf226a307fd1ccb746eb8b6583a1695e27ea792`), mit eng begrenzten Cariad-Ausspracheformen und unveränderten >=0,95 ASR-/Postmux-Gates. Aktuell noch keine vollständige Produktionsfreigabe oder behobener Workflow-Stillstand.
 - **Slice R3:** Retry-Policy und Lifecycle-Controller auf gemeinsamen typed Decision Contract führen; kein Churn zwischen Delivery Watch, Codefix, Orchestrator.
 - **Slice R4:** Master/Review/Telegram/YouTube mit Receipt-Ledger und Recovery nach Crash; TikTok als eigene Integrationsentscheidung.
 - **Slice R5:** End-to-End-Probelauf mit nachweisbaren Artefakten; kontrollierte Freigabe nach main; vorhandenen gebundenen Auftrag nur nach Frischeprüfung des Nachrichtenanlasses fortsetzen.
