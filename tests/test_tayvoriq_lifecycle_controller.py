@@ -169,6 +169,40 @@ def test_binding_gates_agree_on_armed_and_authorized_replay(tmp_path=None):
                 assert (output.returncode == 0) == expected, (name, state, output.stderr)
 
 
+
+def test_exact_stale_expired_news_is_idle_and_never_replayed():
+    pointer, request, run = fixture()
+    pointer.update(state="EXPIRED", allow_recovery=False, allow_publish=False)
+    request.update(status="EXPIRED", stale_quarantine={
+        "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
+        "review_delivered": False, "upload_permitted": False,
+    })
+    decision = decide(pointer, request, run)
+    assert decision["state"] == "IDLE"
+    assert decision["action"] == "NONE"
+    assert decision["request_status"] == "EXPIRED"
+    assert decision["reason"] == "EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND"
+    assert not decision["decision_key"]
+
+
+def test_unverified_expiry_and_changed_immutable_sources_remain_blocked():
+    pointer, request, run = fixture()
+    pointer.update(state="EXPIRED", allow_recovery=False, allow_publish=False)
+    request.update(status="EXPIRED", stale_quarantine={
+        "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
+        "review_delivered": False, "upload_permitted": False,
+    })
+    for changed in (
+        {"contract_sha256": "different"},
+        {"stale_quarantine": {"reason": "other", "review_delivered": False, "upload_permitted": False}},
+        {"stale_quarantine": {"reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW", "review_delivered": True, "upload_permitted": False}},
+        {"production_completion": {"state": "REVIEW_READY"}},
+        {"status": "DISPATCHED"},
+    ):
+        decision = decide(pointer, request | changed, run)
+        assert decision["state"] == "BLOCKED", changed
+        assert decision["action"] == "NONE", changed
+
 def load_tests(loader, tests, pattern):
     import unittest
     return unittest.TestSuite(unittest.FunctionTestCase(value) for name, value in globals().items()
