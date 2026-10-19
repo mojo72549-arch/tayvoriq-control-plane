@@ -1,0 +1,33 @@
+name: TAYVORIQ Stale News Reconciler
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7 * * * *'
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: tayvoriq-stale-news-reconciler
+  cancel-in-progress: false
+
+jobs:
+  quarantine-expired-failed-request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout canonical control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Verify stale-quarantine regression before any write
+        run: |
+          python -m py_compile tools/tayvoriq_stale_news_reconcile_v1.py
+          python -m unittest discover -s tests -p 'test_tayvoriq_stale_news_reconcile_v1.py' -v
+      - name: Reconcile only expired completed failed and unpublished news
+        run: python tools/tayvoriq_stale_news_reconcile_v1.py
