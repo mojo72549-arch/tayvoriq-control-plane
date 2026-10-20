@@ -63,6 +63,12 @@ class PersistentBudgetTests(unittest.TestCase):
             self.assertEqual(code, 429)
             self.assertEqual(headers['retry-after'], '7200')
 
+    def test_gemini_payment_block_does_not_repeat_across_models(self):
+        with patch.object(http, 'post_json', side_effect=error(402)) as post:
+            with self.assertRaises(urllib.error.HTTPError):
+                http.gemini_grounded('prompt', 'key')
+        self.assertEqual(post.call_count, 1)
+
     def test_depleted_groq_not_reused_for_rss_or_gdelt_hf_payment_is_blocked(self):
         env = {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
                'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue),
@@ -131,6 +137,44 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(read(self.queue)['attempts'], 8)
 
 class SchedulerContractTests(unittest.TestCase):
+    def test_persistence_pushes_reconciled_series_and_preserves_other_worktree_changes(self):
+        import subprocess
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        steps = workflow['jobs']['trend-gate']['steps']
+        persist = next(s for s in steps if s.get('name') == 'Persist provider cooldown and bounded research retry')['run']
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            remote, work = folder / 'remote.git', folder / 'work'
+            def run(args, cwd=None):
+                return subprocess.run(args, cwd=cwd or work, check=True, capture_output=True, text=True).stdout
+            run(['git', 'init', '--bare', str(remote)], folder)
+            run(['git', 'clone', str(remote), str(work)], folder)
+            run(['git', 'checkout', '-b', 'main'])
+            run(['git', 'config', 'user.name', 'test'])
+            run(['git', 'config', 'user.email', 'test@example.invalid'])
+            series = work / 'state/tayvoriq-active-series.json'
+            series.parent.mkdir()
+            series.write_text('{"status":"active"}')
+            (work / 'unrelated.txt').write_text('original')
+            run(['git', 'add', '.'])
+            run(['git', 'commit', '-m', 'base'])
+            run(['git', 'push', '-u', 'origin', 'main'])
+            series.write_text('{"status":"completed"}')
+            (work / 'unrelated.txt').write_text('preserve unrelated local change')
+            health, queue = work / 'health.json', work / 'retry.json'
+            health.write_text('{"providers":{}}')
+            queue.write_text('{"state":"WAITING"}')
+            result = subprocess.run(['bash', '-c', persist], cwd=work, capture_output=True, text=True,
+                                    env={**os.environ, 'TAYVORIQ_PROVIDER_HEALTH_FILE': 'health.json',
+                                         'TAYVORIQ_RESEARCH_RETRY_FILE': 'retry.json'})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(run(['git', '--git-dir', str(remote), 'show', 'main:state/tayvoriq-active-series.json']).strip(), '{"status":"completed"}')
+            self.assertEqual(run(['git', '--git-dir', str(remote), 'show', 'main:retry.json']).strip(), '{"state":"WAITING"}')
+            self.assertEqual((work / 'unrelated.txt').read_text(), 'preserve unrelated local change')
+            self.assertIn('unrelated.txt', run(['git', 'status', '--short']))
+
     def test_existing_verified_delivery_clears_retry_without_sending_again(self):
         import json
         import yaml
@@ -177,7 +221,7 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("os.environ.get('RECONCILE_ONLY') == 'true'", resolver)
         persist = next(s for s in steps if s.get('name') == 'Persist provider cooldown and bounded research retry')
         self.assertIn('always()', persist['if'])
-        self.assertIn('git pull --rebase origin main', persist['run'])
+        self.assertIn('git pull --rebase --autostash origin main', persist['run'])
         delivered = next(s for s in steps if s.get('name') == 'Persist verified Telegram delivery evidence')
         self.assertEqual(delivered['if'], "steps.telegram.outcome == 'success'")
         self.assertIn("delivered(os.environ['TAYVORIQ_RESEARCH_SLOT'])", delivered['run'])

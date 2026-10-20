@@ -58,6 +58,6 @@ def gemini_grounded(prompt:str,key:str):
                 if isinstance(web,dict) and web.get("uri"): chunks.append({"title":base.clean(web.get("title"),500),"uri":base.clean(web.get("uri"),2000)})
             print(json.dumps({"event":"provider_success","provider":"gemini","model":model,"rate_limit":{k:hs[k] for k in RATE_HEADERS if k in hs}},ensure_ascii=False)); return data,chunks,model
         except Exception as exc:
-            if is_transient(exc): raise
+            if getattr(exc, "code", None) in {402, 429} or is_transient(exc): raise
             non.append(f"{model}: {summary(exc)}")
     raise RuntimeError("Gemini grounded scan failed: "+" | ".join(non))
