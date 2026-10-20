@@ -95,6 +95,16 @@ class GroqSourceContractTests(unittest.TestCase):
         with patch.object(hf.provider, "post_groq", fake), self.assertRaisesRegex(RuntimeError, "source contract insufficient"):
             hf.structure("prompt", "key", self.pool, "rss", provider_kind="groq")
 
+    def test_duplicate_story_and_source_pair_do_not_satisfy_minimum_grounding(self):
+        candidate = self._candidate(
+            self.ids[("tagesschau.de", "Mercedes investiert in Werk Stuttgart")],
+            self.ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
+        renamed = {**candidate, 'title': 'Mercedes investiert in Stuttgart Werk'}
+        def fake(*args, **kwargs):
+            return {"choices": [{"message": {"content": json.dumps({"candidates": [candidate, renamed]})}}]}
+        with patch.object(hf.provider, "post_groq", fake), self.assertRaisesRegex(RuntimeError, 'valid_candidates=1 grounding_chunks=2'):
+            hf.structure('prompt', 'key', self.pool, 'rss', provider_kind='groq')
+
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
         wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
