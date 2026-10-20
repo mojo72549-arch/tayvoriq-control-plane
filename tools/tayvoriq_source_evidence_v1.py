@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
+from decimal import Decimal
 from urllib.parse import urlparse
 
 _STOP = set("der die das den dem des ein eine einer einem einen eines und oder aber mit von vom zur zum für auf aus bei nach vor über ist sind wird werden hat haben heute jetzt neu neue neuen neuer meldet berichtet laut sagt the a an and or of to in on for with from as is are was were new says said report reports latest update updates live news current event bestätigt bestätigte meldung quelle unabhängig independently confirmed source sources coverage".split())
@@ -20,9 +21,8 @@ _EVENTS = {
     "closure": r"\b(?:schließ\w*|schliess\w*|stillleg\w*|clos(?:e|es|ing|ure)|shuts?)\b",
     "job_cuts": r"\b(?:stellenabbau|personalabbau|jobabbau|entlass\w*|layoffs?|streicht|streichen)\b",
     "opening": r"\b(?:eröffn\w*|eroeffn\w*|opens?|opening)\b",
-    "hiring": r"\b(?:einstell\w*|neueinstellungen|hires?|hiring)\b",
+    "hiring": r"\b(?:neueinstellungen|hires?|hiring)\b",
     "strike": r"\b(?:streik\w*|strikes?)\b",
-    "announcement": r"\b(?:kündigt|kuendigt|informiert|announc\w*|informs?)\b",
     "price_rise": r"\b(?:preisanstieg|preiserhöhung\w*|preiserhoehung\w*|verteuer\w*)\b",
     "price_fall": r"\b(?:preissenkung\w*|preisrückgang|preisrueckgang|verbillig\w*)\b",
     "recall": r"\b(?:rückruf\w*|rueckruf\w*|recalls?)\b",
@@ -61,7 +61,33 @@ def _words(value: str) -> set[str]:
 
 
 def _numbers(value: str) -> set[str]:
-    return {re.sub(r"[.,]", "", n) for n in re.findall(r"\d+(?:[.,]\d+)*", value)}
+    numbers = set()
+    for token in re.findall(r"[+-]?\d+(?:[.,]\d+)*", value):
+        if '.' in token and ',' in token:
+            decimal = '.' if token.rfind('.') > token.rfind(',') else ','
+            grouping = ',' if decimal == '.' else '.'
+            whole, fraction = token.rsplit(decimal, 1)
+            if not re.fullmatch(r'[+-]?\d{1,3}(?:' + re.escape(grouping) + r'\d{3})+', whole):
+                numbers.add('ambiguous:' + token)
+                continue
+            token = whole.replace(grouping, '') + '.' + fraction
+        elif '.' in token or ',' in token:
+            separator = '.' if '.' in token else ','
+            if token.count(separator) > 1:
+                if re.fullmatch(r'[+-]?\d{1,3}(?:' + re.escape(separator) + r'\d{3})+', token):
+                    token = token.replace(separator, '')
+                else:
+                    numbers.add('ambiguous:' + token)
+                    continue
+            elif len(token.rsplit(separator, 1)[1]) == 3:
+                # Without a source locale, 1.000 may mean 1000 or 1 exactly.
+                # Preserve ambiguity rather than silently choosing either.
+                numbers.add('ambiguous:' + token)
+                continue
+            else:
+                token = token.replace(separator, '.')
+        numbers.add(str(Decimal(token).normalize()))
+    return numbers
 
 
 def _publisher(record: dict) -> str:

@@ -23,10 +23,10 @@ class GroqSourceContractTests(unittest.TestCase):
         self.pool = [
             record(domain, title, i)
             for i, (domain, title) in enumerate([
-                ("tagesschau.de", "Stuttgarter Arbeitgeber kündigt Änderung an"),
-                ("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an"),
-                ("bbc.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft"),
-                ("theguardian.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft"),
+                ("tagesschau.de", "Mercedes investiert in Werk Stuttgart"),
+                ("dw.com", "Mercedes investiert in Werk Stuttgart"),
+                ("bbc.com", "Bosch eröffnet Reutlingen Halbleiterfabrik"),
+                ("theguardian.com", "Bosch eröffnet Reutlingen Halbleiterfabrik"),
                 ("tagesschau.de", "Erste Meldung aktualisiert"),
                 ("dw.com", "Erste Meldung aktualisiert"),
                 ("bbc.com", "Zweite Meldung aktualisiert"),
@@ -50,11 +50,11 @@ class GroqSourceContractTests(unittest.TestCase):
     def test_groq_json_result_uses_existing_exact_url_and_independence_validator(self):
         ids = self.ids
         a = self._candidate(
-            ids[("tagesschau.de", "Stuttgarter Arbeitgeber kündigt Änderung an")],
-            ids[("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an")])
+            ids[("tagesschau.de", "Mercedes investiert in Werk Stuttgart")],
+            ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
         b = self._candidate(
-            ids[("bbc.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft")],
-            ids[("theguardian.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft")])
+            ids[("bbc.com", "Bosch eröffnet Reutlingen Halbleiterfabrik")],
+            ids[("theguardian.com", "Bosch eröffnet Reutlingen Halbleiterfabrik")])
         sent = []
         def groq(payload, key, timeout=0):
             sent.append((payload, key, timeout))
@@ -87,8 +87,8 @@ class GroqSourceContractTests(unittest.TestCase):
     def test_unrelated_valid_ids_and_invented_support_cannot_be_grounded(self):
         ids = self.ids
         candidate = self._candidate(
-            ids[("tagesschau.de", "Stuttgarter Arbeitgeber kündigt Änderung an")],
-            ids[("bbc.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft")])
+            ids[("tagesschau.de", "Mercedes investiert in Werk Stuttgart")],
+            ids[("bbc.com", "Bosch eröffnet Reutlingen Halbleiterfabrik")])
         candidate["sources"][1]["supports"] = candidate["title"]
         def fake(*args, **kwargs):
             return {"choices": [{"message": {"content": json.dumps({"candidates": [candidate, candidate]})}}]}
@@ -97,9 +97,9 @@ class GroqSourceContractTests(unittest.TestCase):
 
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
-        wrong = self._candidate("S999", ids[("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an")])
+        wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
         same = self._candidate(
-            ids[("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an")],
+            ids[("dw.com", "Mercedes investiert in Werk Stuttgart")],
             ids[("dw.com", "Erste Meldung aktualisiert")])
         def fake(payload, key, timeout=0):
             return {"choices": [{"message": {"content": json.dumps({"candidates": [wrong, same]})}}]}

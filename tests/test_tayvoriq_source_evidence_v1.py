@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from tayvoriq_source_evidence_v1 import validate_pair, source_support
+from tayvoriq_source_evidence_v1 import validate_pair, source_support, _numbers
 
 
 class SourceEvidenceTests(unittest.TestCase):
@@ -47,6 +47,25 @@ class SourceEvidenceTests(unittest.TestCase):
     def test_invented_headline_number_is_rejected(self):
         self.candidate["title"] = "Mercedes investiert 1000 Millionen in Stuttgart Werk"
         self.assertIn("source_1_missing_headline_number", validate_pair(self.candidate, self.records))
+
+    def test_decimal_numbers_cannot_become_ten_times_larger(self):
+        for decimal in ('1.5', '1,5'):
+            self.assertNotEqual(_numbers(decimal), _numbers('15'))
+            self.candidate['title'] = 'Mercedes investiert 15 Millionen in Werk Stuttgart'
+            for record in self.records:
+                record['context'] = f'Mercedes investiert {decimal} Millionen in Werk Stuttgart.'
+            self.assertIn('source_1_missing_headline_number', validate_pair(self.candidate, self.records))
+        self.assertEqual(_numbers('1.5'), _numbers('1,5'))
+        self.assertEqual(_numbers('1.000,50'), _numbers('1,000.50'))
+        self.assertEqual(_numbers('1.000.000'), _numbers('1000000'))
+        self.assertNotEqual(_numbers('1.000'), _numbers('1000'))
+        self.assertNotEqual(_numbers('-5'), _numbers('5'))
+
+    def test_generic_announcements_are_not_shared_substantive_event_anchors(self):
+        self.candidate['title'] = 'Mercedes kündigt Änderung in Stuttgart an'
+        self.records[0]['title'] = 'Mercedes kündigt Investitionen in Stuttgart an'
+        self.records[1]['title'] = 'Mercedes kündigt Schließung in Stuttgart an'
+        self.assertIn('shared_headline_event_anchor_required', validate_pair(self.candidate, self.records))
 
     def test_bbc_aliases_and_declared_syndication_are_not_independent(self):
         self.records[0]["url"] = "https://bbc.com/news/1"
