@@ -170,13 +170,22 @@ def test_binding_gates_agree_on_armed_and_authorized_replay(tmp_path=None):
 
 
 
-def test_exact_stale_expired_news_is_idle_and_never_replayed():
+def expired_fixture():
+    from datetime import datetime, timezone
+    from tayvoriq_stale_news_reconcile_v1 import quarantine
     pointer, request, run = fixture()
-    pointer.update(state="EXPIRED", allow_recovery=False, allow_publish=False)
-    request.update(status="EXPIRED", stale_quarantine={
-        "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
-        "review_delivered": False, "upload_permitted": False,
-    })
+    pointer.update(allow_publish=False, allow_recovery=True, telegram_message_id=3155,
+                   approval_key="telegram:valid:3155:trend:1")
+    request.update(telegram_message_id=3155, approval_key=pointer["approval_key"],
+                   approved_at="2026-10-04T00:00:00Z")
+    run.update(name="TAYVORIQ-X Golden Path", updated_at="2026-10-12T00:00:00Z")
+    request, pointer = quarantine(pointer, request, run, active_executors=0,
+                                  now=datetime(2026, 10, 20, tzinfo=timezone.utc))
+    return pointer, request, run
+
+
+def test_exact_stale_expired_news_is_idle_and_never_replayed():
+    pointer, request, run = expired_fixture()
     decision = decide(pointer, request, run)
     assert decision["state"] == "IDLE"
     assert decision["action"] == "NONE"
@@ -186,12 +195,7 @@ def test_exact_stale_expired_news_is_idle_and_never_replayed():
 
 
 def test_unverified_expiry_and_changed_immutable_sources_remain_blocked():
-    pointer, request, run = fixture()
-    pointer.update(state="EXPIRED", allow_recovery=False, allow_publish=False)
-    request.update(status="EXPIRED", stale_quarantine={
-        "reason": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW",
-        "review_delivered": False, "upload_permitted": False,
-    })
+    pointer, request, run = expired_fixture()
     for changed in (
         {"contract_sha256": "different"},
         {"stale_quarantine": {"reason": "other", "review_delivered": False, "upload_permitted": False}},
@@ -202,6 +206,37 @@ def test_unverified_expiry_and_changed_immutable_sources_remain_blocked():
         decision = decide(pointer, request | changed, run)
         assert decision["state"] == "BLOCKED", changed
         assert decision["action"] == "NONE", changed
+
+
+def test_expired_request_never_hides_publication_or_delivery_evidence():
+    pointer, request, run = expired_fixture()
+    for key in ("youtube_video_id", "youtube_url", "review_url", "telegram_review_message_id",
+                "published_at", "uploaded_at", "publication", "upload_receipt", "delivery_receipt"):
+        result = decide(pointer, request | {key: "unexpected-evidence"}, run)
+        assert result["state"] == "BLOCKED", key
+        assert result["action"] == "NONE", key
+    for history in ([{"state": "PUBLISHED"}], [{"state": "UPLOADED"}],
+                    [{"state": "REVIEW_READY"}], "malformed", [None]):
+        assert decide(pointer, request | {"state_history": history}, run)["state"] == "BLOCKED"
+
+
+def test_expired_quarantine_requires_complete_mirrored_identity_and_proof():
+    import copy
+    pointer, request, run = expired_fixture()
+    for key, value in (("at", "other"), ("reason", "other"), ("request_id", "other"), ("run_id", 99)):
+        changed = copy.deepcopy(pointer)
+        changed["stale_quarantine"][key] = value
+        assert decide(changed, request, run)["state"] == "BLOCKED", key
+    for key, value in (("schema", "other"), ("at", "not-a-date"), ("prior_run_id", 99),
+                       ("prior_status", "PUBLISHED"), ("quality_gates_weakened", True)):
+        changed = copy.deepcopy(request)
+        changed["stale_quarantine"][key] = value
+        assert decide(pointer, changed, run)["state"] == "BLOCKED", key
+    for key, value in (("telegram_message_id", 999), ("recovery_owner", "other"),
+                       ("approved_at", "not-a-date")):
+        assert decide(pointer, request | {key: value}, run)["state"] == "BLOCKED", key
+    for key, value in (("id", 99), ("name", "other"), ("status", "in_progress"), ("conclusion", "success")):
+        assert decide(pointer, request, run | {key: value})["state"] == "BLOCKED", key
 
 def load_tests(loader, tests, pattern):
     import unittest
