@@ -131,6 +131,41 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(read(self.queue)['attempts'], 8)
 
 class SchedulerContractTests(unittest.TestCase):
+    def test_existing_verified_delivery_clears_retry_without_sending_again(self):
+        import json
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        steps = workflow['jobs']['trend-gate']['steps']
+        resolver = next(s for s in steps if s.get('id') == 'delivery')['run']
+        program = resolver.split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            selection = '20261020-morning-agentv2-r1'
+            request = folder / 'request.json'
+            request.write_text(json.dumps({'selection_id': selection, 'slot': 'morning'}))
+            receipt = folder / '.automation/tayvoriq-agent-v2/deliveries' / (selection + '.json')
+            receipt.parent.mkdir(parents=True)
+            receipt.write_text(json.dumps({'selection_id': selection, 'telegram_delivery_verified': True,
+                                           'telegram_message_id': 123}))
+            queue = folder / 'retry.json'
+            retry.defer('morning', NOW + 900, path=queue, now=NOW)
+            program = program.replace('/tmp/tayvoriq-trend-request.json', str(request))
+            before = Path.cwd()
+            try:
+                os.chdir(folder)
+                with patch.dict(os.environ, {'GITHUB_OUTPUT': str(folder / 'outputs'),
+                                             'TAYVORIQ_RESEARCH_RETRY_FILE': str(queue)}), \
+                     patch.object(retry.time, 'time', return_value=NOW):
+                    exec(compile(program, '<delivery-resolver>', 'exec'), {})
+            finally:
+                os.chdir(before)
+            self.assertEqual(read(queue)['state'], 'DELIVERED')
+            self.assertIn('needs_delivery=false', (folder / 'outputs').read_text())
+        names = [step.get('name') for step in steps]
+        self.assertGreater(names.index('Persist provider cooldown and bounded research retry'),
+                           names.index('Resolve idempotent selection delivery'))
+
     def test_due_research_reuses_existing_approval_and_delivery_gates(self):
         import yaml
         root = Path(__file__).resolve().parents[1]

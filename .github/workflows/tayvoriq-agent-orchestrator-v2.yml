@@ -272,27 +272,6 @@ jobs:
             --output /tmp/tayvoriq-trend-request.json \
             --audit-output /tmp/tayvoriq-trend-audit.json
 
-      - name: Persist provider cooldown and bounded research retry
-        if: always() && steps.slot.outputs.should_run == 'true'
-        run: |
-          set -euo pipefail
-          files=()
-          for path in "$TAYVORIQ_PROVIDER_HEALTH_FILE" "$TAYVORIQ_RESEARCH_RETRY_FILE"; do
-            [ ! -f "$path" ] || files+=("$path")
-          done
-          [ "${#files[@]}" -gt 0 ] || exit 0
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- "${files[@]}"
-          git diff --cached --quiet -- "${files[@]}" && exit 0
-          git commit -m 'ops(tayvoriq): persist provider cooldown and research retry' -- "${files[@]}"
-          for attempt in 1 2 3 4 5; do
-            git pull --rebase origin main
-            if git push origin HEAD:main; then exit 0; fi
-            sleep $((attempt * 2))
-          done
-          exit 1
-
       - name: Resolve idempotent selection delivery
         id: delivery
         if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active != 'true' && (steps.mode.outputs.active_series != 'true' || steps.mode.outputs.series_in_flight != 'true')
@@ -318,6 +297,11 @@ jobs:
                   )
               except Exception:
                   verified=False
+          if verified:
+              import sys
+              sys.path.insert(0, 'tools')
+              from tayvoriq_research_retry_v1 import delivered
+              delivered(request['slot'])
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as handle:
               handle.write(f'selection_id={selection_id}\n')
               handle.write(f"needs_delivery={'false' if verified else 'true'}\n")
@@ -499,6 +483,27 @@ jobs:
             sleep $((attempt * 2))
           done
           [ "$pushed" = "true" ]
+
+      - name: Persist provider cooldown and bounded research retry
+        if: always() && steps.slot.outputs.should_run == 'true'
+        run: |
+          set -euo pipefail
+          files=()
+          for path in "$TAYVORIQ_PROVIDER_HEALTH_FILE" "$TAYVORIQ_RESEARCH_RETRY_FILE"; do
+            [ ! -f "$path" ] || files+=("$path")
+          done
+          [ "${#files[@]}" -gt 0 ] || exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "${files[@]}"
+          git diff --cached --quiet -- "${files[@]}" && exit 0
+          git commit -m 'ops(tayvoriq): persist provider cooldown and research retry' -- "${files[@]}"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
 
       - name: Notify gate failure once for this run
         if: failure() && steps.slot.outputs.should_run == 'true'
