@@ -1,0 +1,27 @@
+name: TAYVORIQ Persistent Provider Budget
+on:
+  pull_request:
+    paths:
+      - 'tools/tayvoriq_provider_health_v1.py'
+      - 'tools/tayvoriq_research_retry_v1.py'
+      - 'tools/tayvoriq_agent_research_*.py'
+      - 'tools/tayvoriq_agent_trend_provider_v3.py'
+      - 'tools/tayvoriq_agent_trend_radar_v8.py'
+      - 'tools/tayvoriq_lifecycle_controller_v1.py'
+      - 'tests/test_tayvoriq_provider_budget_v1.py'
+      - '.github/workflows/tayvoriq-agent-orchestrator-v2.yml'
+      - '.github/workflows/tayvoriq-provider-budget-checks.yml'
+permissions:
+  contents: read
+jobs:
+  provider-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m pip install pytest pyyaml -q
+          python -m pytest -q tests/test_tayvoriq_provider_budget_v1.py tests/test_tayvoriq_research_resilience_v2.py tests/test_tayvoriq_groq_source_fallback_v1.py tests/test_tayvoriq_lifecycle_controller.py

@@ -8,6 +8,7 @@ import re
 import subprocess
 from pathlib import Path
 from tayvoriq_lifecycle_handoff_v1 import await_completion
+from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
 
 ACTIVE = {'queued', 'in_progress', 'waiting', 'requested', 'pending'}
 EXECUTORS = ('tayvoriq-deterministic-codefix-continuity.yml',
@@ -152,6 +153,7 @@ def main():
     result = decide(pointer, request, run, event_name=os.environ.get('EVENT_WORKFLOW', ''),
                     event_run=int(os.environ.get('EVENT_RUN_ID') or 0), revision=revision,
                     green=green, previous=previous.get('last_dispatch'))
+    result = research_lifecycle(result)
     if result['state'] in {'RECOVERY_REQUIRED', 'BLOCKED'} and result['decision_key']:
         for workflow in EXECUTORS:
             runs = api(f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/workflows/{workflow}/runs?branch=main&per_page=20')

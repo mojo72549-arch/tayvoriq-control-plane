@@ -43,6 +43,8 @@ def _run_with_backoff(label: str, call: Callable[[], Any], attempts: int) -> Any
             return call()
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")
+            if isinstance(exc, urllib.error.HTTPError) and exc.code in {402, 429}:
+                raise RuntimeError(f"{label} unavailable: HTTP {exc.code}") from exc
             if attempt + 1 >= attempts or not _is_transient(exc):
                 break
             time.sleep(_retry_delay(exc, attempt))

@@ -6,70 +6,76 @@ import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
 import tayvoriq_agent_gdelt_v2 as gdelt
 import tayvoriq_agent_hf_v2 as hf
+from tayvoriq_provider_health_v1 import ProviderHealth
+import tayvoriq_research_retry_v1 as research_retry
 base=provider.base
 MARKER=Path('/tmp/tayvoriq-research-deferred.json')
 
-def _defer(errors:list[str])->None:
-    data={'status':'RESEARCH_DEFERRED','reason':'all live research paths unavailable after bounded retries','errors':errors[-10:],'created_at_epoch':int(time.time())}
-    MARKER.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'); print(json.dumps({'event':'research_deferred',**data},ensure_ascii=False))
 
-def grounded(prompt:str,gemini_key:str,groq_key:str):
-    errors=[]; MARKER.unlink(missing_ok=True)
-    if gemini_key:
-        try:
-            data,chunks,model=http.retry('gemini',lambda:http.gemini_grounded(prompt,gemini_key),3); return data,chunks,model,'gemini'
-        except Exception as exc: errors.append(str(exc))
-    if groq_key:
-        try:
-            data,chunks,model=provider.groq_browser_then_structure(prompt,groq_key); return data,chunks,model,'groq'
-        except Exception as exc: errors.append(str(exc))
-    token=str(os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
-    rss_records=[]
-    gdelt_records=[]
-    try:
-        rss_records=rss.source_pool()
-    except Exception as exc:
-        errors.append('RSS source collection unavailable: '+http.summary(exc))
-    # The Groq browser tool can return a too-short dossier while the regular
-    # Groq JSON API still works. Structure only verified, URL-bound RSS records
-    # with Groq before falling back to a metered HF model.
-    if groq_key and rss_records:
-        try:
-            data,chunks,model=hf.structure(
-                prompt,groq_key,rss_records,'multi-publisher-rss',provider_kind='groq')
-            return data,chunks,model,'groq_rss'
-        except Exception as exc:
-            errors.append('Groq/RSS fallback failed: '+http.summary(exc))
-    if token and rss_records:
-        try:
-            data,chunks,model=hf.structure(prompt,token,rss_records,'multi-publisher-rss')
-            return data,chunks,model,'huggingface_rss'
-        except Exception as exc:
-            errors.append('HuggingFace/RSS fallback failed: '+http.summary(exc))
-    try:
-        gdelt_records=gdelt.source_pool()
-    except Exception as exc:
-        errors.append('GDELT source collection unavailable: '+http.summary(exc))
-    if groq_key and gdelt_records:
-        try:
-            data,chunks,model=hf.structure(
-                prompt,groq_key,gdelt_records,'gdelt-context',provider_kind='groq')
-            return data,chunks,model,'groq_gdelt'
-        except Exception as exc:
-            errors.append('Groq/GDELT fallback failed: '+http.summary(exc))
-    if token and gdelt_records:
-        try:
-            data,chunks,model=hf.structure(prompt,token,gdelt_records,'gdelt-context')
-            return data,chunks,model,'huggingface_gdelt'
-        except Exception as exc:
-            errors.append('HuggingFace/GDELT fallback failed: '+http.summary(exc))
+def _defer(errors: list[str], next_at: float | None = None) -> None:
+    queued = research_retry.defer(os.getenv('TAYVORIQ_RESEARCH_SLOT', ''), next_at)
+    data = {'status': 'RESEARCH_DEFERRED',
+            'reason': 'all live research paths unavailable after bounded retries',
+            'errors': errors[-10:], 'created_at_epoch': int(time.time()),
+            'retry_at_epoch': next_at, 'retry_state': queued.get('state', 'UNSCHEDULED')}
+    MARKER.write_text(json.dumps(data, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+    print(json.dumps({'event': 'research_deferred', **data}, ensure_ascii=False))
 
-    # The deterministic pool can pair syndicated mirrors and generates generic
-    # topic labels/hooks. Editorial quality and source independence are not
-    # established, so defer until a verified selection is available.
+
+def grounded(prompt: str, gemini_key: str, groq_key: str):
+    errors = []
+    MARKER.unlink(missing_ok=True)
+    health_path = os.getenv('TAYVORIQ_PROVIDER_HEALTH_FILE')
+    health = ProviderHealth(Path(health_path) if health_path else None)
+    token = str(os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
+    keys = {'gemini': gemini_key, 'groq': groq_key, 'huggingface': token}
+
+    def attempt(name, label, call):
+        key = keys[name]
+        if not key:
+            return None
+        if not health.available(name, key):
+            errors.append(label + ' skipped: persistent provider cooldown/payment block')
+            return None
+        try:
+            result = call()
+            health.success(name)
+            return result
+        except Exception as exc:
+            health.failure(name, key, exc)
+            errors.append(label + ' failed: ' + http.summary(exc))
+            return None
+
+    result = attempt('gemini', 'Gemini', lambda: http.retry(
+        'gemini', lambda: http.gemini_grounded(prompt, gemini_key), 3))
+    if result is not None:
+        return (*result, 'gemini')
+    result = attempt('groq', 'Groq browser', lambda: provider.groq_browser_then_structure(prompt, groq_key))
+    if result is not None:
+        return (*result, 'groq')
+
+    for label, collect in (('multi-publisher-rss', rss.source_pool), ('gdelt-context', gdelt.source_pool)):
+        # A depleted Groq quota is shared by browser, RSS and GDELT structuring.
+        if not any(key and health.available(name, key) for name, key in keys.items() if name != 'gemini'):
+            break
+        try:
+            records = collect()
+        except Exception as exc:
+            errors.append(label + ' collection unavailable: ' + http.summary(exc))
+            continue
+        if not records:
+            continue
+        for name in ('groq', 'huggingface'):
+            result = attempt(name, name + '/' + label, lambda name=name: hf.structure(
+                prompt, keys[name], records, label, provider_kind=name))
+            if result is not None:
+                return (*result, name + ('_rss' if label == 'multi-publisher-rss' else '_gdelt'))
+
     errors.append('Deterministic source fallback disabled: syndicated mirrors and generic hooks cannot pass editorial quality')
+    _defer(errors, health.next_retry(keys))
+    raise RuntimeError('RESEARCH_DEFERRED: ' + ' | '.join(errors))
 
-    _defer(errors); raise RuntimeError('RESEARCH_DEFERRED: '+' | '.join(errors))
 
-def install()->None:
-    base.gemini_call=http.gemini_grounded; base.grounded_call=grounded
+def install() -> None:
+    base.gemini_call=http.gemini_grounded
+    base.grounded_call=grounded

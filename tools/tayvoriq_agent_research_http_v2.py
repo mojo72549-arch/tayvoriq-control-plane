@@ -27,6 +27,10 @@ def retry(label:str,call:Callable[[],Any],attempts:int)->Any:
         except Exception as exc:
             transient=is_transient(exc); errors.append(summary(exc))
             print(json.dumps({"event":"provider_attempt_failed","provider":label,"attempt":i+1,"attempts":attempts,"transient":transient,"error":summary(exc),"rate_limit":rate_headers(exc)},ensure_ascii=False))
+            if isinstance(exc, urllib.error.HTTPError) and exc.code in {402, 429}:
+                # Let the durable scheduler honor reset time; do not burn the
+                # same provider quota again inside this runner.
+                raise RuntimeError(f"{label} unavailable: {summary(exc)}") from exc
             if not transient or i+1>=attempts: break
             ra=(exc.headers or {}).get("Retry-After") if isinstance(exc,urllib.error.HTTPError) else None
             try: delay=min(60.0,max(8.0,float(ra))) if ra else min(60.0,8.0*(2**i)+random.uniform(.5,2.0))
