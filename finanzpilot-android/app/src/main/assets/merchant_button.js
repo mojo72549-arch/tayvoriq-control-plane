@@ -1,0 +1,5 @@
+(function(){
+if(window.__fpMerchantButton)return;window.__fpMerchantButton=true;
+function attach(){const shell=document.getElementById('fpFamilyShell');if(!shell||document.getElementById('fmFamilyEntry')||!window.FinanzPilotMerchants)return;const wrap=shell.querySelector('.w');if(!wrap)return;const sec=document.createElement('div');sec.className='sec';sec.id='fmFamilyEntry';sec.innerHTML='<h2>Wo wird was gezählt?</h2><button id="fmFamilyOpen" style="width:100%;border:1px solid #315a7e;background:#173b5f;color:#fff;border-radius:16px;padding:14px;text-align:left;font-weight:850;font-size:15px">🏪 Läden & Kategorien ansehen <span style="float:right">›</span><div style="font-size:11px;font-weight:500;color:#a8bacd;margin-top:4px">Lebensmittel, Shopping, Tanken usw. – mit Händler und Betrag</div></button>';const toggle=wrap.querySelector('.toggle')?.closest('.sec');if(toggle)wrap.insertBefore(sec,toggle);else wrap.appendChild(sec);document.getElementById('fmFamilyOpen').onclick=()=>window.FinanzPilotMerchants.show();}
+new MutationObserver(attach).observe(document.documentElement,{childList:true,subtree:true});setTimeout(attach,700);
+})();
