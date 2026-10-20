@@ -1907,7 +1907,25 @@ jobs:
           cp -f out/recovery-checkpoint/meta.json out/diagnostics-bundle/recovery-checkpoint-meta.json 2>/dev/null || true
           python - <<'PY'
           import shutil
+          import json
           from pathlib import Path
+          # A voice failure precedes the first render. Keep its exact ASR proof
+          # and the last failed audio even when no reusable master exists yet.
+          voice_root = Path('out/tayvoriq-youtube-tiktok')
+          for proof in voice_root.rglob('pre-render-voice-diagnostics.json'):
+              destination = Path('out/diagnostics-bundle/pre-render-voice') / proof.relative_to(voice_root).parent
+              destination.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(proof, destination / proof.name)
+              try:
+                  evidence = json.loads(proof.read_text(encoding='utf-8'))
+                  attempt = (evidence.get('attempts') or [])[-1]
+                  audio = (proof.parent / str(attempt.get('voice_path') or '')).resolve()
+                  if (audio.is_relative_to(proof.parent.resolve()) and audio.is_file()
+                          and audio.suffix.casefold() in {'.mp3', '.wav'}
+                          and audio.stat().st_size <= 8_000_000):
+                      shutil.copy2(audio, destination / audio.name)
+              except (ValueError, IndexError, OSError):
+                  pass
           try:
               import tayvoriq_resume_existing_render as resume
               candidates = resume.rendered_candidates(Path('out/tayvoriq-youtube-tiktok'))
