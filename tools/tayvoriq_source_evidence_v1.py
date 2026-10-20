@@ -13,6 +13,42 @@ from urllib.parse import urlparse
 
 _STOP = set("der die das den dem des ein eine einer einem einen eines und oder aber mit von vom zur zum für auf aus bei nach vor über ist sind wird werden hat haben heute jetzt neu neue neuen neuer meldet berichtet laut sagt the a an and or of to in on for with from as is are was were new says said report reports latest update updates live news current event bestätigt bestätigte meldung quelle unabhängig independently confirmed source sources coverage".split())
 
+# Explicitly bounded event vocabulary: unknown or ambiguous actions defer to
+# another research path. Shared actors/places alone never prove one event.
+_EVENTS = {
+    "investment": r"\b(?:invest\w*|finanzier\w*)\b",
+    "closure": r"\b(?:schließ\w*|schliess\w*|stillleg\w*|clos(?:e|es|ing|ure)|shuts?)\b",
+    "job_cuts": r"\b(?:stellenabbau|personalabbau|jobabbau|entlass\w*|layoffs?|streicht|streichen)\b",
+    "opening": r"\b(?:eröffn\w*|eroeffn\w*|opens?|opening)\b",
+    "hiring": r"\b(?:einstell\w*|neueinstellungen|hires?|hiring)\b",
+    "strike": r"\b(?:streik\w*|strikes?)\b",
+    "announcement": r"\b(?:kündigt|kuendigt|informiert|announc\w*|informs?)\b",
+    "price_rise": r"\b(?:preisanstieg|preiserhöhung\w*|preiserhoehung\w*|verteuer\w*)\b",
+    "price_fall": r"\b(?:preissenkung\w*|preisrückgang|preisrueckgang|verbillig\w*)\b",
+    "recall": r"\b(?:rückruf\w*|rueckruf\w*|recalls?)\b",
+    "delay": r"\b(?:verspät\w*|verspaet\w*|verzöger\w*|verzoeger\w*|delays?|delayed)\b",
+    "cancellation": r"\b(?:abgesagt|absage\w*|cancel\w*)\b",
+    "launch": r"\b(?:startet|starten|einführung\w*|einfuehrung\w*|launch\w*|release\w*)\b",
+    "cyberattack": r"\b(?:cyberangriff\w*|hackerangriff\w*|datenleck\w*|cyberattack\w*)\b",
+    "outage": r"\b(?:ausfall\w*|störung\w*|stoerung\w*|outage\w*)\b",
+    "win": r"\b(?:gewinnt|gewann|sieg\w*|wins?|won)\b",
+    "loss": r"\b(?:verliert|verlor|niederlage\w*|loses?|lost)\b",
+    "flood": r"\b(?:hochwasser|überschwemm\w*|ueberschwemm\w*|flood\w*)\b",
+    "earthquake": r"\b(?:erdbeben|earthquake\w*)\b",
+    "fire": r"\b(?:waldbrand\w*|großbrand\w*|wildfire\w*)\b",
+}
+
+
+def _events(text: str) -> set[str]:
+    return {name for name, pattern in _EVENTS.items() if re.search(pattern, text.casefold())}
+
+
+def _status(text: str) -> tuple[bool, bool]:
+    words = set(re.findall(r"[^\W_]+", text.casefold()))
+    negative = bool(words & {"nicht", "kein", "keine", "keinen", "dementiert", "not", "denies", "no"})
+    proposed = bool(words & {"plant", "geplant", "will", "soll", "sollen", "könnte", "könnten", "fordert", "vorschlag", "plans", "planned", "proposes", "could", "may"})
+    return negative, proposed
+
 
 def _text(record: dict) -> str:
     # Source provenance is always reconstructed, never model-generated supports.
@@ -55,6 +91,11 @@ def validate_pair(candidate: dict, records: list[dict]) -> list[str]:
     if len(common) < 3 or not (title_terms[0] & title_terms[1]):
         reasons.append("source_records_do_not_establish_same_story")
     headline = str(candidate.get("title") or "")
+    event = _events(headline)
+    if not event or not event.issubset(_events(str(a.get("title") or "")) & _events(str(b.get("title") or ""))):
+        reasons.append("shared_headline_event_anchor_required")
+    if any(_status(str(r.get("title") or "")) != _status(headline) for r in records):
+        reasons.append("headline_event_status_not_correlated")
     headline_terms = _words(headline)
     for index, (text, source_terms) in enumerate(zip(texts, terms), 1):
         overlap = headline_terms & source_terms

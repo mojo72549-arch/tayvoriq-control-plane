@@ -34,6 +34,16 @@ class SourceEvidenceTests(unittest.TestCase):
         self.records[1].update(title="Mercedes schließt Werk in Stuttgart", context="Mercedes schließt das Werk in Stuttgart.")
         self.assertIn("source_2_does_not_support_headline", validate_pair(self.candidate, self.records))
 
+    def test_generic_shared_nouns_cannot_hide_investment_versus_closure(self):
+        self.candidate["title"] = "Mercedes Werk Stuttgart"
+        self.records[1].update(title="Mercedes schließt Werk Stuttgart", context="Mercedes schließt das Werk in Stuttgart.")
+        self.assertIn("shared_headline_event_anchor_required", validate_pair(self.candidate, self.records))
+
+    def test_proposal_or_denial_cannot_be_relabelled_as_confirmed_event(self):
+        for title in ("Mercedes plant Investitionen in Werk Stuttgart", "Mercedes investiert nicht in Werk Stuttgart"):
+            self.records[1]["title"] = title
+            self.assertIn("headline_event_status_not_correlated", validate_pair(self.candidate, self.records))
+
     def test_invented_headline_number_is_rejected(self):
         self.candidate["title"] = "Mercedes investiert 1000 Millionen in Stuttgart Werk"
         self.assertIn("source_1_missing_headline_number", validate_pair(self.candidate, self.records))
