@@ -150,10 +150,23 @@ Aim for SIX distinct candidates across technology/AI, business/economy, world/so
                                "support_origin":"retrieved_source_title_and_context"})
             chunks.append({"title":publisher,"uri":url})
         c["sources"]=normalized
-    valid_candidates=[
-        candidate for candidate in (data.get("candidates") or [])
-        if isinstance(candidate,dict) and len(candidate.get("sources") or [])==2
-    ]
+    valid_candidates=[]
+    seen_pairs, seen_titles = set(), set()
+    for candidate in data.get('candidates') or []:
+        if not isinstance(candidate, dict) or len(candidate.get('sources') or []) != 2:
+            continue
+        pair = tuple(sorted(source['url'] for source in candidate['sources']))
+        title = ' '.join(str(candidate.get('title') or '').casefold().split())
+        if pair in seen_pairs or title in seen_titles:
+            continue
+        seen_pairs.add(pair)
+        seen_titles.add(title)
+        valid_candidates.append(candidate)
+    unique_chunks = {}
+    for candidate in valid_candidates:
+        for source in candidate['sources']:
+            unique_chunks[source['url']] = {'title': source['publisher'], 'uri': source['url']}
+    chunks = list(unique_chunks.values())
     # One source-valid candidate produces only two grounding chunks and cannot
     # satisfy the radar's existing minimum grounding contract. Treat that as
     # provider insufficiency so resilience can continue to the next source pool
