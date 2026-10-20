@@ -12,6 +12,9 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "mojo72549-arch/tayvoriq-control-plan
 TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
 API = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
 OUT = Path(os.environ.get("TAYVORIQ_OPS_STATE_PATH", "run-status/ops-health.json"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
+
 ACTIVE_POINTER = Path(".github/state/tayvoriq-active-production-request.json")
 
 TERMINAL_STATES = {"PUBLISHED", "REJECTED", "CANCELLED", "CANCELED", "ARCHIVED"}
@@ -235,37 +238,19 @@ def incident_signature(run_id, failed_step, failure_state):
     return f"{run_id or 'none'}:{incident_failure_family(failure_state)}"
 
 
-def is_retired_unpublished(pointer, request, run_id):
-    """Do not re-open historical incidents after an exact approved news archive."""
-    if not isinstance(pointer, dict) or not isinstance(request, dict):
+def is_retired_unpublished(pointer, request, run_id, run=None):
+    """Use the same complete retirement proof as the lifecycle controller."""
+    if not isinstance(pointer, dict) or not isinstance(request, dict) or not isinstance(run, dict):
         return False
-    quarantine = request.get("stale_quarantine") or {}
     try:
-        owner_run = int(pointer.get("golden_path_run_id") or 0)
-        request_run = int(request.get("golden_path_run_id") or 0)
-        current_run = int(run_id or 0)
+        if int(run.get('id') or 0) != int(run_id or 0):
+            return False
     except (TypeError, ValueError):
         return False
-    return bool(
-        pointer.get("schema") == "tayvoriq-active-production-request-v1"
-        and pointer.get("state") == "EXPIRED"
-        and request.get("status") == "EXPIRED"
-        and pointer.get("request_id")
-        and pointer.get("request_id") == request.get("request_id")
-        and owner_run > 0
-        and owner_run == current_run
-        and request_run == current_run
-        and pointer.get("allow_publish") is False
-        and pointer.get("allow_recovery") is False
-        and quarantine.get("reason") == "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
-        and quarantine.get("review_delivered") is False
-        and quarantine.get("upload_permitted") is False
-        and not request.get("production_completion")
-    )
+    return verified_quarantine(pointer, request, run)
 
 
 def current_research_retry():
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
     from tayvoriq_research_retry_v1 import current
     return current(Path(os.environ.get('TAYVORIQ_RESEARCH_RETRY_FILE') or
                         '.automation/tayvoriq-agent-v2/research-retry.json'))
@@ -322,7 +307,7 @@ def main():
     recovery_generation = int((request_data or {}).get("recovery_generation") or recovery.get("fresh_recovery_generation") or recovery.get("recovery_generation") or 0)
     recovery_owner = str((request_data or {}).get("recovery_owner") or "tayvoriq-agent-orchestrator-v2")
 
-    retired = is_retired_unpublished(pointer, request_data, run_id)
+    retired = is_retired_unpublished(pointer, request_data, run_id, run)
     if retired:
         # Last run is preserved as HISTORY, never as an active incident.
         overall = "yellow"

@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 from tayvoriq_lifecycle_handoff_v1 import await_completion
 from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
+from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
 
 ACTIVE = {'queued', 'in_progress', 'waiting', 'requested', 'pending'}
 EXECUTORS = ('tayvoriq-deterministic-codefix-continuity.yml',
@@ -45,18 +46,11 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
     completion = request.get('production_completion') or {}
     # A separately audited, unpublished and expired news request is terminal
     # history, not an active delivery blocker. Keep hard contract checks above.
-    quarantine = request.get('stale_quarantine') or {}
-    if (pointer.get('state') == 'EXPIRED'
-            and request.get('status') == 'EXPIRED'
-            and pointer.get('allow_publish') is False
-            and pointer.get('allow_recovery') is False
-            and not completion
-            and isinstance(quarantine, dict)
-            and quarantine.get('reason') == 'STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW'
-            and quarantine.get('review_delivered') is False
-            and quarantine.get('upload_permitted') is False):
-        result.update(request_status='EXPIRED', request_substate='EXPIRED')
-        return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
+    if pointer.get('state') == 'EXPIRED' or request.get('status') == 'EXPIRED':
+        if verified_quarantine(pointer, request, run):
+            result.update(request_status='EXPIRED', request_substate='EXPIRED')
+            return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
+        return finish('BLOCKED', 'EXPIRED_QUARANTINE_EVIDENCE_INVALID')
     if (pointer.get('state') == 'COMPLETED'
             and completion.get('state') == 'REVIEW_READY'
             and int(completion.get('golden_path_run_id') or 0) == run_id

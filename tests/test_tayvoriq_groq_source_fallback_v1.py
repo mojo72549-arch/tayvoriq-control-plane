@@ -23,10 +23,10 @@ class GroqSourceContractTests(unittest.TestCase):
         self.pool = [
             record(domain, title, i)
             for i, (domain, title) in enumerate([
-                ("tagesschau.de", "Stuttgarter Arbeitgeber kündigt Änderung an"),
-                ("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an"),
-                ("bbc.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft"),
-                ("theguardian.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft"),
+                ("tagesschau.de", "Mercedes investiert in Werk Stuttgart"),
+                ("dw.com", "Mercedes investiert in Werk Stuttgart"),
+                ("bbc.com", "Bosch eröffnet Reutlingen Halbleiterfabrik"),
+                ("theguardian.com", "Bosch eröffnet Reutlingen Halbleiterfabrik"),
                 ("tagesschau.de", "Erste Meldung aktualisiert"),
                 ("dw.com", "Erste Meldung aktualisiert"),
                 ("bbc.com", "Zweite Meldung aktualisiert"),
@@ -38,10 +38,11 @@ class GroqSourceContractTests(unittest.TestCase):
             (row["domain"], row["title"]): f"S{i:03d}"
             for i, row in enumerate(ordered, 1)
         }
+        self.by_id = {f"S{i:03d}": row for i, row in enumerate(ordered, 1)}
 
     def _candidate(self, first, second):
         return {
-            "title": "Unabhängig bestätigte deutsche Nachricht",
+            "title": self.by_id.get(first, {}).get("title", "Unbekannter Sachverhalt"),
             "sources": [{"source_id": first, "supports": "Quelle bestätigt Sachverhalt"},
                         {"source_id": second, "supports": "Weitere Quelle bestätigt Sachverhalt"}],
         }
@@ -49,11 +50,11 @@ class GroqSourceContractTests(unittest.TestCase):
     def test_groq_json_result_uses_existing_exact_url_and_independence_validator(self):
         ids = self.ids
         a = self._candidate(
-            ids[("tagesschau.de", "Stuttgarter Arbeitgeber kündigt Änderung an")],
-            ids[("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an")])
+            ids[("tagesschau.de", "Mercedes investiert in Werk Stuttgart")],
+            ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
         b = self._candidate(
-            ids[("bbc.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft")],
-            ids[("theguardian.com", "Zweiter deutscher Arbeitgeber informiert Belegschaft")])
+            ids[("bbc.com", "Bosch eröffnet Reutlingen Halbleiterfabrik")],
+            ids[("theguardian.com", "Bosch eröffnet Reutlingen Halbleiterfabrik")])
         sent = []
         def groq(payload, key, timeout=0):
             sent.append((payload, key, timeout))
@@ -75,12 +76,30 @@ class GroqSourceContractTests(unittest.TestCase):
         self.assertEqual(payload["model"], "openai/gpt-oss-20b")
         self.assertEqual(payload["response_format"], {"type": "json_object"})
         self.assertEqual(payload["max_completion_tokens"], 8000)
+        for item in data["candidates"]:
+            for source in item["sources"]:
+                record = self.by_id[source["source_id"]]
+                self.assertEqual(source["supports"], f'{record["title"]} {record["context"]}')
+                self.assertEqual(source["support_origin"], "retrieved_source_title_and_context")
+                self.assertEqual(len(source["source_record_sha256"]), 64)
+                self.assertNotIn("Quelle bestätigt Sachverhalt", source["supports"])
+
+    def test_unrelated_valid_ids_and_invented_support_cannot_be_grounded(self):
+        ids = self.ids
+        candidate = self._candidate(
+            ids[("tagesschau.de", "Mercedes investiert in Werk Stuttgart")],
+            ids[("bbc.com", "Bosch eröffnet Reutlingen Halbleiterfabrik")])
+        candidate["sources"][1]["supports"] = candidate["title"]
+        def fake(*args, **kwargs):
+            return {"choices": [{"message": {"content": json.dumps({"candidates": [candidate, candidate]})}}]}
+        with patch.object(hf.provider, "post_groq", fake), self.assertRaisesRegex(RuntimeError, "source contract insufficient"):
+            hf.structure("prompt", "key", self.pool, "rss", provider_kind="groq")
 
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
-        wrong = self._candidate("S999", ids[("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an")])
+        wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
         same = self._candidate(
-            ids[("dw.com", "Stuttgarter Arbeitgeber kündigt Änderung an")],
+            ids[("dw.com", "Mercedes investiert in Werk Stuttgart")],
             ids[("dw.com", "Erste Meldung aktualisiert")])
         def fake(payload, key, timeout=0):
             return {"choices": [{"message": {"content": json.dumps({"candidates": [wrong, same]})}}]}

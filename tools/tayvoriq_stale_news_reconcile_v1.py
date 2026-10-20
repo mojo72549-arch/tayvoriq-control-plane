@@ -30,6 +30,54 @@ def _utc(value: str) -> datetime:
     return stamp.astimezone(timezone.utc)
 
 
+def has_delivery_evidence(request: dict) -> bool:
+    if any(request.get(key) for key in (
+        "production_completion", "youtube_video_id", "youtube_url", "review_url",
+        "telegram_review_message_id", "published_at", "uploaded_at",
+        "publication", "upload_receipt", "delivery_receipt",
+    )):
+        return True
+    history = request.get("state_history", [])
+    if not isinstance(history, list) or any(not isinstance(item, dict) for item in history):
+        return True  # malformed history cannot prove that nothing was delivered
+    return any(str(item.get("state") or "").upper() in {"REVIEW_READY", "PUBLISHED", "UPLOADED"}
+               for item in history)
+
+
+def verified_quarantine(pointer: dict, request: dict, run: dict) -> bool:
+    """Revalidate the canonical producer's complete, mirrored retirement proof."""
+    reason = "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
+    q, p = request.get("stale_quarantine"), pointer.get("stale_quarantine")
+    if not isinstance(q, dict) or not isinstance(p, dict) or has_delivery_evidence(request):
+        return False
+    if (pointer.get("schema") != "tayvoriq-active-production-request-v1"
+            or pointer.get("state") != "EXPIRED" or request.get("status") != "EXPIRED"
+            or pointer.get("allow_publish") is not False or pointer.get("allow_recovery") is not False
+            or request.get("source") != "telegram_trend_approval" or request.get("recovery_owner") != "none"
+            or q.get("schema") != "tayvoriq-stale-news-quarantine-v1"
+            or q.get("prior_status") != "DISPATCHED" or q.get("quality_gates_weakened") is not False
+            or q.get("review_delivered") is not False or q.get("upload_permitted") is not False
+            or q.get("reason") != reason or p.get("reason") != reason or pointer.get("reason") != reason):
+        return False
+    for key in ("request_id", "approval_key", "source_context_sha256", "contract_sha256", "telegram_message_id"):
+        if not pointer.get(key) or pointer[key] != request.get(key):
+            return False
+    if not str(pointer["approval_key"]).startswith("telegram:") or p.get("request_id") != request["request_id"]:
+        return False
+    try:
+        rid = int(pointer.get("golden_path_run_id") or 0)
+        if (rid < 1 or any(int(value or 0) != rid for value in (
+                request.get("golden_path_run_id"), run.get("id"), q.get("prior_run_id"), p.get("run_id")))
+                or int(pointer.get("recovery_generation") or 0) != int(request.get("recovery_generation") or 0)
+                or _utc(q["at"]) < _utc(request["approved_at"])
+                or q["at"] != p.get("at") or q["at"] != pointer.get("updated_at")):
+            return False
+    except (KeyError, ValueError, TypeError):
+        return False
+    return (run.get("name") == "TAYVORIQ-X Golden Path" and run.get("status") == "completed"
+            and run.get("conclusion") == "failure")
+
+
 def quarantine(
     pointer: dict, request: dict, run: dict, *,
     active_executors: int,
@@ -77,17 +125,7 @@ def quarantine(
     ):
         return None
 
-    completion = request.get("production_completion")
-    if completion:
-        return None
-    if any(request.get(key) for key in (
-        "youtube_video_id", "youtube_url", "review_url",
-        "telegram_review_message_id", "published_at", "uploaded_at",
-        "publication", "upload_receipt", "delivery_receipt",
-    )):
-        return None
-    if any(str(item.get("state") or "").upper() in {"REVIEW_READY", "PUBLISHED", "UPLOADED"}
-           for item in request.get("state_history", []) if isinstance(item, dict)):
+    if has_delivery_evidence(request):
         return None
 
     timestamp = now.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
