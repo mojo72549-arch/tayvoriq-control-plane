@@ -137,6 +137,32 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(read(self.queue)['attempts'], 8)
 
 class SchedulerContractTests(unittest.TestCase):
+    def test_retry_wakeup_waits_once_and_revalidates_due_slot_before_dispatch(self):
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        wake = yaml.safe_load((root / '.github/workflows/tayvoriq-research-retry-wakeup.yml').read_text())
+        triggers = wake.get('on') or wake.get(True)
+        self.assertIn('.automation/tayvoriq-agent-v2/research-retry.json', triggers['push']['paths'])
+        self.assertTrue(wake['concurrency']['cancel-in-progress'])
+        self.assertEqual(wake['permissions']['contents'], 'read')
+        self.assertEqual(wake['permissions']['actions'], 'write')
+        job = wake['jobs']['wake']
+        self.assertLessEqual(job['timeout-minutes'], 130)
+        steps = {step['name']: step for step in job['steps'] if step.get('name')}
+        self.assertIn('WAITING', steps['Plan bounded wakeup']['run'])
+        self.assertIn('time.sleep', steps['Wait until provider retry is due']['run'])
+        dispatch = steps['Revalidate and dispatch exact due slot']['run']
+        self.assertIn('git show origin/main:', dispatch)
+        self.assertIn('due_slot', dispatch)
+        self.assertIn("'research_retry_wakeup': 'true'", dispatch)
+
+        agent = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        agent_triggers = agent.get('on') or agent.get(True)
+        self.assertIn('research_retry_wakeup', agent_triggers['workflow_dispatch']['inputs'])
+        resolver = next(s for s in agent['jobs']['trend-gate']['steps'] if s.get('id') == 'slot')['run']
+        self.assertIn("event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true'", resolver)
+        self.assertIn('slot = due_slot(now=now.timestamp())', resolver)
+
     def test_provider_state_push_refreshes_control_center_without_waiting_for_cron(self):
         import yaml
         root = Path(__file__).resolve().parents[1]

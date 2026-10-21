@@ -7,6 +7,10 @@ on:
         description: Reconcile the approved request without a new trend scan
         type: boolean
         default: false
+      research_retry_wakeup:
+        description: Internal wakeup for one due bounded research retry
+        type: boolean
+        default: false
       signal_run_id:
         description: Completing producer or recovery executor
         type: string
@@ -85,6 +89,7 @@ jobs:
           EVENT_SCHEDULE: ${{ github.event.schedule }}
           INPUT_SLOT: ${{ inputs.slot || '' }}
           RECONCILE_ONLY: ${{ inputs.reconcile_only || false }}
+          RESEARCH_RETRY_WAKEUP: ${{ inputs.research_retry_wakeup || false }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -97,6 +102,12 @@ jobs:
           requested = os.environ.get('INPUT_SLOT','')
           slot = requested if event == 'workflow_dispatch' else ''
           should = now.date().isoformat() >= '2026-08-15'
+          if event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true':
+              import sys
+              sys.path.insert(0, 'tools')
+              from tayvoriq_research_retry_v1 import due_slot
+              slot = due_slot(now=now.timestamp())
+              should = should and bool(slot)
           if event == 'push':
               import subprocess
               changed=subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).splitlines()
