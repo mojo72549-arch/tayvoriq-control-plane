@@ -167,6 +167,9 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn('always()', rearm['if'])
         self.assertIn("state.get('state') != 'WAITING'", rearm['run'])
         self.assertIn('tayvoriq-research-retry-wakeup.yml/dispatches', rearm['run'])
+        refresh = agent_steps['Refresh ops health after provider state persistence']
+        self.assertIn('always()', refresh['if'])
+        self.assertIn('tayvoriq-ops-health.yml/dispatches', refresh['run'])
 
     def test_retry_wakeup_programs_execute_for_due_queue_and_verified_dispatch(self):
         import json
@@ -253,6 +256,38 @@ class SchedulerContractTests(unittest.TestCase):
                 '/actions/workflows/tayvoriq-research-retry-wakeup.yml/dispatches'))
             self.assertEqual(json.loads(request.data), {'ref': 'main'})
 
+    def test_orchestrator_dispatches_ops_health_after_provider_state_persistence(self):
+        import json
+        import urllib.request
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        agent = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        step = next(s for s in agent['jobs']['trend-gate']['steps']
+                    if s.get('name') == 'Refresh ops health after provider state persistence')
+        program = step['run'].split("python - <<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+
+        requests = []
+        class Response:
+            status = 204
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+        def open_request(request, timeout=0):
+            requests.append((request, timeout))
+            return Response()
+        env = {'GH_TOKEN': 'test-token', 'GITHUB_API_URL': 'https://api.github.test',
+               'GITHUB_REPOSITORY': 'owner/repository'}
+        with patch.dict(os.environ, env), \
+             patch.object(urllib.request, 'urlopen', side_effect=open_request):
+            exec(compile(program, '<ops-health-dispatch>', 'exec'), {})
+        self.assertEqual(len(requests), 1)
+        request, timeout = requests[0]
+        self.assertEqual(timeout, 30)
+        self.assertTrue(request.full_url.endswith(
+            '/actions/workflows/tayvoriq-ops-health.yml/dispatches'))
+        self.assertEqual(json.loads(request.data), {'ref': 'main'})
+
     def test_provider_state_push_refreshes_control_center_without_waiting_for_cron(self):
         import yaml
         root = Path(__file__).resolve().parents[1]
@@ -261,6 +296,7 @@ class SchedulerContractTests(unittest.TestCase):
         paths = set(triggers['push']['paths'])
         self.assertIn('.automation/tayvoriq-agent-v2/provider-health.json', paths)
         self.assertIn('.automation/tayvoriq-agent-v2/research-retry.json', paths)
+        self.assertIn('.github/workflows/tayvoriq-agent-orchestrator-v2.yml', paths)
 
     def test_persistence_pushes_reconciled_series_and_preserves_other_worktree_changes(self):
         import subprocess
