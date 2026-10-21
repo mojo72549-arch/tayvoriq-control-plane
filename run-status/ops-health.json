@@ -1,11 +1,23 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-21T09:47:07.263398Z",
+  "generated_at": "2026-10-21T09:54:55.519089Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
-  "research": {},
+  "research": {
+    "schema": "tayvoriq-research-retry-v1",
+    "state": "WAITING",
+    "slot": "morning",
+    "berlin_date": "2026-10-21",
+    "first_deferred_at_epoch": 1792576096.2244205,
+    "attempts": 1,
+    "retry_at_epoch": 1792576961.657179,
+    "valid_until_epoch": 1792597696.2244205,
+    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "quality_gates_weakened": false,
+    "production_started": false
+  },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3401-trend-1",
@@ -19,7 +31,7 @@
     "slot": null,
     "state": "EXPIRED",
     "recovery_generation": 1,
-    "recovery_owner": "none",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "SERIES",
@@ -136,8 +148,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "WAITING"
     },
     {
       "name": "Telegram",
@@ -150,21 +162,32 @@
       "detail": "Historischer Fehler archiviert · neuer Auftrag ausstehend"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "38249921806:RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "severity": "warning",
+    "failure_state": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "WAITING",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "yellow",
     "detail": "Archivierter Auftrag: kein aktueller Video-Review",
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
-    "failure_state": null,
+    "status": "WAITING",
+    "source_status": "WAITING",
+    "failure_state": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
     "failed_run_id": 38241946451,
     "replay_run_id": 38249921806,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "none",
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
