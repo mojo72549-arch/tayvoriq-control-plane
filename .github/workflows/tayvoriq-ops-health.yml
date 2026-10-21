@@ -13,6 +13,7 @@ on:
       - .github/state/tayvoriq-production-green.json
       - .automation/tayvoriq-agent-v2/provider-health.json
       - .automation/tayvoriq-agent-v2/research-retry.json
+      - .github/workflows/tayvoriq-agent-orchestrator-v2.yml
       - scripts/tayvoriq_ops_health.py
       - scripts/tayvoriq_ops_health_postprocess.py
       - .github/workflows/tayvoriq-ops-health.yml
