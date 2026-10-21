@@ -137,6 +137,15 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(read(self.queue)['attempts'], 8)
 
 class SchedulerContractTests(unittest.TestCase):
+    def test_provider_state_push_refreshes_control_center_without_waiting_for_cron(self):
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-ops-health.yml').read_text())
+        triggers = workflow.get('on') or workflow.get(True)
+        paths = set(triggers['push']['paths'])
+        self.assertIn('.automation/tayvoriq-agent-v2/provider-health.json', paths)
+        self.assertIn('.automation/tayvoriq-agent-v2/research-retry.json', paths)
+
     def test_persistence_pushes_reconciled_series_and_preserves_other_worktree_changes(self):
         import subprocess
         import yaml
