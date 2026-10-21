@@ -1,9 +1,13 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-21T11:55:31.336904Z",
-  "overall": "red",
+  "generated_at": "2026-10-21T12:11:31.584871Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
+  "notification_policy": {
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
+  },
   "api_error": null,
   "research": {
     "schema": "tayvoriq-research-retry-v1",
@@ -138,7 +142,7 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
+      "status": "yellow",
       "detail": "Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert"
     },
     {
@@ -162,18 +166,7 @@
       "detail": "Historischer Fehler archiviert · neuer Auftrag ausstehend"
     }
   ],
-  "incident": {
-    "signature": "38249921806:RESEARCH_RETRY_BUDGET_EXHAUSTED",
-    "severity": "critical",
-    "failure_state": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
-    "self_heal_status": "EXHAUSTED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "yellow",
     "detail": "Archivierter Auftrag: kein aktueller Video-Review",
@@ -182,7 +175,7 @@
   "recovery": {
     "status": "EXHAUSTED",
     "source_status": "EXHAUSTED",
-    "failure_state": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
+    "failure_state": null,
     "failed_run_id": 38241946451,
     "replay_run_id": 38249921806,
     "fresh_recovery_run_id": null,
