@@ -24,6 +24,8 @@ jobs:
           import json, os, re, sys, urllib.error, urllib.request
           sys.path.insert(0, 'tools')
           import tayvoriq_agent_trend_provider_v3 as provider
+          import tayvoriq_agent_rss_v2 as rss
+          import tayvoriq_agent_hf_v2 as hf
 
           def inspect(label, call):
               try:
@@ -49,21 +51,21 @@ jobs:
 
           groq=os.environ.get('GROQ_API_KEY','')
           if groq:
-              inspect('groq_small_admission',lambda:provider.post_groq({
-                  'model':'openai/gpt-oss-20b',
-                  'messages':[{'role':'user','content':'Reply OK.'}],
-                  'max_completion_tokens':32,'reasoning_effort':'low'},groq,timeout=30))
-              inspect('groq_current_browser_contract',lambda:provider.groq_browser_then_structure(
-                  'Current German regional events with two independent original sources.',groq))
+              records=rss.source_pool()
+              os.environ['TAYVORIQ_GROQ_RSS_MODEL']='openai/gpt-oss-120b'
+              inspect('groq_current_source_contract',lambda:hf.structure(
+                  'Current German regional events with two independent original sources.',
+                  groq,records,'diagnostic-rss',provider_kind='groq'))
           gemini=os.environ.get('GEMINI_API_KEY','')
           if gemini:
               def gemini_probe():
                   request=urllib.request.Request(
                       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
-                      data=json.dumps({'contents':[{'parts':[{'text':'Reply OK.'}]}],
+                      data=json.dumps({'contents':[{'parts':[{'text':'Search for one current German news headline.'}]}],
+                                       'tools':[{'google_search':{}}],
                                        'generationConfig':{'maxOutputTokens':32}}).encode(),
                       headers={'Content-Type':'application/json','x-goog-api-key':gemini},method='POST')
                   with urllib.request.urlopen(request,timeout=30) as response:
                       return response.status
-              inspect('gemini_small_admission',gemini_probe)
+              inspect('gemini_grounded_admission',gemini_probe)
           PY
