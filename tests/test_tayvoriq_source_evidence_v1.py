@@ -44,6 +44,18 @@ class SourceEvidenceTests(unittest.TestCase):
             self.records[1]["title"] = title
             self.assertIn("headline_event_status_not_correlated", validate_pair(self.candidate, self.records))
 
+    def test_inflected_proposal_or_denial_markers_remain_tentative(self):
+        self.candidate["title"] = "Mercedes und Bosch investieren in Stuttgart"
+        for marker in ("planen", "planten", "beabsichtigen", "erwägen"):
+            for record in self.records:
+                record["title"] = f"Mercedes und Bosch {marker} in Stuttgart zu investieren"
+                record["context"] = record["title"]
+            self.assertIn("headline_event_status_not_correlated", validate_pair(self.candidate, self.records), marker)
+        for record in self.records:
+            record["title"] = "Mercedes und Bosch dementieren Investitionen in Stuttgart"
+            record["context"] = record["title"]
+        self.assertIn("headline_event_status_not_correlated", validate_pair(self.candidate, self.records))
+
     def test_invented_headline_number_is_rejected(self):
         self.candidate["title"] = "Mercedes investiert 1000 Millionen in Stuttgart Werk"
         self.assertIn("source_1_missing_headline_number", validate_pair(self.candidate, self.records))
