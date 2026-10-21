@@ -4,15 +4,15 @@
     "gemini": {
       "state": "COOLDOWN",
       "http_status": 429,
-      "observed_at_epoch": 1792583417.4009945,
-      "retry_at_epoch": 1792584317.400995,
+      "observed_at_epoch": 1792595840.2804823,
+      "retry_at_epoch": 1792596740.2804828,
       "credential_fingerprint": "3a1d6a8691cdd5c8e5b5811cd2fdb78e5e54142c323799909017e945e2591107"
     },
     "groq": {
       "state": "COOLDOWN",
       "http_status": 429,
-      "observed_at_epoch": 1792583719.623399,
-      "retry_at_epoch": 1792584586.6233997,
+      "observed_at_epoch": 1792595840.3587756,
+      "retry_at_epoch": 1792596296.3587759,
       "credential_fingerprint": "bf317fb6f33d6997c18aaf2d4dbb4de13013a79d0acf8cad2c85b4b2c7763e57"
     },
     "huggingface": {
@@ -21,6 +21,13 @@
       "observed_at_epoch": 1792576096.2235103,
       "retry_at_epoch": null,
       "credential_fingerprint": "552abf2a829673de42b261b4ce80c36e8a5b37fa8bda7d2bdf3baaa784e52a9c"
+    },
+    "groq:openai/gpt-oss-120b": {
+      "state": "COOLDOWN",
+      "http_status": 429,
+      "observed_at_epoch": 1792595963.619242,
+      "retry_at_epoch": 1792602209.6192422,
+      "credential_fingerprint": "bf317fb6f33d6997c18aaf2d4dbb4de13013a79d0acf8cad2c85b4b2c7763e57"
     }
   }
 }
