@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-21T19:56:26.390520Z",
+  "generated_at": "2026-10-21T20:26:23.230819Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -11,18 +11,18 @@
   "api_error": null,
   "research": {
     "schema": "tayvoriq-research-retry-v1",
-    "state": "EXHAUSTED",
-    "slot": "morning",
+    "state": "WAITING",
+    "slot": "evening",
     "berlin_date": "2026-10-21",
-    "first_deferred_at_epoch": 1792576096.2244205,
-    "attempts": 9,
-    "retry_at_epoch": 1792599563.6200583,
-    "retry_phase": "SLOW_RECOVERY",
-    "last_deferred_at_epoch": 1792595963.6200583,
-    "provider_retry_at_epoch": 1792596296.3587759,
+    "first_deferred_at_epoch": 1792614369.4020848,
+    "attempts": 1,
+    "retry_at_epoch": 1792615218.270544,
+    "retry_phase": "NORMAL",
+    "last_deferred_at_epoch": 1792614369.4020848,
+    "provider_retry_at_epoch": 1792615218.270544,
     "max_attempts": 10,
-    "valid_until_epoch": 1792597696.2244205,
-    "reason": "RESEARCH_RETRY_EXPIRED",
+    "valid_until_epoch": 1792635969.4020848,
+    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
     "quality_gates_weakened": false,
     "production_started": false
   },
@@ -157,7 +157,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "EXHAUSTED"
+      "detail": "WAITING"
     },
     {
       "name": "Telegram",
@@ -177,8 +177,8 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "EXHAUSTED",
-    "source_status": "EXHAUSTED",
+    "status": "WAITING",
+    "source_status": "WAITING",
     "failure_state": null,
     "failed_run_id": 38241946451,
     "replay_run_id": 38249921806,
