@@ -80,11 +80,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SLOT: ${{ steps.plan.outputs.slot }}
+          LATEST_RETRY_FILE: ${{ runner.temp }}/tayvoriq-research-retry.json
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin main --quiet
-          git show origin/main:"$TAYVORIQ_RESEARCH_RETRY_FILE" > /tmp/tayvoriq-research-retry.json
+          git show origin/main:"$TAYVORIQ_RESEARCH_RETRY_FILE" > "$LATEST_RETRY_FILE"
           python - <<'PY'
           import json
           import os
@@ -95,7 +96,7 @@ jobs:
           sys.path.insert(0, 'tools')
           from tayvoriq_research_retry_v1 import due_slot
 
-          slot = due_slot(Path('/tmp/tayvoriq-research-retry.json'), now=time.time())
+          slot = due_slot(Path(os.environ['LATEST_RETRY_FILE']), now=time.time())
           if not slot or slot != os.environ['EXPECTED_SLOT']:
               print({'dispatch': False, 'reason': 'retry_no_longer_due', 'slot': slot})
               raise SystemExit(0)
