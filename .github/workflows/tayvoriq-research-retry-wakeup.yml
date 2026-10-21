@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".automation/tayvoriq-agent-v2/research-retry.json"
+      - ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"
       - ".github/workflows/tayvoriq-research-retry-wakeup.yml"
   workflow_dispatch:
   schedule:

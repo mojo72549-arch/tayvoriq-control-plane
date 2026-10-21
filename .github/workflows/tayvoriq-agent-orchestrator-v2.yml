@@ -521,6 +521,50 @@ jobs:
           done
           exit 1
 
+      - name: Arm next bounded research wakeup
+        if: always() && steps.slot.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import time
+          import urllib.request
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          from tayvoriq_research_retry_v1 import current
+
+          state = current(Path(os.environ['TAYVORIQ_RESEARCH_RETRY_FILE']), now=time.time())
+          if state.get('state') != 'WAITING':
+              print({'dispatch': False, 'reason': 'no_waiting_research_retry'})
+              raise SystemExit(0)
+          payload = json.dumps({'ref': 'main'}).encode('utf-8')
+          url = (os.environ.get('GITHUB_API_URL', 'https://api.github.com').rstrip('/') +
+                 f"/repos/{os.environ['GITHUB_REPOSITORY']}/actions/workflows/"
+                 'tayvoriq-research-retry-wakeup.yml/dispatches')
+          request = urllib.request.Request(url, data=payload, method='POST', headers={
+              'Authorization': f"Bearer {os.environ['GH_TOKEN']}",
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json',
+          })
+          for attempt in range(1, 4):
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      if response.status != 204:
+                          raise RuntimeError(f'unexpected dispatch status {response.status}')
+                  print({'dispatch': True, 'state': state['state'], 'slot': state['slot'],
+                         'retry_at_epoch': state['retry_at_epoch'], 'attempt': attempt})
+                  break
+              except Exception:
+                  if attempt == 3:
+                      raise
+                  time.sleep(5 * attempt)
+          PY
+
       - name: Notify gate failure once for this run
         if: failure() && steps.slot.outputs.should_run == 'true'
         continue-on-error: true
