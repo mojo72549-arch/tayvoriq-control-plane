@@ -82,7 +82,7 @@ class PersistentBudgetTests(unittest.TestCase):
             for _ in range(2):
                 with self.assertRaisesRegex(RuntimeError, 'RESEARCH_DEFERRED'):
                     resilience.grounded('prompt', '', 'groq-key')
-            self.assertEqual(browser.call_count, 1)
+            self.assertEqual(browser.call_count, 2)  # each separate Groq model once
             self.assertEqual(rss.call_count, 1)
             self.assertEqual(structure.call_count, 1)
             self.assertEqual(structure.call_args.kwargs['provider_kind'], 'huggingface')
@@ -103,8 +103,15 @@ class PersistentBudgetTests(unittest.TestCase):
         for i in range(1, 8):
             state = retry.defer('morning', NOW + 900 * (i + 1), path=self.queue, now=NOW + i * 900)
         self.assertEqual(state['attempts'], 8)
-        self.assertEqual(state['state'], 'EXHAUSTED')
+        self.assertEqual(state['state'], 'WAITING')
+        self.assertEqual(state['retry_phase'], 'SLOW_RECOVERY')
+        self.assertEqual(state['retry_at_epoch'], NOW + 9900)
         self.assertEqual(retry.due_slot(self.queue, now=NOW + 7200), '')
+        self.assertEqual(retry.due_slot(self.queue, now=NOW + 9900), 'morning')
+        retry.defer('morning', NOW + 10000, path=self.queue, now=NOW + 9900)
+        state = retry.defer('morning', NOW + 14000, path=self.queue, now=NOW + 13500)
+        self.assertEqual(state['attempts'], 10)
+        self.assertEqual(state['state'], 'EXHAUSTED')
         self.assertEqual(retry.due_slot(self.queue, now=NOW + 24 * 3600), '')
 
     def test_pending_research_visible_and_cannot_override_active_production(self):
@@ -131,10 +138,67 @@ class PersistentBudgetTests(unittest.TestCase):
         import tayvoriq_agent_trend_radar_v8 as radar
         env = {'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue), 'TAYVORIQ_RESEARCH_SLOT': 'morning'}
         with patch.dict(os.environ, env):
-            for _ in range(8):
+            for _ in range(retry.MAX_ATTEMPTS):
                 radar._mark_research_deferred('REGIONAL_RESCAN_REQUIRED')
         self.assertEqual(read(self.queue)['state'], 'EXHAUSTED')
-        self.assertEqual(read(self.queue)['attempts'], 8)
+        self.assertEqual(read(self.queue)['attempts'], retry.MAX_ATTEMPTS)
+
+    def test_legacy_exhaustion_keeps_attempts_and_deadline_for_two_slow_reserves(self):
+        import json
+        legacy = {'schema': 'tayvoriq-research-retry-v1', 'state': 'EXHAUSTED',
+                  'slot': 'morning', 'berlin_date': '2026-10-20', 'attempts': 8,
+                  'first_deferred_at_epoch': NOW, 'retry_at_epoch': NOW + 7200,
+                  'valid_until_epoch': NOW + 21600,
+                  'reason': 'RESEARCH_RETRY_BUDGET_EXHAUSTED'}
+        self.queue.write_text(json.dumps(legacy))
+        state = retry.current(self.queue, now=NOW + 8000)
+        self.assertEqual(state['state'], 'WAITING')
+        self.assertEqual(state['attempts'], 8)
+        self.assertEqual(state['retry_at_epoch'], NOW + 10800)
+        self.assertEqual(state['valid_until_epoch'], NOW + 21600)
+        self.assertEqual(retry.due_slot(self.queue, now=NOW + 10799), '')
+        self.assertEqual(retry.due_slot(self.queue, now=NOW + 10800), 'morning')
+        self.assertEqual(retry.due_slot(self.queue, now=NOW + 21600), '')
+        self.queue.write_text(json.dumps({**legacy, 'retry_at_epoch': None}))
+        self.assertEqual(retry.current(self.queue, now=NOW + 8000)['state'], 'EXHAUSTED')
+
+    def test_model_daily_limit_routes_once_to_existing_alternate_budget(self):
+        env = {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
+               'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}
+        def browser(prompt, key, **kwargs):
+            if kwargs.get('model') == 'openai/gpt-oss-120b':
+                return {'candidates': ['source-bound']}, ['chunks'], 'openai/gpt-oss-120b'
+            raise error(429, '3600')
+        with patch.dict(os.environ, env), \
+             patch.object(provider, 'groq_browser_then_structure', side_effect=browser) as call, \
+             patch.object(resilience.rss, 'source_pool', side_effect=AssertionError('unneeded')):
+            result = resilience.grounded('prompt', '', 'existing-groq-key')
+        self.assertEqual(call.call_count, 2)
+        self.assertEqual(result[2], 'openai/gpt-oss-120b')
+        self.assertEqual(read(self.health)['providers']['groq']['http_status'], 429)
+        self.assertNotIn('groq:openai/gpt-oss-120b', read(self.health)['providers'])
+
+    def test_payment_or_permission_failure_never_switches_groq_models(self):
+        for code in (402, 403):
+            with self.subTest(code=code), \
+                 patch.dict(os.environ, {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
+                                         'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue),
+                                         'HF_TOKEN': '', 'HUGGINGFACE_TOKEN': ''}), \
+                 patch.object(provider, 'groq_browser_then_structure', side_effect=error(code)) as call:
+                self.health.unlink(missing_ok=True)
+                with self.assertRaises(RuntimeError):
+                    resilience.grounded('prompt', '', 'groq-key')
+                self.assertEqual(call.call_count, 1)
+
+    def test_nested_groq_rate_limit_does_not_repeat_or_drop_reset_headers(self):
+        with patch.object(provider.urllib.request, 'urlopen', side_effect=error(429, '7200')) as call, \
+             patch.object(provider.time, 'sleep', side_effect=AssertionError('must defer')):
+            with self.assertRaises(RuntimeError) as caught:
+                provider._run_with_backoff('outer', lambda: provider.post_groq({}, 'key'), 3)
+        self.assertEqual(call.call_count, 1)
+        code, headers = http_failure(caught.exception)
+        self.assertEqual(code, 429)
+        self.assertEqual(headers['retry-after'], '7200')
 
 class SchedulerContractTests(unittest.TestCase):
     def test_retry_wakeup_waits_once_and_revalidates_due_slot_before_dispatch(self):

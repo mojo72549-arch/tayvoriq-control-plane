@@ -9,6 +9,7 @@ import urllib.request
 from typing import Any, Callable
 
 import tayvoriq_agent_trend_radar_v2 as base
+from tayvoriq_provider_health_v1 import http_failure
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 TRANSIENT_HTTP_CODES = {408, 409, 425, 429, 500, 502, 503, 504, 520, 522, 524}
@@ -43,8 +44,9 @@ def _run_with_backoff(label: str, call: Callable[[], Any], attempts: int) -> Any
             return call()
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")
-            if isinstance(exc, urllib.error.HTTPError) and exc.code in {402, 429}:
-                raise RuntimeError(f"{label} unavailable: HTTP {exc.code}") from exc
+            code, _ = http_failure(exc)
+            if code in {402, 429}:
+                raise RuntimeError(f"{label} unavailable: HTTP {code}") from exc
             if attempt + 1 >= attempts or not _is_transient(exc):
                 break
             time.sleep(_retry_delay(exc, attempt))
@@ -73,7 +75,7 @@ def content_of(raw: dict[str, Any]) -> str:
     return str(((((raw.get("choices") or [{}])[0]).get("message") or {}).get("content")) or "").strip()
 
 
-def groq_browser_then_structure(prompt: str, api_key: str):
+def groq_browser_then_structure(prompt: str, api_key: str, *, model: str = 'openai/gpt-oss-20b'):
     if not api_key:
         raise RuntimeError("GROQ_API_KEY missing")
     research_prompt = f"""
@@ -92,7 +94,7 @@ Current editorial contract:
 {prompt[:3500]}
 """.strip()
     search_raw = post_groq({
-        "model": "openai/gpt-oss-20b",
+        "model": model,
         "messages": [{"role": "user", "content": research_prompt}],
         "temperature": 1,
         "max_completion_tokens": 6000,
@@ -111,7 +113,7 @@ DOSSIER:
 {dossier[:28000]}
 """.strip()
     structured_raw = post_groq({
-        "model": "openai/gpt-oss-20b",
+        "model": model,
         "messages": [
             {"role": "system", "content": "You are a lossless research-data formatter. Return valid JSON only."},
             {"role": "user", "content": structure_prompt},
@@ -131,7 +133,7 @@ DOSSIER:
             url = base.clean(source.get("url"), 2000)
             if url.startswith(("https://", "http://")):
                 chunks.append({"title": base.clean(source.get("publisher") or url, 500), "uri": url})
-    return data, chunks, "openai/gpt-oss-20b+browser_search+json_object"
+    return data, chunks, model + "+browser_search+json_object"
 
 
 def resilient_grounded_call(prompt: str, gemini_key: str, groq_key: str):

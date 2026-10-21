@@ -38,10 +38,10 @@ def http_failure(exc: Exception) -> tuple[int, dict]:
     while current is not None and id(current) not in seen:
         seen.add(id(current))
         code = getattr(current, "code", None)
-        if code in {402, 429}:
+        if code in {401, 402, 403, 429}:
             return code, {str(k).lower(): str(v) for k, v in (getattr(current, "headers", {}) or {}).items()}
         current = current.__cause__ or current.__context__
-    match = re.search(r"\b(402|429)\b", str(exc))
+    match = re.search(r"\b(401|402|403|429)\b", str(exc))
     return (int(match.group(1)), {}) if match else (0, {})
 
 
