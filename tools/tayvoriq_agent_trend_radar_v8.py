@@ -62,10 +62,15 @@ def _mark_research_deferred(reason: str, **meta):
     This never lowers ranking, source, regional or brand-safety gates.
     """
 
+    import os
+    import time
+    from tayvoriq_research_retry_v1 import defer
+    queued = defer(os.getenv('TAYVORIQ_RESEARCH_SLOT', ''), time.time() + 900)
     payload = {
         "schema": "tayvoriq-research-deferred-v1",
         "reason": str(reason or "RESEARCH_TEMPORARILY_INCOMPLETE"),
         "quality_gates_weakened": False,
+        "retry_state": queued.get('state', 'UNSCHEDULED'),
         **meta,
     }
     Path("/tmp/tayvoriq-research-deferred.json").write_text(

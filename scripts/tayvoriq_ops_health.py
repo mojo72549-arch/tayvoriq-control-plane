@@ -250,6 +250,12 @@ def is_retired_unpublished(pointer, request, run_id, run=None):
     return verified_quarantine(pointer, request, run)
 
 
+def current_research_retry():
+    from tayvoriq_research_retry_v1 import current
+    return current(Path(os.environ.get('TAYVORIQ_RESEARCH_RETRY_FILE') or
+                        '.automation/tayvoriq-agent-v2/research-retry.json'))
+
+
 def main():
     previous = load_json(OUT) or {}
     pointer = load_json(ACTIVE_POINTER) or {}
@@ -309,6 +315,14 @@ def main():
         failure_state = None
         user_action_required = False
         recovery_owner = "none"
+
+    research = current_research_retry()
+    if research and (retired or not run_id):
+        overall = 'yellow' if research.get('state') == 'WAITING' else 'red'
+        self_heal_status = research['state']
+        failure_state = research.get('reason')
+        user_action_required = research.get('state') == 'EXTERNAL_BLOCKER'
+        recovery_owner = 'tayvoriq-agent-orchestrator-v2'
 
     telegram_steps = [s for s in steps if "telegram" in str(s.get("name") or "").casefold()]
     telegram_failed = next((s for s in telegram_steps if str(s.get("conclusion") or "").lower() == "failure"), None)
@@ -404,6 +418,7 @@ def main():
         "intervention_count": 1 if user_action_required else 0,
         "user_action_required": user_action_required,
         "api_error": api_error,
+        "research": research,
         "canonical": {
             "pointer_path": str(ACTIVE_POINTER),
             "request_id": pointer.get("request_id") if isinstance(pointer, dict) else None,

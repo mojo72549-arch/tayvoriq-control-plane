@@ -27,6 +27,10 @@ def retry(label:str,call:Callable[[],Any],attempts:int)->Any:
         except Exception as exc:
             transient=is_transient(exc); errors.append(summary(exc))
             print(json.dumps({"event":"provider_attempt_failed","provider":label,"attempt":i+1,"attempts":attempts,"transient":transient,"error":summary(exc),"rate_limit":rate_headers(exc)},ensure_ascii=False))
+            if isinstance(exc, urllib.error.HTTPError) and exc.code in {402, 429}:
+                # Let the durable scheduler honor reset time; do not burn the
+                # same provider quota again inside this runner.
+                raise RuntimeError(f"{label} unavailable: {summary(exc)}") from exc
             if not transient or i+1>=attempts: break
             ra=(exc.headers or {}).get("Retry-After") if isinstance(exc,urllib.error.HTTPError) else None
             try: delay=min(60.0,max(8.0,float(ra))) if ra else min(60.0,8.0*(2**i)+random.uniform(.5,2.0))
@@ -54,6 +58,6 @@ def gemini_grounded(prompt:str,key:str):
                 if isinstance(web,dict) and web.get("uri"): chunks.append({"title":base.clean(web.get("title"),500),"uri":base.clean(web.get("uri"),2000)})
             print(json.dumps({"event":"provider_success","provider":"gemini","model":model,"rate_limit":{k:hs[k] for k in RATE_HEADERS if k in hs}},ensure_ascii=False)); return data,chunks,model
         except Exception as exc:
-            if is_transient(exc): raise
+            if getattr(exc, "code", None) in {402, 429} or is_transient(exc): raise
             non.append(f"{model}: {summary(exc)}")
     raise RuntimeError("Gemini grounded scan failed: "+" | ".join(non))
