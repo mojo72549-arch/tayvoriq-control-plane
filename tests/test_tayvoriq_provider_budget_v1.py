@@ -73,18 +73,20 @@ class PersistentBudgetTests(unittest.TestCase):
         env = {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
                'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue),
                'TAYVORIQ_RESEARCH_SLOT': 'morning', 'HF_TOKEN': 'hf-key', 'HUGGINGFACE_TOKEN': ''}
+        def structure(*args, **kwargs):
+            raise error(429 if kwargs['provider_kind'] == 'groq' else 402)
         with patch.dict(os.environ, env), \
              patch.object(resilience, 'MARKER', Path(self.tmp.name) / 'marker.json'), \
              patch.object(provider, 'groq_browser_then_structure', side_effect=error(429)) as browser, \
              patch.object(resilience.rss, 'source_pool', return_value=[{'original': True}]) as rss, \
              patch.object(resilience.gdelt, 'source_pool', side_effect=AssertionError('all structurers blocked')), \
-             patch.object(resilience.hf, 'structure', side_effect=error(402)) as structure:
+             patch.object(resilience.hf, 'structure', side_effect=structure) as structure:
             for _ in range(2):
                 with self.assertRaisesRegex(RuntimeError, 'RESEARCH_DEFERRED'):
                     resilience.grounded('prompt', '', 'groq-key')
-            self.assertEqual(browser.call_count, 2)  # each separate Groq model once
+            self.assertEqual(browser.call_count, 1)
             self.assertEqual(rss.call_count, 1)
-            self.assertEqual(structure.call_count, 1)
+            self.assertEqual(structure.call_count, 2)  # alternate model then HF, each once
             self.assertEqual(structure.call_args.kwargs['provider_kind'], 'huggingface')
             self.assertEqual(read(self.queue)['state'], 'WAITING')
 
@@ -165,18 +167,33 @@ class PersistentBudgetTests(unittest.TestCase):
     def test_model_daily_limit_routes_once_to_existing_alternate_budget(self):
         env = {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
                'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}
-        def browser(prompt, key, **kwargs):
-            if kwargs.get('model') == 'openai/gpt-oss-120b':
-                return {'candidates': ['source-bound']}, ['chunks'], 'openai/gpt-oss-120b'
-            raise error(429, '3600')
         with patch.dict(os.environ, env), \
-             patch.object(provider, 'groq_browser_then_structure', side_effect=browser) as call, \
-             patch.object(resilience.rss, 'source_pool', side_effect=AssertionError('unneeded')):
+             patch.object(provider, 'groq_browser_then_structure', side_effect=error(429, '3600')) as call, \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'original': True}]), \
+             patch.object(resilience.hf, 'structure', return_value=(
+                 {'candidates': ['source-bound']}, ['chunks'], 'openai/gpt-oss-120b')) as structure:
             result = resilience.grounded('prompt', '', 'existing-groq-key')
-        self.assertEqual(call.call_count, 2)
+        self.assertEqual(call.call_count, 1)
+        self.assertEqual(structure.call_count, 1)
+        self.assertEqual(structure.call_args.kwargs['model_override'], 'openai/gpt-oss-120b')
         self.assertEqual(result[2], 'openai/gpt-oss-120b')
         self.assertEqual(read(self.health)['providers']['groq']['http_status'], 429)
         self.assertNotIn('groq:openai/gpt-oss-120b', read(self.health)['providers'])
+
+    def test_recovering_model_preserves_budget_for_source_structuring(self):
+        state = ProviderHealth(self.health, clock=lambda: NOW)
+        state.failure('groq', 'groq-key', error(429, '1'))
+        env = {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
+               'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}
+        with patch.dict(os.environ, env), \
+             patch.object(provider, 'groq_browser_then_structure', side_effect=AssertionError('no browser after 429')), \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'original': True}]), \
+             patch.object(resilience.hf, 'structure', return_value=(
+                 {'candidates': ['source-bound']}, ['chunks'], 'verified')) as structure:
+            result = resilience.grounded('prompt', '', 'groq-key')
+        self.assertEqual(result[3], 'groq_rss')
+        self.assertEqual(structure.call_count, 1)
+        self.assertNotIn('groq', read(self.health)['providers'])
 
     def test_payment_or_permission_failure_never_switches_groq_models(self):
         for code in (402, 403):
