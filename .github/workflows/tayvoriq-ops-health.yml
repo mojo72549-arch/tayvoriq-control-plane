@@ -11,6 +11,8 @@ on:
     paths:
       - requests/**
       - .github/state/tayvoriq-production-green.json
+      - .automation/tayvoriq-agent-v2/provider-health.json
+      - .automation/tayvoriq-agent-v2/research-retry.json
       - scripts/tayvoriq_ops_health.py
       - scripts/tayvoriq_ops_health_postprocess.py
       - .github/workflows/tayvoriq-ops-health.yml
