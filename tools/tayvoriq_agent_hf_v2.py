@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
-from tayvoriq_source_evidence_v1 import validate_pair, source_support
+from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 
@@ -54,11 +54,25 @@ def _balanced_compact_records(records:list[dict[str,str]],max_chars:int=56000)->
         bounded.append(rec)
     return bounded
 
+
+def _groq_source_records(records):
+    """Prioritize likely cross-publisher pairs; validation still decides truth."""
+    if len(json.dumps(records, ensure_ascii=False)) <= 9000:
+        return _balanced_compact_records(records, max_chars=9000)
+    terms = [_words(str(row.get('title') or '')) for row in records]
+    hosts = [str(row.get('domain') or domain(str(row.get('url') or ''))) for row in records]
+    scores = [max((len(words & other) for j, other in enumerate(terms)
+                   if hosts[i] != hosts[j]), default=0)
+              for i, words in enumerate(terms)]
+    order = sorted(range(len(records)), key=lambda i: (-scores[i], i))
+    return _balanced_compact_records([records[i] for i in order], max_chars=9000)
+
 def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface",model_override:str=""):
     if provider_kind not in {"huggingface", "groq"}: raise ValueError("UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER")
     if not token: raise RuntimeError(f"{provider_kind.upper()}_API_KEY_MISSING")
     if len(records)<8 or len({r['domain'] for r in records})<2: raise RuntimeError("source pool too small for safe fallback")
-    balanced=_balanced_compact_records(records)
+    balanced=(_groq_source_records(records) if provider_kind=='groq'
+              else _balanced_compact_records(records))
     if len(balanced)<8 or len({r['domain'] for r in balanced})<2: raise RuntimeError("balanced source pool too small for safe fallback")
     model=(base.clean(model_override or os.getenv("TAYVORIQ_GROQ_RSS_MODEL"),160) or "openai/gpt-oss-20b") if provider_kind=="groq" else (base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest")
     indexed=[]; by_id={}; by_url={}
@@ -78,6 +92,11 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     blob=json.dumps(indexed,ensure_ascii=False)
     print(json.dumps({"event":"hf_balanced_source_pool","records":len(indexed),"independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     schema='''{"candidates":[{"title":"German headline","content_angle":"specific viewer angle","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"viral_potential":0,"tayvoriq_fit":0,"novelty_score":0,"series_fit_score":0,"return_viewer_score":0,"follow_conversion_potential":0,"open_loop_potential":0,"proposed_series_id":"","proposed_series_name":"","next_episode_candidate":"","recommended_cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","primary_hook":"...","viewer_question":"...","explanation_core":"...","surprise_or_reframe":"...","practical_relevance":"...","follow_reason":"...","open_loop":"","open_loop_status":"NONE|SOFT","next_episode_queue_status":"","cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","cta_text":"...","sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
+    context_limit=800 if provider_kind=='groq' else 2500
+    goal=('Return TWO or THREE complete candidates about current events in Stuttgart, Baden-Württemberg or Germany. '
+          'Exclude Europe-only/global events and abstract laboratory research. A German brand alone does not establish German relevance.'
+          if provider_kind=='groq' else
+          'Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them.')
     user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Search across ALL supplied publisher domains, not just the first records.
 
 SOURCE CONTRACT:
@@ -102,10 +121,11 @@ EDITORIAL FALLBACK CONTRACT:
 - personal_impact must contain "für dich".
 - action_now must start with a concrete verb such as Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze or Speichere.
 
-Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them. Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return up to SIX candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:2500]}\nSOURCE RECORDS ({source_label}):\n{blob}'''
+{goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:context_limit]}\nSOURCE RECORDS ({source_label}):\n{blob}'''
     payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"stream":False}
     if provider_kind=="groq":
-        payload.update({"max_completion_tokens":8000,"response_format":{"type":"json_object"}})
+        payload.update({"max_completion_tokens":4000,"reasoning_effort":"low",
+                        "response_format":{"type":"json_object"}})
     else:
         payload["max_tokens"]=8000
     def call()->dict[str,Any]:

@@ -75,7 +75,8 @@ class GroqSourceContractTests(unittest.TestCase):
         self.assertEqual(key, "existing-groq-key")
         self.assertEqual(payload["model"], "openai/gpt-oss-20b")
         self.assertEqual(payload["response_format"], {"type": "json_object"})
-        self.assertEqual(payload["max_completion_tokens"], 8000)
+        self.assertEqual(payload["max_completion_tokens"], 4000)
+        self.assertEqual(payload["reasoning_effort"], 'low')
         for item in data["candidates"]:
             for source in item["sources"]:
                 record = self.by_id[source["source_id"]]
@@ -129,6 +130,21 @@ class GroqSourceContractTests(unittest.TestCase):
             out = resilience.grounded("prompt", "", "existing-groq-key")
         self.assertEqual(out[3], "groq_rss")
         self.assertEqual(structure.call_args.kwargs["provider_kind"], "groq")
+
+    def test_large_pool_keeps_cross_publisher_stories_within_small_budget(self):
+        fillers = [record('one.example', f'Unrelated headline number {i}', i)
+                   for i in range(80)]
+        originals = self.pool + fillers
+        selected = hf._groq_source_records(fillers + self.pool)
+        serialized = [{'source_id': f'S{i:03d}', **{k: row.get(k) for k in
+                      ('domain', 'title', 'context', 'seen_date', 'feed')}}
+                      for i, row in enumerate(selected, 1)]
+        self.assertLessEqual(len(json.dumps(serialized, ensure_ascii=False)), 9000)
+        for title in ('Mercedes investiert in Werk Stuttgart',
+                      'Bosch eröffnet Reutlingen Halbleiterfabrik'):
+            pair = [row for row in selected if row['title'] == title]
+            self.assertEqual(len({row['domain'] for row in pair}), 2)
+            self.assertTrue(all(row in originals for row in pair))
 
 
 if __name__ == "__main__":

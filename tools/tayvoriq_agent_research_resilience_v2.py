@@ -68,13 +68,14 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         'gemini', lambda: http.gemini_grounded(prompt, gemini_key), 3))
     if result is not None:
         return (*result, 'gemini')
-    result = attempt('groq', 'Groq browser', lambda: provider.groq_browser_then_structure(prompt, groq_key))
-    if result is not None:
-        return (*result, 'groq')
-    result = attempt(alternate, 'Groq 120B browser', lambda: provider.groq_browser_then_structure(
-        prompt, groq_key, model='openai/gpt-oss-120b'))
-    if result is not None:
-        return (*result, 'groq')
+    if (health.state['providers'].get('groq') or {}).get('http_status') == 429:
+        errors.append('Groq browser deferred: quota recovery uses compact source-bound requests')
+    else:
+        result = attempt('groq', 'Groq browser', lambda: provider.groq_browser_then_structure(prompt, groq_key))
+        if result is not None:
+            return (*result, 'groq')
+    # Keep the alternate model's remaining budget for one grounded JSON request,
+    # rather than consuming it in an additional search-and-format dialogue.
 
     for label, collect in (('multi-publisher-rss', rss.source_pool), ('gdelt-context', gdelt.source_pool)):
         # A model quota is shared by that model's browser and source structurer.
