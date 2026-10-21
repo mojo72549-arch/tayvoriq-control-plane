@@ -227,6 +227,8 @@ class SchedulerContractTests(unittest.TestCase):
         resolver = next(s for s in steps if s.get('id') == 'slot')['run']
         self.assertIn("schedule == '*/5 * * * *'", resolver)
         self.assertIn('due_slot(now=now.timestamp())', resolver)
+        push_resolver = resolver.split("if event == 'push' and should:", 1)[1].split("if event == 'schedule':", 1)[0]
+        self.assertIn("slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')", push_resolver)
         self.assertIn("os.environ.get('RECONCILE_ONLY') == 'true'", resolver)
         persist = next(s for s in steps if s.get('name') == 'Persist provider cooldown and bounded research retry')
         self.assertIn('always()', persist['if'])

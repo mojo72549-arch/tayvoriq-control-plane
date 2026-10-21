@@ -102,7 +102,12 @@ jobs:
               changed=subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).splitlines()
               should=should and '.github/run-now/tayvoriq-agent-trigger.txt' in changed
           if event == 'push' and should:
-              slot = 'morning' if now.hour < 12 else 'evening'
+              import sys
+              sys.path.insert(0, 'tools')
+              from tayvoriq_research_retry_v1 import due_slot
+              # A due retry keeps its original slot even if a delayed/manual
+              # trigger arrives after the morning/evening clock boundary.
+              slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')
           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
