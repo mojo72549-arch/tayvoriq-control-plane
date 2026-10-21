@@ -44,9 +44,21 @@ def _events(text: str) -> set[str]:
 
 
 def _status(text: str) -> tuple[bool, bool]:
-    words = set(re.findall(r"[^\W_]+", text.casefold()))
-    negative = bool(words & {"nicht", "kein", "keine", "keinen", "dementiert", "not", "denies", "no"})
-    proposed = bool(words & {"plant", "geplant", "will", "soll", "sollen", "könnte", "könnten", "fordert", "vorschlag", "plans", "planned", "proposes", "could", "may"})
+    normalized = unicodedata.normalize("NFKC", text).casefold()
+    # Match bounded stems so ordinary inflections (for example planen/plante,
+    # dementieren/dementierte) cannot turn tentative or denied reporting into
+    # a confirmed candidate headline.
+    negative = bool(re.search(
+        r"\b(?:nicht|kein\w*|dementier\w*|vernein\w*|not|no|den(?:y|ies|ied|ying))\b",
+        normalized,
+    ))
+    proposed = bool(re.search(
+        r"\b(?:plan(?:t|en|te|ten|end\w*|ung\w*)|plän\w*|plaen\w*|geplant\w*|"
+        r"beabsichtig\w*|erwäg\w*|erwaeg\w*|könn\w*|koenn\w*|"
+        r"soll\w*|woll\w*|will|forder\w*|vorschl\w*|vorschlag\w*|plans?|planned|planning|"
+        r"propos\w*|could|may|might|intends?|consider\w*)\b",
+        normalized,
+    ))
     return negative, proposed
 
 
