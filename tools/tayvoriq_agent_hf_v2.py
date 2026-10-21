@@ -5,6 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
+from tayvoriq_source_evidence_v1 import validate_pair, source_support
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 
@@ -83,6 +84,7 @@ SOURCE CONTRACT:
 - Each candidate must describe ONE coherent current story. Never combine two unrelated headlines, entities, warnings, discoveries or events into one candidate.
 - A candidate is valid only with EXACTLY TWO source_id values from DIFFERENT domains that both clearly describe that same story.
 - Return source_id values only; NEVER invent or copy URLs.
+- Use a conservative headline whose substantive words and numbers occur in BOTH original records. Unsupported paraphrases are rejected. Source supports will be reconstructed from the original records, not your output.
 - Fewer candidates are better than a fabricated cross-source match. Drop a candidate when two independent domains do not support the same story.
 
 V5 CONTRACT:
@@ -127,27 +129,44 @@ Aim for SIX distinct candidates across technology/AI, business/economy, world/so
             if rec is None: continue
             resolved.append((sid,rec,base.clean(s.get("supports"),600)))
         resolved_domains=[str(rec.get('domain') or domain(str(rec.get('url') or ''))).casefold() for _,rec,_ in resolved]
-        if len(resolved)!=2 or len(set(resolved_domains))!=2:
+        reasons = validate_pair(c, [rec for _,rec,_ in resolved])
+        if reasons:
             print(json.dumps({
                 "event":"hf_candidate_source_rejected",
                 "title":base.clean(c.get('title'),180),
                 "source_ids":[base.clean(s.get('source_id'),20) for s in raw_sources],
                 "resolved_count":len(resolved),
                 "resolved_domains":resolved_domains,
-                "reason":"requires_exactly_two_independent_domains",
+                "reason": reasons,
             },ensure_ascii=False))
             c["sources"]=[]
             continue
         normalized=[]
         for sid,rec,supports in resolved:
             url=base.clean(rec.get("url"),2000); publisher=base.clean(rec.get("domain"),200) or domain(url)
-            normalized.append({"source_id":sid,"publisher":publisher,"url":url,"supports":supports or base.clean(rec.get("context"),600)})
+            original_support, digest = source_support(rec)
+            normalized.append({"source_id":sid,"publisher":publisher,"url":url,
+                               "supports":original_support,"source_record_sha256":digest,
+                               "support_origin":"retrieved_source_title_and_context"})
             chunks.append({"title":publisher,"uri":url})
         c["sources"]=normalized
-    valid_candidates=[
-        candidate for candidate in (data.get("candidates") or [])
-        if isinstance(candidate,dict) and len(candidate.get("sources") or [])==2
-    ]
+    valid_candidates=[]
+    seen_pairs, seen_titles = set(), set()
+    for candidate in data.get('candidates') or []:
+        if not isinstance(candidate, dict) or len(candidate.get('sources') or []) != 2:
+            continue
+        pair = tuple(sorted(source['url'] for source in candidate['sources']))
+        title = ' '.join(str(candidate.get('title') or '').casefold().split())
+        if pair in seen_pairs or title in seen_titles:
+            continue
+        seen_pairs.add(pair)
+        seen_titles.add(title)
+        valid_candidates.append(candidate)
+    unique_chunks = {}
+    for candidate in valid_candidates:
+        for source in candidate['sources']:
+            unique_chunks[source['url']] = {'title': source['publisher'], 'uri': source['url']}
+    chunks = list(unique_chunks.values())
     # One source-valid candidate produces only two grounding chunks and cannot
     # satisfy the radar's existing minimum grounding contract. Treat that as
     # provider insufficiency so resilience can continue to the next source pool

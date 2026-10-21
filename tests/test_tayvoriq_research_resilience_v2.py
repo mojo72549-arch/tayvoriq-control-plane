@@ -74,10 +74,10 @@ def test_hf_requires_two_exact_independent_source_urls(monkeypatch) -> None:
 
 def test_hf_fallback_prompt_is_v5_native_and_keeps_cross_domain_candidates(monkeypatch) -> None:
     records = [
-        {"title": "A1", "context": "same current event alpha", "url": "https://a.example/1", "domain": "a.example"},
-        {"title": "B1", "context": "same current event alpha", "url": "https://b.example/1", "domain": "b.example"},
-        {"title": "A2", "context": "same current event beta", "url": "https://a.example/2", "domain": "a.example"},
-        {"title": "B2", "context": "same current event beta", "url": "https://b.example/2", "domain": "b.example"},
+        {"title": "Mercedes investiert Stuttgart Werk", "context": "Mercedes investiert in Stuttgart in ein Werk.", "url": "https://a.example/1", "domain": "a.example"},
+        {"title": "Mercedes investiert Stuttgart Werk", "context": "Das Werk in Stuttgart erhält Investitionen von Mercedes.", "url": "https://b.example/1", "domain": "b.example"},
+        {"title": "Bosch eröffnet Reutlingen Halbleiterfabrik", "context": "Bosch eröffnet die Halbleiterfabrik in Reutlingen.", "url": "https://a.example/2", "domain": "a.example"},
+        {"title": "Bosch eröffnet Reutlingen Halbleiterfabrik", "context": "Die Halbleiterfabrik von Bosch wird in Reutlingen eröffnet.", "url": "https://b.example/2", "domain": "b.example"},
     ] * 2
     captured = {}
 
@@ -125,8 +125,8 @@ def test_hf_fallback_prompt_is_v5_native_and_keeps_cross_domain_candidates(monke
         }
 
     fake = {"choices": [{"message": {"content": json.dumps({"candidates": [
-        candidate("Alpha", "S001", "S002"),
-        candidate("Beta", "S003", "S004"),
+        candidate("Mercedes investiert Stuttgart Werk", "S001", "S002"),
+        candidate("Bosch eröffnet Reutlingen Halbleiterfabrik", "S003", "S004"),
     ]})}}]}
 
     def post_json(url, payload, headers, timeout):
