@@ -256,6 +256,23 @@ def current_research_retry():
                         '.automation/tayvoriq-agent-v2/research-retry.json'))
 
 
+def research_only_projection(research, *, retired, run_id):
+    """Describe trend discovery without reviving a retired production incident."""
+    if not isinstance(research, dict) or not research or not (retired or not run_id):
+        return None
+    state = str(research.get('state') or '').upper()
+    if not state:
+        return None
+    user_action_required = state == 'EXTERNAL_BLOCKER'
+    return {
+        'overall': 'red' if user_action_required else 'yellow',
+        'self_heal_status': state,
+        'failure_state': research.get('reason') if user_action_required else None,
+        'user_action_required': user_action_required,
+        'telegram_notify_allowed': user_action_required,
+    }
+
+
 def main():
     previous = load_json(OUT) or {}
     pointer = load_json(ACTIVE_POINTER) or {}
@@ -317,11 +334,14 @@ def main():
         recovery_owner = "none"
 
     research = current_research_retry()
-    if research and (retired or not run_id):
-        overall = 'yellow' if research.get('state') == 'WAITING' else 'red'
-        self_heal_status = research['state']
-        failure_state = research.get('reason')
-        user_action_required = research.get('state') == 'EXTERNAL_BLOCKER'
+    research_only = research_only_projection(research, retired=retired, run_id=run_id)
+    telegram_notify_allowed = True
+    if research_only:
+        overall = research_only['overall']
+        self_heal_status = research_only['self_heal_status']
+        failure_state = research_only['failure_state']
+        user_action_required = research_only['user_action_required']
+        telegram_notify_allowed = research_only['telegram_notify_allowed']
         recovery_owner = 'tayvoriq-agent-orchestrator-v2'
 
     telegram_steps = [s for s in steps if "telegram" in str(s.get("name") or "").casefold()]
@@ -380,12 +400,13 @@ def main():
 
     incident = None
     if overall == "red" or failure_state:
+        incident_failed_step = None if research_only else failed_step
         incident = {
             "signature": incident_signature(run_id, failed_step, failure_state),
             "severity": "critical" if overall == "red" else "warning",
             "failure_state": failure_state,
-            "failed_step": failed_step.get("name") if failed_step else None,
-            "failed_step_number": failed_step.get("number") if failed_step else None,
+            "failed_step": incident_failed_step.get("name") if incident_failed_step else None,
+            "failed_step_number": incident_failed_step.get("number") if incident_failed_step else None,
             "self_heal_status": self_heal_status,
             "same_generation_replay_required": bool(recovery.get("same_generation_replay_required")),
             "quality_gates_weakened": bool(recovery.get("quality_gates_weakened", False)),
@@ -417,6 +438,11 @@ def main():
         "overall": overall,
         "intervention_count": 1 if user_action_required else 0,
         "user_action_required": user_action_required,
+        "notification_policy": {
+            "telegram_notify_allowed": telegram_notify_allowed,
+            "reason": ("INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
+                       if research_only and not telegram_notify_allowed else "VERIFIED_STATE_TRANSITION"),
+        },
         "api_error": api_error,
         "research": research,
         "canonical": {
@@ -539,7 +565,7 @@ def main():
         # The Control Center still updates the stored state; Telegram speaks again
         # when the incident identity changes or health moves out of red.
         or (recovery_changed and overall != "red")
-    ) and (overall in {"red", "yellow", "green"}) and not stale_green_suppressed
+    ) and (overall in {"red", "yellow", "green"}) and not stale_green_suppressed and telegram_notify_allowed
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -7,6 +7,13 @@ PATH = Path(os.environ.get("TAYVORIQ_OPS_STATE_PATH", "run-status/ops-health.jso
 FAILURES = {"failure", "timed_out", "cancelled", "canceled", "action_required"}
 
 
+def telegram_notification_allowed(state):
+    policy = state.get("notification_policy") if isinstance(state, dict) else None
+    if not isinstance(policy, dict):
+        return True
+    return policy.get("telegram_notify_allowed") is not False
+
+
 def same_id(a, b):
     try:
         return int(a) == int(b)
@@ -73,13 +80,14 @@ def main():
             state["events"] = [marker] + events[:7]
 
     changed = effective != (previous_effective or source_status)
+    notify = changed and not inferred and telegram_notification_allowed(state)
     recovery.pop("previous_effective_status", None)
     state["recovery"] = recovery
     PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     output_file = os.environ.get("GITHUB_OUTPUT")
     if output_file:
         with open(output_file, "a", encoding="utf-8") as handle:
-            handle.write(f"notify={'true' if changed and not inferred else 'false'}\n")
+            handle.write(f"notify={'true' if notify else 'false'}\n")
             handle.write(f"effective_self_heal={effective}\n")
 
     print(json.dumps({

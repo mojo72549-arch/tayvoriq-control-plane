@@ -180,6 +180,10 @@ jobs:
           import json, os
           from pathlib import Path
           state=json.loads(Path('run-status/ops-health.json').read_text(encoding='utf-8'))
+          policy=state.get('notification_policy') or {}
+          if policy.get('telegram_notify_allowed') is False:
+              print('TELEGRAM_HEALTH_NOTIFICATION_SUPPRESSED: internal state requires no user action')
+              raise SystemExit(0)
           overall=state.get('overall','unknown')
           icon={'green':'🟢','yellow':'🟡','red':'🔴'}.get(overall,'⚪')
           title={'green':'System wieder gesund','yellow':'Run / Recovery aktiv','red':'Incident erkannt'}.get(overall,'Status aktualisiert')
@@ -207,6 +211,7 @@ jobs:
           payload={'chat_id':os.environ['TELEGRAM_CHAT_ID'],'text':'\n'.join(lines),'disable_web_page_preview':True}
           Path('/tmp/tayvoriq-ops-telegram.json').write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
           PY
+          [ -f /tmp/tayvoriq-ops-telegram.json ] || exit 0
           curl -fsS --retry 2 --connect-timeout 10 --max-time 25 \
             -H 'Content-Type: application/json' \
             -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
