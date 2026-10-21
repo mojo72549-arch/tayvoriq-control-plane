@@ -137,6 +137,80 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(read(self.queue)['attempts'], 8)
 
 class SchedulerContractTests(unittest.TestCase):
+    def test_retry_wakeup_waits_once_and_revalidates_due_slot_before_dispatch(self):
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        wake = yaml.safe_load((root / '.github/workflows/tayvoriq-research-retry-wakeup.yml').read_text())
+        triggers = wake.get('on') or wake.get(True)
+        self.assertIn('.automation/tayvoriq-agent-v2/research-retry.json', triggers['push']['paths'])
+        self.assertTrue(wake['concurrency']['cancel-in-progress'])
+        self.assertEqual(wake['permissions']['contents'], 'read')
+        self.assertEqual(wake['permissions']['actions'], 'write')
+        job = wake['jobs']['wake']
+        self.assertLessEqual(job['timeout-minutes'], 130)
+        steps = {step['name']: step for step in job['steps'] if step.get('name')}
+        self.assertIn('WAITING', steps['Plan bounded wakeup']['run'])
+        self.assertIn('time.sleep', steps['Wait until provider retry is due']['run'])
+        dispatch = steps['Revalidate and dispatch exact due slot']['run']
+        self.assertIn('git show origin/main:', dispatch)
+        self.assertIn('due_slot', dispatch)
+        self.assertIn("'research_retry_wakeup': 'true'", dispatch)
+
+        agent = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        agent_triggers = agent.get('on') or agent.get(True)
+        self.assertIn('research_retry_wakeup', agent_triggers['workflow_dispatch']['inputs'])
+        resolver = next(s for s in agent['jobs']['trend-gate']['steps'] if s.get('id') == 'slot')['run']
+        self.assertIn("event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true'", resolver)
+        self.assertIn('slot = due_slot(now=now.timestamp())', resolver)
+
+    def test_retry_wakeup_programs_execute_for_due_queue_and_verified_dispatch(self):
+        import json
+        import time
+        import urllib.request
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        wake = yaml.safe_load((root / '.github/workflows/tayvoriq-research-retry-wakeup.yml').read_text())
+        steps = {step['name']: step for step in wake['jobs']['wake']['steps'] if step.get('name')}
+        extract = lambda run: run.split("python - <<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        queue = Path(folder.name) / 'retry.json'
+        outputs = Path(folder.name) / 'outputs'
+        latest = Path(folder.name) / 'latest-retry.json'
+        retry.defer('morning', NOW + 900, path=queue, now=NOW)
+        with patch.dict(os.environ, {'GITHUB_OUTPUT': str(outputs),
+                                     'TAYVORIQ_RESEARCH_RETRY_FILE': str(queue)}), \
+             patch.object(time, 'time', return_value=NOW):
+            exec(compile(extract(steps['Plan bounded wakeup']['run']), '<retry-wakeup-plan>', 'exec'), {})
+        plan = dict(line.split('=', 1) for line in outputs.read_text().splitlines())
+        self.assertEqual(plan, {'enabled': 'true', 'wait_seconds': '900', 'slot': 'morning'})
+
+        latest.write_text(queue.read_text())
+        requests = []
+        class Response:
+            status = 204
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+        def open_request(request, timeout=0):
+            requests.append((request, timeout))
+            return Response()
+        env = {'GH_TOKEN': 'test-token', 'EXPECTED_SLOT': 'morning',
+               'LATEST_RETRY_FILE': str(latest), 'GITHUB_API_URL': 'https://api.github.test',
+               'GITHUB_REPOSITORY': 'owner/repository'}
+        dispatch_program = extract(steps['Revalidate and dispatch exact due slot']['run'])
+        with patch.dict(os.environ, env), patch.object(time, 'time', return_value=NOW + 901), \
+             patch.object(urllib.request, 'urlopen', side_effect=open_request):
+            exec(compile(dispatch_program, '<retry-wakeup-dispatch>', 'exec'), {})
+        self.assertEqual(len(requests), 1)
+        request, timeout = requests[0]
+        self.assertEqual(timeout, 30)
+        self.assertTrue(request.full_url.endswith('/actions/workflows/tayvoriq-agent-orchestrator-v2.yml/dispatches'))
+        self.assertEqual(json.loads(request.data), {
+            'ref': 'main', 'inputs': {'slot': 'morning', 'research_retry_wakeup': 'true'}})
+
     def test_provider_state_push_refreshes_control_center_without_waiting_for_cron(self):
         import yaml
         root = Path(__file__).resolve().parents[1]

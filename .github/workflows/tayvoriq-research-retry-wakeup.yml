@@ -1,0 +1,129 @@
+name: TAYVORIQ Research Retry Wakeup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".automation/tayvoriq-agent-v2/research-retry.json"
+      - ".github/workflows/tayvoriq-research-retry-wakeup.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "23 * * * *"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: tayvoriq-research-retry-wakeup
+  cancel-in-progress: true
+
+env:
+  TAYVORIQ_RESEARCH_RETRY_FILE: .automation/tayvoriq-agent-v2/research-retry.json
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 130
+    steps:
+      - name: Checkout current control plane
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Plan bounded wakeup
+        id: plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import math
+          import os
+          import sys
+          import time
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          from tayvoriq_research_retry_v1 import current
+
+          path = Path(os.environ['TAYVORIQ_RESEARCH_RETRY_FILE'])
+          state = current(path, now=time.time())
+          enabled = state.get('state') == 'WAITING'
+          retry_at = float(state.get('retry_at_epoch') or 0) if enabled else 0
+          delay = max(0, math.ceil(retry_at - time.time())) if enabled else 0
+          valid_until = float(state.get('valid_until_epoch') or 0) if enabled else 0
+          if delay > 7200 or not valid_until or retry_at >= valid_until:
+              enabled = False
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f"enabled={'true' if enabled else 'false'}\n")
+              handle.write(f"wait_seconds={delay if enabled else 0}\n")
+              handle.write(f"slot={state.get('slot') or ''}\n")
+          print({'state': state.get('state'), 'slot': state.get('slot'),
+                 'wait_seconds': delay if enabled else 0, 'enabled': enabled})
+          PY
+
+      - name: Wait until provider retry is due
+        if: steps.plan.outputs.enabled == 'true'
+        env:
+          WAIT_SECONDS: ${{ steps.plan.outputs.wait_seconds }}
+        run: |
+          python - <<'PY'
+          import os
+          import time
+          delay = int(os.environ['WAIT_SECONDS'])
+          print({'bounded_wait_seconds': delay})
+          time.sleep(delay)
+          PY
+
+      - name: Revalidate and dispatch exact due slot
+        if: steps.plan.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SLOT: ${{ steps.plan.outputs.slot }}
+          LATEST_RETRY_FILE: ${{ runner.temp }}/tayvoriq-research-retry.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          git show origin/main:"$TAYVORIQ_RESEARCH_RETRY_FILE" > "$LATEST_RETRY_FILE"
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import time
+          import urllib.request
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          from tayvoriq_research_retry_v1 import due_slot
+
+          slot = due_slot(Path(os.environ['LATEST_RETRY_FILE']), now=time.time())
+          if not slot or slot != os.environ['EXPECTED_SLOT']:
+              print({'dispatch': False, 'reason': 'retry_no_longer_due', 'slot': slot})
+              raise SystemExit(0)
+          payload = json.dumps({
+              'ref': 'main',
+              'inputs': {'slot': slot, 'research_retry_wakeup': 'true'},
+          }).encode('utf-8')
+          url = (os.environ.get('GITHUB_API_URL', 'https://api.github.com').rstrip('/') +
+                 f"/repos/{os.environ['GITHUB_REPOSITORY']}/actions/workflows/"
+                 'tayvoriq-agent-orchestrator-v2.yml/dispatches')
+          request = urllib.request.Request(url, data=payload, method='POST', headers={
+              'Authorization': f"Bearer {os.environ['GH_TOKEN']}",
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json',
+          })
+          error = None
+          for attempt in range(1, 4):
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      if response.status != 204:
+                          raise RuntimeError(f'unexpected dispatch status {response.status}')
+                  print({'dispatch': True, 'slot': slot, 'attempt': attempt})
+                  break
+              except Exception as exc:
+                  error = exc
+                  if attempt == 3:
+                      raise
+                  time.sleep(5 * attempt)
+          PY
