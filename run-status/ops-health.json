@@ -1,20 +1,20 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-10-21T11:50:29.243261Z",
-  "overall": "yellow",
+  "generated_at": "2026-10-21T11:55:31.336904Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "api_error": null,
   "research": {
     "schema": "tayvoriq-research-retry-v1",
-    "state": "WAITING",
+    "state": "EXHAUSTED",
     "slot": "morning",
     "berlin_date": "2026-10-21",
     "first_deferred_at_epoch": 1792576096.2244205,
-    "attempts": 7,
-    "retry_at_epoch": 1792583577.4336762,
+    "attempts": 8,
+    "retry_at_epoch": 1792584317.400995,
     "valid_until_epoch": 1792597696.2244205,
-    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "reason": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
     "quality_gates_weakened": false,
     "production_started": false
   },
@@ -138,7 +138,7 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
+      "status": "red",
       "detail": "Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert"
     },
     {
@@ -149,7 +149,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "WAITING"
+      "detail": "EXHAUSTED"
     },
     {
       "name": "Telegram",
@@ -163,12 +163,12 @@
     }
   ],
   "incident": {
-    "signature": "38249921806:RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
-    "severity": "warning",
-    "failure_state": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "signature": "38249921806:RESEARCH_RETRY_BUDGET_EXHAUSTED",
+    "severity": "critical",
+    "failure_state": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 40,
-    "self_heal_status": "WAITING",
+    "self_heal_status": "EXHAUSTED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -180,9 +180,9 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "WAITING",
-    "source_status": "WAITING",
-    "failure_state": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "status": "EXHAUSTED",
+    "source_status": "EXHAUSTED",
+    "failure_state": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
     "failed_run_id": 38241946451,
     "replay_run_id": 38249921806,
     "fresh_recovery_run_id": null,
