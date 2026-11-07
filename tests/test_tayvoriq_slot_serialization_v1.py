@@ -5,7 +5,9 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -128,6 +130,58 @@ class SlotSerializationTests(unittest.TestCase):
                 {"status": "completed", "conclusion": "success"}, jobs,
             ]):
                 self.assertEqual(gate.check_request(evening, root, "repo", "token")["reason"], "MORNING_REQUEST_MISSING")
+
+    def test_verified_prior_day_expiry_releases_only_fresh_explicit_request(self) -> None:
+        from tayvoriq_stale_news_reconcile_v1 import quarantine
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer = Path(tmp) / ".github/state/tayvoriq-active-production-request.json"
+            pointer.parent.mkdir(parents=True)
+            berlin = ZoneInfo("Europe/Berlin")
+            now = datetime.now(timezone.utc)
+            today = now.astimezone(berlin).strftime("%Y%m%d")
+            old_stamp = now - timedelta(days=7)
+            old_day = old_stamp.astimezone(berlin).strftime("%Y%m%d")
+            shared = {
+                "request_id": "old", "golden_path_run_id": 123, "approval_key": "telegram:old",
+                "source_context_sha256": "sources", "contract_sha256": "contract", "telegram_message_id": 99,
+            }
+            old = {
+                **request(f"{old_day}-morning-agentv2", "old", old_stamp.isoformat(), 123),
+                **shared, "status": "DISPATCHED",
+            }
+            old_run = {
+                "id": 123, "name": "TAYVORIQ-X Golden Path", "status": "completed",
+                "conclusion": "failure", "updated_at": old_stamp.isoformat(),
+            }
+            old, expired = quarantine({
+                **shared, "schema": "tayvoriq-active-production-request-v1",
+                "state": "ACTIVE", "allow_publish": False, "allow_recovery": True,
+            }, old, old_run, active_executors=0, now=now)
+            (root / "old.json").write_text(json.dumps(old))
+            pointer.write_text(json.dumps(expired))
+            p = root / "next.json"
+            new = request(f"{today}-evening-agentv2", "next", now.isoformat())
+            p.write_text(json.dumps(new))
+            with patch.object(gate, "github_json", return_value=old_run):
+                result = gate.check_request(p, root, "repo", "token")
+                self.assertTrue(result["released"])
+                self.assertEqual(result["reason"], "FIRST_APPROVED_SLOT_AFTER_VERIFIED_OWNER_EXPIRY")
+
+            with patch.object(gate, "github_json", return_value={**old_run, "status": "in_progress"}):
+                self.assertFalse(gate.check_request(p, root, "repo", "token")["released"])
+
+            p.write_text(json.dumps({**new, "source": "user_preapproved_preparation"}))
+            with patch.object(gate, "github_json", return_value=old_run):
+                self.assertFalse(gate.check_request(p, root, "repo", "token")["released"])
+            p.write_text(json.dumps(new))
+            (root / "morning.json").write_text(json.dumps(request(
+                f"{today}-morning-agentv2", "morning", now.isoformat(),
+            )))
+            with patch.object(gate, "github_json", return_value=old_run):
+                self.assertEqual(gate.check_request(p, root, "repo", "token")["reason"], "MORNING_GOLDEN_PATH_NOT_BOUND")
 
     def test_failed_preflight_admits_only_exact_editorial_source_repair(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
