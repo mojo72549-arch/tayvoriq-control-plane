@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-07T16:03:31.124824Z",
+  "generated_at": "2026-11-07T16:56:51.186791Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3501-trend-1",
-    "golden_path_run_id": 42388910187,
-    "pointer_updated_at": "2026-11-07T15:58:14.597096Z"
+    "golden_path_run_id": 42390910090,
+    "pointer_updated_at": "2026-11-07T16:21:52.045506Z"
   },
   "request": {
     "request_id": "telegram-3501-trend-1",
@@ -45,17 +45,17 @@
     "path": "requests/telegram-3501-trend-1.json"
   },
   "run": {
-    "id": 42388910187,
+    "id": 42390910090,
     "historical": false,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42388910187",
-    "created_at": "2026-11-07T15:58:07Z",
-    "updated_at": "2026-11-07T15:58:12Z",
-    "attempt": 1,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42390910090",
+    "created_at": "2026-11-07T16:21:45Z",
+    "updated_at": "2026-11-07T16:50:29Z",
+    "attempt": 2,
     "progress": 30,
-    "current_step": "Repair only failed local checkpoints",
-    "last_successful_step": "Telegram progress - checkpoint repair",
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -97,7 +97,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -131,7 +131,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Repair only failed local checkpoints"
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -146,7 +146,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
@@ -155,9 +155,9 @@
     }
   ],
   "incident": {
-    "signature": "42388910187:LOCAL_VISUAL",
+    "signature": "42390910090:SAME_RUN_TRANSIENT_RECOVERY",
     "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
     "failed_step": null,
     "failed_step_number": null,
     "self_heal_status": "REPLAY_RUNNING",
@@ -168,15 +168,15 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
-    "last_step": "Telegram progress - checkpoint repair"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_run_id": 42383994441,
-    "replay_run_id": 42388910187,
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+    "failed_run_id": 42388910187,
+    "replay_run_id": 42390910090,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-delivery-watch",
@@ -186,6 +186,16 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-07T16:50:22.129790Z",
+      "title": "DISPATCHED",
+      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+    },
+    {
+      "at": "2026-11-07T16:21:52.045506Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-11-07T15:58:14.597096Z",
       "title": "DISPATCHED",
@@ -203,16 +213,6 @@
     },
     {
       "at": "2026-11-07T14:04:21.554118Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-07T13:15:16.430759Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-11-07T12:51:59.868606Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
