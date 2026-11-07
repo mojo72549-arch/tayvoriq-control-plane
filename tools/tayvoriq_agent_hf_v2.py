@@ -85,6 +85,10 @@ def _groq_source_records(records):
     Every record still carries its own original provenance; validate_pair
     and downstream quality gates remain completely unchanged.
     """
+    # Preserve historical source-ID ordering on small pools (including the
+    # existing grounded mock contracts); pair-first only fixes large pools.
+    if len(json.dumps(records, ensure_ascii=False)) <= 9000:
+        return _balanced_compact_records(records, max_chars=9000)
     candidates = list(records)
     pairs = []
     for i, a in enumerate(candidates):
