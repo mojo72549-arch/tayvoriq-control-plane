@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
-from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words
+from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words, _events, _status
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 
@@ -56,16 +56,85 @@ def _balanced_compact_records(records:list[dict[str,str]],max_chars:int=56000)->
 
 
 def _groq_source_records(records):
-    """Prioritize likely cross-publisher pairs; validation still decides truth."""
+    """Pack likely independent event PAIRS together before unrelated headlines.
+
+    This is candidate prioritization, not evidence acceptance: validate_pair()
+    still checks the model's chosen sources against the original records.
+    """
     if len(json.dumps(records, ensure_ascii=False)) <= 9000:
         return _balanced_compact_records(records, max_chars=9000)
-    terms = [_words(str(row.get('title') or '')) for row in records]
-    hosts = [str(row.get('domain') or domain(str(row.get('url') or ''))) for row in records]
-    scores = [max((len(words & other) for j, other in enumerate(terms)
-                   if hosts[i] != hosts[j]), default=0)
-              for i, words in enumerate(terms)]
-    order = sorted(range(len(records)), key=lambda i: (-scores[i], i))
-    return _balanced_compact_records([records[i] for i in order], max_chars=9000)
+
+    titles = [str(row.get('title') or '') for row in records]
+    hosts = [str(row.get('domain') or domain(str(row.get('url') or ''))).casefold()
+             for row in records]
+    title_words = [_words(title) for title in titles]
+    all_words = [_words(title + ' ' + str(row.get('context') or ''))
+                 for title, row in zip(titles, records)]
+    event_sets = [_events(title) for title in titles]
+    statuses = [_status(title) for title in titles]
+    pairs = []
+    for i in range(len(records)):
+        if not hosts[i]:
+            continue
+        for j in range(i + 1, len(records)):
+            if not hosts[j] or hosts[i] == hosts[j]:
+                continue
+            shared_event = event_sets[i] & event_sets[j]
+            shared_headline = title_words[i] & title_words[j]
+            shared_context = all_words[i] & all_words[j]
+            if (not shared_event or statuses[i] != statuses[j]
+                    or not shared_headline or len(shared_context) < 3):
+                continue
+            # Germany/region first, then coherent, independently reported events.
+            german_terms = {'deutschland', 'stuttgart', 'baden', 'württemberg',
+                            'bosch', 'mercedes', 'volkswagen', 'porsche',
+                            'bundesregierung', 'berlin', 'münchen', 'bayern'}
+            german_bonus = 8 if shared_context & german_terms else 0
+            pairs.append((german_bonus + len(shared_headline) * 3
+                          + min(len(shared_context), 10), i, j))
+    pairs.sort(key=lambda entry: (-entry[0], entry[1], entry[2]))
+
+    def compact(row):
+        return {**row, 'title': base.clean(row.get('title'), 280),
+                'context': base.clean(row.get('context'), 750),
+                'domain': str(row.get('domain') or domain(str(row.get('url') or ''))).casefold()}
+
+    def within_budget(rows):
+        preview = [{'source_id': f'S{k+1:03d}',
+                    'domain': row.get('domain'), 'title': row.get('title'),
+                    'context': row.get('context'), 'seen_date': row.get('seen_date'),
+                    'feed': row.get('feed')}
+                   for k, row in enumerate(rows)]
+        return len(json.dumps(preview, ensure_ascii=False)) <= 9000
+
+    selected = []
+    used = set()
+    # Keep both halves of every selected pair; never truncate a story mid-pair.
+    for _, i, j in pairs:
+        if i in used or j in used:
+            continue
+        candidate = selected + [compact(records[i]), compact(records[j])]
+        if not within_budget(candidate):
+            continue
+        selected = candidate
+        used.update((i, j))
+        if len(selected) >= 12:
+            break
+
+    # Supply context variety after anchored pairs; the unmodified evidence gate
+    # may reject all suggestions and then the research must defer rather than
+    # manufacture a second publisher.
+    remaining = _balanced_compact_records(
+        [row for index, row in enumerate(records) if index not in used],
+        max_chars=56000)
+    for row in remaining:
+        if len(selected) >= 32:
+            break
+        candidate = selected + [compact(row)]
+        if within_budget(candidate):
+            selected = candidate
+    return selected if len(selected) >= 8 else _balanced_compact_records(records, max_chars=9000)
+
 
 def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface",model_override:str=""):
     if provider_kind not in {"huggingface", "groq"}: raise ValueError("UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER")
