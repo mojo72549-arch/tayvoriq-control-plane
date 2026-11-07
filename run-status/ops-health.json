@@ -1,31 +1,15 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-07T12:16:26.705868Z",
+  "generated_at": "2026-11-07T12:18:39.194698Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": false,
-    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
+    "telegram_notify_allowed": true,
+    "reason": "VERIFIED_STATE_TRANSITION"
   },
   "api_error": null,
-  "research": {
-    "schema": "tayvoriq-research-retry-v1",
-    "state": "WAITING",
-    "slot": "evening",
-    "berlin_date": "2026-11-07",
-    "first_deferred_at_epoch": 1794050670.0246835,
-    "attempts": 5,
-    "retry_at_epoch": 1794054618.9963155,
-    "retry_phase": "NORMAL",
-    "last_deferred_at_epoch": 1794053776.2579126,
-    "provider_retry_at_epoch": 1794054618.9963155,
-    "max_attempts": 10,
-    "valid_until_epoch": 1794072270.0246835,
-    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
-    "quality_gates_weakened": false,
-    "production_started": false
-  },
+  "research": {},
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3401-trend-1",
@@ -39,7 +23,7 @@
     "slot": null,
     "state": "EXPIRED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "none",
     "series_name": "DEUTSCHLAND IM UMBAU",
     "episode_number": null,
     "cta_type": "SERIES",
@@ -156,8 +140,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "WAITING"
+      "status": "green",
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
@@ -177,14 +161,14 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "WAITING",
-    "source_status": "WAITING",
+    "status": "IDLE",
+    "source_status": "IDLE",
     "failure_state": null,
     "failed_run_id": 38241946451,
     "replay_run_id": 38249921806,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "owner": "none",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
