@@ -147,5 +147,39 @@ class GroqSourceContractTests(unittest.TestCase):
             self.assertTrue(all(row in originals for row in pair))
 
 
+
+    def test_large_source_pool_keeps_correlated_german_news_pairs_adjacent(self):
+        # Regression: old alphabetic domain rotation fed Groq only unrelated
+        # single reports, so the strict independent-source gate rejected all.
+        fillers = [record(f'publisher{i}.example',
+                          f'Unrelated global headline {i}', i + 50)
+                   for i in range(45)]
+        pool = fillers + self.pool
+        selected = hf._groq_source_records(pool)
+        pair_titles = ('Mercedes investiert in Werk Stuttgart',
+                       'Bosch eröffnet Reutlingen Halbleiterfabrik')
+        for title in pair_titles:
+            indexes = [i for i, row in enumerate(selected)
+                       if row['title'] == title]
+            self.assertEqual(len(indexes), 2, title)
+            self.assertEqual(abs(indexes[0] - indexes[1]), 1, title)
+            self.assertEqual(len({selected[i]['domain'] for i in indexes}), 2)
+        serialized = [{'source_id': f'S{i+1:03d}', **{k: row.get(k) for k in
+                       ('domain', 'title', 'context', 'seen_date', 'feed')}}
+                      for i, row in enumerate(selected)]
+        self.assertLessEqual(len(json.dumps(serialized, ensure_ascii=False)), 9000)
+
+    def test_pair_pack_does_not_treat_same_company_different_events_as_confirmation(self):
+        pool = [record('a.example', 'Mercedes investiert in Stuttgart Werk', 1),
+                record('b.example', 'Mercedes schließt Stuttgart Werk', 2)]
+        pool += [record(f'other{i}.example', f'Global unrelated update {i}', i + 30)
+                 for i in range(20)]
+        selected = hf._groq_source_records(pool)
+        self.assertFalse(any(
+            first['title'] == 'Mercedes investiert in Stuttgart Werk'
+            and second['title'] == 'Mercedes schließt Stuttgart Werk'
+            for first, second in zip(selected, selected[1:])))
+
+
 if __name__ == "__main__":
     unittest.main()
