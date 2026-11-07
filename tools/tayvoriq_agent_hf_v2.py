@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
-from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words, _events, _status
+from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words, _events, _status, _events, _status
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 
@@ -55,86 +55,97 @@ def _balanced_compact_records(records:list[dict[str,str]],max_chars:int=56000)->
     return bounded
 
 
-def _groq_source_records(records):
-    """Pack likely independent event PAIRS together before unrelated headlines.
+def _source_pair_score(a: dict, b: dict) -> int:
+    """Rank evidence leads, not verified claims. Final validate_pair stays mandatory."""
+    if str(a.get('domain') or domain(str(a.get('url') or ''))) == str(b.get('domain') or domain(str(b.get('url') or ''))):
+        return 0
+    ta, tb = str(a.get('title') or ''), str(b.get('title') or '')
+    shared_events = _events(ta) & _events(tb)
+    if not shared_events or _status(ta) != _status(tb):
+        return 0
+    shared_title = _words(ta) & _words(tb)
+    if not shared_title:
+        return 0
+    shared_text = _words(ta + ' ' + str(a.get('context') or '')) & _words(tb + ' ' + str(b.get('context') or ''))
+    if len(shared_text) < 3:
+        return 0
+    # Shared headline event + meaningful terms beat globally popular actors
+    # with unrelated stories. German audience terms are only a ranking hint.
+    local = {'deutschland', 'stuttgart', 'baden', 'württemberg', 'berlin',
+             'bundesregierung', 'bosch', 'mercedes', 'porsche', 'volkswagen', 'vw',
+             'bahn', 'ig', 'metall', 'industrie'}
+    return 12 + len(shared_title) * 4 + min(8, len(shared_text)) + 2 * len(local & shared_text)
 
-    This is candidate prioritization, not evidence acceptance: validate_pair()
-    still checks the model's chosen sources against the original records.
+
+def _groq_source_records(records):
+    """Keep likely same-story TWO-publisher pairs inside the compact token budget.
+
+    The previous publisher-round-robin picked 21 unrelated stories from a
+    240-item pool, making the required two-source verification impossible.
+    Every record still carries its own original provenance; validate_pair
+    and downstream quality gates remain completely unchanged.
     """
+    # Preserve historical source-ID ordering on small pools (including the
+    # existing grounded mock contracts); pair-first only fixes large pools.
     if len(json.dumps(records, ensure_ascii=False)) <= 9000:
         return _balanced_compact_records(records, max_chars=9000)
-
-    titles = [str(row.get('title') or '') for row in records]
-    hosts = [str(row.get('domain') or domain(str(row.get('url') or ''))).casefold()
-             for row in records]
-    title_words = [_words(title) for title in titles]
-    all_words = [_words(title + ' ' + str(row.get('context') or ''))
-                 for title, row in zip(titles, records)]
-    event_sets = [_events(title) for title in titles]
-    statuses = [_status(title) for title in titles]
+    candidates = list(records)
     pairs = []
-    for i in range(len(records)):
-        if not hosts[i]:
-            continue
-        for j in range(i + 1, len(records)):
-            if not hosts[j] or hosts[i] == hosts[j]:
-                continue
-            shared_event = event_sets[i] & event_sets[j]
-            shared_headline = title_words[i] & title_words[j]
-            shared_context = all_words[i] & all_words[j]
-            if (not shared_event or statuses[i] != statuses[j]
-                    or not shared_headline or len(shared_context) < 3):
-                continue
-            # Germany/region first, then coherent, independently reported events.
-            german_terms = {'deutschland', 'stuttgart', 'baden', 'württemberg',
-                            'bosch', 'mercedes', 'volkswagen', 'porsche',
-                            'bundesregierung', 'berlin', 'münchen', 'bayern'}
-            german_bonus = 8 if shared_context & german_terms else 0
-            pairs.append((german_bonus + len(shared_headline) * 3
-                          + min(len(shared_context), 10), i, j))
-    pairs.sort(key=lambda entry: (-entry[0], entry[1], entry[2]))
-
-    def compact(row):
-        return {**row, 'title': base.clean(row.get('title'), 280),
-                'context': base.clean(row.get('context'), 750),
-                'domain': str(row.get('domain') or domain(str(row.get('url') or ''))).casefold()}
-
-    def within_budget(rows):
-        preview = [{'source_id': f'S{k+1:03d}',
-                    'domain': row.get('domain'), 'title': row.get('title'),
-                    'context': row.get('context'), 'seen_date': row.get('seen_date'),
-                    'feed': row.get('feed')}
-                   for k, row in enumerate(rows)]
-        return len(json.dumps(preview, ensure_ascii=False)) <= 9000
-
-    selected = []
+    for i, a in enumerate(candidates):
+        for j in range(i + 1, len(candidates)):
+            score = _source_pair_score(a, candidates[j])
+            if score:
+                pairs.append((score, i, j))
+    pairs.sort(reverse=True)
+    indices = []
     used = set()
-    # Keep both halves of every selected pair; never truncate a story mid-pair.
+    # Prioritize distinct pairs (avoid filling the prompt with one headline).
     for _, i, j in pairs:
         if i in used or j in used:
             continue
-        candidate = selected + [compact(records[i]), compact(records[j])]
-        if not within_budget(candidate):
-            continue
-        selected = candidate
+        indices.extend((i, j))
         used.update((i, j))
-        if len(selected) >= 12:
+        if len(indices) >= 18:
             break
-
-    # Supply context variety after anchored pairs; the unmodified evidence gate
-    # may reject all suggestions and then the research must defer rather than
-    # manufacture a second publisher.
-    remaining = _balanced_compact_records(
-        [row for index, row in enumerate(records) if index not in used],
-        max_chars=56000)
-    for row in remaining:
-        if len(selected) >= 32:
+    # Keep independent discoveries available even if pair candidates are few.
+    title_words = [_words(str(row.get('title') or '')) for row in candidates]
+    domain_lists = [str(row.get('domain') or domain(str(row.get('url') or ''))) for row in candidates]
+    scores = [
+        max((_source_pair_score(candidates[i], candidates[j])
+             for j in range(len(candidates)) if domain_lists[i] != domain_lists[j]), default=0)
+        for i in range(len(candidates))
+    ]
+    remainder = sorted((i for i in range(len(candidates)) if i not in used),
+                       key=lambda i: (-scores[i], -len(title_words[i]), i))
+    indices.extend(remainder)
+    compact = []
+    for idx in indices:
+        row = candidates[idx]
+        entry = {
+            **row,
+            'title': base.clean(row.get('title'), 225),
+            'context': base.clean(row.get('context'), 260),
+            'domain': domain_lists[idx],
+        }
+        preview = [{
+            'source_id': f'S{n + 1:03d}',
+            'domain': rec.get('domain'), 'title': rec.get('title'),
+            'context': rec.get('context'), 'seen_date': rec.get('seen_date'),
+            'feed': rec.get('feed'),
+        } for n, rec in enumerate(compact + [entry])]
+        if len(json.dumps(preview, ensure_ascii=False)) > 9000:
             break
-        candidate = selected + [compact(row)]
-        if within_budget(candidate):
-            selected = candidate
-    return selected if len(selected) >= 8 else _balanced_compact_records(records, max_chars=9000)
-
+        compact.append(entry)
+        if len(compact) >= 96:
+            break
+    print(json.dumps({
+        'event': 'groq_pair_first_source_selection',
+        'matched_independent_pairs': len(pairs),
+        'prioritized_pair_records': min(len(used), len(compact)),
+        'selected_records': len(compact),
+        'selected_domains': len({r.get('domain') for r in compact}),
+    }, ensure_ascii=False))
+    return compact
 
 def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface",model_override:str=""):
     if provider_kind not in {"huggingface", "groq"}: raise ValueError("UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER")
@@ -166,6 +177,18 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
           'Exclude Europe-only/global events and abstract laboratory research. A German brand alone does not establish German relevance.'
           if provider_kind=='groq' else
           'Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them.')
+    pair_hints = []
+    if provider_kind == 'groq':
+        for i, a in enumerate(balanced):
+            for j in range(i + 1, len(balanced)):
+                b = balanced[j]
+                score = _source_pair_score(a, b)
+                if score and len(pair_hints) < 14:
+                    pair_hints.append((score, f'S{i + 1:03d}+S{j + 1:03d}'))
+        pair_hints = sorted(pair_hints, reverse=True)[:12]
+    pair_note = ('POTENTIAL SAME-EVENT CROSS-PUBLISHER LEADS (not evidence by themselves): ' +
+                 ', '.join(x[1] for x in pair_hints) + '. Select only if full original SOURCE CONTRACT passes.'
+                 if pair_hints else '')
     user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Search across ALL supplied publisher domains, not just the first records.
 
 SOURCE CONTRACT:
@@ -190,7 +213,7 @@ EDITORIAL FALLBACK CONTRACT:
 - personal_impact must contain "für dich".
 - action_now must start with a concrete verb such as Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze or Speichere.
 
-{goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:context_limit]}\nSOURCE RECORDS ({source_label}):\n{blob}'''
+{goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:context_limit]}\n{pair_note}\nSOURCE RECORDS ({source_label}):\n{blob}'''
     payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"stream":False}
     if provider_kind=="groq":
         payload.update({"max_completion_tokens":4000,"reasoning_effort":"low",
