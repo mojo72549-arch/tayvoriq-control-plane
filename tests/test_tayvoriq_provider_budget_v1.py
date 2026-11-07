@@ -217,6 +217,16 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(code, 429)
         self.assertEqual(headers['retry-after'], '7200')
 
+    def test_previous_day_expired_research_cannot_block_fresh_lifecycle(self):
+        retry.defer('morning', NOW + 900, path=self.queue, now=NOW)
+        with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}), \
+             patch.object(retry.time, 'time', return_value=NOW + 26 * 3600):
+            result = retry.lifecycle({'state': 'IDLE', 'action': 'NONE'})
+            self.assertEqual(result['state'], 'IDLE')
+            self.assertEqual(result['action'], 'NONE')
+            self.assertEqual(retry.due_slot(self.queue, now=NOW + 26 * 3600), '')
+
+
 class SchedulerContractTests(unittest.TestCase):
     def test_retry_wakeup_waits_once_and_revalidates_due_slot_before_dispatch(self):
         import yaml
