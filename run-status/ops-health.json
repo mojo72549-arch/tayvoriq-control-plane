@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-07T12:18:39.194698Z",
+  "generated_at": "2026-11-07T12:59:02.851163Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -12,24 +12,24 @@
   "research": {},
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3401-trend-1",
-    "golden_path_run_id": 38249921806,
-    "pointer_updated_at": "2026-10-19T20:43:11.084Z"
+    "request_id": "telegram-3501-trend-1",
+    "golden_path_run_id": 42372306620,
+    "pointer_updated_at": "2026-11-07T12:24:08.027131Z"
   },
   "request": {
-    "request_id": "telegram-3401-trend-1",
-    "topic": "VW-Softwaretochter Cariad: Rund 1.000 weitere Jobs sollen weg – fast jede vierte Stelle",
+    "request_id": "telegram-3501-trend-1",
+    "topic": "Bosch plant 750 weitere Stellenstreichungen in Abstatt",
     "trend_id": "1",
     "slot": null,
-    "state": "EXPIRED",
-    "recovery_generation": 1,
-    "recovery_owner": "none",
-    "series_name": "DEUTSCHLAND IM UMBAU",
+    "state": "DISPATCHED",
+    "recovery_generation": 0,
+    "recovery_owner": "tayvoriq-delivery-watch",
+    "series_name": null,
     "episode_number": null,
-    "cta_type": "SERIES",
-    "follow_reason": "TAYVORIQ verfolgt, wie viele Stellen tatsächlich entfallen und welche Softwarekompetenz bei VW intern bleibt.",
-    "open_loop_status": "SOFT",
-    "next_episode_candidate": "Welche Software-Aufgaben behält Cariad selbst – und was wandert zu Rivian, Xpeng oder anderen Partnern?",
+    "cta_type": "EXPERTISE",
+    "follow_reason": "TAYVORIQ erklärt, welche Entwicklungsaufgaben Autozulieferer verlagern und wie sich dadurch die Arbeit an deutschen Standorten verändert.",
+    "open_loop_status": "NONE",
+    "next_episode_candidate": null,
     "follow_conversion_gate": {
       "result": "PASS",
       "repair": null,
@@ -40,24 +40,24 @@
       "issues": []
     },
     "golden_path_v5_state": "APPROVED",
-    "source_count": 3,
+    "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3401-trend-1.json"
+    "path": "requests/telegram-3501-trend-1.json"
   },
   "run": {
-    "id": 38249921806,
-    "historical": true,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/38249921806",
-    "created_at": "2026-10-12T12:34:58Z",
-    "updated_at": "2026-10-12T12:56:02Z",
-    "attempt": 1,
+    "id": 42372306620,
+    "historical": false,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42372306620",
+    "created_at": "2026-11-07T12:24:01Z",
+    "updated_at": "2026-11-07T12:52:07Z",
+    "attempt": 2,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -97,31 +97,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -131,7 +131,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert"
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -140,75 +140,76 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Archivierter Auftrag: kein aktueller Video-Review"
+      "status": "green",
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Historischer Fehler archiviert · neuer Auftrag ausstehend"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "42372306620:LOCAL_VISUAL",
+    "severity": "warning",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "same_generation_replay_required": false,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
-    "status": "yellow",
-    "detail": "Archivierter Auftrag: kein aktueller Video-Review",
-    "last_step": "Telegram immediate verified stop"
+    "status": "green",
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
-    "failure_state": null,
-    "failed_run_id": 38241946451,
-    "replay_run_id": 38249921806,
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
-    "recovery_generation": 1,
-    "owner": "none",
-    "same_generation_replay_required": true,
+    "recovery_generation": 0,
+    "owner": "tayvoriq-delivery-watch",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-10-12T12:56:02Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
-    },
-    {
-      "at": "2026-10-19T20:43:11.084Z",
-      "title": "EXPIRED",
-      "detail": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
-    },
-    {
-      "at": "2026-10-12T12:35:06.391273Z",
+      "at": "2026-11-07T12:51:59.868606Z",
       "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     },
     {
-      "at": "2026-10-12T11:19:56.791446Z",
+      "at": "2026-11-07T12:24:07.915827+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:42371945750"
     },
     {
-      "at": "2026-10-12T11:19:13.988043Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED"
+      "at": "2026-11-07T12:23:58.394436+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:42371945750"
     },
     {
-      "at": "2026-10-10T23:33:13.567905Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "at": "2026-11-07T12:19:23.207091Z",
+      "title": "APPROVED",
+      "detail": "tayvoriq-slot-serialization-gate"
     },
     {
-      "at": "2026-10-10T23:29:40.547443Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED"
+      "at": "2026-11-07T12:19:13.647Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
