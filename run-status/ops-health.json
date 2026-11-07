@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-07T16:57:01.014246Z",
+  "generated_at": "2026-11-07T17:57:34.871477Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -51,11 +51,11 @@
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42390910090",
     "created_at": "2026-11-07T16:21:45Z",
-    "updated_at": "2026-11-07T16:50:29Z",
-    "attempt": 2,
+    "updated_at": "2026-11-07T17:51:20Z",
+    "attempt": 3,
     "progress": 30,
-    "current_step": "Produce approved master or reuse checkpoint",
-    "last_successful_step": "Restore production model cache",
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -97,7 +97,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "running",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -131,7 +131,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Produce approved master or reuse checkpoint"
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
@@ -146,7 +146,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
     },
     {
       "name": "Quality Gates",
@@ -155,9 +155,9 @@
     }
   ],
   "incident": {
-    "signature": "42390910090:SAME_RUN_TRANSIENT_RECOVERY",
+    "signature": "42390910090:LOCAL_VISUAL",
     "severity": "warning",
-    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_step": null,
     "failed_step_number": null,
     "self_heal_status": "REPLAY_RUNNING",
@@ -168,13 +168,13 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
+    "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
     "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": 42388910187,
     "replay_run_id": 42390910090,
     "fresh_recovery_run_id": null,
@@ -186,6 +186,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-07T17:51:14.181544Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
     {
       "at": "2026-11-07T16:50:22.129790Z",
       "title": "DISPATCHED",
@@ -210,11 +215,6 @@
       "at": "2026-11-07T14:19:43.431537Z",
       "title": "DISPATCHED",
       "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-11-07T14:04:21.554118Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
   ]
 }
