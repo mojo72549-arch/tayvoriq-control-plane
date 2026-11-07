@@ -4,13 +4,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 import tayvoriq_agent_trend_radar_v4 as growth
 import tayvoriq_agent_research_resilience_v2 as resilience
+from tayvoriq_global_duplicate_gate_v1 import run_gate
 
 base = growth.base
 resilience.install()
@@ -20,6 +22,48 @@ def _identity(candidate: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
     title = " ".join(str(candidate.get("title") or "").casefold().split())
     sources = tuple(sorted(str(url) for url in (candidate.get("sources") or []) if url))
     return title, sources
+
+
+def _editorial_scan(slot: str, now: datetime):
+    """Use short-lived, source-backed editorial input through the normal radar gates."""
+    path = Path(f"state/tayvoriq-verified-research-{slot}.json")
+    if not path.is_file():
+        return None
+    try:
+        packet = json.loads(path.read_text(encoding="utf-8"))
+        checked_at = datetime.fromisoformat(packet["checked_at"])
+        if packet["slot"] != slot or packet["target_date"] != now.date().isoformat():
+            return None
+        if not timedelta(0) <= now - checked_at <= timedelta(hours=4):
+            return None
+
+        candidates = []
+        chunks = {}
+        for raw in packet["candidates"][:5]:
+            sources = raw["sources"]
+            if not 2 <= len(sources) <= 3:
+                continue
+            domains = set()
+            origins = set()
+            for source in sources:
+                parsed = urlparse(source["url"])
+                origin = source["reporting_origin"].strip().casefold()
+                published = datetime.fromisoformat(source["published_at"])
+                if (parsed.scheme != "https" or not parsed.hostname or not origin
+                        or not source["supports"].strip()
+                        or not timedelta(0) <= now - published <= timedelta(hours=72)):
+                    break
+                domains.add(parsed.hostname.removeprefix("www."))
+                origins.add(origin)
+            else:
+                if len(domains) == len(origins) == len(sources):
+                    candidates.append(raw)
+                    chunks.update({s["url"]: {"uri": s["url"], "title": s["publisher"]} for s in sources})
+        if len(candidates) >= 2 and len(chunks) >= 4:
+            return {"candidates": candidates}, list(chunks.values()), "source-reviewed", "editorial"
+    except (ValueError, TypeError, KeyError, AttributeError, OSError):
+        print(json.dumps({"event": "editorial_packet_invalid", "path": str(path)}))
+    return None
 
 
 def main() -> int:
@@ -55,7 +99,8 @@ def main() -> int:
 
     series_candidate = base.load_active_series_candidate(verified_at)
 
-    for scan_index in range(1, max_scans + 1):
+    editorial_scan = _editorial_scan(args.slot, now)
+    for scan_index in range(0 if editorial_scan else 1, max_scans + 1):
         prompt = base.prompt_for(args.slot, now)
         if scan_index > 1:
             prior_titles = [str(candidate.get("title") or "") for candidate in normalized]
@@ -78,7 +123,9 @@ def main() -> int:
                     + " | ".join(prior_titles[:12])
                 )
 
-        data, chunks, model, provider_name = base.grounded_call(prompt, gemini_key, groq_key)
+        data, chunks, model, provider_name = (
+            editorial_scan if scan_index == 0 else base.grounded_call(prompt, gemini_key, groq_key)
+        )
         providers.append(provider_name)
         models.append(model)
         if len(chunks) < 4:
@@ -101,6 +148,18 @@ def main() -> int:
             candidate = base.normalized_candidate(raw, verified_at)
             if not candidate:
                 continue
+            if scan_index == 0:
+                context = candidate["source_context"]
+                original_sources = {source["url"]: source for source in raw["sources"]}
+                for source in context["sources"]:
+                    original = original_sources[source["url"]]
+                    source["published_at"] = original["published_at"]
+                    source["reporting_origin"] = original["reporting_origin"]
+                if not run_gate(
+                    requests_dir=Path("requests"), source_request_id="",
+                    topic=candidate["title"], source_context=context,
+                )["passed"]:
+                    continue
             key = _identity(candidate)
             if key in seen:
                 continue
