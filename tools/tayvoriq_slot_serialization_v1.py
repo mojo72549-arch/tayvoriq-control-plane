@@ -9,6 +9,9 @@ import re
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
 REQUIRED_FINAL_STEPS = (
@@ -182,6 +185,7 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     # failed/unfinished owner remains authoritative even across dates and slots.
     pointer_path = requests_dir.parent / ".github/state/tayvoriq-active-production-request.json"
     completed_owner_verified = False
+    expired_owner_verified = False
     if pointer_path.is_file():
         result["requires_serialization"] = True
         result["released"] = False
@@ -189,9 +193,32 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
             pointer = read_json(pointer_path)
             if pointer.get("schema") != "tayvoriq-active-production-request-v1":
                 raise ValueError("invalid pointer schema")
-            if pointer.get("state") not in {"ACTIVE", "COMPLETED"}:
-                raise ValueError("invalid pointer state")
-            if pointer.get("state") in {"ACTIVE", "COMPLETED"}:
+            if pointer.get("state") == "EXPIRED":
+                owner = str(pointer.get("request_id") or "")
+                run_id = int(pointer.get("golden_path_run_id") or 0)
+                if not re.fullmatch(r"[A-Za-z0-9_-]{1,120}", owner) or run_id <= 0:
+                    raise ValueError("invalid expired owner binding")
+                result["predecessor_request_id"] = owner
+                result["predecessor_run_id"] = run_id
+                previous = read_json(requests_dir / f"{owner}.json")
+                previous_parts = selection_parts(previous)
+                berlin = ZoneInfo("Europe/Berlin")
+                today = datetime.now(berlin).strftime("%Y%m%d")
+                approved = datetime.fromtimestamp(_approved_stamp(request), berlin).strftime("%Y%m%d")
+                if (not parts or not previous_parts or not previous_parts[0] < parts[0] == today == approved
+                        or request.get("source") != "telegram_trend_approval" or owner == result["request_id"]):
+                    result["reason"] = "NEW_BERLIN_DAY_TELEGRAM_APPROVAL_REQUIRED"
+                    return result
+                try:
+                    run = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}", token) if repo and token else {}
+                except Exception:
+                    run = {}
+                if not verified_quarantine(pointer, previous, run):
+                    result["reason"] = "EXPIRED_OWNER_QUARANTINE_NOT_VERIFIED"
+                    return result
+                expired_owner_verified = True
+                result["reason"] = "FRESH_REQUEST_AFTER_VERIFIED_OWNER_EXPIRY"
+            elif pointer.get("state") in {"ACTIVE", "COMPLETED"}:
                 owner = str(pointer.get("request_id") or "")
                 run_id = int(pointer.get("golden_path_run_id") or 0)
                 if not owner or run_id <= 0:
@@ -236,6 +263,8 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                                 return result
                         return result
                     completed_owner_verified = pointer.get("state") == "COMPLETED"
+            else:
+                raise ValueError("invalid pointer state")
             result["released"] = True
         except (ValueError, TypeError, AttributeError, OSError):
             result["reason"] = "ACTIVE_OWNER_POINTER_INVALID"
@@ -246,6 +275,10 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     result["released"] = False
     predecessor = find_same_day_morning(request, requests_dir)
     if predecessor is None:
+        if expired_owner_verified:
+            result["released"] = True
+            result["reason"] = "FIRST_APPROVED_SLOT_AFTER_VERIFIED_OWNER_EXPIRY"
+            return result
         # A direct Telegram approval may target the evening when no morning
         # request was ever approved. Preserve the active-owner and final-review
         # gates; never apply this to a prepared or automatically queued request.
