@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-07T14:24:46.233080Z",
+  "generated_at": "2026-11-07T15:34:49.454972Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3501-trend-1",
-    "golden_path_run_id": 42381065759,
-    "pointer_updated_at": "2026-11-07T14:19:43.431537Z"
+    "golden_path_run_id": 42383994441,
+    "pointer_updated_at": "2026-11-07T14:57:20.722544Z"
   },
   "request": {
     "request_id": "telegram-3501-trend-1",
@@ -45,17 +45,17 @@
     "path": "requests/telegram-3501-trend-1.json"
   },
   "run": {
-    "id": 42381065759,
+    "id": 42383994441,
     "historical": false,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42381065759",
-    "created_at": "2026-11-07T14:19:37Z",
-    "updated_at": "2026-11-07T14:19:42Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42383994441",
+    "created_at": "2026-11-07T14:57:14Z",
+    "updated_at": "2026-11-07T14:57:19Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Produce approved master or reuse checkpoint",
-    "last_successful_step": "Restore production model cache",
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -97,7 +97,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "running",
+        "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -131,7 +131,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Produce approved master or reuse checkpoint"
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
@@ -146,7 +146,7 @@
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
     },
     {
       "name": "Quality Gates",
@@ -155,9 +155,9 @@
     }
   ],
   "incident": {
-    "signature": "42381065759:LOCAL_VISUAL",
+    "signature": "42383994441:PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
     "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failure_state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
     "failed_step": null,
     "failed_step_number": null,
     "self_heal_status": "REPLAY_RUNNING",
@@ -168,15 +168,15 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
+    "last_step": "Telegram progress - checkpoint repair"
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
     "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_run_id": 42376096002,
-    "replay_run_id": 42381065759,
+    "failure_state": "PRODUCTION_GREEN_ADVANCED_REPLAY_REQUIRED",
+    "failed_run_id": 42381065759,
+    "replay_run_id": 42383994441,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-delivery-watch",
@@ -186,6 +186,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-07T14:57:20.722544Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-11-07T14:19:43.431537Z",
       "title": "DISPATCHED",
@@ -209,11 +214,6 @@
     {
       "at": "2026-11-07T12:24:07.915827+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:42371945750"
-    },
-    {
-      "at": "2026-11-07T12:23:58.394436+00:00",
-      "title": "DISPATCHING",
       "detail": "request-dispatcher:42371945750"
     }
   ]
