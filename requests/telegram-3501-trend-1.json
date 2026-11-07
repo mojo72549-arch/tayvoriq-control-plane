@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-3501-trend-1",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Bosch plant 750 weitere Stellenstreichungen in Abstatt",
@@ -160,6 +160,11 @@
       "state": "DISPATCHING",
       "at": "2026-11-07T12:23:58.394436+00:00",
       "actor": "request-dispatcher:42371945750"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-07T12:24:07.915827+00:00",
+      "actor": "request-dispatcher:42371945750"
     }
   ],
   "contract_sha256": "26e0c29b5b728ce39a2d9556d7b38d7a4dcd8fcef025e2abc34ee5d7e36bccc4",
@@ -168,5 +173,6 @@
   "slot_serialization_predecessor_run_id": 0,
   "slot_serialization_reason": "ACTIVE_OWNER_POINTER_INVALID",
   "dispatch_claim_run_id": 42371945750,
-  "dispatch_contract_sha256": "26e0c29b5b728ce39a2d9556d7b38d7a4dcd8fcef025e2abc34ee5d7e36bccc4"
+  "dispatch_contract_sha256": "26e0c29b5b728ce39a2d9556d7b38d7a4dcd8fcef025e2abc34ee5d7e36bccc4",
+  "golden_path_run_id": 42372306620
 }
