@@ -56,3 +56,15 @@ def test_source_pool_keeps_article_urls_and_does_not_invent_cross_source_claims(
     assert {r["url"] for r in records} == {
         "https://one.example/article", "https://two.example/article",
     }
+
+
+def test_rss_freshness_supports_rfc_and_atom_dates_but_rejects_undated_items(monkeypatch):
+    from datetime import datetime
+
+    now = datetime.fromisoformat("2026-11-07T13:00:00+01:00")
+    monkeypatch.setattr(rss.time, "time", lambda: now.timestamp())
+    assert rss._fresh("Thu, 05 Nov 2026 08:11:00 GMT")
+    assert rss._fresh("2026-11-05T08:11:00+00:00")
+    assert not rss._fresh("2026-11-04T08:11:00+00:00")
+    assert not rss._fresh("2026-11-07T13:01:00+01:00")
+    assert not rss._fresh("")

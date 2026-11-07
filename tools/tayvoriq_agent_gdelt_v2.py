@@ -12,7 +12,12 @@ def domain(url:str)->str:
     except Exception: return ""
 
 def source_pool()->list[dict[str,str]]:
-    queries=["(wildfire OR earthquake OR volcano OR flood OR storm OR heatwave)","(AI OR technology OR cyber)","(Germany OR Stuttgart OR transport OR rail)","(economy OR prices OR energy OR automotive)","(sports OR football OR athletics) Germany"]
+    queries = [
+        'sourcelang:german (Stuttgart OR "Baden-Württemberg" OR Heilbronn OR Sindelfingen)',
+        'sourcelang:german (Stellenabbau OR Warnstreik OR Tarifrunde OR Zulieferer)',
+        'sourcelang:german (Bahn OR Verkehr OR Energiepreise OR Verbraucher)',
+        'sourcelang:german (Digitalisierung OR Cyberangriff OR Technologie OR Bundesliga)',
+    ]
     out=[]; seen=set(); started=time.monotonic(); budget=float(os.getenv("TAYVORIQ_GDELT_BUDGET_SECONDS") or 45); per_call=float(os.getenv("TAYVORIQ_GDELT_TIMEOUT_SECONDS") or 12)
     for query in queries:
         if time.monotonic()-started>=budget: break

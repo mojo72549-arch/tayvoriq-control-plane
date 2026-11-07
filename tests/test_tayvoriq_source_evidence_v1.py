@@ -97,3 +97,27 @@ class SourceEvidenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_swr_and_tagesschau_mirror_are_the_same_reporting_source():
+    records = [
+        {"title": "Bosch baut in Abstatt 750 Stellen ab",
+         "url": "https://www.swr.de/swraktuell/bosch-100.html",
+         "context": "Bosch baut in Abstatt 750 Stellen ab."},
+        {"title": "Bosch baut in Abstatt 750 Stellen ab",
+         "url": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-bosch-100.html",
+         "context": "In Abstatt baut Bosch 750 Stellen ab."},
+    ]
+    assert "requires_two_independent_publishers" in validate_pair({"title": records[0]["title"]}, records)
+
+
+def test_news_agency_in_author_field_is_normalized_across_feeds():
+    records = [
+        {"title": "Warnstreik bei Mercedes in Sindelfingen",
+         "url": "https://a.example/a", "origin": "dpa / Desk A",
+         "context": "Warnstreik bei Mercedes in Sindelfingen"},
+        {"title": "Warnstreik bei Mercedes in Sindelfingen",
+         "url": "https://b.example/b", "origin": "Redaktion / dpa",
+         "context": "Am Standort Sindelfingen beginnt der Warnstreik bei Mercedes"},
+    ]
+    assert "same_declared_reporting_origin" in validate_pair({"title": records[0]["title"]}, records)

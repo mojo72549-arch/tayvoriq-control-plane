@@ -77,7 +77,9 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     # Keep the alternate model's remaining budget for one grounded JSON request,
     # rather than consuming it in an additional search-and-format dialogue.
 
-    for label, collect in (('multi-publisher-rss', rss.source_pool), ('gdelt-context', gdelt.source_pool)):
+    source_records = {}
+    for label, collect in (('multi-publisher-rss', rss.source_pool),
+                           ('rss-gdelt-context', gdelt.source_pool)):
         # A model quota is shared by that model's browser and source structurer.
         if not any(key and health.available(name, key) and
                    not (name.startswith('groq') and groq_account_blocked)
@@ -88,8 +90,14 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         except Exception as exc:
             errors.append(label + ' collection unavailable: ' + http.summary(exc))
             continue
-        if not records:
+        previous_count = len(source_records)
+        for record in records:
+            url = record.get('url')
+            if url:
+                source_records.setdefault(url, record)
+        if len(source_records) == previous_count:
             continue
+        records = list(source_records.values())
         for name in ('groq', alternate, 'huggingface'):
             result = attempt(name, name + '/' + label, lambda name=name: hf.structure(
                 prompt, keys[name], records, label,

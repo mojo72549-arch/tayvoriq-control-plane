@@ -8,6 +8,7 @@ import re
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import urlparse
 
@@ -18,6 +19,10 @@ base = provider.base
 FEEDS = [
     # Original German regional/national publishers first: less global filler and
     # more independently reported Germany/BW stories for strict two-source gates.
+    ("ntv-wirtschaft", "https://www.n-tv.de/wirtschaft/rss"),
+    ("ntv-auto", "https://www.n-tv.de/auto/rss"),
+    ("land-bw-wirtschaft", "https://www.baden-wuerttemberg.de/de/service/rss/xml/rss-wirtschaft-arbeit-finanzen"),
+    ("land-bw-verkehr", "https://www.baden-wuerttemberg.de/de/service/rss/xml/rss-energie-umwelt-verkehr"),
     ("swr-baden-wuerttemberg", "https://www.swr.de/~rss/swraktuell/swraktuell-bw-100.xml"),
     ("deutschlandfunk-nachrichten", "https://www.deutschlandfunk.de/nachrichten-100.rss"),
     ("deutschlandfunk-wirtschaft", "https://www.deutschlandfunk.de/wirtschaft-106.rss"),
@@ -89,15 +94,14 @@ def _link(node: ET.Element) -> str:
 
 
 def _fresh(pub: str) -> bool:
-    if not pub:
-        return True
     try:
         dt = parsedate_to_datetime(pub)
-        if dt.tzinfo is None:
-            return True
-        return (time.time() - dt.timestamp()) <= 60 * 60 * 48
-    except Exception:
-        return True
+    except (ValueError, TypeError):
+        try:
+            dt = datetime.fromisoformat(pub)
+        except (ValueError, TypeError):
+            return False
+    return bool(dt and dt.tzinfo and 0 <= time.time() - dt.timestamp() <= 72 * 3600)
 
 
 def _fetch_one(feed_name: str, url: str) -> list[dict[str, str]]:
@@ -111,14 +115,16 @@ def _fetch_one(feed_name: str, url: str) -> list[dict[str, str]]:
             continue
         title = _first(node, ("title",))
         context = _first(node, ("description", "summary", "content", "encoded"))
-        pub = _first(node, ("pubdate", "published", "updated", "date"))
+        pub = _first(node, ("pubdate", "published", "issued", "date"))
         link = _link(node)
         publisher = _domain(link)
         if not title or not context or not link or not publisher or not _fresh(pub):
             continue
         if any(marker in link.casefold() for marker in base.BLOCKED_SOURCE_MARKERS):
             continue
-        records.append({"title": title, "context": context, "url": link, "domain": publisher, "seen_date": pub, "feed": feed_name})
+        origin = _first(node, ("creator", "author", "source"))
+        records.append({"title": title, "context": context, "url": link, "domain": publisher,
+                        "seen_date": pub, "feed": feed_name, "origin": origin})
     return records[:40]
 
 
