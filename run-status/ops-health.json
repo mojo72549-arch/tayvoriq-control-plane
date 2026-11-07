@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-07T13:01:03.665372Z",
+  "generated_at": "2026-11-07T13:17:34.054259Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3501-trend-1",
-    "golden_path_run_id": 42372306620,
-    "pointer_updated_at": "2026-11-07T12:24:08.027131Z"
+    "golden_path_run_id": 42376096002,
+    "pointer_updated_at": "2026-11-07T13:15:16.430759Z"
   },
   "request": {
     "request_id": "telegram-3501-trend-1",
@@ -45,17 +45,17 @@
     "path": "requests/telegram-3501-trend-1.json"
   },
   "run": {
-    "id": 42372306620,
+    "id": 42376096002,
     "historical": false,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42372306620",
-    "created_at": "2026-11-07T12:24:01Z",
-    "updated_at": "2026-11-07T12:52:07Z",
-    "attempt": 2,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42376096002",
+    "created_at": "2026-11-07T13:15:09Z",
+    "updated_at": "2026-11-07T13:15:14Z",
+    "attempt": 1,
     "progress": 30,
-    "current_step": "Produce approved master or reuse checkpoint",
-    "last_successful_step": "Restore production model cache",
+    "current_step": "Install or reuse production dependencies",
+    "last_successful_step": "Telegram progress - environment active",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -97,7 +97,7 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "running",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
@@ -131,7 +131,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Produce approved master or reuse checkpoint"
+      "detail": "Install or reuse production dependencies"
     },
     {
       "name": "Production Green",
@@ -141,12 +141,12 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_DISPATCHED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
+      "detail": "Zuletzt erfolgreich: Telegram progress - environment active"
     },
     {
       "name": "Quality Gates",
@@ -155,37 +155,42 @@
     }
   ],
   "incident": {
-    "signature": "42372306620:LOCAL_VISUAL",
+    "signature": "42376096002:LOCAL_VISUAL",
     "severity": "warning",
     "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_step": null,
     "failed_step_number": null,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
-    "same_generation_replay_required": false,
+    "self_heal_status": "REPLAY_RUNNING",
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
-    "last_step": "Telegram progress - production active"
+    "detail": "Zuletzt erfolgreich: Telegram progress - environment active",
+    "last_step": "Telegram progress - environment active"
   },
   "recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_DISPATCHED",
     "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_run_id": null,
-    "replay_run_id": null,
+    "failed_run_id": 42372306620,
+    "replay_run_id": 42376096002,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-delivery-watch",
-    "same_generation_replay_required": false,
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-07T13:15:16.430759Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-11-07T12:51:59.868606Z",
       "title": "DISPATCHED",
