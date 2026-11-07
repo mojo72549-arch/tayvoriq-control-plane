@@ -147,6 +147,47 @@ def test_hf_fallback_prompt_is_v5_native_and_keeps_cross_domain_candidates(monke
     assert all(len(item["sources"]) == 2 for item in data["candidates"])
 
 
+def test_groq_pair_first_prioritizes_same_story_independent_publishers() -> None:
+    # Many unrelated records must not crowd out the two evidence-bound topics.
+    noise = [
+        {"title": f"Generic unrelated overview {i}",
+         "context": "Information about different topics and background.",
+         "url": f"https://noise{i % 8}.example/{i}", "domain": f"noise{i % 8}.example"}
+        for i in range(75)
+    ]
+    pairs = [
+        {"title": "Mercedes investiert Stuttgart Werk",
+         "context": "Mercedes investiert in ein Werk am Standort Stuttgart.",
+         "url": "https://source-a.example/mercedes", "domain": "source-a.example"},
+        {"title": "Mercedes investiert Stuttgart Werk",
+         "context": "Mercedes investiert in sein Werk in Stuttgart.",
+         "url": "https://source-b.example/mercedes", "domain": "source-b.example"},
+        {"title": "Bosch eröffnet Reutlingen Halbleiterfabrik",
+         "context": "Bosch eröffnet eine Halbleiterfabrik in Reutlingen.",
+         "url": "https://source-a.example/bosch", "domain": "source-a.example"},
+        {"title": "Bosch eröffnet Reutlingen Halbleiterfabrik",
+         "context": "Bosch eröffnet die Halbleiterfabrik am Standort Reutlingen.",
+         "url": "https://source-b.example/bosch", "domain": "source-b.example"},
+    ]
+    selected = hf._groq_source_records(noise + pairs)
+    first = {row["url"] for row in selected[:4]}
+    assert first == {row["url"] for row in pairs}
+    assert len(selected) >= 8
+    assert hf._source_pair_score(pairs[0], pairs[1]) > 0
+    assert hf._source_pair_score(pairs[0], pairs[2]) == 0
+    assert hf._source_pair_score(pairs[0], {**pairs[1], "domain": pairs[0]["domain"]}) == 0
+
+
+def test_groq_pair_first_does_not_merge_proposal_with_actual_closure() -> None:
+    a = {"title": "Mercedes plant Schließung Werk Stuttgart",
+         "context": "Eine Schließung wird geplant.",
+         "url": "https://a.example/1", "domain": "a.example"}
+    b = {"title": "Mercedes schließt Werk Stuttgart",
+         "context": "Ein Werk wird geschlossen.",
+         "url": "https://b.example/1", "domain": "b.example"}
+    assert hf._source_pair_score(a, b) == 0
+
+
 def test_all_provider_failure_creates_deferred_marker(monkeypatch, tmp_path) -> None:
     marker = tmp_path / "deferred.json"
     monkeypatch.setattr(resilience, "MARKER", marker)
