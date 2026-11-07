@@ -96,6 +96,25 @@ class RecoveryRebindTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual(again["codefix_recovery"]["local_retry_run_attempt"], 3)
 
+    def test_verified_replay_has_an_independent_attempt_counter(self):
+        older, _ = self.bind()
+        older_id = older["golden_path_run_id"]
+        replay_id = older_id + 1
+        request = older | {
+            "golden_path_run_id": replay_id,
+            "previous_golden_path_run_ids": [older_id],
+            "codefix_recovery": older["codefix_recovery"] | {"status": "REPLAY_DISPATCHED"},
+        }
+        pointer = self.pointer | {"golden_path_run_id": replay_id}
+        rebound, changed = self.bind(request=request, pointer=pointer, run_id=replay_id,
+                                     failure_signature="new-failure")
+        self.assertTrue(changed)
+        self.assertEqual(rebound["codefix_recovery"]["local_retry_run_id"], replay_id)
+        self.assertEqual(rebound["codefix_recovery"]["local_retry_run_attempt"], 2)
+        with self.assertRaisesRegex(RetryBindingError, "CONFLICTING_ATTEMPT"):
+            self.bind(request=request | {"previous_golden_path_run_ids": []},
+                      pointer=pointer, run_id=replay_id, failure_signature="new-failure")
+
     def test_cli_atomic_write_and_idempotency(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
