@@ -57,7 +57,10 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         except Exception as exc:
             if http_failure(exc)[0] in {401, 403}:
                 raise RuntimeError('RESEARCH_PROVIDER_ACCESS_BLOCKED: ' + label) from exc
-            health.failure(name, key, exc)
+            if isinstance(exc, hf.InsufficientSourceEvidence):
+                health.success(name)
+            else:
+                health.failure(name, key, exc)
             if name.startswith('groq') and http_failure(exc)[0] == 402:
                 groq_account_blocked = True
                 health.failure('groq', key, exc)

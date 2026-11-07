@@ -9,6 +9,10 @@ from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words, _
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 
+class InsufficientSourceEvidence(RuntimeError):
+    """The provider responded successfully but did not return enough corroborated stories."""
+
+
 def domain(url:str)->str:
     try:
         h=urlparse(url).netloc.casefold().split(":",1)[0]; return h[4:] if h.startswith("www.") else h
@@ -285,7 +289,7 @@ EDITORIAL FALLBACK CONTRACT:
     # provider insufficiency so resilience can continue to the next source pool
     # (notably GDELT) without weakening any evidence gate.
     if len(valid_candidates)<2 or len(chunks)<4:
-        raise RuntimeError(
+        raise InsufficientSourceEvidence(
             f"HF source contract insufficient for {source_label}: "
             f"valid_candidates={len(valid_candidates)} grounding_chunks={len(chunks)}"
         )
