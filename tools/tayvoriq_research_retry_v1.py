@@ -101,8 +101,11 @@ def delivered(slot: str) -> None:
 def lifecycle(result: dict) -> dict:
     if result.get("state") != "IDLE":
         return result
-    queue = current()
-    if not queue:
+    now = time.time()
+    queue = current(now=now)
+    # A missed or exhausted research slot from a previous Berlin day is
+    # history. It must not turn today's otherwise idle lifecycle into BLOCKED.
+    if not queue or queue.get("berlin_date") != datetime.fromtimestamp(now, ZONE).date().isoformat():
         return result
     return {**result, "action": "NONE",
             "state": "WAITING" if queue.get("state") == "WAITING" else "BLOCKED",
