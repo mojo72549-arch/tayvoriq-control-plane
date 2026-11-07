@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-07T18:04:36.608700Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-07T20:41:24.176681Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3501-trend-1",
-    "golden_path_run_id": 42390910090,
-    "pointer_updated_at": "2026-11-07T16:21:52.045506Z"
+    "golden_path_run_id": 42400577527,
+    "pointer_updated_at": "2026-11-07T18:18:01.390348Z"
   },
   "request": {
     "request_id": "telegram-3501-trend-1",
@@ -22,7 +22,7 @@
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 0,
+    "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
@@ -45,19 +45,19 @@
     "path": "requests/telegram-3501-trend-1.json"
   },
   "run": {
-    "id": 42390910090,
+    "id": 42400577527,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42390910090",
-    "created_at": "2026-11-07T16:21:45Z",
-    "updated_at": "2026-11-07T17:51:20Z",
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42400577527",
+    "created_at": "2026-11-07T18:17:55Z",
+    "updated_at": "2026-11-07T19:41:07Z",
     "attempt": 3,
     "progress": 30,
-    "current_step": "Repair only failed local checkpoints",
-    "last_successful_step": "Telegram progress - checkpoint repair",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -103,25 +103,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 40,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 42,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 46,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Send Telegram review"
       }
@@ -130,8 +130,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Repair only failed local checkpoints"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -141,26 +141,26 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair"
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
   "incident": {
-    "signature": "42390910090:LOCAL_VISUAL",
-    "severity": "warning",
+    "signature": "42400577527:LOCAL_VISUAL",
+    "severity": "critical",
     "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 40,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -168,17 +168,17 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram progress - checkpoint repair",
-    "last_step": "Telegram progress - checkpoint repair"
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "LOCAL_RETRY_DISPATCHED",
     "source_status": "LOCAL_RETRY_DISPATCHED",
     "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": 42388910187,
     "replay_run_id": 42390910090,
-    "fresh_recovery_run_id": null,
-    "recovery_generation": 0,
+    "fresh_recovery_run_id": 42400577527,
+    "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -186,6 +186,26 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-07T19:41:07Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-07T19:20:51.806196Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-07T19:03:35.778998Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-07T18:18:01.390348Z",
+      "title": "DISPATCHED",
+      "detail": "bounded-shared-policy-recovery"
+    },
     {
       "at": "2026-11-07T17:51:14.181544Z",
       "title": "DISPATCHED",
@@ -198,21 +218,6 @@
     },
     {
       "at": "2026-11-07T16:21:52.045506Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-11-07T15:58:14.597096Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-11-07T14:57:20.722544Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-11-07T14:19:43.431537Z",
       "title": "DISPATCHED",
       "detail": "same-generation-verified-green-local-checkpoint-replay"
     }
