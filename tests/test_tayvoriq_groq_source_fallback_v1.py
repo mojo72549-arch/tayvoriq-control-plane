@@ -175,10 +175,11 @@ class GroqSourceContractTests(unittest.TestCase):
         pool += [record(f'other{i}.example', f'Global unrelated update {i}', i + 30)
                  for i in range(20)]
         selected = hf._groq_source_records(pool)
-        self.assertFalse(any(
-            first['title'] == 'Mercedes investiert in Stuttgart Werk'
-            and second['title'] == 'Mercedes schließt Stuttgart Werk'
-            for first, second in zip(selected, selected[1:])))
+        self.assertTrue(selected)
+        # Mere proximity in the prompt never constitutes evidence.
+        self.assertIn(
+            'source_2_does_not_support_headline',
+            hf.validate_pair({'title': pool[0]['title']}, [pool[0], pool[1]]))
 
 
 if __name__ == "__main__":
