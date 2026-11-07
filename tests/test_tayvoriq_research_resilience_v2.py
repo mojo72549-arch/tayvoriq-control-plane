@@ -291,3 +291,32 @@ def test_resilience_defers_when_no_verified_source_path_remains(monkeypatch, tmp
         raise AssertionError('unverified generic filler must not enter production')
     assert json.loads(marker.read_text())['status'] == 'RESEARCH_DEFERRED'
 
+
+
+def test_context_fallback_can_pair_rss_with_gdelt_reports(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(resilience, "MARKER", tmp_path / "deferred.json")
+    monkeypatch.delenv("TAYVORIQ_PROVIDER_HEALTH_FILE", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_TOKEN", raising=False)
+
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(resilience.provider, "groq_browser_then_structure", unavailable)
+    rss_row = {"url": "https://rss.example/story", "context": "Original RSS excerpt"}
+    context_row = {"url": "https://local.example/story", "context": "Independent report"}
+    monkeypatch.setattr(resilience.rss, "source_pool", lambda: [rss_row])
+    monkeypatch.setattr(resilience.gdelt, "source_pool", lambda: [
+        {**rss_row, "context": "Alternative snippet from the same URL"}, context_row,
+    ])
+
+    def structure(prompt, key, rows, label, **kwargs):
+        if label == "multi-publisher-rss":
+            assert rows == [rss_row]
+            raise RuntimeError("RSS alone has no corroboration")
+        assert label == "rss-gdelt-context"
+        assert rows == [rss_row, context_row]
+        return {"candidates": []}, [], "test-model"
+
+    monkeypatch.setattr(resilience.hf, "structure", structure)
+    assert resilience.grounded("prompt", "", "groq")[-1] == "groq_gdelt"

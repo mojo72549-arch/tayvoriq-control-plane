@@ -19,10 +19,10 @@ _STOP = set("der die das den dem des ein eine einer einem einen eines und oder a
 _EVENTS = {
     "investment": r"\b(?:invest\w*|finanzier\w*)\b",
     "closure": r"\b(?:schließ\w*|schliess\w*|stillleg\w*|clos(?:e|es|ing|ure)|shuts?)\b",
-    "job_cuts": r"\b(?:stellenabbau|personalabbau|jobabbau|entlass\w*|layoffs?|streicht|streichen)\b",
+    "job_cuts": r"\b(?:stellenabbau|personalabbau|jobabbau|entlass\w*|layoffs?|streicht|streichen|stellenstreich\w*)\b",
     "opening": r"\b(?:eröffn\w*|eroeffn\w*|opens?|opening)\b",
     "hiring": r"\b(?:neueinstellungen|hires?|hiring)\b",
-    "strike": r"\b(?:streik\w*|strikes?)\b",
+    "strike": r"\b(?:warnstreik\w*|streik\w*|strikes?)\b",
     "price_rise": r"\b(?:preisanstieg|preiserhöhung\w*|preiserhoehung\w*|verteuer\w*)\b",
     "price_fall": r"\b(?:preissenkung\w*|preisrückgang|preisrueckgang|verbillig\w*)\b",
     "recall": r"\b(?:rückruf\w*|rueckruf\w*|recalls?)\b",
@@ -40,7 +40,13 @@ _EVENTS = {
 
 
 def _events(text: str) -> set[str]:
-    return {name for name, pattern in _EVENTS.items() if re.search(pattern, text.casefold())}
+    text = text.casefold()
+    events = {name for name, pattern in _EVENTS.items() if re.search(pattern, text)}
+    if re.search(r"\b(?:stellen|jobs|arbeitsplätze)\b", text) and re.search(
+        r"\b(?:abbau\w*|wegfall\w*|baut.{0,65}\bab|fallen.{0,40}\bweg)\b", text
+    ):
+        events.add("job_cuts")
+    return events
 
 
 def _status(text: str) -> tuple[bool, bool]:
@@ -103,8 +109,12 @@ def _numbers(value: str) -> set[str]:
 
 
 def _publisher(record: dict) -> str:
-    host = (urlparse(str(record.get("url") or "")).hostname or "").casefold()
-    host = host.removeprefix("www.")
+    parsed = urlparse(str(record.get("url") or ""))
+    host = (parsed.hostname or "").casefold().removeprefix("www.")
+    if host == "tagesschau.de":
+        affiliate = re.match(r"^/inland/regional/[^/]+/(swr|ndr|wdr|br|hr|mdr|rbb|sr)-", parsed.path)
+        if affiliate:
+            return affiliate.group(1) + ".de"
     if host in {"bbc.com", "bbc.co.uk"} or host.endswith((".bbc.com", ".bbc.co.uk")):
         return "bbc.com"
     for publisher in ("tagesschau.de", "dw.com", "theguardian.com", "aljazeera.com"):
@@ -144,7 +154,7 @@ def validate_pair(candidate: dict, records: list[dict]) -> list[str]:
     origins = []
     for record, text in zip(records, texts):
         declared = str(record.get("origin") or record.get("source_origin") or record.get("wire_agency") or "").strip().casefold()
-        agencies = set(re.findall(r"\b(?:dpa|reuters|afp|associated press)\b", text.casefold()))
+        agencies = set(re.findall(r"\b(?:dpa|reuters|afp|associated press)\b", f"{declared} {text.casefold()}"))
         origins.append(agencies | ({declared} if declared else set()))
     if origins[0] & origins[1]:
         reasons.append("same_declared_reporting_origin")

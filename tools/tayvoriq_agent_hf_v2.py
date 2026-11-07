@@ -5,9 +5,13 @@ from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
-from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words, _events, _status, _events, _status
+from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
+
+class InsufficientSourceEvidence(RuntimeError):
+    """The provider responded successfully but did not return enough corroborated stories."""
+
 
 def domain(url:str)->str:
     try:
@@ -57,7 +61,9 @@ def _balanced_compact_records(records:list[dict[str,str]],max_chars:int=56000)->
 
 def _source_pair_score(a: dict, b: dict) -> int:
     """Rank evidence leads, not verified claims. Final validate_pair stays mandatory."""
-    if str(a.get('domain') or domain(str(a.get('url') or ''))) == str(b.get('domain') or domain(str(b.get('url') or ''))):
+    domain_a = a.get('domain') or domain(str(a.get('url') or ''))
+    domain_b = b.get('domain') or domain(str(b.get('url') or ''))
+    if domain_a == domain_b or _publisher(a) == _publisher(b):
         return 0
     ta, tb = str(a.get('title') or ''), str(b.get('title') or '')
     shared_events = _events(ta) & _events(tb)
@@ -91,11 +97,14 @@ def _groq_source_records(records):
         return _balanced_compact_records(records, max_chars=9000)
     candidates = list(records)
     pairs = []
+    scores = [0] * len(candidates)
     for i, a in enumerate(candidates):
         for j in range(i + 1, len(candidates)):
             score = _source_pair_score(a, candidates[j])
             if score:
                 pairs.append((score, i, j))
+                scores[i] = max(scores[i], score)
+                scores[j] = max(scores[j], score)
     pairs.sort(reverse=True)
     indices = []
     used = set()
@@ -110,11 +119,6 @@ def _groq_source_records(records):
     # Keep independent discoveries available even if pair candidates are few.
     title_words = [_words(str(row.get('title') or '')) for row in candidates]
     domain_lists = [str(row.get('domain') or domain(str(row.get('url') or ''))) for row in candidates]
-    scores = [
-        max((_source_pair_score(candidates[i], candidates[j])
-             for j in range(len(candidates)) if domain_lists[i] != domain_lists[j]), default=0)
-        for i in range(len(candidates))
-    ]
     remainder = sorted((i for i in range(len(candidates)) if i not in used),
                        key=lambda i: (-scores[i], -len(title_words[i]), i))
     indices.extend(remainder)
@@ -156,9 +160,10 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     if len(balanced)<8 or len({r['domain'] for r in balanced})<2: raise RuntimeError("balanced source pool too small for safe fallback")
     model=(base.clean(model_override or os.getenv("TAYVORIQ_GROQ_RSS_MODEL"),160) or "openai/gpt-oss-20b") if provider_kind=="groq" else (base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest")
     indexed=[]; by_id={}; by_url={}
+    originals = {str(record.get("url") or ""): record for record in records}
     for idx,record in enumerate(balanced, start=1):
         sid=f"S{idx:03d}"
-        original={**record,"source_id":sid}
+        original={**originals[str(record.get("url") or "")], "source_id":sid}
         by_id[sid]=original
         by_url[str(record.get('url') or '')]=original
         indexed.append({
@@ -284,7 +289,7 @@ EDITORIAL FALLBACK CONTRACT:
     # provider insufficiency so resilience can continue to the next source pool
     # (notably GDELT) without weakening any evidence gate.
     if len(valid_candidates)<2 or len(chunks)<4:
-        raise RuntimeError(
+        raise InsufficientSourceEvidence(
             f"HF source contract insufficient for {source_label}: "
             f"valid_candidates={len(valid_candidates)} grounding_chunks={len(chunks)}"
         )

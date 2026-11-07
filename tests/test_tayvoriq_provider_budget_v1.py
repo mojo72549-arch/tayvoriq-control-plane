@@ -78,7 +78,7 @@ class PersistentBudgetTests(unittest.TestCase):
         with patch.dict(os.environ, env), \
              patch.object(resilience, 'MARKER', Path(self.tmp.name) / 'marker.json'), \
              patch.object(provider, 'groq_browser_then_structure', side_effect=error(429)) as browser, \
-             patch.object(resilience.rss, 'source_pool', return_value=[{'original': True}]) as rss, \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'url': 'https://source.example/story'}]) as rss, \
              patch.object(resilience.gdelt, 'source_pool', side_effect=AssertionError('all structurers blocked')), \
              patch.object(resilience.hf, 'structure', side_effect=structure) as structure:
             for _ in range(2):
@@ -169,7 +169,7 @@ class PersistentBudgetTests(unittest.TestCase):
                'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}
         with patch.dict(os.environ, env), \
              patch.object(provider, 'groq_browser_then_structure', side_effect=error(429, '3600')) as call, \
-             patch.object(resilience.rss, 'source_pool', return_value=[{'original': True}]), \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'url': 'https://source.example/story'}]), \
              patch.object(resilience.hf, 'structure', return_value=(
                  {'candidates': ['source-bound']}, ['chunks'], 'openai/gpt-oss-120b')) as structure:
             result = resilience.grounded('prompt', '', 'existing-groq-key')
@@ -180,6 +180,21 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(read(self.health)['providers']['groq']['http_status'], 429)
         self.assertNotIn('groq:openai/gpt-oss-120b', read(self.health)['providers'])
 
+    def test_model_response_clears_expired_quota_even_when_sources_fail(self):
+        health = ProviderHealth(self.health, clock=lambda: NOW)
+        health.failure('groq', 'groq-key', error(429, '1'))
+        env = {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health), 'HF_TOKEN': '', 'HUGGINGFACE_TOKEN': ''}
+        with patch.dict(os.environ, env), \
+             patch.object(resilience, 'MARKER', Path(self.tmp.name) / 'marker.json'), \
+             patch.object(provider, 'groq_browser_then_structure') as browser, \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'url': 'https://source.example/story'}]), \
+             patch.object(resilience.gdelt, 'source_pool', return_value=[]), \
+             patch.object(resilience.hf, 'structure', side_effect=resilience.hf.InsufficientSourceEvidence('no safe pairs')):
+            with self.assertRaisesRegex(RuntimeError, 'RESEARCH_DEFERRED'):
+                resilience.grounded('prompt', '', 'groq-key')
+            browser.assert_not_called()
+            self.assertNotIn('groq', read(self.health)['providers'])
+
     def test_recovering_model_preserves_budget_for_source_structuring(self):
         state = ProviderHealth(self.health, clock=lambda: NOW)
         state.failure('groq', 'groq-key', error(429, '1'))
@@ -187,7 +202,7 @@ class PersistentBudgetTests(unittest.TestCase):
                'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}
         with patch.dict(os.environ, env), \
              patch.object(provider, 'groq_browser_then_structure', side_effect=AssertionError('no browser after 429')), \
-             patch.object(resilience.rss, 'source_pool', return_value=[{'original': True}]), \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'url': 'https://source.example/story'}]), \
              patch.object(resilience.hf, 'structure', return_value=(
                  {'candidates': ['source-bound']}, ['chunks'], 'verified')) as structure:
             result = resilience.grounded('prompt', '', 'groq-key')
