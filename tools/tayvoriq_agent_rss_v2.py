@@ -15,6 +15,12 @@ import tayvoriq_agent_research_http_v2 as http
 
 base = provider.base
 FEEDS = [
+    # German/regional reporting first; independent source validation stays downstream.
+    ("swr-bw", "https://www.swr.de/~rss/swraktuell/swraktuell-bw-100.xml"),
+    ("deutschlandfunk-news", "https://www.deutschlandfunk.de/nachrichten-100.rss"),
+    ("deutschlandfunk-economy", "https://www.deutschlandfunk.de/wirtschaft-106.rss"),
+    ("spiegel-headlines", "https://www.spiegel.de/schlagzeilen/index.rss"),
+    ("heise-tech", "https://www.heise.de/rss/heise-atom.xml"),
     ("tagesschau", "https://www.tagesschau.de/index~rss2.xml"),
     ("tagesschau-bw", "https://www.tagesschau.de/inland/regional/badenwuerttemberg/index~rss2.xml"),
     ("tagesschau-wirtschaft", "https://www.tagesschau.de/wirtschaft/index~rss2.xml"),
@@ -129,6 +135,22 @@ def source_pool() -> list[dict[str, str]]:
     dedup: dict[str, dict[str, str]] = {}
     for record in records:
         dedup.setdefault(record["url"], record)
-    out = list(dedup.values())[:240]
+    # The old first-240 cap silently discarded later publishers (notably DW),
+    # leaving no independent reports about the same German event. Round-robin
+    # by publisher prevents a single high-volume RSS feed from crowding out
+    # the sources required by the unchanged two-publisher evidence gate.
+    from collections import defaultdict, deque
+    by_publisher = defaultdict(deque)
+    for record in dedup.values():
+        by_publisher[record["domain"]].append(record)
+    out = []
+    while by_publisher and len(out) < 240:
+        for publisher in list(by_publisher):
+            if by_publisher[publisher]:
+                out.append(by_publisher[publisher].popleft())
+            if not by_publisher[publisher]:
+                del by_publisher[publisher]
+            if len(out) >= 240:
+                break
     print(json.dumps({"event": "rss_source_pool", "records": len(out), "independent_publishers": len({r['domain'] for r in out}), "publishers": sorted({r['domain'] for r in out}), "feed_failures": failures[:16]}, ensure_ascii=False))
     return out
