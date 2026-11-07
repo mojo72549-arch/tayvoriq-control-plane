@@ -86,6 +86,14 @@ def rebind_same_run(
     codefix = dict(codefix) if isinstance(codefix, dict) else {}
     target_attempt = run_attempt + 1
     previous_attempt = int(codefix.get("local_retry_run_attempt") or 0)
+    previous_run = int(codefix.get("local_retry_run_id") or 0)
+    if previous_attempt and previous_run != run_id:
+        # A Production Green replay has its own GitHub attempt sequence.
+        # Discard only an acknowledged predecessor's attempt counter.
+        lineage = {int(item) for item in request.get("previous_golden_path_run_ids") or []}
+        if previous_run not in lineage:
+            raise RetryBindingError("SAME_RUN_RETRY_CONFLICTING_ATTEMPT")
+        previous_attempt = 0
     if previous_attempt > target_attempt:
         raise RetryBindingError("SAME_RUN_RETRY_STALE_ATTEMPT")
     if previous_attempt == target_attempt:
