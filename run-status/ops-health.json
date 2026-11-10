@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-10T12:52:32.544558Z",
-  "overall": "red",
+  "generated_at": "2026-11-10T17:01:35.697135Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -14,16 +14,16 @@
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3501-trend-1",
     "golden_path_run_id": 42400577527,
-    "pointer_updated_at": "2026-11-07T18:18:01.390348Z"
+    "pointer_updated_at": "2026-11-10T16:58:20.215293Z"
   },
   "request": {
     "request_id": "telegram-3501-trend-1",
     "topic": "Bosch plant 750 weitere Stellenstreichungen in Abstatt",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "EXPIRED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "none",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -46,7 +46,7 @@
   },
   "run": {
     "id": 42400577527,
-    "historical": false,
+    "historical": true,
     "status": "completed",
     "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42400577527",
@@ -130,8 +130,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert"
     },
     {
       "name": "Production Green",
@@ -140,46 +140,35 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "LOCAL_RETRY_DISPATCHED"
+      "status": "green",
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "status": "yellow",
+      "detail": "Archivierter Auftrag: kein aktueller Video-Review"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Historischer Fehler archiviert · neuer Auftrag ausstehend"
     }
   ],
-  "incident": {
-    "signature": "42400577527:LOCAL_VISUAL",
-    "severity": "critical",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
+    "status": "yellow",
+    "detail": "Archivierter Auftrag: kein aktueller Video-Review",
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "status": "IDLE",
+    "source_status": "IDLE",
+    "failure_state": null,
     "failed_run_id": 42388910187,
     "replay_run_id": 42390910090,
     "fresh_recovery_run_id": 42400577527,
     "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "none",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -190,6 +179,11 @@
       "at": "2026-11-07T19:41:07Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-10T16:58:20.215293Z",
+      "title": "EXPIRED",
+      "detail": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
     },
     {
       "at": "2026-11-07T19:20:51.806196Z",
@@ -215,11 +209,6 @@
       "at": "2026-11-07T16:50:22.129790Z",
       "title": "DISPATCHED",
       "detail": "SAME_RUN_TRANSIENT_RECOVERY"
-    },
-    {
-      "at": "2026-11-07T16:21:52.045506Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
     }
   ]
 }
