@@ -1,15 +1,31 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-10T22:23:31.865493Z",
+  "generated_at": "2026-11-10T23:08:43.506497Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": true,
-    "reason": "VERIFIED_STATE_TRANSITION"
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
   },
   "api_error": null,
-  "research": {},
+  "research": {
+    "schema": "tayvoriq-research-retry-v1",
+    "state": "WAITING",
+    "slot": "evening",
+    "berlin_date": "2026-11-11",
+    "first_deferred_at_epoch": 1794352111.4200253,
+    "attempts": 1,
+    "retry_at_epoch": 1794352958.4445083,
+    "retry_phase": "NORMAL",
+    "last_deferred_at_epoch": 1794352111.4200253,
+    "provider_retry_at_epoch": 1794352958.4445083,
+    "max_attempts": 10,
+    "valid_until_epoch": 1794373711.4200253,
+    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "quality_gates_weakened": false,
+    "production_started": false
+  },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3501-trend-1",
@@ -23,7 +39,7 @@
     "slot": null,
     "state": "EXPIRED",
     "recovery_generation": 1,
-    "recovery_owner": "none",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -140,8 +156,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "WAITING"
     },
     {
       "name": "Telegram",
@@ -161,14 +177,14 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
+    "status": "WAITING",
+    "source_status": "WAITING",
     "failure_state": null,
     "failed_run_id": 42388910187,
     "replay_run_id": 42390910090,
     "fresh_recovery_run_id": 42400577527,
     "recovery_generation": 1,
-    "owner": "none",
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
