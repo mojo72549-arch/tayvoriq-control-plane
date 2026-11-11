@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-11T07:54:07.893131Z",
+  "generated_at": "2026-11-11T09:08:48.934607Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -29,8 +29,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3549-trend-1",
-    "golden_path_run_id": 42977026546,
-    "pointer_updated_at": "2026-11-11T07:06:08.473859Z"
+    "golden_path_run_id": 42983272199,
+    "pointer_updated_at": "2026-11-11T07:57:33.270130Z"
   },
   "request": {
     "request_id": "telegram-3549-trend-1",
@@ -61,13 +61,13 @@
     "path": "requests/telegram-3549-trend-1.json"
   },
   "run": {
-    "id": 42977026546,
+    "id": 42983272199,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42977026546",
-    "created_at": "2026-11-11T07:06:02Z",
-    "updated_at": "2026-11-11T07:18:03Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42983272199",
+    "created_at": "2026-11-11T07:57:26Z",
+    "updated_at": "2026-11-11T08:08:57Z",
     "attempt": 3,
     "progress": 30,
     "current_step": null,
@@ -171,7 +171,7 @@
     }
   ],
   "incident": {
-    "signature": "42977026546:RECOVERY",
+    "signature": "42983272199:RECOVERY",
     "severity": "critical",
     "failure_state": "RECOVERY_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
@@ -191,7 +191,7 @@
     "status": "ARMED",
     "source_status": "ARMED",
     "failure_state": "RECOVERY_CODEFIX_REQUIRED",
-    "failed_run_id": 42977026546,
+    "failed_run_id": 42983272199,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
@@ -203,9 +203,29 @@
   },
   "events": [
     {
-      "at": "2026-11-11T07:18:03Z",
+      "at": "2026-11-11T08:08:57Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-11T08:09:26.145895Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "RECOVERY_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-11-11T08:05:30.478621Z",
+      "title": "DISPATCHED",
+      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+    },
+    {
+      "at": "2026-11-11T08:01:39.791135Z",
+      "title": "DISPATCHED",
+      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+    },
+    {
+      "at": "2026-11-11T07:57:33.270130Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-11-11T07:48:57.477264Z",
@@ -214,26 +234,6 @@
     },
     {
       "at": "2026-11-11T07:13:57.808057Z",
-      "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
-    },
-    {
-      "at": "2026-11-11T07:10:12.315337Z",
-      "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
-    },
-    {
-      "at": "2026-11-11T07:06:08.473859Z",
-      "title": "DISPATCHED",
-      "detail": "bounded-shared-policy-recovery"
-    },
-    {
-      "at": "2026-11-11T07:01:41.814347Z",
-      "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
-    },
-    {
-      "at": "2026-11-11T06:57:51.100502Z",
       "title": "DISPATCHED",
       "detail": "SAME_RUN_TRANSIENT_RECOVERY"
     }
