@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-3549-trend-1",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Porsche SE meldet 2,8 Milliarden Euro Verlust",
@@ -149,9 +149,15 @@
       "state": "DISPATCHING",
       "at": "2026-11-11T06:53:41.626752+00:00",
       "actor": "request-dispatcher:42975587033"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-11T06:53:51.353432+00:00",
+      "actor": "request-dispatcher:42975587033"
     }
   ],
   "contract_sha256": "30493d4d8622b5eb56a29637b0dbf83590cdc8595e3428f544fe722bdb77cacd",
   "dispatch_claim_run_id": 42975587033,
-  "dispatch_contract_sha256": "30493d4d8622b5eb56a29637b0dbf83590cdc8595e3428f544fe722bdb77cacd"
+  "dispatch_contract_sha256": "30493d4d8622b5eb56a29637b0dbf83590cdc8595e3428f544fe722bdb77cacd",
+  "golden_path_run_id": 42975604237
 }
