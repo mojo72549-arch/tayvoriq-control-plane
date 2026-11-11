@@ -272,7 +272,7 @@ jobs:
             --structured-evidence /tmp/codefix-structured-failure.json \
             --run-attempt "$run_attempt" \
             --recovery-generation "$GENERATION" \
-            --max-generations 4 \
+            --max-generations 1 \
             --owner-found true \
             --owner-current true \
             --exact-request-retry true \
