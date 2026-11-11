@@ -220,6 +220,22 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-11-11T07:48:57.477264Z",
+      "actor": "tayvoriq-codefix-orphan-reconcile-v1",
+      "meta": {
+        "failed_run_id": 42977026546,
+        "failure_signature": "390dc8f19cc3186093c2",
+        "failure_state": "RECOVERY_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "d24ddd3049cd3a659aa6c15db6e6dffb7f2e1312",
+        "failed_implementation_sha": "b2fba245a2f1ebcc7cd65af04804dcd85e6ad590",
+        "recovery_generation": 1,
+        "reason": "failed-codefix-replay-rearmed",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "30493d4d8622b5eb56a29637b0dbf83590cdc8595e3428f544fe722bdb77cacd",
@@ -227,22 +243,24 @@
   "dispatch_contract_sha256": "30493d4d8622b5eb56a29637b0dbf83590cdc8595e3428f544fe722bdb77cacd",
   "golden_path_run_id": 42977026546,
   "codefix_recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failure_state": "",
-    "local_retry_run_id": 42977026546,
-    "local_retry_run_attempt": 3,
-    "local_retry_kind": "same-run",
-    "local_retry_failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
-    "local_retry_failure_signature": "83a54c70c4dfd26c5e3f",
-    "local_retry_dispatched_at": "2026-11-11T07:13:57.808057Z",
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failed_run_id": 42977026546,
+    "failure_signature": "390dc8f19cc3186093c2",
+    "failure_state": "RECOVERY_CODEFIX_REQUIRED",
+    "failed_run_attempt": 3,
+    "failed_control_plane_sha": "d24ddd3049cd3a659aa6c15db6e6dffb7f2e1312",
+    "failed_implementation_sha": "b2fba245a2f1ebcc7cd65af04804dcd85e6ad590",
+    "recovery_generation": 1,
+    "armed_at": "2026-11-11T07:48:57.477264Z",
+    "same_generation_replay_required": true,
+    "exact_source_request_required": true,
     "quality_gates_weakened": false,
+    "orphan_reconciled": true,
     "active_pointer_verified": true,
-    "fresh_recovery_run_id": 42977026546,
-    "fresh_recovery_of_run_id": 42975604237,
-    "fresh_recovery_generation": 1,
-    "fresh_recovery_at": "2026-11-11T07:06:08.473859Z",
-    "last_failure_state": "REQUEST_BOUND_RECOVERY_REQUIRED"
+    "rearmed_after_failed_replay": true,
+    "previous_codefix_failed_run_id": 0,
+    "previous_codefix_failure_signature": ""
   },
   "recovery_owner": "tayvoriq-delivery-watch",
   "previous_golden_path_run_ids": [
