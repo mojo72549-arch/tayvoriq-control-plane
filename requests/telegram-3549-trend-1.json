@@ -266,6 +266,19 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-11T08:05:30.478621Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "golden_path_run_id": 42983272199,
+        "reason": "same-run-local-retry",
+        "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+        "failure_signature": "83a54c70c4dfd26c5e3f",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "30493d4d8622b5eb56a29637b0dbf83590cdc8595e3428f544fe722bdb77cacd",
@@ -298,11 +311,11 @@
     "replay_implementation_sha": "45674ac1838c09e1da6d1438cd15dca096afce21",
     "codefix_detection_reason": "production-green-implementation-changed",
     "local_retry_run_id": 42983272199,
-    "local_retry_run_attempt": 2,
+    "local_retry_run_attempt": 3,
     "local_retry_kind": "same-run",
     "local_retry_failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
     "local_retry_failure_signature": "83a54c70c4dfd26c5e3f",
-    "local_retry_dispatched_at": "2026-11-11T08:01:39.791135Z"
+    "local_retry_dispatched_at": "2026-11-11T08:05:30.478621Z"
   },
   "recovery_owner": "tayvoriq-delivery-watch",
   "previous_golden_path_run_ids": [
