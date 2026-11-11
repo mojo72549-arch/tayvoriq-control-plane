@@ -1,0 +1,36 @@
+{
+  "selection_id": "20261111-morning-agentv2",
+  "slot": "morning",
+  "provider": "editorial",
+  "model": "source-reviewed",
+  "grounding_chunks": [
+    {
+      "uri": "https://www.porsche-se.com/medien/pressemitteilungen/detail/schwierige-rahmenbedingungen-in-der-automobilindustrie-wirken-sich-auf-ergebniszahlen-der-porsche-se-aus",
+      "title": "Porsche SE"
+    },
+    {
+      "uri": "https://www.swr.de/swraktuell/baden-wuerttemberg/porsche-se-milliardenverlust-100.html",
+      "title": "SWR Aktuell"
+    },
+    {
+      "uri": "https://www.igmetall.de/berlin/aktuelles/2026/q4/dritte-tarifverhandlung-ig-metall-schlaegt-loesung-vor-arbeitgeber-beharren-auf-minus-angebot",
+      "title": "IG Metall"
+    },
+    {
+      "uri": "https://www.onvista.de/news/2026/11-09-keine-annaeherung-im-metall-tarifstreit-eskalation-droht-0-20-26574245",
+      "title": "Reuters"
+    }
+  ],
+  "candidate_count": 2,
+  "valid_count": 2,
+  "selected_count": 2,
+  "series_candidate_injected": false,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 1,
+  "growth_rescan_used": false,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_2_to_5",
+  "candidate_minimum": 2,
+  "candidate_maximum": 5,
+  "weak_fill_allowed": false
+}
