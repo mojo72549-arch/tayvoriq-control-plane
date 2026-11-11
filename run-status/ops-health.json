@@ -1,12 +1,12 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-11T06:53:18.535014Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-11T07:48:44.416703Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": false,
-    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
+    "telegram_notify_allowed": true,
+    "reason": "VERIFIED_STATE_TRANSITION"
   },
   "api_error": null,
   "research": {
@@ -28,22 +28,22 @@
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3501-trend-1",
-    "golden_path_run_id": 42400577527,
-    "pointer_updated_at": "2026-11-10T16:58:20.215293Z"
+    "request_id": "telegram-3549-trend-1",
+    "golden_path_run_id": 42977026546,
+    "pointer_updated_at": "2026-11-11T07:06:08.473859Z"
   },
   "request": {
-    "request_id": "telegram-3501-trend-1",
-    "topic": "Bosch plant 750 weitere Stellenstreichungen in Abstatt",
+    "request_id": "telegram-3549-trend-1",
+    "topic": "Porsche SE meldet 2,8 Milliarden Euro Verlust",
     "trend_id": "1",
     "slot": null,
-    "state": "EXPIRED",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ erklärt, welche Entwicklungsaufgaben Autozulieferer verlagern und wie sich dadurch die Arbeit an deutschen Standorten verändert.",
+    "follow_reason": "TAYVORIQ erklärt, wie Beteiligungen und Wertberichtigungen die Schlagzeilen aus der deutschen Autoindustrie prägen.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -58,22 +58,22 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3501-trend-1.json"
+    "path": "requests/telegram-3549-trend-1.json"
   },
   "run": {
-    "id": 42400577527,
-    "historical": true,
+    "id": 42977026546,
+    "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42400577527",
-    "created_at": "2026-11-07T18:17:55Z",
-    "updated_at": "2026-11-07T19:41:07Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42977026546",
+    "created_at": "2026-11-11T07:06:02Z",
+    "updated_at": "2026-11-11T07:18:03Z",
     "attempt": 3,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
     "failed_step": "Assert publishable production output",
-    "failed_step_number": 40,
+    "failed_step_number": 41,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -120,25 +120,25 @@
       {
         "label": "Publishable Output",
         "status": "error",
-        "step_number": 40,
+        "step_number": 41,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "skipped",
-        "step_number": 42,
+        "step_number": 43,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "skipped",
-        "step_number": 46,
+        "step_number": 47,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "skipped",
-        "step_number": 47,
+        "step_number": 48,
         "step_name": "Send Telegram review"
       }
     ]
@@ -146,8 +146,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -157,74 +157,85 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "EXHAUSTED"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Archivierter Auftrag: kein aktueller Video-Review"
+      "status": "green",
+      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Historischer Fehler archiviert · neuer Auftrag ausstehend"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "42977026546:SAME_RUN_TRANSIENT_RECOVERY",
+    "severity": "critical",
+    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 41,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "same_generation_replay_required": false,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
-    "status": "yellow",
-    "detail": "Archivierter Auftrag: kein aktueller Video-Review",
+    "status": "green",
+    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "EXHAUSTED",
-    "source_status": "EXHAUSTED",
-    "failure_state": null,
-    "failed_run_id": 42388910187,
-    "replay_run_id": 42390910090,
-    "fresh_recovery_run_id": 42400577527,
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+    "failed_run_id": null,
+    "replay_run_id": null,
+    "fresh_recovery_run_id": 42977026546,
     "recovery_generation": 1,
-    "owner": "tayvoriq-agent-orchestrator-v2",
-    "same_generation_replay_required": true,
+    "owner": "tayvoriq-delivery-watch",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-07T19:41:07Z",
+      "at": "2026-11-11T07:18:03Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
     },
     {
-      "at": "2026-11-10T16:58:20.215293Z",
-      "title": "EXPIRED",
-      "detail": "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
-    },
-    {
-      "at": "2026-11-07T19:20:51.806196Z",
+      "at": "2026-11-11T07:13:57.808057Z",
       "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
     },
     {
-      "at": "2026-11-07T19:03:35.778998Z",
+      "at": "2026-11-11T07:10:12.315337Z",
       "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
     },
     {
-      "at": "2026-11-07T18:18:01.390348Z",
+      "at": "2026-11-11T07:06:08.473859Z",
       "title": "DISPATCHED",
       "detail": "bounded-shared-policy-recovery"
     },
     {
-      "at": "2026-11-07T17:51:14.181544Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-07T16:50:22.129790Z",
+      "at": "2026-11-11T07:01:41.814347Z",
       "title": "DISPATCHED",
       "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+    },
+    {
+      "at": "2026-11-11T06:57:51.100502Z",
+      "title": "DISPATCHED",
+      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+    },
+    {
+      "at": "2026-11-11T06:53:51.353432+00:00",
+      "title": "DISPATCHED",
+      "detail": "request-dispatcher:42975587033"
     }
   ]
 }
