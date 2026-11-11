@@ -221,3 +221,15 @@ def test_bounded_local_retry_can_arm_only_after_exact_terminal_codefix_escalatio
     assert orphan._replay_status_allows_rearm(
         codefix, 42, run, {**evidence, "same_request_required": False}, "RECOVERY_CODEFIX_REQUIRED"
     ) is False
+
+
+
+def test_deterministic_continuity_uses_shared_one_generation_recovery_ceiling() -> None:
+    # Delivery Watch reserves at most one recovery generation in production.
+    # Continuity must not reinterpret generation 1/1 as an available fresh retry.
+    workflow = (
+        Path(".github/workflows/tayvoriq-deterministic-codefix-continuity.yml")
+        .read_text(encoding="utf-8")
+    )
+    assert "--max-generations 1" in workflow
+    assert "--max-generations 4" not in workflow
