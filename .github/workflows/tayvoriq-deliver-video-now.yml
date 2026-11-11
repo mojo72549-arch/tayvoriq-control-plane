@@ -1235,8 +1235,9 @@ jobs:
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Restore production model cache
+        id: model_cache
         if: steps.preflight.outcome == 'success' && steps.replay_readiness.outcome == 'success'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             ${{ env.HF_HOME }}
@@ -1488,6 +1489,19 @@ jobs:
         with:
           path: implementation/out/recovery-checkpoint
           key: tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-${{ github.run_id }}-${{ github.run_attempt }}-post-local-repair
+
+      - name: Persist downloaded production models before the output gate
+        if: >-
+          ${{ !cancelled() && steps.model_cache.outcome == 'success'
+              && steps.model_cache.outputs.cache-hit != 'true'
+              && (steps.controller.outcome == 'success' || steps.checkpoint_recovery.outcome == 'success') }}
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.HF_HOME }}
+            ${{ env.TORCH_HOME }}
+          key: ${{ steps.model_cache.outputs.cache-primary-key }}
 
       - name: Assert publishable production output
         id: production
