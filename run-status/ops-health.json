@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-11T07:48:44.416703Z",
+  "generated_at": "2026-11-11T07:50:40.555669Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -37,7 +37,7 @@
     "topic": "Porsche SE meldet 2,8 Milliarden Euro Verlust",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
@@ -157,7 +157,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_DISPATCHED"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -171,13 +171,13 @@
     }
   ],
   "incident": {
-    "signature": "42977026546:SAME_RUN_TRANSIENT_RECOVERY",
+    "signature": "42977026546:RECOVERY",
     "severity": "critical",
-    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+    "failure_state": "RECOVERY_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 41,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
-    "same_generation_replay_required": false,
+    "self_heal_status": "ARMED",
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
@@ -188,24 +188,29 @@
     "last_step": "Telegram immediate verified stop"
   },
   "recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
-    "failed_run_id": null,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "RECOVERY_CODEFIX_REQUIRED",
+    "failed_run_id": 42977026546,
     "replay_run_id": null,
-    "fresh_recovery_run_id": 42977026546,
+    "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
-    "same_generation_replay_required": false,
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "needs_codefix": true
   },
   "events": [
     {
       "at": "2026-11-11T07:18:03Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-11T07:48:57.477264Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "RECOVERY_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-11-11T07:13:57.808057Z",
@@ -231,11 +236,6 @@
       "at": "2026-11-11T06:57:51.100502Z",
       "title": "DISPATCHED",
       "detail": "SAME_RUN_TRANSIENT_RECOVERY"
-    },
-    {
-      "at": "2026-11-11T06:53:51.353432+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:42975587033"
     }
   ]
 }
