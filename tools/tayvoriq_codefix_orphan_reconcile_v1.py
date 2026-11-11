@@ -122,7 +122,8 @@ def _active_pointer() -> dict[str, Any] | None:
 
 def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int,
                                terminal_run: dict[str, Any] | None = None,
-                               failure_evidence: dict[str, Any] | None = None) -> bool:
+                               failure_evidence: dict[str, Any] | None = None,
+                               policy_state: str = "") -> bool:
     """Allow a completed failed replay to become the next codefix owner.
 
     ARMED already owns its failed run and must never be duplicated. A
@@ -156,8 +157,14 @@ def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int,
             finished = _parse_time(run.get("updated_at"))
             dispatched = _parse_time(codefix.get("local_retry_dispatched_at"))
             failure_state = str(evidence.get("state") or "")
+            policy_escalated = (
+                policy_state in {"RECOVERY_CODEFIX_REQUIRED", "PUBLISHABLE_CODEFIX_REQUIRED"}
+                and failure_state == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
+                and evidence.get("failure_class") == "PUBLISHABLE_CHECKPOINT"
+                and evidence.get("same_request_required") is True
+            )
             deterministic = (failure_state.endswith("CODEFIX_REQUIRED") or failure_state in {
-                "CODE_REPAIR_REQUIRED", "DETERMINISTIC_PREFLIGHT_FAILURE"})
+                "CODE_REPAIR_REQUIRED", "DETERMINISTIC_PREFLIGHT_FAILURE"} or policy_escalated)
             if (run.get("status") == "completed" and run.get("conclusion") == "failure"
                     and _int(run.get("id")) == run_id
                     and _int(evidence.get("run_id")) == run_id
@@ -263,6 +270,18 @@ def _failed_logs(run_id: int, target: Path, run_attempt: int) -> bool:
     return target.is_file() and bool(target.read_text(encoding="utf-8", errors="replace").strip())
 
 
+def _max_recovery_generations() -> int:
+    """Use the delivery owner's exact budget, never a separate orphan default."""
+    raw = str(os.environ.get("MAX_RECOVERY_GENERATIONS") or "1").strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError("CODEFIX_ORPHAN_RECOVERY_BUDGET_INVALID") from exc
+    if not 1 <= value <= 4:
+        raise RuntimeError("CODEFIX_ORPHAN_RECOVERY_BUDGET_INVALID")
+    return value
+
+
 def _policy(
     logs: Path,
     run_attempt: int,
@@ -281,7 +300,7 @@ def _policy(
         "--recovery-generation",
         str(max(0, generation)),
         "--max-generations",
-        "4",
+        str(_max_recovery_generations()),
         "--owner-found",
         "true",
         "--owner-current",
@@ -429,6 +448,7 @@ def _arm_request(
     failed_impl: str,
     terminal_run: dict[str, Any] | None = None,
     failure_evidence: dict[str, Any] | None = None,
+    policy_state: str = "",
 ) -> tuple[bool, str, str, int]:
     _run(["git", "config", "user.name", "github-actions[bot]"])
     _run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
@@ -450,7 +470,7 @@ def _arm_request(
             return False, "", "", 0
 
         existing = data.get("codefix_recovery") if isinstance(data.get("codefix_recovery"), dict) else {}
-        if not _replay_status_allows_rearm(existing, run_id, terminal_run, failure_evidence):
+        if not _replay_status_allows_rearm(existing, run_id, terminal_run, failure_evidence, policy_state):
             return False, "", "", 0
 
         pointer = _active_pointer() or {}
@@ -640,6 +660,7 @@ def main() -> int:
                 failed_impl,
                 run_meta,
                 failure_evidence,
+                state,
             )
             if armed:
                 refreshed = json.loads((ROOT / relative).read_text(encoding="utf-8"))

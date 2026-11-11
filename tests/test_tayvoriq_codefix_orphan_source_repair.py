@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 MODULE = Path("tools/tayvoriq_codefix_orphan_reconcile_v1.py")
 SPEC = importlib.util.spec_from_file_location("tayvoriq_codefix_orphan_reconcile_v1", MODULE)
@@ -158,3 +160,64 @@ def test_missing_diagnostics_never_labels_current_green_as_failed_code(tmp_path,
                failed_control_plane_sha='b'*40,failed_implementation_sha='a'*40)
     assert orphan._diagnostic_shas(42,3,{'head_sha':'c'*40},tmp_path,proof) == ('b'*40,'a'*40)
 
+
+
+def test_orphan_uses_delivery_watch_generation_ceiling(monkeypatch, tmp_path: Path) -> None:
+    from types import SimpleNamespace
+    logs = tmp_path / "failed.log"
+    logs.write_text("exact failed run", encoding="utf-8")
+    policy_json = tmp_path / "policy.json"
+    seen = []
+
+    def fake_run(command, **kwargs):
+        seen.append(command)
+        policy_json.write_text('{"mode":"deterministic","state":"RECOVERY_CODEFIX_REQUIRED"}', encoding="utf-8")
+        return SimpleNamespace(returncode=0, stdout="")
+
+    monkeypatch.setattr(orphan, "_run", fake_run)
+    monkeypatch.setenv("MAX_RECOVERY_GENERATIONS", "1")
+    decision = orphan._policy(logs, 3, 1, False, policy_json)
+    assert decision["mode"] == "deterministic"
+    command = seen[0]
+    assert command[command.index("--max-generations") + 1] == "1"
+    monkeypatch.setenv("MAX_RECOVERY_GENERATIONS", "5")
+    with pytest.raises(RuntimeError, match="CODEFIX_ORPHAN_RECOVERY_BUDGET_INVALID"):
+        orphan._policy(logs, 3, 1, False, policy_json)
+
+
+def test_bounded_local_retry_can_arm_only_after_exact_terminal_codefix_escalation() -> None:
+    # This is the real golden-path signature of Porsche SE, Nov 11: the
+    # publishability envelope says RENDER but the trace proves a rejected script.
+    codefix = {
+        "status": "LOCAL_RETRY_DISPATCHED",
+        "local_retry_run_id": 42,
+        "local_retry_run_attempt": 3,
+        "local_retry_dispatched_at": "2026-11-11T07:13:57Z",
+    }
+    run = {
+        "id": 42, "status": "completed", "conclusion": "failure",
+        "run_attempt": 3, "updated_at": "2026-11-11T07:17:56Z",
+    }
+    evidence = {
+        "state": "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+        "failure_class": "PUBLISHABLE_CHECKPOINT",
+        "same_request_required": True,
+        "run_id": 42, "run_attempt": 3,
+        "quality_gates_weakened": False,
+    }
+    assert orphan._replay_status_allows_rearm(codefix, 42, run, evidence) is False
+    assert orphan._replay_status_allows_rearm(
+        codefix, 42, run, evidence, "RECOVERY_CODEFIX_REQUIRED"
+    ) is True
+    assert orphan._replay_status_allows_rearm(
+        codefix, 42, run, evidence, "REQUEST_BOUND_RECOVERY_REQUIRED"
+    ) is False
+    assert orphan._replay_status_allows_rearm(
+        codefix, 41, run, evidence, "RECOVERY_CODEFIX_REQUIRED"
+    ) is False
+    assert orphan._replay_status_allows_rearm(
+        codefix, 42, run, {**evidence, "quality_gates_weakened": True}, "RECOVERY_CODEFIX_REQUIRED"
+    ) is False
+    assert orphan._replay_status_allows_rearm(
+        codefix, 42, run, {**evidence, "same_request_required": False}, "RECOVERY_CODEFIX_REQUIRED"
+    ) is False
