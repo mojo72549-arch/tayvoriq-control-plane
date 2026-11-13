@@ -1246,7 +1246,7 @@ jobs:
           restore-keys: |
             tayvoriq-models-v3-${{ runner.os }}-py311-
 
-      - name: Produce approved master or reuse checkpoint
+      - name: Collect Studio production outcome
         id: controller
         if: steps.preflight.outcome == 'success' && steps.replay_readiness.outcome == 'success'
         working-directory: implementation
@@ -1524,18 +1524,46 @@ jobs:
             echo "Production blocked before render: repeated-failure request is not replay-ready ($REPLAY_READINESS_OUTCOME)"
             exit 1
           fi
-          if [ "$CONTROLLER_STATE" = "SUCCESS" ] && [ "${CONTROLLER_EXIT:-1}" = "0" ]; then
-            echo "Production completed directly by controller."
-            exit 0
+          if ! { [ "$CONTROLLER_STATE" = "SUCCESS" ] && [ "${CONTROLLER_EXIT:-1}" = "0" ]; } &&
+             ! { [ "$RECOVERY_STATE" = "SUCCESS" ] && [ "${RECOVERY_EXIT:-1}" = "0" ]; }; then
+            echo "Production is not publishable: controller=$CONTROLLER_STATE/$CONTROLLER_EXIT recovery=$RECOVERY_STATE/$RECOVERY_EXIT"
+            exit 1
           fi
-          if [ "$RECOVERY_STATE" = "SUCCESS" ] && [ "${RECOVERY_EXIT:-1}" = "0" ]; then
-            echo "Production completed through localized checkpoint recovery."
-            exit 0
-          fi
-          echo "Production is not publishable: controller=$CONTROLLER_STATE/$CONTROLLER_EXIT recovery=$RECOVERY_STATE/$RECOVERY_EXIT"
-          exit 1
+          cd implementation
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from src.core.media_probe import MediaProbeError, probe_media
+
+          state = json.loads(Path('out/tayvoriq-review-state.json').read_text(encoding='utf-8'))
+          job_dir = Path(state['job_dir']).resolve()
+          if not job_dir.is_relative_to(Path('out/tayvoriq-youtube-tiktok').resolve()):
+              raise SystemExit('PUBLISHABLE_MASTER_JOB_DIR_INVALID')
+          job = json.loads((job_dir / 'job.json').read_text(encoding='utf-8'))
+          if job.get('render_status') != 'DONE':
+              raise SystemExit('PUBLISHABLE_MASTER_RENDER_INCOMPLETE')
+          for platform, name in (('youtube_shorts', 'short_youtube.mp4'), ('tiktok', 'short_tiktok.mp4')):
+              variant = job['variants'][platform]
+              video = (job_dir / (variant.get('video_path') or name)).resolve()
+              if not video.is_relative_to(job_dir) or video.suffix.casefold() != '.mp4' or not video.is_file():
+                  raise SystemExit(f'PUBLISHABLE_MASTER_MP4_MISSING:{platform}')
+              try:
+                  media = probe_media(video)
+              except MediaProbeError as exc:
+                  raise SystemExit(f'PUBLISHABLE_MASTER_MP4_INVALID:{platform}:{exc.code}') from None
+              visual = media['video']
+              width = visual.get('effective_width', 0)
+              height = visual.get('effective_height', 0)
+              if ('mp4' not in media['format_name'].split(',') or not width or not height
+                  or width * 16 != height * 9 or not media['audio']['present']
+                  or not 0 < media['duration_seconds'] < float('inf')):
+                  raise SystemExit(f'PUBLISHABLE_MASTER_MP4_INVALID:{platform}')
+              print(f'PUBLISHABLE_MASTER_VERIFIED:{platform}:{width}x{height}')
+          PY
 
       - name: Telegram progress - master ready
+        if: steps.production.outcome == 'success'
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -1616,17 +1644,28 @@ jobs:
         working-directory: implementation
         run: |
           set -euo pipefail
-          python tools/tayvoriq_send_telegram.py \
-            --state SUCCESS \
-            --conclusion success \
-            --run-url "" \
-            --dashboard-url "" \
-            --review-id "${GITHUB_RUN_ID}" \
-            --review-url "https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${GITHUB_RUN_ID}/"
+          python - <<'PY'
+          import os
+
+          from tayvoriq_send_telegram import send_status
+
+          run_id = os.environ['GITHUB_RUN_ID']
+          message_id = send_status(
+              state='SUCCESS', conclusion='success', run_url='', review_id=run_id,
+              review_url=f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{run_id}/',
+              approval_mode='manual',
+          )
+          if type(message_id) is not int or message_id <= 0:
+              raise SystemExit('TELEGRAM_REVIEW_DELIVERY_UNCONFIRMED')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'message_id={message_id}\n')
+          PY
 
       - name: Finalize active production ownership
-        if: steps.telegram_final.outcome == 'success' && env.SOURCE_REQUEST_ID_PIN != ''
+        if: steps.telegram_final.outcome == 'success'
         shell: bash
+        env:
+          REVIEW_MESSAGE_ID: ${{ steps.telegram_final.outputs.message_id }}
         run: |
           set -euo pipefail
           if [[ ! "$SOURCE_REQUEST_ID_PIN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
@@ -1639,22 +1678,25 @@ jobs:
           git reset --hard origin/main
           if [ ! -f "$REQUEST_FILE" ] || [ ! -f "$ACTIVE_POINTER" ]; then
             echo "ACTIVE_POINTER_FINALIZE_NO_OWNER_FILES"
-            exit 0
+            exit 1
           fi
-          python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GITHUB_RUN_ID" <<'PY'
+          python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GITHUB_RUN_ID" "$REVIEW_MESSAGE_ID" <<'PY'
           import json,sys
           from datetime import datetime,timezone
           from pathlib import Path
           request_path=Path(sys.argv[1]); pointer_path=Path(sys.argv[2]); run_id=int(sys.argv[3])
+          review_message_id=int(sys.argv[4])
+          if review_message_id <= 0:
+              raise SystemExit('ACTIVE_POINTER_FINALIZE_REVIEW_RECEIPT_MISSING')
           request=json.loads(request_path.read_text(encoding='utf-8'))
           pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
           request_id=str(request.get('request_id') or '')
           if str(pointer.get('request_id') or '')!=request_id or int(pointer.get('golden_path_run_id') or 0)!=run_id:
               print('ACTIVE_POINTER_FINALIZE_OWNER_CHANGED')
-              raise SystemExit(0)
+              raise SystemExit(1)
           if pointer.get('state')!='ACTIVE':
               print('ACTIVE_POINTER_FINALIZE_ALREADY_TERMINAL')
-              raise SystemExit(0)
+              raise SystemExit(1)
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           pointer['state']='COMPLETED'
           pointer['reason']='golden-path-review-ready'
@@ -1663,6 +1705,7 @@ jobs:
           request['production_completion']={
               'state':'REVIEW_READY',
               'golden_path_run_id':run_id,
+              'telegram_message_id':review_message_id,
               'completed_at':now,
               'quality_gates_weakened':False,
           }

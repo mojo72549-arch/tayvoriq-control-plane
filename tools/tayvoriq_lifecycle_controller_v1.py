@@ -54,6 +54,8 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
     if (pointer.get('state') == 'COMPLETED'
             and completion.get('state') == 'REVIEW_READY'
             and int(completion.get('golden_path_run_id') or 0) == run_id
+            and type(completion.get('telegram_message_id')) is int
+            and completion['telegram_message_id'] > 0
             and completion.get('quality_gates_weakened') is False):
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
     if request.get('status') not in {'APPROVED', 'DISPATCHING', 'DISPATCHED'}:
