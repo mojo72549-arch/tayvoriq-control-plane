@@ -18,6 +18,19 @@ EXECUTORS = ('tayvoriq-deterministic-codefix-continuity.yml',
 STATE = Path('.github/state/tayvoriq-lifecycle-decision.json')
 
 
+def review_message_id(request, run_id):
+    completion = request.get('production_completion')
+    if not run_id or not isinstance(completion, dict):
+        return None
+    message_id = completion.get('telegram_message_id')
+    if (completion.get('state') == 'REVIEW_READY'
+            and str(completion.get('golden_path_run_id') or '') == str(run_id)
+            and completion.get('quality_gates_weakened') is False
+            and type(message_id) is int and message_id > 0):
+        return message_id
+    return None
+
+
 def decide(pointer, request, run, *, event_name='', event_run=0,
            revision='', green='', previous=None):
     result = dict(action='NONE', state='IDLE', reason='NO_ACTIVE_REQUEST',
@@ -43,7 +56,6 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             return finish('BLOCKED', 'IMMUTABLE_REQUEST_MISMATCH:' + field)
     if request.get('source') != 'telegram_trend_approval':
         return finish('BLOCKED', 'TELEGRAM_APPROVAL_REQUIRED')
-    completion = request.get('production_completion') or {}
     # A separately audited, unpublished and expired news request is terminal
     # history, not an active delivery blocker. Keep hard contract checks above.
     if pointer.get('state') == 'EXPIRED' or request.get('status') == 'EXPIRED':
@@ -51,12 +63,7 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             result.update(request_status='EXPIRED', request_substate='EXPIRED')
             return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
         return finish('BLOCKED', 'EXPIRED_QUARANTINE_EVIDENCE_INVALID')
-    if (pointer.get('state') == 'COMPLETED'
-            and completion.get('state') == 'REVIEW_READY'
-            and int(completion.get('golden_path_run_id') or 0) == run_id
-            and type(completion.get('telegram_message_id')) is int
-            and completion['telegram_message_id'] > 0
-            and completion.get('quality_gates_weakened') is False):
+    if pointer.get('state') == 'COMPLETED' and review_message_id(request, run_id):
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
     if request.get('status') not in {'APPROVED', 'DISPATCHING', 'DISPATCHED'}:
         return finish('BLOCKED', 'REQUEST_NOT_APPROVED_FOR_CONTINUATION')

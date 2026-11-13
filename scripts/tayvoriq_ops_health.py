@@ -14,6 +14,7 @@ API = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
 OUT = Path(os.environ.get("TAYVORIQ_OPS_STATE_PATH", "run-status/ops-health.json"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
+from tayvoriq_lifecycle_controller_v1 import review_message_id
 
 ACTIVE_POINTER = Path(".github/state/tayvoriq-active-production-request.json")
 
@@ -167,7 +168,7 @@ def build_stages(steps):
         ("Light Preflight", ("lightweight contract preflight",)),
         ("Dependencies", ("install production dependencies",)),
         ("Full Preflight", ("preflight",)),
-        ("Produktion / Master", ("produce approved master",)),
+        ("Studio-Ausführung", ("collect studio production outcome", "produce approved master")),
         ("Publishable Output", ("assert publishable production output",)),
         ("Quality Audit", ("validate publication quality",)),
         ("Review-Seite", ("publish review page",)),
@@ -185,8 +186,8 @@ def build_stages(steps):
     return result
 
 
-def progress_from_stages(stages, run_status, conclusion):
-    if conclusion == "success":
+def progress_from_stages(stages, run_status, *, review_delivered=False):
+    if review_delivered:
         return 100
     weights = [8, 16, 22, 30, 38, 45, 65, 72, 82, 92, 96]
     progress = 0
@@ -203,13 +204,13 @@ def progress_from_stages(stages, run_status, conclusion):
     return progress
 
 
-def health_color(run_status, conclusion, run_id):
+def health_color(run_status, conclusion, run_id, *, review_delivered=False):
     if not run_id:
         return "unknown"
     if run_status in {"queued", "requested", "waiting", "in_progress"}:
         return "yellow"
     if conclusion == "success":
-        return "green"
+        return "green" if review_delivered else "yellow"
     if conclusion in {"failure", "timed_out", "cancelled", "canceled", "action_required"}:
         return "red"
     return "unknown"
@@ -303,7 +304,13 @@ def main():
 
     run_status = str(run.get("status") or ("unknown" if api_error else "missing")).lower()
     conclusion = str(run.get("conclusion") or "").lower() or None
-    overall = health_color(run_status, conclusion, run_id)
+    receipt = review_message_id(request_data or {}, run_id)
+    review_step = find_step(steps, 'send telegram review')
+    review_status = phase(review_step, ('send telegram review',))
+    review_delivered = bool(receipt and review_status == 'success')
+    if review_status == 'success' and not review_delivered:
+        stages[-1]['status'] = 'pending'
+    overall = health_color(run_status, conclusion, run_id, review_delivered=review_delivered)
     if api_error:
         overall = "unknown"
 
@@ -344,18 +351,15 @@ def main():
         telegram_notify_allowed = research_only['telegram_notify_allowed']
         recovery_owner = 'tayvoriq-agent-orchestrator-v2'
 
-    telegram_steps = [s for s in steps if "telegram" in str(s.get("name") or "").casefold()]
-    telegram_failed = next((s for s in telegram_steps if str(s.get("conclusion") or "").lower() == "failure"), None)
-    telegram_success = next((s for s in reversed(telegram_steps) if str(s.get("conclusion") or "").lower() == "success"), None)
-    if telegram_failed:
+    if review_status == 'error':
         telegram_status = "red"
-        telegram_detail = f"Fehler bei: {telegram_failed.get('name')}"
-    elif telegram_success:
+        telegram_detail = "Telegram-Review fehlgeschlagen"
+    elif review_delivered:
         telegram_status = "green"
-        telegram_detail = f"Zuletzt erfolgreich: {telegram_success.get('name')}"
+        telegram_detail = "Telegram-Videoquittung bestätigt"
     else:
         telegram_status = "yellow" if run_id else "unknown"
-        telegram_detail = "Noch kein bestätigter Telegram-Schritt im aktuellen Run"
+        telegram_detail = "Noch keine bestätigte Review-Zustellung im aktuellen Run"
 
     if retired:
         telegram_status = "yellow"
@@ -481,7 +485,7 @@ def main():
             "created_at": run.get("created_at"),
             "updated_at": run.get("updated_at"),
             "attempt": run.get("run_attempt"),
-            "progress": progress_from_stages(stages, run_status, conclusion),
+            "progress": progress_from_stages(stages, run_status, review_delivered=review_delivered),
             "current_step": running_step.get("name") if running_step else None,
             "last_successful_step": last_completed.get("name") if last_completed else None,
             "failed_step": failed_step.get("name") if failed_step else None,
@@ -519,7 +523,8 @@ def main():
         "telegram": {
             "status": telegram_status,
             "detail": telegram_detail,
-            "last_step": telegram_success.get("name") if telegram_success else None,
+            "last_step": review_step.get("name") if review_step else None,
+            "message_id": receipt if review_delivered else None,
         },
         "recovery": {
             "status": self_heal_status,
