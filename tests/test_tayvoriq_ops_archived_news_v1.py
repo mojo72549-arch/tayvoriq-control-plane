@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -122,6 +123,29 @@ class ArchivedNewsHealthTests(unittest.TestCase):
         self.assertEqual(health.review_message_id(request, run_id), 42)
         self.assertEqual(health.health_color('completed', 'success', run_id, review_delivered=True), 'green')
         self.assertEqual(health.progress_from_stages([], 'completed', review_delivered=True), 100)
+
+    def test_watchdog_does_not_finalize_from_github_success_without_receipt(self):
+        import textwrap
+
+        root = FILE.parents[1]
+        workflow = (root / '.github/workflows/tayvoriq-ops-health.yml').read_text()
+        step = workflow.split('if [ "$run_state" = "completed:success" ]; then', 1)[1]
+        program = textwrap.dedent(step.split("<<'PY'\n", 1)[1].split('\n          PY', 1)[0])
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / 'tools').symlink_to(root / 'tools', target_is_directory=True)
+            pointer = folder / 'pointer.json'
+            pointer.write_text(json.dumps({'state': 'ACTIVE', 'request_id': 'telegram-1-trend-1',
+                                           'golden_path_run_id': 100}))
+            requests = folder / 'requests'
+            requests.mkdir()
+            request = requests / 'telegram-1-trend-1.json'
+            request.write_text(json.dumps({'request_id': request.stem}))
+            output = subprocess.run(['python', '-S', '-c', program, str(pointer), '100', request.stem], cwd=folder,
+                                    capture_output=True, text=True)
+            self.assertEqual(output.returncode, 0, output.stderr)
+            self.assertIn('ORCHESTRATOR_REVIEW_RECEIPT_MISSING', output.stdout)
+            self.assertEqual(json.loads(pointer.read_text())['state'], 'ACTIVE')
 
     def test_full_health_snapshot_keeps_exhausted_research_internal(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -669,6 +669,13 @@ jobs:
               result['state']='RECOVERY_DISPATCHED'
               result['last_dispatch']={k:result[k] for k in ('decision_key','request_id','run_id','dispatch_verified','checked_at','orchestrator_run_id','executor_run_id','executor_workflow')}
           target=Path('.github/state/tayvoriq-lifecycle-decision.json')
+          if target.is_file():
+              previous=json.loads(target.read_text(encoding='utf-8'))
+              poll_fields={'checked_at','orchestrator_run_id','signal_run_id','signal_run_attempt','signal_receipt'}
+              current_decision={key:value for key,value in result.items() if key not in poll_fields}
+              previous_decision={key:value for key,value in previous.items() if key not in poll_fields}
+              if current_decision==previous_decision:
+                  raise SystemExit(0)
           target.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
           PYCODE
           git config user.name "github-actions[bot]"
