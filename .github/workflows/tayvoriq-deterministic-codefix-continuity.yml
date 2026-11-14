@@ -419,7 +419,7 @@ jobs:
 
       - name: Resolve active armed request
         id: pending
-        if: steps.arm.outputs.eligible == 'true'
+        if: steps.active.outputs.found == 'true'
         shell: bash
         run: |
           set -euo pipefail
