@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -45,6 +46,29 @@ class CurrentFailureContractTests(unittest.TestCase):
         self.assertEqual(report['run_id'], 42)
         self.assertEqual(report['run_attempt'], 3)
         self.assertEqual(report['request_id'], 'telegram-42-trend-1')
+
+    def test_exact_dhl_alias_proof_blocks_audio_regeneration(self):
+        expected = 'Deh Hah Ell: vor dem Versand Filialpreis und Onlinepreis vergleichen.'
+        heard = 'DHL: vor dem Versand-Filialpreis und Online-Preis vergleichen.'
+        proof = dict(passed=False, segment_min_similarity=0.95, missing_critical_terms=[],
+                     hallucinated_tail=False, terminal_token_match=True, contract_expected=expected)
+        terminal = 'RuntimeError: POST_AUDIO_QUALITY_GATE_BLOCKED:pre-render-transcript-contract-failed'
+
+        def evidence(transcript):
+            return json.dumps({'quality_gates_weakened': False, 'pre_render_voice_attempt': {
+                'stage': 'pre-render-transcript', 'cta_morphology_passed': True,
+                'strict_audio_validation': {**proof, 'raw_transcript': transcript},
+            }}) + '\n' + terminal
+
+        report = self.contract(evidence(heard))
+        self.assertEqual(report['state'], 'TRANSCRIPT_NORMALIZATION_DEFECT')
+        self.assertFalse(report['audio_regeneration_allowed'])
+        decision = classify_failure('', run_attempt=3, structured_evidence=report)
+        self.assertEqual(decision.retry_kind, 'verified-codefix-replay')
+        self.assertFalse(decision.retry_allowed)
+        for altered in ('DPD: vor dem Versand Filialpreis und Online-Preis vergleichen.',
+                        heard.replace('Online-Preis', 'Online-Preise')):
+            self.assertNotEqual(self.contract(evidence(altered))['state'], report['state'])
 
     def test_later_local_failure_does_not_revive_an_earlier_editorial_error(self):
         report = self.contract(

@@ -3,13 +3,23 @@ name: TAYVORIQ Control Approved Publish V2
 on:
   repository_dispatch:
     types: [tayvoriq_control_publish_approved]
+  push:
+    branches: [main]
+    paths:
+      - .automation/tayvoriq-artifact-decisions/*.json
+  workflow_dispatch:
+    inputs:
+      review_id:
+        description: Existing authenticated Telegram review decision to reconcile
+        required: true
+        type: string
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: tayvoriq-control-approved-publish-${{ github.event.client_payload.review_run_id }}
+  group: tayvoriq-control-approved-publish-${{ github.event.client_payload.review_run_id || 'artifact' }}
   cancel-in-progress: false
 
 env:
@@ -26,6 +36,7 @@ env:
 
 jobs:
   publish-approved-review:
+    if: github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -239,3 +250,113 @@ jobs:
             approved-artifact/**/publish_result.json
           if-no-files-found: warn
           retention-days: 30
+
+  publish-bound-artifact-review:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve the exact Telegram decision from this event
+        id: decision
+        env:
+          BEFORE: ${{ github.event.before }}
+          MANUAL_REVIEW_ID: ${{ inputs.review_id }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            git diff --name-only "$BEFORE" "$GITHUB_SHA" -- .automation/tayvoriq-artifact-decisions/ > "$RUNNER_TEMP/decision-files"
+          fi
+          PYTHONPATH=tools python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          from tayvoriq_artifact_approval import validate_decision
+          root = Path('.automation/tayvoriq-artifact-decisions')
+          if os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
+              rid = os.environ['MANUAL_REVIEW_ID']
+              if not re.fullmatch(r'[0-9]{1,20}', rid):
+                  raise SystemExit('REVIEW_ID_INVALID')
+              path = root / f'{rid}.json'
+          else:
+              changes = (Path(os.environ['RUNNER_TEMP']) / 'decision-files').read_text().splitlines()
+              if len(changes) != 1:
+                  raise SystemExit('EXPECTED_ONE_REVIEW_DECISION')
+              path = Path(changes[0])
+          record = json.loads(path.read_text())
+          if record.get('state') in {'PENDING', 'REJECTED'}:
+              raise SystemExit(0)
+          validate_decision(record, path.stem)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'approved=true\nreview_id={path.stem}\nstudio_sha={record["studio_sha"]}\n')
+          PY
+      - uses: actions/checkout@v4
+        if: steps.decision.outputs.approved == 'true'
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: ${{ steps.decision.outputs.studio_sha }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        if: steps.decision.outputs.approved == 'true'
+        with:
+          name: tayvoriq-approved-replay-${{ steps.decision.outputs.review_id }}
+          path: approved-artifact
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.decision.outputs.review_id }}
+      - uses: actions/setup-python@v5
+        if: steps.decision.outputs.approved == 'true'
+        with:
+          python-version: '3.11'
+      - name: Verify approved immutable package and production gate
+        if: steps.decision.outputs.approved == 'true'
+        env:
+          REVIEW_ID: ${{ steps.decision.outputs.review_id }}
+        run: |
+          set -euo pipefail
+          command -v ffprobe >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y ffmpeg; }
+          python -m pip install -q requests pillow google-api-python-client google-auth google-auth-httplib2
+          PYTHONPATH=tools python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from tayvoriq_artifact_approval import verify_package
+          rid = os.environ['REVIEW_ID']
+          root = Path('approved-artifact/implementation/site/tayvoriq/runs') / rid
+          decision = json.loads((Path('.automation/tayvoriq-artifact-decisions') / f'{rid}.json').read_text())
+          verify_package(root, decision, rid)
+          with open(os.environ['GITHUB_ENV'], 'a') as out:
+              out.write(f'APPROVED_JOB_DIR={root.resolve()}\n')
+          PY
+          APPROVED_JOB_DIR="$PWD/approved-artifact/implementation/site/tayvoriq/runs/$REVIEW_ID"
+          cd implementation
+          PYTHONPATH=.:tools python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$APPROVED_JOB_DIR" --targets youtube_tiktok
+      - name: Reserve the exact approved review before upload
+        if: steps.decision.outputs.approved == 'true'
+        env:
+          REVIEW_ID: ${{ steps.decision.outputs.review_id }}
+        run: python tools/tayvoriq_artifact_publication_claim.py "$REVIEW_ID" claim
+      - name: Publish the approved YouTube master
+        if: steps.decision.outputs.approved == 'true'
+        working-directory: implementation
+        run: PYTHONPATH=.:tools python tools/tayvoriq_publish_approved_v2.py --job-dir "$APPROVED_JOB_DIR" --approval FREIGEBEN --targets youtube --youtube-privacy public
+      - name: Retain the upload receipt for reconciliation
+        if: always() && steps.decision.outputs.approved == 'true' && env.APPROVED_JOB_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-bound-publication-receipt-${{ steps.decision.outputs.review_id }}-${{ github.run_id }}
+          path: ${{ env.APPROVED_JOB_DIR }}/publish_result.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Record the YouTube receipt and deliver the TikTok package
+        if: steps.decision.outputs.approved == 'true'
+        env:
+          REVIEW_ID: ${{ steps.decision.outputs.review_id }}
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_artifact_publication_claim.py "$REVIEW_ID" record --receipt "$APPROVED_JOB_DIR/publish_result.json"
+          PYTHONPATH=implementation/tools python tools/tayvoriq_artifact_approval_notice.py "$APPROVED_JOB_DIR"

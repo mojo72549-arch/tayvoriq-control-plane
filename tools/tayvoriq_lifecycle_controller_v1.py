@@ -64,6 +64,8 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
         return finish('BLOCKED', 'EXPIRED_QUARANTINE_EVIDENCE_INVALID')
     if pointer.get('state') == 'COMPLETED' and review_message_id(request, run_id):
+        if request['production_completion'].get('reference_only') is True and pointer.get('allow_publish') is False:
+            return finish('REVIEW_READY', 'VERIFIED_REFERENCE_REVIEW_DELIVERED')
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
     if request.get('status') not in {'APPROVED', 'DISPATCHING', 'DISPATCHED'}:
         return finish('BLOCKED', 'REQUEST_NOT_APPROVED_FOR_CONTINUATION')
@@ -94,7 +96,8 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
         codefix_failed_run = 0
     deterministic_failure = (
         'CODEFIX' in failure
-        or failure in {'CODE_REPAIR_REQUIRED', 'DETERMINISTIC_STOP', 'DETERMINISTIC_PREFLIGHT_FAILURE'}
+        or failure in {'CODE_DEFECT', 'TRANSCRIPT_NORMALIZATION_DEFECT', 'CODE_REPAIR_REQUIRED',
+                       'DETERMINISTIC_STOP', 'DETERMINISTIC_PREFLIGHT_FAILURE'}
     )
     # Only an exact, already-armed deterministic handoff may bypass Delivery Watch.
     # A stale ARMED/AWAITING_CODEFIX flag from an earlier classifier must never
@@ -114,7 +117,9 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
                 codefix.get('failure_signature'), revision, green, action]
     result['decision_key'] = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
     if previous and previous.get('decision_key') == result['decision_key'] and previous.get('dispatch_verified'):
-        return finish('BLOCKED', 'EXECUTOR_COMPLETED_WITHOUT_REQUEST_PROGRESS')
+        if deterministic:
+            return finish('AWAITING_CODEFIX', failure)
+        return finish('RECOVERY_FAILED', 'RECOVERY_EXECUTOR_MISSING_OUTCOME')
     reason = 'PRODUCTION_GREEN_READY' if event_name == 'TAYVORIQ Production Green Promoter' else 'ACTIVE_REQUEST_REQUIRES_CONTINUATION'
     return finish('RECOVERY_REQUIRED', reason, action)
 

@@ -29,7 +29,7 @@ def test_orchestrator_is_single_lifecycle_decision_owner() -> None:
     assert "TAYVORIQ Production Green Promoter" in text
     assert "TAYVORIQ Deterministic Codefix Continuity" in text
     assert "TAYVORIQ Delivery Watch" in text
-    assert "TAYVORIQ Request Continuity Watchdog" in text
+    assert "TAYVORIQ Request Continuity Watchdog" not in text
     assert "tools/tayvoriq_lifecycle_controller_v1.py" in text
     assert "Enforce single active executor" in text
     assert "queued" in text and "in_progress" in text

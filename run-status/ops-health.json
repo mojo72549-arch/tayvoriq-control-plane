@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T02:36:32.846739Z",
+  "generated_at": "2026-11-14T13:41:07.362125Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -28,22 +28,22 @@
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3549-trend-1",
-    "golden_path_run_id": 42983272199,
-    "pointer_updated_at": "2026-11-11T07:57:33.270130Z"
+    "request_id": "telegram-3577-trend-1",
+    "golden_path_run_id": 43587092593,
+    "pointer_updated_at": "2026-11-14T10:49:41.507978Z"
   },
   "request": {
-    "request_id": "telegram-3549-trend-1",
-    "topic": "Porsche SE meldet 2,8 Milliarden Euro Verlust",
+    "request_id": "telegram-3577-trend-1",
+    "topic": "DHL-Päckchen: Was sich beim Porto ab Januar ändert",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ erklärt, wie Beteiligungen und Wertberichtigungen die Schlagzeilen aus der deutschen Autoindustrie prägen.",
+    "follow_reason": "TAYVORIQ rechnet Preisänderungen an konkreten Beispielen aus dem deutschen Alltag durch.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -56,18 +56,18 @@
       "issues": []
     },
     "golden_path_v5_state": "APPROVED",
-    "source_count": 2,
+    "source_count": 3,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3549-trend-1.json"
+    "path": "requests/telegram-3577-trend-1.json"
   },
   "run": {
-    "id": 42983272199,
+    "id": 43587092593,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42983272199",
-    "created_at": "2026-11-11T07:57:26Z",
-    "updated_at": "2026-11-11T08:08:57Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43587092593",
+    "created_at": "2026-11-14T10:49:35Z",
+    "updated_at": "2026-11-14T11:50:47Z",
     "attempt": 3,
     "progress": 30,
     "current_step": null,
@@ -112,7 +112,7 @@
         "step_name": "Lightweight contract preflight"
       },
       {
-        "label": "Produktion / Master",
+        "label": "Studio-Ausführung",
         "status": "success",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
@@ -157,12 +157,12 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "status": "yellow",
+      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
     },
     {
       "name": "Quality Gates",
@@ -171,71 +171,72 @@
     }
   ],
   "incident": {
-    "signature": "42983272199:RECOVERY",
+    "signature": "43587092593:LOCAL_VOICE",
     "severity": "critical",
-    "failure_state": "RECOVERY_CODEFIX_REQUIRED",
+    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 41,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
   },
   "telegram": {
-    "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "status": "yellow",
+    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "last_step": "Send Telegram review",
+    "message_id": null
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "RECOVERY_CODEFIX_REQUIRED",
-    "failed_run_id": 42983272199,
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+    "failed_run_id": null,
     "replay_run_id": null,
-    "fresh_recovery_run_id": null,
+    "fresh_recovery_run_id": 43587092593,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
-    "same_generation_replay_required": true,
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": true
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-11T08:08:57Z",
+      "at": "2026-11-14T11:50:47Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
     },
     {
-      "at": "2026-11-11T08:09:26.145895Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "RECOVERY_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-11T08:05:30.478621Z",
+      "at": "2026-11-14T11:24:39.925010Z",
       "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
     },
     {
-      "at": "2026-11-11T08:01:39.791135Z",
+      "at": "2026-11-14T11:07:00.847893Z",
       "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
     },
     {
-      "at": "2026-11-11T07:57:33.270130Z",
+      "at": "2026-11-14T10:49:41.507978Z",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "bounded-shared-policy-recovery"
     },
     {
-      "at": "2026-11-11T07:48:57.477264Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "RECOVERY_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-11T07:13:57.808057Z",
+      "at": "2026-11-14T10:31:24.615406Z",
       "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-14T10:13:40.167125Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-14T09:47:09.424635+00:00",
+      "title": "DISPATCHED",
+      "detail": "request-dispatcher:43582158391"
     }
   ]
 }

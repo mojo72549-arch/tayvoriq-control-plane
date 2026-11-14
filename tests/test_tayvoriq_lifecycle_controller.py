@@ -88,8 +88,8 @@ def test_successful_helper_without_progress_cannot_create_dispatch_loop():
     previous = {**first, 'dispatch_verified': True}
     second = decide(*fixture(), revision='fixed-code', previous=previous)
     assert second['action'] == 'NONE'
-    assert second['state'] == 'BLOCKED'
-    assert second['reason'] == 'EXECUTOR_COMPLETED_WITHOUT_REQUEST_PROGRESS'
+    assert second['state'] == 'AWAITING_CODEFIX'
+    assert second['reason'] == 'LOCAL_REPAIR_CODEFIX_REQUIRED'
     # A relevant revision can unlock a new verified repair; resetting a status cannot.
     changed = decide(*fixture(), revision='new-fix', previous=previous)
     assert changed['action'] == 'CODEFIX_CONTINUITY'
@@ -118,6 +118,11 @@ def test_completed_github_job_alone_is_not_review_ready():
     assert result['state'] == 'REVIEW_READY'
     assert result['action'] == 'NONE'
     assert 'USER_APPROVAL' in result['reason']
+    pointer['allow_publish'] = False
+    request['production_completion']['reference_only'] = True
+    result = decide(pointer, request, {**run, 'conclusion': 'success'})
+    assert result['state'] == 'REVIEW_READY'
+    assert result['reason'] == 'VERIFIED_REFERENCE_REVIEW_DELIVERED'
 
 
 def test_wrong_source_owner_or_generation_is_never_dispatched():

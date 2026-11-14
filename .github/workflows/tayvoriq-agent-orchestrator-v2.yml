@@ -29,7 +29,6 @@ on:
       - TAYVORIQ Production Green Promoter
       - TAYVORIQ Deterministic Codefix Continuity
       - TAYVORIQ Delivery Watch
-      - TAYVORIQ Request Continuity Watchdog
       - TAYVORIQ Autonomous Codefix Builder
     types: [completed]
   push:
@@ -691,7 +690,7 @@ jobs:
           exit 1
 
       - name: Fail internal stall instead of reporting healthy recovery
-        if: always() && steps.decision.outputs.reason == 'EXECUTOR_COMPLETED_WITHOUT_REQUEST_PROGRESS'
+        if: always() && steps.decision.outputs.state == 'RECOVERY_FAILED'
         run: |
           echo 'LIFECYCLE_INTERNAL_STALL: acknowledged executor completed without request progress' >&2
           exit 1

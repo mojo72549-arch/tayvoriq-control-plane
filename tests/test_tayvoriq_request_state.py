@@ -20,8 +20,10 @@ def digest(letter):
 
 def approval():
     request = jsonlib.loads((ROOT / 'requests/telegram-3549-trend-1.json').read_text())
-    request['status'] = 'APPROVED'
-    request['state_history'] = [{'state': 'APPROVED'}]
+    for key in ('production_completion', 'publication', 'published_at', 'youtube_video_id',
+                'youtube_url', 'review_url', 'telegram_review_message_id', 'tiktok_post_id'):
+        request.pop(key, None)
+    request.update(status='APPROVED', state_history=[{'state': 'APPROVED'}])
     return request
 
 
@@ -163,7 +165,7 @@ def test_quality_only_regenerates_the_failed_product_and_its_dependents():
     assert recovered['evidence'] == {k: record['evidence'][k] for k in ('SOURCES_VALID', 'SCRIPT_READY', 'AUDIO_READY')}
 
 
-@pytest.mark.parametrize('kind', ['defect', 'external', 'unknown_delivery'])
+@pytest.mark.parametrize('kind', ['defect', 'transcript_normalization', 'external', 'unknown_delivery'])
 def test_defects_external_blockers_and_uncertain_delivery_require_evidence_before_continuation(kind):
     failed = failure(reach('QUALITY_PASSED'), kind)
     with pytest.raises(ValueError, match='AUTOMATIC_RECOVERY_FORBIDDEN'):

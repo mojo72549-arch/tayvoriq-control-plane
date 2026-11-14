@@ -153,6 +153,7 @@ def fail(record, revision, *, actor, run, attempt, kind, proof_sha256, dimension
     stage = record['state']
     target = {'transient': STAGES[stage][2], 'quality': 'QUALITY_FAILED',
               'external': 'EXTERNAL_BLOCKER', 'defect': 'CODE_DEFECT',
+              'transcript_normalization': 'TRANSCRIPT_NORMALIZATION_DEFECT',
               'unknown_delivery': STAGES[stage][2]}.get(kind)
     if target is None or not _digest(proof_sha256):
         raise ValueError('FAILURE_EVIDENCE_REQUIRED')

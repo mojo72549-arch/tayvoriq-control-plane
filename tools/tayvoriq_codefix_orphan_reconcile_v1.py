@@ -164,7 +164,8 @@ def _replay_status_allows_rearm(codefix: dict[str, Any], run_id: int,
                 and evidence.get("same_request_required") is True
             )
             deterministic = (failure_state.endswith("CODEFIX_REQUIRED") or failure_state in {
-                "CODE_REPAIR_REQUIRED", "DETERMINISTIC_PREFLIGHT_FAILURE"} or policy_escalated)
+                "CODE_REPAIR_REQUIRED", "DETERMINISTIC_PREFLIGHT_FAILURE",
+                "CODE_DEFECT", "TRANSCRIPT_NORMALIZATION_DEFECT"} or policy_escalated)
             if (run.get("status") == "completed" and run.get("conclusion") == "failure"
                     and _int(run.get("id")) == run_id
                     and _int(evidence.get("run_id")) == run_id
@@ -619,8 +620,9 @@ def main() -> int:
             if structured:
                 # Legacy producers could preserve an earlier checkpoint finding
                 # after this exact attempt terminated on an editorial error.
+                console = next(temp.glob("structured-diagnostics/**/controller-console.log"), logs)
                 failure_evidence = bind_current_failure(
-                    failure_evidence, logs.read_text(encoding="utf-8"),
+                    failure_evidence, console.read_text(encoding="utf-8"),
                     run_id=run_id, run_attempt=run_attempt,
                     request_id=str(data.get("request_id") or path.stem),
                 )
