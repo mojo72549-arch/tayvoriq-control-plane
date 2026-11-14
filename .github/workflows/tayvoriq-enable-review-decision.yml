@@ -1,0 +1,45 @@
+name: TAYVORIQ Enable verified Telegram review decision
+on:
+  push:
+    branches: [validation/tayvoriq-telegram-review-decision]
+    paths: [.github/workflows/tayvoriq-enable-review-decision.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: tayvoriq-enable-review-decision-43572582456
+  cancel-in-progress: false
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BOUND_REVIEW_RUN_ID: '43572582456'
+      BOUND_REVIEW_ARTIFACT_ID: '14105872459'
+      BOUND_REPLAY_SHA: e6709379184d0916301f8b55ae29f407b5ade97a
+      APPROVAL_DEPLOY_SHA: aa4da884fef2dee7f088686a1e6a5d9bd8daceda
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-approved-replay-43572582456
+          path: review
+          github-token: ${{ github.token }}
+          run-id: 43572582456
+      - uses: actions/download-artifact@v4
+        with:
+          name: tayvoriq-telegram-review-receipt-43572582456
+          path: receipt
+          github-token: ${{ github.token }}
+          run-id: 43572582456
+      - name: Bind the verified artifact and enable both buttons on the original message
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: PYTHONPATH=tools python -S .github/replay/activate.py
