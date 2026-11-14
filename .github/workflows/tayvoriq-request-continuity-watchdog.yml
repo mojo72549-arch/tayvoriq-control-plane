@@ -2,15 +2,6 @@ name: TAYVORIQ Request Continuity Watchdog
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - TAYVORIQ-X Golden Path
-      - TAYVORIQ Production Green Promoter
-      - TAYVORIQ Deterministic Codefix Continuity
-      - TAYVORIQ Delivery Watch
-    types: [completed]
-  schedule:
-    - cron: '*/15 * * * *'
 
 permissions:
   actions: read
