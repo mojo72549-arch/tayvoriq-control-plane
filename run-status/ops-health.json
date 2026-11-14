@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T15:44:22.932514Z",
-  "overall": "red",
+  "generated_at": "2026-11-14T15:55:57.801454Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -29,15 +29,15 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3577-trend-1",
-    "golden_path_run_id": 43611217435,
-    "pointer_updated_at": "2026-11-14T15:38:04.369528Z"
+    "golden_path_run_id": 43611802085,
+    "pointer_updated_at": "2026-11-14T15:44:42.963840Z"
   },
   "request": {
     "request_id": "telegram-3577-trend-1",
     "topic": "DHL-Päckchen: Was sich beim Porto ab Januar ändert",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
@@ -61,19 +61,19 @@
     "path": "requests/telegram-3577-trend-1.json"
   },
   "run": {
-    "id": 43611217435,
+    "id": 43611802085,
     "historical": false,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43611217435",
-    "created_at": "2026-11-14T15:37:58Z",
-    "updated_at": "2026-11-14T15:41:12Z",
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43611802085",
+    "created_at": "2026-11-14T15:44:37Z",
+    "updated_at": "2026-11-14T15:44:41Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Preflight",
-    "failed_step_number": 28,
+    "current_step": "Publish review page",
+    "last_successful_step": "Telegram progress - quality passed",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -113,31 +113,31 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "skipped",
+        "status": "success",
         "step_number": 33,
         "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "success",
         "step_number": 41,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "success",
         "step_number": 43,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "running",
         "step_number": 47,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 48,
         "step_name": "Send Telegram review"
       }
@@ -146,8 +146,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Preflight"
+      "status": "yellow",
+      "detail": "Publish review page"
     },
     {
       "name": "Production Green",
@@ -157,7 +157,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
@@ -166,17 +166,17 @@
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
   "incident": {
-    "signature": "43611217435:PUBLISHABLE",
-    "severity": "critical",
+    "signature": "43611802085:PUBLISHABLE",
+    "severity": "warning",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": "Preflight",
-    "failed_step_number": 28,
-    "self_heal_status": "ARMED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_RUNNING",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -189,24 +189,24 @@
     "message_id": null
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_DISPATCHED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 43611217435,
-    "replay_run_id": null,
+    "replay_run_id": 43611802085,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": true
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-14T15:41:12Z",
-      "title": "Workflow-Fehler",
-      "detail": "Preflight"
+      "at": "2026-11-14T15:44:42.963840Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-11-14T15:41:41.386771Z",
@@ -232,11 +232,6 @@
       "at": "2026-11-14T15:29:58.318767Z",
       "title": "DISPATCHED",
       "detail": "SAME_RUN_TRANSIENT_RECOVERY"
-    },
-    {
-      "at": "2026-11-14T15:25:17.270773Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
     }
   ]
 }
