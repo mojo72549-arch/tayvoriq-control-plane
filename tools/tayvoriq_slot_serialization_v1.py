@@ -12,6 +12,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
+from tayvoriq_review_receipt import REPLAY_PATH, REPLAY_BRANCH, REPLAY_STEPS
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
 REQUIRED_FINAL_STEPS = (
@@ -158,6 +159,21 @@ def evaluate_live_state(run: dict, jobs_payload: dict) -> tuple[bool, str, dict[
     return True, "MORNING_FINAL_REVIEW_VERIFIED", steps
 
 
+def reference_review_verified(request, run, jobs_payload):
+    completion = request.get('production_completion') or {}
+    message = completion.get('telegram_message_id')
+    return (completion.get('reference_only') is True and completion.get('publishable_review') is False
+            and completion.get('state') == 'REVIEW_READY' and completion.get('quality_gates_weakened') is False
+            and type(message) is int and message > 0
+            and completion.get('golden_path_run_id') == request.get('golden_path_run_id') == run.get('id')
+            and run.get('head_branch') == REPLAY_BRANCH and str(run.get('path') or '').split('@', 1)[0] == REPLAY_PATH
+            and run.get('status') == 'completed' and run.get('conclusion') == 'success'
+            and any(job.get('name') == 'review' and job.get('conclusion') == 'success'
+                    and set(REPLAY_STEPS) <= {step.get('name') for step in job.get('steps', [])
+                                             if step.get('conclusion') == 'success'}
+                    for job in jobs_payload.get('jobs', [])))
+
+
 def github_json(url: str, token: str) -> dict:
     request = urllib.request.Request(url, headers={
         "Accept": "application/vnd.github+json",
@@ -237,6 +253,10 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                         run = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}", token)
                         jobs = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100", token)
                         released, reason, steps = evaluate_live_state(run, jobs)
+                        if (not released and pointer.get('state') == 'COMPLETED'
+                                and pointer.get('reference_only') is True and pointer.get('allow_publish') is False
+                                and reference_review_verified(read_json(requests_dir / f'{owner}.json'), run, jobs)):
+                            released, reason = True, 'MORNING_REFERENCE_REVIEW_VERIFIED'
                     except Exception:
                         result["reason"] = "ACTIVE_OWNER_LIVE_STATE_UNAVAILABLE"
                         return result
@@ -304,6 +324,8 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     run = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}", token)
     jobs = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100", token)
     released, reason, step_state = evaluate_live_state(run, jobs)
+    if not released and reference_review_verified(morning, run, jobs):
+        released, reason = True, 'MORNING_REFERENCE_REVIEW_VERIFIED'
     result["released"] = released
     result["reason"] = reason
     result["verified_final_steps"] = step_state
