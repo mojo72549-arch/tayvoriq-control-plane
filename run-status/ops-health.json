@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T19:43:08.319891Z",
+  "generated_at": "2026-11-14T22:16:19.178454Z",
   "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
@@ -11,39 +11,39 @@
   "api_error": null,
   "research": {
     "schema": "tayvoriq-research-retry-v1",
-    "state": "EXHAUSTED",
+    "state": "WAITING",
     "slot": "evening",
-    "berlin_date": "2026-11-11",
-    "first_deferred_at_epoch": 1794352111.4200253,
-    "attempts": 10,
-    "retry_at_epoch": 1794368620.0929806,
-    "retry_phase": "SLOW_RECOVERY",
-    "last_deferred_at_epoch": 1794365020.0929806,
-    "provider_retry_at_epoch": 1794365738.7273023,
+    "berlin_date": "2026-11-14",
+    "first_deferred_at_epoch": 1794694564.5156589,
+    "attempts": 1,
+    "retry_at_epoch": 1794695411.655203,
+    "retry_phase": "NORMAL",
+    "last_deferred_at_epoch": 1794694564.5156589,
+    "provider_retry_at_epoch": 1794695411.655203,
     "max_attempts": 10,
-    "valid_until_epoch": 1794373711.4200253,
-    "reason": "RESEARCH_RETRY_EXPIRED",
+    "valid_until_epoch": 1794716164.5156589,
+    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
     "quality_gates_weakened": false,
     "production_started": false
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3577-trend-1",
-    "golden_path_run_id": 43611802085,
-    "pointer_updated_at": "2026-11-14T15:56:01.634816Z"
+    "request_id": "chatgpt-20261115-morning-mercedes",
+    "golden_path_run_id": 43641743548,
+    "pointer_updated_at": "2026-11-14T21:43:32.624219Z"
   },
   "request": {
-    "request_id": "telegram-3577-trend-1",
-    "topic": "DHL-Päckchen: Was sich beim Porto ab Januar ändert",
+    "request_id": "chatgpt-20261115-morning-mercedes",
+    "topic": "Mercedes stoppt Investitionen und prüft Werksschließungen",
     "trend_id": "1",
-    "slot": null,
+    "slot": "morning",
     "state": "DISPATCHED",
-    "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_generation": 0,
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ rechnet Preisänderungen an konkreten Beispielen aus dem deutschen Alltag durch.",
+    "follow_reason": "TAYVORIQ erklärt die konkreten Entscheidungen, die Arbeitsplätze und Alltag in Stuttgart verändern.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -56,18 +56,18 @@
       "issues": []
     },
     "golden_path_v5_state": "APPROVED",
-    "source_count": 3,
+    "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3577-trend-1.json"
+    "path": "requests/chatgpt-20261115-morning-mercedes.json"
   },
   "run": {
-    "id": 43611802085,
+    "id": 43641743548,
     "historical": false,
     "status": "completed",
     "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43611802085",
-    "created_at": "2026-11-14T15:44:37Z",
-    "updated_at": "2026-11-14T15:56:42Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43641743548",
+    "created_at": "2026-11-14T21:14:24Z",
+    "updated_at": "2026-11-14T21:43:41Z",
     "attempt": 1,
     "progress": 100,
     "current_step": null,
@@ -157,7 +157,7 @@
     {
       "name": "Self-Heal",
       "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
@@ -170,68 +170,42 @@
       "detail": "Quality Audit bestanden"
     }
   ],
-  "incident": {
-    "signature": "43611802085:PUBLISHABLE",
-    "severity": "warning",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_DISPATCHED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "green",
     "detail": "Telegram-Videoquittung bestätigt",
     "last_step": "Send Telegram review",
-    "message_id": 3621
+    "message_id": 3632
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
-    "failed_run_id": 43611217435,
-    "replay_run_id": 43611802085,
+    "status": "IDLE",
+    "source_status": "IDLE",
+    "failure_state": null,
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
-    "recovery_generation": 1,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
-    "same_generation_replay_required": true,
+    "recovery_generation": 0,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-14T15:44:42.963840Z",
+      "at": "2026-11-14T21:14:30.582581+00:00",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "request-dispatcher:43641726845"
     },
     {
-      "at": "2026-11-14T15:41:41.386771Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+      "at": "2026-11-14T21:14:20.357496+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:43641726845"
     },
     {
-      "at": "2026-11-14T15:38:04.369528Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-11-14T15:37:28.433826Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_VISUAL_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-14T15:33:39.949080Z",
-      "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
-    },
-    {
-      "at": "2026-11-14T15:29:58.318767Z",
-      "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+      "at": "2026-11-14T21:05:00Z",
+      "title": "APPROVED",
+      "detail": "chat_direct_user_instruction"
     }
   ]
 }
