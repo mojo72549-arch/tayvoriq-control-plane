@@ -10,6 +10,7 @@ from pathlib import Path
 from tayvoriq_lifecycle_handoff_v1 import await_completion
 from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
+from tayvoriq_chat_direct_approval_v1 import authorized_for_review
 
 ACTIVE = {'queued', 'in_progress', 'waiting', 'requested', 'pending'}
 EXECUTORS = ('tayvoriq-deterministic-codefix-continuity.yml',
@@ -54,8 +55,8 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
     for field in ('approval_key', 'source_context_sha256', 'contract_sha256'):
         if not pointer.get(field) or pointer[field] != request.get(field):
             return finish('BLOCKED', 'IMMUTABLE_REQUEST_MISMATCH:' + field)
-    if request.get('source') != 'telegram_trend_approval':
-        return finish('BLOCKED', 'TELEGRAM_APPROVAL_REQUIRED')
+    if request.get('source') != 'telegram_trend_approval' and not authorized_for_review(request):
+        return finish('BLOCKED', 'USER_APPROVAL_PROVENANCE_REQUIRED')
     # A separately audited, unpublished and expired news request is terminal
     # history, not an active delivery blocker. Keep hard contract checks above.
     if pointer.get('state') == 'EXPIRED' or request.get('status') == 'EXPIRED':
