@@ -289,6 +289,19 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-14T14:09:41.508104Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "golden_path_run_id": 43602341943,
+        "reason": "same-run-local-retry",
+        "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+        "failure_signature": "28e41034d878ba43118c",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "2c7d3b37b0efc498f51292637a3f68e84f1e61f679ce9c44aaa17cdcb850a2b2",
@@ -296,7 +309,7 @@
   "dispatch_contract_sha256": "2c7d3b37b0efc498f51292637a3f68e84f1e61f679ce9c44aaa17cdcb850a2b2",
   "golden_path_run_id": 43602341943,
   "codefix_recovery": {
-    "status": "REPLAY_DISPATCHED",
+    "status": "LOCAL_RETRY_DISPATCHED",
     "request_substate": "DISPATCHED",
     "failed_run_id": 43587092593,
     "failure_signature": "7841008c0dcf5980cb7f",
@@ -319,9 +332,15 @@
     "replayed_at": "2026-11-14T13:57:36.828987Z",
     "replay_control_plane_sha": "304785f0af301082af2d49313e0839e1dda53f61",
     "replay_implementation_sha": "749e9b80accc278a758870e0190320c0e67f4997",
-    "codefix_detection_reason": "production-green-implementation-changed"
+    "codefix_detection_reason": "production-green-implementation-changed",
+    "local_retry_run_id": 43602341943,
+    "local_retry_run_attempt": 2,
+    "local_retry_kind": "same-run",
+    "local_retry_failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "local_retry_failure_signature": "28e41034d878ba43118c",
+    "local_retry_dispatched_at": "2026-11-14T14:09:41.508104Z"
   },
-  "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+  "recovery_owner": "tayvoriq-delivery-watch",
   "previous_golden_path_run_ids": [
     43582173495,
     43587092593
