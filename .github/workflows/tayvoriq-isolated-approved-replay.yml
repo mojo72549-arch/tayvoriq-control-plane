@@ -51,7 +51,7 @@ env:
   TORCH_HOME: ${{ github.workspace }}/.cache/torch
   TAYVORIQ_TELEGRAM_PROGRESS_SUPPRESSED: 'true'
   REPLAY_REQUEST_ID: telegram-3549-trend-1
-  STUDIO_SHA: 5886490b4a0b968d11c7d2b871fcd32d0ec8aa15
+  STUDIO_SHA: 0255e6eafe3ebd3600479fc7767d73c4076c4511
   SOURCE_REQUEST_ID_PIN: telegram-3549-trend-1
 jobs:
   review:
@@ -196,6 +196,14 @@ jobs:
           --request-out out/tayvoriq-self-heal/request.json --max-runtime-attempts 1 --self-heal-depth 1 \
           --target-branch feature/multi-platform-distribution-package
         git diff --exit-code -- .
+    - name: Retain bounded failure handoff
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: tayvoriq-approved-replay-diagnostics-${{ github.run_id }}
+        path: replay/binding.json
+        retention-days: 14
+        if-no-files-found: ignore
     - name: Verify both masters and the generated review page; run final audit
       working-directory: implementation
       run: |
