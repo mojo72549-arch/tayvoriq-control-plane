@@ -40,6 +40,21 @@ Der Request `telegram-3549-trend-1` bindet `trend_id=1` an `20261111-morning-age
 
 Referenznachweise: [Produktion 42983272199](https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42983272199), [Codefix 42984875924](https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42984875924), [Editorial-CI 42982398154](https://github.com/mojo72549-arch/shorts-agent-studio/actions/runs/42982398154) und [allgemeine Studio-CI 42982398167](https://github.com/mojo72549-arch/shorts-agent-studio/actions/runs/42982398167).
 
+## Isolierter Referenznachweis am 14. November 2026
+
+| Merkmal | Beleg |
+| --- | --- |
+| Unveränderter Telegram-Request | `telegram-3549-trend-1`, Quellen-SHA-256 `40fafb396465932e17cdc4bbfabb99ab1f9d170a45c78f4b244920dfc792dff6` |
+| Fehlgeschlagener erster Replay | [43570136824](https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43570136824), Stopp in der Transkriptprüfung vor dem Render |
+| Isolierter Referenzlauf | [43572582456](https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43572582456), Control Plane `e6709379184d0916301f8b55ae29f407b5ade97a`, Studio `0255e6eafe3ebd3600479fc7767d73c4076c4511` |
+| Letztes Gate | `v5-golden-human-voice-plus-production-mix`, beide Plattformvarianten bestanden |
+| Medien und Review-Seite | [Review-Paket 14105872459](https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43572582456/artifacts/14105872459) enthält beide technisch geprüften MP4s und die Review-Seite |
+| Telegram | `message_id=3574`, [Quittung 14106465348](https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43572582456/artifacts/14106465348) |
+
+Der isolierte Replay hatte ausschließlich Lesezugriff auf die Produktionsrepositorien. Seine Telegram-Nachricht enthält das Video und einen Link zum Review-Paket. Die Nachricht kann keine Veröffentlichungsfreigabe auslösen. Die ursprüngliche Produktions-Run-ID `42983272199` bleibt der fehlgeschlagene Lauf. Der operative Pointer verweist weiterhin auf diese ursprüngliche Run-ID. Eine kontrollierte Zuordnung der Referenzquittung muss den ursprünglichen Fehllauf und die Veröffentlichungssperre erhalten.
+
+Die Konsolidierung wird in [Control Plane #230](https://github.com/mojo72549-arch/tayvoriq-control-plane/pull/230) und [Studio #309](https://github.com/mojo72549-arch/shorts-agent-studio/pull/309) fortgeführt. Das Referenzreview zählt separat von den drei normal freigegebenen Produktionen auf dem konsolidierten Pfad.
+
 ## P0, P1 und P2
 
 | Priorität | Befund | Korrektur bzw. Nachweis |
