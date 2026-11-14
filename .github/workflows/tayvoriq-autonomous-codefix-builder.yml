@@ -169,9 +169,12 @@ jobs:
           python - <<'PY'
           import json,os,re
           from pathlib import Path
+          from tools.tayvoriq_recovery_policy_v1 import runtime_log_text
 
           failed_log=Path('/tmp/tayvoriq-codefix-failed.log').read_text(encoding='utf-8',errors='replace')
           full_log=Path('/tmp/tayvoriq-codefix-full.log').read_text(encoding='utf-8',errors='replace')
+          if 'CONTENT_REJECTED:GOLDEN_QUALITY_REGRESSION:golden-floor-meta-narration' in runtime_log_text(full_log):
+              raise SystemExit('CODE_DEFECT_EDITORIAL_META_NARRATION_REQUIRES_REVIEWED_PR')
 
           # Failed-step logs often contain only the final publishability assertion.
           # Preserve the earlier quality-audit evidence that actually explains why
@@ -695,7 +698,7 @@ jobs:
             gh workflow run tayvoriq-production-green-promoter.yml --ref main
             echo "AUTOCODEFIX_OVERLAY_BASE_NOT_GREEN:handoff=$HANDOFF_BASE_SHA green=$green_sha"
             echo "replay_dispatched=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            exit 1
           fi
 
           before_ids=$(gh run list --workflow tayvoriq-deliver-video-now.yml --event workflow_dispatch --limit 50 --json databaseId --jq '.[].databaseId' | tr '\n' ' ')
@@ -866,6 +869,18 @@ jobs:
           echo "replay_dispatched=true" >> "$GITHUB_OUTPUT"
           echo "new_run_id=$new_run_id" >> "$GITHUB_OUTPUT"
           echo "AUTOCODEFIX_OVERLAY_REPLAY_BOUND:$REQUEST_ID:$new_run_id:$PATCH_SHA256"
+
+      - name: Assert exact replay binding exists
+        if: ${{ !cancelled() && !failure() }}
+        env:
+          REPLAY_DISPATCHED: ${{ steps.overlay_replay.outputs.replay_dispatched }}
+          REPLAY_RUN_ID: ${{ steps.overlay_replay.outputs.new_run_id }}
+        shell: bash
+        run: |
+          if [[ "$REPLAY_DISPATCHED" != 'true' || ! "$REPLAY_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'AUTOCODEFIX_NO_EXACT_REPLAY_BOUND'
+            exit 1
+          fi
 
       - name: Telegram repaired recovery started
         if: steps.admission.outputs.admitted == 'true' && (steps.overlay_replay.outputs.new_run_id != '')

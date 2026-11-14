@@ -13,11 +13,11 @@ def _candidate(why: str, impact: str) -> dict:
     return {
         "source_context": {
             "fallback_editorial_answers": {
-                "what_happened": "Deutschland beendet die EM mit 21 Medaillen: sechs Gold, zehn Silber und fünf Bronze – Rang drei.",
+                "what_happened": "Deutschland gewinnt bei der EM 21 Medaillen und belegt Rang drei.",
                 "why_happening": why,
                 "who_is_affected": "Das deutsche Leichtathletik-Team und seine Fans.",
                 "personal_impact": impact,
-                "action_now": "Die finale Tabelle jetzt einordnen.",
+                "action_now": "Prüfe bei der Medaillentabelle zuerst die Goldmedaillen.",
             }
         }
     }
@@ -25,15 +25,21 @@ def _candidate(why: str, impact: str) -> dict:
 
 def test_rejects_tautological_medal_explanation() -> None:
     candidate = _candidate(
-        "Deutschland kam auf Rang drei, weil das Team sechs Gold-, zehn Silber- und fünf Bronzemedaillen gewann; zusammen sind das 21 Medaillen.",
-        "Für deutsche Sportfans zeigt die Bilanz die Einordnung direkt: Nur Italien und Großbritannien lagen in der Medaillenwertung vor Deutschland.",
+        "Deutschland ist Dritter, weil Deutschland bei der EM 21 Medaillen gewinnt.",
+        "Für dich ändert die Rangfolge, wie du den direkten Vergleich bewertest.",
     )
+    assert radar._downstream_editorial_contract_valid(candidate["source_context"]["fallback_editorial_answers"])
     assert radar._editorial_semantics_strong(candidate) is False
 
 
 def test_accepts_source_bound_explanatory_angle() -> None:
     candidate = _candidate(
-        "Deutschland gewann insgesamt sogar mehr Medaillen als Großbritannien, landete aber trotzdem hinter den Briten: Für die Platzierung waren die Goldmedaillen entscheidend – Italien hatte zehn, Großbritannien neun und Deutschland sechs.",
-        "Für Zuschauer erklärt das den scheinbaren Widerspruch: 21 deutsche Medaillen sind mehr als die 19 britischen, trotzdem steht Deutschland nur auf Rang drei. Wer nur die Gesamtzahl betrachtet, würde die Bilanz falsch einordnen.",
+        "Die Briten liegen vorn, weil Goldmedaillen in der Rangliste Vorrang haben.",
+        "Für dich ändert die Rangfolge, wie du den direkten Vergleich bewertest.",
     )
     assert radar._editorial_semantics_strong(candidate) is True
+
+
+def test_rejects_editorial_prose_exceeding_spoken_budget():
+    candidate = _candidate("Weil " + "Wettbewerb " * 20, "Für dich zählt der direkte Vergleich bei der Einordnung.")
+    assert not radar._editorial_semantics_strong(candidate)

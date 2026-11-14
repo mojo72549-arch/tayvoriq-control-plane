@@ -110,12 +110,19 @@ def test_completed_github_job_alone_is_not_review_ready():
     pointer['state'] = 'COMPLETED'
     request['production_completion'] = {'state': 'REVIEW_READY', 'golden_path_run_id': 42,
                                         'quality_gates_weakened': False}
-    assert decide(pointer, request, {**run, 'conclusion': 'success'})['state'] == 'BLOCKED'
-    request['production_completion']['telegram_message_id'] = 123
+    result = decide(pointer, request, {**run, 'conclusion': 'success'})
+    assert result['state'] == 'BLOCKED'
+    assert result['reason'] == 'TERMINAL_POINTER_WITHOUT_REVIEW_PROOF'
+    request['production_completion']['telegram_message_id'] = 100
     result = decide(pointer, request, {**run, 'conclusion': 'success'})
     assert result['state'] == 'REVIEW_READY'
     assert result['action'] == 'NONE'
     assert 'USER_APPROVAL' in result['reason']
+    pointer['allow_publish'] = False
+    request['production_completion']['reference_only'] = True
+    result = decide(pointer, request, {**run, 'conclusion': 'success'})
+    assert result['state'] == 'REVIEW_READY'
+    assert result['reason'] == 'VERIFIED_REFERENCE_REVIEW_DELIVERED'
 
 
 def test_wrong_source_owner_or_generation_is_never_dispatched():

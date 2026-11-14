@@ -21,41 +21,24 @@ def test_technical_stop_overrides_legacy_vague_detail_with_recovery_contract() -
     )
     text = payload["text"]
     assert "CODE_REPAIR_REQUIRED" in text
-    assert "Delivery Watch übernimmt denselben freigegebenen Auftrag" in text
-    assert "Recovery Dispatcher startet und bindet den nächsten Run automatisch" in text
-    assert "altem und neuem Run" in text
+    assert "Automatische Recovery ist request-gebunden" in text
     assert "automatisch untersucht" not in text
+    assert "Recovery Dispatcher startet" not in text
 
 
-def test_request_bound_recovery_dispatcher_uses_direct_workflow_dispatch() -> None:
-    workflow = (
-        ROOT / ".github/workflows/tayvoriq-request-bound-recovery-dispatcher.yml"
-    ).read_text(encoding="utf-8")
-    assert "workflows:\n      - TAYVORIQ-X Golden Path" in workflow
-    assert "recovery_owner') or '') != 'tayvoriq-delivery-watch'" in workflow
-    assert "gh workflow run tayvoriq-deliver-video-now.yml" in workflow
-    assert "status']='DISPATCHING'" in workflow
-    assert "data['status']='DISPATCHED'" in workflow
-    assert "data['golden_path_run_id']=new_run" in workflow
-    assert "AUTONOMOUS_REQUEST_BOUND_RECOVERY_DISPATCH_PASSED" in workflow
+def test_delivery_watch_persists_binding_before_dispatching_exact_retry() -> None:
+    workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text()
+    retry = workflow.split("- name: Same-run retry for local or transient failure", 1)[1]
+    retry = retry.split("- name: Replay local checkpoint", 1)[0]
+    assert retry.index("tayvoriq_recovery_rebind_v1.py") < retry.index("git push")
+    assert retry.index("git push") < retry.index("tayvoriq_recovery_attempt_ack_v1.py")
 
-def test_same_run_retry_accepts_armed_codefix_without_weakening_binding() -> None:
-    workflow = (
-        ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml"
-    ).read_text(encoding="utf-8")
-    required = (
-        '"$GITHUB_RUN_ATTEMPT"',
-        "armed_same_run",
-        "run_attempt > 1",
-        "codefix.get('status')=='ARMED'",
-        "codefix.get('request_substate')=='AWAITING_CODEFIX'",
-        "int(codefix.get('failed_run_id') or 0)==run_id",
-        "codefix.get('same_generation_replay_required') is True",
-        "codefix.get('exact_source_request_required') is True",
-        "codefix.get('quality_gates_weakened') is False",
-        "codefix.get('active_pointer_verified') is True",
-        "request_bound and (deterministic_bound or fresh_bound or armed_same_run)",
-    )
-    for marker in required:
-        assert marker in workflow, marker
 
+def test_armed_codefix_cannot_authorize_a_same_run_retry() -> None:
+    workflow = (ROOT / ".github/workflows/tayvoriq-deliver-video-now.yml").read_text()
+    for name in ("Early recovery binding gate", "Exact-request replay readiness gate"):
+        step = workflow.split(f"- name: {name}", 1)[1].split("- name:", 1)[0]
+        assert "codefix.get('status')=='LOCAL_RETRY_DISPATCHED'" in step
+        assert "int(codefix.get('local_retry_run_id') or 0)==run_id" in step
+        assert "int(codefix.get('local_retry_run_attempt') or 0)==run_attempt" in step
+        assert "request_bound and (deterministic_bound or fresh_bound or local_retry_bound)" in step

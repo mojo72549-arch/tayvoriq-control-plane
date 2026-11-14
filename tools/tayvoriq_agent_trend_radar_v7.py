@@ -16,7 +16,7 @@ _original_prompt = base.prompt_for
 _CONTINUATION_MARKERS = (
     "ki", "ai", "technologie", "technik", "robot", "industrie", "wirtschaft", "auto",
     "mobilität", "energie", "klima", "deutschland", "europa", "raumfahrt", "chip",
-    "infrastruktur", "bahn", "cyber", "digital",
+    "infrastruktur", "bahn", "cyber", "digital", "justiz", "gericht",
 )
 _HOOK_MARKERS = (
     "warum", "wieso", "plötzlich", "ploetzlich", "was passiert", "was bedeutet", "rekord",

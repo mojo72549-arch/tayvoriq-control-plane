@@ -164,7 +164,7 @@ function buildStages(jobs=[]){
     ['Light Preflight',['lightweight contract preflight']],
     ['Dependencies',['install production dependencies']],
     ['Full Preflight',['preflight']],
-    ['Produktion / Master',['produce approved master']],
+    ['Studio-Ausführung',['collect studio production outcome','produce approved master']],
     ['Publishable Output',['assert publishable production output']],
     ['Quality Audit',['validate publication quality']],
     ['Review-Seite',['publish review page']],
@@ -176,8 +176,8 @@ function buildStages(jobs=[]){
   });
 }
 
-function progressFromStages(stages=[],status,conclusion){
-  if(conclusion==='success') return 100;
+function progressFromStages(stages=[],status,reviewDelivered=false){
+  if(reviewDelivered) return 100;
   const weights=[8,16,22,30,38,45,65,72,82,92,96];
   let progress=0;
   for(let i=0;i<stages.length;i++){
@@ -373,28 +373,28 @@ function buildOperatorFeed(state,pilot,jobs=[]){
   return items.slice(0,12);
 }
 
-function colorForRun(run){
+function colorForRun(run,reviewDelivered=false){
   if(!run) return 'unknown';
   if(ACTIVE_STATUSES.has(String(run.status))) return 'yellow';
-  if(run.conclusion==='success') return 'green';
+  if(run.conclusion==='success') return reviewDelivered?'green':'yellow';
   if(['failure','timed_out','cancelled','canceled','action_required'].includes(String(run.conclusion))) return 'red';
   return 'unknown';
 }
 
-function liveHealthchecks(snapshot,canonicalRun,stages,recovery,activity){
+function liveHealthchecks(snapshot,canonicalRun,stages,recovery,activity,telegram){
   const existing=new Map((snapshot?.healthchecks||[]).map(x=>[String(x.name||''),x]));
   const qa=stages.find(x=>x.label==='Quality Audit');
   const pub=stages.find(x=>x.label==='Publishable Output');
   const orchestrator=activity.find(x=>/orchestrator/i.test(x.workflow||''));
   const result=[];
   result.push({name:'Orchestrator',status:orchestrator?(ACTIVE_STATUSES.has(orchestrator.status)?'yellow':orchestrator.conclusion==='failure'?'red':'green'):'unknown',detail:orchestrator?`${orchestrator.state} · ${orchestrator.step||orchestrator.job||'Workflow'}`:'Kein aktueller Orchestrator-Lauf in der Live-Abfrage'});
-  result.push({name:'Golden Path',status:colorForRun(canonicalRun),detail:canonicalRun?`Run ${canonicalRun.id} · ${stateFor(canonicalRun.status,canonicalRun.conclusion)}`:'Kein kanonischer Run auflösbar'});
+  result.push({name:'Golden Path',status:colorForRun(canonicalRun,telegram.status==='green'),detail:canonicalRun?`Run ${canonicalRun.id} · ${canonicalRun.conclusion==='success'&&telegram.status!=='green'?'Review-Quittung fehlt':stateFor(canonicalRun.status,canonicalRun.conclusion)}`:'Kein kanonischer Run auflösbar'});
   const pg=existing.get('Production Green'); if(pg) result.push(pg);
   const recoveryActive=activity.find(x=>x.kind==='recovery'&&ACTIVE_STATUSES.has(x.status));
   result.push({name:'Self-Heal',status:recoveryActive?'yellow':String(recovery?.status||'').toUpperCase().includes('DISPATCHED')?'yellow':existing.get('Self-Heal')?.status||'unknown',detail:recoveryActive?`${recoveryActive.label}: ${recoveryActive.step||recoveryActive.job||recoveryActive.state}`:`${recovery?.status||'–'} · Gen ${recovery?.recovery_generation??0}`});
   result.push({name:'Publishability',status:pub?.status==='success'?'green':pub?.status==='error'?'red':pub?.status==='running'?'yellow':'unknown',detail:pub?.step_name||'Noch nicht erreicht'});
   result.push({name:'Quality Gates',status:qa?.status==='success'?'green':qa?.status==='error'?'red':qa?.status==='running'?'yellow':pub?.status==='error'?'yellow':'unknown',detail:qa?.status==='success'?'Quality Audit bestanden':pub?.status==='error'?'Wartet auf reparierten Publishable Output':qa?.status==='skipped'?'Noch nicht ausgeführt':'Noch nicht erreicht'});
-  const telegram=existing.get('Telegram'); if(telegram) result.push(telegram);
+  result.push({name:'Telegram',status:telegram.status,detail:telegram.detail});
   return result;
 }
 
@@ -468,6 +468,16 @@ export default async function handler(req,res){
   const pilotJobs=pilotRun?jobsByKey.get(runKey(pilotRun._repo,pilotRun.id))||[]:[];
   const canonicalActivity=canonicalRun?toActivity(canonicalRun,canonicalJobs):null;
   const stages=canonicalRun?buildStages(canonicalJobs):(snapshot?.run?.stages||[]);
+  const completion=requestData?.production_completion;
+  const review=stages.find(x=>x.label==='Telegram Review');
+  const receipt=completion?.telegram_message_id;
+  const reviewDelivered=Boolean(canonicalRun&&review?.status==='success'&&completion?.state==='REVIEW_READY'&&
+    Number(completion?.golden_path_run_id)===Number(canonicalRun.id)&&completion?.quality_gates_weakened===false&&
+    Number.isSafeInteger(receipt)&&receipt>0);
+  if(review?.status==='success'&&!reviewDelivered) review.status='pending';
+  const telegram={status:reviewDelivered?'green':review?.status==='error'?'red':canonicalRun?'yellow':'unknown',
+    detail:reviewDelivered?'Telegram-Videoquittung bestätigt':review?.status==='error'?'Telegram-Review fehlgeschlagen':'Keine bestätigte Review-Zustellung',
+    message_id:reviewDelivered?receipt:null};
   const failedStage=stages.find(x=>x.status==='error')||null;
   const activeStage=stages.find(x=>x.status==='running')||null;
   const lastSuccess=[...stages].reverse().find(x=>x.status==='success')||null;
@@ -515,7 +525,7 @@ export default async function handler(req,res){
     failed_step:failedStage?.step_name||null,
     failed_step_number:failedStage?.step_number??null,
     last_successful_step:lastSuccess?.step_name||null,
-    progress:progressFromStages(stages,canonicalRun.status,canonicalRun.conclusion),
+    progress:progressFromStages(stages,canonicalRun.status,reviewDelivered),
     stages
   }:(snapshot?.run||{});
 
@@ -539,9 +549,9 @@ export default async function handler(req,res){
   const snapshotAt=snapshot?.generated_at||null;
   const snapshotAge=snapshotAt?Math.max(0,Math.round((Date.now()-Date.parse(snapshotAt))/1000)):null;
   const overall=canonicalRun
-    ? (canonicalActive?'yellow':colorForRun(canonicalRun))
-    : (active.length?'yellow':(snapshot?.overall||'unknown'));
-  const healthchecks=liveHealthchecks(snapshot,canonicalRun,stages,recovery,telemetry);
+    ? (canonicalActive?'yellow':colorForRun(canonicalRun,reviewDelivered))
+    : (active.length||snapshot?.overall==='green'?'yellow':(snapshot?.overall||'unknown'));
+  const healthchecks=liveHealthchecks(snapshot,canonicalRun,stages,recovery,telemetry,telegram);
 
   const liveEvents=[];
   for(const item of telemetry.slice(0,6)) liveEvents.push({at:item.updated_at,title:`LIVE · ${item.label} · ${item.state}`,detail:`${item.repo.split('/').at(-1)} · Run ${item.id}${item.job?` · ${item.job}`:''}${item.step?` · Step ${item.step_number??'–'}: ${item.step}`:''}`});
@@ -555,6 +565,7 @@ export default async function handler(req,res){
     schema:'tayvoriq-live-v2',
     generated_at:checkedAt,
     overall,
+    telegram,
     user_action_required:Boolean(incident?.user_action_required),
     request:canonicalRequest,
     run:liveRun,

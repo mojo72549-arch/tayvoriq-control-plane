@@ -76,12 +76,23 @@ jobs:
           run_state=$(gh run view "$run_id" --json status,conclusion --jq '(.status // "") + ":" + (.conclusion // "")' 2>/dev/null || true)
           echo "ORCHESTRATOR_OWNER request=$request_id run=$run_id state=$run_state"
           if [ "$run_state" = "completed:success" ]; then
-            python -S - "$POINTER" "$run_id" <<'PY'
+            python -S - "$POINTER" "$run_id" "$request_id" <<'PY'
           import json,sys
           from datetime import datetime,timezone
           from pathlib import Path
-          p=Path(sys.argv[1]); run_id=int(sys.argv[2]); d=json.loads(p.read_text(encoding='utf-8'))
+          sys.path.insert(0, str(Path('tools').resolve()))
+          from tayvoriq_lifecycle_controller_v1 import review_message_id
+
+          p=Path(sys.argv[1]); run_id=int(sys.argv[2]); request_id=sys.argv[3]
+          d=json.loads(p.read_text(encoding='utf-8'))
           if d.get('state')!='ACTIVE' or int(d.get('golden_path_run_id') or 0)!=run_id:
+              raise SystemExit(0)
+          request_path=Path('requests') / f'{request_id}.json'
+          if not request_path.is_file():
+              raise SystemExit(0)
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          if request.get('request_id') != d.get('request_id') or not review_message_id(request, run_id):
+              print('ORCHESTRATOR_REVIEW_RECEIPT_MISSING')
               raise SystemExit(0)
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
           d['state']='COMPLETED'; d['reason']='ops-health-terminal-success-reconcile'; d['completed_at']=now; d['updated_at']=now
@@ -144,6 +155,24 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if python -S - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+
+          path='run-status/ops-health.json'
+          prior=subprocess.run(['git','show',f'HEAD:{path}'],capture_output=True,text=True,check=False)
+          if prior.returncode:
+              raise SystemExit(1)
+          previous=json.loads(prior.stdout)
+          current=json.loads(Path(path).read_text(encoding='utf-8'))
+          previous.pop('generated_at',None)
+          current.pop('generated_at',None)
+          raise SystemExit(0 if previous==current else 1)
+          PY
+          then
+            echo "TAYVORIQ_OPS_HEALTH_UNCHANGED"
+            exit 0
+          fi
           git add run-status/ops-health.json
           if git diff --cached --quiet; then
             echo "TAYVORIQ_OPS_HEALTH_UNCHANGED"
