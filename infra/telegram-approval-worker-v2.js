@@ -310,6 +310,11 @@ export default {
       return new Response('ok');
     }
 
+    const artifactDecision = callbackData.match(/^tayvoriq:artifact:(approve|reject):(\d{1,20})$/);
+    if (artifactDecision) {
+      return decideArtifactReview(env, callback, chatId, artifactDecision[1], artifactDecision[2]);
+    }
+
     const rejectMatch = callbackData.match(/^tayvoriq:reject:(\d+)$/i)
       || text.match(/^ablehnen\s+(\d+)$/i)
       || text.match(/^reject:(\d+)$/i);
@@ -383,6 +388,43 @@ export default {
     return new Response('ok');
   },
 };
+
+async function decideArtifactReview(env, callback, chatId, action, reviewId) {
+  const github = `https://api.github.com/repos/${env.GITHUB_REPOSITORY}`;
+  const githubHeaders = {
+    Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'tayvoriq-telegram-approval',
+    'Content-Type': 'application/json',
+  };
+  const path = `.automation/tayvoriq-artifact-decisions/${reviewId}.json`;
+  const messageId = callback?.message?.message_id;
+  try {
+    if (!Number.isSafeInteger(messageId) || messageId <= 0) throw new Error('invalid message');
+    const current = await fetch(`${github}/contents/${path}?ref=main`, { headers: githubHeaders, cache: 'no-store' });
+    if (!current.ok) throw new Error('review binding unavailable');
+    const file = await current.json();
+    if (file.encoding !== 'base64' || !file.sha) throw new Error('binding unreadable');
+    const binding = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(file.content.replace(/\s/g, '')), c => c.charCodeAt(0))));
+    if (binding.schema !== 'tayvoriq-artifact-approval' || String(binding.review_id) !== reviewId
+        || binding.telegram_message_id !== messageId || binding.state !== 'PENDING') {
+      await answerCallback(env, callback.id, 'Diese Entscheidung wurde bereits verarbeitet oder gehört zu einem anderen Review.', true);
+      return new Response('review not pending', { status: 409 });
+    }
+    const decision = { ...binding, state: action === 'approve' ? 'APPROVED' : 'REJECTED',
+      decision_id: String(callback.id), decided_at: new Date().toISOString(), decided_via: 'telegram_callback' };
+    const bytes = new TextEncoder().encode(JSON.stringify(decision, null, 2) + '\n');
+    const content = btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''));
+    const saved = await fetch(`${github}/contents/${path}`, { method: 'PUT', headers: githubHeaders,
+      body: JSON.stringify({ message: `Record Telegram review decision ${reviewId}`, branch: 'main', sha: file.sha, content }) });
+    if (!saved.ok) throw new Error('decision compare-and-swap failed');
+    await answerCallback(env, callback.id, action === 'approve' ? 'Freigabe gespeichert.' : 'Video abgelehnt.');
+    await clearKeyboard(env, chatId, messageId);
+    return new Response('ok');
+  } catch {
+    await answerCallback(env, callback.id, 'Entscheidung konnte gerade nicht bestätigt werden. Bitte erneut versuchen.', true);
+    return new Response('review decision unavailable', { status: 503 });
+  }
+}
 
 function trendKeyboard(trendId, selectionId = '') {
   if (selectionId) return trendConfirmationKeyboard(selectionId, trendId);
