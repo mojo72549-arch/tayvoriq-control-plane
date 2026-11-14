@@ -283,7 +283,7 @@ def classify_failure(
                                 "none", generation, None, maximum,
                                 _structured_signature(evidence_state, evidence),
                                 "Failure evidence belongs to a different production attempt.")
-    if evidence_state in {"CODE_DEFECT", "TRANSCRIPT_NORMALIZATION_DEFECT"}:
+    if evidence_state in {"CODE_DEFECT", "TRANSCRIPT_NORMALIZATION_DEFECT", "LOCAL_VISUAL_CODEFIX_REQUIRED"}:
         return RecoveryDecision("deterministic", evidence_state, False,
                                 "verified-codefix-replay", generation, generation, maximum,
                                 _structured_signature(evidence_state, evidence),

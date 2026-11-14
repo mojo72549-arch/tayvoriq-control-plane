@@ -27,6 +27,19 @@ class CurrentFailureContractTests(unittest.TestCase):
         self.assertEqual(decision.mode, 'deterministic')
         self.assertFalse(decision.retry_allowed)
 
+    def test_repeated_missing_visual_search_fallback_requires_code(self):
+        log = ("RuntimeError: REAL_VIDEO_SCENE_REQUIRED:scene=6:query=example:"
+               "bounded_real_video_queries_exhausted=['example']:attempted_queries=[]:"
+               "no usable moving clip was downloaded; generated/static fallback is forbidden")
+        for attempt in (1, 2):
+            report = bind_current_failure({'state': 'TRANSIENT_RENDER_FAILURE'}, log,
+                                          run_id=42, run_attempt=attempt, request_id='telegram-42-trend-1')
+            expected = 'TRANSIENT_RENDER_FAILURE' if attempt == 1 else 'LOCAL_VISUAL_CODEFIX_REQUIRED'
+            self.assertEqual(report['state'], expected)
+        decision = classify_failure('', run_attempt=2, structured_evidence=report)
+        self.assertEqual(decision.mode, 'deterministic')
+        self.assertFalse(decision.retry_allowed)
+
     def test_echoed_policy_source_is_not_a_runtime_failure(self):
         echoed = '\x1b[36;1mif "CONTENT_REJECTED:verified-editorial-postcondition-drift" in text:\x1b[0m'
         report = self.contract(echoed)

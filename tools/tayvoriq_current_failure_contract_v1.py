@@ -33,6 +33,10 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
         elif _matches(line, SEMANTIC_CODEFIX_PATTERNS):
             state = "SEMANTIC_CODEFIX_REQUIRED"
             detail = line
+        elif (int(run_attempt) >= 2 and "RuntimeError: REAL_VIDEO_SCENE_REQUIRED:" in line
+              and "attempted_queries=[]" in line
+              and _has_only_original_visual_query(line)):
+            state, detail = "LOCAL_VISUAL_CODEFIX_REQUIRED", line
         elif _matches(line, LOCAL_VOICE_RETRY_PATTERNS + LOCAL_VISUAL_RETRY_PATTERNS):
             # A later local failure owns the terminal result if the earlier
             # editorial defect was repaired within this same controller attempt.
@@ -48,6 +52,15 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
         if state == "TRANSCRIPT_NORMALIZATION_DEFECT":
             result.update(full_regeneration_allowed=False, audio_regeneration_allowed=False)
     return result
+
+
+def _has_only_original_visual_query(line):
+    try:
+        raw = line.split(":bounded_real_video_queries_exhausted=", 1)[1].split(":attempted_queries=", 1)[0]
+        queries = ast.literal_eval(raw)
+    except (IndexError, SyntaxError, ValueError):
+        return False
+    return isinstance(queries, list) and len(queries) == 1
 
 
 def _verified_transcript_alias_failure(console):
