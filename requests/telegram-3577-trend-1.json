@@ -190,10 +190,37 @@
       "state": "DISPATCHED",
       "at": "2026-11-14T09:47:09.424635+00:00",
       "actor": "request-dispatcher:43582158391"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-14T10:13:40.167125Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "golden_path_run_id": 43582173495,
+        "reason": "same-run-local-retry",
+        "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+        "failure_signature": "ce1bbf76ad88ac7a49cf",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "2c7d3b37b0efc498f51292637a3f68e84f1e61f679ce9c44aaa17cdcb850a2b2",
   "dispatch_claim_run_id": 43582158391,
   "dispatch_contract_sha256": "2c7d3b37b0efc498f51292637a3f68e84f1e61f679ce9c44aaa17cdcb850a2b2",
-  "golden_path_run_id": 43582173495
+  "golden_path_run_id": 43582173495,
+  "codefix_recovery": {
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "request_substate": "DISPATCHED",
+    "failure_state": "",
+    "local_retry_run_id": 43582173495,
+    "local_retry_run_attempt": 2,
+    "local_retry_kind": "same-run",
+    "local_retry_failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+    "local_retry_failure_signature": "ce1bbf76ad88ac7a49cf",
+    "local_retry_dispatched_at": "2026-11-14T10:13:40.167125Z",
+    "quality_gates_weakened": false,
+    "active_pointer_verified": true
+  },
+  "recovery_owner": "tayvoriq-delivery-watch"
 }
