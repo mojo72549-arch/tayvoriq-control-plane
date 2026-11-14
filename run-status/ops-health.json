@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T14:57:43.617896Z",
+  "generated_at": "2026-11-14T15:16:33.853044Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -39,7 +39,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -67,11 +67,11 @@
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43604676977",
     "created_at": "2026-11-14T14:24:12Z",
-    "updated_at": "2026-11-14T14:24:16Z",
-    "attempt": 1,
+    "updated_at": "2026-11-14T15:13:07Z",
+    "attempt": 2,
     "progress": 30,
-    "current_step": "Collect Studio production outcome",
-    "last_successful_step": "Restore production model cache",
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -113,7 +113,7 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "running",
+        "status": "success",
         "step_number": 33,
         "step_name": "Collect Studio production outcome"
       },
@@ -147,7 +147,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Collect Studio production outcome"
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
@@ -173,7 +173,7 @@
   "incident": {
     "signature": "43604676977:LOCAL_VISUAL",
     "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_CODEFIX_REQUIRED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_step": null,
     "failed_step_number": null,
     "self_heal_status": "REPLAY_RUNNING",
@@ -190,19 +190,24 @@
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_CODEFIX_REQUIRED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": 43602341943,
     "replay_run_id": 43604676977,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-deterministic-codefix-continuity",
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-14T15:12:59.797062Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
     {
       "at": "2026-11-14T14:24:18.366712Z",
       "title": "DISPATCHED",
@@ -227,11 +232,6 @@
       "at": "2026-11-14T13:53:31.638412Z",
       "title": "AWAITING_CODEFIX",
       "detail": "TRANSCRIPT_NORMALIZATION_DEFECT"
-    },
-    {
-      "at": "2026-11-14T11:24:39.925010Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
     }
   ]
 }
