@@ -32,7 +32,10 @@ jobs:
           doc=yaml.load(text, Loader=yaml.BaseLoader)
           assert isinstance(doc, dict), 'delivery watch must parse as a YAML mapping'
           assert 'jobs' in doc, 'delivery watch jobs missing'
-          assert 'workflow_run' in doc.get('on', {}), 'workflow_run trigger missing'
+          triggers=doc.get('on', {})
+          assert set(triggers) == {'workflow_dispatch'}, 'only the orchestrator may trigger recovery'
+          inputs=triggers['workflow_dispatch']['inputs']
+          assert all(inputs[name]['required'] == 'true' for name in ('orchestrator_decision_key', 'run_id')), 'exact dispatch binding missing'
           assert 'newer-golden-path-' not in text, 'global unrelated-run supersession guard must stay removed'
           assert '.github/run-now/tayvoriq-x-request.json' not in text, 'fresh recovery must not use stale global X request'
           assert 'golden_path_run_id' in text, 'recovery must resolve exact durable request owner'
