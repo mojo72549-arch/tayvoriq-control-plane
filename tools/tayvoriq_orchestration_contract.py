@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import tayvoriq_retention_v5 as retention_v5
+from tayvoriq_chat_direct_approval_v1 import authorized_for_review
 
 CLAIMABLE = {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION"}
 ALL_STATES = CLAIMABLE | {"DISPATCHING", "DISPATCHED", "DISPATCH_FAILED"}
@@ -87,6 +88,8 @@ def contract_hash(data: dict) -> str:
         fields = fields + ("source_context_sha256",)
     if str(data.get("retention_contract_version") or "").strip() == "v5":
         fields = fields + V5_IMMUTABLE_FIELDS
+    if data.get('source') == 'chat_direct_user_authorization':
+        fields = fields + ('source', 'selection_id', 'slot', 'tiktok_delivery', 'telegram_message_id')
     payload = {k: data.get(k) for k in fields}
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -132,6 +135,8 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
         errors.append("target_duration must be an integer")
     if not approval_key:
         errors.append("missing approval_key")
+    if data.get('source') == 'chat_direct_user_authorization' and not authorized_for_review(data):
+        errors.append('direct user approval provenance invalid')
     approved_at = str(data.get("approved_at") or "").strip()
     if status in CLAIMABLE | {"DISPATCHING", "DISPATCHED"}:
         if not approved_at:
