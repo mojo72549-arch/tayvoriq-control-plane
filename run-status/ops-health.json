@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T15:36:18.249520Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-14T15:42:21.935778Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -29,17 +29,17 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3577-trend-1",
-    "golden_path_run_id": 43610077220,
-    "pointer_updated_at": "2026-11-14T15:25:17.270773Z"
+    "golden_path_run_id": 43611217435,
+    "pointer_updated_at": "2026-11-14T15:38:04.369528Z"
   },
   "request": {
     "request_id": "telegram-3577-trend-1",
     "topic": "DHL-Päckchen: Was sich beim Porto ab Januar ändert",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "AWAITING_CODEFIX",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -61,19 +61,19 @@
     "path": "requests/telegram-3577-trend-1.json"
   },
   "run": {
-    "id": 43610077220,
+    "id": 43611217435,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43610077220",
-    "created_at": "2026-11-14T15:25:11Z",
-    "updated_at": "2026-11-14T15:33:47Z",
-    "attempt": 3,
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43611217435",
+    "created_at": "2026-11-14T15:37:58Z",
+    "updated_at": "2026-11-14T15:41:12Z",
+    "attempt": 1,
     "progress": 30,
-    "current_step": "Install or reuse production dependencies",
-    "last_successful_step": "Telegram progress - environment active",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Preflight",
+    "failed_step_number": 28,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -113,31 +113,31 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 33,
         "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 41,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 43,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 48,
         "step_name": "Send Telegram review"
       }
@@ -146,8 +146,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Install or reuse production dependencies"
+      "status": "red",
+      "detail": "Preflight"
     },
     {
       "name": "Production Green",
@@ -157,7 +157,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "ARMED"
     },
     {
       "name": "Telegram",
@@ -167,16 +167,16 @@
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
   "incident": {
-    "signature": "43610077220:SAME_RUN_TRANSIENT_RECOVERY",
-    "severity": "warning",
-    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
+    "signature": "43611217435:PUBLISHABLE",
+    "severity": "critical",
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_step": "Preflight",
+    "failed_step_number": 28,
+    "self_heal_status": "ARMED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -189,20 +189,40 @@
     "message_id": null
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
-    "failed_run_id": 43604676977,
-    "replay_run_id": 43610077220,
+    "status": "ARMED",
+    "source_status": "ARMED",
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_run_id": 43611217435,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": false
+    "needs_codefix": true
   },
   "events": [
+    {
+      "at": "2026-11-14T15:41:12Z",
+      "title": "Workflow-Fehler",
+      "detail": "Preflight"
+    },
+    {
+      "at": "2026-11-14T15:41:41.386771Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
+    },
+    {
+      "at": "2026-11-14T15:38:04.369528Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-11-14T15:37:28.433826Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "LOCAL_VISUAL_CODEFIX_REQUIRED"
+    },
     {
       "at": "2026-11-14T15:33:39.949080Z",
       "title": "DISPATCHED",
@@ -217,21 +237,6 @@
       "at": "2026-11-14T15:25:17.270773Z",
       "title": "DISPATCHED",
       "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-11-14T15:12:59.797062Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-14T14:24:18.366712Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-11-14T14:23:40.194373Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_VISUAL_CODEFIX_REQUIRED"
     }
   ]
 }
