@@ -109,6 +109,8 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
         step = _step(CONTINUITY.read_text(), "Detect verified revision from Production Green")
         decision = step.split("          detected=false; reason=''", 1)[1].split('          echo "detected=', 1)[0]
         for state, changed, expected in [
+            ('TRANSCRIPT_NORMALIZATION_DEFECT', 'false', 'false'),
+            ('TRANSCRIPT_NORMALIZATION_DEFECT', 'true', 'true'),
             ('LOCAL_VOICE_CODEFIX_REQUIRED', 'false', 'false'),
             ('LOCAL_VISUAL_CODEFIX_REQUIRED', 'false', 'false'),
             ('LOCAL_VOICE_CODEFIX_REQUIRED', 'true', 'true'),
@@ -127,7 +129,7 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
         self.assertIn("/tmp/codefix-structured-failure.json", step)
         self.assertIn("--structured-evidence /tmp/codefix-structured-failure.json", step)
 
-    def test_non_deterministic_failure_cannot_reach_pending_codefix_builder(self) -> None:
+    def test_existing_armed_owner_can_resume_after_legacy_classifier_disagrees(self) -> None:
         continuity = CONTINUITY.read_text(encoding="utf-8")
         arm = _step(continuity, "Arm deterministic active Golden Path failure")
         reconcile = _step(continuity, "Reconcile only active orphan")
@@ -135,7 +137,9 @@ class CodefixContinuityHandoffTests(unittest.TestCase):
         self.assertIn("eligible=false", arm)
         self.assertIn("eligible=true", arm)
         self.assertIn("if: steps.arm.outputs.eligible == 'true'", reconcile)
-        self.assertIn("if: steps.arm.outputs.eligible == 'true'", pending)
+        self.assertIn("if: steps.active.outputs.found == 'true'", pending)
+        self.assertIn("c.get('status')=='ARMED'", pending)
+        self.assertIn("rrun==prun and frun==prun", pending)
 
 
     def test_codefix_arm_is_idempotent_per_failed_run_and_generation(self) -> None:
