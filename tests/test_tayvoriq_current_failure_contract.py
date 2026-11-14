@@ -40,6 +40,13 @@ class CurrentFailureContractTests(unittest.TestCase):
         self.assertEqual(decision.mode, 'deterministic')
         self.assertFalse(decision.retry_allowed)
 
+    def test_repeated_generic_editorial_queries_require_a_studio_revision(self):
+        log = "RuntimeError: CONTENT_REJECTED:tayvoriq-editorial-visual-standard-v1:generic_visual_query_detected"
+        report = self.contract(log)
+        self.assertEqual(report['state'], 'LOCAL_VISUAL_CODEFIX_REQUIRED')
+        decision = classify_failure('', run_attempt=3, structured_evidence=report)
+        self.assertFalse(decision.retry_allowed)
+
     def test_echoed_policy_source_is_not_a_runtime_failure(self):
         echoed = '\x1b[36;1mif "CONTENT_REJECTED:verified-editorial-postcondition-drift" in text:\x1b[0m'
         report = self.contract(echoed)
