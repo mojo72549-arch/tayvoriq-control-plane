@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T15:55:57.801454Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-14T19:43:08.319891Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -30,7 +30,7 @@
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3577-trend-1",
     "golden_path_run_id": 43611802085,
-    "pointer_updated_at": "2026-11-14T15:44:42.963840Z"
+    "pointer_updated_at": "2026-11-14T15:56:01.634816Z"
   },
   "request": {
     "request_id": "telegram-3577-trend-1",
@@ -63,15 +63,15 @@
   "run": {
     "id": 43611802085,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "success",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43611802085",
     "created_at": "2026-11-14T15:44:37Z",
-    "updated_at": "2026-11-14T15:44:41Z",
+    "updated_at": "2026-11-14T15:56:42Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Publish review page",
-    "last_successful_step": "Telegram progress - quality passed",
+    "progress": 100,
+    "current_step": null,
+    "last_successful_step": "Complete job",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -131,13 +131,13 @@
       },
       {
         "label": "Review-Seite",
-        "status": "running",
+        "status": "success",
         "step_number": 47,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "success",
         "step_number": 48,
         "step_name": "Send Telegram review"
       }
@@ -146,8 +146,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Publish review page"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -156,13 +156,13 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "status": "green",
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
+      "status": "green",
+      "detail": "Telegram-Videoquittung bestätigt"
     },
     {
       "name": "Quality Gates",
@@ -176,20 +176,20 @@
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": null,
     "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
+    "self_heal_status": "REPLAY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
   },
   "telegram": {
-    "status": "yellow",
-    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "status": "green",
+    "detail": "Telegram-Videoquittung bestätigt",
     "last_step": "Send Telegram review",
-    "message_id": null
+    "message_id": 3621
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
+    "status": "REPLAY_DISPATCHED",
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_run_id": 43611217435,
