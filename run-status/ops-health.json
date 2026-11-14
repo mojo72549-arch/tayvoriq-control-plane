@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T08:03:29.710646Z",
-  "overall": "red",
+  "generated_at": "2026-11-14T09:21:02.933938Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -29,17 +29,17 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3549-trend-1",
-    "golden_path_run_id": 42983272199,
-    "pointer_updated_at": "2026-11-11T07:57:33.270130Z"
+    "golden_path_run_id": 43572582456,
+    "pointer_updated_at": "2026-11-14T08:14:38Z"
   },
   "request": {
     "request_id": "telegram-3549-trend-1",
     "topic": "Porsche SE meldet 2,8 Milliarden Euro Verlust",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "none",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -61,42 +61,42 @@
     "path": "requests/telegram-3549-trend-1.json"
   },
   "run": {
-    "id": 42983272199,
+    "id": 43572582456,
     "historical": false,
     "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42983272199",
-    "created_at": "2026-11-11T07:57:26Z",
-    "updated_at": "2026-11-11T08:08:57Z",
-    "attempt": 3,
-    "progress": 30,
+    "conclusion": "success",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43572582456",
+    "created_at": "2026-11-14T07:45:34Z",
+    "updated_at": "2026-11-14T08:14:38Z",
+    "attempt": 1,
+    "progress": 100,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 41,
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 3,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 7,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
         "status": "success",
-        "step_number": 17,
+        "step_number": 7,
         "step_name": "Lightweight contract preflight"
       },
       {
@@ -108,46 +108,46 @@
       {
         "label": "Full Preflight",
         "status": "success",
-        "step_number": 17,
+        "step_number": 7,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
-        "step_number": 33,
-        "step_name": "Produce approved master or reuse checkpoint"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
-        "status": "error",
-        "step_number": 41,
-        "step_name": "Assert publishable production output"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
-        "step_number": 43,
-        "step_name": "Validate publication quality initial"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
-        "step_number": 47,
-        "step_name": "Publish review page"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
-        "step_number": 48,
-        "step_name": "Send Telegram review"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -156,27 +156,27 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "ARMED"
+      "status": "green",
+      "detail": "CLOSED_REFERENCE_REVIEW"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Store the Telegram receipt"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": {
-    "signature": "42983272199:RECOVERY",
-    "severity": "critical",
+    "signature": "43572582456:RECOVERY",
+    "severity": "warning",
     "failure_state": "RECOVERY_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 41,
-    "self_heal_status": "ARMED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "CLOSED_REFERENCE_REVIEW",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -184,28 +184,28 @@
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Store the Telegram receipt",
+    "last_step": "Store the Telegram receipt"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
+    "status": "CLOSED_REFERENCE_REVIEW",
+    "source_status": "CLOSED_REFERENCE_REVIEW",
     "failure_state": "RECOVERY_CODEFIX_REQUIRED",
     "failed_run_id": 42983272199,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "none",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": true
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-11T08:08:57Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-11-14T08:14:38Z",
+      "title": "DISPATCHED",
+      "detail": "reference_review_reconcile"
     },
     {
       "at": "2026-11-11T08:09:26.145895Z",
@@ -231,11 +231,6 @@
       "at": "2026-11-11T07:48:57.477264Z",
       "title": "AWAITING_CODEFIX",
       "detail": "RECOVERY_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-11T07:13:57.808057Z",
-      "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
     }
   ]
 }
