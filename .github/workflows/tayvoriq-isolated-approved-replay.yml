@@ -1,0 +1,229 @@
+name: TAYVORIQ isolated approved replay
+'on':
+  push:
+    branches:
+    - validation/tayvoriq-approved-replay
+    paths:
+    - .github/workflows/tayvoriq-isolated-approved-replay.yml
+permissions:
+  contents: read
+concurrency:
+  group: tayvoriq-x-golden-path
+  cancel-in-progress: false
+env:
+  PYTHONUTF8: '1'
+  PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
+  TAYVORIQ_CONTROL_PLANE_SCHEMA: x-v3
+  TAYVORIQ_EXECUTION_BACKEND: github_hosted_public
+  TAYVORIQ_CLOUD_MODE: 'true'
+  TAYVORIQ_RENDER_SIZE: 1080x1920
+  TAYVORIQ_REQUIRE_REAL_VIDEO_SCENES: 'true'
+  TAYVORIQ_TTS_PROVIDER: chatterbox_v3
+  TAYVORIQ_CHATTERBOX_ENABLED: 'true'
+  TAYVORIQ_CHATTERBOX_REQUIRED: 'true'
+  TAYVORIQ_CHATTERBOX_MODEL_VERSION: v3
+  TAYVORIQ_CHATTERBOX_LANGUAGE: de
+  TAYVORIQ_CHATTERBOX_TIMEOUT_SECONDS: '240'
+  TAYVORIQ_CHATTERBOX_MAX_CHUNKS: '2'
+  TAYVORIQ_CHATTERBOX_MAX_CHARS: '520'
+  TAYVORIQ_CHATTERBOX_CPU_THREADS: '4'
+  TAYVORIQ_CHATTERBOX_EXAGGERATION: '0.42'
+  TAYVORIQ_CHATTERBOX_CFG_WEIGHT: '0.36'
+  TAYVORIQ_CHATTERBOX_PAUSE_MS: '360'
+  TAYVORIQ_NATURAL_VOICE_WPM: '132'
+  TAYVORIQ_NARRATOR_PITCH_FACTOR: '1.0'
+  TAYVORIQ_NARRATOR_TONE_REQUIRED: 'false'
+  TAYVORIQ_RENDER_TIMEOUT_SECONDS: '600'
+  TAYVORIQ_EDGE_RECOVERY_TIMEOUT_SECONDS: '480'
+  TAYVORIQ_AUDIT_TIMEOUT_SECONDS: '120'
+  TAYVORIQ_AUDIT_RETRY_DELAYS: 0,8
+  TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: '1500'
+  TAYVORIQ_VISUAL_REPAIR_TIMEOUT_SECONDS: '480'
+  TAYVORIQ_VOICE_REPAIR_TIMEOUT_SECONDS: '600'
+  TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: '1'
+  TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS: '1500'
+  TAYVORIQ_APPROVED_TREND_PINNED: 'true'
+  TAYVORIQ_TELEGRAM_PROGRESS: 'false'
+  TAYVORIQ_TARGET_REVIEW_READY_SECONDS: '1800'
+  TAYVORIQ_END_TO_END_SLO_SECONDS: '3600'
+  TAYVORIQ_SOURCE_CONTEXT_FILE: ${{ github.workspace }}/replay/source.json
+  HF_HOME: ${{ github.workspace }}/.cache/huggingface
+  TORCH_HOME: ${{ github.workspace }}/.cache/torch
+  TAYVORIQ_TELEGRAM_PROGRESS_SUPPRESSED: 'true'
+  REPLAY_REQUEST_ID: telegram-3549-trend-1
+  STUDIO_SHA: 5886490b4a0b968d11c7d2b871fcd32d0ec8aa15
+  SOURCE_REQUEST_ID_PIN: telegram-3549-trend-1
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: Verify the original Telegram approval, exact sources and duplicates
+      run: python -S .github/replay/bind_replay.py
+    - uses: actions/checkout@v4
+      with:
+        repository: mojo72549-arch/shorts-agent-studio
+        ref: ${{ env.STUDIO_SHA }}
+        path: implementation
+        token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Verify immutable Studio checkout and retention contract
+      run: |
+        set -euo pipefail
+        test "$(git -C implementation rev-parse HEAD)" = "$STUDIO_SHA"
+        python -S implementation/tools/tayvoriq_retention_v5.py lock --request "requests/$REPLAY_REQUEST_ID.json" --out replay/retention.json
+        python -S implementation/tools/tayvoriq_retention_v5.py check --contract replay/retention.json
+    - name: Lightweight contract preflight
+      id: lightweight_preflight
+      working-directory: implementation
+      run: |
+        set -euo pipefail
+        python -m compileall -q tools src runtime_patches tests
+        python tools/tayvoriq_lightweight_preflight.py
+    - name: Install or reuse production dependencies
+      id: production_dependencies
+      run: |
+        set -euo pipefail
+        missing=()
+        for command in ffmpeg ffprobe rsync git; do
+          command -v "$command" >/dev/null || missing+=("$command")
+        done
+        if [ "${#missing[@]}" -gt 0 ]; then
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg rsync git
+        fi
+
+        VENV="$GITHUB_WORKSPACE/.venv"
+        export PIP_DISABLE_PIP_VERSION_CHECK=1
+
+        venv_valid=false
+        if [ -x "$VENV/bin/python" ]; then
+          if "$VENV/bin/python" - <<'PY'
+        import requests
+        import torch
+        from PIL import Image
+        version=str(torch.__version__).split('+',1)[0]
+        if version != '2.6.0':
+            raise SystemExit(1)
+        if torch.cuda.is_available():
+            raise SystemExit(1)
+        print('TAYVORIQ_PRODUCTION_VENV_VALID')
+        PY
+          then
+            venv_valid=true
+          fi
+        fi
+
+        if [ "$venv_valid" != "true" ]; then
+          echo "TAYVORIQ_PRODUCTION_VENV_REBUILD cache_hit=${VENV_CACHE_HIT:-false}"
+          rm -rf "$VENV"
+          python -m venv "$VENV"
+          "$VENV/bin/python" -m pip install --upgrade pip -q
+
+          "$VENV/bin/python" - <<'PY'
+        from pathlib import Path
+        source = Path('implementation/requirements.txt')
+        target = Path('/tmp/tayvoriq-production-requirements.txt')
+        lines = source.read_text(encoding='utf-8').splitlines()
+        filtered = [line for line in lines if 'chatterbox' not in line.casefold()]
+        if len(filtered) == len(lines):
+            raise SystemExit('DEPENDENCY_POLICY_FAILED: pinned Chatterbox dependency was not found')
+        target.write_text('\n'.join(filtered) + '\n', encoding='utf-8')
+        if 'chatterbox' in target.read_text(encoding='utf-8').casefold():
+            raise SystemExit('DEPENDENCY_POLICY_FAILED: Chatterbox remained in filtered requirements')
+        PY
+
+          install_dependencies() {
+            "$VENV/bin/python" -m pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0" "torchaudio==2.6.0" -q &&
+            "$VENV/bin/python" -m pip install -r /tmp/tayvoriq-production-requirements.txt pytest -q &&
+            "$VENV/bin/python" -m pip install "git+https://github.com/resemble-ai/chatterbox.git@65b18437192794391a0308a8f705b1e33e633948" -q
+          }
+          if ! install_dependencies; then
+            echo "TAYVORIQ_DEPENDENCY_CACHE_RETRY_AFTER_PURGE"
+            rm -rf ~/.cache/pip
+            mkdir -p ~/.cache/pip
+            install_dependencies
+          fi
+        else
+          echo "TAYVORIQ_PRODUCTION_VENV_CACHE_REUSED"
+        fi
+
+        echo "$VENV/bin" >> "$GITHUB_PATH"
+        export PATH="$VENV/bin:$PATH"
+        python - <<'PY'
+        import requests
+        import torch
+        from PIL import Image
+        version = str(torch.__version__)
+        if version.split('+', 1)[0] != '2.6.0':
+            raise SystemExit(f'DEPENDENCY_POLICY_FAILED: unexpected torch {version}')
+        if torch.cuda.is_available():
+            raise SystemExit('DEPENDENCY_POLICY_FAILED: CUDA runtime unexpectedly active on CPU production runner')
+        print(f'TAYVORIQ_CPU_TORCH_VERIFIED:{version}')
+        print('TAYVORIQ_RUNTIME_IMPORTS_VERIFIED:requests,PIL')
+        PY
+    - name: Preflight
+      id: preflight
+      working-directory: implementation
+      run: |
+        set -euo pipefail
+        python -m compileall -q tools src runtime_patches
+        python tools/tayvoriq_preflight_check.py --report-out out/control-plane/preflight.json
+    - name: Produce the approved review with the pinned Studio SHA
+      working-directory: implementation
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        TAYVORIQ_RETENTION_CONTRACT_FILE: ${{ github.workspace }}/replay/retention.json
+      run: |
+        set -euo pipefail
+        request="../requests/$REPLAY_REQUEST_ID.json"
+        topic=$(python -S -c 'import json,sys; print(json.load(open(sys.argv[1]))["topic"])' "$request")
+        export SOURCE_CONTEXT_SHA256=$(python -S -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_context_sha256"])' "$request")
+        python tools/tayvoriq_autonomous_entrypoint.py \
+          --trend-mode approved_trend --trend-scope auto_scope --topic "$topic" \
+          --language Deutsch --platform youtube_tiktok --target-duration 35 --llm-provider auto \
+          --outdir out/tayvoriq-youtube-tiktok --site-root site/tayvoriq --run-id "$GITHUB_RUN_ID" \
+          --state-out out/tayvoriq-review-state.json --report-out out/tayvoriq-self-heal/report.json \
+          --request-out out/tayvoriq-self-heal/request.json --max-runtime-attempts 1 --self-heal-depth 1 \
+          --target-branch feature/multi-platform-distribution-package
+        git diff --exit-code -- .
+    - name: Verify both masters and the generated review page; run final audit
+      working-directory: implementation
+      run: |
+        set -euo pipefail
+        job_dir=$(python -S -c 'import json; print(json.load(open("out/tayvoriq-review-state.json"))["job_dir"])')
+        python ../.github/replay/check_review.py "$job_dir"
+        python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$job_dir" --targets youtube_tiktok
+        cp "$job_dir/publication_quality_gate.json" "site/tayvoriq/runs/$GITHUB_RUN_ID/"
+    - name: Retain review page, both MP4s and immutable binding
+      uses: actions/upload-artifact@v4
+      with:
+        name: tayvoriq-approved-replay-${{ github.run_id }}
+        path: |-
+          implementation/site/tayvoriq/runs/${{ github.run_id }}/
+          replay/binding.json
+        retention-days: 14
+        if-no-files-found: error
+    - name: Deliver isolated review to the configured Telegram chat
+      if: github.run_attempt == 1
+      working-directory: implementation
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: python ../.github/replay/send_review.py
+    - name: Store the Telegram receipt
+      uses: actions/upload-artifact@v4
+      with:
+        name: tayvoriq-telegram-review-receipt-${{ github.run_id }}
+        path: replay/telegram-receipt.json
+        retention-days: 14
+        if-no-files-found: error
