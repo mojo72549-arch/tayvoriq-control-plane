@@ -112,20 +112,7 @@ jobs:
             echo "ORCHESTRATOR_RUN_STILL_ACTIVE_OR_UNKNOWN"
             exit 0
           fi
-          REQUEST_FILE="requests/${request_id}.json"
-          [ -f "$REQUEST_FILE" ] || { echo "ORCHESTRATOR_REQUEST_FILE_MISSING"; exit 0; }
-
-          # Delivery Watch is the single recovery classifier for every terminal
-          # failed active Golden Path. It decides fresh-run, same-run rerun,
-          # deterministic codefix, duplicate block, or external action. Never
-          # bypass that policy here based on stale request recovery metadata.
-          active_recovery=$(gh run list --workflow tayvoriq-delivery-watch.yml --limit 20 --json status --jq '[.[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="requested")] | length')
-          if [ "$active_recovery" -eq 0 ]; then
-            gh workflow run tayvoriq-delivery-watch.yml --ref main -f "run_id=$run_id"
-            echo "ORCHESTRATOR_DELIVERY_WATCH_DISPATCHED request=$request_id run=$run_id"
-          else
-            echo "ORCHESTRATOR_DELIVERY_WATCH_ALREADY_RUNNING count=$active_recovery"
-          fi
+          echo "ORCHESTRATOR_TERMINAL_FAILURE_OBSERVED request=$request_id run=$run_id"
       - name: Build live health snapshot
         id: health
         env:
