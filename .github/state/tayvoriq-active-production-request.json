@@ -1,19 +1,21 @@
 {
   "schema": "tayvoriq-active-production-request-v1",
-  "state": "ACTIVE",
+  "state": "COMPLETED",
   "request_id": "telegram-3549-trend-1",
   "selection_id": "20261111-morning-agentv2",
   "trend_id": "1",
   "telegram_message_id": 3549,
   "approval_key": "telegram:20261111-morning-agentv2:3549:trend:1",
   "approved_at": "2026-11-11T06:53:33.132Z",
-  "golden_path_run_id": 42983272199,
+  "golden_path_run_id": 43572582456,
   "source_context_sha256": "40fafb396465932e17cdc4bbfabb99ab1f9d170a45c78f4b244920dfc792dff6",
   "contract_sha256": "30493d4d8622b5eb56a29637b0dbf83590cdc8595e3428f544fe722bdb77cacd",
   "recovery_generation": 1,
-  "reason": "same-generation-codefix-replay",
-  "allow_recovery": true,
+  "reason": "verified_reference_review_delivered",
+  "allow_recovery": false,
   "allow_publish": false,
   "allow_notifications": true,
-  "updated_at": "2026-11-11T07:57:33.270130Z"
+  "updated_at": "2026-11-14T08:14:38Z",
+  "reference_only": true,
+  "completed_at": "2026-11-14T08:14:38Z"
 }
