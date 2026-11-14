@@ -88,8 +88,8 @@ def test_successful_helper_without_progress_cannot_create_dispatch_loop():
     previous = {**first, 'dispatch_verified': True}
     second = decide(*fixture(), revision='fixed-code', previous=previous)
     assert second['action'] == 'NONE'
-    assert second['state'] == 'BLOCKED'
-    assert second['reason'] == 'EXECUTOR_COMPLETED_WITHOUT_REQUEST_PROGRESS'
+    assert second['state'] == 'AWAITING_CODEFIX'
+    assert second['reason'] == 'LOCAL_REPAIR_CODEFIX_REQUIRED'
     # A relevant revision can unlock a new verified repair; resetting a status cannot.
     changed = decide(*fixture(), revision='new-fix', previous=previous)
     assert changed['action'] == 'CODEFIX_CONTINUITY'

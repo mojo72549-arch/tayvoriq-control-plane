@@ -4,28 +4,16 @@ name: TAYVORIQ Delivery Watch
 run-name: ${{ inputs.orchestrator_decision_key && format('TAYVORIQ lifecycle {0}', inputs.orchestrator_decision_key) || 'TAYVORIQ Delivery Watch' }}
 
 on:
-  workflow_run:
-    workflows:
-      - TAYVORIQ-X Golden Path
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       orchestrator_decision_key:
         description: Exact lifecycle dispatch correlation
-        required: false
+        required: true
         type: string
       run_id:
         description: Optional failed Golden Path run; defaults to canonical active run
-        required: false
+        required: true
         type: string
-  schedule:
-    - cron: '*/5 * * * *'
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/tayvoriq-delivery-watch.yml
-      - tools/tayvoriq_recovery_policy_v1.py
 
 permissions:
   actions: write
@@ -42,7 +30,6 @@ concurrency:
 
 jobs:
   classify-and-recover:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -114,6 +101,8 @@ jobs:
                               'EDITORIAL_VALIDATOR_CODEFIX_REQUIRED',
                               'DETERMINISTIC_PREFLIGHT_FAILURE',
                               'CODE_REPAIR_REQUIRED',
+                              'CODE_DEFECT',
+                              'TRANSCRIPT_NORMALIZATION_DEFECT',
                           }
                       )
                       try: request_run=int(data.get('golden_path_run_id') or 0)
@@ -216,8 +205,9 @@ jobs:
             printf '{}\n' > /tmp/tayvoriq-structured-failure.json
             echo "DELIVERY_WATCH_STRUCTURED_EVIDENCE_MISSING_FALLBACK_LOGS"
           fi
+          console="$(find /tmp/tayvoriq-failed-diag -type f -name controller-console.log -print -quit)"
           python -S tools/tayvoriq_current_failure_contract_v1.py \
-            --logs-file /tmp/tayvoriq-failed.log --contract-file /tmp/tayvoriq-structured-failure.json \
+            --logs-file "${console:-/tmp/tayvoriq-failed.log}" --contract-file /tmp/tayvoriq-structured-failure.json \
             --run-id "$RUN_ID" --run-attempt "${RUN_ATTEMPT:-1}" --request-id "$REQUEST_ID"
 
       - name: Classify with shared recovery policy

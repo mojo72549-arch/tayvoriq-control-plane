@@ -527,7 +527,7 @@ jobs:
           # Scheduling/control changes cannot repair Studio voice or visual code.
           # Keep the checkpoint armed until a verified implementation advances.
           case "$FAILURE_STATE" in
-            LOCAL_VOICE_CODEFIX_REQUIRED|LOCAL_VISUAL_CODEFIX_REQUIRED|FINAL_PUBLICATION_VOICE_CODEFIX_REQUIRED)
+            TRANSCRIPT_NORMALIZATION_DEFECT|LOCAL_VOICE_CODEFIX_REQUIRED|LOCAL_VISUAL_CODEFIX_REQUIRED|FINAL_PUBLICATION_VOICE_CODEFIX_REQUIRED)
               relevant_control=false ;;
           esac
           if [[ "$FAILED_IMPL_SHA" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
@@ -550,6 +550,7 @@ jobs:
         if: >-
           steps.pending.outputs.found == 'true' &&
           steps.revision.outputs.detected != 'true' &&
+          steps.pending.outputs.failure_state != 'TRANSCRIPT_NORMALIZATION_DEFECT' &&
           !startsWith(steps.pending.outputs.failure_state, 'CONTROL_PLANE_BINDING') &&
           (github.event_name != 'workflow_run' || github.event.workflow_run.name != 'TAYVORIQ Production Green Promoter')
         shell: bash

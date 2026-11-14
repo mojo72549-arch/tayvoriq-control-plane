@@ -37,11 +37,42 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
             # A later local failure owns the terminal result if the earlier
             # editorial defect was repaired within this same controller attempt.
             state, detail = "", ""
+        elif line.rstrip().endswith(
+                "RuntimeError: POST_AUDIO_QUALITY_GATE_BLOCKED:pre-render-transcript-contract-failed"):
+            state = "TRANSCRIPT_NORMALIZATION_DEFECT" if _verified_transcript_alias_failure(console) else ""
+            detail = line
     if state:
         result.update(state=state, failure_class="DETERMINISTIC_CODE",
                       repair_target_stages=[], master_reusable=False,
                       failure_detail=detail[-1000:])
+        if state == "TRANSCRIPT_NORMALIZATION_DEFECT":
+            result.update(full_regeneration_allowed=False, audio_regeneration_allowed=False)
     return result
+
+
+def _verified_transcript_alias_failure(console):
+    """Recognize the exact legacy DHL false negative from the producer's ASR proof."""
+    for payload in _runtime_objects(console):
+        attempt = payload.get('pre_render_voice_attempt')
+        if not isinstance(attempt, dict) or attempt.get('stage') != 'pre-render-transcript':
+            continue
+        proof = attempt.get('strict_audio_validation')
+        if not isinstance(proof, dict) or payload.get('quality_gates_weakened') is not False:
+            continue
+        if (proof.get('passed') is not False or proof.get('segment_min_similarity') != 0.95
+                or proof.get('missing_critical_terms') != [] or proof.get('hallucinated_tail') is not False
+                or proof.get('terminal_token_match') is not True or attempt.get('cta_morphology_passed') is not True):
+            continue
+        expected = proof.get('contract_expected')
+        heard = proof.get('raw_transcript')
+        if not isinstance(expected, str) or not isinstance(heard, str):
+            continue
+        normalized = re.sub(r'\bDHL\b', 'Deh Hah Ell', heard)
+        normalized = re.sub(r'\bOnline-Preis\b', 'Onlinepreis', normalized)
+        normalized = normalized.replace('Versand-Filialpreis', 'Versand Filialpreis')
+        if normalized == expected and heard != expected:
+            return True
+    return False
 
 
 def _runtime_objects(console):
