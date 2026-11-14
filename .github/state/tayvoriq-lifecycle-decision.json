@@ -1,16 +1,16 @@
 {
-  "action": "CODEFIX_CONTINUITY",
-  "state": "RECOVERY_DISPATCHED",
-  "reason": "ACTIVE_REQUEST_REQUIRES_CONTINUATION",
+  "action": "NONE",
+  "state": "AWAITING_CODEFIX",
+  "reason": "TRANSCRIPT_NORMALIZATION_DEFECT",
   "request_id": "telegram-3577-trend-1",
   "run_id": "43587092593",
   "generation": "1",
   "request_status": "DISPATCHED",
   "request_substate": "AWAITING_CODEFIX",
   "decision_key": "7201c88302afe5c36c15c312b206004b2eb29f2ff3639fe9a18f302db671b700",
-  "dispatch_verified": true,
+  "dispatch_verified": false,
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
-  "signal_run_id": 43602048398,
+  "signal_run_id": 43602233150,
   "signal_run_attempt": 1,
   "signal_receipt": "COMPLETED",
   "last_dispatch": {
@@ -23,8 +23,6 @@
     "executor_run_id": 43602233150,
     "executor_workflow": "tayvoriq-deterministic-codefix-continuity.yml"
   },
-  "checked_at": "2026-11-14T13:56:16.043695+00:00",
-  "orchestrator_run_id": 43602212702,
-  "executor_run_id": 43602233150,
-  "executor_workflow": "tayvoriq-deterministic-codefix-continuity.yml"
+  "checked_at": "2026-11-14T13:56:27.177095+00:00",
+  "orchestrator_run_id": 43602246880
 }
