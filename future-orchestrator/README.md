@@ -77,3 +77,18 @@ Es gibt bewusst keinen Auto-Deploy und keine produktive Scheduler-Aktivierung.
   Ersatzauftrag bei laufendem oder blockiertem freigegebenem Request.
 - Vor produktivem Cutover: Backup-Restore, Security-Review, Shadow-Run,
   Race-/Replay-/Crash-Tests und nachvollziehbarer Rollback.
+
+## Live-Regressionsbeleg für die spätere Migration (14.11.2026)
+Am DHL-Request `telegram-3577-trend-1` ist der Trennstrich zwischen
+**Review geliefert** und **öffentlich veröffentlicht** besonders wichtig:
+- Golden Path `43611802085`: GitHub `completed/success`, Publishability
+  und finale Quality erfolgreich; das Job-Log bestätigt um 15:56 UTC
+  die Telegram-**Video**-Quittung `message_id=3621`,
+  `review_buttons=True`, `file_size=20897005`.
+- Der aktive Pointer stand danach auf `COMPLETED`, die Request-Datei
+  jedoch auf `DISPATCHED`, darin `production_completion.state=REVIEW_READY`.
+  Der zuvor erzeugte Ops-Health-Snapshot zeigte noch einen alten Zustand.
+- **Keine** öffentliche Veröffentlichung ist damit bewiesen.
+  Die spätere kanonische State Machine MUSS Review-Zustellung,
+  Publikationsentscheidung und Plattformquittung separat führen.
+  Snapshot-Staleness und abweichende Records sind sichtbare Warnungen.
