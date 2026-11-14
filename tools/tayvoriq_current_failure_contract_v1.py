@@ -33,6 +33,9 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
         elif _matches(line, SEMANTIC_CODEFIX_PATTERNS):
             state = "SEMANTIC_CODEFIX_REQUIRED"
             detail = line
+        elif (int(run_attempt) >= 2 and line.rstrip().endswith(
+                "RuntimeError: CONTENT_REJECTED:tayvoriq-editorial-visual-standard-v1:generic_visual_query_detected")):
+            state, detail = "LOCAL_VISUAL_CODEFIX_REQUIRED", line
         elif (int(run_attempt) >= 2 and "RuntimeError: REAL_VIDEO_SCENE_REQUIRED:" in line
               and "attempted_queries=[]" in line
               and _has_only_original_visual_query(line)):
