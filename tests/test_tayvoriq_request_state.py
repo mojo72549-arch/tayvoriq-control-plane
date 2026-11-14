@@ -71,7 +71,9 @@ def reach(target):
 def test_stale_and_previously_delivered_or_published_approval_cannot_start():
     with pytest.raises(ValueError, match='REQUEST_STALE'):
         state.start(approval(), cutoff=at(12))
-    for evidence in ({'production_completion': {'telegram_message_id': 123}}, {'youtube_video_id': '123'}):
+    for evidence in ({'production_completion': {'telegram_message_id': 123}},
+                     {'telegram_review_message_id': 123}, {'youtube_video_id': '123'},
+                     {'tiktok_post_id': '123'}):
         with pytest.raises(ValueError, match='REQUEST_ALREADY_HANDLED'):
             state.start({**approval(), **evidence}, cutoff=at(11))
     unsigned = approval()
@@ -82,6 +84,8 @@ def test_stale_and_previously_delivered_or_published_approval_cannot_start():
     unsigned['contract_sha256'] = contract_hash(unsigned)
     with pytest.raises(ValueError, match='TELEGRAM_APPROVAL_REQUIRED'):
         state.start(unsigned, cutoff=at(11))
+    with pytest.raises(ValueError, match='TELEGRAM_APPROVAL_REQUIRED'):
+        state.start({**approval(), 'telegram_message_id': True}, cutoff=at(11))
 
 
 def test_stage_lease_requires_one_owner_and_run_and_rejects_stale_writes():
