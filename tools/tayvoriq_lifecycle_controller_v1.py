@@ -51,10 +51,13 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             result.update(request_status='EXPIRED', request_substate='EXPIRED')
             return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
         return finish('BLOCKED', 'EXPIRED_QUARANTINE_EVIDENCE_INVALID')
-    if (pointer.get('state') == 'COMPLETED'
-            and completion.get('state') == 'REVIEW_READY'
-            and int(completion.get('golden_path_run_id') or 0) == run_id
-            and completion.get('quality_gates_weakened') is False):
+    message_id = completion.get('telegram_message_id')
+    if (pointer.get('state') == 'COMPLETED' and completion.get('state') == 'REVIEW_READY'
+            and str(completion.get('golden_path_run_id') or '') == str(run_id)
+            and completion.get('quality_gates_weakened') is False
+            and type(message_id) is int and message_id > 0):
+        if completion.get('reference_only') is True and pointer.get('allow_publish') is False:
+            return finish('REVIEW_READY', 'VERIFIED_REFERENCE_REVIEW_DELIVERED')
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
     if request.get('status') not in {'APPROVED', 'DISPATCHING', 'DISPATCHED'}:
         return finish('BLOCKED', 'REQUEST_NOT_APPROVED_FOR_CONTINUATION')
