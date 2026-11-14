@@ -60,7 +60,7 @@ env:
   TAYVORIQ_AUDIT_TIMEOUT_SECONDS: "120"
   TAYVORIQ_AUDIT_RETRY_DELAYS: "0,8"
   TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS: "1500"
-  TAYVORIQ_VISUAL_REPAIR_TIMEOUT_SECONDS: "480"
+  TAYVORIQ_VISUAL_REPAIR_TIMEOUT_SECONDS: "900"
   TAYVORIQ_VOICE_REPAIR_TIMEOUT_SECONDS: "600"
   TAYVORIQ_LOCAL_QUALITY_REPAIR_ATTEMPTS: "1"
   TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS: "1500"
@@ -684,6 +684,74 @@ jobs:
           restore-keys: |
             tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-
 
+      - name: Early recovery binding gate
+        id: early_recovery_binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SOURCE_REQUEST_ID_PIN" || {
+            echo "EARLY_RECOVERY_BIND_SOURCE_REQUEST_PIN_MISSING"
+            exit 1
+          }
+
+          runtime_request="$RUNNER_TEMP/tayvoriq-early-bind-${GITHUB_RUN_ID}.json"
+          bound=false
+          for poll in $(seq 1 10); do
+            git fetch origin main --quiet
+            if git show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
+              if python -S - "$runtime_request" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          run_id=int(sys.argv[2])
+          run_attempt=max(1,int(sys.argv[3]))
+          previous=list(data.get('previous_golden_path_run_ids') or [])
+          generation=max(0,int(data.get('recovery_generation') or 0))
+          if not previous and generation <= 0:
+              raise SystemExit(0)
+          codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
+          request_bound=(
+              str(data.get('status') or '')=='DISPATCHED'
+              and int(data.get('golden_path_run_id') or 0)==run_id
+          )
+          deterministic_bound=(
+              codefix.get('status')=='REPLAY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('replay_run_id') or 0)==run_id
+          )
+          fresh_bound=(
+              codefix.get('status')=='FRESH_RECOVERY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('fresh_recovery_run_id') or 0)==run_id
+              and str(data.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY'
+          )
+          local_retry_bound=(
+              codefix.get('status')=='LOCAL_RETRY_DISPATCHED'
+              and codefix.get('request_substate')=='DISPATCHED'
+              and int(codefix.get('local_retry_run_id') or 0)==run_id
+              and int(codefix.get('local_retry_run_attempt') or 0)==run_attempt
+              and str(codefix.get('local_retry_kind') or '')=='same-run'
+          )
+          # ARMED is awaiting a verified fix, not permission to run production.
+          # LOCAL_RETRY_DISPATCHED is explicit Delivery-Watch permission for the
+          # next attempt of this exact run after a localized checkpoint failure.
+          if request_bound and (deterministic_bound or fresh_bound or local_retry_bound):
+              raise SystemExit(0)
+          raise SystemExit(1)
+          PY
+              then
+                bound=true
+                break
+              fi
+            fi
+            sleep 2
+          done
+          [ "$bound" = "true" ] || {
+            echo "EARLY_RECOVERY_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            exit 1
+          }
+          echo "EARLY_RECOVERY_BIND_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+
+
       - name: Hydrate previous verified checkpoint
         id: hydrate_recovery
         working-directory: implementation
@@ -757,73 +825,6 @@ jobs:
           PY
         env:
           RESTORED_CHECKPOINT: ${{ steps.hydrate_recovery.outputs.restored }}
-
-      - name: Early recovery binding gate
-        id: early_recovery_binding
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$SOURCE_REQUEST_ID_PIN" || {
-            echo "EARLY_RECOVERY_BIND_SOURCE_REQUEST_PIN_MISSING"
-            exit 1
-          }
-
-          runtime_request="$RUNNER_TEMP/tayvoriq-early-bind-${GITHUB_RUN_ID}.json"
-          bound=false
-          for poll in $(seq 1 10); do
-            git fetch origin main --quiet
-            if git show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
-              if python -S - "$runtime_request" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" <<'PY'
-          import json,sys
-          data=json.load(open(sys.argv[1],encoding='utf-8'))
-          run_id=int(sys.argv[2])
-          run_attempt=max(1,int(sys.argv[3]))
-          previous=list(data.get('previous_golden_path_run_ids') or [])
-          generation=max(0,int(data.get('recovery_generation') or 0))
-          if not previous and generation <= 0:
-              raise SystemExit(0)
-          codefix=data.get('codefix_recovery') if isinstance(data.get('codefix_recovery'),dict) else {}
-          request_bound=(
-              str(data.get('status') or '')=='DISPATCHED'
-              and int(data.get('golden_path_run_id') or 0)==run_id
-          )
-          deterministic_bound=(
-              codefix.get('status')=='REPLAY_DISPATCHED'
-              and codefix.get('request_substate')=='DISPATCHED'
-              and int(codefix.get('replay_run_id') or 0)==run_id
-          )
-          fresh_bound=(
-              codefix.get('status')=='FRESH_RECOVERY_DISPATCHED'
-              and codefix.get('request_substate')=='DISPATCHED'
-              and int(codefix.get('fresh_recovery_run_id') or 0)==run_id
-              and str(data.get('replacement_reason') or '')=='BOUNDED_REQUEST_RECOVERY'
-          )
-          local_retry_bound=(
-              codefix.get('status')=='LOCAL_RETRY_DISPATCHED'
-              and codefix.get('request_substate')=='DISPATCHED'
-              and int(codefix.get('local_retry_run_id') or 0)==run_id
-              and int(codefix.get('local_retry_run_attempt') or 0)==run_attempt
-              and str(codefix.get('local_retry_kind') or '')=='same-run'
-          )
-          # ARMED is awaiting a verified fix, not permission to run production.
-          # LOCAL_RETRY_DISPATCHED is explicit Delivery-Watch permission for the
-          # next attempt of this exact run after a localized checkpoint failure.
-          if request_bound and (deterministic_bound or fresh_bound or local_retry_bound):
-              raise SystemExit(0)
-          raise SystemExit(1)
-          PY
-              then
-                bound=true
-                break
-              fi
-            fi
-            sleep 2
-          done
-          [ "$bound" = "true" ] || {
-            echo "EARLY_RECOVERY_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
-            exit 1
-          }
-          echo "EARLY_RECOVERY_BIND_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
 
       - name: Telegram progress - environment active
         continue-on-error: true
