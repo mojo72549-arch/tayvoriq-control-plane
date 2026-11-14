@@ -316,6 +316,7 @@ jobs:
           with open(os.environ['GITHUB_ENV'], 'a') as out:
               out.write(f'APPROVED_JOB_DIR={root.resolve()}\n')
           PY
+          APPROVED_JOB_DIR="$PWD/approved-artifact/implementation/site/tayvoriq/runs/$REVIEW_ID"
           cd implementation
           PYTHONPATH=.:tools python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$APPROVED_JOB_DIR" --targets youtube_tiktok
       - name: Reserve the exact approved review before upload
