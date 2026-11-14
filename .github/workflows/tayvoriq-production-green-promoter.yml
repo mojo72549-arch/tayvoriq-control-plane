@@ -133,7 +133,7 @@ jobs:
           # The Studio quality-status bot writes a metadata-only commit after
           # tests. Resolve the last *implementation* commit, not that status
           # receipt; otherwise every green test moves the target SHA forever.
-          candidate="$(git log -1 --format=%H -- . ':!.automation/tayvoriq-quality-status.json')"
+          candidate="$(git log --first-parent -1 --format=%H -- . ':!.automation/tayvoriq-quality-status.json')"
           test -n "$candidate" || { echo "STUDIO_IMPLEMENTATION_CANDIDATE_MISSING"; exit 1; }
           git checkout --detach "$candidate" >/dev/null
           readarray -t green_fields < <(python - <<'PY'
