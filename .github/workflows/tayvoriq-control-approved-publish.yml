@@ -7,6 +7,12 @@ on:
     branches: [main]
     paths:
       - .automation/tayvoriq-artifact-decisions/*.json
+  workflow_dispatch:
+    inputs:
+      review_id:
+        description: Existing authenticated Telegram review decision to reconcile
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -246,7 +252,7 @@ jobs:
           retention-days: 30
 
   publish-bound-artifact-review:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -260,17 +266,27 @@ jobs:
         id: decision
         env:
           BEFORE: ${{ github.event.before }}
+          MANUAL_REVIEW_ID: ${{ inputs.review_id }}
         run: |
           set -euo pipefail
-          git diff --name-only "$BEFORE" "$GITHUB_SHA" -- .automation/tayvoriq-artifact-decisions/ > "$RUNNER_TEMP/decision-files"
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            git diff --name-only "$BEFORE" "$GITHUB_SHA" -- .automation/tayvoriq-artifact-decisions/ > "$RUNNER_TEMP/decision-files"
+          fi
           PYTHONPATH=tools python - <<'PY'
-          import json, os
+          import json, os, re
           from pathlib import Path
           from tayvoriq_artifact_approval import validate_decision
-          changes = (Path(os.environ['RUNNER_TEMP']) / 'decision-files').read_text().splitlines()
-          if len(changes) != 1:
-              raise SystemExit('EXPECTED_ONE_REVIEW_DECISION')
-          path = Path(changes[0])
+          root = Path('.automation/tayvoriq-artifact-decisions')
+          if os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
+              rid = os.environ['MANUAL_REVIEW_ID']
+              if not re.fullmatch(r'[0-9]{1,20}', rid):
+                  raise SystemExit('REVIEW_ID_INVALID')
+              path = root / f'{rid}.json'
+          else:
+              changes = (Path(os.environ['RUNNER_TEMP']) / 'decision-files').read_text().splitlines()
+              if len(changes) != 1:
+                  raise SystemExit('EXPECTED_ONE_REVIEW_DECISION')
+              path = Path(changes[0])
           record = json.loads(path.read_text())
           if record.get('state') in {'PENDING', 'REJECTED'}:
               raise SystemExit(0)
