@@ -3,6 +3,7 @@ name: Deploy Telegram Approval Worker
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - infra/telegram-approval-worker.js
       - infra/telegram-approval-worker-v2.js
@@ -13,6 +14,7 @@ on:
       - infra/telegram-approval-worker-v7.js
       - infra/wrangler.toml
       - tests/telegram-stale-selection-guard-v3.test.mjs
+      - tests/tayvoriq-artifact-approval.test.mjs
       - .github/workflows/deploy-telegram-approval-worker.yml
 
 permissions:
@@ -20,6 +22,7 @@ permissions:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -38,7 +41,7 @@ jobs:
         run: |
           node --check telegram-approval-worker-v7.js
           node --check telegram-approval-worker-v6.js
-          node --test ../tests/telegram-stale-selection-guard-v3.test.mjs
+          node --test ../tests/telegram-stale-selection-guard-v3.test.mjs ../tests/tayvoriq-artifact-approval.test.mjs
 
       - name: Validate deployment secrets
         env:
