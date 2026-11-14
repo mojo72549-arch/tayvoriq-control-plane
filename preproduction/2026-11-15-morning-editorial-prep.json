@@ -1,0 +1,114 @@
+{
+  "schema": "tayvoriq-editorial-preparation-v1",
+  "target_date": "2026-11-15",
+  "slot": "morning",
+  "prepared_at": "2026-11-14T21:04:00+01:00",
+  "status": "PREPARED_NOT_APPROVED",
+  "important": "Nur redaktionelle Vorbereitung; kein Telegram-Trend freigegeben, kein Produktions-Run gestartet, keine Video-Publikation. Vor Verwendung am 15.11.2026 Quellen, Aktualität, Konflikte, Dubletten und tatsächliche Verfügbarkeit erneut prüfen. Die check_at-Zeit niemals vordatieren. Das offizielle verified-research-morning.json erst mit frischen Prüfungen füllen.",
+  "strategy": "Regionaler/Deutschland-Fokus; eine Hauptaussage; Originalquelle + unabhängige Einordnung; keine falsche Gleichsetzung von Prüfung und Beschluss; visuelle Sachpassung; keine Publikation ohne finale Telegram-Videofreigabe.",
+  "proposals": [
+    {
+      "rank": 1,
+      "title": "Mercedes stoppt weitere Investitionen – drohen wirklich Werksschließungen?",
+      "region": "Stuttgart / Deutschland",
+      "category": "Arbeitsplätze und Autoindustrie",
+      "event_date": "2026-11-12",
+      "relevance": "Neue konkrete Vorstandsentscheidung nach früherer Diskussion über Arbeitszeiten; kein bereits beschlossener Werksabbau.",
+      "hook": "Mercedes stoppt neue Investitionen in Deutschland. Heißt das schon: Werke machen zu?",
+      "viewer_payoff": "Investitionsstopp als Verhandlungsdruck einordnen; Werksschließungen werden geprüft, sind nicht beschlossen.",
+      "script_draft_approx_40s": "Mercedes-Benz setzt weitere Investitionen an deutschen Standorten vorerst aus und prüft mögliche Werksschließungen. Das geht laut Medienberichten aus einem internen Interview mit dem Vorstand hervor. Hintergrund sind festgefahrene Gespräche über Kosten und Arbeitsbedingungen. Der Konzern fordert höhere Produktivität. Betriebsrat und IG Metall verlangen dagegen konkrete Zukunftsperspektiven für die Werke. Wichtig: Eine Prüfung ist noch keine beschlossene Schließung. Für Beschäftigte in Sindelfingen und anderen Werken kommt es jetzt darauf an, ob sich beide Seiten auf einen tragfähigen Weg einigen. TAYVORIQ erklärt die nächsten Entscheidungen.",
+      "visuals": "0-2 s Mercedes-Werk oder neutrale Werksansicht (lizenzgeprüft); 2-12 s klare Bildkarte 'Investitionsstopp'; 12-28 s neutrale Verhandlungsgrafik und Standortkarte; 28-45 s 'Prüfung ≠ Beschluss'. Keine fiktiven Protest- oder Werksaufnahmen.",
+      "sources": [
+        {
+          "publisher": "IG Metall Baden-Württemberg",
+          "url": "https://baden-wuerttemberg.igmetall.de/2026/2026-11-13-pressemitteilung-47-2026",
+          "date": "2026-11-13",
+          "origin": "Originalstellungnahme Gesamtbetriebsrat und Gewerkschaft",
+          "supports": "Arbeitnehmerseite bestätigt Investitionsstopp und Prüfung möglicher Werksschließungen, fordert Gespräche und Perspektiven."
+        },
+        {
+          "publisher": "SWR Aktuell",
+          "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/mercedes-werksschliessungen-deutschland-100.html",
+          "date": "2026-11-13",
+          "origin": "SWR-Eigenberichterstattung anhand interner Vorstandsäußerungen",
+          "supports": "Mercedes verhandelt über Produktionskosten und prüft Werksschließungen; konkrete Schließung nicht beschlossen."
+        }
+      ],
+      "production_checks": [
+        "Neue Nachrichten am 15.11. prüfen, vor allem mögliche Ergebnisse der Verhandlungen",
+        "Gegen bereits veröffentlichtes Mercedes-Arbeitszeit-Short und wartende Requests auf neue Information prüfen",
+        "Nur tagesgültige Angaben in Text und Metadaten übernehmen",
+        "Freigabe Telegram Trend und später Video-Review strikt einhalten"
+      ]
+    },
+    {
+      "rank": 2,
+      "title": "Stuttgart Hbf: 80 Meter kürzerer Weg – aber ein Zugang wird gesperrt",
+      "region": "Stuttgart",
+      "category": "Pendeln und Mobilität",
+      "event_date": "2026-11-13",
+      "hook": "Stuttgart 21: Der Weg zur Stadtbahn wird kürzer – aber ein anderer Eingang schließt.",
+      "viewer_payoff": "Neue Route über Große Schalterhalle verstehen, Mittelabgang bis voraussichtlich Ende 2027 geschlossen.",
+      "visuals": "Lizenzgeprüfte echte Aufnahme des Bonatzbaus und Beschilderung; einfache 2D-Wegegrafik mit 80 Metern. Keine KI-Fälschung aktueller Baustellenzustände.",
+      "sources": [
+        {
+          "publisher": "Deutsche Bahn, Bahnprojekt Stuttgart–Ulm",
+          "url": "https://www.bahnprojekt-stuttgart-ulm.de/projekt/ueber-uns/presse/bahn-oeffnet-grosse-schalterhalle-14092566",
+          "date": "2026-11-12",
+          "origin": "Bahn als Betreiberin / Primärmitteilung",
+          "supports": "Große Schalterhalle öffnet 13.11.; etwa 80 Meter kürzerer Weg; Mittelabgang gesperrt."
+        },
+        {
+          "publisher": "VVS",
+          "url": "https://www.vvs.de/ls/verbindungen-und-mobilitaet/aktuelle-meldungen/aenderungen-im-fahrplan/detail?cHash=52e281a9a54c67665c5717721f23dead&tx_vvsems_ems%5Baction%5D=showDetail&tx_vvsems_ems%5Bcontroller%5D=Main&tx_vvsems_ems%5BemsId%5D=ems-28977",
+          "date": "2026-11-12",
+          "origin": "Regionaler Verkehrsverbund / eigenständige Fahrgastinformation",
+          "supports": "Neue Fußwegführung ab 13.11. und mittlerer Treppenaufgang bis voraussichtlich Ende 2027 geschlossen."
+        }
+      ],
+      "production_checks": [
+        "Lage vor Veröffentlichung neu prüfen",
+        "Echte Weggrafik statt dekorativer Baustelle",
+        "Keinen fertigen Tiefbahnhof suggerieren"
+      ]
+    },
+    {
+      "rank": 3,
+      "title": "Mehr Menschen überschuldet – was der neue Schuldneratlas wirklich misst",
+      "region": "Baden-Württemberg / Deutschland",
+      "category": "Geld und Alltag",
+      "event_date": "2026-11-12",
+      "hook": "Deutschlandweit gelten laut Creditreform 7,36 Millionen Erwachsene als überschuldet. Was bedeutet das genau?",
+      "viewer_payoff": "Überschuldungsmerkmale und Quote erläutern; nicht alle Haushalte oder Personen in BW pauschal gleichsetzen.",
+      "visuals": "Zahlenkarten 7,36 Millionen/10,58 Prozent, kurze 2D-Grafik zu Zahlungsstörungen, keine suggestiven Aufnahmen realer betroffener Personen.",
+      "sources": [
+        {
+          "publisher": "Creditreform",
+          "url": "https://www.creditreform.de/aktuelles-wissen/pressemeldungen-fachbeitraege/news-details/show/schuldneratlas-2026-ueberschuldung-steigt-auf-736-millionen-betroffene",
+          "date": "2026-11-12",
+          "origin": "Primärherausgeber SchuldnerAtlas 2026",
+          "supports": "7,36 Millionen Erwachsene und 10,58 Prozent mit Überschuldungsmerkmalen per 1.10.2026."
+        },
+        {
+          "publisher": "SWR Aktuell",
+          "url": "https://www.swr.de/swraktuell/baden-wuerttemberg/bw-newsticker-am-morgen-2026-11-13-100.html",
+          "date": "2026-11-13",
+          "origin": "SWR regionale Einordnung",
+          "supports": "In Baden-Württemberg stiegen Fälle um rund fünf Prozent gegenüber Vorjahr; Landesquote 8,7 Prozent."
+        }
+      ],
+      "production_checks": [
+        "Statistikstichtag 01.10.2026 ausdrücklich nennen",
+        "Zahlen nur nach frischem Quellenabgleich",
+        "Wort 'überschuldet' entlang Creditreform Definition nutzen"
+      ]
+    }
+  ],
+  "workflow_requirements": {
+    "approval": "GP-00 nur durch echte Telegram-Trendfreigabe",
+    "selection": "Mindestens zwei unabhängige aktuelle Quellen; V5-Gates unverändert",
+    "morning_slot": "Nur wenn kein aktiver anderer Slot und kein alter Request",
+    "quality": "Videoqualität und Quellen streng prüfen",
+    "final_release": "YouTube erst nach ausdrücklicher finaler Telegram-Videofreigabe"
+  }
+}
