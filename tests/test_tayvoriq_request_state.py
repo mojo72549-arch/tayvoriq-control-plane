@@ -118,6 +118,14 @@ def test_media_audit_delivery_and_publication_require_correlated_evidence():
     record = advance(record, **REVIEW)
     publication = dict(approved_message_id=REVIEW['message_id'], approval_id='callback',
                        youtube_video_id='yt-video', tiktok_post_id='tt-post')
+    with pytest.raises(ValueError, match='PUBLICATION_APPROVAL_REQUIRED'):
+        advance(record, **publication)
+    with pytest.raises(ValueError, match='PUBLICATION_APPROVAL_REVIEW_MISMATCH'):
+        state.approve_publication(record, record['revision'], actor='control', message_id=11,
+                                  approval_id='callback', review_sha256=REVIEW['review_sha256'])
+    record = state.approve_publication(record, record['revision'], actor='control',
+                                       message_id=REVIEW['message_id'], approval_id='callback',
+                                       review_sha256=REVIEW['review_sha256'])
     with pytest.raises(ValueError, match='PUBLISHED'):
         advance(record, **{**publication, 'tiktok_post_id': ''})
     with pytest.raises(ValueError, match='PUBLISHED'):

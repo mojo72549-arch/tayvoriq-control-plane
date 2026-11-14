@@ -63,7 +63,7 @@ def start(request, *, cutoff):
     return {'request_id': request['request_id'], 'contract_sha256': request['contract_sha256'],
             'source_context_sha256': request['source_context_sha256'],
             'revision': 0, 'state': 'APPROVED', 'lease': None, 'evidence': {},
-            'retries': {}, 'failure': None}
+            'retries': {}, 'failure': None, 'publication_approval': None}
 
 
 def claim(record, revision, *, actor, run, attempt):
@@ -73,6 +73,8 @@ def claim(record, revision, *, actor, run, attempt):
         raise ValueError('INVALID_STAGE_OWNER')
     if record['lease'] is not None:
         raise ValueError('REQUEST_ALREADY_CLAIMED')
+    if record['state'] == 'REVIEW_DELIVERED' and record['publication_approval'] is None:
+        raise ValueError('PUBLICATION_APPROVAL_REQUIRED')
     return _updated(record, lease={'owner': actor, 'run': run, 'attempt': attempt})
 
 
@@ -114,9 +116,10 @@ def _evidence_valid(record, target, proof):
                 and _digest(proof.get('review_sha256')) and proof.get('audit_sha256') == audit['artifact_sha256']
                 and proof.get('video_sha256') == audit['tiktok_sha256'])
     if target == 'PUBLISHED':
-        review = record['evidence']['REVIEW_DELIVERED']
-        return (proof.get('approved_message_id') == review['message_id']
-                and _positive_id(proof.get('approved_message_id')) and _text(proof.get('approval_id'))
+        approval = record['publication_approval']
+        return (proof.get('approval_id') == approval['approval_id']
+                and proof.get('approved_message_id') == approval['message_id']
+                and _positive_id(proof.get('approved_message_id'))
                 and all(_text(proof.get(key)) for key in ('youtube_video_id', 'tiktok_post_id')))
     return False
 
@@ -128,6 +131,21 @@ def complete(record, revision, *, actor, run, attempt, proof):
         raise ValueError('STAGE_EVIDENCE_REQUIRED:' + target)
     evidence = {**record['evidence'], target: {**proof, 'run': run, 'attempt': attempt}}
     return _updated(record, state=target, evidence=evidence, lease=None, failure=None)
+
+
+def approve_publication(record, revision, *, actor, message_id, approval_id, review_sha256):
+    """Bind the authenticated review callback before either publisher can claim."""
+    _check_revision(record, revision)
+    if actor != 'control' or record['state'] != 'REVIEW_DELIVERED':
+        raise ValueError('PUBLICATION_APPROVAL_OWNER_REQUIRED')
+    review = record['evidence']['REVIEW_DELIVERED']
+    if (not _positive_id(message_id) or message_id != review['message_id']
+            or review_sha256 != review['review_sha256'] or not _text(approval_id)):
+        raise ValueError('PUBLICATION_APPROVAL_REVIEW_MISMATCH')
+    approval = {'message_id': message_id, 'approval_id': approval_id, 'review_sha256': review_sha256}
+    if record['publication_approval'] is not None:
+        raise ValueError('PUBLICATION_ALREADY_APPROVED')
+    return _updated(record, publication_approval=approval)
 
 
 def fail(record, revision, *, actor, run, attempt, kind, proof_sha256, dimension=None):
