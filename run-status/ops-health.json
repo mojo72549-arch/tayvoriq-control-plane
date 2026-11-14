@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T15:18:34.336922Z",
+  "generated_at": "2026-11-14T15:32:03.373661Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -29,8 +29,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3577-trend-1",
-    "golden_path_run_id": 43604676977,
-    "pointer_updated_at": "2026-11-14T14:24:18.366712Z"
+    "golden_path_run_id": 43610077220,
+    "pointer_updated_at": "2026-11-14T15:25:17.270773Z"
   },
   "request": {
     "request_id": "telegram-3577-trend-1",
@@ -61,17 +61,17 @@
     "path": "requests/telegram-3577-trend-1.json"
   },
   "run": {
-    "id": 43604676977,
+    "id": 43610077220,
     "historical": false,
     "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43604676977",
-    "created_at": "2026-11-14T14:24:12Z",
-    "updated_at": "2026-11-14T15:13:07Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43610077220",
+    "created_at": "2026-11-14T15:25:11Z",
+    "updated_at": "2026-11-14T15:30:05Z",
     "attempt": 2,
     "progress": 30,
-    "current_step": "Repair only failed local checkpoints",
-    "last_successful_step": "Telegram progress - checkpoint repair",
+    "current_step": "Install or reuse production dependencies",
+    "last_successful_step": "Telegram progress - environment active",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -113,7 +113,7 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "success",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Collect Studio production outcome"
       },
@@ -147,7 +147,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Repair only failed local checkpoints"
+      "detail": "Install or reuse production dependencies"
     },
     {
       "name": "Production Green",
@@ -171,9 +171,9 @@
     }
   ],
   "incident": {
-    "signature": "43604676977:LOCAL_VISUAL",
+    "signature": "43610077220:SAME_RUN_TRANSIENT_RECOVERY",
     "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
     "failed_step": null,
     "failed_step_number": null,
     "self_heal_status": "REPLAY_RUNNING",
@@ -191,9 +191,9 @@
   "recovery": {
     "status": "REPLAY_RUNNING",
     "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_run_id": 43602341943,
-    "replay_run_id": 43604676977,
+    "failure_state": "SAME_RUN_TRANSIENT_RECOVERY",
+    "failed_run_id": 43604676977,
+    "replay_run_id": 43610077220,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
@@ -203,6 +203,16 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-14T15:29:58.318767Z",
+      "title": "DISPATCHED",
+      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+    },
+    {
+      "at": "2026-11-14T15:25:17.270773Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-11-14T15:12:59.797062Z",
       "title": "DISPATCHED",
@@ -222,16 +232,6 @@
       "at": "2026-11-14T14:09:41.508104Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-14T13:57:36.828987Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-11-14T13:53:31.638412Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "TRANSCRIPT_NORMALIZATION_DEFECT"
     }
   ]
 }
