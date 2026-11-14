@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T08:03:29.710646Z",
-  "overall": "red",
+  "generated_at": "2026-11-14T11:40:13.625654Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -28,22 +28,22 @@
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3549-trend-1",
-    "golden_path_run_id": 42983272199,
-    "pointer_updated_at": "2026-11-11T07:57:33.270130Z"
+    "request_id": "telegram-3577-trend-1",
+    "golden_path_run_id": 43587092593,
+    "pointer_updated_at": "2026-11-14T10:49:41.507978Z"
   },
   "request": {
-    "request_id": "telegram-3549-trend-1",
-    "topic": "Porsche SE meldet 2,8 Milliarden Euro Verlust",
+    "request_id": "telegram-3577-trend-1",
+    "topic": "DHL-Päckchen: Was sich beim Porto ab Januar ändert",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ erklärt, wie Beteiligungen und Wertberichtigungen die Schlagzeilen aus der deutschen Autoindustrie prägen.",
+    "follow_reason": "TAYVORIQ rechnet Preisänderungen an konkreten Beispielen aus dem deutschen Alltag durch.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -56,24 +56,24 @@
       "issues": []
     },
     "golden_path_v5_state": "APPROVED",
-    "source_count": 2,
+    "source_count": 3,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3549-trend-1.json"
+    "path": "requests/telegram-3577-trend-1.json"
   },
   "run": {
-    "id": 42983272199,
+    "id": 43587092593,
     "historical": false,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/42983272199",
-    "created_at": "2026-11-11T07:57:26Z",
-    "updated_at": "2026-11-11T08:08:57Z",
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43587092593",
+    "created_at": "2026-11-14T10:49:35Z",
+    "updated_at": "2026-11-14T11:24:47Z",
     "attempt": 3,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 41,
+    "current_step": "Produce approved master or reuse checkpoint",
+    "last_successful_step": "Restore production model cache",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -113,31 +113,31 @@
       },
       {
         "label": "Produktion / Master",
-        "status": "success",
+        "status": "running",
         "step_number": 33,
         "step_name": "Produce approved master or reuse checkpoint"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 41,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 43,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 48,
         "step_name": "Send Telegram review"
       }
@@ -146,8 +146,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Produce approved master or reuse checkpoint"
     },
     {
       "name": "Production Green",
@@ -157,85 +157,80 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
       "status": "green",
-      "detail": "Zuletzt erfolgreich: Telegram immediate verified stop"
+      "detail": "Zuletzt erfolgreich: Telegram progress - production active"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": {
-    "signature": "42983272199:RECOVERY",
-    "severity": "critical",
-    "failure_state": "RECOVERY_CODEFIX_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 41,
-    "self_heal_status": "ARMED",
-    "same_generation_replay_required": true,
+    "signature": "43587092593:LOCAL_VOICE",
+    "severity": "warning",
+    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
   },
   "telegram": {
     "status": "green",
-    "detail": "Zuletzt erfolgreich: Telegram immediate verified stop",
-    "last_step": "Telegram immediate verified stop"
+    "detail": "Zuletzt erfolgreich: Telegram progress - production active",
+    "last_step": "Telegram progress - production active"
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "RECOVERY_CODEFIX_REQUIRED",
-    "failed_run_id": 42983272199,
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+    "failed_run_id": null,
     "replay_run_id": null,
-    "fresh_recovery_run_id": null,
+    "fresh_recovery_run_id": 43587092593,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
-    "same_generation_replay_required": true,
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": true
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-11T08:08:57Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
-    },
-    {
-      "at": "2026-11-11T08:09:26.145895Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "RECOVERY_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-11T08:05:30.478621Z",
+      "at": "2026-11-14T11:24:39.925010Z",
       "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
     },
     {
-      "at": "2026-11-11T08:01:39.791135Z",
+      "at": "2026-11-14T11:07:00.847893Z",
       "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
     },
     {
-      "at": "2026-11-11T07:57:33.270130Z",
+      "at": "2026-11-14T10:49:41.507978Z",
       "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
+      "detail": "bounded-shared-policy-recovery"
     },
     {
-      "at": "2026-11-11T07:48:57.477264Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "RECOVERY_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-11T07:13:57.808057Z",
+      "at": "2026-11-14T10:31:24.615406Z",
       "title": "DISPATCHED",
-      "detail": "SAME_RUN_TRANSIENT_RECOVERY"
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-14T10:13:40.167125Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-14T09:47:09.424635+00:00",
+      "title": "DISPATCHED",
+      "detail": "request-dispatcher:43582158391"
     }
   ]
 }

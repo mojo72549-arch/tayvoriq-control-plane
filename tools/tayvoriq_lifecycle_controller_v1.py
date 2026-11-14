@@ -64,6 +64,8 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
         return finish('BLOCKED', 'EXPIRED_QUARANTINE_EVIDENCE_INVALID')
     if pointer.get('state') == 'COMPLETED' and review_message_id(request, run_id):
+        if request['production_completion'].get('reference_only') is True and pointer.get('allow_publish') is False:
+            return finish('REVIEW_READY', 'VERIFIED_REFERENCE_REVIEW_DELIVERED')
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
     if request.get('status') not in {'APPROVED', 'DISPATCHING', 'DISPATCHED'}:
         return finish('BLOCKED', 'REQUEST_NOT_APPROVED_FOR_CONTINUATION')

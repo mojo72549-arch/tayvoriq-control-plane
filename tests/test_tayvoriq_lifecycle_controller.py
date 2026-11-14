@@ -118,6 +118,11 @@ def test_completed_github_job_alone_is_not_review_ready():
     assert result['state'] == 'REVIEW_READY'
     assert result['action'] == 'NONE'
     assert 'USER_APPROVAL' in result['reason']
+    pointer['allow_publish'] = False
+    request['production_completion']['reference_only'] = True
+    result = decide(pointer, request, {**run, 'conclusion': 'success'})
+    assert result['state'] == 'REVIEW_READY'
+    assert result['reason'] == 'VERIFIED_REFERENCE_REVIEW_DELIVERED'
 
 
 def test_wrong_source_owner_or_generation_is_never_dispatched():
