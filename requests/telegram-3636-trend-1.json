@@ -204,14 +204,28 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-15T13:00:16.370309Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 43707387407,
+        "golden_path_run_id": 43716674600,
+        "recovery_generation": 1,
+        "failure_signature": "ac774a40142d8cb46faf",
+        "reason": "bounded-shared-policy-recovery",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "71120cf4e275ea7ee13ab79bcb80a7ec481ea47c8a73771c7fa7b002664997a6",
   "dispatch_claim_run_id": 43707369555,
   "dispatch_contract_sha256": "71120cf4e275ea7ee13ab79bcb80a7ec481ea47c8a73771c7fa7b002664997a6",
-  "golden_path_run_id": 43707387407,
+  "golden_path_run_id": 43716674600,
   "codefix_recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
+    "status": "FRESH_RECOVERY_DISPATCHED",
     "request_substate": "DISPATCHED",
     "failure_state": "",
     "local_retry_run_id": 43707387407,
@@ -221,7 +235,20 @@
     "local_retry_failure_signature": "f63ff149bf2ed27df747",
     "local_retry_dispatched_at": "2026-11-15T12:34:47.049340Z",
     "quality_gates_weakened": false,
-    "active_pointer_verified": true
+    "active_pointer_verified": true,
+    "fresh_recovery_run_id": 43716674600,
+    "fresh_recovery_of_run_id": 43707387407,
+    "fresh_recovery_generation": 1,
+    "fresh_recovery_at": "2026-11-15T13:00:16.370309Z",
+    "last_failure_state": "LOCAL_VISUAL_RECOVERY_REQUIRED"
   },
-  "recovery_owner": "tayvoriq-delivery-watch"
+  "recovery_owner": "tayvoriq-delivery-watch",
+  "previous_golden_path_run_ids": [
+    43707387407
+  ],
+  "recovery_generation": 1,
+  "retry_of_run_id": 43707387407,
+  "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
+  "recovery_failure_signature": "ac774a40142d8cb46faf",
+  "recovery_dispatched_at": "2026-11-15T13:00:16.370309Z"
 }
