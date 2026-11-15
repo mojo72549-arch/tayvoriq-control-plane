@@ -246,7 +246,7 @@ jobs:
 
       - name: Detect advanced Production Green for local checkpoint retry
         id: local_green
-        if: steps.policy.outputs.mode == 'rerun' && steps.policy.outputs.retry_allowed == 'true'
+        if: (steps.policy.outputs.mode == 'rerun' && steps.policy.outputs.retry_allowed == 'true') || steps.policy.outputs.mode == 'exhausted'
         shell: bash
         env:
           RUN_ID: ${{ steps.owner.outputs.run_id }}
@@ -351,9 +351,9 @@ jobs:
 
       - name: Replay local checkpoint request on advanced Production Green
         if: >-
-          steps.policy.outputs.mode == 'rerun' &&
-          steps.policy.outputs.retry_allowed == 'true' &&
-          steps.local_green.outputs.advanced == 'true'
+          steps.local_green.outputs.advanced == 'true' &&
+          ((steps.policy.outputs.mode == 'rerun' && steps.policy.outputs.retry_allowed == 'true') ||
+           steps.policy.outputs.mode == 'exhausted')
         shell: bash
         env:
           OLD_RUN_ID: ${{ steps.owner.outputs.run_id }}
@@ -636,7 +636,7 @@ jobs:
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null
 
       - name: Persist bounded recovery exhaustion for the exact approved request
-        if: steps.policy.outputs.mode == 'exhausted'
+        if: steps.policy.outputs.mode == 'exhausted' && steps.local_green.outputs.advanced != 'true'
         shell: bash
         env:
           REQUEST_ID: ${{ steps.owner.outputs.request_id }}
