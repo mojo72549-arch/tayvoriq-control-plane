@@ -108,6 +108,21 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             return finish('BLOCKED', 'RECOVERY_OUTCOME_IDENTITY_INVALID')
         result.update(request_status=str(request.get('status') or ''),
                       request_substate='RECOVERY_EXHAUSTED')
+        # The only automatic way out of a proven exhausted media repair is a
+        # *different*, strictly verified Production Green implementation.
+        # Reuse the same request and same generation; never retry old code.
+        failed_impl = str(outcome.get('implementation_sha') or '')
+        if (re.fullmatch(r'[a-f0-9]{40}', str(green or ''))
+                and re.fullmatch(r'[a-f0-9]{40}', failed_impl)
+                and green != failed_impl):
+            action = 'DELIVERY_WATCH'
+            identity = [rid, run_id, run.get('run_attempt', 1),
+                        result['generation'], outcome['failure_signature'],
+                        revision, green, action, 'exhausted-advanced-green']
+            result['decision_key'] = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
+            if previous and previous.get('decision_key') == result['decision_key'] and previous.get('dispatch_verified'):
+                return finish('RECOVERY_FAILED', 'VERIFIED_GREEN_REPLAY_EXECUTOR_MISSING_OUTCOME')
+            return finish('RECOVERY_REQUIRED', 'VERIFIED_GREEN_ADVANCED_AFTER_EXHAUSTION', action)
         return finish('REPAIR_REQUIRED', str(outcome['reason']))
     codefix = request.get('codefix_recovery') or {}
     status = str(request.get('status') or '').upper()
@@ -182,7 +197,14 @@ def main():
         run = api(f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}') if run_id else {}
     revision = subprocess.check_output(['git', 'log', '-1', '--format=%H', '--',
         'tools', 'scripts', '.github/workflows'], text=True).strip()
-    green = read('.github/state/tayvoriq-production-green.json').get('implementation_sha', '')
+    verified_green = read('.github/state/tayvoriq-production-green.json')
+    green_sha = str(verified_green.get('implementation_sha') or '')
+    green = green_sha if (
+        verified_green.get('schema') == 'tayvoriq-production-green-v1'
+        and verified_green.get('full_preflight_passed') is True
+        and verified_green.get('quality_gates_weakened') is False
+        and bool(re.fullmatch(r'[a-f0-9]{40}', green_sha))
+    ) else ''
     previous = read(STATE)
     result = decide(pointer, request, run, event_name=os.environ.get('EVENT_WORKFLOW', ''),
                     event_run=int(os.environ.get('EVENT_RUN_ID') or 0), revision=revision,

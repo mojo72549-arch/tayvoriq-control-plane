@@ -109,3 +109,36 @@ def test_voice_exhaustion_uses_same_contract():
     policy["state"] = "LOCAL_VOICE_RECOVERY_EXHAUSTED"
     assert record_exhaustion(pointer, request, policy, run_id=run["id"], run_attempt=3)
     assert decide(pointer, request, run)["reason"] == "LOCAL_VOICE_RECOVERY_EXHAUSTED"
+
+
+def test_verified_new_green_revives_exhausted_request_without_new_generation():
+    pointer, request, run, policy = incident()
+    record_exhaustion(pointer, request, policy, run_id=run["id"], run_attempt=3)
+    previous = {"decision_key": "historic-dispatch", "dispatch_verified": True}
+    unchanged = decide(pointer, request, run, green="e" * 40, previous=previous)
+    assert unchanged["state"] == "REPAIR_REQUIRED"
+    assert unchanged["action"] == "NONE"
+    changed = decide(pointer, request, run, green="f" * 40, previous=previous)
+    assert changed["state"] == "RECOVERY_REQUIRED"
+    assert changed["reason"] == "VERIFIED_GREEN_ADVANCED_AFTER_EXHAUSTION"
+    assert changed["action"] == "DELIVERY_WATCH"
+    assert changed["run_id"] == str(run["id"])
+    assert changed["generation"] == "1"
+    assert len(changed["decision_key"]) == 64
+    # The same verified codefix must NEVER dispatch multiple owners.
+    dup = decide(pointer, request, run, green="f" * 40,
+                 previous={**changed, "dispatch_verified": True})
+    assert dup["action"] == "NONE"
+    assert dup["state"] == "RECOVERY_FAILED"
+
+
+def test_unverified_green_or_unknown_original_version_cannot_revive_exhaustion():
+    pointer, request, run, policy = incident()
+    record_exhaustion(pointer, request, policy, run_id=run["id"], run_attempt=3)
+    for green in ("", "broken", "e" * 40):
+        result = decide(pointer, request, run, green=green)
+        assert result["state"] == "REPAIR_REQUIRED"
+        assert result["action"] == "NONE"
+    request["recovery_outcome"]["implementation_sha"] = ""
+    result = decide(pointer, request, run, green="f" * 40)
+    assert result["state"] == "REPAIR_REQUIRED"

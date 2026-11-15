@@ -48,6 +48,29 @@ class DeliveryWatchSingleEntryContractTests(unittest.TestCase):
         self.assertIn("SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY", workflow)
         self.assertIn("quality_gates_weakened':False", workflow)
 
+    def test_exhausted_media_resumes_only_on_advanced_verified_green(self):
+        workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
+            encoding="utf-8"
+        )
+        advanced = workflow.split(
+            "- name: Replay local checkpoint request on advanced Production Green", 1
+        )[1].split("- name: Start bounded fresh request recovery", 1)[0]
+        assert "steps.policy.outputs.mode == 'exhausted'" in advanced
+        assert "steps.local_green.outputs.advanced == 'true'" in advanced
+        assert "LOCAL_GREEN_REPLAY_FAILED_IMPL_INVALID" in advanced
+        assert "LOCAL_GREEN_REPLAY_CURRENT_IMPL_INVALID" in advanced
+        assert "SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY" in advanced
+        assert "data.pop('recovery_outcome',None)" in advanced
+        persistence = workflow.split(
+            "- name: Persist bounded recovery exhaustion for the exact approved request", 1
+        )[1].split("- name: Arm deterministic failure", 1)[0]
+        assert "steps.local_green.outputs.advanced != 'true'" in persistence
+        unchanged_retry = workflow.split(
+            "- name: Same-run retry for local or transient failure", 1
+        )[1].split("- name: Replay local checkpoint request", 1)[0]
+        assert "steps.policy.outputs.mode == 'rerun'" in unchanged_retry
+        assert "steps.policy.outputs.mode == 'exhausted'" not in unchanged_retry
+
     def test_delivery_watch_prefers_structured_failure_contract(self):
         workflow = (ROOT / ".github/workflows/tayvoriq-delivery-watch.yml").read_text(
             encoding="utf-8"
