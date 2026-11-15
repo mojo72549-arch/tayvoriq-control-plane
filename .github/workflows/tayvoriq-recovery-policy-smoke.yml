@@ -8,6 +8,8 @@ on:
       - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
       - tools/tayvoriq_recovery_policy_v1.py
       - tools/tayvoriq_lifecycle_controller_v1.py
+      - tools/tayvoriq_recovery_outcome_v1.py
+      - tests/test_tayvoriq_recovery_outcome_v1.py
       - tests/test_tayvoriq_lifecycle_controller.py
       - tests/test_tayvoriq_recovery_policy_v1.py
       - tests/test_tayvoriq_recovery_policy_external_hardening.py
@@ -30,6 +32,8 @@ on:
       - .github/workflows/tayvoriq-deterministic-codefix-continuity.yml
       - tools/tayvoriq_recovery_policy_v1.py
       - tools/tayvoriq_lifecycle_controller_v1.py
+      - tools/tayvoriq_recovery_outcome_v1.py
+      - tests/test_tayvoriq_recovery_outcome_v1.py
       - tests/test_tayvoriq_lifecycle_controller.py
       - tests/test_tayvoriq_recovery_policy_v1.py
       - tests/test_tayvoriq_recovery_policy_external_hardening.py
@@ -61,6 +65,8 @@ jobs:
         run: |
           python -m py_compile \
             tools/tayvoriq_recovery_policy_v1.py \
+            tools/tayvoriq_recovery_outcome_v1.py \
+            tests/test_tayvoriq_recovery_outcome_v1.py \
             tests/test_tayvoriq_recovery_policy_v1.py \
             tests/test_tayvoriq_recovery_policy_external_hardening.py \
             tests/test_tayvoriq_request_continuity_latest_request_v2.py \
@@ -74,7 +80,8 @@ jobs:
             tests/test_tayvoriq_recovery_policy_v1.py \
             tests/test_tayvoriq_recovery_policy_external_hardening.py \
             tests/test_tayvoriq_request_continuity_latest_request_v2.py \
-            tests/test_tayvoriq_lifecycle_controller.py
+            tests/test_tayvoriq_lifecycle_controller.py \
+            tests/test_tayvoriq_recovery_outcome_v1.py
       - name: Parse recovery workflows as YAML
         run: |
           python - <<'PY'
