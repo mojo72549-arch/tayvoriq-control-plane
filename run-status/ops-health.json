@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-14T23:23:55.570512Z",
-  "overall": "green",
+  "generated_at": "2026-11-15T12:08:43.162364Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -28,22 +28,22 @@
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "chatgpt-20261115-morning-mercedes",
-    "golden_path_run_id": 43641743548,
-    "pointer_updated_at": "2026-11-14T21:43:32.624219Z"
+    "request_id": "telegram-3636-trend-1",
+    "golden_path_run_id": 43707387407,
+    "pointer_updated_at": "2026-11-15T11:07:40.605555Z"
   },
   "request": {
-    "request_id": "chatgpt-20261115-morning-mercedes",
-    "topic": "Mercedes stoppt Investitionen und prüft Werksschließungen",
+    "request_id": "telegram-3636-trend-1",
+    "topic": "Stuttgart Hauptbahnhof: Der kürzere Weg zur S-Bahn ist wieder offen",
     "trend_id": "1",
-    "slot": "morning",
+    "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ erklärt die konkreten Entscheidungen, die Arbeitsplätze und Alltag in Stuttgart verändern.",
+    "follow_reason": "TAYVORIQ zeigt, welche neuen Wege und Sperrungen den Pendleralltag in der Region verändern.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -56,22 +56,22 @@
       "issues": []
     },
     "golden_path_v5_state": "APPROVED",
-    "source_count": 2,
+    "source_count": 3,
     "quality_gates_weakened": false,
-    "path": "requests/chatgpt-20261115-morning-mercedes.json"
+    "path": "requests/telegram-3636-trend-1.json"
   },
   "run": {
-    "id": 43641743548,
+    "id": 43707387407,
     "historical": false,
-    "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43641743548",
-    "created_at": "2026-11-14T21:14:24Z",
-    "updated_at": "2026-11-14T21:43:41Z",
-    "attempt": 1,
-    "progress": 100,
-    "current_step": null,
-    "last_successful_step": "Complete job",
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43707387407",
+    "created_at": "2026-11-15T11:07:33Z",
+    "updated_at": "2026-11-15T12:08:33Z",
+    "attempt": 2,
+    "progress": 30,
+    "current_step": "Checkout review pages",
+    "last_successful_step": "Lightweight contract preflight",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -113,31 +113,31 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "success",
+        "status": "pending",
         "step_number": 33,
         "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "pending",
         "step_number": 41,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "pending",
         "step_number": 43,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "pending",
         "step_number": 48,
         "step_name": "Send Telegram review"
       }
@@ -146,8 +146,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "yellow",
+      "detail": "Checkout review pages"
     },
     {
       "name": "Production Green",
@@ -156,36 +156,47 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Telegram-Videoquittung bestätigt"
+      "status": "yellow",
+      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "43707387407:LOCAL_VISUAL",
+    "severity": "warning",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "same_generation_replay_required": false,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
-    "status": "green",
-    "detail": "Telegram-Videoquittung bestätigt",
+    "status": "yellow",
+    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
     "last_step": "Send Telegram review",
-    "message_id": 3632
+    "message_id": null
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
-    "failure_state": null,
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": null,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -193,19 +204,24 @@
   },
   "events": [
     {
-      "at": "2026-11-14T21:14:30.582581+00:00",
+      "at": "2026-11-15T12:08:26.991162Z",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:43641726845"
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     },
     {
-      "at": "2026-11-14T21:14:20.357496+00:00",
+      "at": "2026-11-15T11:07:40.519503+00:00",
+      "title": "DISPATCHED",
+      "detail": "request-dispatcher:43707369555"
+    },
+    {
+      "at": "2026-11-15T11:07:30.454124+00:00",
       "title": "DISPATCHING",
-      "detail": "request-dispatcher:43641726845"
+      "detail": "request-dispatcher:43707369555"
     },
     {
-      "at": "2026-11-14T21:05:00Z",
+      "at": "2026-11-15T11:07:18.781Z",
       "title": "APPROVED",
-      "detail": "chat_direct_user_instruction"
+      "detail": "telegram_callback"
     }
   ]
 }
