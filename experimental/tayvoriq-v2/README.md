@@ -63,3 +63,34 @@ Bezug: [Zukunftsarchitektur](../../docs/architecture/TAYVORIQ_V2_FUTURE_MIGRATIO
 **NO-GO sobald:** kein verifizierter Master, fehlendes Gate, unsicheres Callback, unklarer Owner, Datenbankinkonsistenz, keine echte Telegram-Quittung, nicht verifizierte Publikation oder gestiegene Doppel-Dispatch-Gefahr.
 
 **Hinweis:** Diese Checkliste erzeugt weder Produktiv-Authentifizierung noch aktive Infrastruktur. Der SQL-Entwurf ist nicht getestet und nicht angewendet.
+
+## E. Konsolidierung der bereits vorhandenen Vorbereitungs-PRs
+
+**Entscheidung für die spätere Umsetzung: genau EINE Pilot-Implementierung, keine drei parallelen Orchestratoren.**
+Dieser Blueprint (#237) ist der fachliche Abnahmevertrag; die zwei älteren offenen
+Prototypen sind nur Bausteinquellen, **keine zusätzlichen produktiven Systeme**:
+
+- **#235** (`plan/hetzner-n8n-shadow-20261114`): gehärtete CX23-Compose-/Backup-/Betriebsvorlage übernehmen und nach realer Docker-/Security-Prüfung aktualisieren.
+- **#236** (`plan/tayvoriq-cx23-readonly-orchestrator-20261114`): manuell deaktivierten, rein lesenden n8n-GitHub-Beobachter als Ausgangspunkt übernehmen. Der Observer liefert **keinen** Telegram-Review-Nachweis und darf nie aus `ops-health.green` einen Review-Erfolg ableiten.
+- **#237** (dieser PR): fachliche Architektur, unveränderliche Freigabebindung, PostgreSQL-Ledger-Entwurf, 20 Abnahmetests und Cutover-Kriterien. SQL **nicht** produktiv anwenden.
+
+Vor einem zukünftigen Merge die beiden Pilotskizzen **in genau einen neuen, isolierten Implementierungs-PR konsolidieren** und die älteren alternativen PRs nach Codeübernahme schließen. Kein paralleler `compose up`, keine drei State-Stores, keine neuen produktiven GitHub-Schedules durch diese Planung. Die bereits gemergten #229 (Ergebnisnachweise) und #230 (atomare Request-Transitions) sind **bestehende Verträge**, die integriert statt neu erfunden werden. #231 bleibt ein separater Referenzbeleg, kein Ersatz für Live-Abnahme.
+
+### Minimaler Pilot – überprüfbare Reihenfolge
+
+1. **Kostenentscheidung getrennt:** Eigenen CX23 nur nach gesonderter Bestellung/Freigabe; CRM-Server unberührt. n8n + PostgreSQL, kein GPU-Rendering auf 4 GB RAM. Budget 8–10 EUR/Monat als Ziel für die Steuerung, nicht für KI-/Runner-/Medienkosten.
+2. **Offline-Abnahme:** Compose-Konfiguration und Image-Digests prüfen; `n8n`-Export auf deaktivierten Trigger, ausschließlich GET und fehlende Schreib-Credentials kontrollieren; getrennte DB/n8n-Backups + Restore nachweisen.
+3. **Read-only Shadow:** `request_id`, Hashes, `run_id`, `run_attempt`, `studio_sha`, Gate- und Telegram-Receipts aus echten GitHub-Daten visualisieren. Veraltete oder widersprüchliche Zustände sind `UNKNOWN`, niemals `SUCCESS`.
+4. **Synthetische Race-/Failure-Tests:** V2-01 bis V2-20 einschließlich DHL-ASR 0,95, Doppel-Callback, Fencing, Crash nach Telegram-Send, Ablehnung und EXPIRED. Alle ohne echte Telegram-/Plattformaktionen.
+5. **Gesperrter Canary:** Explizit freigegebener neuer Auftrag; alter Writer für diesen Auftrag nachweislich aus; SHA-gebundener Runner und unveränderte Python-Gates; Telegram-Review nur mit echter `message_id`, Plattform-Upload nur nach separatem Nutzerentscheid.
+6. **Cutover nur mit GO:** Mehrfacher vollständiger End-to-End-Nachweis, Restore- und Rollback-Test und separate Nutzerfreigabe. Bei Misserfolg keine parallelen Recovery-Owner starten.
+
+### Messbarer Nutzen statt weiterer Skriptsammlungen
+
+- Startpunkt: **verifizierte Trendfreigabe**; Endpunkt: **bestätigte Telegram-Video-Review-Zustellung**, nicht GitHub-Workflow-SUCCESS.
+- Zielwerte zur späteren Prüfung: **p50 ca. 30 Minuten, p90 höchstens 45 Minuten**. Bei nicht behebbarem deterministischem Fehler sicher blockieren; nie Quality-Gates senken, um die Zeit zu erreichen.
+- Pro Stage messen: Queue-/Cold-Start, Quellen, Skript, Voice, Visuals, Render, finaler Quality-Gate, Telegram-Transport; Zeit und Kosten auch bei gescheiterten Versuchen.
+- Recovery-Budget begrenzen: nur betroffene Checkpoints, Retry ausschließlich bei transientem Fehler; identischer Code/identische Inputs bei deterministischem Fehler dürfen nicht wiederholt gerendert werden.
+- Produktiv-Status `REVIEW_DELIVERED` nur nach positivem QA-/MP4-/Telegram-Receipt; `PUBLISHED` nur nach gebundener Nutzerfreigabe **und** Plattform-ID. Fehlende Quittungen bleiben `UNKNOWN/BLOCKED`.
+
+**Stand:** Nur GitHub-Vorbereitung. Kein eigener Server, kein produktiv aktives n8n, kein Cutover und keine neue Videozustellung durch diese Änderung.
