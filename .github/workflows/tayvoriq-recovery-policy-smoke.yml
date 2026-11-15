@@ -81,6 +81,7 @@ jobs:
             tests/test_tayvoriq_recovery_policy_external_hardening.py \
             tests/test_tayvoriq_request_continuity_latest_request_v2.py \
             tests/test_tayvoriq_lifecycle_controller.py \
+            tests/test_tayvoriq_delivery_watch_single_entry.py \
             tests/test_tayvoriq_recovery_outcome_v1.py
       - name: Parse recovery workflows as YAML
         run: |
