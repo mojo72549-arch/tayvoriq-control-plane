@@ -448,6 +448,9 @@ jobs:
           data['recovery_generation']=generation
           data['retry_of_run_id']=old
           data['replacement_reason']='SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY'
+          # The old terminal outcome is historical once the *new* exact run
+          # owns the request. Keep prior run IDs and immutable approval.
+          data.pop('recovery_outcome',None)
           data['recovery_owner']='tayvoriq-delivery-watch'
           data['recovery_failure_signature']=signature
           data['recovery_dispatched_at']=now
