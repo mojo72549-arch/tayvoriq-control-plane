@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-15T19:47:17.919029Z",
+  "generated_at": "2026-11-15T20:00:19.170590Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -170,18 +170,7 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "43754016472:LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_RUNNING",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
@@ -190,8 +179,8 @@
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "source_status": "REPLAY_RUNNING",
+    "failure_state": null,
     "failed_run_id": 43732348851,
     "replay_run_id": 43754016472,
     "fresh_recovery_run_id": 43716674600,
