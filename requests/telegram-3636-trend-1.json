@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-3636-trend-1",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "telegram_trend_approval",
   "trend_id": "1",
   "topic": "Stuttgart Hauptbahnhof: Der kürzere Weg zur S-Bahn ist wieder offen",
@@ -173,9 +173,15 @@
       "state": "DISPATCHING",
       "at": "2026-11-15T11:07:30.454124+00:00",
       "actor": "request-dispatcher:43707369555"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-15T11:07:40.519503+00:00",
+      "actor": "request-dispatcher:43707369555"
     }
   ],
   "contract_sha256": "71120cf4e275ea7ee13ab79bcb80a7ec481ea47c8a73771c7fa7b002664997a6",
   "dispatch_claim_run_id": 43707369555,
-  "dispatch_contract_sha256": "71120cf4e275ea7ee13ab79bcb80a7ec481ea47c8a73771c7fa7b002664997a6"
+  "dispatch_contract_sha256": "71120cf4e275ea7ee13ab79bcb80a7ec481ea47c8a73771c7fa7b002664997a6",
+  "golden_path_run_id": 43707387407
 }
