@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-15T20:00:19.170590Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-15T21:27:03.060504Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -63,17 +63,17 @@
   "run": {
     "id": 43754016472,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43754016472",
     "created_at": "2026-11-15T19:43:36Z",
-    "updated_at": "2026-11-15T19:43:41Z",
-    "attempt": 1,
+    "updated_at": "2026-11-15T20:32:20Z",
+    "attempt": 3,
     "progress": 30,
-    "current_step": "Collect Studio production outcome",
-    "last_successful_step": "Restore production model cache",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 41,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -113,31 +113,31 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "running",
+        "status": "success",
         "step_number": 33,
         "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 41,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 43,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 47,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 48,
         "step_name": "Send Telegram review"
       }
@@ -146,8 +146,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Collect Studio production outcome"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -157,7 +157,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -167,10 +167,21 @@
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "43754016472:LOCAL_VISUAL",
+    "severity": "critical",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 41,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
@@ -178,9 +189,9 @@
     "message_id": null
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_RUNNING",
-    "failure_state": null,
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": 43732348851,
     "replay_run_id": 43754016472,
     "fresh_recovery_run_id": 43716674600,
@@ -192,6 +203,21 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-15T20:32:20Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-15T20:26:32.991021Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-15T20:20:25.118232Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
     {
       "at": "2026-11-15T19:43:42.341198Z",
       "title": "DISPATCHED",
@@ -211,16 +237,6 @@
       "at": "2026-11-15T15:53:15.290933Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-11-15T15:51:58.982Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "LOCAL_VISUAL_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-15T13:48:29.480323Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
   ]
 }
