@@ -209,6 +209,18 @@ function recoveryTruth(requestData,canonicalRun,snapshot={}){
   const failed=runStatus==='completed' && Boolean(conclusion) && conclusion!=='success';
   const active=ACTIVE_STATUSES.has(runStatus);
 
+  // Failure labels on the durable request are historical evidence. A new
+  // canonical, actively running Golden Path must not inherit a red incident
+  // from its previously failed run, even if ops-health has not refreshed yet.
+  if(active){
+    const replayBound=Number(data.replay_run_id||0)===Number(canonicalRun?.id||0);
+    const localBound=Number(data.local_retry_run_id||0)===Number(canonicalRun?.id||0);
+    let status='PRODUCTION_RUNNING';
+    if(raw==='REPLAY_DISPATCHED' && replayBound) status=lastFailure.includes('LOCAL_VOICE')?'LOCAL_VOICE_RETRY_RUNNING':lastFailure.includes('LOCAL_VISUAL')?'LOCAL_VISUAL_RETRY_RUNNING':'REPLAY_RUNNING';
+    else if(raw==='LOCAL_RETRY_DISPATCHED' && localBound) status='LOCAL_RETRY_RUNNING';
+    return {status,failure_state:null,previous_failure_state:lastFailure||null};
+  }
+
   if(raw==='REPLAY_DISPATCHED'){
     if(active){
       if(lastFailure.includes('LOCAL_VOICE')) return {status:'LOCAL_VOICE_RETRY_RUNNING',failure_state:lastFailure||null};
@@ -226,6 +238,26 @@ function recoveryTruth(requestData,canonicalRun,snapshot={}){
     status:raw,
     failure_state:rawFailure||snapshot?.incident?.failure_state||null,
   };
+}
+
+function canonicalIncident(snapshot,canonicalRun,failedStage,recovery){
+  // The currently verified run (not an earlier snapshot or a recovery
+  // executor's last error) is the sole owner of the visible red incident.
+  if(!canonicalRun||ACTIVE_STATUSES.has(String(canonicalRun.status))) return null;
+  const sameSnapshot=Number(snapshot?.run?.id||0)===Number(canonicalRun.id||0);
+  const prior=sameSnapshot&&canonicalRun.conclusion==='failure'?snapshot?.incident:null;
+  if(failedStage && canonicalRun.conclusion!=='success'){
+    const failureState=String(recovery?.failure_state||prior?.failure_state||'WORKFLOW_FAILURE');
+    return {
+      ...(prior||{}),
+      failure_state:failureState,
+      failed_step:failedStage.step_name,
+      failed_step_number:failedStage.step_number,
+      self_heal_status:recovery?.status||null,
+      user_action_required:userActionRequired(failureState)
+    };
+  }
+  return prior||null;
 }
 
 function pilotFailureClass(stage='',step='',message=''){
@@ -530,14 +562,7 @@ export default async function handler(req,res){
   }:(snapshot?.run||{});
 
   const failureState=recoveryTruthState.failure_state||null;
-  const incident=failedStage?{
-    ...(snapshot?.incident||{}),
-    failure_state:failureState||'WORKFLOW_FAILURE',
-    failed_step:failedStage.step_name,
-    failed_step_number:failedStage.step_number,
-    self_heal_status:recovery.status,
-    user_action_required:userActionRequired(failureState)
-  }:(snapshot?.incident||null);
+  const incident=canonicalIncident(snapshot,canonicalRun,failedStage,recovery);
 
   const active=telemetry.filter(x=>ACTIVE_STATUSES.has(x.status));
   const canonicalActive=Boolean(canonicalRun&&ACTIVE_STATUSES.has(String(canonicalRun.status)));
