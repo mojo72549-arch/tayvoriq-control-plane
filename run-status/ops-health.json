@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-15T15:52:48.731409Z",
+  "generated_at": "2026-11-15T16:56:34.593067Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -29,15 +29,15 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3636-trend-1",
-    "golden_path_run_id": 43716674600,
-    "pointer_updated_at": "2026-11-15T13:00:16.370309Z"
+    "golden_path_run_id": 43732348851,
+    "pointer_updated_at": "2026-11-15T15:53:15.290933Z"
   },
   "request": {
     "request_id": "telegram-3636-trend-1",
     "topic": "Stuttgart Hauptbahnhof: Der kürzere Weg zur S-Bahn ist wieder offen",
     "trend_id": "1",
     "slot": null,
-    "state": "AWAITING_CODEFIX",
+    "state": "DISPATCHED",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
@@ -61,13 +61,13 @@
     "path": "requests/telegram-3636-trend-1.json"
   },
   "run": {
-    "id": 43716674600,
+    "id": 43732348851,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43716674600",
-    "created_at": "2026-11-15T13:00:04Z",
-    "updated_at": "2026-11-15T14:11:30Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43732348851",
+    "created_at": "2026-11-15T15:53:08Z",
+    "updated_at": "2026-11-15T16:12:38Z",
     "attempt": 3,
     "progress": 30,
     "current_step": null,
@@ -157,7 +157,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "ARMED"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -171,12 +171,12 @@
     }
   ],
   "incident": {
-    "signature": "43716674600:LOCAL_VISUAL",
+    "signature": "43732348851:LOCAL_VISUAL",
     "severity": "critical",
-    "failure_state": "LOCAL_VISUAL_CODEFIX_REQUIRED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 41,
-    "self_heal_status": "ARMED",
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
@@ -189,24 +189,39 @@
     "message_id": null
   },
   "recovery": {
-    "status": "ARMED",
-    "source_status": "ARMED",
-    "failure_state": "LOCAL_VISUAL_CODEFIX_REQUIRED",
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": 43716674600,
-    "replay_run_id": null,
+    "replay_run_id": 43732348851,
     "fresh_recovery_run_id": 43716674600,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
-    "needs_codefix": true
+    "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-15T14:11:30Z",
+      "at": "2026-11-15T16:12:38Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-15T16:06:19.032387Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-15T15:59:07.560668Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-15T15:53:15.290933Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
     },
     {
       "at": "2026-11-15T15:51:58.982Z",
@@ -220,21 +235,6 @@
     },
     {
       "at": "2026-11-15T13:27:59.268962Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-15T13:00:16.370309Z",
-      "title": "DISPATCHED",
-      "detail": "bounded-shared-policy-recovery"
-    },
-    {
-      "at": "2026-11-15T12:34:47.049340Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-15T12:08:26.991162Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
