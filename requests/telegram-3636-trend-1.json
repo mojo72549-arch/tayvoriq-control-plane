@@ -244,6 +244,24 @@
         "quality_gates_weakened": false,
         "active_pointer_verified": true
       }
+    },
+    {
+      "state": "AWAITING_CODEFIX",
+      "at": "2026-11-15T15:51:58.982Z",
+      "actor": "operator-recovery",
+      "meta": {
+        "failed_run_id": 43716674600,
+        "failure_signature": "55ff5f5cc70f2db1a058",
+        "failure_state": "LOCAL_VISUAL_CODEFIX_REQUIRED",
+        "failed_control_plane_sha": "a7cc389a4f9d7fb3adc7021d7b1ce3f5cb8af5c6",
+        "failed_implementation_sha": "5e4fee6bbcf3986aa808cfc1093ccce344173939",
+        "recovery_generation": 1,
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true,
+        "reason": "verified-stuttgart-location-selection-defect",
+        "studio_fix_pr": 310,
+        "studio_candidate_sha": "e421013764a1808e539dc5087224319a0ad643d2"
+      }
     }
   ],
   "contract_sha256": "71120cf4e275ea7ee13ab79bcb80a7ec481ea47c8a73771c7fa7b002664997a6",
@@ -251,9 +269,9 @@
   "dispatch_contract_sha256": "71120cf4e275ea7ee13ab79bcb80a7ec481ea47c8a73771c7fa7b002664997a6",
   "golden_path_run_id": 43716674600,
   "codefix_recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "request_substate": "DISPATCHED",
-    "failure_state": "",
+    "status": "ARMED",
+    "request_substate": "AWAITING_CODEFIX",
+    "failure_state": "LOCAL_VISUAL_CODEFIX_REQUIRED",
     "local_retry_run_id": 43716674600,
     "local_retry_run_attempt": 3,
     "local_retry_kind": "same-run",
@@ -266,7 +284,15 @@
     "fresh_recovery_of_run_id": 43707387407,
     "fresh_recovery_generation": 1,
     "fresh_recovery_at": "2026-11-15T13:00:16.370309Z",
-    "last_failure_state": "LOCAL_VISUAL_RECOVERY_REQUIRED"
+    "last_failure_state": "LOCAL_VISUAL_RECOVERY_REQUIRED",
+    "failed_run_id": 43716674600,
+    "failure_signature": "55ff5f5cc70f2db1a058",
+    "failed_control_plane_sha": "a7cc389a4f9d7fb3adc7021d7b1ce3f5cb8af5c6",
+    "failed_implementation_sha": "5e4fee6bbcf3986aa808cfc1093ccce344173939",
+    "recovery_generation": 1,
+    "armed_at": "2026-11-15T15:51:58.982Z",
+    "same_generation_replay_required": true,
+    "exact_source_request_required": true
   },
   "recovery_owner": "tayvoriq-delivery-watch",
   "previous_golden_path_run_ids": [
