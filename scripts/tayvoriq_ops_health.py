@@ -331,6 +331,26 @@ def main():
     recovery_generation = int((request_data or {}).get("recovery_generation") or recovery.get("fresh_recovery_generation") or recovery.get("recovery_generation") or 0)
     recovery_owner = str((request_data or {}).get("recovery_owner") or "tayvoriq-agent-orchestrator-v2")
 
+    # Never surface a previous Golden Path's failure as the incident of a
+    # newer canonical run that GitHub proves is still in progress. Preserve
+    # the failure only in the immutable request history/diagnostic events.
+    canonical_running = (
+        run_status in {"queued", "requested", "waiting", "in_progress"}
+        and bool(run_id)
+        and str((request_data or {}).get("golden_path_run_id") or "") == str(run_id)
+    )
+    if canonical_running:
+        failure_state = None
+        user_action_required = False
+        if str(recovery.get("status") or "") == "REPLAY_DISPATCHED" and str(
+            recovery.get("replay_run_id") or ""
+        ) == str(run_id):
+            self_heal_status = "REPLAY_RUNNING"
+        elif str(recovery.get("status") or "") == "LOCAL_RETRY_DISPATCHED" and str(
+            recovery.get("local_retry_run_id") or ""
+        ) == str(run_id):
+            self_heal_status = "LOCAL_RETRY_RUNNING"
+
     retired = is_retired_unpublished(pointer, request_data, run_id, run)
     if retired:
         # Last run is preserved as HISTORY, never as an active incident.

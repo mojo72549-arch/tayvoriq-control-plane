@@ -52,6 +52,16 @@ def main():
     elif source_status not in {"", "IDLE", "NONE"} and str(state.get("overall") or "") != "green":
         health = "yellow"
 
+    # A verified running canonical replay supersedes the old failed run's
+    # incident. The original failure remains in request state_history.
+    if (run_status in {"queued", "requested", "waiting", "in_progress"}
+            and replay_is_current):
+        recovery["failure_state"] = None
+        state["incident"] = None
+        incident = {}
+        state["user_action_required"] = False
+        state["intervention_count"] = 0
+
     recovery["source_status"] = source_status
     recovery["status"] = effective
     recovery["inferred_from_run_terminal_state"] = inferred
