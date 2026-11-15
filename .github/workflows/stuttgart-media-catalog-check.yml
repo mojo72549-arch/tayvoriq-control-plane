@@ -21,8 +21,8 @@ jobs:
           rail = {'hauptbahnhof','bonatzbau','bahn','bahnhof','train','rail','railway','commuter','tram'}
           matches = {}
           for query in queries:
-              url = endpoint + '?' + urllib.parse.urlencode({'query': query, 'per_page': 60})
-              request = urllib.request.Request(url, headers={'Authorization': os.environ['PEXELS_API_KEY']})
+              url = endpoint + '?' + urllib.parse.urlencode({'query': query, 'per_page': 15})
+              request = urllib.request.Request(url, headers={'Authorization': os.environ['PEXELS_API_KEY'], 'User-Agent': 'python-requests/2.32.5', 'Accept': 'application/json'})
               with urllib.request.urlopen(request, timeout=12) as response:
                   data = json.load(response)
               count = 0
