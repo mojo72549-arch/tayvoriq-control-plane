@@ -1,0 +1,39 @@
+name: Stuttgart location footage catalog check
+on:
+  push:
+    branches: [ops/stuttgart-media-catalog-check]
+    paths: [.github/workflows/stuttgart-media-catalog-check.yml]
+permissions: {contents: read}
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Count Stuttgart rail clips across all orientations
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.parse, urllib.request
+          queries = ('Stuttgart Hauptbahnhof', 'Stuttgart Bonatzbau', 'Stuttgart S-Bahn', 'Stuttgart railway station', 'Stuttgart train', 'Stuttgart')
+          endpoint = 'https://api.pexels.com/videos/search'
+          rail = {'hauptbahnhof','bonatzbau','bahn','bahnhof','train','rail','railway','commuter','tram'}
+          matches = {}
+          for query in queries:
+              url = endpoint + '?' + urllib.parse.urlencode({'query': query, 'per_page': 60})
+              request = urllib.request.Request(url, headers={'Authorization': os.environ['PEXELS_API_KEY']})
+              with urllib.request.urlopen(request, timeout=12) as response:
+                  data = json.load(response)
+              count = 0
+              for video in data.get('videos', []):
+                  page = urllib.parse.urlsplit(video.get('url') or '')
+                  if page.hostname not in {'www.pexels.com', 'pexels.com'}:
+                      continue
+                  words = set(re.findall(r'[a-z]+', page.path.casefold()))
+                  if 'stuttgart' in words and words & rail and not words & {'berlin', 'london', 'paris', 'airport', 'flughafen'}:
+                      matches[video['id']] = {'url': 'https://' + page.hostname + page.path, 'width': video.get('width'), 'height': video.get('height')}
+                      count += 1
+              print(json.dumps({'query':query,'total_results':data.get('total_results'),'verified_stuttgart_rail':count}), flush=True)
+          print('STUTTGART_CATALOG_MATCHES=' + json.dumps(list(matches.values())), flush=True)
+          PY
