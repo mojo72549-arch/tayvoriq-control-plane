@@ -635,6 +635,40 @@ jobs:
           curl -fsS --retry 3 --retry-all-errors -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null
 
+      - name: Persist bounded recovery exhaustion for the exact approved request
+        if: steps.policy.outputs.mode == 'exhausted'
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.owner.outputs.request_id }}
+          RUN_ID: ${{ steps.owner.outputs.run_id }}
+          RUN_ATTEMPT: ${{ steps.watched.outputs.run_attempt }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # A concurrent request transition must never be overwritten by
+          # stale recovery work. Re-read the single canonical owner each time.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main --quiet
+            git reset --hard origin/main
+            python -S tools/tayvoriq_recovery_outcome_v1.py \
+              --request-id "$REQUEST_ID" --run-id "$RUN_ID" \
+              --run-attempt "$RUN_ATTEMPT" --policy-file /tmp/recovery-policy.json
+            git add -- "requests/${REQUEST_ID}.json"
+            if git diff --cached --quiet; then
+              echo "RECOVERY_EXHAUSTION_ALREADY_RECORDED:${REQUEST_ID}:${RUN_ID}"
+              exit 0
+            fi
+            git commit -m "ops: record bounded recovery exhaustion for ${REQUEST_ID}"
+            if git push origin HEAD:main; then
+              echo "RECOVERY_EXHAUSTION_RECORDED:${REQUEST_ID}:${RUN_ID}"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "RECOVERY_EXHAUSTION_PERSIST_FAILED" >&2
+          exit 1
+
       - name: Arm deterministic failure through canonical continuity helper
         if: steps.policy.outputs.mode == 'deterministic'
         shell: bash

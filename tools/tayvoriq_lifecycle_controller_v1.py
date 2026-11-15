@@ -84,6 +84,31 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
         return finish('BLOCKED', 'ACTIVE_RUN_STATUS_UNKNOWN')
     if run.get('conclusion') == 'success':
         return finish('BLOCKED', 'SUCCESS_WITHOUT_REVIEW_DELIVERY_PROOF')
+    # A completed Delivery Watch may have exhausted its bounded media/voice
+    # recovery without changing the producer's DISPATCHED request status.
+    # The exact, persisted classifier receipt outranks the previous successful
+    # *executor dispatch*. It does not claim the video was delivered.
+    outcome = request.get('recovery_outcome')
+    if isinstance(outcome, dict) and str(outcome.get('run_id') or '') == str(run_id):
+        valid = (
+            outcome.get('schema') == 'tayvoriq-recovery-outcome-v1'
+            and outcome.get('state') == 'EXHAUSTED'
+            and outcome.get('request_id') == rid
+            and int(outcome.get('recovery_generation') if outcome.get('recovery_generation') is not None else -1) == int(result['generation'])
+            and int(outcome.get('run_attempt') or 0) == int(run.get('run_attempt') or 0)
+            and outcome.get('reason') in {
+                'LOCAL_VISUAL_RECOVERY_EXHAUSTED', 'LOCAL_VOICE_RECOVERY_EXHAUSTED'
+            }
+            and bool(re.fullmatch(r'[a-f0-9]{20}', str(outcome.get('failure_signature') or '')))
+            and outcome.get('quality_gates_weakened') is False
+            and outcome.get('publish_allowed') is False
+            and outcome.get('next_action') == 'AWAIT_VERIFIED_MEDIA_OR_CODE_REPAIR'
+        )
+        if not valid:
+            return finish('BLOCKED', 'RECOVERY_OUTCOME_IDENTITY_INVALID')
+        result.update(request_status=str(request.get('status') or ''),
+                      request_substate='RECOVERY_EXHAUSTED')
+        return finish('REPAIR_REQUIRED', str(outcome['reason']))
     codefix = request.get('codefix_recovery') or {}
     status = str(request.get('status') or '').upper()
     substate = str(codefix.get('request_substate') or request.get('request_substate') or '').upper()
