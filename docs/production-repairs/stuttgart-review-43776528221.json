@@ -1,0 +1,49 @@
+{
+  "schema": "tayvoriq-visual-repair-preparation-v1",
+  "status": "BLOCKED",
+  "original_request_id": "telegram-3636-trend-1",
+  "rejected_review_run_id": 43776528221,
+  "review_telegram_message_id": 3666,
+  "original_source_context_sha256": "fe66cdce3d1ffcf482348e44de939d8329f431d4b63d222ea20c9762d5cd9a75",
+  "topic": "Stuttgart Hauptbahnhof: Der kürzere Weg zur S-Bahn ist wieder offen",
+  "rejection": {
+    "code": "SCHEMATIC_VISUALS_INSTEAD_OF_REAL_STATION_IMAGERY",
+    "detail": "Das abgelehnte Video zeigt eine schematische Wegskizze statt echter Aufnahmen des Stuttgarter Hauptbahnhofs und des Zugangs."
+  },
+  "original_fact_sources": [
+    "https://www.bahnprojekt-stuttgart-ulm.de/projekt/ueber-uns/presse/bahn-oeffnet-grosse-schalterhalle-14092566",
+    "https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/s21-schalterhalle-bonatzbau-oeffnet-hauptbahnhof-100.html",
+    "https://www.vvs.de/ls/verbindungen-und-mobilitaet/aktuelle-meldungen/aenderungen-im-fahrplan/detail?cHash=52e281a9a54c67665c5717721f23dead&tx_vvsems_ems%5Baction%5D=showDetail&tx_vvsems_ems%5Bcontroller%5D=Main&tx_vvsems_ems%5BemsId%5D=ems-28977"
+  ],
+  "replacement_editorial_angle": "Den kürzeren Umstieg anhand echter, thematisch passender Aufnahmen erklären. Eine Wegmarkierung darf auf den Aufnahmen die Orientierung unterstützen.",
+  "required_shots": [
+    "Stuttgart Hauptbahnhof / Bonatzbau als eindeutiger Einstieg",
+    "Große Schalterhalle und der tatsächliche Treppen- oder Rolltreppenzugang Richtung Klett-Passage",
+    "Orientierung zur S-Bahn/Stadtbahn mit korrekter Zuordnung der gezeigten Wege"
+  ],
+  "media_research": {
+    "status": "RIGHTS_AND_FOOTAGE_UNVERIFIED",
+    "leads": [
+      {
+        "url": "https://www.bahnprojekt-stuttgart-ulm.de/projekt/ueber-uns/presse/bahn-oeffnet-grosse-schalterhalle-14092566",
+        "use": "Offizielle Anlaufstelle für Aufnahmen der Schalterhalle; konkrete Datei und Nutzungsnachweis fehlen."
+      },
+      {
+        "url": "https://www.vvs.de/ls/verbindungen-und-mobilitaet/aktuelle-meldungen/aenderungen-im-fahrplan/detail?cHash=52e281a9a54c67665c5717721f23dead&tx_vvsems_ems%5Baction%5D=showDetail&tx_vvsems_ems%5Bcontroller%5D=Main&tx_vvsems_ems%5BemsId%5D=ems-28977",
+        "use": "Wegführung und Status prüfen; dient als Faktevidenz."
+      }
+    ]
+  },
+  "preflight_requirements": [
+    "Aktualität von Zugang, Wegführung und Sperrhinweisen vor einer neuen Produktion prüfen.",
+    "Echte Aufnahmen je Szene mit Motivbezug, Herkunft und belegtem Nutzungsrecht für YouTube und TikTok verknüpfen.",
+    "Einen neuen geprüften Produktionsauftrag an die Ablehnung und den ursprünglichen Auftrag binden. Den alten visuellen Plan mit Wegskizze nicht übernehmen.",
+    "Studio und Control Plane gemeinsam auf Production Green prüfen.",
+    "Neue Fassung separat zur Telegram-Freigabe vorlegen."
+  ],
+  "blockers": [
+    "VERIFIED_STATION_MEDIA_MISSING",
+    "PRODUCTION_REAL_MEDIA_INTEGRATION_PENDING",
+    "ORCHESTRATOR_REJECTED_REVIEW_HANDOFF_PENDING"
+  ]
+}
