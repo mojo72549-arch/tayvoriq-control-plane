@@ -2,6 +2,8 @@ const CONTROL_REPO='mojo72549-arch/tayvoriq-control-plane';
 const STUDIO_REPO='mojo72549-arch/shorts-agent-studio';
 const RAW_HEALTH='https://raw.githubusercontent.com/mojo72549-arch/tayvoriq-control-plane/main/run-status/ops-health.json';
 const ACTIVE_POINTER='.github/state/tayvoriq-active-production-request.json';
+const PRODUCTION_GREEN='.github/state/tayvoriq-production-green.json';
+const ORCHESTRATOR_WORKFLOW='tayvoriq-agent-orchestrator-v2.yml';
 const PILOT_BRANCH='lab/cinematic-control-center';
 const PILOT_STATE='cinematic-control-center/run-state.json';
 const API='https://api.github.com';
@@ -170,6 +172,8 @@ function buildStages(jobs=[]){
     ['Review-Seite',['publish review page']],
     ['Telegram Review',['send telegram review']]
   ];
+  const realMediaStep=findStep(steps,'require verified real-location images or footage');
+  if(realMediaStep) defs.splice(defs.length-2,0,['Echte Bildquellen',[realMediaStep.name]]);
   return defs.map(([label,pats])=>{
     const step=findStep(steps,...pats);
     return {label,status:phase(step),step_number:step?.number??null,step_name:step?.name||null};
@@ -440,6 +444,26 @@ async function legacyState(headers,authenticated){
   }
 }
 
+function buildProductionDesk(green, run, stages, reviewDelivered){
+  const verified=green?.schema==='tayvoriq-production-green-v1' &&
+    green.implementation_repository===STUDIO_REPO && /^[0-9a-f]{40}$/.test(green.implementation_sha) &&
+    green.full_preflight_passed===true && green.quality_gates_weakened===false;
+  const reviewId=String(run?.id||'');
+  const mediaGate=run ? stages.find(stage=>stage.label==='Echte Bildquellen')?.status||'not_observed' : 'unknown';
+  return {
+    orchestrator_url:`https://github.com/${CONTROL_REPO}/actions/workflows/${ORCHESTRATOR_WORKFLOW}`,
+    production_green:verified ? {
+      sha:green.implementation_sha,
+      verified_at:green.verified_at||null,
+      studio_url:`https://github.com/${STUDIO_REPO}/commit/${green.implementation_sha}`
+    } : null,
+    run_id:/^[1-9][0-9]{0,19}$/.test(reviewId) ? reviewId : null,
+    real_media_gate:mediaGate,
+    review_url:reviewDelivered && /^[1-9][0-9]{0,19}$/.test(reviewId)
+      ? `https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${reviewId}/` : null
+  };
+}
+
 export default async function handler(req,res){
   const checkedAt=new Date().toISOString();
   const gh=ghHeaders();
@@ -454,6 +478,7 @@ export default async function handler(req,res){
   let pilotRun=null;
   let pilotUnavailable=null;
 
+  const release=repoJson(CONTROL_REPO,PRODUCTION_GREEN,gh.headers).catch(()=>null);
   try{snapshot=await health()}catch(error){errors.push(`health:${error?.message||error}`)}
   try{
     pointer=await repoJson(CONTROL_REPO,ACTIVE_POINTER,gh.headers);
@@ -597,6 +622,7 @@ export default async function handler(req,res){
     recovery,
     incident,
     healthchecks,
+    production_desk:buildProductionDesk(await release,canonicalRun,stages,reviewDelivered),
     events:[...liveEvents,...(snapshot?.events||[])].slice(0,20),
     pilot,
     operator_feed:operatorFeed,
