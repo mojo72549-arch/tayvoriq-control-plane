@@ -146,7 +146,8 @@ jobs:
                   if not re.fullmatch(r'[0-9a-f]{40}', before) or set(before)=={'0'}:
                       return False
                   paths=subprocess.check_output(['git','diff','--name-only',before,os.environ['GITHUB_SHA']],text=True).splitlines()
-                  return plan['decision_path'] in paths
+                  return (plan['decision_path'] in paths or
+                          '.github/workflows/tayvoriq-agent-orchestrator-v2.yml' in paths)
               due_rejection = plan and (changed_rejection() if event == 'push' else slot == plan['slot'])
               if due_rejection and not plan['selection_delivered']:
                   slot=plan['slot']

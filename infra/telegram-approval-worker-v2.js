@@ -315,14 +315,32 @@ export default {
       return decideArtifactReview(env, callback, chatId, artifactDecision[1], artifactDecision[2]);
     }
 
+    const markedReason = callbackData.match(/^tayvoriq:reason:(\d{1,20}):(visuals|voice|content|other)$/);
+    if (markedReason) {
+      const result = await storeReviewRejection(env, markedReason[1], null, REVIEW_REASONS[markedReason[2]]);
+      if (!result.ok) {
+        await answerCallback(env, callback.id, 'Der Grund konnte gerade nicht gespeichert werden.', true);
+        return new Response('reason not stored', { status: 409 });
+      }
+      await answerCallback(env, callback.id, 'Ablehnungsgrund gespeichert.');
+      await clearKeyboard(env, chatId, callback.message?.message_id);
+      return new Response('ok');
+    }
+
     const rejectMatch = callbackData.match(/^tayvoriq:reject:(\d+)$/i)
       || text.match(/^ablehnen\s+(\d+)$/i)
       || text.match(/^reject:(\d+)$/i);
     if (rejectMatch) {
       const runId = rejectMatch[1];
-      if (callback?.id) await answerCallback(env, callback.id, `Run ${runId} wurde abgelehnt.`);
+      const result = await storeReviewRejection(env, runId, callback?.message?.message_id ?? null);
+      if (!result.ok) {
+        if (callback?.id) await answerCallback(env, callback.id, 'Ablehnung konnte nicht gespeichert werden.', true);
+        else await requireTelegramMessage(await telegram(env, chatId, 'Ablehnung konnte nicht gespeichert werden. Prüfe den aktuellen Review.'));
+        return new Response('rejection not recorded', { status: 409 });
+      }
+      if (callback?.id) await answerCallback(env, callback.id, 'Ablehnung gespeichert.');
       if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
-      await requireTelegramMessage(await telegram(env, chatId, `❌ Run ${runId} wurde abgelehnt. Es erfolgt kein YouTube-Upload.`));
+      if (result.needsReason) await askForReviewReason(env, chatId, runId);
       return new Response('ok');
     }
 
@@ -336,6 +354,16 @@ export default {
     }
 
     const runId = approveMatch[1];
+    try {
+      const record = await reviewRepoFile(env, `.automation/tayvoriq-artifact-decisions/${runId}.json`);
+      if (record?.data.state === 'REJECTED') {
+        if (callback?.id) await answerCallback(env, callback.id, 'Dieses Video wurde bereits abgelehnt.', true);
+        return new Response('review rejected', { status: 409 });
+      }
+    } catch {
+      if (callback?.id) await answerCallback(env, callback.id, 'Review-Status gerade nicht verfügbar.', true);
+      return new Response('review decision unavailable', { status: 503 });
+    }
     const base = `https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/${runId}`;
     const youtubeVideoUrl = `${base}/short_youtube.mp4`;
     const tiktokVideoUrl = `${base}/short_tiktok.mp4`;
@@ -389,6 +417,87 @@ export default {
   },
 };
 
+const REVIEW_REASONS = {
+  visuals: 'Bildmaterial oder Bildgestaltung entspricht nicht der Freigabe.',
+  voice: 'Stimme, Aussprache oder Ton entspricht nicht der Freigabe.',
+  content: 'Inhalt oder Aussage entspricht nicht der Freigabe.',
+  other: 'Anderer Grund. Konkrete Korrektur muss noch eingegrenzt werden.',
+};
+
+async function askForReviewReason(env, chatId, runId) {
+  const button = (text, reason) => ({ text, callback_data: `tayvoriq:reason:${runId}:${reason}` });
+  await requireTelegramMessage(await telegramWithMarkup(env, chatId,
+    `❌ Video ${runId} abgelehnt. Was soll vor einer neuen Fassung korrigiert werden?`,
+    { inline_keyboard: [[button('Bildmaterial', 'visuals'), button('Stimme / Ton', 'voice')],
+      [button('Inhalt', 'content'), button('Anderes', 'other')]] }));
+}
+
+async function reviewRepoFile(env, path, write) {
+  const repository = env.GITHUB_REPOSITORY || 'mojo72549-arch/tayvoriq-control-plane';
+  const headers = {
+    Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json',
+    'User-Agent': 'tayvoriq-telegram-approval', 'Content-Type': 'application/json',
+  };
+  const url = `https://api.github.com/repos/${repository}/contents/${path}`;
+  if (write) {
+    return fetch(url, { method: 'PUT', headers, body: JSON.stringify(write) });
+  }
+  const response = await fetch(url + '?ref=main', { headers, cache: 'no-store' });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('review state unavailable');
+  const file = await response.json();
+  if (!file.sha || file.encoding !== 'base64') throw new Error('review state unreadable');
+  const bytes = Uint8Array.from(atob(file.content.replace(/\s/g, '')), c => c.charCodeAt(0));
+  return { sha: file.sha, data: JSON.parse(new TextDecoder().decode(bytes)) };
+}
+
+async function storeReviewRejection(env, runId, telegramMessageId, reason) {
+  if (!/^\d{1,20}$/.test(runId)) return { ok: false };
+  const path = `.automation/tayvoriq-artifact-decisions/${runId}.json`;
+  try {
+    const existing = await reviewRepoFile(env, path);
+    let record;
+    if (existing) {
+      record = existing.data;
+      if (record.schema !== 'tayvoriq-artifact-approval' || String(record.review_id) !== runId ||
+          record.state !== 'REJECTED' || (telegramMessageId !== null && telegramMessageId !== record.telegram_message_id)) {
+        return { ok: false };
+      }
+      if (!reason || record.rejection_reason) return { ok: true, needsReason: !record.rejection_reason };
+      record = { ...record, rejection_reason: reason };
+    } else {
+      if (reason) return { ok: false };
+      const pointer = (await reviewRepoFile(env, '.github/state/tayvoriq-active-production-request.json'))?.data;
+      if (pointer?.schema !== 'tayvoriq-active-production-request-v1' ||
+          pointer.state !== 'COMPLETED' || String(pointer.golden_path_run_id) !== runId ||
+          !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(pointer.request_id||'')) return { ok: false };
+      const request = (await reviewRepoFile(env, `requests/${pointer.request_id}.json`))?.data;
+      const receipt = request?.production_completion;
+      if (request?.request_id !== pointer.request_id || !pointer.source_context_sha256 ||
+          request.source_context_sha256 !== pointer.source_context_sha256 ||
+          receipt?.state !== 'REVIEW_READY' || String(receipt.golden_path_run_id) !== runId ||
+          !Number.isSafeInteger(receipt.telegram_message_id) || receipt.telegram_message_id <= 0 ||
+          (telegramMessageId !== null && receipt.telegram_message_id !== telegramMessageId)) return { ok: false };
+      if (await reviewRepoFile(env, `.automation/tayvoriq-reviews/${runId}.json`)) return { ok: false };
+      record = {
+        schema: 'tayvoriq-artifact-approval', review_id: runId, state: 'REJECTED',
+        request_id: pointer.request_id, source_context_sha256: pointer.source_context_sha256,
+        telegram_message_id: receipt.telegram_message_id, decided_via: 'telegram_legacy_review_rejection',
+        decision_id: `telegram-legacy-reject-${runId}`, decided_at: new Date().toISOString(),
+      };
+    }
+    const bytes = new TextEncoder().encode(JSON.stringify(record, null, 2) + '\n');
+    const response = await reviewRepoFile(env, path, {
+      branch: 'main', message: `Record Telegram review rejection ${runId}`,
+      content: btoa(Array.from(bytes, c => String.fromCharCode(c)).join('')),
+      ...(existing ? { sha: existing.sha } : {}),
+    });
+    return { ok: response.ok, needsReason: !record.rejection_reason };
+  } catch {
+    return { ok: false };
+  }
+}
+
 async function decideArtifactReview(env, callback, chatId, action, reviewId) {
   const github = `https://api.github.com/repos/${env.GITHUB_REPOSITORY}`;
   const githubHeaders = {
@@ -419,6 +528,7 @@ async function decideArtifactReview(env, callback, chatId, action, reviewId) {
     if (!saved.ok) throw new Error('decision compare-and-swap failed');
     await answerCallback(env, callback.id, action === 'approve' ? 'Freigabe gespeichert.' : 'Video abgelehnt.');
     await clearKeyboard(env, chatId, messageId);
+    if (action === 'reject') await askForReviewReason(env, chatId, reviewId);
     return new Response('ok');
   } catch {
     await answerCallback(env, callback.id, 'Entscheidung konnte gerade nicht bestätigt werden. Bitte erneut versuchen.', true);
