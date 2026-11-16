@@ -43,6 +43,8 @@ def followup(root=Path(".")):
     if not slot_match:
         return None
     reason = str(decision.get("rejection_reason") or "").strip()[:600]
+    action = decision.get("followup_action")
+    action = action if action in {"new_trends", "repair"} else None
     selection_id = f"review-{slot_match[1]}-{run_id}"
     delivery = read(root / DELIVERIES / (selection_id + ".json"))
     return {
@@ -51,7 +53,13 @@ def followup(root=Path(".")):
         "rejected_run_id": run_id,
         "source_context_sha256": source_hash,
         "rejection_reason": reason or None,
-        "replacement_state": "PREFLIGHT_REQUIRED" if reason else "REASON_REQUIRED",
+        "followup_action": action,
+        "new_trends_requested": action == "new_trends" and bool(reason),
+        "replacement_state": ("REASON_REQUIRED" if not reason else
+                              "PREFLIGHT_REQUIRED" if action == "repair" else
+                              "NOT_SELECTED" if not action else "NEW_TRENDS_SELECTED"),
+        "repair_stage": ({"visuals": "VISUALS", "voice": "VOICE", "content": "EDITORIAL"}.get(
+            decision.get("rejection_reason_code"), "DIAGNOSIS") if action == "repair" else None),
         "replacement_dispatch_allowed": False,
         "selection_id": selection_id,
         "selection_delivered": (delivery.get("selection_id") == selection_id

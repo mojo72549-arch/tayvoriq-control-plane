@@ -317,13 +317,34 @@ export default {
 
     const markedReason = callbackData.match(/^tayvoriq:reason:(\d{1,20}):(visuals|voice|content|other)$/);
     if (markedReason) {
-      const result = await storeReviewRejection(env, markedReason[1], null, REVIEW_REASONS[markedReason[2]]);
+      const result = await storeReviewRejection(env, markedReason[1], null, REVIEW_REASONS[markedReason[2]], undefined, markedReason[2]);
       if (!result.ok) {
         await answerCallback(env, callback.id, 'Der Grund konnte gerade nicht gespeichert werden.', true);
         return new Response('reason not stored', { status: 409 });
       }
       await answerCallback(env, callback.id, 'Ablehnungsgrund gespeichert.');
-      await clearKeyboard(env, chatId, callback.message?.message_id);
+      if (!result.followupAction) {
+        const button = (label, action) => ({text: label, callback_data: `tayvoriq:followup:${markedReason[1]}:${action}`});
+        await requireTelegramMessage(await editMessageWithMarkup(env, chatId, callback.message?.message_id,
+          'Ablehnungsgrund gespeichert. Wie soll es weitergehen?', {
+            inline_keyboard: [[button('Neue Trends suchen', 'new_trends')], [button('Dieses Video korrigieren', 'repair')]],
+          }));
+      }
+      return new Response('ok');
+    }
+
+    const followup = callbackData.match(/^tayvoriq:followup:(\d{1,20}):(new_trends|repair)$/);
+    if (followup) {
+      const result = await storeReviewRejection(env, followup[1], null, undefined, followup[2]);
+      if (!result.ok) {
+        await answerCallback(env, callback.id, 'Der nächste Schritt konnte nicht gespeichert werden oder wurde bereits gewählt.', true);
+        return new Response('followup not stored', {status: 409});
+      }
+      const text = followup[2] === 'repair'
+        ? 'Korrektur angefordert. Den Stand der Prüfung siehst du im Control Center.'
+        : 'Neue Trendauswahl angefordert. Die Vorschläge kommen nach der Recherche.';
+      await answerCallback(env, callback.id, 'Gespeichert.');
+      await requireTelegramMessage(await editMessageWithMarkup(env, chatId, callback.message?.message_id, text, {inline_keyboard: []}));
       return new Response('ok');
     }
 
@@ -455,7 +476,7 @@ async function reviewRepoFile(env, path, write) {
   return { sha: file.sha, data: JSON.parse(new TextDecoder().decode(bytes)) };
 }
 
-async function storeReviewRejection(env, runId, telegramMessageId, reason) {
+async function storeReviewRejection(env, runId, telegramMessageId, reason, action, reasonCode) {
   if (!/^\d{1,20}$/.test(runId)) return { ok: false };
   const path = `.automation/tayvoriq-artifact-decisions/${runId}.json`;
   try {
@@ -467,10 +488,18 @@ async function storeReviewRejection(env, runId, telegramMessageId, reason) {
           record.state !== 'REJECTED' || (telegramMessageId !== null && telegramMessageId !== record.telegram_message_id)) {
         return { ok: false };
       }
-      if (!reason || record.rejection_reason) return { ok: true, needsReason: !record.rejection_reason };
-      record = { ...record, rejection_reason: reason };
+      if (action) {
+        if (!record.rejection_reason || (record.followup_action && record.followup_action !== action)) return {ok: false};
+        if (record.followup_action === action) return {ok: true, followupAction: action};
+        record = {...record, followup_action: action};
+      } else {
+        if (!reason || record.rejection_reason) {
+          return {ok: true, needsReason: !record.rejection_reason, followupAction: record.followup_action};
+        }
+        record = {...record, rejection_reason: reason, rejection_reason_code: reasonCode};
+      }
     } else {
-      if (reason) return { ok: false };
+      if (reason || action) return { ok: false };
       const pointer = (await reviewRepoFile(env, '.github/state/tayvoriq-active-production-request.json'))?.data;
       if (pointer?.schema !== 'tayvoriq-active-production-request-v1' ||
           pointer.state !== 'COMPLETED' || String(pointer.golden_path_run_id) !== runId ||
@@ -496,7 +525,7 @@ async function storeReviewRejection(env, runId, telegramMessageId, reason) {
       content: btoa(Array.from(bytes, c => String.fromCharCode(c)).join('')),
       ...(existing ? { sha: existing.sha } : {}),
     });
-    return { ok: response.ok, needsReason: !record.rejection_reason };
+    return { ok: response.ok, needsReason: !record.rejection_reason, followupAction: record.followup_action };
   } catch {
     return { ok: false };
   }
