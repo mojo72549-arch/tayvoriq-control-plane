@@ -1613,8 +1613,20 @@ jobs:
           test -n "$JOB_DIR" && test -d "$JOB_DIR"
           python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
 
-      - name: Telegram progress - quality passed
+      - name: Require verified real-location images or footage
+        id: real_media_gate
         if: steps.publication_gate.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          JOB_DIR=$(python -c 'import json,pathlib; d=json.loads(pathlib.Path("implementation/out/tayvoriq-review-state.json").read_text()); print(d.get("job_dir") or "")')
+          test -n "$JOB_DIR" && test -d "implementation/$JOB_DIR"
+          python tools/tayvoriq_real_media_provenance_gate_v1.py \
+            --job-dir "implementation/$JOB_DIR" \
+            --request-id "$SOURCE_REQUEST_ID_PIN"
+
+      - name: Telegram progress - quality passed
+        if: steps.real_media_gate.outcome == 'success'
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -1626,7 +1638,7 @@ jobs:
 
       - name: Publish review page
         id: publish_review
-        if: steps.publication_gate.outcome == 'success'
+        if: steps.real_media_gate.outcome == 'success'
         run: |
           set -euo pipefail
           mkdir -p pages-worktree/tayvoriq
