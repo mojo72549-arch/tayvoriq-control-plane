@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-16T13:02:47.886882Z",
+  "generated_at": "2026-11-16T21:09:27.783650Z",
   "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
@@ -11,7 +11,7 @@
   "api_error": null,
   "research": {
     "schema": "tayvoriq-research-retry-v1",
-    "state": "WAITING",
+    "state": "EXHAUSTED",
     "slot": "morning",
     "berlin_date": "2026-11-16",
     "first_deferred_at_epoch": 1794834146.334445,
@@ -22,7 +22,7 @@
     "provider_retry_at_epoch": 1794834995.606721,
     "max_attempts": 10,
     "valid_until_epoch": 1794855746.334445,
-    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "reason": "RESEARCH_RETRY_EXPIRED",
     "quality_gates_weakened": false,
     "production_started": false
   },
