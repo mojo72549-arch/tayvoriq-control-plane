@@ -322,8 +322,9 @@ jobs:
           from pathlib import Path
 
           request=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
-          selection_id=os.environ['REJECTION_SELECTION'] or str(request.get('selection_id') or '')
-          if os.environ['REJECTION_SELECTION']:
+          rejection_selection=os.environ.get('REJECTION_SELECTION','')
+          selection_id=rejection_selection or str(request.get('selection_id') or '')
+          if rejection_selection:
               request['selection_id']=selection_id
               Path('/tmp/tayvoriq-trend-request.json').write_text(
                   json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

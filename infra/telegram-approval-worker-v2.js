@@ -426,10 +426,14 @@ const REVIEW_REASONS = {
 
 async function askForReviewReason(env, chatId, runId) {
   const button = (text, reason) => ({ text, callback_data: `tayvoriq:reason:${runId}:${reason}` });
-  await requireTelegramMessage(await telegramWithMarkup(env, chatId,
-    `❌ Video ${runId} abgelehnt. Was soll vor einer neuen Fassung korrigiert werden?`,
-    { inline_keyboard: [[button('Bildmaterial', 'visuals'), button('Stimme / Ton', 'voice')],
-      [button('Inhalt', 'content'), button('Anderes', 'other')]] }));
+  try {
+    await requireTelegramMessage(await telegramWithMarkup(env, chatId,
+      `❌ Video ${runId} abgelehnt. Was soll vor einer neuen Fassung korrigiert werden?`,
+      { inline_keyboard: [[button('Bildmaterial', 'visuals'), button('Stimme / Ton', 'voice')],
+        [button('Inhalt', 'content'), button('Anderes', 'other')]] }));
+  } catch {
+    console.warn('Review rejection saved; reason prompt could not be delivered', runId);
+  }
 }
 
 async function reviewRepoFile(env, path, write) {
