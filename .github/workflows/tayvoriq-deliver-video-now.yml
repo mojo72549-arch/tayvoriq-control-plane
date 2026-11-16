@@ -1754,6 +1754,7 @@ jobs:
           PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
           REPLAY_READINESS_OUTCOME: ${{ steps.replay_readiness.outcome }}
           PUBLICATION_INITIAL_OUTCOME: ${{ steps.publication_gate_initial.outcome }}
+          REAL_MEDIA_GATE_OUTCOME: ${{ steps.real_media_gate.outcome }}
           FINAL_VOICE_RECOVERY_OUTCOME: ${{ steps.final_publication_voice_recovery.outcome }}
           CONTROLLER_STATE: ${{ steps.controller.outputs.state }}
           RECOVERY_STATE: ${{ steps.checkpoint_recovery.outputs.state }}
@@ -1854,11 +1855,14 @@ jobs:
               )
               and not visual_checkpoint_failed
           )
+          real_media_gate_failed = os.environ.get("REAL_MEDIA_GATE_OUTCOME") == "failure"
           control_plane_binding_failure = (
               __import__("os").environ.get("PREFLIGHT_OUTCOME") == "success"
               and __import__("os").environ.get("REPLAY_READINESS_OUTCOME") == "failure"
           )
-          if control_plane_binding_failure:
+          if real_media_gate_failed:
+              state = "REAL_MEDIA_PROVENANCE_REQUIRED"
+          elif control_plane_binding_failure:
               state = "CONTROL_PLANE_BINDING_FAILURE"
           elif local_visual_failure:
               # A reusable master exists and the strict audit localized the
@@ -1868,7 +1872,9 @@ jobs:
               # A publishable master already exists. This is stochastic/local
               # narrator-postmux output variance, never a repository-codefix signal.
               state = "TRANSIENT_AUDIO_FAILURE"
-          if state == "LOCAL_VISUAL_REPAIR_REQUIRED":
+          if state == "REAL_MEDIA_PROVENANCE_REQUIRED":
+              failure_class = "VISUAL_PROVENANCE"
+          elif state == "LOCAL_VISUAL_REPAIR_REQUIRED":
               failure_class = "LOCAL_VISUAL"
           elif state == "TRANSIENT_AUDIO_FAILURE":
               failure_class = "LOCAL_VOICE"
@@ -1897,7 +1903,7 @@ jobs:
               "notification_owner": "tayvoriq-x-golden-path",
               "recovery_owner": "tayvoriq-delivery-watch",
               "telegram_technical_failure_expected": True,
-              "internal_recovery_expected": state != "EXTERNAL_ACTION_REQUIRED",
+              "internal_recovery_expected": state not in {"EXTERNAL_ACTION_REQUIRED", "REAL_MEDIA_PROVENANCE_REQUIRED"},
               "quality_gates_weakened": False,
           }
           target = Path("implementation/out/control-plane/failure-notification-policy.json")
