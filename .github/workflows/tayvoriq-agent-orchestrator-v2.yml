@@ -39,6 +39,7 @@ on:
       - ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"
       - ".github/workflows/tayvoriq-deliver-video-now.yml"
       - "tools/tayvoriq_lifecycle_controller_v1.py"
+      - ".automation/tayvoriq-artifact-decisions/*.json"
   schedule:
     # Check durable provider cooldowns without a sleeping runner.
     - cron: "7,22,37,52 * * * *"
@@ -87,6 +88,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           EVENT_SCHEDULE: ${{ github.event.schedule }}
+          PUSH_BEFORE: ${{ github.event.before }}
           INPUT_SLOT: ${{ inputs.slot || '' }}
           RECONCILE_ONLY: ${{ inputs.reconcile_only || false }}
           RESEARCH_RETRY_WAKEUP: ${{ inputs.research_retry_wakeup || false }}
@@ -132,6 +134,25 @@ jobs:
                   from tayvoriq_research_retry_v1 import due_slot
                   slot = due_slot(now=now.timestamp())
               should = should and bool(slot)
+          rejection_selection=''
+          if event == 'push' or (event == 'schedule' and schedule == '7,22,37,52 * * * *' and slot):
+              import sys
+              sys.path.insert(0, 'tools')
+              from tayvoriq_rejected_review_followup import followup
+              plan=followup()
+              before=os.environ.get('PUSH_BEFORE','')
+              def changed_rejection():
+                  import re
+                  if not re.fullmatch(r'[0-9a-f]{40}', before) or set(before)=={'0'}:
+                      return False
+                  paths=subprocess.check_output(['git','diff','--name-only',before,os.environ['GITHUB_SHA']],text=True).splitlines()
+                  return (plan['decision_path'] in paths or
+                          '.github/workflows/tayvoriq-agent-orchestrator-v2.yml' in paths)
+              due_rejection = plan and (changed_rejection() if event == 'push' else slot == plan['slot'])
+              if due_rejection and not plan['selection_delivered']:
+                  slot=plan['slot']
+                  should=True
+                  rejection_selection=plan['selection_id']
           if slot not in {'morning','evening'}:
               should = False
           if os.environ.get('RECONCILE_ONLY') == 'true':
@@ -139,6 +160,7 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
               h.write(f"should_run={'true' if should else 'false'}\n")
               h.write(f"slot={slot}\n")
+              h.write(f"rejection_selection={rejection_selection}\n")
           print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
           PY
 
@@ -150,7 +172,7 @@ jobs:
 
       - name: Detect active editorial series and in-flight episode
         id: mode
-        if: steps.slot.outputs.should_run == 'true'
+        if: steps.slot.outputs.should_run == 'true' && steps.slot.outputs.rejection_selection == ''
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -279,7 +301,7 @@ jobs:
       - name: Generate quality-driven 1-5 trend ranking
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true' && steps.mode.outputs.series_in_flight != 'true' && steps.active_request.outputs.active != 'true'
         env:
-          TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.mode.outputs.series_in_flight }}
+          TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
           TAYVORIQ_RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
         run: |
           set -euo pipefail
@@ -290,6 +312,8 @@ jobs:
 
       - name: Resolve idempotent selection delivery
         id: delivery
+        env:
+          REJECTION_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
         if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active != 'true' && (steps.mode.outputs.active_series != 'true' || steps.mode.outputs.series_in_flight != 'true')
         run: |
           set -euo pipefail
@@ -298,7 +322,12 @@ jobs:
           from pathlib import Path
 
           request=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
-          selection_id=str(request.get('selection_id') or '')
+          rejection_selection=os.environ.get('REJECTION_SELECTION','')
+          selection_id=rejection_selection or str(request.get('selection_id') or '')
+          if rejection_selection:
+              request['selection_id']=selection_id
+              Path('/tmp/tayvoriq-trend-request.json').write_text(
+                  json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           if not re.fullmatch(r'[A-Za-z0-9_-]{4,40}', selection_id):
               raise SystemExit(f'invalid selection id: {selection_id!r}')
           delivery=Path(f'.automation/tayvoriq-agent-v2/deliveries/{selection_id}.json')
@@ -679,7 +708,11 @@ jobs:
           PYCODE
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python -S tools/tayvoriq_rejected_review_followup.py
           git add .github/state/tayvoriq-lifecycle-decision.json
+          if [ -d .github/state/rejected-review-followups ]; then
+            git add .github/state/rejected-review-followups
+          fi
           git diff --cached --quiet && exit 0
           git commit -m "ops: record verified lifecycle decision"
           for attempt in 1 2 3 4 5; do
