@@ -12,6 +12,20 @@ ZONE = ZoneInfo("Europe/Berlin")
 FAST_ATTEMPTS = 8
 MAX_ATTEMPTS = 10
 SLOW_COOLDOWN = 3600
+REVIEW_RETRY_SECONDS = 5 * 60
+REVIEW_DEADLINE_SECONDS = 10 * 60
+REVIEW_MAX_ATTEMPTS = 3
+REVIEW_RETRY_DIR = Path(".automation/tayvoriq-agent-v2/research-retries")
+
+
+def review_path(selection_id: str) -> Path:
+    if not selection_id.startswith("review-") or any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for ch in selection_id):
+        raise ValueError("INVALID_REVIEW_SELECTION_ID")
+    return REVIEW_RETRY_DIR / f"{selection_id}.json"
+
+
+def _review_selection(path: Path) -> str:
+    return path.stem if path.parent.name == REVIEW_RETRY_DIR.name and path.stem.startswith("review-") else ""
 
 
 def configured_path() -> Path | None:
@@ -29,23 +43,33 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     same = previous.get("slot") == slot and previous.get("berlin_date") == date
     first = float(previous.get("first_deferred_at_epoch") or now) if same else now
     attempts = int(previous.get("attempts") or 0) + 1 if same else 1
-    deadline = first + 6 * 3600
+    review_selection = _review_selection(path)
+    max_attempts = REVIEW_MAX_ATTEMPTS if review_selection else MAX_ATTEMPTS
+    deadline = first + (REVIEW_DEADLINE_SECONDS if review_selection else 6 * 3600)
     provider_next_at = next_at
-    phase = 'SLOW_RECOVERY' if attempts >= FAST_ATTEMPTS else 'NORMAL'
-    if next_at is not None and attempts >= FAST_ATTEMPTS:
+    if review_selection and next_at is not None:
+        # A user-requested replacement selection is a short interactive task.
+        # Provider cooldowns may inform diagnostics, but never turn the UI into
+        # an hours-long silent queue.
+        next_at = min(next_at, now + REVIEW_RETRY_SECONDS)
+    phase = 'REVIEW_FAST' if review_selection else ('SLOW_RECOVERY' if attempts >= FAST_ATTEMPTS else 'NORMAL')
+    if next_at is not None and attempts >= FAST_ATTEMPTS and not review_selection:
         next_at = max(next_at, now + SLOW_COOLDOWN)
     status = "WAITING" if next_at is not None else "EXTERNAL_BLOCKER"
-    if attempts >= MAX_ATTEMPTS or now >= deadline or (next_at is not None and next_at >= deadline):
+    if attempts >= max_attempts or now >= deadline or (next_at is not None and next_at > deadline):
         status = "EXHAUSTED"
     result = {"schema": "tayvoriq-research-retry-v1", "state": status, "slot": slot,
               "berlin_date": date, "first_deferred_at_epoch": first,
               "attempts": attempts, "retry_at_epoch": next_at,
               "retry_phase": phase, "last_deferred_at_epoch": now,
               "provider_retry_at_epoch": provider_next_at,
-              "max_attempts": MAX_ATTEMPTS,
+              "max_attempts": max_attempts,
               "valid_until_epoch": deadline,
               "reason": "PROVIDER_PAYMENT_OR_CONFIGURATION_BLOCKER" if next_at is None else "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
               "quality_gates_weakened": False, "production_started": False}
+    if review_selection:
+        result["selection_id"] = review_selection
+        result["sla_seconds"] = REVIEW_DEADLINE_SECONDS
     if status == 'EXHAUSTED':
         result['reason'] = 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
     elif status == 'WAITING' and phase == 'SLOW_RECOVERY':
@@ -89,6 +113,24 @@ def due_slot(path: Path | None = None, *, now: float | None = None) -> str:
     if state.get("state") == "WAITING" and float(state.get("retry_at_epoch") or float("inf")) <= now:
         return state["slot"]
     return ""
+
+
+def review_due(selection_id: str, *, now: float | None = None) -> bool:
+    path = review_path(selection_id)
+    if not path.is_file():
+        return True
+    state = current(path, now=now)
+    due = (
+        state.get("selection_id") == selection_id
+        and state.get("state") == "WAITING"
+        and float(state.get("retry_at_epoch") or float("inf")) <= (time.time() if now is None else now)
+    )
+    if due:
+        return True
+    if state.get("state") in {"EXHAUSTED", "EXTERNAL_BLOCKER"}:
+        status = read(Path(".automation/tayvoriq-agent-v2/review-trend-status") / f"{selection_id}.json")
+        return status.get("state") != "BLOCKED"
+    return False
 
 
 def delivered(slot: str) -> None:

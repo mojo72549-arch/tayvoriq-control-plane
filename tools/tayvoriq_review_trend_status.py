@@ -11,8 +11,8 @@ from zoneinfo import ZoneInfo
 ROOT = Path(".automation/tayvoriq-agent-v2")
 STATES = {
     "SEARCHING": "TAYVORIQ · Neue Trendauswahl angefordert. Die Recherche läuft. Du musst nichts tun.",
-    "WAITING": "TAYVORIQ · Die Trendrecherche pausiert. Der Orchestrator versucht es automatisch erneut.",
-    "BLOCKED": "TAYVORIQ · Die neue Trendauswahl konnte nicht zugestellt werden. Details findest du im Control Center.",
+    "WAITING": "TAYVORIQ · Noch keine belastbare Trendauswahl. Der Orchestrator versucht es innerhalb von fünf Minuten erneut.",
+    "BLOCKED": "TAYVORIQ · Die 10-Minuten-Grenze ist erreicht. Eine belastbare neue Trendauswahl konnte nicht erstellt werden. Der konkrete Blocker steht im Control Center.",
 }
 
 
@@ -76,6 +76,10 @@ def main():
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"schema": "tayvoriq-review-trend-status-v1",
         "selection_id": selection, "state": state, "retry_at": retry_at,
+        "attempts": int(retry.get("attempts") or 0),
+        "max_attempts": int(retry.get("max_attempts") or 0),
+        "reason": retry.get("reason"),
+        "sla_seconds": int(retry.get("sla_seconds") or 600),
         "updated_at": now.isoformat(), "telegram_notices": notices}, indent=2) + "\n", encoding="utf-8")
 
 

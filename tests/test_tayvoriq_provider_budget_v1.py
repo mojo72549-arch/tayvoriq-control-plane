@@ -249,11 +249,12 @@ class SchedulerContractTests(unittest.TestCase):
         agent = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
         triggers = agent.get('on') or agent.get(True)
         self.assertEqual({item['cron'] for item in triggers['schedule']}, {
-            '7,22,37,52 * * * *', '30 3 * * *', '30 4 * * *', '0 17 * * *', '0 18 * * *',
+            '*/5 * * * *', '30 3 * * *', '30 4 * * *', '0 17 * * *', '0 18 * * *',
         })
         steps = agent['jobs']['trend-gate']['steps']
         resolver = next(step['run'] for step in steps if step.get('id') == 'slot')
-        self.assertIn("schedule == '7,22,37,52 * * * *'", resolver)
+        self.assertIn("schedule == '*/5 * * * *'", resolver)
+        self.assertIn("review_due(plan['selection_id']", resolver)
         self.assertIn('slot = due_slot(now=now.timestamp())', resolver)
         self.assertFalse((root / '.github/workflows/tayvoriq-research-retry-wakeup.yml').exists())
         self.assertNotIn('tayvoriq-research-retry-wakeup.yml/dispatches', str(steps))
@@ -396,7 +397,7 @@ class SchedulerContractTests(unittest.TestCase):
         workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
         steps = workflow['jobs']['trend-gate']['steps']
         resolver = next(s for s in steps if s.get('id') == 'slot')['run']
-        self.assertIn("schedule == '7,22,37,52 * * * *'", resolver)
+        self.assertIn("schedule == '*/5 * * * *'", resolver)
         self.assertIn('due_slot(now=now.timestamp())', resolver)
         push_resolver = resolver.split("if event == 'push' and should:", 1)[1].split("if event == 'schedule':", 1)[0]
         self.assertIn("slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')", push_resolver)
@@ -410,6 +411,39 @@ class SchedulerContractTests(unittest.TestCase):
         names = [s.get('name') for s in steps]
         self.assertIn('Validate approval contract', names)
         self.assertIn('Detect active production or recovery request', names)
+
+    def test_rejected_review_gets_own_five_minute_queue_and_ten_minute_sla(self):
+        selection = 'review-evening-43776528221'
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            queue = folder / 'research-retries' / f'{selection}.json'
+            queue.parent.mkdir()
+            first = retry.defer('evening', NOW + 900, path=queue, now=NOW)
+            self.assertEqual(first['selection_id'], selection)
+            self.assertEqual(first['retry_at_epoch'], NOW + 300)
+            self.assertEqual(first['valid_until_epoch'], NOW + 600)
+            self.assertEqual(first['sla_seconds'], 600)
+            self.assertEqual(first['max_attempts'], 3)
+            self.assertEqual(first['retry_phase'], 'REVIEW_FAST')
+            with patch.object(retry, 'REVIEW_RETRY_DIR', queue.parent), \
+                 patch.object(retry, 'read', wraps=read):
+                self.assertFalse(retry.review_due(selection, now=NOW + 299))
+                self.assertTrue(retry.review_due(selection, now=NOW + 300))
+            second = retry.defer('evening', NOW + 1200, path=queue, now=NOW + 300)
+            self.assertEqual(second['retry_at_epoch'], NOW + 600)
+            final = retry.defer('evening', NOW + 1500, path=queue, now=NOW + 600)
+            self.assertEqual(final['state'], 'EXHAUSTED')
+            self.assertEqual(final['attempts'], 3)
+
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        steps = workflow['jobs']['trend-gate']['steps']
+        bind = next(step for step in steps if step.get('name') == 'Bind replacement trend research state')
+        self.assertIn('research-retries/${REVIEW_SELECTION}.json', bind['run'])
+        generate = next(step for step in steps if step.get('name') == 'Generate quality-driven 1-5 trend ranking')
+        self.assertEqual(generate['env']['TAYVORIQ_RESEARCH_SELECTION_ID'],
+                         "${{ steps.slot.outputs.rejection_selection }}")
 
 if __name__ == '__main__':
     unittest.main()
