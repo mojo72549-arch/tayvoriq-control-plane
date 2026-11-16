@@ -41,8 +41,9 @@ on:
       - "tools/tayvoriq_lifecycle_controller_v1.py"
       - ".automation/tayvoriq-artifact-decisions/*.json"
   schedule:
-    # Check durable provider cooldowns without a sleeping runner.
-    - cron: "7,22,37,52 * * * *"
+    # Interactive replacement-trend requests have a five-minute wakeup SLA.
+    # Routine scans still remain bound to their dedicated morning/evening slots.
+    - cron: "*/5 * * * *"
     # GitHub cron is UTC; the resolver below selects the DST-correct Berlin pair.
     - cron: "30 3 * * *"
     - cron: "30 4 * * *"
@@ -121,21 +122,28 @@ jobs:
               # A due retry keeps its original slot even if a delayed/manual
               # trigger arrives after the morning/evening clock boundary.
               slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')
-          if event == 'schedule':
+           rejection_selection=''
+           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
                   'morning': '30 3 * * *' if offset == 2 else '30 4 * * *',
                   'evening': '0 17 * * *' if offset == 2 else '0 18 * * *',
               }
               slot = next((name for name, cron in expected.items() if cron == schedule), '')
-              if not slot and schedule == '7,22,37,52 * * * *':
+               if not slot and schedule == '*/5 * * * *':
                   import sys
                   sys.path.insert(0, 'tools')
-                  from tayvoriq_research_retry_v1 import due_slot
-                  slot = due_slot(now=now.timestamp())
+                   from tayvoriq_rejected_review_followup import followup
+                   from tayvoriq_research_retry_v1 import due_slot, review_due
+                   plan=followup()
+                   if (plan and plan['new_trends_requested'] and not plan['selection_delivered']
+                           and review_due(plan['selection_id'], now=now.timestamp())):
+                       slot=plan['slot']
+                       rejection_selection=plan['selection_id']
+                   else:
+                       slot = due_slot(now=now.timestamp())
               should = should and bool(slot)
-          rejection_selection=''
-          if event == 'push' or (event == 'schedule' and schedule == '7,22,37,52 * * * *' and slot):
+           if event == 'push':
               import sys
               sys.path.insert(0, 'tools')
               from tayvoriq_rejected_review_followup import followup
@@ -148,7 +156,7 @@ jobs:
                   paths=subprocess.check_output(['git','diff','--name-only',before,os.environ['GITHUB_SHA']],text=True).splitlines()
                   return (plan['decision_path'] in paths or
                           '.github/workflows/tayvoriq-agent-orchestrator-v2.yml' in paths)
-              due_rejection = plan and (changed_rejection() if event == 'push' else slot == plan['slot'])
+               due_rejection = plan and changed_rejection()
               if due_rejection and plan['new_trends_requested'] and not plan['selection_delivered']:
                   slot=plan['slot']
                   should=True
@@ -163,6 +171,15 @@ jobs:
               h.write(f"rejection_selection={rejection_selection}\n")
           print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
           PY
+
+      - name: Bind replacement trend research state
+        if: steps.slot.outputs.rejection_selection != '' && steps.slot.outputs.should_run == 'true'
+        env:
+          REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
+        run: |
+          set -euo pipefail
+          echo "TAYVORIQ_RESEARCH_SELECTION_ID=${REVIEW_SELECTION}" >> "$GITHUB_ENV"
+          echo "TAYVORIQ_RESEARCH_RETRY_FILE=.automation/tayvoriq-agent-v2/research-retries/${REVIEW_SELECTION}.json" >> "$GITHUB_ENV"
 
       - name: Reconcile active series after verified publication
         if: steps.slot.outputs.should_run == 'true'
@@ -325,6 +342,7 @@ jobs:
         env:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
           TAYVORIQ_RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
+          TAYVORIQ_RESEARCH_SELECTION_ID: ${{ steps.slot.outputs.rejection_selection }}
         run: |
           set -euo pipefail
           python tools/tayvoriq_agent_trend_radar_v8.py \

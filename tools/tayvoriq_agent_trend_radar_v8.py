@@ -11,9 +11,11 @@ import json
 from pathlib import Path
 
 import tayvoriq_agent_trend_radar_v7 as growth_v7
+import tayvoriq_agent_research_resilience_v2 as research_resilience
 import tayvoriq_retention_v5 as retention_v5
 
 base = growth_v7.base
+research_resilience.install()
 _original_prompt = base.prompt_for
 _original_diversify = base.diversify
 
