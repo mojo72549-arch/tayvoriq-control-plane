@@ -149,7 +149,7 @@ jobs:
                   return (plan['decision_path'] in paths or
                           '.github/workflows/tayvoriq-agent-orchestrator-v2.yml' in paths)
               due_rejection = plan and (changed_rejection() if event == 'push' else slot == plan['slot'])
-              if due_rejection and not plan['selection_delivered']:
+              if due_rejection and plan['new_trends_requested'] and not plan['selection_delivered']:
                   slot=plan['slot']
                   should=True
                   rejection_selection=plan['selection_id']

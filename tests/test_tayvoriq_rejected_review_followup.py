@@ -38,21 +38,29 @@ class RejectedReviewFollowupTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data), encoding="utf-8")
 
-    def test_rejection_prepares_replacement_and_one_fresh_selection(self):
-        self.write(self.decision_path, self.decision)
+    def test_repair_is_prepared_without_requesting_trends(self):
+        self.write(self.decision_path, {**self.decision, "followup_action": "repair",
+                                        "rejection_reason_code": "visuals"})
         plan = module.followup(self.root)
         self.assertEqual(plan["replacement_state"], "PREFLIGHT_REQUIRED")
+        self.assertEqual(plan["repair_stage"], "VISUALS")
         self.assertFalse(plan["replacement_dispatch_allowed"])
+        self.assertFalse(plan["new_trends_requested"])
+
+    def test_new_trends_require_an_explicit_choice_and_a_reason(self):
+        self.write(self.decision_path, self.decision)
+        self.assertFalse(module.followup(self.root)["new_trends_requested"])
+        self.write(self.decision_path, {**self.decision, "followup_action": "new_trends", "rejection_reason": ""})
+        self.assertFalse(module.followup(self.root)["new_trends_requested"])
+        self.write(self.decision_path, {**self.decision, "followup_action": "new_trends"})
+        plan = module.followup(self.root)
+        self.assertTrue(plan["new_trends_requested"])
         self.assertFalse(plan["selection_delivered"])
         selection = plan["selection_id"]
         self.write(f"{module.DELIVERIES}/{selection}.json", {
             "selection_id": selection, "telegram_delivery_verified": True, "telegram_message_id": 55,
         })
         self.assertTrue(module.followup(self.root)["selection_delivered"])
-
-    def test_unknown_reason_never_blocks_fresh_selection(self):
-        self.write(self.decision_path, {**self.decision, "rejection_reason": ""})
-        self.assertEqual(module.followup(self.root)["replacement_state"], "REASON_REQUIRED")
 
     def test_other_review_or_approval_cannot_trigger_followup(self):
         self.assertIsNone(module.followup(self.root))
