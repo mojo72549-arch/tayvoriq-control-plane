@@ -298,6 +298,28 @@ jobs:
             --output /tmp/tayvoriq-trend-request.json \
             --audit-output /tmp/tayvoriq-trend-audit.json
 
+      - name: Acknowledge requested replacement trends
+        if: steps.slot.outputs.rejection_selection != '' && steps.active_request.outputs.active != 'true' && steps.slot.outputs.should_run == 'true'
+        continue-on-error: true
+        env:
+          REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_review_trend_status.py "$REVIEW_SELECTION" start
+          path=".automation/tayvoriq-agent-v2/review-trend-status/${REVIEW_SELECTION}.json"
+          [ -f "$path" ] || exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "$path"
+          git diff --cached --quiet -- "$path" && exit 0
+          git commit -m "ops(tayvoriq): record review trend status" -- "$path"
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
       - name: Generate quality-driven 1-5 trend ranking
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true' && steps.mode.outputs.series_in_flight != 'true' && steps.active_request.outputs.active != 'true'
         env:
@@ -586,8 +608,30 @@ jobs:
                   time.sleep(5 * attempt)
           PY
 
+      - name: Report deferred or blocked replacement trends
+        if: always() && steps.slot.outputs.rejection_selection != '' && steps.active_request.outputs.active != 'true' && steps.slot.outputs.should_run == 'true'
+        continue-on-error: true
+        env:
+          REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_review_trend_status.py "$REVIEW_SELECTION" finish
+          path=".automation/tayvoriq-agent-v2/review-trend-status/${REVIEW_SELECTION}.json"
+          [ -f "$path" ] || exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "$path"
+          git diff --cached --quiet -- "$path" && exit 0
+          git commit -m "ops(tayvoriq): record review trend status" -- "$path"
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
       - name: Notify gate failure once for this run
-        if: failure() && steps.slot.outputs.should_run == 'true'
+        if: failure() && steps.slot.outputs.should_run == 'true' && steps.slot.outputs.rejection_selection == ''
         continue-on-error: true
         run: |
           if [ -f /tmp/tayvoriq-research-deferred.json ]; then
