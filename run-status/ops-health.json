@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-23T13:18:14.807887Z",
+  "generated_at": "2026-11-23T13:21:27.338316Z",
   "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
@@ -15,17 +15,17 @@
     "slot": "morning",
     "berlin_date": "2026-11-23",
     "first_deferred_at_epoch": 1795419682.8048575,
-    "attempts": 8,
-    "retry_at_epoch": 1795439880,
+    "attempts": 9,
+    "retry_at_epoch": 1795441222.8048575,
     "retry_phase": "SLOW_RECOVERY",
-    "last_deferred_at_epoch": 1795439480.526287,
-    "provider_retry_at_epoch": 1795439566.9251766,
+    "last_deferred_at_epoch": 1795440076.5588143,
+    "provider_retry_at_epoch": 1795440162.9578993,
     "max_attempts": 10,
     "valid_until_epoch": 1795441282.8048575,
     "reason": "RESEARCH_PROVIDER_CIRCUIT_COOLDOWN",
     "quality_gates_weakened": false,
     "production_started": false,
-    "last_research_attempt": "45181373577.1"
+    "last_research_attempt": "45183032959.1"
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
