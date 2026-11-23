@@ -15,6 +15,11 @@ from urllib.parse import urlparse
 _STOP = set("der die das den dem des ein eine einer einem einen eines und oder aber mit von vom zur zum für auf aus bei nach vor über ist sind wird werden hat haben heute jetzt neu neue neuen neuer meldet berichtet laut sagt the a an and or of to in on for with from as is are was were new says said report reports latest update updates live news current event bestätigt bestätigte meldung quelle unabhängig independently confirmed source sources coverage".split())
 _RULE_CHANGE = r"\bstrengere?\s+([\wäöüß]+)[ -]regeln\b"
 _POLITICAL_ROLE = r"\b\w*(?:minister(?:präsident)?(?:in)?|staatssekretär(?:in)?)\b"
+_APPOINTMENT_SUBJECT = re.compile(
+    r"\b([A-ZÄÖÜ][\w-]{2,})\s+"
+    r"(?i:folgt\b|rückt\s+an\s+die\s+spitze\b|wird\s+(?:nachfolger(?:in)?\b|"
+    r"(?:(?:neue[rs]?|bayerische[rs]?)\s+)?" + _POLITICAL_ROLE + r"))"
+)
 
 # Explicitly bounded event vocabulary: unknown or ambiguous actions defer to
 # another research path. Shared actors/places alone never prove one event.
@@ -166,6 +171,13 @@ def validate_pair(candidate: dict, records: list[dict]) -> list[str]:
         reasons.append("shared_headline_event_anchor_required")
     if any(_status(str(r.get("title") or "")) != _status(headline) for r in records):
         reasons.append("headline_event_status_not_correlated")
+    if "government_appointment" in event:
+        appointees = {name.casefold() for name in _APPOINTMENT_SUBJECT.findall(headline)}
+        if not appointees or any(
+            not appointees.issubset({name.casefold() for name in _APPOINTMENT_SUBJECT.findall(text)})
+            for text in texts
+        ):
+            reasons.append("appointment_subject_not_independently_confirmed")
     headline_terms = claim_terms(headline)
     for index, (text, source_terms) in enumerate(zip(texts, terms), 1):
         overlap = headline_terms & source_terms

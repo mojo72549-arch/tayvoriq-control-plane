@@ -133,3 +133,6 @@ def test_ministerial_succession_evidence_cannot_turn_criticism_into_an_appointme
     assert validate_pair(candidate, sources) == []
     sources[1]["title"] = "Gotthardt wird von Wirtschaftsminister Aiwanger kritisiert"
     assert "shared_headline_event_anchor_required" in validate_pair(candidate, sources)
+    sources[1]["title"] = "Aiwanger folgt Gotthardt als Wirtschaftsminister"
+    sources[1]["context"] = "Hubert Aiwanger folgt Tobias Gotthardt."
+    assert "appointment_subject_not_independently_confirmed" in validate_pair(candidate, sources)
