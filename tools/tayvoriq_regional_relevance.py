@@ -1,10 +1,27 @@
 """Evaluate the documented DE_LOCAL_RELEVANCE_V2 rubric using retrieved RSS evidence."""
 from __future__ import annotations
 
+import re
+
+
 WEIGHTS = {
     "consequence": 25, "proximity": 20, "recognition": 15, "timeliness": 15,
     "explanation": 10, "resolution": 10, "continuity": 5,
 }
+
+
+def evidence_options(sid, title, context):
+    """Source-local references select unmodified title or complete publisher sentences."""
+    options = {}
+    if 4 <= len(title.split()) <= 30:
+        options[sid + ":title"] = title
+    for sentence in re.split(r"(?<=[.!?])\s+", context):
+        if (sentence.endswith((".", "!", "?")) and 4 <= len(sentence.split()) <= 30
+                and sentence not in options.values()):
+            options[sid + ":sentence" + str(1 + len(options))] = sentence
+            if len(options) >= 3:
+                break
+    return options
 
 
 def evaluate(card, sources):
@@ -14,14 +31,18 @@ def evaluate(card, sources):
     quotes = card.get("evidence")
     if not isinstance(quotes, dict) or len(sources) != 2:
         return {"passed": False, "reason": "both_original_excerpts_required"}
+    matched = {}
     for source in sources:
         sid = source["source_id"]
         quote = quotes.get(sid)
+        if isinstance(quote, str):
+            quote = source.get("evidence_options", {}).get(quote, quote)
         if not isinstance(quote, str) or not 4 <= len(quote.split()) <= 30:
             return {"passed": False, "reason": "invalid_evidence_quote:" + sid}
         excerpt = " ".join(source["supports"].split()).casefold()
         if " ".join(quote.split()).casefold() not in excerpt:
             return {"passed": False, "reason": "quote_absent_from_retrieved_record:" + sid}
+        matched[source["url"]] = quote
     ratings = card.get("ratings")
     fit = card.get("platform_fit")
     if not isinstance(ratings, dict) or not isinstance(fit, dict):
@@ -47,4 +68,4 @@ def evaluate(card, sources):
     return {"policy": "DE_LOCAL_RELEVANCE_V2", "passed": not issues, "issues": issues,
             "scores": scores, "ratings": {key: ratings.get(key) for key in WEIGHTS},
             "platform_fit": {key: fit.get(key) for key in scores},
-            "evidence": {source["url"]: quotes[source["source_id"]] for source in sources}}
+            "evidence": matched}

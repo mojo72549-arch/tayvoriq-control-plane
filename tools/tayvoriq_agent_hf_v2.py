@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
-from tayvoriq_regional_relevance import evaluate as evaluate_regional_relevance
+from tayvoriq_regional_relevance import evidence_options, evaluate as evaluate_regional_relevance
 from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
@@ -325,14 +325,22 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                      'numbers or locations from other stories. Draft one complete candidate per eligible pair. '
                      'Skip a pair only when the evidence or regional scope is insufficient.\n'
                      + json.dumps(allowlist, ensure_ascii=False))
+    options_by_id = {}
+    if source_bound:
+        for item in indexed:
+            sid = item["source_id"]
+            original = by_id[sid]
+            options_by_id[sid] = evidence_options(sid, original["title"], original.get("context", ""))
+            item["evidence_options"] = options_by_id[sid]
     blob = json.dumps(indexed, ensure_ascii=False)
     print(json.dumps({"event":"source_prompt_budget","records":len(indexed),
                       "independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     policy = ""
     if source_bound:
         policy = """DE_LOCAL_RELEVANCE_V2: supply a regional_scorecard for each candidate, in addition to the schema.
-Use the two actual source_id keys for evidence, each with a verbatim 4-18 word excerpt showing the central event or consequence.
-regional_scorecard = {"evidence":{"<first ID>":"original quote","<second ID>":"original quote"},
+Use the two actual source_id keys for evidence, and select an evidence_options ID from that same record for the central fact or consequence.
+Copy the ID, not the prose. When no suitable option exists, supply a verbatim excerpt of 4-18 words from that original only.
+regional_scorecard = {"evidence":{"<first ID>":"<first ID>:title","<second ID>":"<second ID>:sentence2"},
 "ratings":{"consequence":[YT,TT,"German reason"],"proximity":[YT,TT,"reason"],"recognition":[YT,TT,"reason"],
 "timeliness":[YT,TT,"reason"],"explanation":[YT,TT,"reason"],"resolution":[YT,TT,"reason"],"continuity":[YT,TT,"reason"]},
 "platform_fit":{"youtube":"specific YouTube fit","tiktok":"specific TikTok fit"}}.
@@ -445,7 +453,8 @@ EDITORIAL FALLBACK CONTRACT:
             chunks.append({"title":publisher,"uri":url})
         c["sources"]=normalized
         if source_bound:
-            c["_retrieved_regional_assessment"] = evaluate_regional_relevance(c.get("regional_scorecard"), normalized)
+            evidence = [{**source, "evidence_options": options_by_id.get(source["source_id"], {})} for source in normalized]
+            c["_retrieved_regional_assessment"] = evaluate_regional_relevance(c.get("regional_scorecard"), evidence)
     valid_candidates=[]
     seen_pairs, seen_titles = set(), set()
     for candidate in data.get('candidates') or []:
