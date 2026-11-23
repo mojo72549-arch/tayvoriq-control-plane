@@ -19,6 +19,9 @@ base = provider.base
 FEEDS = [
     # Original German regional/national publishers first: less global filler and
     # more independently reported Germany/BW stories for strict two-source gates.
+    ("stuttgart-presse", "https://www.stuttgart.de/pressemitteilungen/?action=submit&sp%3Acmp=search-1-0-searchResult&sp%3Aout=rss"),
+    ("lkz-stadt", "https://www.lkz.de/feed/6-RSS_Feed_Stadt_Ludwigsburg.xml"),
+    ("lkz-kreis", "https://www.lkz.de/feed/7-RSS_Feed_Kreis_Ludwigsburg.xml"),
     ("zeit-nachrichten", "https://newsfeed.zeit.de/index"),
     ("faz-wirtschaft", "https://www.faz.net/rss/aktuell/wirtschaft/"),
     ("zeit-wirtschaft", "https://newsfeed.zeit.de/wirtschaft/index"),
