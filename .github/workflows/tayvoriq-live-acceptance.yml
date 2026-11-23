@@ -1,0 +1,51 @@
+name: TAYVORIQ Live-Abnahmetest
+on:
+  push:
+    branches: [test/live-trendrecherche-20261123-abend]
+    paths: ['.github/workflows/tayvoriq-live-acceptance.yml', 'tools/**']
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run production radar for the evening slot
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          TAYVORIQ_RESEARCH_SLOT: evening
+          TAYVORIQ_RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
+          TAYVORIQ_RESEARCH_RETRY_FILE: /tmp/acceptance-retry.json
+          TAYVORIQ_PROVIDER_HEALTH_FILE: .automation/tayvoriq-agent-v2/provider-health.json
+        run: |
+          python -u tools/tayvoriq_agent_trend_radar_v8.py --slot evening --output /tmp/tayvoriq-trend-request.json --audit-output /tmp/tayvoriq-trend-audit.json
+      - name: Validate qualifying evening selection
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          request = json.loads(Path('/tmp/tayvoriq-trend-request.json').read_text())
+          audit = json.loads(Path('/tmp/tayvoriq-trend-audit.json').read_text())
+          assert request['slot'] == 'evening' and 2 <= len(request['trends']) <= 5
+          assert not request.get('quality_gates_weakened') and audit
+          for trend in request['trends']:
+              assert trend['source_context']['independent_news_count'] >= 2
+              print(trend['title'])
+          PY
+      - name: Store research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-evidence
+          path: |
+            /tmp/tayvoriq-trend-request.json
+            /tmp/tayvoriq-trend-audit.json
+            /tmp/acceptance-retry.json
+          if-no-files-found: ignore
+          retention-days: 3
