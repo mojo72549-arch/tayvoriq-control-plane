@@ -14,6 +14,39 @@ function deliveryConfirmed(receipt, selection) {
     && Number.isSafeInteger(receipt.telegram_message_id) && receipt.telegram_message_id > 0;
 }
 
+async function replacementWakeup(read, timestamp) {
+  const pointer = await read('.github/state/tayvoriq-active-production-request.json');
+  const run = pointer?.golden_path_run_id;
+  const slot = String(pointer?.selection_id || '').match(/(?:^|-)(morning|evening)(?:-|$)/)?.[1];
+  if (pointer?.state !== 'COMPLETED' || !Number.isSafeInteger(run) || run <= 0 || !slot) return null;
+
+  const decision = await read(`.automation/tayvoriq-artifact-decisions/${run}.json`);
+  if (decision?.state !== 'REJECTED' || String(decision.review_id) !== String(run) ||
+      decision.request_id !== pointer.request_id || !decision.source_context_sha256 ||
+      decision.source_context_sha256 !== pointer.source_context_sha256 ||
+      !String(decision.rejection_reason || '').trim() || !['new_trends', 'auto', 'repair'].includes(decision.followup_action)) return null;
+
+  const selection = `review-${slot}-${run}`;
+  const [delivery, status, plan] = await Promise.all([
+    read(`${ROOT}/deliveries/${selection}.json`),
+    read(`${ROOT}/review-trend-status/${selection}.json`),
+    decision.followup_action === 'new_trends' ? null : read(`.github/state/rejected-review-followups/${run}.json`),
+  ]);
+  if (deliveryConfirmed(delivery, selection)) return null;
+  if (status?.selection_id === selection && status.state === 'BLOCKED' &&
+      Number.isSafeInteger(status.telegram_notices?.BLOCKED) && status.telegram_notices.BLOCKED > 0) return null;
+  const planBound = plan?.selection_id === selection && plan.request_id === pointer.request_id &&
+    plan.source_context_sha256 === pointer.source_context_sha256;
+  if (decision.followup_action !== 'new_trends' && !(planBound && plan.new_trends_requested === true)) {
+    const repair = await read(`.github/state/rejected-review-repairs/${run}.json`);
+    const repairFailed = repair?.state === 'FAILED' && repair.rejected_run_id === run &&
+      repair.request_id === pointer.request_id && repair.source_context_sha256 === pointer.source_context_sha256;
+    const requested = Date.parse(decision.followup_requested_at || '');
+    if (!repairFailed && (planBound || !Number.isFinite(requested) || timestamp - requested >= 15 * 60_000)) return null;
+  }
+  return {slot, mode:'review', selection_id:selection};
+}
+
 export async function requestResearchTick(scheduledTime, env, timestamp = Date.now(), fetcher = fetch) {
   if (!Number.isFinite(scheduledTime) || scheduledTime > timestamp || timestamp - scheduledTime >= 20 * 60_000) return false;
   const {day, minute} = clockParts(timestamp);
@@ -39,14 +72,18 @@ export async function requestResearchTick(scheduledTime, env, timestamp = Date.n
   const catchup = minute >= 335 && minute < 365 ? 'morning'
     : minute >= 1145 && minute < 1175 ? 'evening' : '';
   const slot = retryDue ? retry.slot : catchup;
-  if (!slot || (!retryDue && sameDay && retry.slot === slot)) return false;
-  const selection = `${day.replaceAll('-', '')}-${slot}-agentv2`;
-  const receipt = await read(`${ROOT}/deliveries/${selection}.json`);
-  if (deliveryConfirmed(receipt, selection)) return false;
+  let target = null;
+  if (slot && (retryDue || !sameDay || retry.slot !== slot)) {
+    const selection = `${day.replaceAll('-', '')}-${slot}-agentv2`;
+    const receipt = await read(`${ROOT}/deliveries/${selection}.json`);
+    if (!deliveryConfirmed(receipt, selection)) target = {slot, mode:retryDue?'retry':'catchup'};
+  }
+  target ??= await replacementWakeup(read, timestamp);
+  if (!target) return false;
   const response = await fetcher(`${api}/dispatches`, {
     method:'POST', headers:{...headers,'Content-Type':'application/json'},
     body:JSON.stringify({event_type:'tayvoriq_research_tick',client_payload:{
-      berlin_date:day, slot, mode:retryDue?'retry':'catchup', scheduled_epoch:Math.floor(scheduledTime / 1000),
+      berlin_date:day, ...target, scheduled_epoch:Math.floor(scheduledTime / 1000),
     }}),
   });
   if (!response.ok) throw Error(`TAYVORIQ research tick dispatch failed (${response.status})`);

@@ -129,11 +129,15 @@ def confirmed_slot_delivery(slot: str, now: datetime, *, root: Path = Path("."))
             and type(message_id) is int and message_id > 0)
 
 
+def valid_clock_tick(slot: str, day: str, scheduled: str, now: datetime) -> bool:
+    return (slot in {"morning", "evening"} and day == now.date().isoformat()
+            and scheduled.isascii() and scheduled.isdigit() and len(scheduled) == 10
+            and 0 <= now.timestamp() - int(scheduled) < 20 * 60)
+
+
 def clock_slot(slot: str, mode: str, day: str, scheduled: str, *, now: datetime) -> str:
     """A wakeup is a hint. The Orchestrator owns the current slot and receipt."""
-    if (slot not in {"morning", "evening"} or day != now.date().isoformat() or not scheduled.isascii()
-            or not scheduled.isdigit() or len(scheduled) != 10
-            or not 0 <= now.timestamp() - int(scheduled) < 20 * 60 or confirmed_slot_delivery(slot, now)):
+    if not valid_clock_tick(slot, day, scheduled, now) or confirmed_slot_delivery(slot, now):
         return ""
     if mode == "retry":
         return slot if due_slot(now=now.timestamp()) == slot else ""

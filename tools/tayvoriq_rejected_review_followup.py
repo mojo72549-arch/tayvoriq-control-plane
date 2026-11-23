@@ -78,7 +78,7 @@ def followup(root=Path(".")):
         "route_reason": ("REPAIR_FAILED" if execution.get("state") == "FAILED" else
                          "NO_VERIFIED_REPAIR" if action == "new_trends" and requested != "new_trends" else None),
         "new_trends_requested": action == "new_trends" and bool(reason),
-        "research_requested_at": (decision.get("followup_requested_at")
+        "research_requested_at": (decision.get("followup_requested_at") or decision.get("recorded_at")
                                    if execution.get("state") != "FAILED" else execution.get("failed_at")),
         "research_state": (research.get("state") if research.get("selection_id") == selection_id else None),
         "replacement_state": ("REASON_REQUIRED" if not reason else

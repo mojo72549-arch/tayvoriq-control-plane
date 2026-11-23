@@ -132,6 +132,7 @@ jobs:
           TICK_MODE: ${{ github.event.client_payload.mode }}
           TICK_DATE: ${{ github.event.client_payload.berlin_date }}
           TICK_EPOCH: ${{ github.event.client_payload.scheduled_epoch }}
+          TICK_SELECTION: ${{ github.event.client_payload.selection_id }}
           EVENT_SCHEDULE: ${{ github.event.schedule }}
           PUSH_BEFORE: ${{ github.event.before }}
           INPUT_SLOT: ${{ inputs.slot || '' }}
@@ -141,15 +142,21 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import os
+          import os, sys
           from datetime import datetime
           from zoneinfo import ZoneInfo
+          sys.path.insert(0, 'tools')
+          from tayvoriq_rejected_review_followup import followup
+          from tayvoriq_research_retry_v1 import review_due, valid_clock_tick
+          from tayvoriq_review_trend_status import needs_expiry
           now = datetime.now(ZoneInfo('Europe/Berlin'))
           event = os.environ.get('EVENT_NAME','')
           schedule = os.environ.get('EVENT_SCHEDULE','')
           requested = os.environ.get('INPUT_SLOT','')
           slot = requested if event == 'workflow_dispatch' else ''
+          rejection_selection = ''
           should = now.date().isoformat() >= '2026-08-15'
+          current_review = followup()
           if event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true':
               import sys
               sys.path.insert(0, 'tools')
@@ -160,7 +167,16 @@ jobs:
               import sys
               sys.path.insert(0, 'tools')
               from tayvoriq_research_retry_v1 import clock_slot
-              slot = clock_slot(*(os.environ.get(name, '') for name in ('TICK_SLOT','TICK_MODE','TICK_DATE','TICK_EPOCH')), now=now)
+              tick_slot, mode, day, epoch = (os.environ.get(name, '') for name in ('TICK_SLOT','TICK_MODE','TICK_DATE','TICK_EPOCH'))
+              if mode == 'review':
+                  if (valid_clock_tick(tick_slot, day, epoch, now) and current_review
+                          and current_review['slot'] == tick_slot and current_review['selection_id'] == os.environ.get('TICK_SELECTION')
+                          and current_review['new_trends_requested'] and not current_review['selection_delivered']
+                          and review_due(current_review['selection_id'], now=now.timestamp())):
+                      slot = tick_slot
+                      rejection_selection = current_review['selection_id']
+              else:
+                  slot = clock_slot(tick_slot, mode, day, epoch, now=now)
               should = should and bool(slot)
           if event == 'push':
               import re
@@ -182,7 +198,6 @@ jobs:
               # A due retry keeps its original slot even if a delayed/manual
               # trigger arrives after the morning/evening clock boundary.
               slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')
-          rejection_selection = ''
           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
@@ -191,11 +206,8 @@ jobs:
               }
               slot = next((name for name, cron in expected.items() if cron == schedule), '')
               if not slot and schedule == '*/5 * * * *':
-                  import sys
-                  sys.path.insert(0, 'tools')
-                  from tayvoriq_rejected_review_followup import followup
-                  from tayvoriq_research_retry_v1 import due_slot, review_due
-                  plan = followup()
+                  from tayvoriq_research_retry_v1 import due_slot
+                  plan = current_review
                   if (plan and plan['new_trends_requested'] and not plan['selection_delivered']
                           and review_due(plan['selection_id'], now=now.timestamp())):
                       slot = plan['slot']
@@ -204,22 +216,13 @@ jobs:
                       slot = due_slot(now=now.timestamp())
               should = should and bool(slot)
           if event == 'push':
-              import sys
-              sys.path.insert(0, 'tools')
-              from tayvoriq_rejected_review_followup import followup
-              from tayvoriq_research_retry_v1 import review_due
-              plan=followup()
+              plan = current_review
               due_rejection = plan and plan['decision_path'] in changed
               if (due_rejection and plan['new_trends_requested'] and not plan['selection_delivered']
                       and review_due(plan['selection_id'], now=now.timestamp())):
                   slot=plan['slot']
                   should=True
                   rejection_selection=plan['selection_id']
-          import sys
-          sys.path.insert(0, 'tools')
-          from tayvoriq_rejected_review_followup import followup
-          from tayvoriq_review_trend_status import needs_expiry
-          current_review = followup()
           expired_selection = current_review['selection_id'] if needs_expiry(current_review, now.timestamp()) else ''
           if rejection_selection and rejection_selection == expired_selection:
               rejection_selection = ''
@@ -229,7 +232,6 @@ jobs:
           failed_review = os.environ.get('FAILED_REVIEW')
           if (failed_review and current_review and not expired_selection and failed_review == str(current_review['rejected_run_id'])
                   and current_review['new_trends_requested'] and not current_review['selection_delivered']):
-              from tayvoriq_research_retry_v1 import review_due
               if review_due(current_review['selection_id'], now=now.timestamp()):
                   slot = current_review['slot']
                   rejection_selection = current_review['selection_id']
