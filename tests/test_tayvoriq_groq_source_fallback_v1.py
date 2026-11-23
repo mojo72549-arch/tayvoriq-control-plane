@@ -72,6 +72,9 @@ class GroqSourceContractTests(unittest.TestCase):
             self.assertTrue(all(url in {r["url"] for r in self.pool} for url in urls))
             self.assertEqual(len({hf.domain(url) for url in urls}), 2)
         payload, key, timeout = sent[0]
+        prompt = payload["messages"][1]["content"]
+        self.assertNotIn('"aktualitaet":0', prompt)
+        self.assertIn('"aktualitaet":<integer 0-100>', prompt)
         self.assertEqual(key, "existing-groq-key")
         self.assertEqual(payload["model"], "openai/gpt-oss-20b")
         self.assertEqual(payload["response_format"], {"type": "json_object"})
@@ -84,6 +87,16 @@ class GroqSourceContractTests(unittest.TestCase):
                 self.assertEqual(source["support_origin"], "retrieved_source_title_and_context")
                 self.assertEqual(len(source["source_record_sha256"]), 64)
                 self.assertNotIn("Quelle bestätigt Sachverhalt", source["supports"])
+
+    def test_base_gate_reports_each_missing_or_low_field(self):
+        raw = {"title": "Test", "trend_scope": "business_economy",
+               "criteria": {"aktualitaet": 0, "quellenqualitaet": 90}}
+        issues = hf.base.base_editorial_fields(raw)[-1]
+        self.assertIn("criterion_below_minimum:aktualitaet=0<35", issues)
+        self.assertIn("missing_criterion:visuell", issues)
+        self.assertIn("usable_publishers:0<2", issues)
+        self.assertIn("missing_editorial_answer:personal_impact", issues)
+        self.assertFalse(any("quellenqualitaet" in issue for issue in issues))
 
     def test_unrelated_valid_ids_and_invented_support_cannot_be_grounded(self):
         ids = self.ids

@@ -166,8 +166,6 @@ def _growth(candidate: dict[str, Any]) -> dict[str, Any]:
 def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:
     candidate = _original_normalize(raw, verified_at)
     if not candidate:
-        print(json.dumps({"event": "candidate_editorial_rejection", "title": base.clean(raw.get("title"), 180),
-                          "reason": "base_editorial_contract"}, ensure_ascii=False))
         return None
     coherent, reasons = _source_claim_coherent(candidate)
     if not coherent:
