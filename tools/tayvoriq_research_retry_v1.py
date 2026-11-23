@@ -52,12 +52,15 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     review_selection = _review_selection(path)
     run_key = os.getenv("TAYVORIQ_RESEARCH_RUN_KEY", "") if not review_selection else ""
     run_key = run_key if re.fullmatch(r"[1-9][0-9]*\.[1-9][0-9]*", run_key) else ""
-    repair_from = os.getenv("TAYVORIQ_RESEARCH_REPAIR_FROM", "")
-    repair = bool(run_key and not review_selection and same and previous.get("state") == "EXHAUSTED"
-                  and repair_from and previous.get("last_research_attempt") == repair_from)
     already_counted = bool(same and run_key and previous.get("last_research_attempt") == run_key)
-    attempts = (int(previous.get("attempts") or 0) if same else 0) + (0 if already_counted or repair else 1)
     max_attempts = REVIEW_MAX_ATTEMPTS if review_selection else MAX_ATTEMPTS
+    # A terminal regular slot is immutable. Technical repairs are validated in
+    # CI and by a future scheduled slot; they never reopen the exhausted window.
+    if (not review_selection and same and previous.get("state") == "EXHAUSTED"
+            and (int(previous.get("attempts") or 0) >= max_attempts
+                 or now >= float(previous.get("valid_until_epoch") or 0))):
+        return previous
+    attempts = (int(previous.get("attempts") or 0) if same else 0) + (0 if already_counted else 1)
     deadline = first + (REVIEW_DEADLINE_SECONDS if review_selection else 6 * 3600)
     provider_next_at = next_at
     if review_selection and next_at is not None:
@@ -69,7 +72,7 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     if next_at is not None and attempts >= FAST_ATTEMPTS and not review_selection:
         next_at = max(next_at, min(now + SLOW_COOLDOWN, deadline - 60))
     status = "WAITING" if next_at is not None else "EXTERNAL_BLOCKER"
-    if repair or attempts >= max_attempts or now >= deadline or (next_at is not None and next_at > deadline):
+    if attempts >= max_attempts or now >= deadline or (next_at is not None and next_at > deadline):
         status = "EXHAUSTED"
     result = {"schema": "tayvoriq-research-retry-v1", "state": status, "slot": slot,
               "berlin_date": date, "first_deferred_at_epoch": first,
@@ -85,10 +88,6 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
         result["sla_seconds"] = REVIEW_DEADLINE_SECONDS
     if run_key:
         result["last_research_attempt"] = run_key
-    if repair:
-        result["repair_from_attempt"] = repair_from
-    elif already_counted and previous.get("repair_from_attempt"):
-        result["repair_from_attempt"] = previous["repair_from_attempt"]
     if status == 'EXHAUSTED':
         result['reason'] = 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
     elif status == 'WAITING' and phase == 'SLOW_RECOVERY':
@@ -144,18 +143,7 @@ def terminal_slot(slot: str, now: datetime) -> bool:
 
 
 def terminal_repair_attempt(marker: str, slot: str, now: datetime) -> str:
-    """Match an explicit maintainer wakeup to one exhausted, undelivered slot."""
-    match = re.search(r"^retry_terminal=([0-9-]{10}):(morning|evening):([1-9][0-9]*\.[1-9][0-9]*)$",
-                      marker, flags=re.MULTILINE)
-    if not match or match.group(1, 2) != (now.date().isoformat(), slot):
-        return ""
-    state = current(now=now.timestamp())
-    attempt = match[3]
-    if (state.get("berlin_date") == now.date().isoformat() and state.get("slot") == slot
-            and state.get("state") == "EXHAUSTED" and state.get("last_research_attempt") == attempt
-            and state.get("last_issue") in {"EDITORIAL_MINIMUM_NOT_MET", "SOURCE_MINIMUM_NOT_MET"}
-            and not confirmed_slot_delivery(slot, now)):
-        return attempt
+    """Never reopen a terminal regular slot after its bounded budget ended."""
     return ""
 
 
