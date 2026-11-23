@@ -203,6 +203,7 @@ def test_all_provider_failure_creates_deferred_marker(monkeypatch, tmp_path) -> 
         raise AssertionError("expected deferred failure")
     payload = json.loads(marker.read_text(encoding="utf-8"))
     assert payload["status"] == "RESEARCH_DEFERRED"
+    assert payload["last_issue"] == "RESEARCH_PROVIDER_UNAVAILABLE"
 
 
 
