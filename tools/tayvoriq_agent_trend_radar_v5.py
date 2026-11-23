@@ -167,13 +167,24 @@ def main(*, repair_ready=_retention_ready) -> int:
         for raw in raw_candidates:
             if not isinstance(raw, dict):
                 continue
+            source_bound = provider_name.endswith(("_rss", "_gdelt"))
+            assessment = raw.pop("_retrieved_regional_assessment", None)
+            if source_bound and isinstance(assessment, dict) and not assessment.get("passed"):
+                print(json.dumps({"event": "candidate_editorial_rejection", "title": raw.get("title"),
+                                  "reason": assessment.get("reason") or "regional_scorecard",
+                                  "details": assessment.get("issues"), "scores": assessment.get("scores")}, ensure_ascii=False))
+                base_rejections.append({"title": base.clean(raw.get("title"), 180),
+                                        "fields": assessment.get("issues") or [assessment.get("reason")]})
+                continue
             candidate = base.normalized_candidate(raw, verified_at)
             if not candidate:
                 title, _, _, _, _, issues = base.base_editorial_fields(raw)
                 if issues:
                     base_rejections.append({"title": title, "fields": issues})
                 continue
-            if provider_name.endswith(("_rss", "_gdelt")):
+            if source_bound:
+                if assessment:
+                    candidate["source_context"]["regional_assessment"] = assessment
                 # structure() rebuilt these fields from downloaded records after validate_pair().
                 # Never accept model-authored provenance from a browser or prepared packet.
                 original_sources = {source["url"]: source for source in raw["sources"]}
@@ -190,11 +201,18 @@ def main(*, repair_ready=_retention_ready) -> int:
                     original = original_sources[source["url"]]
                     source["published_at"] = original["published_at"]
                     source["reporting_origin"] = original["reporting_origin"]
-                if not run_gate(
-                    requests_dir=Path("requests"), source_request_id="",
-                    topic=candidate["title"], source_context=context,
-                )["passed"]:
+            if scan_index == 0 or source_bound:
+                duplicates = run_gate(requests_dir=Path("requests"), source_request_id="",
+                                      topic=candidate["title"], source_context=candidate["source_context"])
+                if not duplicates["passed"]:
+                    print(json.dumps({"event": "candidate_editorial_rejection", "title": candidate["title"],
+                                      "reason": "previous_request_duplicate",
+                                      "prior_requests": [row["request_id"] for row in duplicates["blocked_matches"]]},
+                                     ensure_ascii=False))
                     continue
+                candidate["source_context"]["duplicate_check"] = {
+                    key: duplicates[key] for key in ("state", "content_fingerprint_sha256", "history_candidates_checked")
+                }
             key = _identity(candidate)
             if key in seen:
                 if scan_index > 1 and provider_name.endswith(("_rss", "_gdelt")):

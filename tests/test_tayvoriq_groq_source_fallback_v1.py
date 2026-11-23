@@ -88,6 +88,23 @@ class GroqSourceContractTests(unittest.TestCase):
                 self.assertEqual(len(source["source_record_sha256"]), 64)
                 self.assertNotIn("Quelle bestätigt Sachverhalt", source["supports"])
 
+    def test_regional_rubric_requires_original_quotes_and_both_platforms(self):
+        import tayvoriq_regional_relevance as rubric
+        sources = [{"source_id": "S003", "url": "https://a.de/id", "supports": "Der Fahrplan gilt ab Montag."},
+                   {"source_id": "S007", "url": "https://b.de/id", "supports": "Pendler erreichen die Innenstadt früher."}]
+        card = {"ratings": {key: [4, 4, "Der neue Fahrplan kürzt Wartezeiten."] for key in rubric.WEIGHTS},
+                "evidence": {s["source_id"]: s["supports"] for s in sources},
+                "platform_fit": {"youtube": "Der Fahrplan erklärt die neue Verbindung.",
+                                 "tiktok": "Der direkte Vergleich zeigt die Zeitersparnis."}}
+        score = rubric.evaluate(card, sources)
+        self.assertEqual(score["scores"], {"youtube": 80, "tiktok": 80})
+        self.assertTrue(score["passed"])
+        card["ratings"]["consequence"][1] = 2
+        self.assertFalse(rubric.evaluate(card, sources)["passed"])
+        card["ratings"]["consequence"][1] = 4
+        card["evidence"]["S007"] = "Der Fahrplan gilt ab Montag."
+        self.assertEqual(rubric.evaluate(card, sources)["reason"], "quote_absent_from_retrieved_record:S007")
+
     def test_base_gate_reports_each_missing_or_low_field(self):
         raw = {"title": "Test", "trend_scope": "business_economy",
                "criteria": {"aktualitaet": 0, "quellenqualitaet": 90}}

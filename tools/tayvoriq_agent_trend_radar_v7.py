@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import tayvoriq_agent_trend_radar_v6 as growth_v6
+from tayvoriq_agent_hf_v2 import distinct_headlines
 
 base = growth_v6.base
 CONFIG_PATH = Path("config/tayvoriq_growth_runtime_v2.json")
@@ -128,6 +129,11 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
 
 
 def _has_reserve_score(candidate: dict[str, Any]) -> bool:
+    assessment = (candidate.get("source_context") or {}).get("regional_assessment")
+    if isinstance(assessment, dict) and assessment.get("policy") == "DE_LOCAL_RELEVANCE_V2":
+        # The evidenced audience rubric determines regional eligibility. Growth
+        # remains a ranking signal and the fallback for historical records.
+        return assessment.get("passed") is True
     return int((candidate.get("growth_v2") or {}).get("growth_score") or 0) >= 80
 
 
@@ -181,7 +187,11 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
         scope = str(candidate.get("trend_scope") or "")
         if scopes.get(scope, 0) >= 2:
             continue
-        if any(str(item.get("title") or "").casefold() == str(candidate.get("title") or "").casefold() for item in selected):
+        title = str(candidate.get("title") or "")
+        if any(title.casefold() == item["title"].casefold() or not distinct_headlines(title, item["title"])
+               for item in selected):
+            print(json.dumps({"event": "candidate_editorial_rejection", "title": title,
+                              "reason": "same_event_in_selection"}, ensure_ascii=False))
             continue
         selected.append(candidate)
         scopes[scope] = scopes.get(scope, 0) + 1

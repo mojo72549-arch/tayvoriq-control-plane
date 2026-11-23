@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
+from tayvoriq_regional_relevance import evaluate as evaluate_regional_relevance
 from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
@@ -118,25 +119,26 @@ def corroborated_headline(a: dict, b: dict) -> str:
     return ''
 
 
+def distinct_headlines(left, right):
+    left_terms, right_terms = claim_terms(left), claim_terms(right)
+    shared = left_terms & right_terms
+    same_topic = (_events(left) == _events(right) and len(shared) >= 3
+                  and len(shared) / min(len(left_terms), len(right_terms)) >= .70)
+    return not same_topic
+
+
 def _independent_headline_pairs(vetted_pairs: dict) -> dict:
     """Select separate reporting pairs and avoid ranking alternate wording twice."""
     entries = list(vetted_pairs.items())
 
-    def distinct(left, right):
-        left_terms, right_terms = claim_terms(left), claim_terms(right)
-        shared = left_terms & right_terms
-        same_topic = (_events(left) == _events(right) and len(shared) >= 3
-                      and len(shared) / min(len(left_terms), len(right_terms)) >= .70)
-        return not same_topic
-
     for index, (first, first_title) in enumerate(entries):
         for second, second_title in entries[index + 1:]:
             used = set(first) | set(second)
-            if len(used) != 4 or not distinct(first_title, second_title):
+            if len(used) != 4 or not distinct_headlines(first_title, second_title):
                 continue
             chosen = {first: first_title, second: second_title}
             for pair, title in entries:
-                if not used.intersection(pair) and all(distinct(title, prior) for prior in chosen.values()):
+                if not used.intersection(pair) and all(distinct_headlines(title, prior) for prior in chosen.values()):
                     chosen[pair] = title
                     break
             return chosen
@@ -326,6 +328,20 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     blob = json.dumps(indexed, ensure_ascii=False)
     print(json.dumps({"event":"source_prompt_budget","records":len(indexed),
                       "independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
+    policy = ""
+    if source_bound:
+        policy = """DE_LOCAL_RELEVANCE_V2: supply a regional_scorecard for each candidate, in addition to the schema.
+Use the two actual source_id keys for evidence, each with a verbatim 4-18 word excerpt showing the central event or consequence.
+regional_scorecard = {"evidence":{"<first ID>":"original quote","<second ID>":"original quote"},
+"ratings":{"consequence":[YT,TT,"German reason"],"proximity":[YT,TT,"reason"],"recognition":[YT,TT,"reason"],
+"timeliness":[YT,TT,"reason"],"explanation":[YT,TT,"reason"],"resolution":[YT,TT,"reason"],"continuity":[YT,TT,"reason"]},
+"platform_fit":{"youtube":"specific YouTube fit","tiktok":"specific TikTok fit"}}.
+YT and TT are independently assessed integers 0 to 5, not text. 0 absent, 1 weak, 3 concrete, 5 strong and evidenced.
+For each row give a specific 4-12 word reason grounded in this story. Rate in order: consequences for work/money/daily life,
+German audience proximity, immediately recognizable actor/place, new dated development, explanation beyond the headline,
+a question that can be answered now, and returning audience value. Do not predict view counts. Give a distinct fit reason
+for each platform. Never increase scores to satisfy a quota. Preserve uncertainty, including when a study estimates an effect.
+For why_happening, explain the documented decision or mechanism from the reports, without inventing a motive."""
     user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Search across ALL supplied publisher domains, not just the first records.
 
 SOURCE CONTRACT:
@@ -365,6 +381,7 @@ EDITORIAL FALLBACK CONTRACT:
 - personal_impact must add at least three substantive words beyond what_happened and who_is_affected. Explain a concrete different consequence for the viewer using the paired evidence.
 - action_now must start with a concrete verb such as Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze or Speichere.
 
+{policy}
 {goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{editorial_context}\n{pair_note}\nSOURCE RECORDS ({source_label}):\n{blob}'''
     payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"stream":False}
     if provider_kind=="groq":
@@ -427,6 +444,8 @@ EDITORIAL FALLBACK CONTRACT:
                                "declared_origin":base.clean(rec.get("origin"),180)})
             chunks.append({"title":publisher,"uri":url})
         c["sources"]=normalized
+        if source_bound:
+            c["_retrieved_regional_assessment"] = evaluate_regional_relevance(c.get("regional_scorecard"), normalized)
     valid_candidates=[]
     seen_pairs, seen_titles = set(), set()
     for candidate in data.get('candidates') or []:
