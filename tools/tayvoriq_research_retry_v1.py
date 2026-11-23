@@ -17,7 +17,11 @@ REVIEW_RETRY_SECONDS = 5 * 60
 REVIEW_DEADLINE_SECONDS = 10 * 60
 REVIEW_MAX_ATTEMPTS = 3
 REVIEW_RETRY_DIR = Path(".automation/tayvoriq-agent-v2/research-retries")
-EDITORIAL_DETAIL = "Zu wenige Themen haben die redaktionelle Prüfung bestanden."
+ISSUE_DETAILS = {
+    "EDITORIAL_MINIMUM_NOT_MET": "Zu wenige Themen haben die redaktionelle Prüfung bestanden.",
+    "SOURCE_MINIMUM_NOT_MET": "Zu wenige Vorschläge haben die Quellenprüfung bestanden.",
+    "RESEARCH_PROVIDER_UNAVAILABLE": "Die Rechercheanbieter konnten die Anfrage nicht abschließen.",
+}
 
 
 def review_path(selection_id: str) -> Path:
@@ -36,7 +40,7 @@ def configured_path() -> Path | None:
 
 
 def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: float | None = None,
-          editorial: bool = False) -> dict:
+          issue: str = "") -> dict:
     path = path or configured_path()
     if path is None or slot not in {"morning", "evening"}:
         return {}
@@ -82,9 +86,9 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
         result['reason'] = 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
     elif status == 'WAITING' and phase == 'SLOW_RECOVERY':
         result['reason'] = 'RESEARCH_PROVIDER_CIRCUIT_COOLDOWN'
-    if editorial:
-        result['last_issue'] = 'EDITORIAL_MINIMUM_NOT_MET'
-        result['status_detail'] = EDITORIAL_DETAIL
+    if issue in ISSUE_DETAILS:
+        result['last_issue'] = issue
+        result['status_detail'] = ISSUE_DETAILS[issue]
     write(path, result)
     return result
 

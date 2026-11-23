@@ -12,18 +12,18 @@ base=provider.base
 MARKER=Path('/tmp/tayvoriq-research-deferred.json')
 
 
-def _defer(errors: list[str], next_at: float | None = None) -> None:
-    queued = research_retry.defer(os.getenv('TAYVORIQ_RESEARCH_SLOT', ''), next_at)
+def _defer(errors: list[str], next_at: float | None, *, issue: str) -> None:
+    queued = research_retry.defer(os.getenv('TAYVORIQ_RESEARCH_SLOT', ''), next_at, issue=issue)
     data = {'status': 'RESEARCH_DEFERRED',
             'reason': 'all live research paths unavailable after bounded retries',
             'errors': errors[-10:], 'created_at_epoch': int(time.time()),
-            'retry_at_epoch': next_at, 'retry_state': queued.get('state', 'UNSCHEDULED')}
+            'retry_at_epoch': next_at, 'retry_state': queued.get('state', 'UNSCHEDULED'), 'last_issue': issue}
     MARKER.write_text(json.dumps(data, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     print(json.dumps({'event': 'research_deferred', **data}, ensure_ascii=False))
 
 
 def defer_editorial(slot: str) -> None:
-    queued = research_retry.defer(slot, time.time() + 900, editorial=True)
+    queued = research_retry.defer(slot, time.time() + 900, issue='EDITORIAL_MINIMUM_NOT_MET')
     status = {'status': 'RESEARCH_DEFERRED', 'result': 'REJECTED', 'retry_state': queued.get('state', 'UNSCHEDULED'),
               'reason': 'EDITORIAL_MINIMUM_NOT_MET'}
     MARKER.write_text(json.dumps(status, ensure_ascii=False) + '\n', encoding='utf-8')
@@ -53,9 +53,10 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         health.available('groq', groq_key)  # honor a legitimately rotated key
     groq_account_blocked = (health.state['providers'].get('groq') or {}).get('state') == 'PAYMENT_BLOCKED'
     insufficient_feeds = False
+    failed_source_contract = False
 
     def attempt(name, label, call):
-        nonlocal groq_account_blocked, insufficient_feeds
+        nonlocal groq_account_blocked, insufficient_feeds, failed_source_contract
         key = keys[name]
         if not key:
             return None
@@ -73,6 +74,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
             if http_failure(exc)[0] in {401, 403}:
                 raise RuntimeError('RESEARCH_PROVIDER_ACCESS_BLOCKED: ' + label) from exc
             if isinstance(exc, hf.InsufficientSourceEvidence):
+                failed_source_contract = True
                 health.success(name)
                 if isinstance(exc, hf.InsufficientFeedEvidence):
                     insufficient_feeds = True
@@ -153,7 +155,8 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     errors.append('Deterministic source fallback disabled: syndicated mirrors and generic hooks cannot pass editorial quality')
     retry_keys = {name: key for name, key in keys.items()
                   if not (name.startswith('groq') and groq_account_blocked)}
-    _defer(errors, health.next_retry(retry_keys))
+    issue = 'SOURCE_MINIMUM_NOT_MET' if failed_source_contract else 'RESEARCH_PROVIDER_UNAVAILABLE'
+    _defer(errors, health.next_retry(retry_keys), issue=issue)
     raise RuntimeError('RESEARCH_DEFERRED: ' + ' | '.join(errors))
 
 
