@@ -1659,10 +1659,11 @@ jobs:
             git push origin main
           fi
           cd ..
+          git -C pages-worktree fetch --quiet origin main
           python -S tools/tayvoriq_review_bundle_receipt.py --implementation implementation \
-            --bundle "$BUNDLE" --run "$GITHUB_RUN_ID" --out "$RUNNER_TEMP/committed-bundle.json"
+            --bundle "$BUNDLE" --run "$GITHUB_RUN_ID" --out "$RUNNER_TEMP/committed-bundle.json" \
+            --pages-repo pages-worktree --revision-out "$RUNNER_TEMP/review-pages-sha"
           cmp "$RUNNER_TEMP/qa-bundle.json" "$RUNNER_TEMP/committed-bundle.json"
-          git -C pages-worktree rev-parse HEAD > "$RUNNER_TEMP/review-pages-sha"
 
       - name: Send Telegram review
         id: telegram_final

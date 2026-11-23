@@ -1,5 +1,6 @@
 import json
 import sys
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -49,3 +50,27 @@ class ReviewBundleTests(unittest.TestCase):
                      render=dict(final_duration_seconds=25, asset_report=actual))
             with self.subTest(reason=reason), self.assertRaisesRegex(ValueError, reason):
                 bundle.verify_scene_coverage(v, 'tiktok')
+
+    def test_uploaded_revision_must_contain_every_file_and_match_worktree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            pub = root / 'runs/42'
+            pub.mkdir(parents=True)
+            def git(*args):
+                return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.DEVNULL, text=True).strip()
+            git('init', '-q')
+            for name in bundle.FILES:
+                (pub/name).write_text(name)
+            git('add', 'runs')
+            git('reset', 'runs/42/index.html')
+            def commit():
+                git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture')
+            commit()
+            with self.assertRaisesRegex(ValueError, 'UNTRACKED'):
+                bundle.committed_revision(root, 'runs/42', 'HEAD')
+            git('add', 'runs')
+            commit()
+            self.assertEqual(bundle.committed_revision(root, 'runs/42', 'HEAD'), git('rev-parse', 'HEAD'))
+            (pub/'short_youtube.mp4').write_text('other')
+            with self.assertRaises(subprocess.CalledProcessError):
+                bundle.committed_revision(root, 'runs/42', 'HEAD')

@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import math
+import subprocess
 from pathlib import Path
 
 from tayvoriq_artifact_approval import FILES
@@ -63,17 +64,34 @@ def verify(job_dir, bundle, run_id):
     return hashes
 
 
+def committed_revision(repo, subtree, ref):
+    def git(*args):
+        return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
+    commit = git("rev-parse", "--verify", ref + "^{commit}")
+    tracked = set(git("ls-tree", "--name-only", commit + ":" + subtree).splitlines())
+    if not FILES <= tracked:
+        raise ValueError("REVIEW_PUBLISHED_FILES_UNTRACKED")
+    git("diff", "--quiet", commit, "--", subtree)
+    return commit
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--implementation", type=Path, required=True)
     p.add_argument("--bundle", type=Path, required=True)
     p.add_argument("--run", required=True)
     p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--pages-repo", type=Path)
+    p.add_argument("--revision-out", type=Path)
     args = p.parse_args()
     state = json.loads((args.implementation / "out/tayvoriq-review-state.json").read_text())
     if not state.get("job_dir"):
         raise ValueError("REVIEW_JOB_MISSING")
     hashes = verify(args.implementation / state["job_dir"], args.bundle, args.run)
+    if args.pages_repo:
+        subtree = args.bundle.resolve().relative_to(args.pages_repo.resolve()).as_posix()
+        commit = committed_revision(args.pages_repo, subtree, "FETCH_HEAD")
+        args.revision_out.write_text(commit + "\n")
     args.out.write_text(json.dumps(hashes, sort_keys=True))
 
 
