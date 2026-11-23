@@ -6,6 +6,7 @@ from pathlib import Path
 POINTER = ".github/state/tayvoriq-active-production-request.json"
 DECISIONS = ".automation/tayvoriq-artifact-decisions"
 FOLLOWUPS = ".github/state/rejected-review-followups"
+REPAIRS = ".github/state/rejected-review-repairs"
 DELIVERIES = ".automation/tayvoriq-agent-v2/deliveries"
 
 
@@ -48,9 +49,21 @@ def followup(root=Path(".")):
     reason = str(decision.get("rejection_reason") or "").strip()[:600]
     requested = decision.get("followup_action")
     requested = requested if requested in {"auto", "new_trends", "repair"} else None
-    # An operator's reason is a diagnosis, not evidence of a usable correction.
-    # A reason with no executable correction goes back to normal trend research.
-    action = "new_trends" if reason and requested in {"auto", "new_trends", "repair"} else None
+    repair_stage = {"voice": "VOICE", "visuals": "VISUALS"}.get(decision.get("rejection_reason_code"))
+    checkpoint = receipt.get("review_repair_checkpoint") or ""
+    checkpoint_prefix = f"tayvoriq-review-v1-{source_hash}-{run_id}-"
+    execution = read(root / REPAIRS / f"{run_id}.json")
+    if execution and (
+        execution.get("request_id"), execution.get("source_context_sha256"), execution.get("rejected_run_id")
+    ) != (request_id, source_hash, run_id):
+        execution = {}
+    can_repair = (
+        requested in {"auto", "repair"} and bool(repair_stage)
+        and isinstance(checkpoint, str) and checkpoint.startswith(checkpoint_prefix)
+        and bool(re.fullmatch(r"[1-9][0-9]*", checkpoint[len(checkpoint_prefix):]))
+        and not request.get("repaired_review_run_id") and execution.get("state") != "FAILED"
+    )
+    action = ("repair" if can_repair else "new_trends") if reason and requested else None
     selection_id = f"review-{slot_match[1]}-{run_id}"
     delivery = read(root / DELIVERIES / (selection_id + ".json"))
     return {
@@ -61,11 +74,17 @@ def followup(root=Path(".")):
         "rejection_reason": reason or None,
         "requested_action": requested,
         "followup_action": action,
-        "route_reason": ("NO_VERIFIED_REPAIR" if action == "new_trends" and requested != "new_trends" else None),
+        "route_reason": ("REPAIR_FAILED" if execution.get("state") == "FAILED" else
+                         "NO_VERIFIED_REPAIR" if action == "new_trends" and requested != "new_trends" else None),
         "new_trends_requested": action == "new_trends" and bool(reason),
         "replacement_state": ("REASON_REQUIRED" if not reason else
+                              "REPAIR_RUNNING" if action == "repair" and execution.get("run_id") else
+                              "PREFLIGHT_REQUIRED" if action == "repair" else
                               "NOT_SELECTED" if not action else "NEW_TRENDS_SELECTED"),
-        "replacement_dispatch_allowed": False,
+        "replacement_dispatch_allowed": action == "repair",
+        "repair_stage": repair_stage if action == "repair" else None,
+        "repair_cache_key": checkpoint if action == "repair" else None,
+        "repair_run_id": execution.get("run_id"),
         "selection_id": selection_id,
         "selection_delivered": (delivery.get("selection_id") == selection_id
                                 and delivery.get("telegram_delivery_verified") is True

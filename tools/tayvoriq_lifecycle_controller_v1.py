@@ -74,6 +74,9 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
                 return finish('REJECTED', 'REPLACEMENT_TRENDS_DELIVERED_AWAITING_TREND_APPROVAL')
             if review_followup.get('new_trends_requested'):
                 return finish('REJECTED', 'REPLACEMENT_TRENDS_REQUESTED')
+            if review_followup.get('replacement_dispatch_allowed'):
+                return finish('REJECTED', 'TARGETED_REVIEW_REPAIR_RUNNING' if review_followup.get('repair_run_id')
+                              else 'TARGETED_REVIEW_REPAIR_PENDING')
             return finish('REJECTED', 'REJECTION_FOLLOWUP_PENDING')
         if request['production_completion'].get('reference_only') is True and pointer.get('allow_publish') is False:
             return finish('REVIEW_READY', 'VERIFIED_REFERENCE_REVIEW_DELIVERED')
