@@ -738,7 +738,7 @@ jobs:
         continue-on-error: true
         run: |
           if [ -f /tmp/tayvoriq-research-deferred.json ]; then
-            echo "Research providers temporarily saturated; deferred internally. No user-facing Telegram failure sent."
+            echo "Research outcome and retry state persisted for the Control Center and Telegram status."
             exit 0
           fi
           text="❌ TAYVORIQ Agent V2 konnte die aktuelle Growth-Rangliste nicht sicher erstellen. Es wurde keine Produktion gestartet. Run: ${GITHUB_RUN_ID}"

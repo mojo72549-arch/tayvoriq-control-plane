@@ -224,6 +224,8 @@ def main(*, repair_ready=_retention_ready) -> int:
                     "quality_gates_weakened": False,
                 }, ensure_ascii=False))
                 continue
+            if rescan_signal:
+                resilience.defer_editorial(args.slot)
             raise
 
     if chosen is None:
