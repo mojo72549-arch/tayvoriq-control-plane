@@ -14,6 +14,45 @@ function webhook(action, messageId, secret = env.TELEGRAM_WEBHOOK_SECRET) {
   } }) });
 }
 
+test('the rejection reason saves one bound automatic followup without a second choice', async t => {
+  const binding = {schema:'tayvoriq-artifact-approval', state:'REJECTED', review_id:reviewId,
+    telegram_message_id:123, request_id:'original-1', source_context_sha256:'original-hash'};
+  const pointer = {schema:'tayvoriq-active-production-request-v1', state:'COMPLETED', golden_path_run_id:100,
+    request_id:binding.request_id, source_context_sha256:binding.source_context_sha256};
+  const writes = [];
+  const keyboards = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (url.endsWith('.json?ref=main')) {
+      const data = url.includes('active-production-request') ? pointer : binding;
+      return Response.json({encoding:'base64', sha:'known-blob', content:btoa(JSON.stringify(data))});
+    }
+    if (url.endsWith('.json') && options.method === 'PUT') {
+      const body = JSON.parse(options.body);
+      assert.equal(body.sha, 'known-blob');
+      const saved = JSON.parse(Buffer.from(body.content, 'base64').toString('utf8'));
+      writes.push(saved);
+      Object.assign(binding, saved);
+      return Response.json({});
+    }
+    if (url.endsWith('/editMessageText')) keyboards.push(JSON.parse(options.body).reply_markup.inline_keyboard);
+    if (url.includes('api.telegram.org')) return Response.json({ok:true,result:{message_id:124}});
+    throw Error('Unexpected request');
+  });
+  const submit = () => new Request('https://worker.example/', {method:'POST', headers:{
+    'X-Telegram-Bot-Api-Secret-Token':env.TELEGRAM_WEBHOOK_SECRET, 'Content-Type':'application/json'},
+    body:JSON.stringify({callback_query:{id:'reason-callback',data:'tayvoriq:reason:100:visuals',
+      message:{message_id:124,chat:{id:'42'}}}})});
+  assert.equal((await worker.fetch(submit(), env)).status, 200);
+  assert.equal((await worker.fetch(submit(), env)).status, 200);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].rejection_reason_code, 'visuals');
+  assert.equal(writes[0].followup_action, 'auto');
+  assert.deepEqual(keyboards, [[], []]);
+  pointer.golden_path_run_id = 101;
+  assert.equal((await worker.fetch(submit(), env)).status, 409);
+  assert.equal(writes.length, 1);
+});
+
 for (const [action, messageId, secret, status, changes] of [
   ['approve', 123, env.TELEGRAM_WEBHOOK_SECRET, 200, ['APPROVED']],
   ['reject', 123, env.TELEGRAM_WEBHOOK_SECRET, 200, ['REJECTED']],

@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 from tayvoriq_lifecycle_handoff_v1 import await_completion
 from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
+from tayvoriq_rejected_review_followup import followup
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
 from tayvoriq_chat_direct_approval_v1 import authorized_for_review
 
@@ -33,7 +34,7 @@ def review_message_id(request, run_id):
 
 
 def decide(pointer, request, run, *, event_name='', event_run=0,
-           revision='', green='', previous=None):
+           revision='', green='', previous=None, review_followup=None):
     result = dict(action='NONE', state='IDLE', reason='NO_ACTIVE_REQUEST',
                   request_id='', run_id='0', generation='0', request_status='',
                   request_substate='', decision_key='', dispatch_verified=False)
@@ -65,6 +66,15 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
         return finish('BLOCKED', 'EXPIRED_QUARANTINE_EVIDENCE_INVALID')
     if pointer.get('state') == 'COMPLETED' and review_message_id(request, run_id):
+        if (review_followup and review_followup.get('request_id') == rid
+                and review_followup.get('rejected_run_id') == run_id):
+            if not review_followup.get('rejection_reason'):
+                return finish('REJECTED', 'REJECTION_REASON_REQUIRED')
+            if review_followup.get('selection_delivered'):
+                return finish('REJECTED', 'REPLACEMENT_TRENDS_DELIVERED_AWAITING_TREND_APPROVAL')
+            if review_followup.get('new_trends_requested'):
+                return finish('REJECTED', 'REPLACEMENT_TRENDS_REQUESTED')
+            return finish('REJECTED', 'REJECTION_FOLLOWUP_PENDING')
         if request['production_completion'].get('reference_only') is True and pointer.get('allow_publish') is False:
             return finish('REVIEW_READY', 'VERIFIED_REFERENCE_REVIEW_DELIVERED')
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
@@ -208,7 +218,7 @@ def main():
     previous = read(STATE)
     result = decide(pointer, request, run, event_name=os.environ.get('EVENT_WORKFLOW', ''),
                     event_run=int(os.environ.get('EVENT_RUN_ID') or 0), revision=revision,
-                    green=green, previous=previous.get('last_dispatch'))
+                    green=green, previous=previous.get('last_dispatch'), review_followup=followup())
     result = research_lifecycle(result)
     if result['state'] in {'RECOVERY_REQUIRED', 'BLOCKED'} and result['decision_key']:
         for workflow in EXECUTORS:

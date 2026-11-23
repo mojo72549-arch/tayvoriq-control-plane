@@ -83,6 +83,15 @@ def _source_pair_score(a: dict, b: dict) -> int:
     return 12 + len(shared_title) * 4 + min(8, len(shared_text)) + 2 * len(local & shared_text)
 
 
+def corroborated_headline(a: dict, b: dict) -> str:
+    """Reuse a short publisher headline only if both original records support it."""
+    for record in (a, b):
+        title = base.clean(record.get('title'))
+        if 0 < len(title) <= 180 and not validate_pair({'title': title}, [a, b]):
+            return title
+    return ''
+
+
 def _groq_source_records(records):
     """Keep likely same-story TWO-publisher pairs inside the compact token budget.
 
@@ -102,6 +111,8 @@ def _groq_source_records(records):
         for j in range(i + 1, len(candidates)):
             score = _source_pair_score(a, candidates[j])
             if score:
+                if corroborated_headline(a, candidates[j]):
+                    score += 100
                 pairs.append((score, i, j))
                 scores[i] = max(scores[i], score)
                 scores[j] = max(scores[j], score)
@@ -183,17 +194,30 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
           if provider_kind=='groq' else
           'Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them.')
     pair_hints = []
+    vetted_pairs = {}
     if provider_kind == 'groq':
-        for i, a in enumerate(balanced):
-            for j in range(i + 1, len(balanced)):
-                b = balanced[j]
+        source_ids = list(by_id)
+        for i, left in enumerate(source_ids):
+            for right in source_ids[i + 1:]:
+                a, b = by_id[left], by_id[right]
                 score = _source_pair_score(a, b)
                 if score and len(pair_hints) < 14:
-                    pair_hints.append((score, f'S{i + 1:03d}+S{j + 1:03d}'))
+                    pair_hints.append((score, f'{left}+{right}'))
+                if score:
+                    title = corroborated_headline(a, b)
+                    if title:
+                        vetted_pairs[left, right] = title
         pair_hints = sorted(pair_hints, reverse=True)[:12]
     pair_note = ('POTENTIAL SAME-EVENT CROSS-PUBLISHER LEADS (not evidence by themselves): ' +
                  ', '.join(x[1] for x in pair_hints) + '. Select only if full original SOURCE CONTRACT passes.'
                  if pair_hints else '')
+    exact_titles = len({title.casefold() for title in vetted_pairs.values()}) >= 2
+    if exact_titles:
+        allowlist = [{'source_ids': list(pair), 'title': title} for pair, title in vetted_pairs.items()]
+        pair_note = ('PICK ONLY FROM THESE CORROBORATED HEADLINES. Copy the title and its two source IDs '
+                     'exactly. Only propose an angle grounded in that pair. Never add actors, outcomes, '
+                     'numbers or locations from other stories. Skip pairs outside the channel scope.\n'
+                     + json.dumps(allowlist, ensure_ascii=False))
     user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Search across ALL supplied publisher domains, not just the first records.
 
 SOURCE CONTRACT:
@@ -249,6 +273,8 @@ EDITORIAL FALLBACK CONTRACT:
             resolved.append((sid,rec,base.clean(s.get("supports"),600)))
         resolved_domains=[str(rec.get('domain') or domain(str(rec.get('url') or ''))).casefold() for _,rec,_ in resolved]
         reasons = validate_pair(c, [rec for _,rec,_ in resolved])
+        if exact_titles and base.clean(c.get('title')) != vetted_pairs.get(tuple(sorted(sid for sid, _, _ in resolved))):
+            reasons.append('candidate_does_not_match_preverified_headline_pair')
         if reasons:
             print(json.dumps({
                 "event":"hf_candidate_source_rejected",

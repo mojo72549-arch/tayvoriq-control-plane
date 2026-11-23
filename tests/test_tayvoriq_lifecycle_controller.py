@@ -55,6 +55,20 @@ def fixture():
     return pointer, request, run
 
 
+def test_review_rejection_advances_only_with_bound_followup():
+    pointer, request, run = fixture()
+    pointer['state'] = 'COMPLETED'
+    request['production_completion'] = dict(state='REVIEW_READY', golden_path_run_id=42,
+                                            telegram_message_id=34, quality_gates_weakened=False)
+    plan = dict(request_id=pointer['request_id'], rejected_run_id=42)
+    assert decide(pointer, request, run, review_followup=plan)['reason'] == 'REJECTION_REASON_REQUIRED'
+    assert decide(pointer, request, run, review_followup={**plan, 'rejected_run_id': 41})['state'] == 'REVIEW_READY'
+    plan.update(rejection_reason='Bildmaterial', new_trends_requested=True)
+    assert decide(pointer, request, run, review_followup=plan)['reason'] == 'REPLACEMENT_TRENDS_REQUESTED'
+    plan['selection_delivered'] = True
+    assert decide(pointer, request, run, review_followup=plan)['reason'] == 'REPLACEMENT_TRENDS_DELIVERED_AWAITING_TREND_APPROVAL'
+
+
 def test_nested_armed_request_is_taken_over_on_builder_completion_and_timer():
     for event in ('', 'TAYVORIQ Autonomous Codefix Builder', 'TAYVORIQ Deterministic Codefix Continuity'):
         result = decide(*fixture(), event_name=event)
