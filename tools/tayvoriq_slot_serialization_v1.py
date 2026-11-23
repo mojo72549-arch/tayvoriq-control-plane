@@ -12,6 +12,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
+from tayvoriq_rejected_review_followup import followup, DELIVERIES
 from tayvoriq_review_receipt import REPLAY_PATH, REPLAY_BRANCH, REPLAY_STEPS
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
@@ -43,9 +44,17 @@ def write_json(path: Path, data: dict) -> None:
 
 def selection_parts(data: dict) -> tuple[str, str] | None:
     match = SELECTION_RE.fullmatch(str(data.get("selection_id") or "").strip())
-    if not match:
-        return None
-    return match.group("date"), match.group("slot")[0]
+    if match:
+        return match.group("date"), match.group("slot")[0]
+    replacement = re.fullmatch(r"review-(morning|evening)-[1-9][0-9]*", str(data.get("selection_id") or ""))
+    if replacement and data.get("source") == "telegram_trend_approval":
+        try:
+            approved = datetime.fromisoformat(str(data["approved_at"]).replace("Z", "+00:00"))
+        except (KeyError, ValueError):
+            return None
+        if approved.tzinfo is not None:
+            return approved.astimezone(ZoneInfo("Europe/Berlin")).strftime("%Y%m%d"), replacement[1][0]
+    return None
 
 
 def _approved_stamp(data: dict) -> float:
@@ -200,6 +209,27 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     # Admission happens before claiming or dispatching a new production. A
     # failed/unfinished owner remains authoritative even across dates and slots.
     pointer_path = requests_dir.parent / ".github/state/tayvoriq-active-production-request.json"
+    replacement = result["selection_id"].startswith("review-")
+    if replacement and not parts:
+        return {**result, "requires_serialization": True, "released": False,
+                "reason": "REPLACEMENT_TELEGRAM_SLOT_INVALID"}
+    if replacement:
+        root = requests_dir.parent
+        pointer = read_json(pointer_path) if pointer_path.is_file() else {}
+        if pointer.get("request_id") != result["request_id"]:
+            plan = followup(root) or {}
+            selection = result["selection_id"]
+            receipt_path = root / DELIVERIES / f"{selection}.json"
+            receipt = read_json(receipt_path) if receipt_path.is_file() else {}
+            message = receipt.get("telegram_message_id")
+            trend = str(request.get("trend_id") or "")
+            if (not plan.get("new_trends_requested") or not plan.get("selection_delivered")
+                    or plan.get("selection_id") != selection or type(message) is not int
+                    or request.get("telegram_message_id") != message
+                    or result["request_id"] != f"telegram-{message}-trend-{trend}"
+                    or request.get("approval_key") != f"telegram:{selection}:{message}:trend:{trend}"):
+                return {**result, "requires_serialization": True, "released": False,
+                        "reason": "REPLACEMENT_APPROVAL_BINDING_REQUIRED"}
     completed_owner_verified = False
     expired_owner_verified = False
     if pointer_path.is_file():
