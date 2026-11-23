@@ -186,7 +186,7 @@ jobs:
                   should = True
           if slot not in {'morning','evening'}:
               should = False
-          if os.environ.get('RECONCILE_ONLY') == 'true':
+          if os.environ.get('RECONCILE_ONLY') == 'true' and not (failed_review and rejection_selection):
               should = False
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
               h.write(f"should_run={'true' if should else 'false'}\n")
