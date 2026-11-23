@@ -193,6 +193,14 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(result, (*expected, 'groq_rss'))
         self.assertEqual(set(read(self.health)['providers']), {'groq', 'groq:openai/gpt-oss-120b'})
 
+    def test_editorial_rescan_prefers_an_alternate_groq_model(self):
+        with patch.dict(os.environ, {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
+                                    'TAYVORIQ_RESEARCH_SLOT': 'evening'}), \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'url': 'https://source.example/story'}]), \
+             patch.object(resilience.hf, 'structure', return_value=({'candidates': []}, [], 'model')) as structure:
+            resilience.grounded('Editorial context' + resilience.hf.EDITORIAL_RESCAN, '', 'existing-groq-key')
+        self.assertEqual(structure.call_args.kwargs['model_override'], 'openai/gpt-oss-120b')
+
     def test_model_response_clears_expired_quota_even_when_sources_fail(self):
         health = ProviderHealth(self.health, clock=lambda: NOW)
         health.failure('groq', 'groq-key', error(429, '1'))

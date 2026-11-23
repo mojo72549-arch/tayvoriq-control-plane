@@ -36,6 +36,10 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     # the separate 120B model budget has also been consumed.
     source_models = {'groq': None, 'groq:openai/gpt-oss-120b': 'openai/gpt-oss-120b',
                      'groq:qwen/qwen3.8-27b': 'qwen/qwen3.8-27b', 'huggingface': None}
+    if hf.EDITORIAL_RESCAN in prompt:
+        # A successful response can still fail editorial review. On rescan,
+        # prefer another model over repeating the same source-bound draft.
+        source_models = dict(sorted(source_models.items(), key=lambda row: row[1] is None))
     keys = {'gemini': gemini_key, 'huggingface': token}
     keys.update({name: groq_key for name in source_models if name.startswith('groq')})
     if groq_key:
