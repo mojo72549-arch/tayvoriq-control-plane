@@ -348,15 +348,21 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                       "independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     policy = ""
     if source_bound:
-        schema = schema.replace('"fallback_editorial_answers":', '"regional_scorecard":{"evidence":{ACTUAL_SOURCE_ID:EXACT_CHOICE_FOR_THIS_ID,OTHER_SOURCE_ID:EXACT_CHOICE_FOR_OTHER_ID},"ratings":{ALL_SEVEN_RATING_ROWS},"platform_fit":{"youtube":"specific reason","tiktok":"specific reason"}},"fallback_editorial_answers":')
-        policy = """DE_LOCAL_RELEVANCE_V2: supply a regional_scorecard for each candidate.
-Use the two actual source_id keys for evidence, and select an evidence_options ID from that same record for the central fact or consequence.
-Copy the ID, not the prose. When no suitable option exists, supply a verbatim excerpt of 4-18 words from that original only.
-Use one of the evidence_choices listed for each actual ID. Never invent a sentence number.
-regional_scorecard also requires these two fields: {
-"ratings":{"consequence":[YT,TT,"German reason"],"proximity":[YT,TT,"reason"],"recognition":[YT,TT,"reason"],
-"timeliness":[YT,TT,"reason"],"explanation":[YT,TT,"reason"],"resolution":[YT,TT,"reason"],"continuity":[YT,TT,"reason"]},
-"platform_fit":{"youtube":"specific YouTube fit","tiktok":"specific TikTok fit"}}.
+        # Keep all required scorecard fields in the schema the provider actually receives.
+        rating_keys = ("consequence", "proximity", "recognition", "timeliness", "explanation", "resolution", "continuity")
+        scorecard = {
+            "evidence": {"<first source ID>": "<exact option ID>", "<second source ID>": "<exact option ID>"},
+            "ratings": {key: ["<YouTube integer 0-5>", "<TikTok integer 0-5>",
+                             "<reason of 4-12 German words for this story>"] for key in rating_keys},
+            "platform_fit": {"youtube": "<distinct German reason of at least four words>",
+                             "tiktok": "<distinct German reason of at least four words>"},
+        }
+        schema = schema.replace('"fallback_editorial_answers":',
+                                '"regional_scorecard":' + json.dumps(scorecard) + ',"fallback_editorial_answers":')
+        policy = """DE_LOCAL_RELEVANCE_V2: complete the regional_scorecard inside each candidate.
+Use the two actual source_id keys for evidence, and select an evidence_choices ID from that same record for the central fact or consequence.
+Copy the exact listed ID. If no suitable option exists, supply a verbatim excerpt of 4-18 words from that original only.
+Replace every schema placeholder with your own source-grounded assessment.
 YT and TT are independently assessed integers 0 to 5, not text. 0 absent, 1 weak, 3 concrete, 5 strong and evidenced.
 For each row give a specific 4-12 word reason grounded in this story. Rate in order: consequences for work/money/daily life,
 German audience proximity, immediately recognizable actor/place, new dated development, explanation beyond the headline,
