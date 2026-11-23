@@ -25,16 +25,16 @@ def _identity(candidate: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
     return title, sources
 
 
-def _verified_editorial_repair(previous, candidate) -> bool:
+def _retention_ready(candidate) -> bool:
     try:
-        apply_trend_contract(previous, strict=True)
+        apply_trend_contract(candidate, strict=True)
     except ValueError:
-        try:
-            apply_trend_contract(candidate, strict=True)
-        except ValueError:
-            return False
-        return True
-    return False
+        return False
+    return True
+
+
+def _verified_editorial_repair(previous, candidate, *, ready=_retention_ready) -> bool:
+    return _identity(previous) == _identity(candidate) and not ready(previous) and ready(candidate)
 
 def _editorial_scan(slot: str, now: datetime):
     """Use short-lived, source-backed editorial input through the normal radar gates."""
@@ -78,7 +78,7 @@ def _editorial_scan(slot: str, now: datetime):
     return None
 
 
-def main() -> int:
+def main(*, repair_ready=_retention_ready) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--slot", choices=["morning", "evening"], required=True)
     parser.add_argument("--output", required=True)
@@ -131,8 +131,9 @@ def main() -> int:
                 prompt += (
                     f"\n\nAUTOMATIC BELOW-MINIMUM RESCAN: the previous scan left fewer than {min_candidates} candidates above the existing Growth reserve/source thresholds. "
                     "Find DISTINCT current stories/angles without weakening scores, source quality, novelty, claim coherence or duplicate rules. "
-                    "Exclude already-seen titles or equivalent angles: "
-                    + " | ".join(prior_titles[:12])
+                    "A previously seen title and exact source pair may be repeated only to correct an editorially rejected draft. "
+                    "Do not return another copy of a previously valid draft. Previous titles: "
+                    + " | ".join(prior_titles[:12]) + "\nPrevious editorial checks: " + previous_error
                 )
 
         data, chunks, model, provider_name = (
@@ -176,8 +177,10 @@ def main() -> int:
             if key in seen:
                 if scan_index > 1 and provider_name.endswith(("_rss", "_gdelt")):
                     position = seen[key]
-                    if _verified_editorial_repair(normalized[position], candidate):
+                    if _verified_editorial_repair(normalized[position], candidate, ready=repair_ready):
                         normalized[position] = candidate
+                        print(json.dumps({"event": "editorial_candidate_replaced", "title": candidate["title"],
+                                          "same_source_urls": True}, ensure_ascii=False))
                 continue
             seen[key] = len(normalized)
             normalized.append(candidate)

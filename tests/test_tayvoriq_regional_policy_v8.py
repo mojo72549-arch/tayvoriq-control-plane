@@ -68,6 +68,29 @@ class RegionalPolicyTest(unittest.TestCase):
              self.assertRaisesRegex(SystemExit, 'GROWTH_RESCAN_REQUIRED'):
             radar.diversify(self.candidates(), 'morning')
 
+    def test_source_bound_rescan_replaces_a_semantically_weak_draft_with_a_valid_one(self):
+        from tayvoriq_agent_trend_radar_v5 import _verified_editorial_repair
+
+        answers = {
+            'what_happened': 'Die Bahn stellt ab Montag ihren Fahrplan um.',
+            'why_happening': 'Wegen maroder Gleise sperrt die Bahn mehrere Abschnitte.',
+            'who_is_affected': 'Betroffen sind Pendler und Fahrgäste auf dieser Strecke.',
+            'personal_impact': 'Für dich verlängern Umleitungen und zusätzliche Umstiege diese Fahrt.',
+            'action_now': 'Prüfe vor der Abfahrt die aktuelle Verbindung online.',
+        }
+        corrected = {**self.candidates()[0], 'title': 'Bahn stellt Fahrplan um',
+                     'growth_v2': {'growth_score': 80},
+                     'sources': ['https://a.example/a', 'https://b.example/b'],
+                     'source_context': {'fallback_editorial_answers': answers}}
+        previous = {**corrected, 'source_context': {'fallback_editorial_answers': {
+            **answers, 'personal_impact': 'Für dich sind Pendler und Fahrgäste betroffen.'}}}
+        with patch.object(radar.retention_v5, 'apply_trend_contract', return_value={}):
+            self.assertTrue(_verified_editorial_repair(previous, corrected, ready=radar._passes_candidate_gates))
+            changed_sources = {**corrected, 'sources': ['https://a.example/a', 'https://c.example/c']}
+            self.assertFalse(_verified_editorial_repair(previous, changed_sources, ready=radar._passes_candidate_gates))
+            below_reserve = {**corrected, 'growth_v2': {'growth_score': 79}}
+            self.assertFalse(_verified_editorial_repair(previous, below_reserve, ready=radar._passes_candidate_gates))
+
     def test_prompts_do_not_reject_local_or_invite_global(self):
         for slot in ('morning', 'evening'):
             prompt = radar.prompt_for(slot, datetime(2026, 9, 27, 10))
