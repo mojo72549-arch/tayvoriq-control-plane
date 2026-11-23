@@ -31,6 +31,8 @@ FEEDS = [
     ("tagesschau-bw", "https://www.tagesschau.de/inland/regional/badenwuerttemberg/index~rss2.xml"),
     ("tagesschau-wirtschaft", "https://www.tagesschau.de/wirtschaft/index~rss2.xml"),
     ("tagesschau-wissen", "https://www.tagesschau.de/wissen/index~rss2.xml"),
+    ("sz-wirtschaft", "https://rss.sueddeutsche.de/rss/Wirtschaft"),
+    ("sz-auto", "https://rss.sueddeutsche.de/rss/auto"),
     ("guardian-world", "https://www.theguardian.com/world/rss"),
     ("guardian-tech", "https://www.theguardian.com/technology/rss"),
     ("guardian-business", "https://www.theguardian.com/business/rss"),

@@ -121,6 +121,22 @@ class GroqSourceContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER"):
             hf.structure("prompt", "key", self.pool, provider_kind="unknown")
 
+    def test_production_feed_pool_cannot_spend_model_quota_on_uncorroborated_stories(self):
+        pool = [record(f"publisher{i}.de", f"Warnstreiks bei Betrieb{i} in Region{i}", i)
+                for i in range(10)]
+        with patch.object(hf.provider, "post_groq") as call:
+            with self.assertRaisesRegex(RuntimeError, "corroborated_headlines=0"):
+                hf.structure("prompt", "key", pool, "multi-publisher-rss", provider_kind="groq")
+            call.assert_not_called()
+
+    def test_supported_lead_omits_unconfirmed_context_but_not_a_tentative_qualifier(self):
+        lead = "Warnstreiks in der Metall- und Elektroindustrie halten an"
+        a = record("tagesschau.de", f"{lead} – Bundesverband nimmt Stellung", 1)
+        b = record("dw.com", f"{lead} – Tarifgespräche am Donnerstag", 2)
+        self.assertEqual(hf.corroborated_headline(a, b), lead)
+        tentative = record("dw.com", f"{lead} – Ausweitung ist geplant", 3)
+        self.assertEqual(hf.corroborated_headline(a, tentative), "")
+
     def test_browser_dossier_failure_recovers_without_huggingface_charge(self):
         with patch.object(resilience.provider, "groq_browser_then_structure", side_effect=RuntimeError("browser research dossier unexpectedly short")), \
              patch.object(resilience.rss, "source_pool", return_value=self.pool), \
