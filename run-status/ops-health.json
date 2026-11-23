@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-23T15:16:40.765099Z",
+  "generated_at": "2026-11-23T15:22:18.597494Z",
   "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
@@ -25,7 +25,9 @@
     "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
     "quality_gates_weakened": false,
     "production_started": false,
-    "last_research_attempt": "45203288109.1"
+    "last_research_attempt": "45203288109.1",
+    "last_issue": "SOURCE_MINIMUM_NOT_MET",
+    "status_detail": "Zu wenige Vorschläge haben die Quellenprüfung bestanden."
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
