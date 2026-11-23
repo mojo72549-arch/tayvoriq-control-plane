@@ -81,6 +81,20 @@ def _mark_research_deferred(reason: str, **meta):
     )
 
 
+def _repair_thin_hook(candidate):
+    depth = retention_v5.evaluate_content_depth(candidate)
+    if depth["issues"] != ["hook_too_thin"]:
+        return candidate
+    question = retention_v5.clean(candidate.get("viewer_question"))
+    short_hook = retention_v5.clean(candidate.get("primary_hook"))
+    if not question.endswith("?") or question.casefold() == short_hook.casefold():
+        return candidate
+    if len(question.split()) >= 8:
+        return {**candidate, "primary_hook": question}
+    lead = short_hook if short_hook.endswith((".", "!", "?")) else short_hook + "."
+    return {**candidate, "primary_hook": lead + " " + question} if short_hook else candidate
+
+
 def diversify(candidates, slot):
     cfg = growth_v7._config().get("selection") or {}
     minimum = max(2, min(5, int(cfg.get("telegram_candidates_min") or 2)))
@@ -91,7 +105,12 @@ def diversify(candidates, slot):
     invalid_v5 = []
     for candidate in candidates:
         try:
-            enriched = retention_v5.apply_trend_contract(candidate, strict=True)
+            repaired = _repair_thin_hook(candidate)
+            enriched = retention_v5.apply_trend_contract(repaired, strict=True)
+            if repaired is not candidate:
+                print(json.dumps({"event": "editorial_hook_repaired",
+                                  "title": enriched["title"], "source_context_unchanged": True},
+                                 ensure_ascii=False))
         except ValueError as exc:
             invalid_v5.append({"title": str(candidate.get("title") or ""), "reason": str(exc)})
             continue
