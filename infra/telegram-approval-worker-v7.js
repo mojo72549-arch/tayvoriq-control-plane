@@ -1,4 +1,5 @@
 import v6 from './telegram-approval-worker-v6.js';
+import { requestResearchTick } from './tayvoriq-research-clock.js';
 
 /*
  * ZERO-COST TELEGRAM GOLDEN PATH
@@ -16,5 +17,8 @@ import v6 from './telegram-approval-worker-v6.js';
 export default {
   async fetch(request, env) {
     return v6.fetch(request, env);
+  },
+  async scheduled(controller, env) {
+    await requestResearchTick(controller.scheduledTime, env);
   },
 };

@@ -2,7 +2,11 @@ name: TAYVORIQ Agent Orchestrator V2
 
 on:
   repository_dispatch:
-    types: [tayvoriq_trend_approved, tayvoriq_telegram_trends_now, tayvoriq_trends_rejected]
+    types:
+      - tayvoriq_trend_approved
+      - tayvoriq_telegram_trends_now
+      - tayvoriq_trends_rejected
+      - tayvoriq_research_tick
   workflow_dispatch:
     inputs:
       reconcile_only:
@@ -123,6 +127,11 @@ jobs:
         id: slot
         env:
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          TICK_SLOT: ${{ github.event.client_payload.slot }}
+          TICK_MODE: ${{ github.event.client_payload.mode }}
+          TICK_DATE: ${{ github.event.client_payload.berlin_date }}
+          TICK_EPOCH: ${{ github.event.client_payload.scheduled_epoch }}
           EVENT_SCHEDULE: ${{ github.event.schedule }}
           PUSH_BEFORE: ${{ github.event.before }}
           INPUT_SLOT: ${{ inputs.slot || '' }}
@@ -146,6 +155,12 @@ jobs:
               sys.path.insert(0, 'tools')
               from tayvoriq_research_retry_v1 import due_slot
               slot = due_slot(now=now.timestamp())
+              should = should and bool(slot)
+          if event == 'repository_dispatch' and os.environ.get('EVENT_ACTION') == 'tayvoriq_research_tick':
+              import sys
+              sys.path.insert(0, 'tools')
+              from tayvoriq_research_retry_v1 import clock_slot
+              slot = clock_slot(*(os.environ.get(name, '') for name in ('TICK_SLOT','TICK_MODE','TICK_DATE','TICK_EPOCH')), now=now)
               should = should and bool(slot)
           if event == 'push':
               import re
@@ -221,6 +236,10 @@ jobs:
                   should = True
           if slot not in {'morning','evening'}:
               should = False
+          if should and not rejection_selection:
+              from tayvoriq_research_retry_v1 import confirmed_slot_delivery
+              if confirmed_slot_delivery(slot, now):
+                  should = False
           if os.environ.get('RECONCILE_ONLY') == 'true' and not (failed_review and rejection_selection):
               should = False
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:

@@ -115,6 +115,29 @@ def due_slot(path: Path | None = None, *, now: float | None = None) -> str:
     return ""
 
 
+def confirmed_slot_delivery(slot: str, now: datetime, *, root: Path = Path(".")) -> bool:
+    selection_id = f"{now:%Y%m%d}-{slot}-agentv2"
+    receipt = read(root / ".automation/tayvoriq-agent-v2/deliveries" / f"{selection_id}.json")
+    message_id = receipt.get("telegram_message_id")
+    return (receipt.get("selection_id") == selection_id and receipt.get("telegram_delivery_verified") is True
+            and type(message_id) is int and message_id > 0)
+
+
+def clock_slot(slot: str, mode: str, day: str, scheduled: str, *, now: datetime) -> str:
+    """A wakeup is a hint. The Orchestrator owns the current slot and receipt."""
+    if (slot not in {"morning", "evening"} or day != now.date().isoformat() or not scheduled.isascii()
+            or not scheduled.isdigit() or len(scheduled) != 10
+            or not 0 <= now.timestamp() - int(scheduled) < 20 * 60 or confirmed_slot_delivery(slot, now)):
+        return ""
+    if mode == "retry":
+        return slot if due_slot(now=now.timestamp()) == slot else ""
+    start = 335 if slot == "morning" else 1145
+    minute = now.hour * 60 + now.minute
+    queue = current(now=now.timestamp())
+    already_attempted = queue.get("berlin_date") == day and queue.get("slot") == slot
+    return slot if mode == "catchup" and start <= minute < start + 30 and not already_attempted else ""
+
+
 def review_due(selection_id: str, *, now: float | None = None) -> bool:
     path = review_path(selection_id)
     status = read(path.parent.parent / "review-trend-status" / path.name)

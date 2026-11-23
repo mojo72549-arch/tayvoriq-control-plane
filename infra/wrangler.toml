@@ -3,6 +3,9 @@ main = "telegram-approval-worker-v7.js"
 compatibility_date = "2026-07-19"
 workers_dev = true
 
+[triggers]
+crons = ["*/5 * * * *"]
+
 [vars]
 GITHUB_REPOSITORY = "mojo72549-arch/tayvoriq-control-plane"
 YOUTUBE_PRIVACY = "public"
