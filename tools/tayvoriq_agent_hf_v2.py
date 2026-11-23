@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, os
+import json, os, re
 from collections import defaultdict, deque
 from typing import Any
 from urllib.parse import urlparse
@@ -84,11 +84,18 @@ def _source_pair_score(a: dict, b: dict) -> int:
 
 
 def corroborated_headline(a: dict, b: dict) -> str:
-    """Reuse a short publisher headline only if both original records support it."""
+    """Use a publisher's headline or standalone lead clause with joint support."""
     for record in (a, b):
         title = base.clean(record.get('title'))
         if 0 < len(title) <= 180 and not validate_pair({'title': title}, [a, b]):
             return title
+    for record in (a, b):
+        title = base.clean(record.get('title'))
+        lead, *tail = re.split(r"\s+[–—]\s+|;\s+", title, maxsplit=1)
+        if (tail and 24 <= len(lead) <= 150 and len(_words(lead)) >= 4
+                and _status(lead) == _status(title) and _events(lead) == _events(title)
+                and not validate_pair({'title': lead}, [a, b])):
+            return lead
     return ''
 
 
@@ -195,7 +202,8 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
           'Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them.')
     pair_hints = []
     vetted_pairs = {}
-    if provider_kind == 'groq':
+    source_bound = source_label in {'multi-publisher-rss', 'rss-gdelt-context'}
+    if provider_kind == 'groq' or source_bound:
         source_ids = list(by_id)
         for i, left in enumerate(source_ids):
             for right in source_ids[i + 1:]:
@@ -212,6 +220,17 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                  ', '.join(x[1] for x in pair_hints) + '. Select only if full original SOURCE CONTRACT passes.'
                  if pair_hints else '')
     exact_titles = len({title.casefold() for title in vetted_pairs.values()}) >= 2
+    if source_bound and not any(
+        first_title.casefold() != second_title.casefold() and not set(first).intersection(second)
+        for first, first_title in vetted_pairs.items() for second, second_title in vetted_pairs.items()
+    ):
+        raise InsufficientSourceEvidence(
+            f"HF source contract insufficient for {source_label}: "
+            f"corroborated_headlines={len(set(vetted_pairs.values()))} separate_source_pairs=False"
+        )
+    print(json.dumps({"event":"source_headline_preflight","source_label":source_label,
+                      "corroborated_headlines":len(set(vetted_pairs.values())),
+                      "strict_allowlist":exact_titles},ensure_ascii=False))
     if exact_titles:
         allowlist = [{'source_ids': list(pair), 'title': title} for pair, title in vetted_pairs.items()]
         pair_note = ('PICK ONLY FROM THESE CORROBORATED HEADLINES. Copy the title and its two source IDs '

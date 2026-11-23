@@ -1,4 +1,5 @@
 from __future__ import annotations
+from concurrent.futures import ThreadPoolExecutor
 import json, os, time, urllib.parse, urllib.request
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
@@ -18,17 +19,24 @@ def source_pool()->list[dict[str,str]]:
         'sourcelang:german (Bahn OR Verkehr OR Energiepreise OR Verbraucher)',
         'sourcelang:german (Digitalisierung OR Cyberangriff OR Technologie OR Bundesliga)',
     ]
-    out=[]; seen=set(); started=time.monotonic(); budget=float(os.getenv("TAYVORIQ_GDELT_BUDGET_SECONDS") or 45); per_call=float(os.getenv("TAYVORIQ_GDELT_TIMEOUT_SECONDS") or 12)
-    for query in queries:
-        if time.monotonic()-started>=budget: break
+    out=[]; seen=set(); started=time.monotonic()
+    budget=float(os.getenv("TAYVORIQ_GDELT_BUDGET_SECONDS") or 12)
+    per_call=float(os.getenv("TAYVORIQ_GDELT_TIMEOUT_SECONDS") or 8)
+    def collect(query):
         params=urllib.parse.urlencode({"query":query,"mode":"artlist","maxrecords":75,"format":"json","timespan":"24H","sort":"DateDesc"})
         req=urllib.request.Request(f"{GDELT_URL}?{params}",headers={"User-Agent":"tayvoriq-agent-v3"})
-        timeout=max(3.0,min(per_call,budget-(time.monotonic()-started)))
+        timeout=max(1.0,min(per_call,budget))
         try:
             with urllib.request.urlopen(req,timeout=timeout) as resp: payload=json.loads(resp.read().decode())
         except Exception as exc:
-            print(json.dumps({"event":"gdelt_query_failed","query":query,"error":http.summary(exc)},ensure_ascii=False)); continue
-        for item in payload.get("articles") or []:
+            print(json.dumps({"event":"gdelt_query_failed","query":query,"error":http.summary(exc)},ensure_ascii=False))
+            return []
+        return payload.get("articles") or []
+
+    with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+        results=list(pool.map(collect, queries))
+    for articles in results:
+        for item in articles:
             if not isinstance(item,dict): continue
             url=base.clean(item.get("url"),2000); title=base.clean(item.get("title"),500); context=base.clean(item.get("context") or item.get("snippet"),1600); host=base.clean(item.get("domain"),200) or domain(url)
             if not url.startswith(("https://","http://")) or not title or not context or not host or url in seen: continue
