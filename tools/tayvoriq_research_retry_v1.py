@@ -130,6 +130,12 @@ def due_slot(path: Path | None = None, *, now: float | None = None) -> str:
     return ""
 
 
+def terminal_slot(slot: str, now: datetime) -> bool:
+    state = current(now=now.timestamp())
+    return (state.get("berlin_date") == now.date().isoformat() and state.get("slot") == slot
+            and state.get("state") in {"EXHAUSTED", "EXTERNAL_BLOCKER"})
+
+
 def confirmed_slot_delivery(slot: str, now: datetime, *, root: Path = Path(".")) -> bool:
     selection_id = f"{now:%Y%m%d}-{slot}-agentv2"
     receipt = read(root / ".automation/tayvoriq-agent-v2/deliveries" / f"{selection_id}.json")
