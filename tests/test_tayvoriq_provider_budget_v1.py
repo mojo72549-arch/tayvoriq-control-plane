@@ -298,6 +298,38 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertNotIn('tayvoriq-research-retry-wakeup.yml/dispatches', str(steps))
         self.assertIn('research_retry_wakeup', triggers['workflow_dispatch']['inputs'])
 
+    def test_push_slot_is_bound_to_event_commit_after_main_advances(self):
+        from datetime import datetime
+        from tempfile import TemporaryDirectory
+        import yaml
+
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        resolver = next(step['run'] for step in workflow['jobs']['trend-gate']['steps'] if step.get('id') == 'slot')
+        code = compile(resolver.split("<<'PY'\n", 1)[1].rsplit('\nPY\n', 1)[0], 'Berlin push slot', 'exec')
+        now = datetime.fromisoformat('2026-11-23T08:29:00+01:00')
+        plan = {'decision_path': '.automation/tayvoriq-artifact-decisions/1234.json',
+                'new_trends_requested': True, 'selection_delivered': False,
+                'slot': 'evening', 'selection_id': 'review-evening-1234'}
+
+        for changed, slot in (('.github/run-now/tayvoriq-agent-trigger.txt', 'morning'),
+                              ('.github/workflows/tayvoriq-agent-orchestrator-v2.yml', ''),
+                              (plan['decision_path'], 'evening')):
+            with self.subTest(changed=changed), TemporaryDirectory() as temp:
+                output = Path(temp) / 'output'
+                env = {'EVENT_NAME': 'push', 'GITHUB_OUTPUT': str(output),
+                       'PUSH_BEFORE': 'a' * 40, 'GITHUB_SHA': 'b' * 40}
+                with patch.dict(os.environ, env, clear=True), patch('datetime.datetime') as clock, \
+                     patch('subprocess.check_output', return_value=changed + '\n') as git, \
+                     patch.object(retry, 'due_slot', return_value=''), \
+                     patch('tayvoriq_rejected_review_followup.followup', return_value=plan):
+                    clock.now.side_effect = lambda tz: now.astimezone(tz)
+                    exec(code, {})
+                git.assert_called_once_with(['git', 'diff', '--name-only', 'a' * 40, 'b' * 40], text=True)
+                results = dict(line.split('=', 1) for line in output.read_text().splitlines())
+                self.assertEqual(results['slot'], slot)
+                self.assertEqual(results['should_run'], 'true' if slot else 'false')
+
     def test_model_cache_is_saved_before_a_failed_publishability_gate(self):
         import yaml
         root = Path(__file__).resolve().parents[1]
