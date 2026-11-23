@@ -1,0 +1,40 @@
+name: Inspect regional research evidence
+on: push
+permissions:
+  contents: read
+jobs:
+  evidence:
+    if: github.ref == 'refs/heads/diagnostics/regional-source-pairs-20261123'
+    timeout-minutes: 4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect retrieved headlines and source checks
+        env:
+          PYTHONPATH: tools
+        run: |
+          python - <<'PY'
+          import json, re, itertools
+          import tayvoriq_agent_hf_v2 as hf
+          import tayvoriq_agent_rss_v2 as rss
+          from tayvoriq_source_evidence_v1 import _events, _words, validate_pair
+          records = rss.source_pool(expanded=True)
+          matches = []
+          for a,b in itertools.combinations(records,2):
+              if a['domain']==b['domain']:
+                  continue
+              x,y=a['title'],b['title']
+              terms=_words(x)&_words(y)
+              if len(terms)<3 or len(terms)/min(len(_words(x)),len(_words(y)))<0.45:
+                  continue
+              matches.append((len(terms),a,b))
+          distinct=set()
+          for _,a,b in sorted(matches,key=lambda row:row[0],reverse=True):
+              if a['title'] in distinct or b['title'] in distinct:
+                  continue
+              distinct.update([a['title'],b['title']])
+              print(json.dumps({'a':a['title'],'b':b['title'],'publishers':[a['domain'],b['domain']],'events':[sorted(_events(a['title'])),sorted(_events(b['title']))],'lead':hf.corroborated_headline(a,b),'checks':validate_pair({'title':a['title']},[a,b])},ensure_ascii=False))
+              if len(distinct)>=80: break
+          PY
