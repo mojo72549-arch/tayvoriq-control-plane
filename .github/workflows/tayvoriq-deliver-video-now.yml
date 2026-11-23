@@ -1,4 +1,5 @@
 name: TAYVORIQ-X Golden Path
+run-name: ${{ inputs.review_repair_of && format('TAYVORIQ review correction {0}', inputs.review_repair_of) || github.event.head_commit.message || github.workflow }}
 
 on:
   workflow_dispatch:
@@ -18,6 +19,9 @@ on:
       recovery_generation:
         description: Gebundene Recovery-Generation für Fortschritts- und Replay-Wahrheit
         required: false
+        type: string
+      review_repair_of:
+        description: Vom Orchestrator gebundener abgelehnter Review
         type: string
   push:
     branches: [main]
@@ -81,6 +85,7 @@ env:
   TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
   SOURCE_REQUEST_ID_PIN: ${{ github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
   TAYVORIQ_RECOVERY_GENERATION: ${{ github.event.inputs.recovery_generation || github.event.client_payload.recovery_generation || '0' }}
+  REVIEW_REPAIR_OF: ${{ inputs.review_repair_of || '' }}
 
 jobs:
   orchestrate:
@@ -91,6 +96,26 @@ jobs:
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+
+      - name: Verify Orchestrator review correction authorization
+        if: env.REVIEW_REPAIR_OF != ''
+        run: |
+          set -euo pipefail
+          for poll in $(seq 1 15); do
+            git pull --ff-only origin main --quiet
+            if plan=$(python -S tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN" 2>/dev/null); then
+              python -S - "$plan" >> "$GITHUB_ENV" <<'PY'
+          import json, sys
+          plan = json.loads(sys.argv[1])
+          print("REVIEW_REPAIR_CACHE=" + plan["repair_cache_key"])
+          print("REVIEW_REPAIR_STAGE=" + plan["repair_stage"])
+          PY
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Review correction authorization could not be verified.'
+          exit 1
 
       - name: Resolve approved X request
         id: resolve_request
@@ -677,6 +702,7 @@ jobs:
 
       - name: Restore lean production checkpoint
         id: restore_recovery_cache
+        if: env.REVIEW_REPAIR_OF == ''
         uses: actions/cache/restore@v4
         with:
           path: implementation/out/recovery-checkpoint
@@ -684,8 +710,18 @@ jobs:
           restore-keys: |
             tayvoriq-recovery-v1-${{ runner.os }}-${{ steps.source_context.outputs.trend_id }}-${{ steps.source_context.outputs.sha256 }}-
 
+      - name: Restore the rejected review checkpoint
+        id: restore_review_checkpoint
+        if: env.REVIEW_REPAIR_OF != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: implementation/out/recovery-checkpoint
+          key: ${{ env.REVIEW_REPAIR_CACHE }}
+          fail-on-cache-miss: true
+
       - name: Early recovery binding gate
         id: early_recovery_binding
+        if: env.REVIEW_REPAIR_OF == ''
         shell: bash
         run: |
           set -euo pipefail
@@ -755,9 +791,22 @@ jobs:
       - name: Hydrate previous verified checkpoint
         id: hydrate_recovery
         working-directory: implementation
+        env:
+          REVIEW_CACHE_HIT: ${{ steps.restore_review_checkpoint.outputs.cache-hit }}
         run: |
           set -euo pipefail
           restored=false
+          if [ -n "$REVIEW_REPAIR_OF" ]; then
+            [ "$REVIEW_CACHE_HIT" = "true" ] || exit 1
+            python -S - <<'PY'
+          import json, os
+          from pathlib import Path
+          meta=json.loads(Path("out/recovery-checkpoint/meta.json").read_text(encoding="utf-8"))
+          attempt=os.environ["REVIEW_REPAIR_CACHE"].rsplit("-",1)[1]
+          if str(meta.get("run_id"))!=os.environ["REVIEW_REPAIR_OF"] or str(meta.get("run_attempt"))!=attempt:
+              raise SystemExit("REVIEW_REPAIR_CHECKPOINT_RUN_MISMATCH")
+          PY
+          fi
           if [ -f out/recovery-checkpoint/meta.json ]; then
             if python tools/tayvoriq_recovery_checkpoint_v1.py hydrate \
               --checkpoint out/recovery-checkpoint \
@@ -770,6 +819,9 @@ jobs:
               echo "Restored cache failed identity/integrity checks; discard and produce fresh."
               rm -rf out/recovery-checkpoint
             fi
+          fi
+          if [ -n "$REVIEW_REPAIR_OF" ]; then
+            [ "$REVIEW_CACHE_HIT" = "true" ] && [ "$restored" = "true" ] || exit 1
           fi
           echo "restored=$restored" >> "$GITHUB_OUTPUT"
 
@@ -950,6 +1002,11 @@ jobs:
             echo "REPLAY_READINESS_SOURCE_REQUEST_PIN_MISSING"
             exit 1
           }
+          if [ -n "$REVIEW_REPAIR_OF" ]; then
+            git -C .. pull --ff-only origin main --quiet
+            python -S ../tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
+            exit 0
+          fi
 
           runtime_request="$RUNNER_TEMP/tayvoriq-replay-request-${GITHUB_RUN_ID}.json"
           bound=false
@@ -1450,6 +1507,10 @@ jobs:
           }
           trap stop_repair_heartbeat EXIT
 
+          if [ -n "$REVIEW_REPAIR_OF" ]; then
+            python ../tools/tayvoriq_apply_review_correction.py || exit 1
+          fi
+
           set +e
           timeout --signal=TERM --kill-after=30s "${TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS}s" \
             python tools/tayvoriq_resume_existing_render_v2.py \
@@ -1613,6 +1674,27 @@ jobs:
           test -n "$JOB_DIR" && test -d "$JOB_DIR"
           python tools/tayvoriq_publication_quality_gate_v2.py --job-dir "$JOB_DIR" --targets youtube_tiktok
 
+      - name: Prepare checkpoint from the audited review
+        id: prepare_review_checkpoint
+        if: steps.publication_gate.outcome == 'success' && env.REVIEW_REPAIR_OF == ''
+        continue-on-error: true
+        working-directory: implementation
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_recovery_checkpoint_v1.py prepare \
+            --outdir out/tayvoriq-youtube-tiktok --checkpoint out/recovery-checkpoint \
+            --trend-id "$TREND_ID" --source-sha256 "$SOURCE_CONTEXT_SHA256" \
+            --controller-state SUCCESS --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Save audited review checkpoint
+        id: save_review_checkpoint
+        if: steps.prepare_review_checkpoint.outcome == 'success'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: implementation/out/recovery-checkpoint
+          key: tayvoriq-review-v1-${{ steps.source_context.outputs.sha256 }}-${{ github.run_id }}-${{ github.run_attempt }}
+
       - name: Telegram progress - quality passed
         if: steps.publication_gate.outcome == 'success'
         continue-on-error: true
@@ -1648,6 +1730,10 @@ jobs:
         working-directory: implementation
         run: |
           set -euo pipefail
+          if [ -n "${REVIEW_REPAIR_OF:-}" ]; then
+            git -C .. pull --ff-only origin main --quiet
+            python -S ../tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
+          fi
           python - <<'PY'
           import os
 
@@ -1670,6 +1756,7 @@ jobs:
         shell: bash
         env:
           REVIEW_MESSAGE_ID: ${{ steps.telegram_final.outputs.message_id }}
+          REVIEW_CACHE_SAVED: ${{ steps.save_review_checkpoint.outcome }}
         run: |
           set -euo pipefail
           if [[ ! "$SOURCE_REQUEST_ID_PIN" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
@@ -1680,12 +1767,15 @@ jobs:
           ACTIVE_POINTER=".github/state/tayvoriq-active-production-request.json"
           git fetch origin main --quiet
           git reset --hard origin/main
+          if [ -n "$REVIEW_REPAIR_OF" ]; then
+            python -S tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
+          fi
           if [ ! -f "$REQUEST_FILE" ] || [ ! -f "$ACTIVE_POINTER" ]; then
             echo "ACTIVE_POINTER_FINALIZE_NO_OWNER_FILES"
             exit 1
           fi
           python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GITHUB_RUN_ID" "$REVIEW_MESSAGE_ID" <<'PY'
-          import json,sys
+          import json,os,sys
           from datetime import datetime,timezone
           from pathlib import Path
           request_path=Path(sys.argv[1]); pointer_path=Path(sys.argv[2]); run_id=int(sys.argv[3])
@@ -1695,10 +1785,12 @@ jobs:
           request=json.loads(request_path.read_text(encoding='utf-8'))
           pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
           request_id=str(request.get('request_id') or '')
-          if str(pointer.get('request_id') or '')!=request_id or int(pointer.get('golden_path_run_id') or 0)!=run_id:
+          previous_review=int(os.environ.get("REVIEW_REPAIR_OF") or 0)
+          owner_run=previous_review or run_id
+          if str(pointer.get('request_id') or '')!=request_id or int(pointer.get('golden_path_run_id') or 0)!=owner_run:
               print('ACTIVE_POINTER_FINALIZE_OWNER_CHANGED')
               raise SystemExit(1)
-          if pointer.get('state')!='ACTIVE':
+          if pointer.get('state')!=('COMPLETED' if previous_review else 'ACTIVE'):
               print('ACTIVE_POINTER_FINALIZE_ALREADY_TERMINAL')
               raise SystemExit(1)
           now=datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
@@ -1713,6 +1805,13 @@ jobs:
               'completed_at':now,
               'quality_gates_weakened':False,
           }
+          if previous_review:
+              request['repaired_review_run_id']=previous_review
+              request['golden_path_run_id']=run_id
+              pointer['golden_path_run_id']=run_id
+          if os.environ.get("REVIEW_CACHE_SAVED")=="success":
+              request['production_completion']['review_repair_checkpoint']=(
+                  f"tayvoriq-review-v1-{request['source_context_sha256']}-{run_id}-{os.environ['GITHUB_RUN_ATTEMPT']}")
           request_path.write_text(json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           pointer_path.write_text(json.dumps(pointer,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           print(f'ACTIVE_POINTER_FINALIZED:{request_id}:{run_id}')
@@ -2003,7 +2102,7 @@ jobs:
           compression-level: 6
 
       - name: Verify failure handoff for canonical Delivery Watch
-        if: failure()
+        if: failure() && env.REVIEW_REPAIR_OF == ''
         shell: bash
         run: |
           set -euo pipefail

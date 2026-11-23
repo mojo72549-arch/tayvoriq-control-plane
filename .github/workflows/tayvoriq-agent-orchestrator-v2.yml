@@ -39,6 +39,7 @@ on:
       - ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"
       - ".github/workflows/tayvoriq-deliver-video-now.yml"
       - "tools/tayvoriq_lifecycle_controller_v1.py"
+      - "tools/tayvoriq_rejected_review_repair.py"
       - ".automation/tayvoriq-artifact-decisions/*.json"
   schedule:
     # Interactive replacement-trend requests have a five-minute wakeup SLA.
@@ -84,6 +85,12 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
 
+      - name: Reconcile rejected review correction
+        id: review_repair
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -S tools/tayvoriq_rejected_review_repair.py
+
       - name: Resolve Berlin slot and activation date
         id: slot
         env:
@@ -93,6 +100,7 @@ jobs:
           INPUT_SLOT: ${{ inputs.slot || '' }}
           RECONCILE_ONLY: ${{ inputs.reconcile_only || false }}
           RESEARCH_RETRY_WAKEUP: ${{ inputs.research_retry_wakeup || false }}
+          FAILED_REVIEW: ${{ steps.review_repair.outputs.failed_review }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -162,6 +170,20 @@ jobs:
                   slot=plan['slot']
                   should=True
                   rejection_selection=plan['selection_id']
+          import sys
+          sys.path.insert(0, 'tools')
+          from tayvoriq_rejected_review_followup import followup
+          current_review = followup()
+          if current_review and current_review.get('replacement_dispatch_allowed'):
+              should = False
+          failed_review = os.environ.get('FAILED_REVIEW')
+          if (failed_review and current_review and failed_review == str(current_review['rejected_run_id'])
+                  and current_review['new_trends_requested'] and not current_review['selection_delivered']):
+              from tayvoriq_research_retry_v1 import review_due
+              if review_due(current_review['selection_id'], now=now.timestamp()):
+                  slot = current_review['slot']
+                  rejection_selection = current_review['selection_id']
+                  should = True
           if slot not in {'morning','evening'}:
               should = False
           if os.environ.get('RECONCILE_ONLY') == 'true':
@@ -661,6 +683,8 @@ jobs:
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
   lifecycle-controller:
+    needs: trend-gate
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
