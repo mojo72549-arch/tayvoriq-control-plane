@@ -105,6 +105,7 @@ def main(*, repair_ready=_retention_ready) -> int:
     seen_chunks: set[str] = set()
     providers: list[str] = []
     models: list[str] = []
+    previous_draft_titles = []
     base_rejections = []
     raw_count = 0
     chosen: list[dict[str, Any]] | None = None
@@ -140,6 +141,8 @@ def main(*, repair_ready=_retention_ready) -> int:
         if scan_index > 1 and base_rejections:
             prompt += "\nPrevious base-field findings for the source-bound drafts: " + json.dumps(
                 base_rejections[:5], ensure_ascii=False)
+        if scan_index > 1 and previous_draft_titles:
+            prompt += "\nPreviously drafted source headlines: " + json.dumps(previous_draft_titles[:12], ensure_ascii=False)
         base_rejections.clear()
         data, chunks, model, provider_name = (
             editorial_scan if scan_index == 0 else base.grounded_call(prompt, gemini_key, groq_key)
@@ -159,6 +162,7 @@ def main(*, repair_ready=_retention_ready) -> int:
                 grounding_chunks.append(chunk)
 
         raw_candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
+        previous_draft_titles = [base.clean(item.get("title"), 180) for item in raw_candidates if isinstance(item, dict)]
         raw_count += len(raw_candidates)
         for raw in raw_candidates:
             if not isinstance(raw, dict):

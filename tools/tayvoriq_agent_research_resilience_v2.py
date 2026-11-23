@@ -43,7 +43,8 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     # the separate 120B model budget has also been consumed.
     source_models = {'groq': None, 'groq:openai/gpt-oss-120b': 'openai/gpt-oss-120b',
                      'groq:qwen/qwen3.8-27b': 'qwen/qwen3.8-27b', 'huggingface': None}
-    if any(marker in prompt for marker in hf.RESCAN_MARKERS):
+    rescan = any(marker in prompt for marker in hf.RESCAN_MARKERS)
+    if rescan:
         # A successful response can still fail editorial review. On rescan,
         # prefer another model over repeating the same source-bound draft.
         source_models = dict(sorted(source_models.items(), key=lambda row: row[1] is None))
@@ -115,7 +116,8 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         enriched = rss.enrich_evidence(originals)
         return [after for before, after in zip(originals, enriched) if before != after]
 
-    for label, collect in (('multi-publisher-rss', rss.source_pool),
+    collect_rss = (lambda: rss.source_pool(expanded=True)) if rescan else rss.source_pool
+    for label, collect in (('multi-publisher-rss', collect_rss),
                            ('rss-article-context', article_sources),
                            ('rss-gdelt-context', gdelt.source_pool)):
         # A model quota is shared by that model's browser and source structurer.

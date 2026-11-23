@@ -19,6 +19,9 @@ base = provider.base
 FEEDS = [
     # Original German regional/national publishers first: less global filler and
     # more independently reported Germany/BW stories for strict two-source gates.
+    ("zeit-nachrichten", "https://newsfeed.zeit.de/index"),
+    ("zeit-wirtschaft", "https://newsfeed.zeit.de/wirtschaft/index"),
+    ("spiegel-schlagzeilen", "https://www.spiegel.de/schlagzeilen/index.rss"),
     ("ntv-wirtschaft", "https://www.n-tv.de/wirtschaft/rss"),
     ("ntv-auto", "https://www.n-tv.de/auto/rss"),
     ("ntv-politik", "https://www.n-tv.de/politik/rss"),
@@ -137,7 +140,7 @@ def _fetch_one(feed_name: str, url: str) -> list[dict[str, str]]:
     return records[:40]
 
 
-def source_pool() -> list[dict[str, str]]:
+def source_pool(*, expanded: bool = False) -> list[dict[str, str]]:
     records: list[dict[str, str]] = []
     failures: list[dict[str, str]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
@@ -173,9 +176,10 @@ def source_pool() -> list[dict[str, str]]:
                 publishers.append(sections)
 
     primary = list(balanced(domestic))
-    out = primary[:210]
-    out.extend(list(balanced(other))[:240 - len(out)])
-    out.extend(primary[210:210 + 240 - len(out)])
+    domestic_limit, total_limit = (450, 480) if expanded else (210, 240)
+    out = primary[:domestic_limit]
+    out.extend(list(balanced(other))[:total_limit - len(out)])
+    out.extend(primary[domestic_limit:domestic_limit + total_limit - len(out)])
     print(json.dumps({"event": "rss_source_pool", "records": len(out), "independent_publishers": len({r['domain'] for r in out}), "publishers": sorted({r['domain'] for r in out}), "feed_failures": failures[:16]}, ensure_ascii=False))
     return out
 

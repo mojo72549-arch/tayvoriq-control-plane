@@ -263,6 +263,15 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                  ', '.join(x[1] for x in pair_hints) + '. Select only if full original SOURCE CONTRACT passes.'
                  if pair_hints else '')
     if source_bound:
+        marker = "\nPreviously drafted source headlines: "
+        if rescan_marker and marker in prompt:
+            try:
+                previous = json.loads(prompt.rsplit(marker, 1)[1])
+            except ValueError:
+                previous = []
+            if isinstance(previous, list):
+                previous = {title.casefold() for title in previous if isinstance(title, str)}
+                vetted_pairs = dict(sorted(vetted_pairs.items(), key=lambda pair: pair[1].casefold() in previous))
         selected_pairs = _independent_headline_pairs(vetted_pairs)
         if not selected_pairs:
             raise InsufficientFeedEvidence(
