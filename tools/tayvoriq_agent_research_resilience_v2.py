@@ -57,7 +57,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     failed_source_contract = False
 
     def attempt(name, label, call):
-        nonlocal groq_account_blocked, insufficient_feeds, failed_source_contract
+        nonlocal groq_account_blocked, insufficient_feeds, failed_source_contract, blocked_groq_preflight
         key = keys[name]
         if not key:
             return None
@@ -79,6 +79,8 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
                 health.success(name)
                 if isinstance(exc, hf.InsufficientFeedEvidence):
                     insufficient_feeds = True
+                    if name.startswith('groq'):
+                        blocked_groq_preflight = True
             else:
                 health.failure(name, key, exc)
             if name.startswith('groq') and http_failure(exc)[0] == 402:
@@ -116,7 +118,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         enriched = rss.enrich_evidence(originals)
         return [after for before, after in zip(originals, enriched) if before != after]
 
-    collect_rss = (lambda: rss.source_pool(expanded=True)) if rescan else rss.source_pool
+    collect_rss = (lambda: rss.source_pool(expanded=True)) if (rescan or scheduled_research) else rss.source_pool
     for label, collect in (('multi-publisher-rss', collect_rss),
                            ('rss-article-context', article_sources),
                            ('rss-gdelt-context', gdelt.source_pool)):
@@ -140,7 +142,10 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
             continue
         print(json.dumps({"event":"source_records_loaded","source_label":label,"updated_records":updated}))
         records = list(source_records.values())
+        blocked_groq_preflight = False
         for name, model in source_models.items():
+            if blocked_groq_preflight and name.startswith('groq'):
+                continue
             result = attempt(name, name + '/' + label, lambda: hf.structure(
                 prompt, keys[name], records, label,
                 provider_kind='groq' if name.startswith('groq') else name,

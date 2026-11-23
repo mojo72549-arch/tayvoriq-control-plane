@@ -104,6 +104,17 @@ def corroborated_headline(a: dict, b: dict) -> str:
                     and _status(clause) == _status(title) and _events(clause) == _events(title)
                     and not validate_pair({'title': clause}, [a, b])):
                 return clause
+    # Publisher summaries often contain a complete, mutually supported lead
+    # while their display headlines add a quotation or unrelated context.
+    for record in (a, b):
+        headline = str(record.get('title') or '')
+        context = base.clean(record.get('context'))
+        for sentence in re.split(r'(?<=[.!?])\s+', context)[:2]:
+            lead = sentence.rstrip('.')
+            if (sentence.endswith('.') and 24 <= len(lead) <= 160 and len(_words(lead)) >= 4
+                    and _events(lead) == _events(headline) and _status(lead) == _status(headline)
+                    and not validate_pair({'title': lead}, [a, b])):
+                return lead
     return ''
 
 
@@ -274,6 +285,14 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                 vetted_pairs = dict(sorted(vetted_pairs.items(), key=lambda pair: pair[1].casefold() in previous))
         selected_pairs = _independent_headline_pairs(vetted_pairs)
         if not selected_pairs:
+            diagnostics = []
+            for _, ids in pair_hints[:5]:
+                pair = [by_id[sid] for sid in ids.split("+")]
+                titles = [record["title"] for record in pair]
+                diagnostics.append({"titles": titles, "checks": validate_pair({"title": titles[0]}, pair)})
+            print(json.dumps({"event": "insufficient_corroborated_stories", "pool": source_label,
+                              "corroborated_titles": list(dict.fromkeys(vetted_pairs.values()))[:8],
+                              "unverified_leads": diagnostics}, ensure_ascii=False))
             raise InsufficientFeedEvidence(
                 f"HF source contract insufficient for {source_label}: "
                 f"corroborated_headlines={len(set(vetted_pairs.values()))} separate_source_pairs=False"
