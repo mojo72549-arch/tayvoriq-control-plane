@@ -58,6 +58,24 @@ def test_source_pool_keeps_article_urls_and_does_not_invent_cross_source_claims(
     }
 
 
+def test_domestic_publisher_sections_survive_a_large_foreign_feed_pool(monkeypatch):
+    monkeypatch.setattr(rss, "FEEDS", [
+        ("national", "https://a.example/news"),
+        ("regional", "https://a.example/local"),
+        ("economy", "https://b.example/economy"),
+        ("bbc-top", "https://bbc.example/news"),
+    ])
+    monkeypatch.setattr(rss, "_fetch_one", lambda name, url: [
+        {"title":name, "context":"detail", "url":f"{url}/{index}", "domain":url.split("/")[2],
+         "seen_date":"", "feed":name}
+        for index in range(150)
+    ])
+    records = rss.source_pool()
+    assert len(records) == 240
+    assert sum(record["feed"] == "bbc-top" for record in records) == 30
+    assert all(sum(record["feed"] == feed for record in records) >= 50 for feed in ("national","regional","economy"))
+
+
 def test_rss_freshness_supports_rfc_and_atom_dates_but_rejects_undated_items(monkeypatch):
     from datetime import datetime
 

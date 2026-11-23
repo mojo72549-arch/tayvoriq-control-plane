@@ -121,3 +121,15 @@ def test_news_agency_in_author_field_is_normalized_across_feeds():
          "context": "Am Standort Sindelfingen beginnt der Warnstreik bei Mercedes"},
     ]
     assert "same_declared_reporting_origin" in validate_pair({"title": records[0]["title"]}, records)
+
+
+def test_ministerial_succession_evidence_cannot_turn_criticism_into_an_appointment():
+    candidate = {"title":"Gotthardt folgt Aiwanger als Wirtschaftsminister"}
+    sources = [
+        {"title":candidate["title"], "url":"https://a.example/1", "context":"Tobias Gotthardt folgt Aiwanger."},
+        {"title":"Parteichef und Minister: Freie Wähler bestimmen Nachfolger für Hubert Aiwanger",
+         "url":"https://b.example/1", "context":"Tobias Gotthardt rückt an die Spitze des bayerischen Wirtschaftsministeriums."},
+    ]
+    assert validate_pair(candidate, sources) == []
+    sources[1]["title"] = "Gotthardt wird von Wirtschaftsminister Aiwanger kritisiert"
+    assert "shared_headline_event_anchor_required" in validate_pair(candidate, sources)
