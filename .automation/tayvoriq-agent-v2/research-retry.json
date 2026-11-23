@@ -1,18 +1,18 @@
 {
   "schema": "tayvoriq-research-retry-v1",
-  "state": "WAITING",
+  "state": "EXHAUSTED",
   "slot": "morning",
   "berlin_date": "2026-11-23",
   "first_deferred_at_epoch": 1795419682.8048575,
-  "attempts": 9,
-  "retry_at_epoch": 1795440413.678,
+  "attempts": 10,
+  "retry_at_epoch": 1795441222.8048575,
   "retry_phase": "SLOW_RECOVERY",
-  "last_deferred_at_epoch": 1795440076.5588143,
-  "provider_retry_at_epoch": 1795440162.9578993,
+  "last_deferred_at_epoch": 1795440675.554228,
+  "provider_retry_at_epoch": 1795440761.9531837,
   "max_attempts": 10,
   "valid_until_epoch": 1795441282.8048575,
-  "reason": "RESEARCH_PROVIDER_CIRCUIT_COOLDOWN",
+  "reason": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
   "quality_gates_weakened": false,
   "production_started": false,
-  "last_research_attempt": "45183032959.1"
+  "last_research_attempt": "45184684718.1"
 }
