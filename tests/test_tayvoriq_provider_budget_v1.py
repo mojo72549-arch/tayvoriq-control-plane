@@ -275,6 +275,7 @@ class SchedulerContractTests(unittest.TestCase):
                 env = {'EVENT_NAME': 'schedule', 'EVENT_SCHEDULE': cron, 'GITHUB_OUTPUT': str(output)}
                 with patch.dict(os.environ, env, clear=True), patch('datetime.datetime', FrozenDateTime), \
                      patch.object(retry, 'due_slot', return_value=retry_slot), \
+                     patch.object(retry, 'confirmed_slot_delivery', return_value=False), \
                      patch('tayvoriq_rejected_review_followup.followup', return_value=None):
                     exec(code, {})
                 results = dict(line.split('=', 1) for line in output.read_text().splitlines())
@@ -481,6 +482,18 @@ class SchedulerContractTests(unittest.TestCase):
         names = [s.get('name') for s in steps]
         self.assertIn('Validate approval contract', names)
         self.assertIn('Detect active production or recovery request', names)
+
+    def test_external_clock_revalidates_retry_and_duplicate_delivery(self):
+        from datetime import datetime
+        now = datetime.fromisoformat("2026-11-23T13:35:00+01:00")
+        tick = str(int(now.timestamp()) - 60)
+        with patch.object(retry, "confirmed_slot_delivery", return_value=False), \
+                patch.object(retry, "due_slot", return_value="morning"):
+            self.assertEqual(retry.clock_slot("morning", "retry", "2026-11-23", tick, now=now), "morning")
+            self.assertEqual(retry.clock_slot("evening", "retry", "2026-11-23", tick, now=now), "")
+            self.assertEqual(retry.clock_slot("morning", "retry", "2026-11-22", tick, now=now), "")
+        with patch.object(retry, "confirmed_slot_delivery", return_value=True):
+            self.assertEqual(retry.clock_slot("morning", "retry", "2026-11-23", tick, now=now), "")
 
     def test_rejected_review_gets_own_five_minute_queue_and_ten_minute_sla(self):
         selection = 'review-evening-43776528221'

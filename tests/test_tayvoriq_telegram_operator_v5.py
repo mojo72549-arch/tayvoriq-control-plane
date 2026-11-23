@@ -23,7 +23,9 @@ def test_trends_command_enters_existing_v5_trend_workflow():
     src = TRENDS.read_text(encoding="utf-8")
     controller = ORCHESTRATOR.read_text(encoding="utf-8")
     assert "repository_dispatch:" in controller
-    assert "types: [tayvoriq_trend_approved, tayvoriq_telegram_trends_now, tayvoriq_trends_rejected]" in controller
+    for event in ("tayvoriq_trend_approved", "tayvoriq_telegram_trends_now", "tayvoriq_trends_rejected",
+                  "tayvoriq_research_tick"):
+        assert f"      - {event}\n" in controller
     assert "uses: ./.github/workflows/tayvoriq-telegram-trends-now.yml" in controller
     assert "uses: ./.github/workflows/tayvoriq-request-dispatch.yml" in controller
     assert "uses: ./.github/workflows/tayvoriq-rejected-trend-refresh.yml" in controller

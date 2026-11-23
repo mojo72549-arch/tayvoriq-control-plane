@@ -12,9 +12,11 @@ on:
       - infra/telegram-approval-worker-v5.js
       - infra/telegram-approval-worker-v6.js
       - infra/telegram-approval-worker-v7.js
+      - infra/tayvoriq-research-clock.js
       - infra/wrangler.toml
       - tests/telegram-stale-selection-guard-v3.test.mjs
       - tests/tayvoriq-artifact-approval.test.mjs
+      - tests/tayvoriq-research-clock.test.mjs
       - .github/workflows/deploy-telegram-approval-worker.yml
 
 permissions:
@@ -41,7 +43,7 @@ jobs:
         run: |
           node --check telegram-approval-worker-v7.js
           node --check telegram-approval-worker-v6.js
-          node --test ../tests/telegram-stale-selection-guard-v3.test.mjs ../tests/tayvoriq-artifact-approval.test.mjs
+          node --test ../tests/telegram-stale-selection-guard-v3.test.mjs ../tests/tayvoriq-artifact-approval.test.mjs ../tests/tayvoriq-research-clock.test.mjs
 
       - name: Validate deployment secrets
         env:
