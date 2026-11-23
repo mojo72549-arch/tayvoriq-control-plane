@@ -34,7 +34,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-x-golden-path
-  cancel-in-progress: false
+  queue: max
 
 env:
   PYTHONUTF8: "1"
