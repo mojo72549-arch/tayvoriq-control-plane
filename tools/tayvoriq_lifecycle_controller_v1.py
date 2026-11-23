@@ -83,11 +83,38 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
                                               else 'NEW_TRENDS_REQUESTED' if plan.get('new_trends_requested')
                                               else 'REPAIR_REQUESTED' if plan.get('followup_action') == 'repair'
                                               else 'AWAITING_FOLLOWUP')
+                result.update(telegram_review_status='DELIVERED', artifact_decision='REJECTED',
+                              youtube_status='BLOCKED_BY_REJECTION', tiktok_status='BLOCKED_BY_REJECTION')
                 return finish('REJECTED', 'VERIFIED_ARTIFACT_REJECTION')
             try:
                 validate_decision(decision, str(run_id))
             except ValueError:
                 return finish('BLOCKED', 'ARTIFACT_APPROVAL_UNVERIFIED')
+            reviewed = request['production_completion'].get('files_sha256')
+            if reviewed is not None and reviewed != decision['files_sha256']:
+                return finish('BLOCKED', 'ARTIFACT_APPROVAL_HASH_MISMATCH')
+            result.update(telegram_review_status='DELIVERED', artifact_decision='APPROVED',
+                          youtube_status='AWAITING_PUBLICATION_RECEIPT', tiktok_status='MANUAL_UPLOAD_REQUIRED')
+            pub_path = root / '.automation/tayvoriq-publications' / f'{run_id}.json'
+            if pub_path.is_file():
+                publication = read(pub_path)
+                if (str(publication.get('review_id')) != str(run_id)
+                        or publication.get('decision_id') != decision['decision_id']
+                        or publication.get('telegram_message_id') != receipt
+                        or not str(publication.get('publish_run_id') or '').isdigit()):
+                    return finish('BLOCKED', 'PUBLICATION_RECEIPT_BINDING_UNVERIFIED')
+                if publication.get('state') == 'UPLOAD_STARTED':
+                    result.update(youtube_status='UPLOAD_STARTED')
+                else:
+                    youtube = publication.get('youtube') or {}
+                    video_id = str(youtube.get('video_id') or '')
+                    if (publication.get('state') != 'YOUTUBE_PUBLISHED'
+                            or not re.fullmatch(r'[A-Za-z0-9_-]{11}', video_id)
+                            or youtube.get('url') not in {f'https://www.youtube.com/watch?v={video_id}',
+                                                        f'https://www.youtube.com/shorts/{video_id}',
+                                                        f'https://youtu.be/{video_id}'}):
+                        return finish('BLOCKED', 'YOUTUBE_PUBLICATION_RECEIPT_INVALID')
+                    result.update(youtube_status='PUBLISHED', youtube_video_id=youtube['video_id'])
             return finish('ARTIFACT_APPROVED', 'VERIFIED_TELEGRAM_ARTIFACT_APPROVAL')
         if request['production_completion'].get('reference_only') is True and pointer.get('allow_publish') is False:
             return finish('REVIEW_READY', 'VERIFIED_REFERENCE_REVIEW_DELIVERED')

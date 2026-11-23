@@ -308,3 +308,16 @@ class ArtifactDecisionRegression(unittest.TestCase):
                        'files_sha256': {name: 'a' * 64 for name in FILES}})
             approved = decide(pointer, request, run, root=root)
             self.assertEqual((approved['state'], approved['action']), ('ARTIFACT_APPROVED', 'NONE'))
+
+            pub = '.automation/tayvoriq-publications/42.json'
+            receipt = dict(state='UPLOAD_STARTED', review_id='42', decision_id='mock',
+                           telegram_message_id=80, publish_run_id='50')
+            put(pub, receipt)
+            self.assertEqual(decide(pointer, request, run, root=root)['youtube_status'], 'UPLOAD_STARTED')
+            put(pub, {**receipt, 'state': 'YOUTUBE_PUBLISHED', 'youtube': {'video_id': '0123456789a', 'url': 'https://www.youtube.com/shorts/0123456789a'}})
+            published = decide(pointer, request, run, root=root)
+            self.assertEqual((published['youtube_status'], published['tiktok_status']), ('PUBLISHED', 'MANUAL_UPLOAD_REQUIRED'))
+            put(pub, {**receipt, 'decision_id': 'stale'})
+            self.assertEqual(decide(pointer, request, run, root=root)['reason'], 'PUBLICATION_RECEIPT_BINDING_UNVERIFIED')
+            request['production_completion']['files_sha256'] = {'short_youtube.mp4': 'wrong'}
+            self.assertEqual(decide(pointer, request, run, root=root)['reason'], 'ARTIFACT_APPROVAL_HASH_MISMATCH')
