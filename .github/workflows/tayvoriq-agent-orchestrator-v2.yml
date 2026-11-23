@@ -112,9 +112,18 @@ jobs:
               slot = due_slot(now=now.timestamp())
               should = should and bool(slot)
           if event == 'push':
+              import re
               import subprocess
-              changed=subprocess.check_output(['git','diff-tree','--no-commit-id','--name-only','-r','HEAD'],text=True).splitlines()
-              should=should and '.github/run-now/tayvoriq-agent-trigger.txt' in changed
+              before = os.environ.get('PUSH_BEFORE', '')
+              push_sha = os.environ.get('GITHUB_SHA', '')
+              if not re.fullmatch(r'[0-9a-f]{40}', push_sha):
+                  raise SystemExit('Invalid commit SHA for the push event')
+              if re.fullmatch(r'[0-9a-f]{40}', before) and before != '0' * 40:
+                  command = ['git', 'diff', '--name-only', before, push_sha]
+              else:
+                  command = ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', '-m', '--root', push_sha]
+              changed = subprocess.check_output(command, text=True).splitlines()
+              should = should and '.github/run-now/tayvoriq-agent-trigger.txt' in changed
           if event == 'push' and should:
               import sys
               sys.path.insert(0, 'tools')
@@ -148,15 +157,7 @@ jobs:
               sys.path.insert(0, 'tools')
               from tayvoriq_rejected_review_followup import followup
               plan=followup()
-              before=os.environ.get('PUSH_BEFORE','')
-              def changed_rejection():
-                  import re
-                  if not re.fullmatch(r'[0-9a-f]{40}', before) or set(before)=={'0'}:
-                      return False
-                  paths=subprocess.check_output(['git','diff','--name-only',before,os.environ['GITHUB_SHA']],text=True).splitlines()
-                  return (plan['decision_path'] in paths or
-                          '.github/workflows/tayvoriq-agent-orchestrator-v2.yml' in paths)
-              due_rejection = plan and changed_rejection()
+              due_rejection = plan and plan['decision_path'] in changed
               if due_rejection and plan['new_trends_requested'] and not plan['selection_delivered']:
                   slot=plan['slot']
                   should=True
