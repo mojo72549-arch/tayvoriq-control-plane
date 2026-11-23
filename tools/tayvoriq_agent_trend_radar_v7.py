@@ -127,6 +127,10 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
     return candidate
 
 
+def _has_reserve_score(candidate: dict[str, Any]) -> bool:
+    return int((candidate.get("growth_v2") or {}).get("growth_score") or 0) >= 80
+
+
 def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any]]:
     semantically_grounded = [candidate for candidate in candidates if growth_v6._editorial_semantics_strong(candidate)]
     rejected = len(candidates) - len(semantically_grounded)
@@ -154,7 +158,7 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
     eligible = [
         candidate
         for candidate in enriched
-        if int((candidate.get("growth_v2") or {}).get("growth_score") or 0) >= 80
+        if _has_reserve_score(candidate)
     ]
     ordered = sorted(
         eligible,

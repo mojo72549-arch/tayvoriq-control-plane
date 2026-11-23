@@ -142,13 +142,15 @@ class GroqSourceContractTests(unittest.TestCase):
                            if row['title'] == title]} for title in dict.fromkeys(row['title'] for row in records)]
             return {'choices': [{'message': {'content': json.dumps({'candidates': candidates})}}]}
 
-        with patch.object(hf.rss, 'enrich_evidence', deepen), patch.object(hf.provider, 'post_groq', respond):
-            data, chunks, _ = hf.structure('prompt' + hf.EDITORIAL_RESCAN, 'key', self.pool,
-                                           'multi-publisher-rss', provider_kind='groq')
-        self.assertEqual(len(chunks), 4)
-        for candidate in data['candidates']:
-            for source in candidate['sources']:
-                self.assertIn('Originalartikel', source['supports'])
+        for marker in hf.RESCAN_MARKERS:
+            with self.subTest(marker=marker), patch.object(hf.rss, 'enrich_evidence', deepen), \
+                 patch.object(hf.provider, 'post_groq', respond):
+                data, chunks, _ = hf.structure('prompt' + marker, 'key', self.pool,
+                                               'multi-publisher-rss', provider_kind='groq')
+                self.assertEqual(len(chunks), 4)
+                for candidate in data['candidates']:
+                    for source in candidate['sources']:
+                        self.assertIn('Originalartikel', source['supports'])
 
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids

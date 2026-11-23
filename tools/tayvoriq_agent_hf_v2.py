@@ -10,6 +10,8 @@ from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_ter
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 EDITORIAL_RESCAN = "\n\nAUTOMATIC REGIONAL CONTRACT RESCAN:"
+GROWTH_RESCAN = "\n\nAUTOMATIC BELOW-MINIMUM RESCAN:"
+RESCAN_MARKERS = (EDITORIAL_RESCAN, GROWTH_RESCAN)
 
 class InsufficientSourceEvidence(RuntimeError):
     """The provider responded successfully but did not return enough corroborated stories."""
@@ -234,9 +236,9 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     schema='''{"candidates":[{"title":"German headline","content_angle":"specific viewer angle","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"viral_potential":0,"tayvoriq_fit":0,"novelty_score":0,"series_fit_score":0,"return_viewer_score":0,"follow_conversion_potential":0,"open_loop_potential":0,"proposed_series_id":"","proposed_series_name":"","next_episode_candidate":"","recommended_cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","primary_hook":"...","viewer_question":"...","explanation_core":"...","surprise_or_reframe":"...","practical_relevance":"...","follow_reason":"...","open_loop":"","open_loop_status":"NONE|SOFT","next_episode_queue_status":"","cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","cta_text":"...","sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
     context_limit=800 if provider_kind=='groq' else 2500
     editorial_context = prompt[:context_limit]
-    editorial_rescan = EDITORIAL_RESCAN in prompt
-    if editorial_rescan:
-        editorial_context += EDITORIAL_RESCAN + prompt.split(EDITORIAL_RESCAN, 1)[1][:1700]
+    rescan_marker = next((marker for marker in RESCAN_MARKERS if marker in prompt), "")
+    if rescan_marker:
+        editorial_context += rescan_marker + prompt.split(rescan_marker, 1)[1][:1700]
     goal=('Return TWO or THREE complete candidates about current events in Stuttgart, Baden-Württemberg or Germany. '
           'Exclude Europe-only/global events and abstract laboratory research. A German brand alone does not establish German relevance.'
           if provider_kind=='groq' else
@@ -275,7 +277,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     if exact_titles:
         allowed_ids = {source_id for pair in vetted_pairs for source_id in pair}
         indexed = [item for item in indexed if item['source_id'] in allowed_ids]
-        if editorial_rescan and source_bound and source_label == 'multi-publisher-rss':
+        if rescan_marker and source_bound and source_label == 'multi-publisher-rss':
             originals = [by_id[item['source_id']] for item in indexed]
             enriched = rss.enrich_evidence(originals)
             enriched_count = 0
@@ -323,9 +325,12 @@ V5 CONTRACT:
 EDITORIAL FALLBACK CONTRACT:
 - Provide all five fallback_editorial_answers.
 - Each answer must be 5-15 words; together the five answers must total 38-49 words.
+- Aim for about nine words per answer. Count all five answers together before returning them.
 - why_happening must state a source-supported cause using wording such as weil, wegen, durch, Grund, Ursache, aufgrund, dadurch or deshalb.
 - Use a concrete phrase from the paired reports in why_happening. Never guess an actor's motive or present a possible background factor as the cause.
+- why_happening must add at least three substantive words beyond what_happened.
 - personal_impact must contain "für dich".
+- personal_impact must add at least three substantive words beyond what_happened and who_is_affected. Explain a concrete different consequence for the viewer using the paired evidence.
 - action_now must start with a concrete verb such as Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze or Speichere.
 
 {goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{editorial_context}\n{pair_note}\nSOURCE RECORDS ({source_label}):\n{blob}'''

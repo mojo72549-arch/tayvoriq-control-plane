@@ -95,6 +95,19 @@ def _repair_thin_hook(candidate):
     return {**candidate, "primary_hook": lead + " " + question} if short_hook else candidate
 
 
+def _passes_candidate_gates(candidate):
+    if (str(candidate.get("regional_relevance") or "").strip().lower() not in _BROAD_REACH
+            or candidate.get("trend_scope") == "science_future"
+            or not growth_v7.growth_v6._editorial_semantics_strong(candidate)
+            or not growth_v7._has_reserve_score(candidate)):
+        return False
+    try:
+        retention_v5.apply_trend_contract(_repair_thin_hook(candidate), strict=True)
+    except ValueError:
+        return False
+    return True
+
+
 def diversify(candidates, slot):
     cfg = growth_v7._config().get("selection") or {}
     minimum = max(2, min(5, int(cfg.get("telegram_candidates_min") or 2)))
@@ -396,4 +409,4 @@ base.diversify = diversify
 base.prompt_for = prompt_for
 
 if __name__ == "__main__":
-    raise SystemExit(base.main())
+    raise SystemExit(base.main(repair_ready=_passes_candidate_gates))
