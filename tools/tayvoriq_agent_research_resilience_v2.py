@@ -29,6 +29,16 @@ def defer_editorial(slot: str) -> None:
     MARKER.write_text(json.dumps(status, ensure_ascii=False) + '\n', encoding='utf-8')
 
 
+def _still_current(draft, records):
+    pair = [records.get(source["url"]) for source in draft["sources"]]
+    if not all(pair) or hf.validate_pair(draft, pair):
+        return False
+    return all(hf.source_support(record)[1] == source["source_record_sha256"]
+               and record.get("seen_date") == source.get("source_date")
+               and (record.get("origin") or "") == (source.get("declared_origin") or "")
+               for record, source in zip(pair, draft["sources"]))
+
+
 def grounded(prompt: str, gemini_key: str, groq_key: str):
     errors = []
     MARKER.unlink(missing_ok=True)
@@ -109,6 +119,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
             return (*result, 'groq')
 
     source_records = {}
+    partials = {}
 
     def article_sources():
         if not insufficient_feeds:
@@ -151,8 +162,41 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
                 provider_kind='groq' if name.startswith('groq') else name,
                 **({'model_override': model} if model else {})))
             if result is not None:
-                return (*result, ('groq' if name.startswith('groq') else name) +
-                        ('_gdelt' if label == 'rss-gdelt-context' else '_rss'))
+                provider_name = ('groq' if name.startswith('groq') else name) + (
+                    '_gdelt' if label == 'rss-gdelt-context' else '_rss')
+                data, chunks, used_model = result
+                candidates = data.get("candidates") or []
+                if len(candidates) == 1 and len(chunks) == 2 and candidates[0].get("_retrieved_regional_assessment", {}).get("passed"):
+                    draft = candidates[0]
+                    pair = tuple(sorted(source["url"] for source in draft["sources"]))
+                    if pair not in partials:
+                        partials[pair] = draft, chunks, used_model, provider_name
+                    if len(partials) < 2:
+                        continue
+                else:
+                    if not partials:
+                        return (*result, provider_name)
+                merged = list(candidates)
+                evidence = {c["uri"]: c for c in chunks}
+                used_models = [used_model]
+                for prior, prior_chunks, prior_model, _ in partials.values():
+                    if not _still_current(prior, source_records):
+                        continue
+                    if any(c["uri"] in evidence for c in prior_chunks):
+                        continue
+                    if any(not hf.distinct_headlines(prior["title"], row["title"]) for row in merged):
+                        continue
+                    merged.append(prior)
+                    evidence.update({c["uri"]: c for c in prior_chunks})
+                    if prior_model not in used_models:
+                        used_models.append(prior_model)
+                if len(merged) >= 2:
+                    return {**data, "candidates": merged}, list(evidence.values()), " + ".join(used_models), provider_name
+
+    for draft, chunks, used_model, provider_name in partials.values():
+        if _still_current(draft, source_records):
+            # Normalize, deduplicate and checkpoint. Final delivery still needs two.
+            return {"candidates": [draft]}, chunks, used_model, provider_name
 
     if scheduled_research:
         result = try_groq_browser()
