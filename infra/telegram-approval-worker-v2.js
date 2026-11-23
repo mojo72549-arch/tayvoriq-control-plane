@@ -66,8 +66,11 @@ export default {
 
     if (!callbackData && /^\/status(?:@\w+)?$/.test(normalizedText)) {
       try {
-        const review = await replacementTrendStatus(env);
-        const status = review || operatorStatusText(await loadOpsHealth(env));
+        const pointer = (await reviewRepoFile(env, '.github/state/tayvoriq-active-production-request.json'))?.data;
+        const review = await replacementTrendStatus(env, pointer);
+        const status = (review?.pending ? review.text :
+          (pointer?.state !== 'ACTIVE' ? await routineTrendStatus(env) : null) || review?.text)
+          || operatorStatusText(await loadOpsHealth(env));
         await requireTelegramMessage(await telegram(env, chatId, status));
         return new Response('ok');
       } catch (error) {
@@ -871,8 +874,7 @@ async function loadOpsHealth(env) {
   return JSON.parse(decoded);
 }
 
-async function replacementTrendStatus(env) {
-  const pointer = (await reviewRepoFile(env, '.github/state/tayvoriq-active-production-request.json'))?.data;
+async function replacementTrendStatus(env, pointer) {
   const runId = pointer?.golden_path_run_id;
   const slot = String(pointer?.selection_id || '').match(/(?:^|-)(morning|evening)(?:-|$)/)?.[1];
   if (pointer?.state !== 'COMPLETED' || !Number.isSafeInteger(runId) || runId <= 0 || !slot) return null;
@@ -891,17 +893,45 @@ async function replacementTrendStatus(env) {
   if (decision.followup_action !== 'new_trends' && !(planBound && plan.new_trends_requested === true)) return null;
   if (delivery?.selection_id === id && delivery.telegram_delivery_verified === true &&
       Number.isSafeInteger(delivery.telegram_message_id) && delivery.telegram_message_id > 0) {
-    return `TAYVORIQ · Neue Trendauswahl in Telegram bereit. Nachricht ${delivery.telegram_message_id}.`;
+    return {text:`TAYVORIQ · Neue Trendauswahl in Telegram bereit. Nachricht ${delivery.telegram_message_id}.`};
   }
   const boundStatus = status?.schema === 'tayvoriq-review-trend-status-v1' && status.selection_id === id ? status : {};
-  if (boundStatus.state === 'BLOCKED') return `TAYVORIQ · Die Ersatzrecherche ist beendet. ${boundStatus.detail || ''}`.trim();
+  if (boundStatus.state === 'BLOCKED') return {text:`TAYVORIQ · Die Ersatzrecherche ist beendet. ${boundStatus.detail || ''}`.trim()};
   const requested = Date.parse((planBound && plan.research_requested_at) || decision.followup_requested_at || '');
   const started = Date.parse(boundStatus.updated_at || '');
   const date = Date.parse(boundStatus.deadline_at || '');
   const deadline = Number.isFinite(date) ? date : (Number.isFinite(requested) ? requested : started) + 600000;
-  if (Date.now() >= deadline) return 'TAYVORIQ · Die Frist ist abgelaufen. Eine Trendauswahl oder Abschlussmeldung ist noch unbestätigt.';
-  return boundStatus.state === 'SEARCHING' || boundStatus.state === 'WAITING'
+  if (Date.now() >= deadline) return {text:'TAYVORIQ · Die Frist ist abgelaufen. Eine Trendauswahl oder Abschlussmeldung ist noch unbestätigt.'};
+  const text = boundStatus.state === 'SEARCHING' || boundStatus.state === 'WAITING'
     ? 'TAYVORIQ · Die Ersatzrecherche läuft.' : 'TAYVORIQ · Die Ersatzrecherche wurde angefordert.';
+  return {text, pending:true};
+}
+
+async function routineTrendStatus(env) {
+  const stateRoot = '.automation/tayvoriq-agent-v2';
+  const queue = (await reviewRepoFile(env, `${stateRoot}/research-retry.json`))?.data;
+  const now = new Date();
+  const today = berlinDateSlot(now).date;
+  if (queue?.schema !== 'tayvoriq-research-retry-v1' || queue.berlin_date !== today ||
+      !['morning', 'evening'].includes(queue.slot)) return null;
+  const title = `TAYVORIQ · ${queue.slot === 'morning' ? 'Morgenrecherche' : 'Abendrecherche'}`;
+  if (queue.state === 'DELIVERED') {
+    const id = `${today.replaceAll('-', '')}-${queue.slot}-agentv2`;
+    const receipt = (await reviewRepoFile(env, `${stateRoot}/deliveries/${id}.json`))?.data;
+    return receipt?.selection_id === id && receipt.telegram_delivery_verified === true &&
+      Number.isSafeInteger(receipt.telegram_message_id) && receipt.telegram_message_id > 0
+      ? `${title}\nTrendauswahl in Telegram bestätigt · Nachricht ${receipt.telegram_message_id}.` : null;
+  }
+  const detail = queue.status_detail || 'Die letzte Recherche ergab noch keine bestätigte Trendauswahl.';
+  if (queue.state === 'WAITING' && Number(queue.valid_until_epoch) * 1000 > now.getTime()) {
+    const retry = Number(queue.retry_at_epoch) * 1000;
+    const next = retry > now.getTime() ? `Nächster Versuch frühestens um ${new Intl.DateTimeFormat('de-DE', {
+      timeZone:'Europe/Berlin', hour:'2-digit', minute:'2-digit',
+    }).format(retry)} Uhr.` : 'Der nächste automatische Versuch ist fällig.';
+    return `${title}\n${detail}\n${next}`;
+  }
+  if (!['WAITING','EXHAUSTED','EXTERNAL_BLOCKER'].includes(queue.state)) return null;
+  return `${title}\n${queue.state === 'EXTERNAL_BLOCKER' ? 'Die Recherche ist durch einen Anbieter blockiert.' : 'Das Recherchefenster ist beendet.'}\n${detail}`;
 }
 
 function operatorStatusText(health) {

@@ -17,6 +17,7 @@ REVIEW_RETRY_SECONDS = 5 * 60
 REVIEW_DEADLINE_SECONDS = 10 * 60
 REVIEW_MAX_ATTEMPTS = 3
 REVIEW_RETRY_DIR = Path(".automation/tayvoriq-agent-v2/research-retries")
+EDITORIAL_DETAIL = "Zu wenige Themen haben die redaktionelle Prüfung bestanden."
 
 
 def review_path(selection_id: str) -> Path:
@@ -34,7 +35,8 @@ def configured_path() -> Path | None:
     return Path(value) if value else None
 
 
-def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: float | None = None) -> dict:
+def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: float | None = None,
+          editorial: bool = False) -> dict:
     path = path or configured_path()
     if path is None or slot not in {"morning", "evening"}:
         return {}
@@ -80,6 +82,9 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
         result['reason'] = 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
     elif status == 'WAITING' and phase == 'SLOW_RECOVERY':
         result['reason'] = 'RESEARCH_PROVIDER_CIRCUIT_COOLDOWN'
+    if editorial:
+        result['last_issue'] = 'EDITORIAL_MINIMUM_NOT_MET'
+        result['status_detail'] = EDITORIAL_DETAIL
     write(path, result)
     return result
 
@@ -168,9 +173,20 @@ def review_due(selection_id: str, *, now: float | None = None) -> bool:
 
 def delivered(slot: str) -> None:
     path = configured_path()
-    state = current(path)
-    if path and state and state.get("slot") == slot:
-        write(path, {**state, "state": "DELIVERED", "delivered_at_epoch": time.time()})
+    if not path or slot not in {"morning", "evening"}:
+        return
+    now = time.time()
+    day = datetime.fromtimestamp(now, ZONE).date().isoformat()
+    state = read(path)
+    if state.get('state') == 'DELIVERED' and state.get('slot') == slot and state.get('berlin_date') == day:
+        return
+    if state.get('berlin_date') == day and state.get('slot') != slot and state.get('state') == 'WAITING':
+        return
+    if state.get('slot') != slot or state.get('berlin_date') != day:
+        if _review_selection(path):
+            return
+        state = {"schema": "tayvoriq-research-retry-v1", "slot": slot, "berlin_date": day}
+    write(path, {**state, "state": "DELIVERED", "delivered_at_epoch": now})
 
 
 def lifecycle(result: dict) -> dict:

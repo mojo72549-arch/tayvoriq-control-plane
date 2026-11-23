@@ -22,6 +22,13 @@ def _defer(errors: list[str], next_at: float | None = None) -> None:
     print(json.dumps({'event': 'research_deferred', **data}, ensure_ascii=False))
 
 
+def defer_editorial(slot: str) -> None:
+    queued = research_retry.defer(slot, time.time() + 900, editorial=True)
+    status = {'status': 'RESEARCH_DEFERRED', 'result': 'REJECTED', 'retry_state': queued.get('state', 'UNSCHEDULED'),
+              'reason': 'EDITORIAL_MINIMUM_NOT_MET'}
+    MARKER.write_text(json.dumps(status, ensure_ascii=False) + '\n', encoding='utf-8')
+
+
 def grounded(prompt: str, gemini_key: str, groq_key: str):
     errors = []
     MARKER.unlink(missing_ok=True)

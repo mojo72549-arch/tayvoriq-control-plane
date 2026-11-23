@@ -6,6 +6,30 @@ const env = { TELEGRAM_WEBHOOK_SECRET: 'test-secret', TELEGRAM_CHAT_ID: '42',
   TELEGRAM_BOT_TOKEN: 'test-token', GITHUB_TOKEN: 'test-gh-token', GITHUB_REPOSITORY: 'team/repo' };
 const reviewId = '100';
 
+test('Telegram status reads the current slot instead of a completed historical review', async t => {
+  const clock = Date.now();
+  const today = new Date(clock).toLocaleDateString('sv-SE', {timeZone:'Europe/Berlin'});
+  const content = data => Response.json({encoding:'base64', sha:'test-blob',
+    content:Buffer.from(JSON.stringify(data)).toString('base64')});
+  let sent;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (url.includes('active-production-request')) return content({state:'COMPLETED'});
+    if (url.includes('research-retry.json')) return content({schema:'tayvoriq-research-retry-v1',
+      berlin_date:today,slot:'evening',state:'WAITING',valid_until_epoch:clock/1000+500,
+      retry_at_epoch:clock/1000+180,status_detail:'Zu wenige Themen haben die redaktionelle Prüfung bestanden.'});
+    if (url.endsWith('/sendMessage')) {
+      sent = JSON.parse(options.body).text;
+      return Response.json({ok:true,result:{message_id:199}});
+    }
+    throw Error(`Unexpected fetch ${url}`);
+  });
+  const request = new Request('https://worker.example/', {method:'POST',
+    headers:{'X-Telegram-Bot-Api-Secret-Token':env.TELEGRAM_WEBHOOK_SECRET},
+    body:JSON.stringify({message:{chat:{id:42},text:'/status'}})});
+  assert.equal((await worker.fetch(request,env)).status,200);
+  assert.match(sent,/Abendrecherche\nZu wenige Themen.*\nNächster Versuch frühestens um/);
+});
+
 function webhook(action, messageId, secret = env.TELEGRAM_WEBHOOK_SECRET) {
   return new Request('https://worker.example/', { method: 'POST', headers: {
     'X-Telegram-Bot-Api-Secret-Token': secret, 'Content-Type': 'application/json',
