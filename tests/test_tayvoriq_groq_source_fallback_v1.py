@@ -112,6 +112,24 @@ class GroqSourceContractTests(unittest.TestCase):
         card["ratings"]["consequence"][1] = 4
         card["evidence"]["S007"] = "Der Fahrplan gilt ab Montag."
         self.assertEqual(rubric.evaluate(card, sources)["reason"], "quote_absent_from_retrieved_record:S007")
+        self.assertFalse(rubric.evaluate(rubric.bind_corroborated_headline(card, sources, sources[0]["supports"]),
+                                        sources)["passed"])
+
+    def test_missing_quote_recovers_only_a_verbatim_verified_claim_from_each_publisher(self):
+        import tayvoriq_regional_relevance as rubric
+        headline = "Mercedes investiert in Werk Stuttgart"
+        sources = [{"source_id": sid, "url": f"https://{sid}.de/a", "supports": headline,
+                    "evidence_options": rubric.evidence_options(sid, headline, "")}
+                   for sid in ("S003", "S007")]
+        card = {"ratings": {key: [4, 4, "Das Werk bekommt weitere Investitionen."] for key in rubric.WEIGHTS},
+                "evidence": {"S003": "S007:title", "S007": "Mercedes schafft neue Arbeitsplätze."},
+                "platform_fit": {"youtube": "Der Betrieb lässt sich einordnen.",
+                                 "tiktok": "Das Werk ist gut erkennbar."}}
+        bound = rubric.bind_corroborated_headline(card, sources, headline)
+        self.assertEqual(bound["evidence"], {"S003": "S003:title", "S007": "S007:title"})
+        self.assertEqual(rubric.evaluate(bound, sources)["evidence"], {s["url"]: headline for s in sources})
+        card["ratings"]["consequence"][1] = 2
+        self.assertFalse(rubric.evaluate(rubric.bind_corroborated_headline(card, sources, headline), sources)["passed"])
 
     def test_base_gate_reports_each_missing_or_low_field(self):
         raw = {"title": "Test", "trend_scope": "business_economy",

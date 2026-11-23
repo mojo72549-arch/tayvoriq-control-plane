@@ -10,7 +10,9 @@ import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
 import tayvoriq_research_checkpoint as checkpoint
 import tayvoriq_research_retry_v1 as research_retry
-from tayvoriq_regional_relevance import complete_scorecards, evidence_options, evaluate as evaluate_regional_relevance
+from tayvoriq_regional_relevance import (
+    bind_corroborated_headline, complete_scorecards, evidence_options, evaluate as evaluate_regional_relevance,
+)
 from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
@@ -537,7 +539,9 @@ EDITORIAL FALLBACK CONTRACT:
         c["sources"]=normalized
         if source_bound:
             evidence = [{**source, "evidence_options": options_by_id.get(source["source_id"], {})} for source in normalized]
-            c["_retrieved_regional_assessment"] = evaluate_regional_relevance(c.get("regional_scorecard"), evidence)
+            card = bind_corroborated_headline(c.get("regional_scorecard"), evidence, c["title"])
+            c["regional_scorecard"] = card
+            c["_retrieved_regional_assessment"] = evaluate_regional_relevance(card, evidence)
     valid_candidates=[]
     seen_pairs, seen_titles = set(), set()
     # Preserve previously qualified drafts only after rechecking both original sources.
