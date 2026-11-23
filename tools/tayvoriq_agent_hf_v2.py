@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
+import tayvoriq_research_checkpoint as checkpoint
 from tayvoriq_regional_relevance import complete_scorecards, evidence_options, evaluate as evaluate_regional_relevance
 from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, _words, _events, _status, _publisher
 base=provider.base
@@ -428,6 +429,7 @@ EDITORIAL FALLBACK CONTRACT:
     raw=(call() if provider_kind=="groq" or interactive else http.retry("huggingface",call,2)); data=base.extract_json(provider.content_of(raw)); chunks=[]
     for c in data.get("candidates") or []:
         if not isinstance(c,dict): continue
+        c.pop("_checkpoint_model", None)
         raw_sources=[s for s in (c.get("sources") or []) if isinstance(s,dict)]
         resolved=[]
         for s in raw_sources:
@@ -476,7 +478,9 @@ EDITORIAL FALLBACK CONTRACT:
             c["_retrieved_regional_assessment"] = evaluate_regional_relevance(c.get("regional_scorecard"), evidence)
     valid_candidates=[]
     seen_pairs, seen_titles = set(), set()
-    for candidate in data.get('candidates') or []:
+    # Preserve previously qualified drafts only after rechecking both original sources.
+    restored = checkpoint.current(records) if source_bound else []
+    for candidate in restored + (data.get('candidates') or []):
         if not isinstance(candidate, dict) or len(candidate.get('sources') or []) != 2:
             continue
         pair = tuple(sorted(source['url'] for source in candidate['sources']))
