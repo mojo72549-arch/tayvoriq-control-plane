@@ -127,6 +127,29 @@ class GroqSourceContractTests(unittest.TestCase):
         with patch.object(hf.provider, "post_groq", fake), self.assertRaisesRegex(RuntimeError, 'valid_candidates=1 grounding_chunks=2'):
             hf.structure('prompt', 'key', self.pool, 'rss', provider_kind='groq')
 
+    def test_editorial_rescan_fetches_context_only_for_shortlisted_publishers(self):
+        def deepen(records):
+            self.assertEqual(len(records), 4)
+            self.assertTrue(all('aktualisiert' not in row['title'] for row in records))
+            return [{**row, 'context': row['context'] + ' Originalartikel liefert konkrete Hintergründe.'}
+                    for row in records]
+
+        def respond(payload, key, timeout):
+            prompt = payload['messages'][1]['content']
+            records = json.loads(prompt.split('SOURCE RECORDS (multi-publisher-rss):\n')[1])
+            self.assertTrue(all('konkrete Hintergründe' in row['context'] for row in records))
+            candidates = [{'title': title, 'sources': [{'source_id': row['source_id']} for row in records
+                           if row['title'] == title]} for title in dict.fromkeys(row['title'] for row in records)]
+            return {'choices': [{'message': {'content': json.dumps({'candidates': candidates})}}]}
+
+        with patch.object(hf.rss, 'enrich_evidence', deepen), patch.object(hf.provider, 'post_groq', respond):
+            data, chunks, _ = hf.structure('prompt' + hf.EDITORIAL_RESCAN, 'key', self.pool,
+                                           'multi-publisher-rss', provider_kind='groq')
+        self.assertEqual(len(chunks), 4)
+        for candidate in data['candidates']:
+            for source in candidate['sources']:
+                self.assertIn('Originalartikel', source['supports'])
+
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
         wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
