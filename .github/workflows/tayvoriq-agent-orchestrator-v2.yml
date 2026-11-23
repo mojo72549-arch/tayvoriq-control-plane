@@ -244,8 +244,8 @@ jobs:
           if slot not in {'morning','evening'}:
               should = False
           if should and not rejection_selection:
-              from tayvoriq_research_retry_v1 import confirmed_slot_delivery
-              if confirmed_slot_delivery(slot, now):
+              from tayvoriq_research_retry_v1 import confirmed_slot_delivery, terminal_slot
+              if confirmed_slot_delivery(slot, now) or terminal_slot(slot, now):
                   should = False
           if os.environ.get('RECONCILE_ONLY') == 'true' and not (failed_review and rejection_selection):
               should = False
@@ -701,6 +701,10 @@ jobs:
             sleep $((attempt * 2))
           done
           exit 1
+
+      - name: Reconcile terminal research notice with Telegram
+        if: always() && steps.slot.outcome == 'success' && steps.slot.outputs.rejection_selection == ''
+        run: python tools/tayvoriq_research_terminal_notice.py
 
       - name: Refresh ops health after provider state persistence
         if: always() && steps.slot.outputs.should_run == 'true'

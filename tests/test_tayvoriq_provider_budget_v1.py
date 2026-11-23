@@ -305,6 +305,53 @@ class SchedulerContractTests(unittest.TestCase):
                 self.assertEqual(results['slot'], expected)
                 self.assertEqual(results['should_run'], 'true' if expected else 'false')
 
+    def test_terminal_notice_requires_receipt_and_claims_before_sending(self):
+        import io
+        import json
+        import tayvoriq_research_terminal_notice as notices
+        from datetime import datetime
+        from contextlib import chdir
+        queue = {"schema": "tayvoriq-research-retry-v1", "state": "EXHAUSTED", "slot": "evening",
+                 "berlin_date": datetime.now(notices.ZONE).date().isoformat(),
+                 "last_research_attempt": "234.1", "attempts": 10, "max_attempts": 10}
+        for chat, expected in [("-12", "DELIVERED"), ("-13", "UNCONFIRMED")]:
+            with self.subTest(chat=chat), tempfile.TemporaryDirectory() as temp, chdir(temp):
+                Path("queue.json").write_text(json.dumps(queue))
+                env = {"TAYVORIQ_RESEARCH_RETRY_FILE":"queue.json", "TELEGRAM_BOT_TOKEN":"test",
+                       "TELEGRAM_CHAT_ID":"-12", "GITHUB_REPOSITORY":"owner/repo"}
+                reply = {"ok": True, "result": {"message_id": 91, "chat": {"id": int(chat)}}}
+                def send(*args, **kwargs):
+                    record = next(Path(".automation").rglob("*.json"))
+                    self.assertEqual(json.loads(record.read_text())["state"], "SENDING")
+                    return io.BytesIO(json.dumps(reply).encode())
+                with patch.dict(os.environ, env), patch.object(notices, "persist", notices.write), \
+                        patch.object(notices.urllib.request, "urlopen", side_effect=send) as sender:
+                    if expected == "DELIVERED":
+                        notices.main()
+                    else:
+                        with self.assertRaises(RuntimeError):
+                            notices.main()
+                    notices.main()
+                    self.assertEqual(sender.call_count, 1)
+                    record = json.loads(next(Path(".automation").rglob("*.json")).read_text())
+                    self.assertEqual(record["state"], expected)
+                    self.assertEqual(record["telegram_delivery_verified"], expected == "DELIVERED")
+
+    def test_terminal_slot_is_scoped_to_berlin_day_and_slot(self):
+        from datetime import datetime
+        stamp = datetime.fromisoformat("2026-11-23T19:00:00+01:00")
+        for state, day, slot, expected in [
+            ("EXHAUSTED", "2026-11-23", "evening", True),
+            ("EXTERNAL_BLOCKER", "2026-11-23", "evening", True),
+            ("WAITING", "2026-11-23", "evening", False),
+            ("EXHAUSTED", "2026-11-22", "evening", False),
+            ("EXHAUSTED", "2026-11-23", "morning", False),
+        ]:
+            with self.subTest(state=state, day=day, slot=slot), patch.object(
+                retry, "current", return_value={"state": state, "berlin_date": day, "slot": slot}
+            ):
+                self.assertEqual(retry.terminal_slot("evening", stamp), expected)
+
     def test_scheduled_tick_uses_durable_retry_without_sleeping_or_dispatching_again(self):
         import yaml
         root = Path(__file__).resolve().parents[1]
