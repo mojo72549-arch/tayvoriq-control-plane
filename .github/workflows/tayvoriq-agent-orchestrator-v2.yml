@@ -122,28 +122,28 @@ jobs:
               # A due retry keeps its original slot even if a delayed/manual
               # trigger arrives after the morning/evening clock boundary.
               slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')
-           rejection_selection=''
-           if event == 'schedule':
+          rejection_selection = ''
+          if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
                   'morning': '30 3 * * *' if offset == 2 else '30 4 * * *',
                   'evening': '0 17 * * *' if offset == 2 else '0 18 * * *',
               }
               slot = next((name for name, cron in expected.items() if cron == schedule), '')
-               if not slot and schedule == '*/5 * * * *':
+              if not slot and schedule == '*/5 * * * *':
                   import sys
                   sys.path.insert(0, 'tools')
-                   from tayvoriq_rejected_review_followup import followup
-                   from tayvoriq_research_retry_v1 import due_slot, review_due
-                   plan=followup()
-                   if (plan and plan['new_trends_requested'] and not plan['selection_delivered']
-                           and review_due(plan['selection_id'], now=now.timestamp())):
-                       slot=plan['slot']
-                       rejection_selection=plan['selection_id']
-                   else:
-                       slot = due_slot(now=now.timestamp())
+                  from tayvoriq_rejected_review_followup import followup
+                  from tayvoriq_research_retry_v1 import due_slot, review_due
+                  plan = followup()
+                  if (plan and plan['new_trends_requested'] and not plan['selection_delivered']
+                          and review_due(plan['selection_id'], now=now.timestamp())):
+                      slot = plan['slot']
+                      rejection_selection = plan['selection_id']
+                  else:
+                      slot = due_slot(now=now.timestamp())
               should = should and bool(slot)
-           if event == 'push':
+          if event == 'push':
               import sys
               sys.path.insert(0, 'tools')
               from tayvoriq_rejected_review_followup import followup
@@ -156,7 +156,7 @@ jobs:
                   paths=subprocess.check_output(['git','diff','--name-only',before,os.environ['GITHUB_SHA']],text=True).splitlines()
                   return (plan['decision_path'] in paths or
                           '.github/workflows/tayvoriq-agent-orchestrator-v2.yml' in paths)
-               due_rejection = plan and changed_rejection()
+              due_rejection = plan and changed_rejection()
               if due_rejection and plan['new_trends_requested'] and not plan['selection_delivered']:
                   slot=plan['slot']
                   should=True
