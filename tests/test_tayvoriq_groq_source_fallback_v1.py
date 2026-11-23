@@ -137,6 +137,36 @@ class GroqSourceContractTests(unittest.TestCase):
         tentative = record("dw.com", f"{lead} – Ausweitung ist geplant", 3)
         self.assertEqual(hf.corroborated_headline(a, tentative), "")
 
+    def test_missing_feed_evidence_is_enriched_from_its_original_article(self):
+        calls = []
+        article = '''<script type="application/ld+json">
+        {"@type":"NewsArticle","headline":"Mercedes investiert in Werk Stuttgart",
+         "description":"Die Investition betrifft die Produktion im Werk.",
+         "articleBody":"Die Investitionen beginnen im Herbst."}</script>'''
+        parsed = resilience.rss.article_context(article, "Mercedes investiert in Werk Stuttgart")
+        self.assertIn("beginnen im Herbst", parsed)
+        self.assertEqual(resilience.rss.article_context(article, "Anderes Werk schließt in Emden"), "")
+        paywalled = article.replace('"articleBody"', '"isAccessibleForFree":false,"articleBody"')
+        self.assertNotIn("beginnen im Herbst", resilience.rss.article_context(paywalled, "Mercedes investiert in Werk Stuttgart"))
+
+        def structure(_prompt, _key, records, label, **kwargs):
+            calls.append(label)
+            if label == "multi-publisher-rss":
+                raise hf.InsufficientFeedEvidence("feed excerpt has no corroborated headline")
+            self.assertEqual(label, "rss-article-context")
+            self.assertIn(parsed, records[0]["context"])
+            self.assertEqual(records[0]["url"], self.pool[0]["url"])
+            return {}, [], "groq"
+
+        with patch.dict("os.environ", {"TAYVORIQ_RESEARCH_SELECTION_ID":"review-morning-123"}), \
+                patch.object(resilience.rss, "source_pool", return_value=self.pool), \
+                patch.object(resilience.hf, "_groq_source_records", return_value=self.pool), \
+                patch.object(resilience.rss, "enrich_evidence",
+                             side_effect=lambda records: [{**records[0], "context":parsed}, *records[1:]]), \
+                patch.object(resilience.hf, "structure", side_effect=structure):
+            self.assertEqual(resilience.grounded("prompt", "", "groq")[-1], "groq_rss")
+        self.assertEqual(calls[-1], "rss-article-context")
+
     def test_browser_dossier_failure_recovers_without_huggingface_charge(self):
         with patch.object(resilience.provider, "groq_browser_then_structure", side_effect=RuntimeError("browser research dossier unexpectedly short")), \
              patch.object(resilience.rss, "source_pool", return_value=self.pool), \

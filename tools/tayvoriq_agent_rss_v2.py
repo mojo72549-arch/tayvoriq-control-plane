@@ -48,6 +48,10 @@ FEEDS = [
 ]
 TAG_RE = re.compile(r"<[^>]+>")
 SPACE_RE = re.compile(r"\s+")
+ARTICLE_DATA_RE = re.compile(
+    r'<script\b[^>]*\btype=["\']application/ld\+json["\'][^>]*>(.*?)</script\s*>',
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _domain(url: str) -> str:
@@ -163,3 +167,75 @@ def source_pool() -> list[dict[str, str]]:
         active = remaining
     print(json.dumps({"event": "rss_source_pool", "records": len(out), "independent_publishers": len({r['domain'] for r in out}), "publishers": sorted({r['domain'] for r in out}), "feed_failures": failures[:16]}, ensure_ascii=False))
     return out
+
+
+def article_context(page, original_title):
+    """Read publisher-provided text for the same article, excluding paywalled bodies."""
+    from tayvoriq_source_evidence_v1 import _words
+
+    original = _words(original_title)
+    for script in ARTICLE_DATA_RE.findall(page):
+        try:
+            data = json.loads(script)
+        except ValueError:
+            continue
+        candidates = data.get("@graph", [data]) if isinstance(data, dict) else data
+        if not isinstance(candidates, list):
+            continue
+        for item in candidates:
+            if not isinstance(item, dict):
+                continue
+            kinds = item.get("@type") or []
+            kinds = [kinds] if isinstance(kinds, str) else kinds
+            if not isinstance(kinds, list) or not any(
+                kind in ("Article", "NewsArticle", "ReportageNewsArticle") for kind in kinds
+            ):
+                continue
+            headline = _words(str(item.get("headline") or ""))
+            if len(original & headline) < max(3, (len(original) * 3 + 3) // 4):
+                continue
+            body = "" if str(item.get("isAccessibleForFree")).lower() == "false" else item.get("articleBody")
+            description = _text(str(item.get("description") or ""), 300)
+            excerpt = _text(str(body or ""), 850)
+            return " ".join(part for part in (description, excerpt) if part).strip()
+    return ""
+
+
+def enrich_article(record):
+    url = record["url"]
+    parsed = urlparse(url)
+    publisher = _domain(url)
+    feed_publishers = {_domain(feed_url) for _, feed_url in FEEDS} | {"sportschau.de", "sueddeutsche.de", "zdfheute.de"}
+    if (parsed.scheme != "https" or parsed.username or parsed.password or publisher not in feed_publishers
+            or parsed.netloc.casefold() not in {publisher, "www." + publisher}):
+        return record
+
+    class SamePublisherRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            target = urlparse(newurl)
+            if target.scheme != "https" or target.netloc.casefold() not in {publisher, "www." + publisher}:
+                raise ValueError("Article redirect leaves the original publisher")
+            return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+    request = urllib.request.Request(url, headers={"User-Agent": "tayvoriq-agent-v3-rss", "Accept": "text/html"})
+    try:
+        opener = urllib.request.build_opener(SamePublisherRedirect())
+        with opener.open(request, timeout=5) as response:
+            if response.headers.get_content_type() != "text/html":
+                return record
+            document = response.read(650_000).decode(response.headers.get_content_charset() or "utf-8", "replace")
+    except (OSError, ValueError, LookupError):
+        return record
+    context = article_context(document, record["title"])
+    original = record.get("context") or ""
+    if not context or context.casefold() in original.casefold():
+        return record
+    limit = max(0, 1350 - len(record["title"]) - len(original) - 1)
+    if limit == 0:
+        return record
+    return {**record, "context": f"{original} {context[:limit]}".strip()}
+
+
+def enrich_evidence(records):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        return list(executor.map(enrich_article, records))

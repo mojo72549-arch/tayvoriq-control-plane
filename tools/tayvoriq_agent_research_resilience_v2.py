@@ -39,9 +39,10 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     if groq_key:
         health.available('groq', groq_key)  # honor a legitimately rotated key
     groq_account_blocked = (health.state['providers'].get('groq') or {}).get('state') == 'PAYMENT_BLOCKED'
+    insufficient_feeds = False
 
     def attempt(name, label, call):
-        nonlocal groq_account_blocked
+        nonlocal groq_account_blocked, insufficient_feeds
         key = keys[name]
         if not key:
             return None
@@ -60,6 +61,8 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
                 raise RuntimeError('RESEARCH_PROVIDER_ACCESS_BLOCKED: ' + label) from exc
             if isinstance(exc, hf.InsufficientSourceEvidence):
                 health.success(name)
+                if isinstance(exc, hf.InsufficientFeedEvidence):
+                    insufficient_feeds = True
             else:
                 health.failure(name, key, exc)
             if name.startswith('groq') and http_failure(exc)[0] == 402:
@@ -84,7 +87,17 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     # rather than consuming it in an additional search-and-format dialogue.
 
     source_records = {}
+
+    def article_sources():
+        if not insufficient_feeds:
+            return []
+        leads = hf._groq_source_records(list(source_records.values()))[:8]
+        originals = [source_records[item["url"]] for item in leads]
+        enriched = rss.enrich_evidence(originals)
+        return [after for before, after in zip(originals, enriched) if before != after]
+
     for label, collect in (('multi-publisher-rss', rss.source_pool),
+                           ('rss-article-context', article_sources),
                            ('rss-gdelt-context', gdelt.source_pool)):
         # A model quota is shared by that model's browser and source structurer.
         if not any(key and health.available(name, key) and
@@ -96,13 +109,15 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         except Exception as exc:
             errors.append(label + ' collection unavailable: ' + http.summary(exc))
             continue
-        previous_count = len(source_records)
+        updated = 0
         for record in records:
             url = record.get('url')
-            if url:
-                source_records.setdefault(url, record)
-        if len(source_records) == previous_count:
+            if url and (url not in source_records or label == 'rss-article-context'):
+                source_records[url] = record
+                updated += 1
+        if not updated:
             continue
+        print(json.dumps({"event":"source_records_loaded","source_label":label,"updated_records":updated}))
         records = list(source_records.values())
         for name in ('groq', alternate, 'huggingface'):
             result = attempt(name, name + '/' + label, lambda name=name: hf.structure(
@@ -111,7 +126,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
                 **({'model_override': 'openai/gpt-oss-120b'} if name == alternate else {})))
             if result is not None:
                 return (*result, ('groq' if name.startswith('groq') else name) +
-                        ('_rss' if label == 'multi-publisher-rss' else '_gdelt'))
+                        ('_gdelt' if label == 'rss-gdelt-context' else '_rss'))
 
     errors.append('Deterministic source fallback disabled: syndicated mirrors and generic hooks cannot pass editorial quality')
     retry_keys = {name: key for name, key in keys.items()
