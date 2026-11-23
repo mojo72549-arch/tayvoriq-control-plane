@@ -96,7 +96,15 @@ class GroqSourceContractTests(unittest.TestCase):
                 "evidence": {s["source_id"]: s["supports"] for s in sources},
                 "platform_fit": {"youtube": "Der Fahrplan erklärt die neue Verbindung.",
                                  "tiktok": "Der direkte Vergleich zeigt die Zeitersparnis."}}
+        for source in sources:
+            sid = source["source_id"]
+            source["evidence_options"] = rubric.evidence_options(sid, source["supports"], "")
+            card["evidence"][sid] = sid + ":title"
         score = rubric.evaluate(card, sources)
+        self.assertEqual(score["evidence"][sources[0]["url"]], sources[0]["supports"])
+        card["evidence"]["S007"] = "S003:title"
+        self.assertFalse(rubric.evaluate(card, sources)["passed"])
+        card["evidence"]["S007"] = "S007:title"
         self.assertEqual(score["scores"], {"youtube": 80, "tiktok": 80})
         self.assertTrue(score["passed"])
         card["ratings"]["consequence"][1] = 2
