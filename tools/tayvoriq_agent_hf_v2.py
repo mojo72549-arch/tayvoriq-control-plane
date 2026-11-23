@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
-from tayvoriq_source_evidence_v1 import validate_pair, source_support, _words, _events, _status, _publisher
+from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 
@@ -72,10 +72,10 @@ def _source_pair_score(a: dict, b: dict) -> int:
     shared_events = _events(ta) & _events(tb)
     if not shared_events or _status(ta) != _status(tb):
         return 0
-    shared_title = _words(ta) & _words(tb)
+    shared_title = claim_terms(ta) & claim_terms(tb)
     if not shared_title:
         return 0
-    shared_text = _words(ta + ' ' + str(a.get('context') or '')) & _words(tb + ' ' + str(b.get('context') or ''))
+    shared_text = claim_terms(ta + ' ' + str(a.get('context') or '')) & claim_terms(tb + ' ' + str(b.get('context') or ''))
     if len(shared_text) < 3:
         return 0
     # Shared headline event + meaningful terms beat globally popular actors
@@ -94,11 +94,12 @@ def corroborated_headline(a: dict, b: dict) -> str:
             return title
     for record in (a, b):
         title = base.clean(record.get('title'))
-        lead, *tail = re.split(r"\s+[–—]\s+|;\s+", title, maxsplit=1)
-        if (tail and 24 <= len(lead) <= 150 and len(_words(lead)) >= 4
-                and _status(lead) == _status(title) and _events(lead) == _events(title)
-                and not validate_pair({'title': lead}, [a, b])):
-            return lead
+        clauses = re.split(r":\s+|\s+[–—]\s+|;\s+", title)
+        for clause in clauses:
+            if (len(clauses) > 1 and 24 <= len(clause) <= 150 and len(_words(clause)) >= 3
+                    and _status(clause) == _status(title) and _events(clause) == _events(title)
+                    and not validate_pair({'title': clause}, [a, b])):
+                return clause
     return ''
 
 

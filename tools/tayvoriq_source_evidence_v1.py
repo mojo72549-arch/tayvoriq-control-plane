@@ -13,6 +13,8 @@ from decimal import Decimal
 from urllib.parse import urlparse
 
 _STOP = set("der die das den dem des ein eine einer einem einen eines und oder aber mit von vom zur zum für auf aus bei nach vor über ist sind wird werden hat haben heute jetzt neu neue neuen neuer meldet berichtet laut sagt the a an and or of to in on for with from as is are was were new says said report reports latest update updates live news current event bestätigt bestätigte meldung quelle unabhängig independently confirmed source sources coverage".split())
+_RULE_CHANGE = r"\bstrengere?\s+([\wäöüß]+)[ -]regeln\b"
+_POLITICAL_ROLE = r"\b\w*(?:minister(?:präsident)?(?:in)?|staatssekretär(?:in)?)\b"
 
 # Explicitly bounded event vocabulary: unknown or ambiguous actions defer to
 # another research path. Shared actors/places alone never prove one event.
@@ -36,6 +38,7 @@ _EVENTS = {
     "flood": r"\b(?:hochwasser|überschwemm\w*|ueberschwemm\w*|flood\w*)\b",
     "earthquake": r"\b(?:erdbeben|earthquake\w*)\b",
     "fire": r"\b(?:waldbrand\w*|großbrand\w*|wildfire\w*)\b",
+    "policy_reform": r"\b(?:\w*reform\w*|gesetzesänder\w*)\b",
 }
 
 
@@ -46,6 +49,10 @@ def _events(text: str) -> set[str]:
         r"\b(?:abbau\w*|wegfall\w*|baut.{0,65}\bab|fallen.{0,40}\bweg)\b", text
     ):
         events.add("job_cuts")
+    if re.search(_RULE_CHANGE, text):
+        events.add("policy_reform")
+    if re.search(_POLITICAL_ROLE, text) and re.search(r"\b(?:folgt|nachfolg\w*|wird|übernimmt)\b", text):
+        events.add("government_appointment")
     return events
 
 
@@ -76,6 +83,14 @@ def _text(record: dict) -> str:
 def _words(value: str) -> set[str]:
     value = unicodedata.normalize("NFKC", value).casefold()
     return {w for w in re.findall(r"[^\W_]+", value) if len(w) >= 3 and not w.isdigit() and w not in _STOP}
+
+
+def claim_terms(value: str) -> set[str]:
+    # Normalize a small set of equivalent surface forms without erasing
+    # subjects, numbers, disputed facts, or the distinction between plans and outcomes.
+    value = re.sub(_RULE_CHANGE, r"\1 reform", value.casefold())
+    forms = {"fiskus":"staat", "staatskasse":"staat", "könnten":"könnte"}
+    return {forms.get(word, word) for word in _words(value)}
 
 
 def _numbers(value: str) -> set[str]:
@@ -132,8 +147,8 @@ def validate_pair(candidate: dict, records: list[dict]) -> list[str]:
     if not all(publishers) or len(set(publishers)) != 2:
         return ["requires_two_independent_publishers"]
     texts = [_text(r) for r in records]
-    terms = [_words(t) for t in texts]
-    title_terms = [_words(str(r.get("title") or "")) for r in records]
+    terms = [claim_terms(t) for t in texts]
+    title_terms = [claim_terms(str(r.get("title") or "")) for r in records]
     common = terms[0] & terms[1]
     reasons = []
     if len(common) < 3 or not (title_terms[0] & title_terms[1]):
@@ -144,7 +159,7 @@ def validate_pair(candidate: dict, records: list[dict]) -> list[str]:
         reasons.append("shared_headline_event_anchor_required")
     if any(_status(str(r.get("title") or "")) != _status(headline) for r in records):
         reasons.append("headline_event_status_not_correlated")
-    headline_terms = _words(headline)
+    headline_terms = claim_terms(headline)
     for index, (text, source_terms) in enumerate(zip(texts, terms), 1):
         overlap = headline_terms & source_terms
         if len(overlap) < 2 or not headline_terms.issubset(source_terms):
