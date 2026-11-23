@@ -179,10 +179,19 @@ def _below_platform_minimum(prompt):
         return []
     if not isinstance(findings, list):
         return []
-    return [row["title"] for row in findings if isinstance(row, dict) and isinstance(row.get("title"), str)
-            and isinstance(row.get("fields"), list) and any(
-                str(field).endswith((":regional_score_below_75", ":consequence_below_3", ":explanation_below_3"))
-                for field in row["fields"])]
+    rejected = []
+    for row in findings:
+        if not isinstance(row, dict) or not isinstance(row.get("title"), str):
+            continue
+        fields = row.get("fields")
+        # Missing rubric inputs also produce a provisional low total. Only a
+        # complete rubric can reject a topic on platform relevance.
+        if fields and isinstance(fields, list) and all(
+            isinstance(field, str) and field.startswith(("youtube:", "tiktok:")) for field in fields
+        ) and any(field.endswith((":regional_score_below_75", ":consequence_below_3", ":explanation_below_3"))
+                  for field in fields):
+            rejected.append(row["title"])
+    return rejected
 
 
 def _research_retry_attempt() -> int:
