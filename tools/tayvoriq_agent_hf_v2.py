@@ -103,6 +103,31 @@ def corroborated_headline(a: dict, b: dict) -> str:
     return ''
 
 
+def _independent_headline_pairs(vetted_pairs: dict) -> dict:
+    """Select separate reporting pairs and avoid ranking alternate wording twice."""
+    entries = list(vetted_pairs.items())
+
+    def distinct(left, right):
+        left_terms, right_terms = claim_terms(left), claim_terms(right)
+        shared = left_terms & right_terms
+        same_topic = (_events(left) == _events(right) and len(shared) >= 3
+                      and len(shared) / min(len(left_terms), len(right_terms)) >= .70)
+        return not same_topic
+
+    for index, (first, first_title) in enumerate(entries):
+        for second, second_title in entries[index + 1:]:
+            used = set(first) | set(second)
+            if len(used) != 4 or not distinct(first_title, second_title):
+                continue
+            chosen = {first: first_title, second: second_title}
+            for pair, title in entries:
+                if not used.intersection(pair) and all(distinct(title, prior) for prior in chosen.values()):
+                    chosen[pair] = title
+                    break
+            return chosen
+    return {}
+
+
 def _groq_source_records(records):
     """Keep likely same-story TWO-publisher pairs inside the compact token budget.
 
@@ -223,15 +248,15 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     pair_note = ('POTENTIAL SAME-EVENT CROSS-PUBLISHER LEADS (not evidence by themselves): ' +
                  ', '.join(x[1] for x in pair_hints) + '. Select only if full original SOURCE CONTRACT passes.'
                  if pair_hints else '')
+    if source_bound:
+        selected_pairs = _independent_headline_pairs(vetted_pairs)
+        if not selected_pairs:
+            raise InsufficientFeedEvidence(
+                f"HF source contract insufficient for {source_label}: "
+                f"corroborated_headlines={len(set(vetted_pairs.values()))} separate_source_pairs=False"
+            )
+        vetted_pairs = selected_pairs
     exact_titles = len({title.casefold() for title in vetted_pairs.values()}) >= 2
-    if source_bound and not any(
-        first_title.casefold() != second_title.casefold() and not set(first).intersection(second)
-        for first, first_title in vetted_pairs.items() for second, second_title in vetted_pairs.items()
-    ):
-        raise InsufficientFeedEvidence(
-            f"HF source contract insufficient for {source_label}: "
-            f"corroborated_headlines={len(set(vetted_pairs.values()))} separate_source_pairs=False"
-        )
     print(json.dumps({"event":"source_headline_preflight","source_label":source_label,
                       "corroborated_headlines":len(set(vetted_pairs.values())),
                       "strict_allowlist":exact_titles},ensure_ascii=False))

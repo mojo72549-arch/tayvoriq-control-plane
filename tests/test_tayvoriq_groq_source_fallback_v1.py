@@ -155,6 +155,16 @@ class GroqSourceContractTests(unittest.TestCase):
         self.assertTrue(hf.validate_pair({"title":"Altersteilzeit-Reform bringt Fiskus Milliarden"}, reform))
         self.assertTrue(hf.validate_pair({"title":"Tobias Gotthardt wird Finanzminister"}, appointment))
 
+    def test_ranker_receives_two_distinct_topics_without_a_shared_source_id(self):
+        alternatives = {
+            ("S001","S002"): "Altersteilzeit-Reform könnte Fiskus Milliarden bringen",
+            ("S003","S004"): "Rente - Reform der Altersteilzeit könnte Staat Milliarden bringen",
+        }
+        self.assertEqual(hf._independent_headline_pairs(alternatives), {})
+        alternatives["S002","S005"] = "Tobias Gotthardt wird Wirtschaftsminister"
+        selected = hf._independent_headline_pairs(alternatives)
+        self.assertEqual(list(selected), [("S003","S004"),("S002","S005")])
+
     def test_missing_feed_evidence_is_enriched_from_its_original_article(self):
         calls = []
         article = '''<script type="application/ld+json">

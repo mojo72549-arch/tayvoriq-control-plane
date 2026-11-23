@@ -51,7 +51,9 @@ def _events(text: str) -> set[str]:
         events.add("job_cuts")
     if re.search(_RULE_CHANGE, text):
         events.add("policy_reform")
-    if re.search(_POLITICAL_ROLE, text) and re.search(r"\b(?:folgt|nachfolg\w*|wird|übernimmt)\b", text):
+    role_change = re.search(r"\b(?:folgt|nachfolg\w*|übernimmt)\b", text)
+    appointed = re.search(r"\bwird\s+(?:(?:neue[rs]?|bayerische[rs]?)\s+)?" + _POLITICAL_ROLE, text)
+    if appointed or (role_change and re.search(_POLITICAL_ROLE, text)):
         events.add("government_appointment")
     return events
 
@@ -89,6 +91,11 @@ def claim_terms(value: str) -> set[str]:
     # Normalize a small set of equivalent surface forms without erasing
     # subjects, numbers, disputed facts, or the distinction between plans and outcomes.
     value = re.sub(_RULE_CHANGE, r"\1 reform", value.casefold())
+    if re.search(_POLITICAL_ROLE, value):
+        value = re.sub(r"\b(?:folgt|folgen|nachfolg\w*)\b", "nachfolge", value)
+        value = re.sub(r"\brückt an die spitze des (?:[\w]+\s+){0,2}(\w+minister)iums\b",
+                       r"nachfolge \1", value)
+        value = re.sub(r"\bals\s+(?=" + _POLITICAL_ROLE + ")", "", value)
     forms = {"fiskus":"staat", "staatskasse":"staat", "könnten":"könnte"}
     return {forms.get(word, word) for word in _words(value)}
 

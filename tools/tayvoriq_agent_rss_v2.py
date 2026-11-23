@@ -21,6 +21,7 @@ FEEDS = [
     # more independently reported Germany/BW stories for strict two-source gates.
     ("ntv-wirtschaft", "https://www.n-tv.de/wirtschaft/rss"),
     ("ntv-auto", "https://www.n-tv.de/auto/rss"),
+    ("ntv-politik", "https://www.n-tv.de/politik/rss"),
     ("land-bw-wirtschaft", "https://www.baden-wuerttemberg.de/de/service/rss/xml/rss-wirtschaft-arbeit-finanzen"),
     ("land-bw-verkehr", "https://www.baden-wuerttemberg.de/de/service/rss/xml/rss-energie-umwelt-verkehr"),
     ("swr-baden-wuerttemberg", "https://www.swr.de/~rss/swraktuell/swraktuell-bw-100.xml"),
@@ -33,6 +34,8 @@ FEEDS = [
     ("tagesschau-wissen", "https://www.tagesschau.de/wissen/index~rss2.xml"),
     ("sz-wirtschaft", "https://rss.sueddeutsche.de/rss/Wirtschaft"),
     ("sz-auto", "https://rss.sueddeutsche.de/rss/auto"),
+    ("handelsblatt", "https://feeds.cms.handelsblatt.com/schlagzeilen"),
+    ("manager-magazin", "https://www.manager-magazin.de/index.rss"),
     ("guardian-world", "https://www.theguardian.com/world/rss"),
     ("guardian-tech", "https://www.theguardian.com/technology/rss"),
     ("guardian-business", "https://www.theguardian.com/business/rss"),
@@ -150,21 +153,29 @@ def source_pool() -> list[dict[str, str]]:
         dedup.setdefault(record["url"], record)
     # Previously the first 240 URLs starved later publishers (including DW).
     # Round-robin by publisher so source matching can find independent reports.
-    by_publisher = defaultdict(deque)
+    domestic, other = defaultdict(lambda: defaultdict(deque)), defaultdict(lambda: defaultdict(deque))
     for record in dedup.values():
-        by_publisher[record["domain"]].append(record)
-    out = []
-    active = list(by_publisher)
-    while active and len(out) < 240:
-        remaining = []
-        for publisher in active:
-            if len(out) >= 240:
-                break
-            if by_publisher[publisher]:
-                out.append(by_publisher[publisher].popleft())
-            if by_publisher[publisher]:
-                remaining.append(publisher)
-        active = remaining
+        foreign_feed = record["feed"].startswith(("bbc-", "guardian-", "aljazeera", "dw-en"))
+        group = other if foreign_feed else domestic
+        group[record["domain"]][record["feed"]].append(record)
+
+    def balanced(group):
+        # Alternate sections inside a publisher before advancing to another
+        # publisher. A national feed must not crowd out its regional section.
+        publishers = deque(deque(sections.values()) for sections in group.values())
+        while publishers:
+            sections = publishers.popleft()
+            queue = sections.popleft()
+            yield queue.popleft()
+            if queue:
+                sections.append(queue)
+            if sections:
+                publishers.append(sections)
+
+    primary = list(balanced(domestic))
+    out = primary[:210]
+    out.extend(list(balanced(other))[:240 - len(out)])
+    out.extend(primary[210:210 + 240 - len(out)])
     print(json.dumps({"event": "rss_source_pool", "records": len(out), "independent_publishers": len({r['domain'] for r in out}), "publishers": sorted({r['domain'] for r in out}), "feed_failures": failures[:16]}, ensure_ascii=False))
     return out
 
@@ -205,7 +216,9 @@ def enrich_article(record):
     url = record["url"]
     parsed = urlparse(url)
     publisher = _domain(url)
-    feed_publishers = {_domain(feed_url) for _, feed_url in FEEDS} | {"sportschau.de", "sueddeutsche.de", "zdfheute.de"}
+    feed_publishers = {_domain(feed_url) for _, feed_url in FEEDS} | {
+        "handelsblatt.com", "sportschau.de", "sueddeutsche.de", "zdfheute.de",
+    }
     if (parsed.scheme != "https" or parsed.username or parsed.password or publisher not in feed_publishers
             or parsed.netloc.casefold() not in {publisher, "www." + publisher}):
         return record
