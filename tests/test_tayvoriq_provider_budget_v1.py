@@ -352,7 +352,7 @@ class SchedulerContractTests(unittest.TestCase):
             ):
                 self.assertEqual(retry.terminal_slot("evening", stamp), expected)
 
-    def test_maintainer_wakeup_is_bound_to_the_terminal_attempt_and_keeps_the_retry_budget(self):
+    def test_exhausted_slot_cannot_be_reopened_by_a_maintainer_marker(self):
         from datetime import datetime
         stamp = datetime.fromisoformat("2026-11-23T23:45:00+01:00")
         now = stamp.timestamp()
@@ -368,17 +368,15 @@ class SchedulerContractTests(unittest.TestCase):
         with patch.dict("os.environ", {"TAYVORIQ_RESEARCH_RETRY_FILE": str(queue),
                                        "TAYVORIQ_RESEARCH_RUN_KEY": "235.1",
                                        "TAYVORIQ_RESEARCH_REPAIR_FROM": "234.1"}), \
-             patch.object(retry, "confirmed_slot_delivery", return_value=False) as delivered:
-            self.assertEqual(retry.terminal_repair_attempt(marker, "morning", stamp), "")
-            self.assertEqual(retry.terminal_repair_attempt(marker, "evening", stamp), "234.1")
-            delivered.return_value = True
+             patch.object(retry, "confirmed_slot_delivery", return_value=False):
             self.assertEqual(retry.terminal_repair_attempt(marker, "evening", stamp), "")
-            delivered.return_value = False
-            result = retry.defer("evening", now + 900, now=now, issue="EDITORIAL_MINIMUM_NOT_MET")
-            self.assertEqual(result["state"], "EXHAUSTED")
+            before = read(queue)
+            result = retry.defer("evening", now + 900, now=now,
+                                 issue="EDITORIAL_MINIMUM_NOT_MET")
+            self.assertEqual(result, before)
+            self.assertEqual(read(queue), before)
             self.assertEqual(result["attempts"], 10)
-            self.assertEqual(result["repair_from_attempt"], "234.1")
-            self.assertEqual(retry.terminal_repair_attempt(marker, "evening", stamp), "")
+            self.assertEqual(result["last_research_attempt"], "234.1")
 
     def test_scheduled_tick_uses_durable_retry_without_sleeping_or_dispatching_again(self):
         import yaml
