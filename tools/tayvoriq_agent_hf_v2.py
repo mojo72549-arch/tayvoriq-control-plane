@@ -330,17 +330,30 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
         for item in indexed:
             sid = item["source_id"]
             original = by_id[sid]
-            options_by_id[sid] = evidence_options(sid, original["title"], original.get("context", ""))
+            # Show the editor the same bounded publisher text that the verifier can match.
+            support, _ = source_support(original)
+            title = original["title"]
+            context = support[len(title):].strip()
+            item["context"] = context
+            options_by_id[sid] = evidence_options(sid, title, context)
             item["evidence_options"] = options_by_id[sid]
+        if exact_titles:
+            for lead in allowlist:
+                lead["evidence_choices"] = {
+                    sid: list(options_by_id[sid]) for sid in lead["source_ids"]
+                }
+            pair_note = pair_note.split("\n", 1)[0] + "\n" + json.dumps(allowlist, ensure_ascii=False)
     blob = json.dumps(indexed, ensure_ascii=False)
     print(json.dumps({"event":"source_prompt_budget","records":len(indexed),
                       "independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     policy = ""
     if source_bound:
-        policy = """DE_LOCAL_RELEVANCE_V2: supply a regional_scorecard for each candidate, in addition to the schema.
+        schema = schema.replace('"fallback_editorial_answers":', '"regional_scorecard":{"evidence":{ACTUAL_SOURCE_ID:EXACT_CHOICE_FOR_THIS_ID,OTHER_SOURCE_ID:EXACT_CHOICE_FOR_OTHER_ID},"ratings":{ALL_SEVEN_RATING_ROWS},"platform_fit":{"youtube":"specific reason","tiktok":"specific reason"}},"fallback_editorial_answers":')
+        policy = """DE_LOCAL_RELEVANCE_V2: supply a regional_scorecard for each candidate.
 Use the two actual source_id keys for evidence, and select an evidence_options ID from that same record for the central fact or consequence.
 Copy the ID, not the prose. When no suitable option exists, supply a verbatim excerpt of 4-18 words from that original only.
-regional_scorecard = {"evidence":{"<first ID>":"<first ID>:title","<second ID>":"<second ID>:sentence2"},
+Use one of the evidence_choices listed for each actual ID. Never invent a sentence number.
+regional_scorecard also requires these two fields: {
 "ratings":{"consequence":[YT,TT,"German reason"],"proximity":[YT,TT,"reason"],"recognition":[YT,TT,"reason"],
 "timeliness":[YT,TT,"reason"],"explanation":[YT,TT,"reason"],"resolution":[YT,TT,"reason"],"continuity":[YT,TT,"reason"]},
 "platform_fit":{"youtube":"specific YouTube fit","tiktok":"specific TikTok fit"}}.
