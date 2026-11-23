@@ -269,6 +269,31 @@ class GroqSourceContractTests(unittest.TestCase):
              self.assertRaisesRegex(hf.InsufficientSourceEvidence, "valid_candidates=0"):
             hf.structure("prompt", "key", self.pool, "multi-publisher-rss", provider_kind="groq")
 
+    def test_editorial_repair_only_changes_requested_fields_of_a_qualified_draft(self):
+        sources = [{"source_id": "S003", "supports": "Die Kette plant einen Zusammenschluss."},
+                   {"source_id": "S009", "supports": "Für Kunden bleiben die Märkte zunächst geöffnet."}]
+        draft = {"title": "Die Ketten planen einen Zusammenschluss", "sources": sources,
+                 "_retrieved_regional_assessment": {"passed": True}, "fallback_editorial_answers": {"why": "Planung"},
+                 "explanation_core": "Die Ketten planen eine Fusion.", "cta_text": "Was heißt das für deinen Markt?",
+                 "follow_reason": "Hier erfährst du was ähnliche Veränderungen für deinen Alltag bedeuten.",
+                 "surprise_or_reframe": "Für Kundinnen und Kunden bleiben die Märkte vorerst geöffnet und wie gewohnt erreichbar."}
+        rejected = {**draft, "_retrieved_regional_assessment": {"passed": False}}
+        def rewrite(batch):
+            self.assertEqual(set(batch), {"S003+S009"})
+            self.assertEqual(set(batch["S003+S009"]["missing"]), {"cta_text", "explanation_core"})
+            return {"S003+S009": {"cta_text": "Bei TAYVORIQ erklären wir, was sich in deinem Markt ändern könnte.",
+                                  "explanation_core": "Die Baumarktketten planen einen Zusammenschluss. Für Menschen, "
+                                  "die dort regelmäßig einkaufen, ist wichtig, was bisher über beide Ketten feststeht.",
+                                  "title": "Unbestätigter Titel", "_retrieved_regional_assessment": {"passed": False}}}
+
+        hf._repair_editorial_fields([draft, rejected], rewrite)
+        self.assertIn("TAYVORIQ", draft["cta_text"])
+        self.assertGreaterEqual(len(draft["explanation_core"].split()), 14)
+        self.assertEqual(draft["title"], rejected["title"])
+        self.assertEqual(draft["sources"], sources)
+        self.assertTrue(draft["_retrieved_regional_assessment"]["passed"])
+        self.assertEqual(rejected["explanation_core"], "Die Ketten planen eine Fusion.")
+
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
         wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
