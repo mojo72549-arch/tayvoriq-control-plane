@@ -12,6 +12,9 @@ HF_URL="https://router.huggingface.co/v1/chat/completions"
 class InsufficientSourceEvidence(RuntimeError):
     """The provider responded successfully but did not return enough corroborated stories."""
 
+class InsufficientFeedEvidence(InsufficientSourceEvidence):
+    """No model was called because the discovery snippets could not establish two stories."""
+
 
 def domain(url:str)->str:
     try:
@@ -202,7 +205,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
           'Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them.')
     pair_hints = []
     vetted_pairs = {}
-    source_bound = source_label in {'multi-publisher-rss', 'rss-gdelt-context'}
+    source_bound = source_label in {'multi-publisher-rss', 'rss-article-context', 'rss-gdelt-context'}
     if provider_kind == 'groq' or source_bound:
         source_ids = list(by_id)
         for i, left in enumerate(source_ids):
@@ -224,7 +227,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
         first_title.casefold() != second_title.casefold() and not set(first).intersection(second)
         for first, first_title in vetted_pairs.items() for second, second_title in vetted_pairs.items()
     ):
-        raise InsufficientSourceEvidence(
+        raise InsufficientFeedEvidence(
             f"HF source contract insufficient for {source_label}: "
             f"corroborated_headlines={len(set(vetted_pairs.values()))} separate_source_pairs=False"
         )
