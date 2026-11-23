@@ -38,6 +38,35 @@ class SlotSerializationTests(unittest.TestCase):
             p.write_text(json.dumps(request("20260926-evening-agentv2-r3", "e1", "2026-09-26T17:00:00Z")))
             self.assertFalse(gate.check_request(p, root, "repo", "token")["released"])
 
+    def test_replacement_needs_new_callback_and_same_berlin_day_morning(self):
+        sid = 'review-evening-123'
+        data = request(sid, 'telegram-55-trend-1', '2026-11-22T23:30:00Z')
+        data.update(trend_id='1', telegram_message_id=55, approval_key=f'telegram:{sid}:55:trend:1')
+        self.assertEqual(gate.selection_parts(data), ('20261123', 'e'))
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            requests = root / 'requests'
+            requests.mkdir()
+            path = requests / 'evening.json'
+            path.write_text(json.dumps(data))
+            self.assertEqual(gate.check_request(path, requests, '', '')['reason'],
+                             'REPLACEMENT_APPROVAL_BINDING_REQUIRED')
+            receipt = root / gate.DELIVERIES / (sid + '.json')
+            receipt.parent.mkdir(parents=True)
+            receipt.write_text(json.dumps({'telegram_message_id': 55}))
+            plan = dict(new_trends_requested=True, selection_delivered=True, selection_id=sid)
+            with patch.object(gate, 'followup', return_value=plan):
+                morning = request('20261123-m-topic', 'morning', '2026-11-23T04:30:00Z')
+                (requests / 'morning.json').write_text(json.dumps(morning))
+                self.assertEqual(gate.check_request(path, requests, '', '')['reason'],
+                                 'MORNING_GOLDEN_PATH_NOT_BOUND')
+                path.write_text(json.dumps({**data, 'telegram_message_id': 56}))
+                self.assertEqual(gate.check_request(path, requests, '', '')['reason'],
+                                 'REPLACEMENT_APPROVAL_BINDING_REQUIRED')
+                path.write_text(json.dumps({**data, 'approved_at': 'yesterday'}))
+                self.assertEqual(gate.check_request(path, requests, '', '')['reason'],
+                                 'REPLACEMENT_TELEGRAM_SLOT_INVALID')
+
     def test_active_owner_blocks_every_new_slot_before_dispatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "requests"

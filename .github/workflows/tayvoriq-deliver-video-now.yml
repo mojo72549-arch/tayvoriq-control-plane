@@ -1595,7 +1595,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Final publication gate failed after a publishable master; reuse the exact master and invoke bounded final voice/postmux recovery."
+          python - <<'PYVOICE'
+          import json
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "tools")
+          from tayvoriq_resume_existing_render_v2 import _publication_gate_voice_repairable
+          state = json.loads(Path("out/tayvoriq-review-state.json").read_text())
+          allowed, platforms = _publication_gate_voice_repairable(Path(state["job_dir"]))
+          if not allowed:
+              raise SystemExit("FINAL_QA_NOT_VOICE_ONLY: retain masters and classify original QA report")
+          print({"final_voice_repair_platforms": sorted(platforms)})
+          PYVOICE
           python tools/tayvoriq_resume_existing_render_v2.py \
             --outdir out/tayvoriq-youtube-tiktok \
             --site-root site/tayvoriq \
@@ -1631,6 +1642,12 @@ jobs:
           set -euo pipefail
           mkdir -p pages-worktree/tayvoriq
           rsync -a implementation/site/tayvoriq/ pages-worktree/tayvoriq/
+          JOB_DIR=$(cd implementation && python -c 'import json,pathlib; print(pathlib.Path(json.loads(pathlib.Path("out/tayvoriq-review-state.json").read_text())["job_dir"]).resolve())')
+          BUNDLE="pages-worktree/tayvoriq/runs/$GITHUB_RUN_ID"
+          test -d "$BUNDLE"
+          cp "$JOB_DIR/publication_quality_gate.json" "$BUNDLE/publication_quality_gate.json"
+          python -S tools/tayvoriq_review_bundle_receipt.py --implementation implementation \
+            --bundle "$BUNDLE" --run "$GITHUB_RUN_ID" --out "$RUNNER_TEMP/qa-bundle.json"
           touch pages-worktree/.nojekyll
           cd pages-worktree
           git config user.name "github-actions[bot]"
@@ -1641,6 +1658,12 @@ jobs:
             git pull --rebase origin main
             git push origin main
           fi
+          cd ..
+          git -C pages-worktree fetch --quiet origin main
+          python -S tools/tayvoriq_review_bundle_receipt.py --implementation implementation \
+            --bundle "$BUNDLE" --run "$GITHUB_RUN_ID" --out "$RUNNER_TEMP/committed-bundle.json" \
+            --pages-repo pages-worktree --revision-out "$RUNNER_TEMP/review-pages-sha"
+          cmp "$RUNNER_TEMP/qa-bundle.json" "$RUNNER_TEMP/committed-bundle.json"
 
       - name: Send Telegram review
         id: telegram_final
@@ -1685,7 +1708,7 @@ jobs:
             exit 1
           fi
           python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GITHUB_RUN_ID" "$REVIEW_MESSAGE_ID" <<'PY'
-          import json,sys
+          import json,os,sys
           from datetime import datetime,timezone
           from pathlib import Path
           request_path=Path(sys.argv[1]); pointer_path=Path(sys.argv[2]); run_id=int(sys.argv[3])
@@ -1710,6 +1733,9 @@ jobs:
               'state':'REVIEW_READY',
               'golden_path_run_id':run_id,
               'telegram_message_id':review_message_id,
+              'files_sha256':json.loads((Path(os.environ['RUNNER_TEMP'])/'committed-bundle.json').read_text()),
+              'review_pages_sha':(Path(os.environ['RUNNER_TEMP'])/'review-pages-sha').read_text().strip(),
+              'source_context_sha256':request['source_context_sha256'],
               'completed_at':now,
               'quality_gates_weakened':False,
           }

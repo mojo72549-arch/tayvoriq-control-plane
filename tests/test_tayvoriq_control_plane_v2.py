@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import json
 import tempfile
 import unittest
@@ -9,6 +11,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import tayvoriq_agent_series_state_v2 as series_state
+from tayvoriq_slot_resolver import resolve
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,7 +26,13 @@ class WorkflowContractTests(unittest.TestCase):
             self.assertIn(cron, scheduler)
         for stale_cron in ('30 5 * * *', '30 15 * * *', '30 16 * * *'):
             self.assertNotIn(stale_cron, scheduler)
-        self.assertIn("'evening': '0 17 * * *' if offset == 2 else '0 18 * * *'", scheduler)
+        self.assertIn("python -S tools/tayvoriq_slot_resolver.py", scheduler)
+        berlin = ZoneInfo("Europe/Berlin")
+        for month, crons in ((1, ("30 4 * * *", "0 18 * * *")),
+                             (9, ("30 3 * * *", "0 17 * * *"))):
+            now = datetime(2027, month, 10, tzinfo=berlin)
+            for slot, cron in zip(("morning", "evening"), crons):
+                self.assertEqual(resolve({"EVENT_NAME": "schedule", "EVENT_SCHEDULE": cron}, now), (slot, ""))
         self.assertNotIn("afternoon", scheduler.lower())
         self.assertNotIn("\n  schedule:", bridge)
         self.assertNotIn("tayvoriq-deliver-video-now.yml", bridge)

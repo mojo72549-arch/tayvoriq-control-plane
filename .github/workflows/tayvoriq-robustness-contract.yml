@@ -69,6 +69,42 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Checkout immutable historical review fixture
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/mind-reset-daily
+          ref: 18b4180225968b65ba273158ca8368b19e182358
+          path: historical-review
+          persist-credentials: false
+          sparse-checkout: tayvoriq/runs/43776528221
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+
+      - name: Verify historical media and keep the recorded rejection
+        env:
+          PYTHONPATH: tools:implementation/tools
+        run: |
+          if ! command -v ffprobe >/dev/null || ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          python -S - <<'PY'
+          import json
+          from pathlib import Path
+          from tayvoriq_production_mix_gate import validate_mix
+          from tayvoriq_review_bundle_receipt import verify
+          archive = Path('historical-review/tayvoriq/runs/43776528221')
+          report = validate_mix(archive)
+          if not report['passed']:
+              raise SystemExit(report)
+          hashes = verify(archive, archive, '43776528221')
+          decision = json.loads(Path('.automation/tayvoriq-artifact-decisions/43776528221.json').read_text())
+          if decision.get('state') != 'REJECTED' or decision.get('telegram_message_id') != 3666:
+              raise SystemExit('Historical operator decision changed; re-evaluate the archived fixture')
+          print({'run': 43776528221, 'archive_hashes': hashes, 'technical_mix': report['passed'],
+                 'historical_decision': decision['state']})
+          PY
+
       - name: Verify dependency-free production continuation
         run: |
           python -S -m unittest discover -s tests -p test_tayvoriq_lifecycle_controller.py

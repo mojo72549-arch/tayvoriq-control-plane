@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json, os, random, time, urllib.error, urllib.request
 from typing import Any, Callable
+from tayvoriq_research_usage import post as metered_post
 import tayvoriq_agent_trend_provider_v3 as provider
 base=provider.base
 TRANSIENT={408,409,425,429,500,502,503,504,520,522,524}
@@ -40,8 +41,10 @@ def retry(label:str,call:Callable[[],Any],attempts:int)->Any:
 
 def post_json(url:str,payload:dict[str,Any],headers:dict[str,str],timeout:int)->tuple[dict[str,Any],dict[str,str]]:
     req=urllib.request.Request(url,data=json.dumps(payload).encode(),headers=headers,method="POST")
-    with urllib.request.urlopen(req,timeout=timeout) as resp:
-        hs={str(k).lower():str(v) for k,v in resp.headers.items()}; return json.loads(resp.read().decode()),hs
+    if req.host == "generativelanguage.googleapis.com":
+        model = url.split("/models/", 1)[1].split(":", 1)[0]
+        return metered_post(req, timeout, "gemini", model)
+    return metered_post(req, timeout, "huggingface", payload.get("model"))
 
 def gemini_grounded(prompt:str,key:str):
     configured=base.clean(os.getenv("TAYVORIQ_TREND_MODEL"),100) or "gemini-3.6-flash"; models=[]

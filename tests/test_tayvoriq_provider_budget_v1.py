@@ -253,12 +253,35 @@ class SchedulerContractTests(unittest.TestCase):
         })
         steps = agent['jobs']['trend-gate']['steps']
         resolver = next(step['run'] for step in steps if step.get('id') == 'slot')
-        self.assertIn("schedule == '*/5 * * * *'", resolver)
-        self.assertIn("review_due(plan['selection_id']", resolver)
-        self.assertIn('slot = due_slot(now=now.timestamp())', resolver)
+        self.assertEqual(resolver, 'python -S tools/tayvoriq_slot_resolver.py')
+        import subprocess
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / 'output'
+            subprocess.run(resolver.split(), cwd=root, check=True,
+                           env={**os.environ, 'GITHUB_OUTPUT': str(output), 'EVENT_NAME': 'workflow_dispatch',
+                                'INPUT_SLOT': 'evening', 'RECONCILE_ONLY': 'false', 'RESEARCH_RETRY_WAKEUP': 'false'})
+            self.assertEqual(output.read_text().splitlines(), ['should_run=true', 'slot=evening', 'rejection_selection='])
         self.assertFalse((root / '.github/workflows/tayvoriq-research-retry-wakeup.yml').exists())
         self.assertNotIn('tayvoriq-research-retry-wakeup.yml/dispatches', str(steps))
         self.assertIn('research_retry_wakeup', triggers['workflow_dispatch']['inputs'])
+
+    def test_berlin_slot_and_replacement_share_one_resolver(self):
+        from zoneinfo import ZoneInfo
+        import tayvoriq_slot_resolver as scheduler
+        zone = ZoneInfo('Europe/Berlin')
+        plan = {'new_trends_requested': True, 'selection_delivered': False, 'selection_id': 'review-evening-42',
+                'decision_path': '.automation/decisions/42.json', 'slot': 'evening'}
+        for month, morning, evening in ((11, '30 4 * * *', '0 18 * * *'), (8, '30 3 * * *', '0 17 * * *')):
+            now = datetime(2026, month, 23, 5, 30, tzinfo=zone)
+            for cron, expected in ((morning, 'morning'), (evening, 'evening'), ('wrong', '')):
+                self.assertEqual(scheduler.resolve({'EVENT_NAME': 'schedule', 'EVENT_SCHEDULE': cron}, now), (expected, ''))
+        tick = {'EVENT_NAME': 'schedule', 'EVENT_SCHEDULE': '*/5 * * * *'}
+        with patch.object(scheduler, 'followup', return_value=plan), patch.object(scheduler, 'review_due', return_value=True):
+            self.assertEqual(scheduler.resolve(tick, now), ('evening', plan['selection_id']))
+            self.assertEqual(scheduler.resolve({**tick, 'RECONCILE_ONLY': 'true'}, now), ('', ''))
+            with patch.object(scheduler, 'push_paths', return_value={plan['decision_path']}):
+                self.assertEqual(scheduler.resolve({'EVENT_NAME': 'push'}, now), ('evening', plan['selection_id']))
+        self.assertEqual(scheduler.resolve({'EVENT_NAME': 'workflow_run'}, now), ('', ''))
 
     def test_model_cache_is_saved_before_a_failed_publishability_gate(self):
         import yaml
@@ -396,12 +419,13 @@ class SchedulerContractTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
         steps = workflow['jobs']['trend-gate']['steps']
-        resolver = next(s for s in steps if s.get('id') == 'slot')['run']
-        self.assertIn("schedule == '*/5 * * * *'", resolver)
-        self.assertIn('due_slot(now=now.timestamp())', resolver)
-        push_resolver = resolver.split("if event == 'push' and should:", 1)[1].split("if event == 'schedule':", 1)[0]
-        self.assertIn("slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')", push_resolver)
-        self.assertIn("os.environ.get('RECONCILE_ONLY') == 'true'", resolver)
+        import tayvoriq_slot_resolver as scheduler
+        now = datetime(2026, 11, 23, 5, tzinfo=scheduler.ZoneInfo('Europe/Berlin'))
+        with patch.object(scheduler, 'followup', return_value=None), patch.object(scheduler, 'due_slot', return_value='evening'), patch.object(scheduler, 'push_paths', return_value={scheduler.TRIGGER}):
+            for env in ({'EVENT_NAME': 'push'}, {'EVENT_NAME': 'schedule', 'EVENT_SCHEDULE': '*/5 * * * *'},
+                        {'EVENT_NAME': 'workflow_dispatch', 'RESEARCH_RETRY_WAKEUP': 'true'}):
+                self.assertEqual(scheduler.resolve(env, now), ('evening', ''))
+                self.assertEqual(scheduler.resolve({**env, 'RECONCILE_ONLY': 'true'}, now), ('', ''))
         persist = next(s for s in steps if s.get('name') == 'Persist provider cooldown and bounded research retry')
         self.assertIn('always()', persist['if'])
         self.assertIn('git pull --rebase --autostash origin main', persist['run'])
