@@ -168,7 +168,8 @@ def main(*, repair_ready=_retention_ready) -> int:
                 grounding_chunks.append(chunk)
 
         raw_candidates = data.get("candidates") if isinstance(data.get("candidates"), list) else []
-        previous_draft_titles = [base.clean(item.get("title"), 180) for item in raw_candidates if isinstance(item, dict)]
+        draft_titles = [base.clean(item.get("title"), 180) for item in raw_candidates if isinstance(item, dict)]
+        previous_draft_titles = list(dict.fromkeys(previous_draft_titles + [title for title in draft_titles if title]))
         raw_count += len(raw_candidates)
         for raw in raw_candidates:
             if not isinstance(raw, dict):

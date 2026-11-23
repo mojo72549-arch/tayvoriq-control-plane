@@ -190,6 +190,67 @@ class GroqSourceContractTests(unittest.TestCase):
                     for source in candidate['sources']:
                         self.assertIn('Originalartikel', source['supports'])
 
+    def test_research_rescan_and_scheduled_retry_reach_other_corroborated_topics(self):
+        pool = [
+            record(publisher, f"Nachrichtenüberblick Meldung {i}", i)
+            for i in range(110) for publisher in ("a.de", "b.de")
+        ]
+        topics = [
+            "Mercedes investiert in Werk Stuttgart",
+            "Bosch eröffnet Reutlingen Halbleiterfabrik",
+            "Warnstreik bei Verkehrsbetrieben in Ulm",
+            "DHL startet neue Paketstationen in Ludwigsburg",
+            "Bahn meldet Ausfall der Regionalzüge in Stuttgart",
+            "Allianz eröffnet Berufsschule in Karlsruhe",
+        ]
+        for i, title in enumerate(topics, len(pool)):
+            pool.extend(record(publisher, title, i * 2 + j)
+                        for j, publisher in enumerate(("a.de", "b.de")))
+
+        def respond(payload, key, timeout):
+            prompt = payload["messages"][1]["content"]
+            records = json.loads(prompt.split("SOURCE RECORDS (multi-publisher-rss):\n")[1])
+            candidates = [
+                {"title": title,
+                 "sources": [{"source_id": row["source_id"]} for row in records if row["title"] == title]}
+                for title in dict.fromkeys(row["title"] for row in records)
+            ]
+            return {"choices": [{"message": {"content": json.dumps({"candidates": candidates})}}]}
+
+        def titles(prompt, retry_attempt):
+            with patch.object(hf, "_research_retry_attempt", return_value=retry_attempt):
+                data, chunks, _ = hf.structure(prompt, "key", pool, "multi-publisher-rss", provider_kind="groq")
+            self.assertEqual(len(chunks), 6)
+            return {candidate["title"] for candidate in data["candidates"]}
+
+        with patch.object(hf.provider, "post_groq", respond), \
+             patch.object(hf.rss, "enrich_evidence", side_effect=lambda records: records):
+            first = titles("prompt", 0)
+            rescan = titles("prompt" + hf.EDITORIAL_RESCAN + "\nPreviously drafted source headlines: "
+                            + json.dumps(sorted(first)), 0)
+            retry = titles("prompt", 1)
+        self.assertEqual(len(first), 3)
+        self.assertEqual(first | rescan, set(topics))
+        self.assertEqual(rescan, retry)
+
+    def test_source_bound_model_cannot_bind_a_url_or_ignore_an_extra_source(self):
+        def respond(payload, key, timeout):
+            prompt = payload["messages"][1]["content"]
+            records = json.loads(prompt.split("SOURCE RECORDS (multi-publisher-rss):\n")[1])
+            titles = list(dict.fromkeys(row["title"] for row in records))
+            first, second = [[row for row in records if row["title"] == title] for title in titles]
+            first_url = self.by_id[first[0]["source_id"]]["url"]
+            candidates = [
+                {"title": titles[0], "sources": [{"url": first_url}, {"source_id": first[1]["source_id"]}]},
+                {"title": titles[1], "sources": [{"source_id": row["source_id"]} for row in second]
+                 + [{"source_id": "S999"}]},
+            ]
+            return {"choices": [{"message": {"content": json.dumps({"candidates": candidates})}}]}
+
+        with patch.object(hf.provider, "post_groq", respond), \
+             self.assertRaisesRegex(hf.InsufficientSourceEvidence, "valid_candidates=0"):
+            hf.structure("prompt", "key", self.pool, "multi-publisher-rss", provider_kind="groq")
+
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
         wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
