@@ -38,14 +38,15 @@ class RejectedReviewFollowupTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data), encoding="utf-8")
 
-    def test_repair_is_prepared_without_requesting_trends(self):
-        self.write(self.decision_path, {**self.decision, "followup_action": "repair",
-                                        "rejection_reason_code": "visuals"})
-        plan = module.followup(self.root)
-        self.assertEqual(plan["replacement_state"], "PREFLIGHT_REQUIRED")
-        self.assertEqual(plan["repair_stage"], "VISUALS")
-        self.assertFalse(plan["replacement_dispatch_allowed"])
-        self.assertFalse(plan["new_trends_requested"])
+    def test_auto_and_legacy_repair_start_new_trends_without_a_verified_repair(self):
+        for action in ("auto", "repair"):
+            self.write(self.decision_path, {**self.decision, "followup_action": action,
+                                            "rejection_reason_code": "visuals"})
+            plan = module.followup(self.root)
+            self.assertEqual(plan["requested_action"], action)
+            self.assertEqual(plan["route_reason"], "NO_VERIFIED_REPAIR")
+            self.assertFalse(plan["replacement_dispatch_allowed"])
+            self.assertTrue(plan["new_trends_requested"])
 
     def test_new_trends_require_an_explicit_choice_and_a_reason(self):
         self.write(self.decision_path, self.decision)

@@ -317,19 +317,14 @@ export default {
 
     const markedReason = callbackData.match(/^tayvoriq:reason:(\d{1,20}):(visuals|voice|content|other)$/);
     if (markedReason) {
-      const result = await storeReviewRejection(env, markedReason[1], null, REVIEW_REASONS[markedReason[2]], undefined, markedReason[2]);
+      const result = await storeReviewRejection(env, markedReason[1], null, REVIEW_REASONS[markedReason[2]], 'auto', markedReason[2]);
       if (!result.ok) {
         await answerCallback(env, callback.id, 'Der Grund konnte gerade nicht gespeichert werden.', true);
         return new Response('reason not stored', { status: 409 });
       }
       await answerCallback(env, callback.id, 'Ablehnungsgrund gespeichert.');
-      if (!result.followupAction) {
-        const button = (label, action) => ({text: label, callback_data: `tayvoriq:followup:${markedReason[1]}:${action}`});
-        await requireTelegramMessage(await editMessageWithMarkup(env, chatId, callback.message?.message_id,
-          'Ablehnungsgrund gespeichert. Wie soll es weitergehen?', {
-            inline_keyboard: [[button('Neue Trends suchen', 'new_trends')], [button('Dieses Video korrigieren', 'repair')]],
-          }));
-      }
+      await requireTelegramMessage(await editMessageWithMarkup(env, chatId, callback.message?.message_id,
+        'Ablehnungsgrund gespeichert. Der Orchestrator übernimmt den nächsten Schritt.', {inline_keyboard: []}));
       return new Response('ok');
     }
 
@@ -340,9 +335,7 @@ export default {
         await answerCallback(env, callback.id, 'Der nächste Schritt konnte nicht gespeichert werden oder wurde bereits gewählt.', true);
         return new Response('followup not stored', {status: 409});
       }
-      const text = followup[2] === 'repair'
-        ? 'Korrektur angefordert. Den Stand der Prüfung siehst du im Control Center.'
-        : 'Neue Trendauswahl angefordert. Die Vorschläge kommen nach der Recherche.';
+      const text = 'Entscheidung gespeichert. Der Orchestrator übernimmt den nächsten Schritt.';
       await answerCallback(env, callback.id, 'Gespeichert.');
       await requireTelegramMessage(await editMessageWithMarkup(env, chatId, callback.message?.message_id, text, {inline_keyboard: []}));
       return new Response('ok');
@@ -449,7 +442,7 @@ async function askForReviewReason(env, chatId, runId) {
   const button = (text, reason) => ({ text, callback_data: `tayvoriq:reason:${runId}:${reason}` });
   try {
     await requireTelegramMessage(await telegramWithMarkup(env, chatId,
-      `❌ Video ${runId} abgelehnt. Was soll vor einer neuen Fassung korrigiert werden?`,
+      `❌ Video ${runId} abgelehnt. Warum hast du es abgelehnt?`,
       { inline_keyboard: [[button('Bildmaterial', 'visuals'), button('Stimme / Ton', 'voice')],
         [button('Inhalt', 'content'), button('Anderes', 'other')]] }));
   } catch {
@@ -481,29 +474,31 @@ async function storeReviewRejection(env, runId, telegramMessageId, reason, actio
   const path = `.automation/tayvoriq-artifact-decisions/${runId}.json`;
   try {
     const existing = await reviewRepoFile(env, path);
+    const pointer = (await reviewRepoFile(env, '.github/state/tayvoriq-active-production-request.json'))?.data;
+    if (pointer?.schema !== 'tayvoriq-active-production-request-v1' ||
+        pointer.state !== 'COMPLETED' || String(pointer.golden_path_run_id) !== runId ||
+        !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(pointer.request_id||'')) return {ok: false};
     let record;
     if (existing) {
       record = existing.data;
       if (record.schema !== 'tayvoriq-artifact-approval' || String(record.review_id) !== runId ||
-          record.state !== 'REJECTED' || (telegramMessageId !== null && telegramMessageId !== record.telegram_message_id)) {
+          record.state !== 'REJECTED' || record.request_id !== pointer.request_id ||
+          !pointer.source_context_sha256 || record.source_context_sha256 !== pointer.source_context_sha256 ||
+          (telegramMessageId !== null && telegramMessageId !== record.telegram_message_id)) {
         return { ok: false };
       }
-      if (action) {
-        if (!record.rejection_reason || (record.followup_action && record.followup_action !== action)) return {ok: false};
-        if (record.followup_action === action) return {ok: true, followupAction: action};
-        record = {...record, followup_action: action};
-      } else {
-        if (!reason || record.rejection_reason) {
-          return {ok: true, needsReason: !record.rejection_reason, followupAction: record.followup_action};
-        }
+      if (reason && record.rejection_reason && reasonCode !== record.rejection_reason_code) return {ok: false};
+      if (action && ((!reason && !record.rejection_reason) ||
+          (record.followup_action && record.followup_action !== action))) return {ok: false};
+      if ((!reason || record.rejection_reason) && (!action || record.followup_action === action)) {
+        return {ok: true, needsReason: !record.rejection_reason, followupAction: record.followup_action};
+      }
+      if (reason && !record.rejection_reason) {
         record = {...record, rejection_reason: reason, rejection_reason_code: reasonCode};
       }
+      if (action) record = {...record, followup_action: action};
     } else {
       if (reason || action) return { ok: false };
-      const pointer = (await reviewRepoFile(env, '.github/state/tayvoriq-active-production-request.json'))?.data;
-      if (pointer?.schema !== 'tayvoriq-active-production-request-v1' ||
-          pointer.state !== 'COMPLETED' || String(pointer.golden_path_run_id) !== runId ||
-          !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(pointer.request_id||'')) return { ok: false };
       const request = (await reviewRepoFile(env, `requests/${pointer.request_id}.json`))?.data;
       const receipt = request?.production_completion;
       if (request?.request_id !== pointer.request_id || !pointer.source_context_sha256 ||
