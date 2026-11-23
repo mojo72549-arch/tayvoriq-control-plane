@@ -24,6 +24,34 @@ def evidence_options(sid, title, context):
     return options
 
 
+def _matched_excerpt(source, ref):
+    if not isinstance(ref, str):
+        return ""
+    quote = source.get("evidence_options", {}).get(ref, ref)
+    if not 4 <= len(quote.split()) <= 30:
+        return ""
+    excerpt = " ".join(source["supports"].split()).casefold()
+    pattern = re.escape(" ".join(quote.split()).casefold())
+    return quote if re.search(r"(?<!\w)" + pattern + r"(?!\w)", excerpt) else ""
+
+
+def bind_corroborated_headline(card, sources, headline):
+    """Recover a missing reference only when the verified claim is a verbatim option."""
+    if not isinstance(card, dict):
+        return card
+    evidence = dict(_mapping(card.get("evidence")))
+    headline = " ".join(headline.split()).casefold().rstrip(".")
+    for source in sources:
+        sid = source["source_id"]
+        if _matched_excerpt(source, evidence.get(sid)):
+            continue
+        for ref, text in source.get("evidence_options", {}).items():
+            if " ".join(text.split()).casefold().rstrip(".") == headline:
+                evidence[sid] = ref
+                break
+    return {**card, "evidence": evidence}
+
+
 def evaluate(card, sources):
     """The two source records are reconstructed by the RSS verifier, never supplied by the model."""
     if not isinstance(card, dict):
@@ -34,13 +62,11 @@ def evaluate(card, sources):
     matched = {}
     for source in sources:
         sid = source["source_id"]
-        quote = quotes.get(sid)
-        if isinstance(quote, str):
-            quote = source.get("evidence_options", {}).get(quote, quote)
-        if not isinstance(quote, str) or not 4 <= len(quote.split()) <= 30:
+        ref = quotes.get(sid)
+        quote = source.get("evidence_options", {}).get(ref, ref) if isinstance(ref, str) else ""
+        if not 4 <= len(quote.split()) <= 30:
             return {"passed": False, "reason": "invalid_evidence_quote:" + sid}
-        excerpt = " ".join(source["supports"].split()).casefold()
-        if " ".join(quote.split()).casefold() not in excerpt:
+        if not _matched_excerpt(source, ref):
             return {"passed": False, "reason": "quote_absent_from_retrieved_record:" + sid}
         matched[source["url"]] = quote
     ratings = card.get("ratings")
@@ -101,9 +127,7 @@ def complete_scorecards(candidates, options, generate):
         for source in sources:
             sid = source["source_id"]
             ref = _mapping(card.get("evidence")).get(sid)
-            quote = source["evidence_options"].get(ref, ref) if isinstance(ref, str) else ""
-            if not (4 <= len(quote.split()) <= 30 and
-                    " ".join(quote.split()).casefold() in " ".join(source["supports"].split()).casefold()):
+            if not _matched_excerpt(source, ref):
                 missing["evidence." + sid] = "Copy a listed reference ID for this source or quote 4-18 original words."
         for field in WEIGHTS:
             row = _mapping(card.get("ratings")).get(field)

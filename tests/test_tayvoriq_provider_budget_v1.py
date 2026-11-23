@@ -352,6 +352,34 @@ class SchedulerContractTests(unittest.TestCase):
             ):
                 self.assertEqual(retry.terminal_slot("evening", stamp), expected)
 
+    def test_maintainer_wakeup_is_bound_to_the_terminal_attempt_and_keeps_the_retry_budget(self):
+        from datetime import datetime
+        stamp = datetime.fromisoformat("2026-11-23T23:45:00+01:00")
+        now = stamp.timestamp()
+        state = {"schema": "tayvoriq-research-retry-v1", "state": "EXHAUSTED",
+                 "slot": "evening", "berlin_date": "2026-11-23", "attempts": 10,
+                 "valid_until_epoch": now - 60, "first_deferred_at_epoch": now - 21660,
+                 "last_issue": "EDITORIAL_MINIMUM_NOT_MET", "last_research_attempt": "234.1"}
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        queue = Path(temp.name) / "research-retry.json"
+        retry.write(queue, state)
+        marker = "retry_terminal=2026-11-23:evening:234.1"
+        with patch.dict("os.environ", {"TAYVORIQ_RESEARCH_RETRY_FILE": str(queue),
+                                       "TAYVORIQ_RESEARCH_RUN_KEY": "235.1",
+                                       "TAYVORIQ_RESEARCH_REPAIR_FROM": "234.1"}), \
+             patch.object(retry, "confirmed_slot_delivery", return_value=False) as delivered:
+            self.assertEqual(retry.terminal_repair_attempt(marker, "morning", stamp), "")
+            self.assertEqual(retry.terminal_repair_attempt(marker, "evening", stamp), "234.1")
+            delivered.return_value = True
+            self.assertEqual(retry.terminal_repair_attempt(marker, "evening", stamp), "")
+            delivered.return_value = False
+            result = retry.defer("evening", now + 900, now=now, issue="EDITORIAL_MINIMUM_NOT_MET")
+            self.assertEqual(result["state"], "EXHAUSTED")
+            self.assertEqual(result["attempts"], 10)
+            self.assertEqual(result["repair_from_attempt"], "234.1")
+            self.assertEqual(retry.terminal_repair_attempt(marker, "evening", stamp), "")
+
     def test_scheduled_tick_uses_durable_retry_without_sleeping_or_dispatching_again(self):
         import yaml
         root = Path(__file__).resolve().parents[1]

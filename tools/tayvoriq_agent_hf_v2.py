@@ -1,13 +1,18 @@
 from __future__ import annotations
 import json, os, re, unicodedata
 from collections import defaultdict, deque
+from datetime import datetime
+from functools import lru_cache
 from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
 import tayvoriq_research_checkpoint as checkpoint
-from tayvoriq_regional_relevance import complete_scorecards, evidence_options, evaluate as evaluate_regional_relevance
+import tayvoriq_research_retry_v1 as research_retry
+from tayvoriq_regional_relevance import (
+    bind_corroborated_headline, complete_scorecards, evidence_options, evaluate as evaluate_regional_relevance,
+)
 from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
@@ -68,20 +73,32 @@ def _balanced_compact_records(records:list[dict[str,str]],max_chars:int=56000)->
     return bounded
 
 
+@lru_cache(maxsize=2048)
+def _headline_features(title: str):
+    return _events(title), _status(title), claim_terms(title)
+
+
+@lru_cache(maxsize=2048)
+def _source_terms(title: str, context: str):
+    return claim_terms(title + ' ' + context)
+
+
 def _source_pair_score(a: dict, b: dict) -> int:
     """Rank evidence leads, not verified claims. Final validate_pair stays mandatory."""
     domain_a = a.get('domain') or domain(str(a.get('url') or ''))
     domain_b = b.get('domain') or domain(str(b.get('url') or ''))
-    if domain_a == domain_b or _publisher(a) == _publisher(b):
+    if domain_a == domain_b:
         return 0
     ta, tb = str(a.get('title') or ''), str(b.get('title') or '')
-    shared_events = _events(ta) & _events(tb)
-    if not shared_events or _status(ta) != _status(tb):
+    events_a, status_a, terms_a = _headline_features(ta)
+    events_b, status_b, terms_b = _headline_features(tb)
+    if not events_a.intersection(events_b) or status_a != status_b:
         return 0
-    shared_title = claim_terms(ta) & claim_terms(tb)
-    if not shared_title:
+    shared_title = terms_a & terms_b
+    if not shared_title or _publisher(a) == _publisher(b):
         return 0
-    shared_text = claim_terms(ta + ' ' + str(a.get('context') or '')) & claim_terms(tb + ' ' + str(b.get('context') or ''))
+    shared_text = (_source_terms(ta, str(a.get('context') or ''))
+                   & _source_terms(tb, str(b.get('context') or '')))
     if len(shared_text) < 3:
         return 0
     # Shared headline event + meaningful terms beat globally popular actors
@@ -121,11 +138,45 @@ def corroborated_headline(a: dict, b: dict) -> str:
 
 
 def distinct_headlines(left, right):
-    left_terms, right_terms = claim_terms(left), claim_terms(right)
+    left_events, _, left_terms = _headline_features(left)
+    right_events, _, right_terms = _headline_features(right)
     shared = left_terms & right_terms
-    same_topic = (_events(left) == _events(right) and len(shared) >= 3
+    same_topic = (left_events == right_events and len(shared) >= 3
                   and len(shared) / min(len(left_terms), len(right_terms)) >= .70)
     return not same_topic
+
+
+def _rank_corroborated_pairs(pairs, previous, retry_attempt):
+    groups = []
+    for pair, title in pairs:
+        for group in groups:
+            if not distinct_headlines(title, group[0][1]):
+                group.append((pair, title))
+                break
+        else:
+            groups.append([(pair, title)])
+    fresh, seen = [], []
+    for group in groups:
+        if any(not distinct_headlines(title, prior) or title.casefold() == prior.casefold()
+               for _, title in group for prior in previous):
+            seen.append(group)
+        else:
+            fresh.append(group)
+    if fresh:
+        offset = (retry_attempt * 3) % len(fresh)
+        fresh = fresh[offset:] + fresh[:offset]
+    return {pair: title for group in fresh + seen for pair, title in group}
+
+
+def _research_retry_attempt() -> int:
+    slot = os.getenv("TAYVORIQ_RESEARCH_SLOT")
+    if not slot:
+        return 0
+    now = datetime.now(research_retry.ZONE)
+    state = research_retry.current(now=now.timestamp())
+    if state.get("slot") == slot and state.get("berlin_date") == now.date().isoformat():
+        return int(state.get("attempts") or 0)
+    return 0
 
 
 def _independent_headline_pairs(vetted_pairs: dict) -> dict:
@@ -228,8 +279,15 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     if provider_kind not in {"huggingface", "groq"}: raise ValueError("UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER")
     if not token: raise RuntimeError(f"{provider_kind.upper()}_API_KEY_MISSING")
     if len(records)<8 or len({r['domain'] for r in records})<2: raise RuntimeError("source pool too small for safe fallback")
-    balanced=(_groq_source_records(records) if provider_kind=='groq'
-              else _balanced_compact_records(records))
+    source_bound = source_label in {'multi-publisher-rss', 'rss-article-context', 'rss-gdelt-context'}
+    if source_bound:
+        # Verification sees the full pool. Only the winning pairs go into the model budget.
+        balanced = _balanced_compact_records(records)
+        indexed_urls = {row["url"] for row in balanced}
+        balanced.extend(row for row in records if row["url"] not in indexed_urls)
+    else:
+        balanced = (_groq_source_records(records) if provider_kind == 'groq'
+                    else _balanced_compact_records(records))
     if len(balanced)<8 or len({r['domain'] for r in balanced})<2: raise RuntimeError("balanced source pool too small for safe fallback")
     model=(base.clean(model_override or os.getenv("TAYVORIQ_GROQ_RSS_MODEL"),160) or "openai/gpt-oss-20b") if provider_kind=="groq" else (base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest")
     indexed=[]; by_id={}; by_url={}
@@ -258,35 +316,36 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
           if provider_kind=='groq' else
           'Aim for SIX distinct candidates across technology/AI, business/economy, world/society, science/nature, mobility/energy and sport when the records genuinely support them.')
     pair_hints = []
+    corroborated = []
     vetted_pairs = {}
-    source_bound = source_label in {'multi-publisher-rss', 'rss-article-context', 'rss-gdelt-context'}
     if provider_kind == 'groq' or source_bound:
         source_ids = list(by_id)
         for i, left in enumerate(source_ids):
             for right in source_ids[i + 1:]:
                 a, b = by_id[left], by_id[right]
                 score = _source_pair_score(a, b)
-                if score and len(pair_hints) < 14:
-                    pair_hints.append((score, f'{left}+{right}'))
                 if score:
+                    pair_hints.append((score, f'{left}+{right}'))
                     title = corroborated_headline(a, b)
                     if title:
-                        vetted_pairs[left, right] = title
+                        corroborated.append((score, tuple(sorted((left, right))), title))
         pair_hints = sorted(pair_hints, reverse=True)[:12]
+        corroborated.sort(key=lambda row: -row[0])
+        vetted_pairs = {pair: title for _, pair, title in corroborated}
     pair_note = ('POTENTIAL SAME-EVENT CROSS-PUBLISHER LEADS (not evidence by themselves): ' +
                  ', '.join(x[1] for x in pair_hints) + '. Select only if full original SOURCE CONTRACT passes.'
                  if pair_hints else '')
     if source_bound:
         marker = "\nPreviously drafted source headlines: "
+        previous = []
         if rescan_marker and marker in prompt:
             try:
-                previous = json.loads(prompt.rsplit(marker, 1)[1])
+                previous = json.loads(prompt.rsplit(marker, 1)[1].partition("\n")[0])
             except ValueError:
-                previous = []
-            if isinstance(previous, list):
-                previous = {title.casefold() for title in previous if isinstance(title, str)}
-                vetted_pairs = dict(sorted(vetted_pairs.items(), key=lambda pair: pair[1].casefold() in previous))
-        selected_pairs = _independent_headline_pairs(vetted_pairs)
+                pass
+        previous = [title for title in previous if isinstance(title, str)] if isinstance(previous, list) else []
+        ranked = _rank_corroborated_pairs(vetted_pairs.items(), previous, _research_retry_attempt())
+        selected_pairs = _independent_headline_pairs(ranked)
         if not selected_pairs:
             diagnostics = []
             for _, ids in pair_hints[:5]:
@@ -303,6 +362,8 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
         vetted_pairs = selected_pairs
     exact_titles = len({title.casefold() for title in vetted_pairs.values()}) >= 2
     print(json.dumps({"event":"source_headline_preflight","source_label":source_label,
+                      "considered_records":len(by_id),
+                      "eligible_headlines":len({title for _, _, title in corroborated}),
                       "corroborated_headlines":len(set(vetted_pairs.values())),
                       "strict_allowlist":exact_titles},ensure_ascii=False))
     if exact_titles:
@@ -350,6 +411,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     policy = ""
     if source_bound:
         # Keep all required scorecard fields in the schema the provider actually receives.
+        schema = schema.replace(',"supports":"supported fact"', '')
         rating_keys = ("consequence", "proximity", "recognition", "timeliness", "explanation", "resolution", "continuity")
         scorecard = {
             "evidence": {"<first source ID>": "<exact option ID>", "<second source ID>": "<exact option ID>"},
@@ -361,8 +423,8 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
         schema = schema.replace('"fallback_editorial_answers":',
                                 '"regional_scorecard":' + json.dumps(scorecard) + ',"fallback_editorial_answers":')
         policy = """DE_LOCAL_RELEVANCE_V2: complete the regional_scorecard inside each candidate.
-Use the two actual source_id keys for evidence, and select an evidence_choices ID from that same record for the central fact or consequence.
-Copy the exact listed ID. If no suitable option exists, supply a verbatim excerpt of 4-18 words from that original only.
+Use the two actual source_id keys for evidence. Copy an exact evidence_choices ID from that same record for the central fact or consequence.
+If none of that record's options supports the claim, quote 4-18 consecutive verbatim words from that original. Do not paraphrase or combine excerpts.
 Replace every schema placeholder with your own source-grounded assessment.
 YT and TT are independently assessed integers 0 to 5, not text. 0 absent, 1 weak, 3 concrete, 5 strong and evidenced.
 For each row give a specific 4-12 word reason grounded in this story. Rate in order: consequences for work/money/daily life,
@@ -435,21 +497,23 @@ EDITORIAL FALLBACK CONTRACT:
         for s in raw_sources:
             sid=base.clean(s.get("source_id"),20)
             rec=by_id.get(sid)
-            if rec is None:
+            if rec is None and not source_bound:
                 legacy_url=base.clean(s.get("url"),2000)
                 rec=by_url.get(legacy_url)
                 sid=str((rec or {}).get("source_id") or "")
             if rec is None: continue
-            resolved.append((sid,rec,base.clean(s.get("supports"),600)))
-        resolved_domains=[str(rec.get('domain') or domain(str(rec.get('url') or ''))).casefold() for _,rec,_ in resolved]
+            resolved.append((sid, rec))
+        resolved_domains=[str(rec.get('domain') or domain(str(rec.get('url') or ''))).casefold() for _,rec in resolved]
         reasons = []
+        if source_bound and (len(raw_sources) != 2 or len(resolved) != 2):
+            reasons.append('two_exact_retrieved_source_ids_required')
         if exact_titles:
-            binding = vetted_pairs.get(tuple(sorted(sid for sid, _, _ in resolved)))
+            binding = vetted_pairs.get(tuple(sorted(sid for sid, _ in resolved)))
             if not binding or _headline_presentation_key(c.get('title')) != _headline_presentation_key(binding):
                 reasons.append('candidate_does_not_match_preverified_headline_pair')
             else:
                 c['title'] = binding
-        reasons.extend(validate_pair(c, [rec for _,rec,_ in resolved]))
+        reasons.extend(validate_pair(c, [rec for _, rec in resolved]))
         if reasons:
             print(json.dumps({
                 "event":"hf_candidate_source_rejected",
@@ -462,7 +526,7 @@ EDITORIAL FALLBACK CONTRACT:
             c["sources"]=[]
             continue
         normalized=[]
-        for sid,rec,supports in resolved:
+        for sid, rec in resolved:
             url=base.clean(rec.get("url"),2000); publisher=base.clean(rec.get("domain"),200) or domain(url)
             original_support, digest = source_support(rec)
             normalized.append({"source_id":sid,"publisher":publisher,"url":url,
@@ -475,7 +539,9 @@ EDITORIAL FALLBACK CONTRACT:
         c["sources"]=normalized
         if source_bound:
             evidence = [{**source, "evidence_options": options_by_id.get(source["source_id"], {})} for source in normalized]
-            c["_retrieved_regional_assessment"] = evaluate_regional_relevance(c.get("regional_scorecard"), evidence)
+            card = bind_corroborated_headline(c.get("regional_scorecard"), evidence, c["title"])
+            c["regional_scorecard"] = card
+            c["_retrieved_regional_assessment"] = evaluate_regional_relevance(card, evidence)
     valid_candidates=[]
     seen_pairs, seen_titles = set(), set()
     # Preserve previously qualified drafts only after rechecking both original sources.
