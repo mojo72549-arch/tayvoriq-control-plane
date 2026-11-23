@@ -421,7 +421,10 @@ EDITORIAL FALLBACK CONTRACT:
             original_support, digest = source_support(rec)
             normalized.append({"source_id":sid,"publisher":publisher,"url":url,
                                "supports":original_support,"source_record_sha256":digest,
-                               "support_origin":"retrieved_source_title_and_context"})
+                               "support_origin":"retrieved_source_title_and_context",
+                               "publisher_headline":base.clean(rec.get("title"),500),
+                               "source_date":base.clean(rec.get("seen_date"),100),
+                               "declared_origin":base.clean(rec.get("origin"),180)})
             chunks.append({"title":publisher,"uri":url})
         c["sources"]=normalized
     valid_candidates=[]

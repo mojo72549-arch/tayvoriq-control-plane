@@ -206,6 +206,17 @@ class GroqSourceContractTests(unittest.TestCase):
         second["title"] = "Unternehmensleitung plant Investitionen in Stuttgart"
         self.assertFalse(hf.corroborated_headline(first, second))
 
+    def test_merger_of_named_chains_is_distinct_from_closures_and_other_chains(self):
+        a = record("a.de", "Obi und Toom: Baumarktketten fusionieren, Marke Toom soll wegfallen", 1)
+        b = record("b.de", "Marke Toom soll wegfallen: Baumärkte Obi und Toom schließen sich zusammen", 2)
+        self.assertEqual(hf._events(b["title"]), {"merger"})
+        self.assertTrue(hf.corroborated_headline(a, b))
+        self.assertEqual(hf._events("Ketten schließen sich zusammen und schließen Filialen"), {"merger", "closure"})
+        for other in ("Marke Toom soll wegfallen: Obi und Toom schließen Filialen",
+                      "Marke Toom soll wegfallen: Andere Baumärkte schließen sich zusammen",
+                      "Obi und Toom dementieren: Baumärkte schließen sich zusammen"):
+            self.assertTrue(hf.validate_pair({"title": a["title"]}, [a, record("b.de", other, 2)]))
+
     def test_independent_headlines_can_use_different_words_for_the_same_confirmed_claim(self):
         reform = [
             record("sueddeutsche.de", "Rente: Studie: Altersteilzeit-Reform könnte Fiskus Milliarden bringen", 1),
