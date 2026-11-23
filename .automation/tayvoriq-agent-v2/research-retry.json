@@ -14,8 +14,26 @@
   "reason": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
   "quality_gates_weakened": false,
   "production_started": false,
-  "last_research_attempt": "45284708595.1",
-  "repair_from_attempt": "45284133484.1",
+  "last_research_attempt": "45213158957.1",
   "last_issue": "SOURCE_MINIMUM_NOT_MET",
-  "status_detail": "Zu wenige Vorschläge haben die Quellenprüfung bestanden."
+  "status_detail": "Zu wenige Vorschläge haben die Quellenprüfung bestanden.",
+  "technical_repair_attempts": [
+    {
+      "run_key": "45282874377.1",
+      "result": "EDITORIAL_MINIMUM_NOT_MET",
+      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45282874377"
+    },
+    {
+      "run_key": "45283555089.1",
+      "result": "EDITORIAL_MINIMUM_NOT_MET",
+      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45283555089"
+    },
+    {
+      "run_key": "45284133484.1",
+      "result": "EDITORIAL_MINIMUM_NOT_MET",
+      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45284133484"
+    }
+  ],
+  "last_technical_repair_attempt": "45284133484.1",
+  "repair_guard": "TERMINAL_SLOT_IMMUTABLE"
 }
