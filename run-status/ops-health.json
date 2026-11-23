@@ -1,12 +1,12 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-23T16:09:41.920961Z",
-  "overall": "green",
+  "generated_at": "2026-11-23T19:21:13.750904Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": true,
-    "reason": "VERIFIED_STATE_TRANSITION"
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
   },
   "api_error": null,
   "research": {
@@ -33,7 +33,8 @@
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3636-trend-1",
     "golden_path_run_id": 43776528221,
-    "pointer_updated_at": "2026-11-16T00:09:12.109658Z"
+    "pointer_updated_at": "2026-11-16T00:09:12.109658Z",
+    "current_scope": "research"
   },
   "request": {
     "request_id": "telegram-3636-trend-1",
@@ -42,7 +43,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -65,7 +66,7 @@
   },
   "run": {
     "id": 43776528221,
-    "historical": false,
+    "historical": true,
     "status": "completed",
     "conclusion": "success",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/43776528221",
@@ -149,8 +150,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "yellow",
+      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
     },
     {
       "name": "Production Green",
@@ -159,47 +160,36 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "status": "yellow",
+      "detail": "EXHAUSTED"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Telegram-Videoquittung bestätigt"
+      "status": "yellow",
+      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
     }
   ],
-  "incident": {
-    "signature": "43776528221:LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_DISPATCHED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
-    "status": "green",
-    "detail": "Telegram-Videoquittung bestätigt",
+    "status": "yellow",
+    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
     "last_step": "Send Telegram review",
     "message_id": 3666
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "status": "EXHAUSTED",
+    "source_status": "EXHAUSTED",
+    "failure_state": null,
     "failed_run_id": 43754016472,
     "replay_run_id": 43776528221,
     "fresh_recovery_run_id": 43716674600,
     "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
