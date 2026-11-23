@@ -137,6 +137,24 @@ class GroqSourceContractTests(unittest.TestCase):
         tentative = record("dw.com", f"{lead} – Ausweitung ist geplant", 3)
         self.assertEqual(hf.corroborated_headline(a, tentative), "")
 
+    def test_independent_headlines_can_use_different_words_for_the_same_confirmed_claim(self):
+        reform = [
+            record("sueddeutsche.de", "Rente: Studie: Altersteilzeit-Reform könnte Fiskus Milliarden bringen", 1),
+            record("n-tv.de", "Erst mit 58 statt 55 Jahren?: Strengere Altersteilzeit-Regeln könnten Staat Milliarden bringen", 2),
+        ]
+        appointment = [
+            record("zdfheute.de", "Freie Wähler: Gotthardt folgt Aiwanger als Wirtschaftsminister", 3),
+            record("tagesschau.de", "Nachfolge von Aiwanger: Tobias Gotthardt wird Wirtschaftsminister", 4),
+        ]
+        appointment[0]["context"] = "Staatssekretär Tobias Gotthardt wird Nachfolger von Hubert Aiwanger."
+        for pair in (reform, appointment):
+            self.assertGreater(hf._source_pair_score(*pair), 0)
+            lead = hf.corroborated_headline(*pair)
+            self.assertTrue(lead)
+            self.assertEqual(hf.validate_pair({"title": lead}, pair), [])
+        self.assertTrue(hf.validate_pair({"title":"Altersteilzeit-Reform bringt Fiskus Milliarden"}, reform))
+        self.assertTrue(hf.validate_pair({"title":"Tobias Gotthardt wird Finanzminister"}, appointment))
+
     def test_missing_feed_evidence_is_enriched_from_its_original_article(self):
         calls = []
         article = '''<script type="application/ld+json">
