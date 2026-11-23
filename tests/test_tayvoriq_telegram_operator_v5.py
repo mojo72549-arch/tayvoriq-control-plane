@@ -3,6 +3,7 @@ from pathlib import Path
 
 WORKER = Path("infra/telegram-approval-worker-v2.js")
 TRENDS = Path(".github/workflows/tayvoriq-telegram-trends-now.yml")
+ORCHESTRATOR = Path(".github/workflows/tayvoriq-agent-orchestrator-v2.yml")
 
 
 def test_telegram_operator_has_safe_v5_commands():
@@ -20,8 +21,13 @@ def test_telegram_operator_has_safe_v5_commands():
 
 def test_trends_command_enters_existing_v5_trend_workflow():
     src = TRENDS.read_text(encoding="utf-8")
-    assert "repository_dispatch:" in src
-    assert "types: [tayvoriq_telegram_trends_now]" in src
+    controller = ORCHESTRATOR.read_text(encoding="utf-8")
+    assert "repository_dispatch:" in controller
+    assert "types: [tayvoriq_trend_approved, tayvoriq_telegram_trends_now, tayvoriq_trends_rejected]" in controller
+    assert "uses: ./.github/workflows/tayvoriq-telegram-trends-now.yml" in controller
+    assert "uses: ./.github/workflows/tayvoriq-request-dispatch.yml" in controller
+    assert "uses: ./.github/workflows/tayvoriq-rejected-trend-refresh.yml" in controller
+    assert "workflow_call:" in src
     assert 'EVENT_NAME: ${{ github.event_name }}' in src
     assert 'PAYLOAD_REQUESTED_VIA: ${{ github.event.client_payload.requested_via || \'\' }}' in src
     assert 'test "$PAYLOAD_REQUESTED_VIA" = "telegram_command"' in src

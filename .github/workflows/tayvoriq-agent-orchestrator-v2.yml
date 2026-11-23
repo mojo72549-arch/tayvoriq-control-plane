@@ -1,6 +1,8 @@
 name: TAYVORIQ Agent Orchestrator V2
 
 on:
+  repository_dispatch:
+    types: [tayvoriq_trend_approved, tayvoriq_telegram_trends_now, tayvoriq_trends_rejected]
   workflow_dispatch:
     inputs:
       reconcile_only:
@@ -70,6 +72,30 @@ env:
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
 jobs:
+  dispatch-telegram-approval:
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'tayvoriq_trend_approved'
+    needs: trend-gate
+    uses: ./.github/workflows/tayvoriq-request-dispatch.yml
+    secrets: inherit
+
+  record-rejected-trend-list:
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'tayvoriq_trends_rejected'
+    needs: trend-gate
+    uses: ./.github/workflows/tayvoriq-rejected-trend-refresh.yml
+
+  send-requested-trend-list:
+    if: >-
+      always() && needs.trend-gate.result == 'success' &&
+      github.event_name == 'repository_dispatch' &&
+      (github.event.action == 'tayvoriq_telegram_trends_now' || needs.record-rejected-trend-list.result == 'success')
+    needs: [trend-gate, record-rejected-trend-list]
+    uses: ./.github/workflows/tayvoriq-telegram-trends-now.yml
+    with:
+      replacement_slot: ${{ needs.record-rejected-trend-list.outputs.slot || '' }}
+      replacement_date: ${{ needs.record-rejected-trend-list.outputs.target_date || '' }}
+      replacement_refresh: ${{ needs.record-rejected-trend-list.outputs.refresh || '' }}
+    secrets: inherit
+
   trend-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -683,7 +709,7 @@ jobs:
           curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null || true
 
   lifecycle-controller:
-    needs: trend-gate
+    needs: [trend-gate, dispatch-telegram-approval]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10

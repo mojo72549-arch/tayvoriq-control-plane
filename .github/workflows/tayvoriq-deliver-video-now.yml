@@ -1,5 +1,5 @@
 name: TAYVORIQ-X Golden Path
-run-name: ${{ inputs.review_repair_of && format('TAYVORIQ review correction {0}', inputs.review_repair_of) || github.event.head_commit.message || github.workflow }}
+run-name: ${{ inputs.review_repair_of && format('TAYVORIQ review correction {0}', inputs.review_repair_of) || inputs.source_request_id && format('TAYVORIQ request {0}', inputs.source_request_id) || github.event.head_commit.message || github.workflow }}
 
 on:
   workflow_dispatch:

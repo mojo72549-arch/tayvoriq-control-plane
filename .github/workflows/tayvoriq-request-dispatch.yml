@@ -1,9 +1,7 @@
 name: TAYVORIQ Request Dispatcher
 
 on:
-  repository_dispatch:
-    types:
-      - tayvoriq_trend_approved
+  workflow_call:
   push:
     branches:
       - main
@@ -44,6 +42,7 @@ jobs:
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
           TREND_ID: ${{ github.event.client_payload.trend_id }}
           SELECTION_ID: ${{ github.event.client_payload.selection_id }}
           DISPATCH_TOPIC: ${{ github.event.client_payload.topic }}
@@ -54,6 +53,7 @@ jobs:
           REQUEST_FILE=""
 
           if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            test "${EVENT_ACTION:-}" = "tayvoriq_trend_approved" || exit 1
             test -n "${TELEGRAM_MESSAGE_ID:-}" || { echo "::error title=Missing Telegram message id::Cannot create an idempotent production request"; exit 1; }
             TREND_REQUEST_FILE=$(python - <<'PY'
           import json, os, re
@@ -302,7 +302,11 @@ jobs:
           RUN_ID=""
           for attempt in $(seq 1 12); do
             sleep 5
-            RUN_ID=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event workflow_dispatch --limit 10 --json databaseId --jq ".[] | select(.databaseId > $BEFORE) | .databaseId" | head -n 1)
+            RUN_ID=$(gh run list --workflow tayvoriq-deliver-video-now.yml --branch main --event workflow_dispatch \
+              --limit 30 --json databaseId,displayTitle |
+              jq -r --arg title "TAYVORIQ request $REQUEST_ID" --argjson before "$BEFORE" \
+                '[.[] | select(.databaseId > $before and .displayTitle == $title)] |
+                 if length > 1 then error("multiple matching Golden Path runs") else .[0].databaseId // empty end')
             [ -n "$RUN_ID" ] && break
           done
           [ -n "$RUN_ID" ] || { echo "::error title=Golden Path not started::No new workflow_dispatch run became visible"; exit 1; }
