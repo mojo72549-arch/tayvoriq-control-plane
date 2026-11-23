@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 from tayvoriq_artifact_approval import FILES
@@ -16,6 +17,29 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def verify_scene_coverage(variant, platform):
+    planned = (variant.get("text_package") or {}).get("scenes")
+    render = variant.get("render") or {}
+    actual = render.get("asset_report")
+    if (not isinstance(planned, list) or not planned or not isinstance(actual, list)
+            or len(planned) != len(actual)):
+        raise ValueError("REVIEW_SCENE_COUNT_INVALID:" + platform)
+    elapsed = 0.0
+    for number, (plan, scene) in enumerate(zip(planned, actual), start=1):
+        if (not isinstance(plan, dict) or not isinstance(scene, dict)
+                or type(scene.get("scene")) is not int or scene["scene"] != number):
+            raise ValueError(f"REVIEW_SCENE_SEQUENCE_INVALID:{platform}:{number}")
+        duration = scene.get("duration")
+        if type(duration) not in (int, float) or not math.isfinite(duration) or duration <= 0:
+            raise ValueError(f"REVIEW_SCENE_DURATION_INVALID:{platform}:{number}")
+        if str(plan.get("spoken_chunk") or "").strip() and scene.get("subtitle_present") is not True:
+            raise ValueError(f"REVIEW_SCENE_CAPTION_MISSING:{platform}:{number}")
+        elapsed += duration
+    final = render.get("final_duration_seconds")
+    if type(final) not in (float, int) or not math.isfinite(final) or abs(elapsed - final) > 0.35:
+        raise ValueError("REVIEW_SCENE_TIMELINE_INCOMPLETE:" + platform)
+
+
 def verify(job_dir, bundle, run_id):
     job = json.loads((job_dir / "job.json").read_text())
     review_job = json.loads((bundle / "job.json").read_text())
@@ -28,7 +52,9 @@ def verify(job_dir, bundle, run_id):
         raise ValueError("REVIEW_BUNDLE_JOB_OR_GATE_INVALID")
     hashes = {name: digest(bundle / name) for name in sorted(FILES)}
     for platform, filename in PLATFORMS.items():
-        source = job_dir / (job["variants"][platform].get("video_path") or filename)
+        variant = job["variants"][platform]
+        verify_scene_coverage(variant, platform)
+        source = job_dir / (variant.get("video_path") or filename)
         if (not source.resolve().is_relative_to(job_dir.resolve())
                 or hashes[filename] != digest(source)):
             raise ValueError("REVIEW_MASTER_DIFFERS_FROM_QA:" + platform)

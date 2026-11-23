@@ -13,7 +13,9 @@ class ReviewBundleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             job_dir, staged = root / 'job', root / 'site'
-            job = dict(job_id='fixture', github_run_id='42', variants={p: {} for p in bundle.PLATFORMS})
+            variant = dict(text_package=dict(scenes=[dict(spoken_chunk='Test')]),
+                           render=dict(final_duration_seconds=25, asset_report=[dict(scene=1, duration=25, subtitle_present=True)]))
+            job = dict(job_id='fixture', github_run_id='42', variants={p: variant for p in bundle.PLATFORMS})
             gate = dict(job_id='fixture', passed=True, targets=list(bundle.PLATFORMS), quality_gates_weakened=False)
             for directory in (job_dir, staged):
                 directory.mkdir()
@@ -36,3 +38,14 @@ class ReviewBundleTests(unittest.TestCase):
             (staged / 'short_tiktok.mp4').unlink()
             with self.assertRaisesRegex(ValueError, 'FILE_MISSING'):
                 bundle.verify(job_dir, staged, '42')
+
+    def test_scene_and_caption_faults_identify_the_affected_variant(self):
+        scene = dict(scene=1, duration=25, subtitle_present=True)
+        for actual, reason in (([], 'COUNT'), ([{**scene, 'scene': 2}], 'SEQUENCE'),
+                               ([{**scene, 'duration': 0}], 'DURATION'),
+                               ([{**scene, 'duration': 22}], 'TIMELINE'),
+                               ([{**scene, 'subtitle_present': False}], 'CAPTION')):
+            v = dict(text_package=dict(scenes=[dict(spoken_chunk='Test')]),
+                     render=dict(final_duration_seconds=25, asset_report=actual))
+            with self.subTest(reason=reason), self.assertRaisesRegex(ValueError, reason):
+                bundle.verify_scene_coverage(v, 'tiktok')
