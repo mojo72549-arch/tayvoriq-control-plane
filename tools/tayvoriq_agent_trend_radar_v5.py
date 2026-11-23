@@ -150,7 +150,12 @@ def main(*, repair_ready=_retention_ready) -> int:
         )
         providers.append(provider_name)
         models.append(model)
-        if len(chunks) < 4:
+        rows = data.get("candidates") or []
+        individual = (provider_name.endswith(("_rss", "_gdelt")) and len(rows) == 1
+                      and rows[0].get("_retrieved_regional_assessment", {}).get("passed") is True
+                      and len(chunks) == 2 and len(rows[0].get("sources", [])) == 2
+                      and {s["url"] for s in rows[0]["sources"]} == {c["uri"] for c in chunks})
+        if len(chunks) < 4 and not individual:
             if scan_index < max_scans:
                 print(json.dumps({"event": "growth_rescan", "reason": "weak_grounding", "scan": scan_index, "chunks": len(chunks)}, ensure_ascii=False))
                 continue
