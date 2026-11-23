@@ -315,6 +315,18 @@ class GroqSourceContractTests(unittest.TestCase):
         self.assertTrue(draft["_retrieved_regional_assessment"]["passed"])
         self.assertEqual(rejected["explanation_core"], "Die Ketten planen eine Fusion.")
 
+    def test_platform_rejection_opens_other_source_pools_instead_of_rerating_the_same_pair(self):
+        rejected = [
+            {"title": "Mercedes investiert in Werk Stuttgart", "fields": ["tiktok:regional_score_below_75"]},
+            {"title": "Bosch eröffnet Reutlingen Halbleiterfabrik", "fields": ["invalid_evidence_quote:S008"]},
+        ]
+        prompt = ("prompt" + hf.EDITORIAL_RESCAN + "\nPrevious base-field findings for the source-bound drafts: "
+                  + json.dumps(rejected))
+        with patch.object(hf.provider, "post_groq") as model, \
+             self.assertRaisesRegex(hf.InsufficientFeedEvidence, "corroborated_headlines=1"):
+            hf.structure(prompt, "key", self.pool, "multi-publisher-rss", provider_kind="groq")
+        model.assert_not_called()
+
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
         wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])

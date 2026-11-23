@@ -169,6 +169,22 @@ def _rank_corroborated_pairs(pairs, previous, retry_attempt):
     return {pair: title for group in fresh + seen for pair, title in group}
 
 
+def _below_platform_minimum(prompt):
+    marker = "\nPrevious base-field findings for the source-bound drafts: "
+    if marker not in prompt:
+        return []
+    try:
+        findings = json.loads(prompt.rsplit(marker, 1)[1].partition("\n")[0])
+    except ValueError:
+        return []
+    if not isinstance(findings, list):
+        return []
+    return [row["title"] for row in findings if isinstance(row, dict) and isinstance(row.get("title"), str)
+            and isinstance(row.get("fields"), list) and any(
+                str(field).endswith((":regional_score_below_75", ":consequence_below_3", ":explanation_below_3"))
+                for field in row["fields"])]
+
+
 def _research_retry_attempt() -> int:
     slot = os.getenv("TAYVORIQ_RESEARCH_SLOT")
     if not slot:
@@ -390,6 +406,11 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
             except ValueError:
                 pass
         previous = [title for title in previous if isinstance(title, str)] if isinstance(previous, list) else []
+        excluded = _below_platform_minimum(prompt) if rescan_marker else []
+        if excluded:
+            vetted_pairs = {pair: title for pair, title in vetted_pairs.items()
+                            if all(title.casefold() != prior.casefold() and distinct_headlines(title, prior)
+                                   for prior in excluded)}
         ranked = _rank_corroborated_pairs(vetted_pairs.items(), previous, _research_retry_attempt())
         selected_pairs = _independent_headline_pairs(ranked)
         if not selected_pairs:
