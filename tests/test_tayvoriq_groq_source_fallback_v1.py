@@ -327,6 +327,15 @@ class GroqSourceContractTests(unittest.TestCase):
             hf.structure(prompt, "key", self.pool, "multi-publisher-rss", provider_kind="groq")
         model.assert_not_called()
 
+    def test_incomplete_scorecard_does_not_reject_a_topic_on_platform_relevance(self):
+        prompt = hf.EDITORIAL_RESCAN + "\nPrevious base-field findings for the source-bound drafts: " + json.dumps([
+            {"title": "Valid assessment", "fields": ["tiktok:regional_score_below_75"]},
+            {"title": "Missing grade", "fields": ["tiktok:regional_score_below_75",
+                                                "invalid_or_unexplained_rating:timeliness"]},
+            {"title": "Missing fit", "fields": ["youtube:regional_score_below_75", "platform_fit_missing:tiktok"]},
+        ])
+        self.assertEqual(hf._below_platform_minimum(prompt), ["Valid assessment"])
+
     def test_unknown_and_same_domain_ids_fail_closed(self):
         ids = self.ids
         wrong = self._candidate("S999", ids[("dw.com", "Mercedes investiert in Werk Stuttgart")])
