@@ -243,6 +243,44 @@ class PersistentBudgetTests(unittest.TestCase):
 
 
 class SchedulerContractTests(unittest.TestCase):
+    def test_berlin_slot_workflow_python_executes_for_regular_and_retry_ticks(self):
+        from datetime import datetime
+        from tempfile import TemporaryDirectory
+        import yaml
+
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        resolver = next(step['run'] for step in workflow['jobs']['trend-gate']['steps'] if step.get('id') == 'slot')
+        source = resolver.split("<<'PY'\n", 1)[1].rsplit('\nPY\n', 1)[0]
+        code = compile(source, 'Berlin slot in the deployed workflow', 'exec')
+
+        class FrozenDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return current.astimezone(tz)
+
+        cases = [
+            ('2026-11-23T05:30:00+01:00', '30 4 * * *', '', 'morning'),
+            ('2026-11-23T19:00:00+01:00', '0 18 * * *', '', 'evening'),
+            ('2026-09-01T05:30:00+02:00', '30 3 * * *', '', 'morning'),
+            ('2026-09-01T19:00:00+02:00', '0 17 * * *', '', 'evening'),
+            ('2026-11-23T04:30:00+01:00', '30 3 * * *', '', ''),
+            ('2026-11-23T12:05:00+01:00', '*/5 * * * *', 'morning', 'morning'),
+            ('2026-11-23T12:05:00+01:00', '*/5 * * * *', '', ''),
+        ]
+        for stamp, cron, retry_slot, expected in cases:
+            current = datetime.fromisoformat(stamp)
+            with self.subTest(cron=cron, stamp=stamp, retry=retry_slot), TemporaryDirectory() as temp:
+                output = Path(temp) / 'output'
+                env = {'EVENT_NAME': 'schedule', 'EVENT_SCHEDULE': cron, 'GITHUB_OUTPUT': str(output)}
+                with patch.dict(os.environ, env, clear=True), patch('datetime.datetime', FrozenDateTime), \
+                     patch.object(retry, 'due_slot', return_value=retry_slot), \
+                     patch('tayvoriq_rejected_review_followup.followup', return_value=None):
+                    exec(code, {})
+                results = dict(line.split('=', 1) for line in output.read_text().splitlines())
+                self.assertEqual(results['slot'], expected)
+                self.assertEqual(results['should_run'], 'true' if expected else 'false')
+
     def test_scheduled_tick_uses_durable_retry_without_sleeping_or_dispatching_again(self):
         import yaml
         root = Path(__file__).resolve().parents[1]
