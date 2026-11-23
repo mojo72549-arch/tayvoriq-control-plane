@@ -257,9 +257,15 @@ def current_research_retry():
                         '.automation/tayvoriq-agent-v2/research-retry.json'))
 
 
-def research_only_projection(research, *, retired, run_id):
-    """Describe trend discovery without reviving a retired production incident."""
-    if not isinstance(research, dict) or not research or not (retired or not run_id):
+def research_only_projection(research, *, retired, run_id, active_production=False):
+    """Describe the current discovery slot when no production is still active.
+
+    A completed Golden Path remains useful history, but it must not continue to
+    own the live Control Center while a newer Berlin research slot is waiting or
+    terminal.  Only an actually active production may take precedence over the
+    current research state.
+    """
+    if not isinstance(research, dict) or not research or active_production:
         return None
     state = str(research.get('state') or '').upper()
     if not state:
@@ -361,7 +367,13 @@ def main():
         recovery_owner = "none"
 
     research = current_research_retry()
-    research_only = research_only_projection(research, retired=retired, run_id=run_id)
+    research_only = research_only_projection(
+        research,
+        retired=retired,
+        run_id=run_id,
+        active_production=canonical_running,
+    )
+    historical_run = bool(retired or research_only)
     telegram_notify_allowed = True
     if research_only:
         overall = research_only['overall']
@@ -381,9 +393,9 @@ def main():
         telegram_status = "yellow" if run_id else "unknown"
         telegram_detail = "Noch keine bestätigte Review-Zustellung im aktuellen Run"
 
-    if retired:
+    if historical_run:
         telegram_status = "yellow"
-        telegram_detail = "Archivierter Auftrag: kein aktueller Video-Review"
+        telegram_detail = "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
 
     green_pointer = load_json(".github/state/tayvoriq-production-green.json") or {}
     green_ok = bool(green_pointer.get("full_preflight_passed") is True and green_pointer.get("quality_gates_weakened") is False)
@@ -418,9 +430,9 @@ def main():
         quality_status = "unknown"
         quality_detail = "Kein aktiver Run"
 
-    if retired:
+    if historical_run:
         quality_status = "yellow"
-        quality_detail = "Historischer Fehler archiviert · neuer Auftrag ausstehend"
+        quality_detail = "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
 
     incident = None
     if overall == "red" or failure_state:
@@ -474,6 +486,7 @@ def main():
             "request_id": pointer.get("request_id") if isinstance(pointer, dict) else None,
             "golden_path_run_id": run_id,
             "pointer_updated_at": pointer.get("updated_at") if isinstance(pointer, dict) else None,
+            "current_scope": "research" if research_only else "production",
         },
         "request": {
             "request_id": (request_data or {}).get("request_id"),
@@ -498,7 +511,7 @@ def main():
         },
         "run": {
             "id": run_id,
-            "historical": retired,
+            "historical": historical_run,
             "status": run_status,
             "conclusion": conclusion,
             "html_url": run.get("html_url") if run else (f"https://github.com/{REPO}/actions/runs/{run_id}" if run_id else None),
@@ -516,7 +529,9 @@ def main():
             {
                 "name": "Golden Path",
                 "status": overall,
-                "detail": ("Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert" if retired else (failed_step.get("name") if failed_step else (running_step.get("name") if running_step else (conclusion or run_status)))),
+                "detail": (f"Kein aktueller Produktionslauf · Recherche {str(research.get('state') or 'wartet').upper()}"
+                           if research_only else ("Kein aktiver Auftrag · vorheriger Produktionsfehler archiviert"
+                           if retired else (failed_step.get("name") if failed_step else (running_step.get("name") if running_step else (conclusion or run_status))))),
             },
             {
                 "name": "Production Green",
