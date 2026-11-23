@@ -44,6 +44,24 @@ class RegionalPolicyTest(unittest.TestCase):
              self.assertRaisesRegex(SystemExit, 'REGIONAL_RESCAN_REQUIRED'):
             radar.diversify(self.candidates(), 'morning')
 
+    def test_a_thin_hook_reuses_the_supported_question_without_rewriting_facts(self):
+        original = {
+            "title":"Bahn stellt Fahrplan um", "primary_hook":"Deine Verbindung ändert sich",
+            "viewer_question":"Warum ändert sich der Fahrplan für Pendler auf dieser Strecke?",
+            "explanation_core":"Die Bahn verändert den Fahrplan wegen Bauarbeiten und stellt für betroffene Reisende auf einzelnen Abschnitten Ersatzbusse bereit.",
+            "surprise_or_reframe":"Auch bei kurzen Wegen bleiben Umstiege, Fahrtzeiten und Haltestellen die wichtigsten Unterschiede.",
+            "practical_relevance":"Für deine nächste Fahrt hilft die aktuelle Übersicht im Bahnhof.",
+            "follow_reason":"Bei TAYVORIQ erfährst du, wie sich der Fahrplan für Pendler konkret ändert.",
+            "source_context":{"sources":[{"url":"https://a.example/a"},{"url":"https://b.example/b"}]},
+        }
+        assert radar.retention_v5.evaluate_content_depth(original)["issues"] == ["hook_too_thin"]
+        repaired = radar._repair_thin_hook(original)
+        self.assertEqual(repaired["primary_hook"], original["viewer_question"])
+        self.assertIs(repaired["source_context"], original["source_context"])
+        self.assertEqual(radar.retention_v5.evaluate_content_depth(repaired)["result"], "PASS")
+        incomplete = {**original, "explanation_core":""}
+        self.assertIs(radar._repair_thin_hook(incomplete), incomplete)
+
     def test_inherited_gates_still_run(self):
         with patch.object(radar.retention_v5, 'apply_trend_contract', side_effect=lambda c, strict: copy.deepcopy(c)), \
              patch.object(radar, '_original_diversify', side_effect=SystemExit('GROWTH_RESCAN_REQUIRED')), \
