@@ -211,6 +211,8 @@ V5 CONTRACT:
 - CTA text must be topic-specific, naturally mention TAYVORIQ and must not be generic "Bitte abonnieren".
 - This fallback may use only NONE or SOFT open loops. Never invent a HARD open loop or queued next episode.
 
+{base.CINEMATIC_BRIEF_INSTRUCTIONS}
+
 EDITORIAL FALLBACK CONTRACT:
 - Provide all five fallback_editorial_answers.
 - Each answer must be 5-15 words; together the five answers must total 38-49 words.

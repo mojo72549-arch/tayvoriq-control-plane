@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import copy
+import json
 import sys
+from argparse import Namespace
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -151,3 +154,84 @@ def test_v5_state_machine_allows_local_repair_but_not_publish_jump():
     with pytest.raises(ValueError, match="ILLEGAL_V5_STATE_TRANSITION"):
         v5.advance_lifecycle("APPROVED", "COMPLETED")
 
+
+@pytest.fixture
+def raw_trend():
+    return {
+        "title": "Goldmedaillen entscheiden die Rangfolge bei der Leichtathletik-EM",
+        "trend_scope": "sports",
+        "regional_relevance": "germany",
+        "criteria": dict.fromkeys(("aktualitaet", "viralitaet", "tayvoriq_passung", "quellenqualitaet", "visuell"), 95),
+        "content_angle": "Wie die Medaillentabelle die Teams sortiert",
+        "primary_hook": "Wie kann ein Team mit weniger Medaillen trotzdem vorne liegen?",
+        "viewer_question": "Warum reicht die Medaillensumme für Rang eins nicht aus?",
+        "explanation_core": "Die Medaillentabelle sortiert zunächst nach Gold, danach bei gleicher Goldzahl nach Silber und schließlich Bronze.",
+        "surprise_or_reframe": "Ein Team mit vielen Podestplätzen kann deshalb trotzdem unter einer kleineren Delegation landen.",
+        "practical_relevance": "So kannst du Platzierungen im Fernsehen auch bei widersprüchlich wirkenden Summen einordnen.",
+        "follow_reason": "TAYVORIQ erklärt, wie Regeln die Ergebnisse deutscher Sportteams prägen.",
+        "cta_type": "EXPERTISE",
+        "cta_text": "Bei TAYVORIQ erfährst du, welche Regeln hinter den Ergebnissen deutscher Sportteams stehen.",
+        "open_loop_status": "NONE",
+        "sources": [
+            {"publisher": "A", "url": "https://a.example/em", "supports": "In der Rangliste zählen Goldmedaillen zuerst."},
+            {"publisher": "B", "url": "https://b.example/tabelle", "supports": "Die Rangliste wird bei gleicher Goldzahl nach Silber sortiert."},
+        ],
+        "fallback_editorial_answers": {
+            "what_happened": "Deutschland gewinnt bei der EM 21 Medaillen und belegt Rang drei.",
+            "why_happening": "Die Briten liegen vorn, weil Goldmedaillen in der Rangliste Vorrang haben.",
+            "who_is_affected": "Das deutsche Leichtathletik-Team und seine Fans.",
+            "personal_impact": "Für dich ändert die Rangfolge, wie du den direkten Vergleich bewertest.",
+            "action_now": "Prüfe bei der Medaillentabelle zuerst die Goldmedaillen.",
+        },
+        "cinematic_brief": {
+            "story_structure": "MECHANISM",
+            "hook_answer": "Die Tabelle sortiert zuerst nach Goldmedaillen.",
+            "opening_visual": {"type": "DATA_GRAPHIC", "subject": "Zwei Zeilen der Medaillentabelle", "purpose": "Der Goldvorsprung erklärt die Rangfolge."},
+        },
+    }
+
+
+def test_live_radar_prompt_requests_cinematic_brief():
+    import tayvoriq_agent_trend_radar_v8 as radar
+
+    assert radar.base.CINEMATIC_BRIEF_INSTRUCTIONS in radar.prompt_for("morning", datetime(2026, 11, 23))
+
+
+@pytest.mark.parametrize("invalid_brief", [None, {"opening_visual": []}, {"story_structure": "MECHANISM", "opening_visual": {"type": "FAKE_EVENT"}}])
+def test_invalid_or_absent_brief_keeps_existing_candidate_contract(raw_trend, invalid_brief):
+    import tayvoriq_agent_trend_radar_v8 as radar
+
+    raw_trend["cinematic_brief"] = invalid_brief
+    candidate = radar.base.normalized_candidate(raw_trend, "2026-11-23T06:00:00Z")
+    assert candidate is not None
+    assert "cinematic_brief" not in candidate["source_context"]
+
+
+def test_brief_does_not_compensate_for_missing_source(raw_trend):
+    import tayvoriq_agent_trend_radar_v8 as radar
+
+    raw_trend["sources"].pop()
+    assert radar.base.normalized_candidate(raw_trend, "2026-11-23T06:00:00Z") is None
+
+
+def test_cinematic_brief_is_bound_to_the_approved_request(raw_trend, tmp_path):
+    import tayvoriq_agent_trend_radar_v8 as radar
+    import tayvoriq_orchestration_contract as contract
+
+    now = "2026-11-23T06:00:00Z"
+    raw_trend["cinematic_brief"]["opening_visual"]["license_verified"] = True
+    candidate = radar.base.normalized_candidate(raw_trend, now)
+    candidate["id"] = "1"
+    selection = tmp_path / "selection.json"
+    selection.write_text(json.dumps({"selection_id": "test-selection", "trends": [candidate]}), encoding="utf-8")
+    contract.create_from_telegram(Namespace(
+        trend_id="1", selection_id="test-selection", message_id="999", trend_request=str(selection),
+        payload_topic="", approved_at=now, out_dir=str(tmp_path),
+    ))
+    request = contract.read_json(tmp_path / "telegram-999-trend-1.json")
+    brief = request["source_context"]["cinematic_brief"]
+    assert brief["hook_answer"] == raw_trend["cinematic_brief"]["hook_answer"]
+    assert brief["opening_visual"] == {"type": "DATA_GRAPHIC", "subject": "Zwei Zeilen der Medaillentabelle", "purpose": "Der Goldvorsprung erklärt die Rangfolge."}
+    brief["opening_visual"]["subject"] = "Ausgetauschte Einstellung"
+    with pytest.raises(SystemExit, match="source_context_sha256 mismatch"):
+        contract.validate(request)

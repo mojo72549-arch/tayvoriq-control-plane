@@ -18,6 +18,17 @@ VALID_SCOPES = {
 BLOCKED_SOURCE_MARKERS = ("tiktok.com", "instagram.com", "facebook.com", "x.com", "twitter.com", "youtube.com")
 ACTIVE_SERIES_PATH = Path("state/tayvoriq-active-series.json")
 
+CINEMATIC_BRIEF_INSTRUCTIONS = """When the sources support a distinct payoff, add cinematic_brief to the candidate:
+{"story_structure":"CONSEQUENCE|MECHANISM|BEFORE_AFTER|EVIDENCE_CHECK",
+ "hook_answer":"one concrete German sentence answering viewer_question within this video",
+ "opening_visual":{"type":"DOCUMENTARY_REFERENCE|MAP|DATA_GRAPHIC|DIAGRAM|LABELED_ILLUSTRATION",
+                   "subject":"specific visible person, place, object or data in the first two seconds",
+                   "purpose":"what that shot shows the viewer about the spoken hook"}}
+Choose the structure by the story, not by slot. Use a visual specific to the spoken hook.
+Treat documentary material as a sourcing lead with rights still to be checked. Never invent event footage.
+Use visibly labeled synthetic illustrations and never stage a realistic depiction of a news event.
+Omit the brief if the answer or fitting visual cannot be supported. It is a proposal, not verification."""
+
 
 def clamp(value: Any) -> int:
     try:
@@ -28,6 +39,32 @@ def clamp(value: Any) -> int:
 
 def clean(value: Any, limit: int = 2000) -> str:
     return " ".join(str(value or "").split()).strip()[:limit]
+
+
+def _cinematic_brief(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict) or not isinstance(raw.get("opening_visual"), dict):
+        return {}
+
+    opening = raw["opening_visual"]
+    structure = raw.get("story_structure")
+    visual_type = opening.get("type")
+    if structure not in ("CONSEQUENCE", "MECHANISM", "BEFORE_AFTER", "EVIDENCE_CHECK"):
+        return {}
+    if visual_type not in ("DOCUMENTARY_REFERENCE", "MAP", "DATA_GRAPHIC", "DIAGRAM", "LABELED_ILLUSTRATION"):
+        return {}
+
+    answer, subject, purpose = (raw.get("hook_answer"), opening.get("subject"), opening.get("purpose"))
+    if any(not isinstance(value, str) or not value.strip() for value in (answer, subject, purpose)):
+        return {}
+    return {
+        "story_structure": structure,
+        "hook_answer": clean(answer, 360),
+        "opening_visual": {
+            "type": visual_type,
+            "subject": clean(subject, 180),
+            "purpose": clean(purpose, 240),
+        },
+    }
 
 
 def extract_json(text: str) -> dict[str, Any]:
@@ -269,7 +306,7 @@ For each candidate return:
     "action_now": "..."
   }}
 }}
-""".strip()
+""".strip() + "\n\n" + CINEMATIC_BRIEF_INSTRUCTIONS
 
 
 def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:
@@ -335,6 +372,7 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
         "cta_type": clean(raw.get("cta_type") or raw.get("recommended_cta_type"), 40).upper(),
         "cta_text": clean(raw.get("cta_text"), 900),
     }
+    brief = _cinematic_brief(raw.get("cinematic_brief")) if retention_v5["viewer_question"] else {}
     return {
         "category": clean(raw.get("category"), 100) or scope,
         "trend_scope": scope,
@@ -352,6 +390,7 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
             "sources": sources[:3],
             "fallback_editorial_answers": answers,
             "retention_v5": {**v5_scores, **retention_v5},
+            **({"cinematic_brief": brief} if brief else {}),
         },
     }
 
