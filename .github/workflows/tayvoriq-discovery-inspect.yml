@@ -19,6 +19,13 @@ jobs:
           from itertools import combinations
           import tayvoriq_agent_rss_v2 as rss
           import tayvoriq_agent_hf_v2 as hf
+          rss.FEEDS[:0] = [('ig-stuttgart','https://www.region-stuttgart.igm.de/feed/news.xml'),('stz-local','https://www.stuttgarter-zeitung.de/schlagzeilen.rss')]
+          for name,url in rss.FEEDS[:2]:
+              try:
+                  items = rss._fetch_one(name,url)
+                  print('FEED',name,len(items),[r['title'] for r in items[:6]])
+              except Exception as exc:
+                  print('FEED',name,type(exc).__name__)
           rows = rss.source_pool(expanded=True)
           matches = []
           for a,b in combinations(rows,2):
