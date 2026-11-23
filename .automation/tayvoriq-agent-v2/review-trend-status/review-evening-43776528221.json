@@ -1,15 +1,18 @@
 {
   "schema": "tayvoriq-review-trend-status-v1",
   "selection_id": "review-evening-43776528221",
-  "state": "WAITING",
-  "retry_at": "2026-11-23T07:34:19.973161+00:00",
+  "state": "BLOCKED",
+  "retry_at": null,
   "attempts": 1,
   "max_attempts": 3,
-  "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+  "reason": "RESEARCH_RETRY_EXPIRED",
+  "detail": "Das Zeitfenster ist abgelaufen. Die neue Auswahl wurde in Telegram nicht best\u00e4tigt.",
+  "deadline_at": "2026-11-23T07:39:19.973161+00:00",
   "sla_seconds": 600,
-  "updated_at": "2026-11-23T07:29:22.969827+00:00",
+  "updated_at": "2026-11-23T09:40:19.282928+00:00",
   "telegram_notices": {
     "SEARCHING": 3669,
-    "WAITING": 3670
+    "WAITING": 3670,
+    "BLOCKED": 3673
   }
 }
