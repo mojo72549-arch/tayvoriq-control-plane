@@ -19,6 +19,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          TAYVORIQ_RESEARCH_CHECKPOINT_FILE: /tmp/evening-checked-candidates.json
           TAYVORIQ_RESEARCH_SLOT: evening
           TAYVORIQ_RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
           TAYVORIQ_RESEARCH_RETRY_FILE: /tmp/acceptance-retry.json
@@ -47,5 +48,6 @@ jobs:
             /tmp/tayvoriq-trend-request.json
             /tmp/tayvoriq-trend-audit.json
             /tmp/acceptance-retry.json
+            /tmp/evening-checked-candidates.json
           if-no-files-found: ignore
           retention-days: 3

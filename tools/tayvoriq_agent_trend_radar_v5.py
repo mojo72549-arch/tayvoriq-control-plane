@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 import tayvoriq_agent_trend_radar_v4 as growth
 import tayvoriq_agent_research_resilience_v2 as resilience
+import tayvoriq_research_checkpoint as checkpoint
 from tayvoriq_global_duplicate_gate_v1 import run_gate
 from tayvoriq_retention_v5 import apply_trend_contract
 
@@ -213,6 +214,11 @@ def main(*, repair_ready=_retention_ready) -> int:
                 candidate["source_context"]["duplicate_check"] = {
                     key: duplicates[key] for key in ("state", "content_fingerprint_sha256", "history_candidates_checked")
                 }
+            if source_bound and assessment and assessment.get("passed") and repair_ready(candidate):
+                original_model = raw.get("_checkpoint_model") or model
+                candidate["source_context"]["editorial_model"] = original_model
+                checkpoint.remember({k: v for k, v in raw.items() if k != "_checkpoint_model"},
+                                    assessment, original_model)
             key = _identity(candidate)
             if key in seen:
                 if scan_index > 1 and provider_name.endswith(("_rss", "_gdelt")):
