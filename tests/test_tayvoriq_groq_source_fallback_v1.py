@@ -269,6 +269,27 @@ class GroqSourceContractTests(unittest.TestCase):
              self.assertRaisesRegex(hf.InsufficientSourceEvidence, "valid_candidates=0"):
             hf.structure("prompt", "key", self.pool, "multi-publisher-rss", provider_kind="groq")
 
+    def test_canonical_title_and_sources_are_resolved_from_the_returned_pair_id(self):
+        def respond(payload, key, timeout):
+            prompt = payload["messages"][1]["content"]
+            records = json.loads(prompt.split("SOURCE RECORDS (multi-publisher-rss):\n")[1])
+            pairs = [[row["source_id"] for row in records if row["title"] == title]
+                     for title in dict.fromkeys(row["title"] for row in records)]
+            candidates = [{"source_pair_id": "+".join(sorted(pair))} for pair in pairs]
+            candidates.insert(0, {"source_pair_id": candidates[0]["source_pair_id"],
+                                  "title": "Erfundener neuer Ausgang"})
+            candidates.insert(1, {"source_pair_id": "S777+S888"})
+            return {"choices": [{"message": {"content": json.dumps({"candidates": candidates})}}]}
+
+        with patch.object(hf.provider, "post_groq", respond):
+            data, chunks, _ = hf.structure("prompt", "key", self.pool, "multi-publisher-rss", provider_kind="groq")
+        expected = {"Mercedes investiert in Werk Stuttgart", "Bosch eröffnet Reutlingen Halbleiterfabrik"}
+        self.assertEqual({row["title"] for row in data["candidates"]}, expected)
+        self.assertEqual(len(chunks), 4)
+        for candidate in data["candidates"]:
+            self.assertEqual(len(candidate["sources"]), 2)
+            self.assertTrue(all(source["supports"].startswith(candidate["title"]) for source in candidate["sources"]))
+
     def test_editorial_repair_only_changes_requested_fields_of_a_qualified_draft(self):
         sources = [{"source_id": "S003", "supports": "Die Kette plant einen Zusammenschluss."},
                    {"source_id": "S009", "supports": "Für Kunden bleiben die Märkte zunächst geöffnet."}]

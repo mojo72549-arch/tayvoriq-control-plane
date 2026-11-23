@@ -427,13 +427,18 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                     item['context'] = base.clean(article.get('context'), 600 - len(article['title']) - 1)
                     enriched_count += 1
             print(json.dumps({"event": "editorial_rescan_article_evidence", "updated_records": enriched_count}))
-        allowlist = [{'source_ids': list(pair), 'title': title} for pair, title in vetted_pairs.items()]
-        pair_note = ('PICK ONLY FROM THESE CORROBORATED HEADLINES. Copy the title and its two source IDs '
-                     'exactly. Only propose an angle grounded in that pair. Never add actors, outcomes, '
-                     'numbers or locations from other stories. Draft one complete candidate per eligible pair '
-                     'in the order shown, starting with the first eligible pair. '
-                     'Skip a pair only when the evidence or regional scope is insufficient.\n'
-                     + json.dumps(allowlist, ensure_ascii=False))
+        allowlist = [{'source_pair_id': '+'.join(pair), 'source_ids': list(pair), 'title': title}
+                     for pair, title in vetted_pairs.items()]
+        if source_bound:
+            pair_note = ('PICK ONLY FROM THESE CORROBORATED HEADLINES. Return the exact source_pair_id. '
+                         'The system supplies the authoritative title and both sources, so omit title and sources fields. '
+                         'Draft one candidate for each eligible pair in order. Preserve the listed headline’s level '
+                         'of certainty in all editorial fields. Only skip pairs outside the regional scope or with '
+                         'insufficient evidence.\n' + json.dumps(allowlist, ensure_ascii=False))
+        else:
+            pair_note = ('PICK ONLY FROM THESE CORROBORATED HEADLINES. Copy the title and its two '
+                         'source IDs exactly. Only propose an angle grounded in that pair.\n'
+                         + json.dumps(allowlist, ensure_ascii=False))
     options_by_id = {}
     if source_bound:
         for item in indexed:
@@ -458,7 +463,8 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     policy = ""
     if source_bound:
         # Keep all required scorecard fields in the schema the provider actually receives.
-        schema = schema.replace(',"supports":"supported fact"', '')
+        schema = schema.replace('"title":"German headline"', '"source_pair_id":"<listed source_pair_id>"').replace(
+            ',"sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}]', '')
         rating_keys = ("consequence", "proximity", "recognition", "timeliness", "explanation", "resolution", "continuity")
         scorecard = {
             "evidence": {"<first source ID>": "<exact option ID>", "<second source ID>": "<exact option ID>"},
@@ -481,13 +487,19 @@ German audience proximity, immediately recognizable actor/place, new dated devel
 a question that can be answered now, and returning audience value. Do not predict view counts. Give a distinct fit reason
 for each platform. Never increase scores to satisfy a quota. Preserve uncertainty, including when a study estimates an effect.
 For why_happening, explain the documented decision or mechanism from the reports, without inventing a motive."""
+    identity_contract = (
+        "- Select exactly one listed source_pair_id for each candidate. Use the published headline as the claim context. "
+        "Keep its actors, outcomes, numbers, locations and certainty intact. Omit title and sources from your response."
+        if source_bound else
+        "- Return source_id values only, never invent or copy URLs. Use a conservative headline whose substantive words "
+        "and numbers occur in both original records. Source supports are reconstructed from the original records."
+    )
     user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Search across ALL supplied publisher domains, not just the first records.
 
 SOURCE CONTRACT:
 - Each candidate must describe ONE coherent current story. Never combine two unrelated headlines, entities, warnings, discoveries or events into one candidate.
 - A candidate is valid only with EXACTLY TWO source_id values from DIFFERENT domains that both clearly describe that same story.
-- Return source_id values only; NEVER invent or copy URLs.
-- Use a conservative headline whose substantive words and numbers occur in BOTH original records. Unsupported paraphrases are rejected. Source supports will be reconstructed from the original records, not your output.
+{identity_contract}
 - Fewer candidates are better than a fabricated cross-source match. Drop a candidate when two independent domains do not support the same story.
 
 V5 CONTRACT:
@@ -538,10 +550,15 @@ EDITORIAL FALLBACK CONTRACT:
         raw,hs=http.post_json(HF_URL,payload,{"Content-Type":"application/json","Authorization":f"Bearer {token}","User-Agent":"tayvoriq-agent-v3-hf"},timeout)
         print(json.dumps({"event":"provider_success","provider":"huggingface","model":model,"source_label":source_label,"rate_limit":{k:hs[k] for k in http.RATE_HEADERS if k in hs}},ensure_ascii=False)); return raw
     raw=(call() if provider_kind=="groq" or interactive else http.retry("huggingface",call,2)); data=base.extract_json(provider.content_of(raw)); chunks=[]
+    allowed_pair_ids = {'+'.join(pair): pair for pair in vetted_pairs} if source_bound else {}
     for c in data.get("candidates") or []:
         if not isinstance(c,dict): continue
         c.pop("_checkpoint_model", None)
         raw_sources=[s for s in (c.get("sources") or []) if isinstance(s,dict)]
+        pair_id = c.pop("source_pair_id", None) if source_bound else None
+        pair = allowed_pair_ids.get(pair_id) if isinstance(pair_id, str) else None
+        if pair and not raw_sources:
+            raw_sources = [{"source_id": sid} for sid in pair]
         resolved=[]
         for s in raw_sources:
             sid=base.clean(s.get("source_id"),20)
@@ -557,8 +574,11 @@ EDITORIAL FALLBACK CONTRACT:
         if source_bound and (len(raw_sources) != 2 or len(resolved) != 2):
             reasons.append('two_exact_retrieved_source_ids_required')
         if exact_titles:
-            binding = vetted_pairs.get(tuple(sorted(sid for sid, _ in resolved)))
-            if not binding or _headline_presentation_key(c.get('title')) != _headline_presentation_key(binding):
+            resolved_pair = tuple(sorted(sid for sid, _ in resolved))
+            binding = vetted_pairs.get(resolved_pair)
+            if (not binding or (pair_id is not None and pair != resolved_pair)
+                    or ((not pair or c.get('title')) and
+                        _headline_presentation_key(c.get('title')) != _headline_presentation_key(binding))):
                 reasons.append('candidate_does_not_match_preverified_headline_pair')
             else:
                 c['title'] = binding
