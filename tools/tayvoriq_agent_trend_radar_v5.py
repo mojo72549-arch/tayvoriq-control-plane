@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 import tayvoriq_agent_trend_radar_v4 as growth
 import tayvoriq_agent_research_resilience_v2 as resilience
 from tayvoriq_global_duplicate_gate_v1 import run_gate
+from tayvoriq_retention_v5 import apply_trend_contract
 
 base = growth.base
 resilience.install()
@@ -23,6 +24,17 @@ def _identity(candidate: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
     sources = tuple(sorted(str(url) for url in (candidate.get("sources") or []) if url))
     return title, sources
 
+
+def _verified_editorial_repair(previous, candidate) -> bool:
+    try:
+        apply_trend_contract(previous, strict=True)
+    except ValueError:
+        try:
+            apply_trend_contract(candidate, strict=True)
+        except ValueError:
+            return False
+        return True
+    return False
 
 def _editorial_scan(slot: str, now: datetime):
     """Use short-lived, source-backed editorial input through the normal radar gates."""
@@ -88,7 +100,7 @@ def main() -> int:
     rescan_below_minimum = bool(selection_cfg.get("rescan_when_below_candidate_minimum", True))
 
     normalized: list[dict[str, Any]] = []
-    seen: set[tuple[str, tuple[str, ...]]] = set()
+    seen: dict[tuple[str, tuple[str, ...]], int] = {}
     grounding_chunks: list[dict[str, str]] = []
     seen_chunks: set[str] = set()
     providers: list[str] = []
@@ -112,8 +124,8 @@ def main() -> int:
                     "Return distinct current stories that can survive every existing source, freshness, Growth, semantic, duplicate, "
                     "claim-coherence and brand-safety gate. Aim for at least 5 genuinely regional raw candidates so that at least 2 can "
                     "remain after validation. Do NOT relabel a global story as regional and do NOT weaken any threshold. "
-                    "Exclude already-seen titles or equivalent angles: "
-                    + " | ".join(prior_titles[:12])
+                    "Use these verified stories only when correcting failed editorial fields without changing the evidence: "
+                    + " | ".join(prior_titles[:12]) + "\nPrevious editorial checks: " + previous_error
                 )
             else:
                 prompt += (
@@ -162,8 +174,12 @@ def main() -> int:
                     continue
             key = _identity(candidate)
             if key in seen:
+                if scan_index > 1 and provider_name.endswith(("_rss", "_gdelt")):
+                    position = seen[key]
+                    if _verified_editorial_repair(normalized[position], candidate):
+                        normalized[position] = candidate
                 continue
-            seen.add(key)
+            seen[key] = len(normalized)
             normalized.append(candidate)
 
         candidate_pool = list(normalized)

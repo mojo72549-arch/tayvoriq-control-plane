@@ -117,6 +117,16 @@ def diversify(candidates, slot):
         and str(candidate.get("trend_scope") or "") != "science_future"
     ]
     if len(broad) < minimum:
+        print(json.dumps({
+            "event": "regional_editorial_validation",
+            "required": minimum, "eligible": len(broad),
+            "retention_rejections": invalid_v5,
+            "excluded_by_scope": [
+                {"title": candidate["title"], "region": candidate.get("regional_relevance"),
+                 "scope": candidate.get("trend_scope")}
+                for candidate in v5_candidates if candidate not in broad
+            ],
+        }, ensure_ascii=False))
         _mark_research_deferred(
             "REGIONAL_RESCAN_REQUIRED",
             slot=str(slot),
@@ -127,6 +137,7 @@ def diversify(candidates, slot):
         )
         raise SystemExit(
             f"REGIONAL_RESCAN_REQUIRED: only {len(broad)} local/Germany candidates passed all gates"
+            + ("; " + " | ".join(row["reason"] for row in invalid_v5[:5]) if invalid_v5 else "")
         )
 
     selected = _original_diversify(sorted(broad, key=_selection_key, reverse=True), slot)

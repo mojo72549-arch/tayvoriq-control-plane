@@ -198,6 +198,15 @@ class GroqSourceContractTests(unittest.TestCase):
             self.assertEqual(resilience.grounded("prompt", "", "groq-key")[-1], "groq_rss")
         browser.assert_not_called()
 
+    def test_corrected_editorial_fields_can_replace_an_invalid_draft(self):
+        import tayvoriq_agent_trend_radar_v5 as radar
+        previous, corrected = {"draft":"first"}, {"draft":"corrected"}
+        with patch.object(radar, "apply_trend_contract", side_effect=[ValueError("too thin"), {}]):
+            self.assertTrue(radar._verified_editorial_repair(previous, corrected))
+        with patch.object(radar, "apply_trend_contract", return_value={}) as validate:
+            self.assertFalse(radar._verified_editorial_repair(previous, corrected))
+            validate.assert_called_once_with(previous, strict=True)
+
     def test_missing_feed_evidence_is_enriched_from_its_original_article(self):
         calls = []
         article = '''<script type="application/ld+json">

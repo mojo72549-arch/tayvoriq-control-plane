@@ -233,6 +233,11 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     print(json.dumps({"event":"hf_balanced_source_pool","records":len(indexed),"independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     schema='''{"candidates":[{"title":"German headline","content_angle":"specific viewer angle","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"viral_potential":0,"tayvoriq_fit":0,"novelty_score":0,"series_fit_score":0,"return_viewer_score":0,"follow_conversion_potential":0,"open_loop_potential":0,"proposed_series_id":"","proposed_series_name":"","next_episode_candidate":"","recommended_cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","primary_hook":"...","viewer_question":"...","explanation_core":"...","surprise_or_reframe":"...","practical_relevance":"...","follow_reason":"...","open_loop":"","open_loop_status":"NONE|SOFT","next_episode_queue_status":"","cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","cta_text":"...","sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
     context_limit=800 if provider_kind=='groq' else 2500
+    editorial_context = prompt[:context_limit]
+    if "AUTOMATIC REGIONAL CONTRACT RESCAN:" in prompt:
+        editorial_context += "\nAUTOMATIC REGIONAL CONTRACT RESCAN:" + prompt.split(
+            "AUTOMATIC REGIONAL CONTRACT RESCAN:", 1
+        )[1][:1700]
     goal=('Return TWO or THREE complete candidates about current events in Stuttgart, Baden-Württemberg or Germany. '
           'Exclude Europe-only/global events and abstract laboratory research. A German brand alone does not establish German relevance.'
           if provider_kind=='groq' else
@@ -287,6 +292,11 @@ V5 CONTRACT:
 - Every candidate must include ALL V5 fields from the schema.
 - All seven V5 scores are integers 0-100.
 - content_angle, primary_hook, viewer_question, explanation_core, surprise_or_reframe, practical_relevance, follow_reason and cta_text must be non-empty.
+- The German explanation has enough depth for a video. Use 9-16 words for primary_hook, 7-14 for viewer_question,
+  17-32 for explanation_core, 12-22 for surprise_or_reframe, 10-18 for practical_relevance and 10-18 for follow_reason.
+- Give the reframe a distinct, supported detail or a different consequence with at least three new substantive terms.
+  Use the original evidence to explain the mechanism, uncertainty and what it means for the audience.
+- Set regional_relevance to the literal value "local" for the Stuttgart/Baden-Württemberg area or "germany" for a German national story.
 - CTA type must be one of CURIOSITY, EXPERTISE, COMMUNITY, SERIES, DISCUSSION, IDENTITY.
 - CTA text must be topic-specific, naturally mention TAYVORIQ and must not be generic "Bitte abonnieren".
 - This fallback may use only NONE or SOFT open loops. Never invent a HARD open loop or queued next episode.
@@ -300,7 +310,7 @@ EDITORIAL FALLBACK CONTRACT:
 - personal_impact must contain "für dich".
 - action_now must start with a concrete verb such as Achte, Prüfe, Sichere, Vergleiche, Aktiviere, Reduziere, Kontaktiere, Beobachte, Exportiere, Wechsle, Plane, Kläre, Nutze, Begrenze or Speichere.
 
-{goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{prompt[:context_limit]}\n{pair_note}\nSOURCE RECORDS ({source_label}):\n{blob}'''
+{goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{editorial_context}\n{pair_note}\nSOURCE RECORDS ({source_label}):\n{blob}'''
     payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"stream":False}
     if provider_kind=="groq":
         payload.update({"max_completion_tokens":4000,"reasoning_effort":"low",
