@@ -180,7 +180,7 @@ def source_pool(*, expanded: bool = False) -> list[dict[str, str]]:
                 publishers.append(sections)
 
     primary = list(balanced(domestic))
-    domestic_limit, total_limit = (450, 480) if expanded else (210, 240)
+    domestic_limit, total_limit = (620, 660) if expanded else (210, 240)
     out = primary[:domestic_limit]
     out.extend(list(balanced(other))[:total_limit - len(out)])
     out.extend(primary[domestic_limit:domestic_limit + total_limit - len(out)])
