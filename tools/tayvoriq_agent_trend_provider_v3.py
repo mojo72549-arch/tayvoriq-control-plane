@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 import tayvoriq_agent_trend_radar_v2 as base
 from tayvoriq_provider_health_v1 import http_failure
+from tayvoriq_research_usage import post as metered_post
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 TRANSIENT_HTTP_CODES = {408, 409, 425, 429, 500, 502, 503, 504, 520, 522, 524}
@@ -65,8 +66,8 @@ def post_groq(payload: dict[str, Any], api_key: str, timeout: int = 180) -> dict
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
+        raw, _ = metered_post(req, timeout, "groq", payload.get("model"))
+        return raw
 
     return _run_with_backoff("Groq HTTP request", _call, attempts=2)
 
