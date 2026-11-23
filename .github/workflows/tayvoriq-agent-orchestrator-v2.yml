@@ -42,6 +42,7 @@ on:
       - ".github/workflows/tayvoriq-deliver-video-now.yml"
       - "tools/tayvoriq_lifecycle_controller_v1.py"
       - "tools/tayvoriq_rejected_review_repair.py"
+      - "tools/tayvoriq_review_trend_status.py"
       - ".automation/tayvoriq-artifact-decisions/*.json"
   schedule:
     # Interactive replacement-trend requests have a five-minute wakeup SLA.
@@ -191,20 +192,27 @@ jobs:
               import sys
               sys.path.insert(0, 'tools')
               from tayvoriq_rejected_review_followup import followup
+              from tayvoriq_research_retry_v1 import review_due
               plan=followup()
               due_rejection = plan and plan['decision_path'] in changed
-              if due_rejection and plan['new_trends_requested'] and not plan['selection_delivered']:
+              if (due_rejection and plan['new_trends_requested'] and not plan['selection_delivered']
+                      and review_due(plan['selection_id'], now=now.timestamp())):
                   slot=plan['slot']
                   should=True
                   rejection_selection=plan['selection_id']
           import sys
           sys.path.insert(0, 'tools')
           from tayvoriq_rejected_review_followup import followup
+          from tayvoriq_review_trend_status import needs_expiry
           current_review = followup()
+          expired_selection = current_review['selection_id'] if needs_expiry(current_review, now.timestamp()) else ''
+          if rejection_selection and rejection_selection == expired_selection:
+              rejection_selection = ''
+              should = False
           if current_review and current_review.get('replacement_dispatch_allowed'):
               should = False
           failed_review = os.environ.get('FAILED_REVIEW')
-          if (failed_review and current_review and failed_review == str(current_review['rejected_run_id'])
+          if (failed_review and current_review and not expired_selection and failed_review == str(current_review['rejected_run_id'])
                   and current_review['new_trends_requested'] and not current_review['selection_delivered']):
               from tayvoriq_research_retry_v1 import review_due
               if review_due(current_review['selection_id'], now=now.timestamp()):
@@ -219,8 +227,22 @@ jobs:
               h.write(f"should_run={'true' if should else 'false'}\n")
               h.write(f"slot={slot}\n")
               h.write(f"rejection_selection={rejection_selection}\n")
+              h.write(f"expired_selection={expired_selection}\n")
+              if rejection_selection or expired_selection:
+                  h.write(f"research_requested_at={current_review.get('research_requested_at') or ''}\n")
           print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
           PY
+
+      - name: Close expired replacement research and reconcile its Telegram receipt
+        if: steps.slot.outputs.expired_selection != ''
+        env:
+          REVIEW_SELECTION: ${{ steps.slot.outputs.expired_selection }}
+          TAYVORIQ_REVIEW_REQUESTED_AT: ${{ steps.slot.outputs.research_requested_at }}
+          TAYVORIQ_RESEARCH_RETRY_FILE: .automation/tayvoriq-agent-v2/research-retries/${{ steps.slot.outputs.expired_selection }}.json
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_review_trend_status.py "$REVIEW_SELECTION" expire
+          bash tools/tayvoriq_persist_review_trend_status.sh "$REVIEW_SELECTION"
 
       - name: Bind replacement trend research state
         if: steps.slot.outputs.rejection_selection != '' && steps.slot.outputs.should_run == 'true'
@@ -370,22 +392,11 @@ jobs:
         continue-on-error: true
         env:
           REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
+          TAYVORIQ_REVIEW_REQUESTED_AT: ${{ steps.slot.outputs.research_requested_at }}
         run: |
           set -euo pipefail
           python tools/tayvoriq_review_trend_status.py "$REVIEW_SELECTION" start
-          path=".automation/tayvoriq-agent-v2/review-trend-status/${REVIEW_SELECTION}.json"
-          [ -f "$path" ] || exit 0
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- "$path"
-          git diff --cached --quiet -- "$path" && exit 0
-          git commit -m "ops(tayvoriq): record review trend status" -- "$path"
-          for attempt in 1 2 3; do
-            git pull --rebase --autostash origin main
-            if git push origin HEAD:main; then exit 0; fi
-            sleep $((attempt * 2))
-          done
-          exit 1
+          bash tools/tayvoriq_persist_review_trend_status.sh "$REVIEW_SELECTION"
 
       - name: Generate quality-driven 1-5 trend ranking
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true' && steps.mode.outputs.series_in_flight != 'true' && steps.active_request.outputs.active != 'true'
@@ -393,12 +404,18 @@ jobs:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
           TAYVORIQ_RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
           TAYVORIQ_RESEARCH_SELECTION_ID: ${{ steps.slot.outputs.rejection_selection }}
+          TAYVORIQ_REVIEW_REQUESTED_AT: ${{ steps.slot.outputs.research_requested_at }}
         run: |
           set -euo pipefail
-          python tools/tayvoriq_agent_trend_radar_v8.py \
+          command=(python -u tools/tayvoriq_agent_trend_radar_v8.py \
             --slot "${{ steps.slot.outputs.slot }}" \
             --output /tmp/tayvoriq-trend-request.json \
-            --audit-output /tmp/tayvoriq-trend-audit.json
+            --audit-output /tmp/tayvoriq-trend-audit.json)
+          if [ -n "$TAYVORIQ_RESEARCH_SELECTION_ID" ]; then
+            python tools/tayvoriq_review_trend_status.py "$TAYVORIQ_RESEARCH_SELECTION_ID" research "${command[@]}"
+          else
+            "${command[@]}"
+          fi
 
       - name: Resolve idempotent selection delivery
         id: delivery
@@ -444,6 +461,7 @@ jobs:
           PY
 
       - name: Validate approval contract
+        id: approval_contract
         if: steps.delivery.outputs.needs_delivery == 'true'
         run: |
           set -euo pipefail
@@ -509,8 +527,13 @@ jobs:
       - name: Send approval request to Telegram
         id: telegram
         if: steps.delivery.outputs.needs_delivery == 'true'
+        env:
+          REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
         run: |
           set -euo pipefail
+          if [ -n "$REVIEW_SELECTION" ]; then
+            python tools/tayvoriq_review_trend_status.py "$REVIEW_SELECTION" require-time
+          fi
           test -n "$TELEGRAM_BOT_TOKEN"
           test -n "$TELEGRAM_CHAT_ID"
           python - <<'PY' >/tmp/message.json
@@ -565,7 +588,7 @@ jobs:
               kb={'inline_keyboard':[buttons[i:i+2] for i in range(0,len(buttons),2)]}
           print(json.dumps({'chat_id':os.environ['TELEGRAM_CHAT_ID'],'text':'\n'.join(lines),'disable_web_page_preview':True,'reply_markup':kb}, ensure_ascii=False))
           PY
-          curl --fail --silent --show-error --retry 3 --retry-all-errors \
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 12 \
             -H 'Content-Type: application/json' \
             -d @/tmp/message.json \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" > /tmp/telegram.json
@@ -618,6 +641,18 @@ jobs:
             sleep $((attempt * 2))
           done
           [ "$pushed" = "true" ]
+
+      - name: Report deferred or blocked replacement trends
+        if: always() && steps.slot.outputs.rejection_selection != '' && steps.active_request.outputs.active != 'true' && steps.slot.outputs.should_run == 'true'
+        continue-on-error: true
+        env:
+          REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
+          APPROVAL_CONTRACT: ${{ steps.approval_contract.outcome }}
+          TELEGRAM_OUTCOME: ${{ steps.telegram.outcome }}
+        run: |
+          set -euo pipefail
+          python tools/tayvoriq_review_trend_status.py "$REVIEW_SELECTION" finish
+          bash tools/tayvoriq_persist_review_trend_status.sh "$REVIEW_SELECTION"
 
       - name: Persist provider cooldown and bounded research retry
         if: always() && steps.slot.outputs.should_run == 'true'
@@ -675,28 +710,6 @@ jobs:
                       raise
                   time.sleep(5 * attempt)
           PY
-
-      - name: Report deferred or blocked replacement trends
-        if: always() && steps.slot.outputs.rejection_selection != '' && steps.active_request.outputs.active != 'true' && steps.slot.outputs.should_run == 'true'
-        continue-on-error: true
-        env:
-          REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
-        run: |
-          set -euo pipefail
-          python tools/tayvoriq_review_trend_status.py "$REVIEW_SELECTION" finish
-          path=".automation/tayvoriq-agent-v2/review-trend-status/${REVIEW_SELECTION}.json"
-          [ -f "$path" ] || exit 0
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- "$path"
-          git diff --cached --quiet -- "$path" && exit 0
-          git commit -m "ops(tayvoriq): record review trend status" -- "$path"
-          for attempt in 1 2 3; do
-            git pull --rebase --autostash origin main
-            if git push origin HEAD:main; then exit 0; fi
-            sleep $((attempt * 2))
-          done
-          exit 1
 
       - name: Notify gate failure once for this run
         if: failure() && steps.slot.outputs.should_run == 'true' && steps.slot.outputs.rejection_selection == ''

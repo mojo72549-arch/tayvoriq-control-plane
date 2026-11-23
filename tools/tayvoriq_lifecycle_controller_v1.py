@@ -72,6 +72,8 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
                 return finish('REJECTED', 'REJECTION_REASON_REQUIRED')
             if review_followup.get('selection_delivered'):
                 return finish('REJECTED', 'REPLACEMENT_TRENDS_DELIVERED_AWAITING_TREND_APPROVAL')
+            if review_followup.get('research_state') == 'BLOCKED':
+                return finish('REJECTED', 'REPLACEMENT_TRENDS_BLOCKED')
             if review_followup.get('new_trends_requested'):
                 return finish('REJECTED', 'REPLACEMENT_TRENDS_REQUESTED')
             if review_followup.get('replacement_dispatch_allowed'):

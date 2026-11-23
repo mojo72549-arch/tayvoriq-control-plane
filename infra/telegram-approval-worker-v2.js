@@ -66,8 +66,9 @@ export default {
 
     if (!callbackData && /^\/status(?:@\w+)?$/.test(normalizedText)) {
       try {
-        const health = await loadOpsHealth(env);
-        await requireTelegramMessage(await telegram(env, chatId, operatorStatusText(health)));
+        const review = await replacementTrendStatus(env);
+        const status = review || operatorStatusText(await loadOpsHealth(env));
+        await requireTelegramMessage(await telegram(env, chatId, status));
         return new Response('ok');
       } catch (error) {
         await requireTelegramMessage(await telegram(
@@ -496,7 +497,7 @@ async function storeReviewRejection(env, runId, telegramMessageId, reason, actio
       if (reason && !record.rejection_reason) {
         record = {...record, rejection_reason: reason, rejection_reason_code: reasonCode};
       }
-      if (action) record = {...record, followup_action: action};
+      if (action) record = {...record, followup_action: action, followup_requested_at: new Date().toISOString()};
     } else {
       if (reason || action) return { ok: false };
       const request = (await reviewRepoFile(env, `requests/${pointer.request_id}.json`))?.data;
@@ -868,6 +869,39 @@ async function loadOpsHealth(env) {
     Array.from(atob(encoded), ch => '%' + ch.charCodeAt(0).toString(16).padStart(2, '0')).join(''),
   );
   return JSON.parse(decoded);
+}
+
+async function replacementTrendStatus(env) {
+  const pointer = (await reviewRepoFile(env, '.github/state/tayvoriq-active-production-request.json'))?.data;
+  const runId = pointer?.golden_path_run_id;
+  const slot = String(pointer?.selection_id || '').match(/(?:^|-)(morning|evening)(?:-|$)/)?.[1];
+  if (pointer?.state !== 'COMPLETED' || !Number.isSafeInteger(runId) || runId <= 0 || !slot) return null;
+  const id = `review-${slot}-${runId}`;
+  const stateRoot = '.automation/tayvoriq-agent-v2';
+  const [decision, plan, status, delivery] = await Promise.all([
+    reviewRepoFile(env, `.automation/tayvoriq-artifact-decisions/${runId}.json`),
+    reviewRepoFile(env, `.github/state/rejected-review-followups/${runId}.json`),
+    reviewRepoFile(env, `${stateRoot}/review-trend-status/${id}.json`),
+    reviewRepoFile(env, `${stateRoot}/deliveries/${id}.json`),
+  ]).then(files => files.map(file => file?.data));
+  if (decision?.state !== 'REJECTED' || decision.request_id !== pointer.request_id ||
+      decision.source_context_sha256 !== pointer.source_context_sha256) return null;
+  const planBound = plan?.selection_id === id && plan.rejected_run_id === runId &&
+    plan.request_id === pointer.request_id && plan.source_context_sha256 === pointer.source_context_sha256;
+  if (decision.followup_action !== 'new_trends' && !(planBound && plan.new_trends_requested === true)) return null;
+  if (delivery?.selection_id === id && delivery.telegram_delivery_verified === true &&
+      Number.isSafeInteger(delivery.telegram_message_id) && delivery.telegram_message_id > 0) {
+    return `TAYVORIQ · Neue Trendauswahl in Telegram bereit. Nachricht ${delivery.telegram_message_id}.`;
+  }
+  const boundStatus = status?.schema === 'tayvoriq-review-trend-status-v1' && status.selection_id === id ? status : {};
+  if (boundStatus.state === 'BLOCKED') return `TAYVORIQ · Die Ersatzrecherche ist beendet. ${boundStatus.detail || ''}`.trim();
+  const requested = Date.parse((planBound && plan.research_requested_at) || decision.followup_requested_at || '');
+  const started = Date.parse(boundStatus.updated_at || '');
+  const date = Date.parse(boundStatus.deadline_at || '');
+  const deadline = Number.isFinite(date) ? date : (Number.isFinite(requested) ? requested : started) + 600000;
+  if (Date.now() >= deadline) return 'TAYVORIQ · Die Frist ist abgelaufen. Eine Trendauswahl oder Abschlussmeldung ist noch unbestätigt.';
+  return boundStatus.state === 'SEARCHING' || boundStatus.state === 'WAITING'
+    ? 'TAYVORIQ · Die Ersatzrecherche läuft.' : 'TAYVORIQ · Die Ersatzrecherche wurde angefordert.';
 }
 
 function operatorStatusText(health) {

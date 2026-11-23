@@ -251,13 +251,15 @@ EDITORIAL FALLBACK CONTRACT:
                         "response_format":{"type":"json_object"}})
     else:
         payload["max_tokens"]=8000
+    interactive=bool(os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID'))
+    timeout=28 if interactive else 150
     def call()->dict[str,Any]:
         if provider_kind=="groq":
-            raw=provider.post_groq(payload,token,timeout=150)
+            raw=provider.post_groq(payload,token,timeout=timeout)
             print(json.dumps({"event":"provider_success","provider":"groq_rss","model":model,"source_label":source_label},ensure_ascii=False)); return raw
-        raw,hs=http.post_json(HF_URL,payload,{"Content-Type":"application/json","Authorization":f"Bearer {token}","User-Agent":"tayvoriq-agent-v3-hf"},150)
+        raw,hs=http.post_json(HF_URL,payload,{"Content-Type":"application/json","Authorization":f"Bearer {token}","User-Agent":"tayvoriq-agent-v3-hf"},timeout)
         print(json.dumps({"event":"provider_success","provider":"huggingface","model":model,"source_label":source_label,"rate_limit":{k:hs[k] for k in http.RATE_HEADERS if k in hs}},ensure_ascii=False)); return raw
-    raw=(call() if provider_kind=="groq" else http.retry("huggingface",call,2)); data=base.extract_json(provider.content_of(raw)); chunks=[]
+    raw=(call() if provider_kind=="groq" or interactive else http.retry("huggingface",call,2)); data=base.extract_json(provider.content_of(raw)); chunks=[]
     for c in data.get("candidates") or []:
         if not isinstance(c,dict): continue
         raw_sources=[s for s in (c.get("sources") or []) if isinstance(s,dict)]

@@ -28,6 +28,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     health_path = os.getenv('TAYVORIQ_PROVIDER_HEALTH_FILE')
     health = ProviderHealth(Path(health_path) if health_path else None)
     token = str(os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
+    interactive = bool(os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID'))
     # Both production models are documented in Groq's free-plan model table.
     # The legacy 'groq' record belongs to the previously hard-coded 20B model.
     # An account/payment block stays shared; a 429 on 20B does not prove that
@@ -68,10 +69,12 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
             return None
 
     result = attempt('gemini', 'Gemini', lambda: http.retry(
-        'gemini', lambda: http.gemini_grounded(prompt, gemini_key), 3))
+        'gemini', lambda: http.gemini_grounded(prompt, gemini_key), 1 if interactive else 3))
     if result is not None:
         return (*result, 'gemini')
-    if (health.state['providers'].get('groq') or {}).get('http_status') == 429:
+    if interactive:
+        errors.append('Groq browser skipped: interactive research uses independent source records')
+    elif (health.state['providers'].get('groq') or {}).get('http_status') == 429:
         errors.append('Groq browser deferred: quota recovery uses compact source-bound requests')
     else:
         result = attempt('groq', 'Groq browser', lambda: provider.groq_browser_then_structure(prompt, groq_key))

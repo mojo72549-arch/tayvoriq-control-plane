@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from tayvoriq_rejected_review_followup import REPAIRS, followup, read
@@ -89,6 +90,8 @@ def reconcile():
         return
     update = {**execution, "run_id": run["id"] if run else None,
               "state": "RUNNING" if run and run.get("status") != "completed" else "FAILED"}
+    if update["state"] == "FAILED":
+        update["failed_at"] = datetime.now(timezone.utc).isoformat()
     if update != execution:
         publish(path, update)
     if update["state"] == "FAILED":
