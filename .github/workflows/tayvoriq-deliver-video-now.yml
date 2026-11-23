@@ -34,6 +34,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-x-golden-path
+  queue: max
   cancel-in-progress: false
 
 env:

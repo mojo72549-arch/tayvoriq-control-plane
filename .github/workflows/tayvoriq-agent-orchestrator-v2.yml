@@ -59,6 +59,7 @@ permissions:
 
 concurrency:
   group: tayvoriq-agent-orchestrator-v2
+  queue: max
   cancel-in-progress: false
 
 env:
