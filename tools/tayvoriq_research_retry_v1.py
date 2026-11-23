@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -42,8 +43,11 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     previous = read(path)
     same = previous.get("slot") == slot and previous.get("berlin_date") == date
     first = float(previous.get("first_deferred_at_epoch") or now) if same else now
-    attempts = int(previous.get("attempts") or 0) + 1 if same else 1
     review_selection = _review_selection(path)
+    run_key = os.getenv("TAYVORIQ_RESEARCH_RUN_KEY", "") if not review_selection else ""
+    run_key = run_key if re.fullmatch(r"[1-9][0-9]*\.[1-9][0-9]*", run_key) else ""
+    already_counted = bool(same and run_key and previous.get("last_research_attempt") == run_key)
+    attempts = (int(previous.get("attempts") or 0) if same else 0) + (0 if already_counted else 1)
     max_attempts = REVIEW_MAX_ATTEMPTS if review_selection else MAX_ATTEMPTS
     deadline = first + (REVIEW_DEADLINE_SECONDS if review_selection else 6 * 3600)
     provider_next_at = next_at
@@ -54,7 +58,7 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
         next_at = min(next_at, now + REVIEW_RETRY_SECONDS)
     phase = 'REVIEW_FAST' if review_selection else ('SLOW_RECOVERY' if attempts >= FAST_ATTEMPTS else 'NORMAL')
     if next_at is not None and attempts >= FAST_ATTEMPTS and not review_selection:
-        next_at = max(next_at, now + SLOW_COOLDOWN)
+        next_at = max(next_at, min(now + SLOW_COOLDOWN, deadline - 60))
     status = "WAITING" if next_at is not None else "EXTERNAL_BLOCKER"
     if attempts >= max_attempts or now >= deadline or (next_at is not None and next_at > deadline):
         status = "EXHAUSTED"
@@ -70,6 +74,8 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     if review_selection:
         result["selection_id"] = review_selection
         result["sla_seconds"] = REVIEW_DEADLINE_SECONDS
+    if run_key:
+        result["last_research_attempt"] = run_key
     if status == 'EXHAUSTED':
         result['reason'] = 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
     elif status == 'WAITING' and phase == 'SLOW_RECOVERY':

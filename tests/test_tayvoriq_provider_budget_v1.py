@@ -495,6 +495,20 @@ class SchedulerContractTests(unittest.TestCase):
         with patch.object(retry, "confirmed_slot_delivery", return_value=True):
             self.assertEqual(retry.clock_slot("morning", "retry", "2026-11-23", tick, now=now), "")
 
+    def test_scheduled_rescans_share_one_attempt_and_reserve_is_inside_window(self):
+        with tempfile.TemporaryDirectory() as folder:
+            queue = Path(folder) / "research-retry.json"
+            for attempt in range(1, 8):
+                with patch.dict(os.environ, {"TAYVORIQ_RESEARCH_RUN_KEY": f"{attempt}.1"}):
+                    retry.defer("morning", NOW + 30, path=queue, now=NOW)
+            after = NOW + 6 * 3600 - 300
+            with patch.dict(os.environ, {"TAYVORIQ_RESEARCH_RUN_KEY":"8.1"}):
+                first = retry.defer("morning", after + 20, path=queue, now=after)
+                second = retry.defer("morning", after + 30, path=queue, now=after + 5)
+            assert first["attempts"] == second["attempts"] == 8
+            assert first["retry_at_epoch"] == second["retry_at_epoch"] == NOW + 6 * 3600 - 60
+            assert second["state"] == "WAITING"
+
     def test_rejected_review_gets_own_five_minute_queue_and_ten_minute_sla(self):
         selection = 'review-evening-43776528221'
         with tempfile.TemporaryDirectory() as folder:

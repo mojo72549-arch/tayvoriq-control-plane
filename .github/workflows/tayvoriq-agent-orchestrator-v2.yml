@@ -422,6 +422,7 @@ jobs:
         env:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
           TAYVORIQ_RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
+          TAYVORIQ_RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
           TAYVORIQ_RESEARCH_SELECTION_ID: ${{ steps.slot.outputs.rejection_selection }}
           TAYVORIQ_REVIEW_REQUESTED_AT: ${{ steps.slot.outputs.research_requested_at }}
         run: |
