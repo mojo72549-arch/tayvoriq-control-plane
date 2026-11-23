@@ -26,6 +26,7 @@ def test_normal_dispatch_pins_the_exact_telegram_request():
     assert 'gh workflow run tayvoriq-deliver-video-now.yml --ref main' in text
     assert '-f source_request_id="$REQUEST_ID"' in text
     assert 'Golden Path accepted request ${REQUEST_ID} as run ${RUN_ID}' in text
+    assert '.databaseId > $before and .displayTitle == $title' in text
     assert '--meta "golden_path_run_id=${GOLDEN_PATH_RUN_ID}"' in text
     assert "'request_id':str(request.get('request_id') or '')" in text
     assert "'golden_path_run_id':run_id" in text

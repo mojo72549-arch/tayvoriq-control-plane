@@ -1,13 +1,14 @@
 name: TAYVORIQ Telegram Trends Now
 
 on:
-  workflow_dispatch:
-  repository_dispatch:
-    types: [tayvoriq_telegram_trends_now]
-  push:
-    branches: [main]
-    paths:
-      - ".github/run-now/tayvoriq-telegram-trends-now.txt"
+  workflow_call:
+    inputs:
+      replacement_slot:
+        type: string
+      replacement_date:
+        type: string
+      replacement_refresh:
+        type: string
 
 permissions:
   contents: write
@@ -44,9 +45,16 @@ jobs:
           PAYLOAD_TARGET_DATE: ${{ github.event.client_payload.target_date || '' }}
           PAYLOAD_REFRESH: ${{ github.event.client_payload.refresh || '' }}
           PAYLOAD_REQUESTED_VIA: ${{ github.event.client_payload.requested_via || '' }}
+          REPLACEMENT_SLOT: ${{ inputs.replacement_slot }}
+          REPLACEMENT_DATE: ${{ inputs.replacement_date }}
+          REPLACEMENT_REFRESH: ${{ inputs.replacement_refresh }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+          if [ -n "$REPLACEMENT_REFRESH" ]; then
+            slot="$REPLACEMENT_SLOT"
+            target_date="$REPLACEMENT_DATE"
+            refresh="$REPLACEMENT_REFRESH"
+          elif [ "$EVENT_NAME" = "repository_dispatch" ]; then
             slot="$PAYLOAD_SLOT"
             target_date="$PAYLOAD_TARGET_DATE"
             refresh="$PAYLOAD_REFRESH"
@@ -55,11 +63,7 @@ jobs:
               exit 1
             }
           else
-            control=.github/run-now/tayvoriq-telegram-trends-now.txt
-            test -f "$control"
-            slot="$(sed -n 's/^slot=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
-            target_date="$(sed -n 's/^target_date=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
-            refresh="$(sed -n 's/^refresh=//p' "$control" | tail -n 1 | tr -d '\r' | xargs)"
+            exit 1
           fi
           case "$slot" in morning|evening) ;; *) echo "Invalid slot: $slot"; exit 1 ;; esac
           python - "$target_date" <<'PY'

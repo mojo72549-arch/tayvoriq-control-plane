@@ -1,9 +1,14 @@
 name: TAYVORIQ Rejected Trend Refresh
 
 on:
-  repository_dispatch:
-    types:
-      - tayvoriq_trends_rejected
+  workflow_call:
+    outputs:
+      slot:
+        value: ${{ jobs.refresh.outputs.slot }}
+      target_date:
+        value: ${{ jobs.refresh.outputs.target_date }}
+      refresh:
+        value: ${{ jobs.refresh.outputs.refresh }}
 
 permissions:
   contents: write
@@ -17,6 +22,10 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    outputs:
+      slot: ${{ steps.refresh.outputs.slot }}
+      target_date: ${{ steps.refresh.outputs.target_date }}
+      refresh: ${{ steps.refresh.outputs.refresh }}
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -28,6 +37,7 @@ jobs:
       - name: Reject complete selection and prepare fresh scan
         id: refresh
         env:
+          EVENT_ACTION: ${{ github.event.action }}
           SELECTION_ID: ${{ github.event.client_payload.selection_id }}
           REJECTED_TREND_ID: ${{ github.event.client_payload.rejected_trend_id }}
           TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id }}
@@ -35,6 +45,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$EVENT_ACTION" = "tayvoriq_trends_rejected"
           python - <<'PY'
           import json, os, re
           from datetime import datetime
@@ -55,6 +66,17 @@ jobs:
               raise SystemExit('REFUSE_REJECT_AFTER_PRODUCTION_START')
 
           now=datetime.now(ZoneInfo('Europe/Berlin'))
+          rejection_dir=Path('.automation/tayvoriq-agent-v2/rejections')
+          receipt_path=rejection_dir/f'{sid}.json'
+          if data.get('rejected_whole_selection') is True and receipt_path.is_file():
+              receipt=json.loads(receipt_path.read_text(encoding='utf-8'))
+              if receipt.get('next_target_date') != now.date().isoformat():
+                  raise SystemExit('REJECTION_REFRESH_ALREADY_EXPIRED')
+              with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
+                  h.write(f"slot={receipt['next_slot']}\n")
+                  h.write(f"target_date={receipt['next_target_date']}\n")
+                  h.write(f"refresh={receipt['next_refresh']}\n")
+              raise SystemExit(0)
           target_date=str(data.get('target_date') or data.get('date') or '').strip()
           slot=str(data.get('slot') or '').strip()
           if target_date != now.date().isoformat() or slot not in {'morning','evening'}:
@@ -80,7 +102,6 @@ jobs:
                   highest=max(highest,int(match.group(1)))
           refresh=f'r{highest+1}'
 
-          rejection_dir=Path('.automation/tayvoriq-agent-v2/rejections')
           rejection_dir.mkdir(parents=True,exist_ok=True)
           receipt={
               'schema':'tayvoriq-trend-rejection-v1',
@@ -94,7 +115,7 @@ jobs:
               'next_refresh':refresh,
               'production_started':False,
           }
-          (rejection_dir/f'{sid}.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          receipt_path.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
           control=Path('.github/run-now/tayvoriq-telegram-trends-now.txt')
           control.write_text(
@@ -119,6 +140,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add .automation/tayvoriq-agent-v2/selections                   .automation/tayvoriq-agent-v2/rejections                   .github/run-now/tayvoriq-telegram-trends-now.txt
+          git diff --cached --quiet && exit 0
           git commit -m "agent(v2): reject selection and request fresh reach-first trends"
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main
