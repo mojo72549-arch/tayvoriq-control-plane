@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, os, re
+import json, os, re, unicodedata
 from collections import defaultdict, deque
 from typing import Any
 from urllib.parse import urlparse
@@ -126,6 +126,14 @@ def _independent_headline_pairs(vetted_pairs: dict) -> dict:
                     break
             return chosen
     return {}
+
+
+def _headline_presentation_key(title) -> str:
+    value = unicodedata.normalize("NFC", base.clean(title))
+    # Only typography between textual clauses changes. Hyphenated words,
+    # decimal punctuation, negation and signs attached to numbers stay exact.
+    value = re.sub(r"(?<=\w)(?:\s+[–—-]\s+|:\s+)(?=[^\W\d_])", " ", value)
+    return " ".join(value.split())
 
 
 def _groq_source_records(records):
@@ -322,9 +330,14 @@ EDITORIAL FALLBACK CONTRACT:
             if rec is None: continue
             resolved.append((sid,rec,base.clean(s.get("supports"),600)))
         resolved_domains=[str(rec.get('domain') or domain(str(rec.get('url') or ''))).casefold() for _,rec,_ in resolved]
-        reasons = validate_pair(c, [rec for _,rec,_ in resolved])
-        if exact_titles and base.clean(c.get('title')) != vetted_pairs.get(tuple(sorted(sid for sid, _, _ in resolved))):
-            reasons.append('candidate_does_not_match_preverified_headline_pair')
+        reasons = []
+        if exact_titles:
+            binding = vetted_pairs.get(tuple(sorted(sid for sid, _, _ in resolved)))
+            if not binding or _headline_presentation_key(c.get('title')) != _headline_presentation_key(binding):
+                reasons.append('candidate_does_not_match_preverified_headline_pair')
+            else:
+                c['title'] = binding
+        reasons.extend(validate_pair(c, [rec for _,rec,_ in resolved]))
         if reasons:
             print(json.dumps({
                 "event":"hf_candidate_source_rejected",

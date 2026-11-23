@@ -165,6 +165,39 @@ class GroqSourceContractTests(unittest.TestCase):
         selected = hf._independent_headline_pairs(alternatives)
         self.assertEqual(list(selected), [("S003","S004"),("S002","S005")])
 
+    def test_ranking_keeps_the_verified_title_when_the_model_changes_only_the_separator(self):
+        records = [{**row} for row in self.pool]
+        old = "Mercedes investiert in Werk Stuttgart"
+        trusted = "Mercedes - Mercedes investiert in Werk Stuttgart"
+        for row in records:
+            if row["title"] == old:
+                row["title"] = trusted
+        ids = {(row["domain"],row["title"]):f"S{i:03d}"
+               for i,row in enumerate(hf._balanced_compact_records(records),1)}
+        candidates = [
+            {"title":"Mercedes: Mercedes investiert in Werk Stuttgart",
+             "sources":[{"source_id":ids[(domain,trusted)]} for domain in ("tagesschau.de","dw.com")]},
+            {"title":"Bosch eröffnet Reutlingen Halbleiterfabrik",
+             "sources":[{"source_id":ids[(domain,"Bosch eröffnet Reutlingen Halbleiterfabrik")]}
+                        for domain in ("bbc.com","theguardian.com")]},
+        ]
+        response = {"choices":[{"message":{"content":json.dumps({"candidates":candidates})}}]}
+        with patch.object(hf.provider, "post_groq", return_value=response):
+            data, chunks, _ = hf.structure("prompt", "key", records, "multi-publisher-rss", provider_kind="groq")
+        self.assertEqual(data["candidates"][0]["title"], trusted)
+        self.assertEqual(len(chunks), 4)
+        key = hf._headline_presentation_key
+        self.assertNotEqual(key("Rente - plus 5 Euro"), key("Rente: plus 50 Euro"))
+        self.assertNotEqual(key("Saldo - 5 Euro"), key("Saldo: 5 Euro"))
+
+    def test_scheduled_slot_does_not_wait_for_the_browser_when_sources_are_ready(self):
+        with patch.dict("os.environ", {"TAYVORIQ_RESEARCH_SLOT":"morning"}), \
+                patch.object(resilience.rss, "source_pool", return_value=self.pool), \
+                patch.object(resilience.hf, "structure", return_value=({}, [], "test-model")), \
+                patch.object(resilience.provider, "groq_browser_then_structure") as browser:
+            self.assertEqual(resilience.grounded("prompt", "", "groq-key")[-1], "groq_rss")
+        browser.assert_not_called()
+
     def test_missing_feed_evidence_is_enriched_from_its_original_article(self):
         calls = []
         article = '''<script type="application/ld+json">
