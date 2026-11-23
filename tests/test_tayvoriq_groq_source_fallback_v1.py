@@ -196,6 +196,16 @@ class GroqSourceContractTests(unittest.TestCase):
         tentative = record("dw.com", f"{lead} – Ausweitung ist geplant", 3)
         self.assertEqual(hf.corroborated_headline(a, tentative), "")
 
+    def test_common_publisher_lead_retains_event_and_modality(self):
+        lead = "Bosch investiert in das Werk in Stuttgart"
+        first = record("a.de", "Bosch investiert nach Aufsichtsratsbeschluss in Stuttgart", 1)
+        second = record("b.de", "Unternehmensleitung investiert in Bosch-Werk in Stuttgart", 2)
+        first["context"] = lead + ". Die Geschäftsführung legte ihren Plan vor."
+        second["context"] = "In Stuttgart investiert Bosch in das Werk. Beschäftigte erfuhren am Montag davon."
+        self.assertEqual(hf.corroborated_headline(first, second), lead)
+        second["title"] = "Unternehmensleitung plant Investitionen in Stuttgart"
+        self.assertFalse(hf.corroborated_headline(first, second))
+
     def test_independent_headlines_can_use_different_words_for_the_same_confirmed_claim(self):
         reform = [
             record("sueddeutsche.de", "Rente: Studie: Altersteilzeit-Reform könnte Fiskus Milliarden bringen", 1),
