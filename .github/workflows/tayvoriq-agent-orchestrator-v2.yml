@@ -156,7 +156,6 @@ jobs:
           requested = os.environ.get('INPUT_SLOT','')
           slot = requested if event == 'workflow_dispatch' else ''
           rejection_selection = ''
-          repair_from = ''
           should = now.date().isoformat() >= '2026-08-15'
           current_review = followup()
           if event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true':
@@ -196,15 +195,10 @@ jobs:
           if event == 'push' and should:
               import sys
               sys.path.insert(0, 'tools')
-              from tayvoriq_research_retry_v1 import due_slot, terminal_repair_attempt
+              from tayvoriq_research_retry_v1 import due_slot
               # A due retry keeps its original slot even if a delayed/manual
               # trigger arrives after the morning/evening clock boundary.
               slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')
-              marker = subprocess.run(
-                  ['git', 'show', push_sha + ':.github/run-now/tayvoriq-agent-trigger.txt'],
-                  capture_output=True, text=True)
-              if marker.returncode == 0:
-                  repair_from = terminal_repair_attempt(marker.stdout, slot, now)
           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
@@ -252,7 +246,7 @@ jobs:
               should = False
           if should and not rejection_selection:
               from tayvoriq_research_retry_v1 import confirmed_slot_delivery, terminal_slot
-              if confirmed_slot_delivery(slot, now) or (terminal_slot(slot, now) and not repair_from):
+              if confirmed_slot_delivery(slot, now) or terminal_slot(slot, now):
                   should = False
           if os.environ.get('RECONCILE_ONLY') == 'true' and not (failed_review and rejection_selection):
               should = False
@@ -261,7 +255,6 @@ jobs:
               h.write(f"slot={slot}\n")
               h.write(f"rejection_selection={rejection_selection}\n")
               h.write(f"expired_selection={expired_selection}\n")
-              h.write(f"research_repair_from={repair_from if not rejection_selection else ''}\n")
               if rejection_selection or expired_selection:
                   h.write(f"research_requested_at={current_review.get('research_requested_at') or ''}\n")
           print({'berlin': now.isoformat(), 'slot': slot, 'should_run': should})
@@ -438,7 +431,6 @@ jobs:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
           TAYVORIQ_RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
           TAYVORIQ_RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
-          TAYVORIQ_RESEARCH_REPAIR_FROM: ${{ steps.slot.outputs.research_repair_from }}
           TAYVORIQ_RESEARCH_SELECTION_ID: ${{ steps.slot.outputs.rejection_selection }}
           TAYVORIQ_REVIEW_REQUESTED_AT: ${{ steps.slot.outputs.research_requested_at }}
         run: |
