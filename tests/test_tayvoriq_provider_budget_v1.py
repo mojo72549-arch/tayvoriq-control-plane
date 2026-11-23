@@ -86,7 +86,7 @@ class PersistentBudgetTests(unittest.TestCase):
                     resilience.grounded('prompt', '', 'groq-key')
             browser.assert_not_called()  # Scheduled research checks the source pool before browsing.
             self.assertEqual(rss.call_count, 1)
-            self.assertEqual(structure.call_count, 3)  # Both Groq model budgets and HF are tried once.
+            self.assertEqual(structure.call_count, 4)  # Each Groq model and HF are tried once.
             self.assertEqual(structure.call_args.kwargs['provider_kind'], 'huggingface')
             self.assertEqual(read(self.queue)['state'], 'WAITING')
 
@@ -179,6 +179,19 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(result[2], 'openai/gpt-oss-120b')
         self.assertEqual(read(self.health)['providers']['groq']['http_status'], 429)
         self.assertNotIn('groq:openai/gpt-oss-120b', read(self.health)['providers'])
+
+    def test_two_groq_cooldowns_route_to_third_source_bound_model(self):
+        env = {'TAYVORIQ_PROVIDER_HEALTH_FILE': str(self.health),
+               'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue), 'TAYVORIQ_RESEARCH_SLOT': 'morning'}
+        expected = ({'candidates': ['source-bound']}, ['chunks'], 'qwen/qwen3.8-27b')
+        with patch.dict(os.environ, env), \
+             patch.object(resilience.rss, 'source_pool', return_value=[{'url': 'https://source.example/story'}]), \
+             patch.object(resilience.hf, 'structure', side_effect=[error(429, '35'), error(429, '60'), expected]) as structure:
+            result = resilience.grounded('prompt', '', 'existing-groq-key')
+        self.assertEqual([call.kwargs.get('model_override') for call in structure.call_args_list],
+                         [None, 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b'])
+        self.assertEqual(result, (*expected, 'groq_rss'))
+        self.assertEqual(set(read(self.health)['providers']), {'groq', 'groq:openai/gpt-oss-120b'})
 
     def test_model_response_clears_expired_quota_even_when_sources_fail(self):
         health = ProviderHealth(self.health, clock=lambda: NOW)

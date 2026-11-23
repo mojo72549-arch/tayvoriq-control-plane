@@ -30,13 +30,14 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     token = str(os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
     interactive = bool(os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID'))
     scheduled_research = os.getenv('TAYVORIQ_RESEARCH_SLOT') in {'morning', 'evening'}
-    # Both production models are documented in Groq's free-plan model table.
+    # Model budgets are separate on the existing Groq free plan.
     # The legacy 'groq' record belongs to the previously hard-coded 20B model.
     # An account/payment block stays shared; a 429 on 20B does not prove that
     # the separate 120B model budget has also been consumed.
-    alternate = 'groq:openai/gpt-oss-120b'
-    keys = {'gemini': gemini_key, 'groq': groq_key,
-            alternate: groq_key, 'huggingface': token}
+    source_models = {'groq': None, 'groq:openai/gpt-oss-120b': 'openai/gpt-oss-120b',
+                     'groq:qwen/qwen3.8-27b': 'qwen/qwen3.8-27b', 'huggingface': None}
+    keys = {'gemini': gemini_key, 'huggingface': token}
+    keys.update({name: groq_key for name in source_models if name.startswith('groq')})
     if groq_key:
         health.available('groq', groq_key)  # honor a legitimately rotated key
     groq_account_blocked = (health.state['providers'].get('groq') or {}).get('state') == 'PAYMENT_BLOCKED'
@@ -124,11 +125,11 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
             continue
         print(json.dumps({"event":"source_records_loaded","source_label":label,"updated_records":updated}))
         records = list(source_records.values())
-        for name in ('groq', alternate, 'huggingface'):
-            result = attempt(name, name + '/' + label, lambda name=name: hf.structure(
+        for name, model in source_models.items():
+            result = attempt(name, name + '/' + label, lambda: hf.structure(
                 prompt, keys[name], records, label,
                 provider_kind='groq' if name.startswith('groq') else name,
-                **({'model_override': 'openai/gpt-oss-120b'} if name == alternate else {})))
+                **({'model_override': model} if model else {})))
             if result is not None:
                 return (*result, ('groq' if name.startswith('groq') else name) +
                         ('_gdelt' if label == 'rss-gdelt-context' else '_rss'))
