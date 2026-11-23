@@ -31,4 +31,6 @@ jobs:
           for row in rows:
               if any(x in row['title'].casefold() for x in ('rastatt','zugangebot','weinsteige','fahrplanwechsel','weihnachtsmarkt','bodensee','baumarkt')):
                   print('LOCAL',row['domain'],row['title'])
+              if any(t in row['title'].casefold() for t in ('streik','tarif','zuffenhausen','sindelfingen','boden','rastatt','weinsteige')):
+                  print('DETAIL',row['domain'],row['title'],row['context'][:390])
           PY
