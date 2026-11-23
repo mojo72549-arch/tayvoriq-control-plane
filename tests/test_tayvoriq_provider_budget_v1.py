@@ -84,9 +84,9 @@ class PersistentBudgetTests(unittest.TestCase):
             for _ in range(2):
                 with self.assertRaisesRegex(RuntimeError, 'RESEARCH_DEFERRED'):
                     resilience.grounded('prompt', '', 'groq-key')
-            self.assertEqual(browser.call_count, 1)
+            browser.assert_not_called()  # Scheduled research checks the source pool before browsing.
             self.assertEqual(rss.call_count, 1)
-            self.assertEqual(structure.call_count, 2)  # alternate model then HF, each once
+            self.assertEqual(structure.call_count, 3)  # Both Groq model budgets and HF are tried once.
             self.assertEqual(structure.call_args.kwargs['provider_kind'], 'huggingface')
             self.assertEqual(read(self.queue)['state'], 'WAITING')
 

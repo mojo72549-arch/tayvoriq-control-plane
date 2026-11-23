@@ -75,7 +75,7 @@ def content_of(raw: dict[str, Any]) -> str:
     return str(((((raw.get("choices") or [{}])[0]).get("message") or {}).get("content")) or "").strip()
 
 
-def groq_browser_then_structure(prompt: str, api_key: str, *, model: str = 'openai/gpt-oss-20b'):
+def groq_browser_then_structure(prompt: str, api_key: str, *, model: str = 'openai/gpt-oss-20b', timeout: int = 180):
     if not api_key:
         raise RuntimeError("GROQ_API_KEY missing")
     research_prompt = f"""
@@ -102,7 +102,7 @@ Current editorial contract:
         "top_p": 1,
         "tool_choice": "required",
         "tools": [{"type": "browser_search"}],
-    }, api_key)
+    }, api_key, timeout=timeout)
     dossier = content_of(search_raw)
     if len(dossier) < 500:
         raise RuntimeError("browser research dossier unexpectedly short")
@@ -124,7 +124,7 @@ DOSSIER:
         "response_format": {"type": "json_object"},
         "temperature": 0,
         "max_completion_tokens": 9000,
-    }, api_key, timeout=120)
+    }, api_key, timeout=min(timeout, 120))
     data = base.extract_json(content_of(structured_raw))
     chunks: list[dict[str, str]] = []
     for candidate in data.get("candidates") or []:

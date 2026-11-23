@@ -29,6 +29,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     health = ProviderHealth(Path(health_path) if health_path else None)
     token = str(os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_TOKEN') or '').strip()
     interactive = bool(os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID'))
+    scheduled_research = os.getenv('TAYVORIQ_RESEARCH_SLOT') in {'morning', 'evening'}
     # Both production models are documented in Groq's free-plan model table.
     # The legacy 'groq' record belongs to the previously hard-coded 20B model.
     # An account/payment block stays shared; a 429 on 20B does not prove that
@@ -75,16 +76,20 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         'gemini', lambda: http.gemini_grounded(prompt, gemini_key), 1 if interactive else 3))
     if result is not None:
         return (*result, 'gemini')
-    if interactive:
-        errors.append('Groq browser skipped: interactive research uses independent source records')
-    elif (health.state['providers'].get('groq') or {}).get('http_status') == 429:
-        errors.append('Groq browser deferred: quota recovery uses compact source-bound requests')
-    else:
-        result = attempt('groq', 'Groq browser', lambda: provider.groq_browser_then_structure(prompt, groq_key))
+    def try_groq_browser():
+        if interactive:
+            errors.append('Groq browser skipped: interactive research uses independent source records')
+            return None
+        if (health.state['providers'].get('groq') or {}).get('http_status') == 429:
+            errors.append('Groq browser deferred: quota recovery uses compact source-bound requests')
+            return None
+        kwargs = {'timeout':45} if scheduled_research else {}
+        return attempt('groq', 'Groq browser', lambda: provider.groq_browser_then_structure(prompt, groq_key, **kwargs))
+
+    if not scheduled_research:
+        result = try_groq_browser()
         if result is not None:
             return (*result, 'groq')
-    # Keep the alternate model's remaining budget for one grounded JSON request,
-    # rather than consuming it in an additional search-and-format dialogue.
 
     source_records = {}
 
@@ -127,6 +132,11 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
             if result is not None:
                 return (*result, ('groq' if name.startswith('groq') else name) +
                         ('_gdelt' if label == 'rss-gdelt-context' else '_rss'))
+
+    if scheduled_research:
+        result = try_groq_browser()
+        if result is not None:
+            return (*result, 'groq')
 
     errors.append('Deterministic source fallback disabled: syndicated mirrors and generic hooks cannot pass editorial quality')
     retry_keys = {name: key for name, key in keys.items()
