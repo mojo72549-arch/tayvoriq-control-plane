@@ -60,6 +60,7 @@ permissions:
 concurrency:
   group: tayvoriq-agent-orchestrator-v2
   queue: max
+  cancel-in-progress: false
 
 env:
   TAYVORIQ_PROVIDER_HEALTH_FILE: .automation/tayvoriq-agent-v2/provider-health.json

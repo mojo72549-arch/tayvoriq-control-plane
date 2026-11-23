@@ -19,6 +19,7 @@ permissions:
 concurrency:
   group: tayvoriq-request-dispatch-main
   queue: max
+  cancel-in-progress: false
 
 jobs:
   dispatch-approved-request:
