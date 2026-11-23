@@ -1,4 +1,5 @@
 import json
+import tempfile
 import sys
 import unittest
 from pathlib import Path
@@ -249,8 +250,9 @@ def test_expired_quarantine_requires_complete_mirrored_identity_and_proof():
 
 def load_tests(loader, tests, pattern):
     import unittest
-    return unittest.TestSuite(unittest.FunctionTestCase(value) for name, value in globals().items()
-                              if name.startswith('test_') and callable(value))
+    tests.addTests(unittest.FunctionTestCase(value) for name, value in globals().items()
+                   if name.startswith('test_') and callable(value))
+    return tests
 
 
 def test_local_retry_dispatch_cannot_be_rearmed_by_codefix_orphan_reconcile():
@@ -272,3 +274,37 @@ def test_local_retry_binding_mismatch_also_fails_closed_for_codefix_rearm():
     }
     assert _replay_status_allows_rearm(stale, 42) is False
 
+
+class ArtifactDecisionRegression(unittest.TestCase):
+    def test_rejected_artifact_is_terminal_and_never_dispatched(self):
+        pointer, request, run = fixture()
+        pointer.update(state='COMPLETED', selection_id='fixture-evening-run')
+        request['production_completion'] = dict(state='REVIEW_READY', golden_path_run_id=42,
+                                                quality_gates_weakened=False, telegram_message_id=80)
+        decision = dict(schema='tayvoriq-artifact-approval', state='REJECTED', review_id='42',
+                        request_id=pointer['request_id'], source_context_sha256='sources',
+                        telegram_message_id=80, followup_action='new_trends', rejection_reason='visuals')
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            def put(path, data):
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps(data))
+            put('.github/state/tayvoriq-active-production-request.json', pointer)
+            put('requests/' + pointer['request_id'] + '.json', request)
+            path = '.automation/tayvoriq-artifact-decisions/42.json'
+            put(path, decision)
+            outcome = decide(pointer, request, run, root=root)
+            self.assertEqual((outcome['state'], outcome['action'], outcome['request_substate']),
+                             ('REJECTED', 'NONE', 'NEW_TRENDS_REQUESTED'))
+            put(path, {**decision, 'telegram_message_id': 81})
+            self.assertEqual(decide(pointer, request, run, root=root)['state'], 'BLOCKED')
+
+            put(path, {**decision, 'state': 'APPROVED'})
+            self.assertEqual(decide(pointer, request, run, root=root)['reason'], 'ARTIFACT_APPROVAL_UNVERIFIED')
+            from tayvoriq_artifact_approval import FILES
+            put(path, {**decision, 'state': 'APPROVED', 'studio_sha': 'f' * 40,
+                       'decision_id': 'mock', 'decided_via': 'telegram_callback',
+                       'files_sha256': {name: 'a' * 64 for name in FILES}})
+            approved = decide(pointer, request, run, root=root)
+            self.assertEqual((approved['state'], approved['action']), ('ARTIFACT_APPROVED', 'NONE'))

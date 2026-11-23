@@ -8,6 +8,8 @@ import re
 import subprocess
 from pathlib import Path
 from tayvoriq_lifecycle_handoff_v1 import await_completion
+from tayvoriq_rejected_review_followup import followup
+from tayvoriq_artifact_approval import validate_decision
 from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
 from tayvoriq_chat_direct_approval_v1 import authorized_for_review
@@ -33,7 +35,7 @@ def review_message_id(request, run_id):
 
 
 def decide(pointer, request, run, *, event_name='', event_run=0,
-           revision='', green='', previous=None):
+           revision='', green='', previous=None, root=Path('.')):
     result = dict(action='NONE', state='IDLE', reason='NO_ACTIVE_REQUEST',
                   request_id='', run_id='0', generation='0', request_status='',
                   request_substate='', decision_key='', dispatch_verified=False)
@@ -65,6 +67,28 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             return finish('IDLE', 'EXPIRED_NEWS_QUARANTINED_AWAITING_FRESH_TREND')
         return finish('BLOCKED', 'EXPIRED_QUARANTINE_EVIDENCE_INVALID')
     if pointer.get('state') == 'COMPLETED' and review_message_id(request, run_id):
+        decision_path = root / '.automation/tayvoriq-artifact-decisions' / f'{run_id}.json'
+        if decision_path.is_file():
+            decision = read(decision_path)
+            receipt = review_message_id(request, run_id)
+            if (decision.get('schema') != 'tayvoriq-artifact-approval'
+                    or str(decision.get('review_id')) != str(run_id)
+                    or decision.get('request_id') != rid
+                    or decision.get('source_context_sha256') != pointer['source_context_sha256']
+                    or decision.get('telegram_message_id') != receipt):
+                return finish('BLOCKED', 'ARTIFACT_DECISION_IDENTITY_INVALID')
+            if decision.get('state') == 'REJECTED':
+                plan = followup(root) or {}
+                result['request_substate'] = ('AWAITING_TREND_APPROVAL' if plan.get('selection_delivered')
+                                              else 'NEW_TRENDS_REQUESTED' if plan.get('new_trends_requested')
+                                              else 'REPAIR_REQUESTED' if plan.get('followup_action') == 'repair'
+                                              else 'AWAITING_FOLLOWUP')
+                return finish('REJECTED', 'VERIFIED_ARTIFACT_REJECTION')
+            try:
+                validate_decision(decision, str(run_id))
+            except ValueError:
+                return finish('BLOCKED', 'ARTIFACT_APPROVAL_UNVERIFIED')
+            return finish('ARTIFACT_APPROVED', 'VERIFIED_TELEGRAM_ARTIFACT_APPROVAL')
         if request['production_completion'].get('reference_only') is True and pointer.get('allow_publish') is False:
             return finish('REVIEW_READY', 'VERIFIED_REFERENCE_REVIEW_DELIVERED')
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
