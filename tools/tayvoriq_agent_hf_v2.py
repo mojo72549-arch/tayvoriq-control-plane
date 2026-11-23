@@ -229,8 +229,6 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
             "seen_date":record.get("seen_date"),
             "feed":record.get("feed"),
         })
-    blob=json.dumps(indexed,ensure_ascii=False)
-    print(json.dumps({"event":"hf_balanced_source_pool","records":len(indexed),"independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     schema='''{"candidates":[{"title":"German headline","content_angle":"specific viewer angle","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"viral_potential":0,"tayvoriq_fit":0,"novelty_score":0,"series_fit_score":0,"return_viewer_score":0,"follow_conversion_potential":0,"open_loop_potential":0,"proposed_series_id":"","proposed_series_name":"","next_episode_candidate":"","recommended_cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","primary_hook":"...","viewer_question":"...","explanation_core":"...","surprise_or_reframe":"...","practical_relevance":"...","follow_reason":"...","open_loop":"","open_loop_status":"NONE|SOFT","next_episode_queue_status":"","cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","cta_text":"...","sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
     context_limit=800 if provider_kind=='groq' else 2500
     editorial_context = prompt[:context_limit]
@@ -274,11 +272,17 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                       "corroborated_headlines":len(set(vetted_pairs.values())),
                       "strict_allowlist":exact_titles},ensure_ascii=False))
     if exact_titles:
+        allowed_ids = {source_id for pair in vetted_pairs for source_id in pair}
+        indexed = [item for item in indexed if item['source_id'] in allowed_ids]
         allowlist = [{'source_ids': list(pair), 'title': title} for pair, title in vetted_pairs.items()]
         pair_note = ('PICK ONLY FROM THESE CORROBORATED HEADLINES. Copy the title and its two source IDs '
                      'exactly. Only propose an angle grounded in that pair. Never add actors, outcomes, '
-                     'numbers or locations from other stories. Skip pairs outside the channel scope.\n'
+                     'numbers or locations from other stories. Draft one complete candidate per eligible pair. '
+                     'Skip a pair only when the evidence or regional scope is insufficient.\n'
                      + json.dumps(allowlist, ensure_ascii=False))
+    blob = json.dumps(indexed, ensure_ascii=False)
+    print(json.dumps({"event":"source_prompt_budget","records":len(indexed),
+                      "independent_domains":len({r['domain'] for r in indexed}),"chars":len(blob)},ensure_ascii=False))
     user=f'''Primary live browser providers are temporarily unavailable. Build TAYVORIQ candidates using ONLY the supplied current source records. Do not browse and do not infer facts beyond title + context. Search across ALL supplied publisher domains, not just the first records.
 
 SOURCE CONTRACT:
@@ -313,8 +317,9 @@ EDITORIAL FALLBACK CONTRACT:
 {goal} Natural-event candidates must be dropped unless the available records support the WHY/HOW. Return complete candidates in German as valid JSON only.\nSCHEMA:\n{schema}\nEditorial ranking context only, never factual source:\n{editorial_context}\n{pair_note}\nSOURCE RECORDS ({source_label}):\n{blob}'''
     payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"stream":False}
     if provider_kind=="groq":
-        payload.update({"max_completion_tokens":4000,"reasoning_effort":"low",
-                        "response_format":{"type":"json_object"}})
+        payload.update({"max_completion_tokens":4000,"response_format":{"type":"json_object"}})
+        if model.startswith("openai/gpt-oss-"):
+            payload["reasoning_effort"] = "low"
     else:
         payload["max_tokens"]=8000
     interactive=bool(os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID'))

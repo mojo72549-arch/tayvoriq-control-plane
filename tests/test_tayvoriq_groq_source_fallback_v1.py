@@ -96,6 +96,27 @@ class GroqSourceContractTests(unittest.TestCase):
         with patch.object(hf.provider, "post_groq", fake), self.assertRaisesRegex(RuntimeError, "source contract insufficient"):
             hf.structure("prompt", "key", self.pool, "rss", provider_kind="groq")
 
+    def test_qwen_gets_only_corroborated_evidence_without_gpt_specific_options(self):
+        captured = []
+
+        def respond(payload, key, timeout):
+            captured.append(payload)
+            prompt = payload['messages'][1]['content']
+            evidence = json.loads(prompt.split('SOURCE RECORDS (multi-publisher-rss):\n')[1])
+            self.assertEqual(len(evidence), 4)
+            self.assertTrue(all('aktualisiert' not in row['title'] for row in evidence))
+            candidates = [{'title': title, 'sources': [{'source_id': row['source_id']} for row in evidence
+                           if row['title'] == title]} for title in dict.fromkeys(row['title'] for row in evidence)]
+            return {'choices': [{'message': {'content': json.dumps({'candidates': candidates})}}]}
+
+        with patch.object(hf.provider, 'post_groq', respond):
+            data, chunks, model = hf.structure('prompt', 'key', self.pool, 'multi-publisher-rss',
+                                               provider_kind='groq', model_override='qwen/qwen3.8-27b')
+        self.assertEqual(len(data['candidates']), 2)
+        self.assertEqual(len(chunks), 4)
+        self.assertIn('qwen/qwen3.8-27b', model)
+        self.assertNotIn('reasoning_effort', captured[0])
+
     def test_duplicate_story_and_source_pair_do_not_satisfy_minimum_grounding(self):
         candidate = self._candidate(
             self.ids[("tagesschau.de", "Mercedes investiert in Werk Stuttgart")],
