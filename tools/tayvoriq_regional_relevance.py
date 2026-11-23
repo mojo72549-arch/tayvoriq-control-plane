@@ -91,7 +91,7 @@ def complete_scorecards(candidates, options, generate):
     pending = {}
     requests = {}
     for candidate in candidates[:5]:
-        if not candidate.get("fallback_editorial_answers"):
+        if candidate.get("_retrieved_regional_assessment", {}).get("passed") or not candidate.get("fallback_editorial_answers"):
             continue
         sources = [{**row, "evidence_options": options.get(row["source_id"], {})}
                    for row in candidate["sources"]]
