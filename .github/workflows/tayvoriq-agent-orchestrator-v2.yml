@@ -205,6 +205,11 @@ jobs:
                   'evening': '0 17 * * *' if offset == 2 else '0 18 * * *',
               }
               slot = next((name for name, cron in expected.items() if cron == schedule), '')
+              # A late fixed cron must not replace the other slot's live retry.
+              # The separate retry tick may still resume its own due slot.
+              minute = now.hour * 60 + now.minute
+              if (slot == 'morning' and not 330 <= minute < 720) or (slot == 'evening' and minute < 1140):
+                  slot = ''
               if not slot and schedule == '*/5 * * * *':
                   from tayvoriq_research_retry_v1 import due_slot
                   plan = current_review
