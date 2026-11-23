@@ -94,7 +94,18 @@ class ArchivedNewsHealthTests(unittest.TestCase):
 
     def test_research_projection_does_not_override_active_production(self):
         self.assertIsNone(health.research_only_projection(
-            {'state': 'EXHAUSTED'}, retired=False, run_id=38249921806))
+            {'state': 'EXHAUSTED'}, retired=False, run_id=38249921806,
+            active_production=True))
+
+    def test_current_research_projection_supersedes_completed_production_view(self):
+        result = health.research_only_projection({
+            'state': 'EXHAUSTED',
+            'reason': 'RESEARCH_RETRY_BUDGET_EXHAUSTED',
+        }, retired=False, run_id=38249921806, active_production=False)
+        self.assertEqual(result['overall'], 'yellow')
+        self.assertEqual(result['self_heal_status'], 'EXHAUSTED')
+        self.assertFalse(result['user_action_required'])
+        self.assertFalse(result['telegram_notify_allowed'])
 
     def test_postprocess_respects_no_telegram_policy(self):
         self.assertFalse(postprocess.telegram_notification_allowed({
