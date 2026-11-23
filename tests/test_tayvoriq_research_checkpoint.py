@@ -48,3 +48,25 @@ class RegionalCheckpointTests(unittest.TestCase):
         for change in ({"TAYVORIQ_RESEARCH_SLOT": "morning"}, {"TAYVORIQ_RESEARCH_SELECTION_ID": "review-new"}):
             with patch.dict(os.environ, change):
                 self.assertEqual(checkpoint.current(self.records), [])
+
+    def test_two_provider_replies_form_one_list_only_for_distinct_current_sources(self):
+        import tayvoriq_agent_research_resilience_v2 as resilience
+        original = {**self.raw, "_retrieved_regional_assessment": self.assessment}
+        title = "Bahn eröffnet Bahnhof Stuttgart"
+        records = [{"title": title, "url": "https://" + host + "/bahn", "domain": host,
+                    "context": title + " nach langer Bauzeit.", "seen_date": "now"}
+                   for host in ("bahn.de", "zeit.de")]
+        sources = [{**s, "source_id": str(i), "supports": source_support(s)[0],
+                    "source_record_sha256": source_support(s)[1], "source_date": "now"}
+                   for i, s in enumerate(records)]
+        second = {"title": title, "sources": sources, "_retrieved_regional_assessment": {"passed": True}}
+
+        def reply(draft):
+            return {"candidates": [draft]}, [{"uri": s["url"]} for s in draft["sources"]], "model"
+
+        with patch.dict(os.environ, HF_TOKEN="", HUGGINGFACE_TOKEN="", TAYVORIQ_PROVIDER_HEALTH_FILE=""), \
+             patch.object(resilience.rss, "source_pool", return_value=self.records + records), \
+             patch.object(resilience.hf, "structure", side_effect=[reply(original), reply(second)]):
+            data, chunks, _, _ = resilience.grounded("live editorial", "", "test")
+        self.assertEqual({draft["title"] for draft in data["candidates"]}, {self.raw["title"], title})
+        self.assertEqual(len(chunks), 4)

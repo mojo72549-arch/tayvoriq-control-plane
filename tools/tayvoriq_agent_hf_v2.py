@@ -499,7 +499,9 @@ EDITORIAL FALLBACK CONTRACT:
     # satisfy the radar's existing minimum grounding contract. Treat that as
     # provider insufficiency so resilience can continue to the next source pool
     # (notably GDELT) without weakening any evidence gate.
-    if len(valid_candidates)<2 or len(chunks)<4:
+    partial_review = (source_bound and bool(os.getenv("TAYVORIQ_RESEARCH_CHECKPOINT_FILE"))
+                      and len(valid_candidates) == 1 and len(chunks) == 2)
+    if (len(valid_candidates)<2 or len(chunks)<4) and not partial_review:
         raise InsufficientSourceEvidence(
             f"HF source contract insufficient for {source_label}: "
             f"valid_candidates={len(valid_candidates)} grounding_chunks={len(chunks)}"
@@ -522,6 +524,8 @@ EDITORIAL FALLBACK CONTRACT:
             return base.extract_json(provider.content_of(raw_reply))
 
         complete_scorecards(valid_candidates, options_by_id, complete)
+    if partial_review and not valid_candidates[0].get("_retrieved_regional_assessment", {}).get("passed"):
+        raise InsufficientSourceEvidence(f"No eligible individual candidate from {source_label}")
     data["candidates"]=valid_candidates
     return data,chunks,f"{provider_kind}/{model}+{source_label}"
 
