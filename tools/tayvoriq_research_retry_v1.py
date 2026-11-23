@@ -117,6 +117,9 @@ def due_slot(path: Path | None = None, *, now: float | None = None) -> str:
 
 def review_due(selection_id: str, *, now: float | None = None) -> bool:
     path = review_path(selection_id)
+    status = read(path.parent.parent / "review-trend-status" / path.name)
+    if status.get("state") == "BLOCKED":
+        return False
     if not path.is_file():
         return True
     state = current(path, now=now)
@@ -127,9 +130,6 @@ def review_due(selection_id: str, *, now: float | None = None) -> bool:
     )
     if due:
         return True
-    if state.get("state") in {"EXHAUSTED", "EXTERNAL_BLOCKER"}:
-        status = read(Path(".automation/tayvoriq-agent-v2/review-trend-status") / f"{selection_id}.json")
-        return status.get("state") != "BLOCKED"
     return False
 
 

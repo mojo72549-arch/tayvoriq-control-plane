@@ -48,10 +48,11 @@ def gemini_grounded(prompt:str,key:str):
     for m in (configured,"gemini-3.6-flash","gemini-3.5-flash"):
         if m not in models: models.append(m)
     non=[]
+    timeout=28 if os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID') else 120
     for model in models:
         payload={"contents":[{"role":"user","parts":[{"text":prompt}]}],"tools":[{"google_search":{}}],"generationConfig":{"maxOutputTokens":12000}}
         try:
-            raw,hs=post_json(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",payload,{"Content-Type":"application/json","x-goog-api-key":key,"User-Agent":"tayvoriq-agent-v3"},120)
+            raw,hs=post_json(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",payload,{"Content-Type":"application/json","x-goog-api-key":key,"User-Agent":"tayvoriq-agent-v3"},timeout)
             c=(raw.get("candidates") or [{}])[0]; parts=((c.get("content") or {}).get("parts") or []); text="\n".join(str(p.get("text") or "") for p in parts if isinstance(p,dict)).strip(); data=base.extract_json(text); chunks=[]
             for ch in ((c.get("groundingMetadata") or {}).get("groundingChunks") or []):
                 web=ch.get("web") if isinstance(ch,dict) else None

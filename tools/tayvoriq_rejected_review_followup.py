@@ -66,6 +66,7 @@ def followup(root=Path(".")):
     action = ("repair" if can_repair else "new_trends") if reason and requested else None
     selection_id = f"review-{slot_match[1]}-{run_id}"
     delivery = read(root / DELIVERIES / (selection_id + ".json"))
+    research = read(root / ".automation/tayvoriq-agent-v2/review-trend-status" / (selection_id + ".json"))
     return {
         "schema": "tayvoriq-rejected-review-followup-v1",
         "request_id": request_id,
@@ -77,6 +78,9 @@ def followup(root=Path(".")):
         "route_reason": ("REPAIR_FAILED" if execution.get("state") == "FAILED" else
                          "NO_VERIFIED_REPAIR" if action == "new_trends" and requested != "new_trends" else None),
         "new_trends_requested": action == "new_trends" and bool(reason),
+        "research_requested_at": (decision.get("followup_requested_at")
+                                   if execution.get("state") != "FAILED" else execution.get("failed_at")),
+        "research_state": (research.get("state") if research.get("selection_id") == selection_id else None),
         "replacement_state": ("REASON_REQUIRED" if not reason else
                               "REPAIR_RUNNING" if action == "repair" and execution.get("run_id") else
                               "PREFLIGHT_REQUIRED" if action == "repair" else
