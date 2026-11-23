@@ -1,0 +1,34 @@
+name: TAYVORIQ Diagnose Quellenpaare
+on:
+  push:
+    branches: [test/live-trendrecherche-20261123-abend]
+    paths: ['.github/workflows/tayvoriq-discovery-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Trace independent live leads into the verified shortlist
+        run: |
+          PYTHONPATH=tools python - <<'PY'
+          from itertools import combinations
+          import tayvoriq_agent_rss_v2 as rss
+          import tayvoriq_agent_hf_v2 as hf
+          rows = rss.source_pool(expanded=True)
+          matches = []
+          for a,b in combinations(rows,2):
+              score = hf._source_pair_score(a,b)
+              if score:
+                  title = hf.corroborated_headline(a,b)
+                  matches.append((score, bool(title), a['title'], b['title'], title))
+          for row in sorted(matches, reverse=True)[:60]:
+              print('PAIR',row)
+          for row in rows:
+              if any(x in row['title'].casefold() for x in ('rastatt','zugangebot','weinsteige','fahrplanwechsel','weihnachtsmarkt','bodensee','baumarkt')):
+                  print('LOCAL',row['domain'],row['title'])
+          PY
