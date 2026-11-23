@@ -105,6 +105,7 @@ def main(*, repair_ready=_retention_ready) -> int:
     seen_chunks: set[str] = set()
     providers: list[str] = []
     models: list[str] = []
+    base_rejections = []
     raw_count = 0
     chosen: list[dict[str, Any]] | None = None
     last_growth_error: BaseException | None = None
@@ -136,6 +137,10 @@ def main(*, repair_ready=_retention_ready) -> int:
                     + " | ".join(prior_titles[:12]) + "\nPrevious editorial checks: " + previous_error
                 )
 
+        if scan_index > 1 and base_rejections:
+            prompt += "\nPrevious base-field findings for the source-bound drafts: " + json.dumps(
+                base_rejections[:5], ensure_ascii=False)
+        base_rejections.clear()
         data, chunks, model, provider_name = (
             editorial_scan if scan_index == 0 else base.grounded_call(prompt, gemini_key, groq_key)
         )
@@ -160,6 +165,9 @@ def main(*, repair_ready=_retention_ready) -> int:
                 continue
             candidate = base.normalized_candidate(raw, verified_at)
             if not candidate:
+                title, _, _, _, _, issues = base.base_editorial_fields(raw)
+                if issues:
+                    base_rejections.append({"title": title, "fields": issues})
                 continue
             if scan_index == 0:
                 context = candidate["source_context"]

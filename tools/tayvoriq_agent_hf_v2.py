@@ -233,7 +233,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
             "seen_date":record.get("seen_date"),
             "feed":record.get("feed"),
         })
-    schema='''{"candidates":[{"title":"German headline","content_angle":"specific viewer angle","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":0,"viralitaet":0,"tayvoriq_passung":0,"quellenqualitaet":0,"visuell":0},"viral_potential":0,"tayvoriq_fit":0,"novelty_score":0,"series_fit_score":0,"return_viewer_score":0,"follow_conversion_potential":0,"open_loop_potential":0,"proposed_series_id":"","proposed_series_name":"","next_episode_candidate":"","recommended_cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","primary_hook":"...","viewer_question":"...","explanation_core":"...","surprise_or_reframe":"...","practical_relevance":"...","follow_reason":"...","open_loop":"","open_loop_status":"NONE|SOFT","next_episode_queue_status":"","cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","cta_text":"...","sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
+    schema='''{"candidates":[{"title":"German headline","content_angle":"specific viewer angle","category":"...","trend_scope":"technology_ai|business_economy|world_society|sports|science_future|creator_media|mobility_energy","regional_relevance":"local|germany|europe|global","criteria":{"aktualitaet":<integer 0-100>,"viralitaet":<integer 0-100>,"tayvoriq_passung":<integer 0-100>,"quellenqualitaet":<integer 0-100>,"visuell":<integer 0-100>},"viral_potential":<integer 0-100>,"tayvoriq_fit":<integer 0-100>,"novelty_score":<integer 0-100>,"series_fit_score":<integer 0-100>,"return_viewer_score":<integer 0-100>,"follow_conversion_potential":<integer 0-100>,"open_loop_potential":<integer 0-100>,"proposed_series_id":"","proposed_series_name":"","next_episode_candidate":"","recommended_cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","primary_hook":"...","viewer_question":"...","explanation_core":"...","surprise_or_reframe":"...","practical_relevance":"...","follow_reason":"...","open_loop":"","open_loop_status":"NONE|SOFT","next_episode_queue_status":"","cta_type":"CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY","cta_text":"...","sources":[{"source_id":"S001","supports":"supported fact"},{"source_id":"S002","supports":"supported fact"}],"fallback_editorial_answers":{"what_happened":"...","why_happening":"...","who_is_affected":"...","personal_impact":"...","action_now":"..."}}]}'''
     context_limit=800 if provider_kind=='groq' else 2500
     editorial_context = prompt[:context_limit]
     rescan_marker = next((marker for marker in RESCAN_MARKERS if marker in prompt), "")
@@ -309,7 +309,11 @@ SOURCE CONTRACT:
 
 V5 CONTRACT:
 - Every candidate must include ALL V5 fields from the schema.
-- All seven V5 scores are integers 0-100.
+- Return all five criteria and all seven V5 scores as JSON integers on a 0-100 scale.
+- Score each independently from the paired evidence. Assess freshness from dates, audience interest from
+  the specific change, channel fit from the audience consequence, source quality from provenance and
+  visual feasibility from the proposed subject. Low scores are valid; do not inflate a score to qualify.
+- Choose ONE literal trend_scope from the schema alternatives.
 - content_angle, primary_hook, viewer_question, explanation_core, surprise_or_reframe, practical_relevance, follow_reason and cta_text must be non-empty.
 - The German explanation has enough depth for a video. Use 9-16 words for primary_hook, 7-14 for viewer_question,
   17-32 for explanation_core, 12-22 for surprise_or_reframe, 10-18 for practical_relevance and 10-18 for follow_reason.

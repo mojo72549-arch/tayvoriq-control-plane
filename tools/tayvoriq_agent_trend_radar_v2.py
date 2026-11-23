@@ -309,15 +309,21 @@ For each candidate return:
 """.strip() + "\n\n" + CINEMATIC_BRIEF_INSTRUCTIONS
 
 
-def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:
+def base_editorial_fields(raw: dict[str, Any]):
+    issues = []
     title = clean(raw.get("title"), 180)
     scope = clean(raw.get("trend_scope"), 60)
-    if not title or scope not in VALID_SCOPES or scope == "auto_scope":
-        return None
+    if not title:
+        issues.append("title_missing")
+    if scope not in VALID_SCOPES or scope == "auto_scope":
+        issues.append("invalid_trend_scope:" + scope)
     crit_raw = raw.get("criteria") if isinstance(raw.get("criteria"), dict) else {}
     criteria = {k: clamp(crit_raw.get(k)) for k in ("aktualitaet","viralitaet","tayvoriq_passung","quellenqualitaet","visuell")}
-    if min(criteria.values()) < 35:
-        return None
+    for key, value in criteria.items():
+        if key not in crit_raw:
+            issues.append("missing_criterion:" + key)
+        elif value < 35:
+            issues.append(f"criterion_below_minimum:{key}={value}<35")
     sources = []
     seen_publishers = set()
     for item in raw.get("sources") or []:
@@ -337,10 +343,18 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
         seen_publishers.add(key)
         sources.append({"publisher": publisher, "url": url, "supports": supports})
     if len(sources) < 2:
-        return None
+        issues.append(f"usable_publishers:{len(sources)}<2")
     answers_raw = raw.get("fallback_editorial_answers") if isinstance(raw.get("fallback_editorial_answers"), dict) else {}
     answers = {k: clean(answers_raw.get(k), 900) for k in ("what_happened","why_happening","who_is_affected","personal_impact","action_now")}
-    if not all(answers.values()):
+    issues.extend("missing_editorial_answer:" + k for k, value in answers.items() if not value)
+    return title, scope, criteria, sources, answers, issues
+
+
+def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:
+    title, scope, criteria, sources, answers, issues = base_editorial_fields(raw)
+    if issues:
+        print(json.dumps({"event": "candidate_editorial_rejection", "title": title,
+                          "reason": "base_editorial_contract", "details": issues}, ensure_ascii=False))
         return None
     score = round(
         criteria["aktualitaet"] * .25 + criteria["viralitaet"] * .25 +
