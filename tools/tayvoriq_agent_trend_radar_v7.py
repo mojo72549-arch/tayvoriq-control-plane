@@ -155,11 +155,14 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
             candidate["source_context"] = ctx
         enriched.append(candidate)
 
-    eligible = [
-        candidate
-        for candidate in enriched
-        if _has_reserve_score(candidate)
-    ]
+    eligible = []
+    for candidate in enriched:
+        if _has_reserve_score(candidate):
+            eligible.append(candidate)
+        else:
+            print(json.dumps({"event": "candidate_editorial_rejection", "title": candidate.get("title"),
+                              "reason": "growth_reserve", "score": (candidate.get("growth_v2") or {}).get("growth_score"),
+                              "required": 80, "criteria": candidate.get("criteria")}, ensure_ascii=False))
     ordered = sorted(
         eligible,
         key=lambda candidate: (

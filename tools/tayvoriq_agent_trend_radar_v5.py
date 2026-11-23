@@ -173,6 +173,16 @@ def main(*, repair_ready=_retention_ready) -> int:
                 if issues:
                     base_rejections.append({"title": title, "fields": issues})
                 continue
+            if provider_name.endswith(("_rss", "_gdelt")):
+                # structure() rebuilt these fields from downloaded records after validate_pair().
+                # Never accept model-authored provenance from a browser or prepared packet.
+                original_sources = {source["url"]: source for source in raw["sources"]}
+                for source in candidate["source_context"]["sources"]:
+                    original = original_sources[source["url"]]
+                    for field in ("publisher_headline", "source_date", "declared_origin",
+                                  "source_record_sha256", "support_origin"):
+                        if original.get(field):
+                            source[field] = original[field]
             if scan_index == 0:
                 context = candidate["source_context"]
                 original_sources = {source["url"]: source for source in raw["sources"]}

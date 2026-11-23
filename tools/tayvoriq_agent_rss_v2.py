@@ -20,6 +20,7 @@ FEEDS = [
     # Original German regional/national publishers first: less global filler and
     # more independently reported Germany/BW stories for strict two-source gates.
     ("zeit-nachrichten", "https://newsfeed.zeit.de/index"),
+    ("faz-wirtschaft", "https://www.faz.net/rss/aktuell/wirtschaft/"),
     ("zeit-wirtschaft", "https://newsfeed.zeit.de/wirtschaft/index"),
     ("spiegel-schlagzeilen", "https://www.spiegel.de/schlagzeilen/index.rss"),
     ("ntv-wirtschaft", "https://www.n-tv.de/wirtschaft/rss"),

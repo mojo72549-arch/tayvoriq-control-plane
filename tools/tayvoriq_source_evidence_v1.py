@@ -14,6 +14,9 @@ from urllib.parse import urlparse
 
 _STOP = set("der die das den dem des ein eine einer einem einen eines und oder aber mit von vom zur zum für auf aus bei nach vor über ist sind wird werden hat haben heute jetzt neu neue neuen neuer meldet berichtet laut sagt the a an and or of to in on for with from as is are was were new says said report reports latest update updates live news current event bestätigt bestätigte meldung quelle unabhängig independently confirmed source sources coverage".split())
 _RULE_CHANGE = r"\bstrengere?\s+([\wäöüß]+)[ -]regeln\b"
+# Replace only the complete reflexive merger expression. A closure elsewhere
+# in the same report remains a separate event.
+_MERGER = re.compile(r"\b(?:schlie(?:ß|ss)(?:en|t)\s+sich\s+zusammen|fusionier(?:t|en|te|ten))\b")
 _POLITICAL_ROLE = r"\b\w*(?:minister(?:präsident)?(?:in)?|staatssekretär(?:in)?)\b"
 _APPOINTMENT_SUBJECT = re.compile(
     r"\b([A-ZÄÖÜ][\w-]{2,})\s+"
@@ -24,6 +27,7 @@ _APPOINTMENT_SUBJECT = re.compile(
 # Explicitly bounded event vocabulary: unknown or ambiguous actions defer to
 # another research path. Shared actors/places alone never prove one event.
 _EVENTS = {
+    "merger": r"\b(?:firmenfusion|fusion|zusammenschluss)\b",
     "investment": r"\b(?:invest\w*|finanzier\w*)\b",
     "closure": r"\b(?:schließ\w*|schliess\w*|stillleg\w*|clos(?:e|es|ing|ure)|shuts?)\b",
     "job_cuts": r"\b(?:stellenabbau|personalabbau|jobabbau|entlass\w*|layoffs?|streicht|streichen|stellenstreich\w*)\b",
@@ -48,7 +52,7 @@ _EVENTS = {
 
 
 def _events(text: str) -> set[str]:
-    text = text.casefold()
+    text = _MERGER.sub("firmenfusion", text.casefold())
     events = {name for name, pattern in _EVENTS.items() if re.search(pattern, text)}
     if re.search(r"\b(?:stellen|jobs|arbeitsplätze)\b", text) and re.search(
         r"\b(?:abbau\w*|wegfall\w*|baut.{0,65}\bab|fallen.{0,40}\bweg)\b", text
@@ -96,6 +100,11 @@ def claim_terms(value: str) -> set[str]:
     # Normalize a small set of equivalent surface forms without erasing
     # subjects, numbers, disputed facts, or the distinction between plans and outcomes.
     value = re.sub(_RULE_CHANGE, r"\1 reform", value.casefold())
+    if _MERGER.search(value):
+        value = _MERGER.sub("firmenfusion", value)
+        # In a report on named merging chains these are equivalent industry
+        # labels. Preserve every company name, modal, location and number.
+        value = re.sub(r"\b(?:baumarktketten|baumärkte)\b", "baumarkt", value)
     if re.search(_POLITICAL_ROLE, value):
         value = re.sub(r"\b(?:folgt|folgen|nachfolg\w*)\b", "nachfolge", value)
         value = re.sub(r"\brückt an die spitze des (?:[\w]+\s+){0,2}(\w+minister)iums\b",
