@@ -40,7 +40,9 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
               and "attempted_queries=[]" in line
               and _has_only_original_visual_query(line)):
             state, detail = "LOCAL_VISUAL_CODEFIX_REQUIRED", line
-        elif scene := re.search(r"RuntimeError: REAL_VIDEO_SCENE_REQUIRED:scene=([0-9]+):", line):
+        elif (result.get("state") in {None, "", "TECHNICAL_FAILURE", "TRANSIENT_RENDER_FAILURE"}
+              and result.get("master_reusable") is not True
+              and (scene := re.search(r"RuntimeError: REAL_VIDEO_SCENE_REQUIRED:scene=([0-9]+):", line))):
             state, detail, failed_scene = "LOCAL_VISUAL_REPAIR_REQUIRED", line, int(scene[1])
         elif _matches(line, LOCAL_VOICE_RETRY_PATTERNS + LOCAL_VISUAL_RETRY_PATTERNS):
             # A later local failure owns the terminal result if the earlier
