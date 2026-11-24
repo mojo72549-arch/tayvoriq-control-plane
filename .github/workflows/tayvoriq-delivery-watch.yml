@@ -156,12 +156,12 @@ jobs:
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" > /tmp/watched-run.json
           python - "$GITHUB_OUTPUT" <<'PY'
-          import json,sys
+          import json,os,sys
+          from tools.tayvoriq_recovery_attempt_ack_v1 import is_recoverable_golden_path_run
           run=json.load(open('/tmp/watched-run.json',encoding='utf-8'))
-          name=str(run.get('name') or '')
           status=str(run.get('status') or '')
           conclusion=str(run.get('conclusion') or '')
-          recoverable=(name=='TAYVORIQ-X Golden Path' and status=='completed' and conclusion!='success')
+          recoverable=is_recoverable_golden_path_run(run, int(os.environ['RUN_ID']))
           values={
               'recoverable':str(recoverable).lower(),
               'run_id':str(run.get('id') or ''),

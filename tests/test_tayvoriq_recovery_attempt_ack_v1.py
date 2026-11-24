@@ -5,7 +5,11 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from tayvoriq_recovery_attempt_ack_v1 import RetryDispatchError, dispatch_acknowledged
+from tayvoriq_recovery_attempt_ack_v1 import (
+    RetryDispatchError,
+    dispatch_acknowledged,
+    is_recoverable_golden_path_run,
+)
 
 
 class RetryAckTests(unittest.TestCase):
@@ -27,6 +31,35 @@ class RetryAckTests(unittest.TestCase):
         self.assertEqual(evidence["acknowledged_attempt"], 3)
         self.assertEqual(evidence["mode"], "dispatched")
         self.assertEqual(calls, [42])
+
+    def test_request_specific_run_name_is_accepted_on_the_golden_path(self):
+        name = "TAYVORIQ request telegram-3676-trend-1"
+        runs = iter([
+            self.run_info(attempt=1, name=name),
+            self.run_info(attempt=2, name=name, status="queued", conclusion=None),
+        ])
+        calls = []
+        receipt = dispatch_acknowledged(
+            42, 1, fetch=lambda _: next(runs),
+            dispatch=calls.append, pause=lambda _: None,
+        )
+        self.assertEqual(receipt["acknowledged_attempt"], 2)
+        self.assertEqual(calls, [42])
+
+    def test_watch_accepts_only_the_bound_failed_production_workflow(self):
+        run = self.run_info(
+            id=45344082379, attempt=1,
+            name="TAYVORIQ request telegram-3676-trend-1",
+            path=".github/workflows/tayvoriq-deliver-video-now.yml",
+        )
+        self.assertTrue(is_recoverable_golden_path_run(run, 45344082379))
+        for changes in (
+            {"id": 43}, {"path": ""}, {"path": ".github/workflows/other.yml"},
+            {"status": "in_progress"}, {"conclusion": "success"},
+            {"conclusion": None},
+        ):
+            with self.subTest(changes=changes):
+                self.assertFalse(is_recoverable_golden_path_run(run | changes, 45344082379))
 
     def test_prior_ack_never_dispatches_again(self):
         receipt = dispatch_acknowledged(
@@ -57,8 +90,8 @@ class RetryAckTests(unittest.TestCase):
     def test_wrong_owner_attempt_or_nonterminal_fail_before_dispatch(self):
         wrongs = [
             self.run_info(id=43),
-            self.run_info(name="unrelated"),
             self.run_info(path=".github/workflows/unrelated.yml"),
+            self.run_info(path=""),
             self.run_info(attempt=6),
             self.run_info(attempt=1, status="in_progress", conclusion=None),
             self.run_info(conclusion="success"),

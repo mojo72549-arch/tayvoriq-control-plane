@@ -18,14 +18,25 @@ class RetryDispatchError(RuntimeError):
     pass
 
 
+def is_golden_path_run(run: dict) -> bool:
+    """Identify the workflow by path because GitHub run names vary by request."""
+    path = str(run.get("path") or "").split("@", 1)[0]
+    return path == ".github/workflows/tayvoriq-deliver-video-now.yml"
+
+
+def is_recoverable_golden_path_run(run: dict, run_id: int) -> bool:
+    return (
+        run.get("id") == run_id
+        and is_golden_path_run(run)
+        and run.get("status") == "completed"
+        and run.get("conclusion") in {"failure", "cancelled", "timed_out"}
+    )
+
+
 def _verify(run: dict, run_id: int) -> None:
     if int(run.get("id") or 0) != run_id:
         raise RetryDispatchError("RETRY_ACK_WRONG_GITHUB_RUN")
-    if (
-        run.get("name") != "TAYVORIQ-X Golden Path"
-        or str(run.get("path") or "").split("@", 1)[0]
-        != ".github/workflows/tayvoriq-deliver-video-now.yml"
-    ):
+    if not is_golden_path_run(run):
         raise RetryDispatchError("RETRY_ACK_WRONG_WORKFLOW")
 
 
@@ -52,9 +63,7 @@ def dispatch_acknowledged(
         raise RetryDispatchError(
             f"RETRY_ACK_STALE_ATTEMPT:expected={failed_attempt}:actual={current}"
         )
-    if initial.get("status") != "completed" or initial.get("conclusion") not in (
-        "failure", "cancelled", "timed_out"
-    ):
+    if not is_recoverable_golden_path_run(initial, run_id):
         raise RetryDispatchError("RETRY_ACK_FAILED_RUN_NOT_TERMINAL")
 
     dispatch_error: str = ""
