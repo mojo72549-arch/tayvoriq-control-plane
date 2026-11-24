@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-24T21:37:45.710640Z",
-  "overall": "green",
+  "generated_at": "2026-11-24T22:39:34.946032Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -12,23 +12,23 @@
   "research": {},
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3676-trend-1",
-    "golden_path_run_id": 45394864913,
-    "pointer_updated_at": "2026-11-24T12:56:10.889541Z",
+    "request_id": "telegram-3696-trend-1",
+    "golden_path_run_id": 45493135731,
+    "pointer_updated_at": "2026-11-24T21:38:35.285184Z",
     "current_scope": "production"
   },
   "request": {
-    "request_id": "telegram-3676-trend-1",
-    "topic": "Altersteilzeit-Reform könnte Fiskus Milliarden bringen",
+    "request_id": "telegram-3696-trend-1",
+    "topic": "Erste Tarifrunde bei Volkswagen endet ohne Einigung",
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
-    "cta_type": "DISCUSSION",
-    "follow_reason": "TAYVORIQ erklärt komplexe Rentenreformen einfach und zeigt, was für dein Einkommen wichtig ist.",
+    "cta_type": "EXPERTISE",
+    "follow_reason": "TAYVORIQ ordnet ein, wie sich Tarifentscheidungen bei großen Arbeitgebern auf Schichtarbeit und Einkommen auswirken.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -43,22 +43,22 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3676-trend-1.json"
+    "path": "requests/telegram-3696-trend-1.json"
   },
   "run": {
-    "id": 45394864913,
+    "id": 45493135731,
     "historical": false,
     "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45394864913",
-    "created_at": "2026-11-24T12:34:46Z",
-    "updated_at": "2026-11-24T12:56:28Z",
+    "conclusion": "cancelled",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45493135731",
+    "created_at": "2026-11-24T21:38:27Z",
+    "updated_at": "2026-11-24T22:38:54Z",
     "attempt": 1,
-    "progress": 100,
+    "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 43,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -104,25 +104,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "success",
+        "status": "error",
         "step_number": 43,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "success",
+        "status": "skipped",
         "step_number": 45,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "success",
+        "status": "skipped",
         "step_number": 51,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "success",
+        "status": "skipped",
         "step_number": 52,
         "step_name": "Send Telegram review"
       }
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -142,69 +142,69 @@
     {
       "name": "Self-Heal",
       "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "IDLE"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Telegram-Videoquittung bestätigt"
+      "status": "yellow",
+      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
   "incident": {
-    "signature": "45394864913:LOCAL_VISUAL",
-    "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_DISPATCHED",
-    "same_generation_replay_required": true,
+    "signature": "45493135731:none",
+    "severity": "critical",
+    "failure_state": null,
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 43,
+    "self_heal_status": "IDLE",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "user_action_required": false,
     "recovery_replay_failed": false
   },
   "telegram": {
-    "status": "green",
-    "detail": "Telegram-Videoquittung bestätigt",
+    "status": "yellow",
+    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
     "last_step": "Send Telegram review",
-    "message_id": 3691
+    "message_id": null
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_run_id": 45344082379,
-    "replay_run_id": 45394864913,
+    "status": "IDLE",
+    "source_status": "IDLE",
+    "failure_state": null,
+    "failed_run_id": null,
+    "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-delivery-watch",
-    "same_generation_replay_required": true,
+    "owner": "tayvoriq-agent-orchestrator-v2",
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-24T12:34:56.639636Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
+      "at": "2026-11-24T22:38:54Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
     },
     {
-      "at": "2026-11-24T06:55:47.574417+00:00",
+      "at": "2026-11-24T21:38:35.209053+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:45344047609"
+      "detail": "request-dispatcher:45493077818"
     },
     {
-      "at": "2026-11-24T06:55:37.776745+00:00",
+      "at": "2026-11-24T21:38:24.106063+00:00",
       "title": "DISPATCHING",
-      "detail": "request-dispatcher:45344047609"
+      "detail": "request-dispatcher:45493077818"
     },
     {
-      "at": "2026-11-24T06:55:18.862Z",
+      "at": "2026-11-24T21:38:01.174Z",
       "title": "APPROVED",
       "detail": "telegram_callback"
     }
