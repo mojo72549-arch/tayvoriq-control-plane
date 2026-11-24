@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-24T22:39:34.946032Z",
-  "overall": "red",
+  "generated_at": "2026-11-24T23:03:16.249390Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -24,7 +24,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -48,41 +48,41 @@
   "run": {
     "id": 45493135731,
     "historical": false,
-    "status": "completed",
-    "conclusion": "cancelled",
+    "status": "queued",
+    "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45493135731",
     "created_at": "2026-11-24T21:38:27Z",
-    "updated_at": "2026-11-24T22:38:54Z",
-    "attempt": 1,
-    "progress": 30,
+    "updated_at": "2026-11-24T23:03:14Z",
+    "attempt": 3,
+    "progress": 3,
     "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 43,
+    "last_successful_step": null,
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 4,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 9,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
-        "status": "success",
-        "step_number": 18,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dependencies",
@@ -92,47 +92,47 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
-        "step_number": 18,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Studio-Ausführung",
-        "status": "success",
-        "step_number": 35,
-        "step_name": "Collect Studio production outcome"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
-        "status": "error",
-        "step_number": 43,
-        "step_name": "Assert publishable production output"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
-        "step_number": 45,
-        "step_name": "Validate publication quality initial"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
-        "step_number": 51,
-        "step_name": "Publish review page"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
-        "step_number": 52,
-        "step_name": "Send Telegram review"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "queued"
     },
     {
       "name": "Production Green",
@@ -141,8 +141,8 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "IDLE"
+      "status": "yellow",
+      "detail": "LOCAL_RETRY_RUNNING"
     },
     {
       "name": "Telegram",
@@ -152,36 +152,25 @@
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "45493135731:none",
-    "severity": "critical",
-    "failure_state": null,
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 43,
-    "self_heal_status": "IDLE",
-    "same_generation_replay_required": false,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
-    "last_step": "Send Telegram review",
+    "last_step": null,
     "message_id": null
   },
   "recovery": {
-    "status": "IDLE",
-    "source_status": "IDLE",
+    "status": "LOCAL_RETRY_RUNNING",
+    "source_status": "LOCAL_RETRY_RUNNING",
     "failure_state": null,
     "failed_run_id": null,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
@@ -189,9 +178,14 @@
   },
   "events": [
     {
-      "at": "2026-11-24T22:38:54Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-11-24T23:03:09.103918Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
+    {
+      "at": "2026-11-24T22:39:39.435540Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     },
     {
       "at": "2026-11-24T21:38:35.209053+00:00",
