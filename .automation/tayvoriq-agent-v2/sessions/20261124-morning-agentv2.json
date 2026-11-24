@@ -1,0 +1,44 @@
+{
+  "selection_id": "20261124-morning-agentv2",
+  "slot": "morning",
+  "provider": "groq_rss+groq_rss",
+  "model": "groq/openai/gpt-oss-120b+multi-publisher-rss+groq/qwen/qwen3.8-27b+multi-publisher-rss",
+  "grounding_chunks": [
+    {
+      "title": "sueddeutsche.de",
+      "uri": "https://www.sueddeutsche.de/wirtschaft/altersteilzeit-reform-milliarden-staat-bertelsmann-stiftung-diw-li.3584749"
+    },
+    {
+      "title": "n-tv.de",
+      "uri": "https://www.n-tv.de/wirtschaft/Strengere-Altersteilzeit-Regeln-koennten-Staat-Milliarden-bringen-id31565128.html"
+    },
+    {
+      "title": "n-tv.de",
+      "uri": "https://www.n-tv.de/politik/Freie-Waehler-bestimmen-Nachfolger-fuer-Hubert-Aiwanger-id31566707.html"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/inland/innenpolitik/aiwanger-nachfolge-gotthardt-100.html"
+    },
+    {
+      "title": "manager-magazin.de",
+      "uri": "https://www.manager-magazin.de/unternehmen/handel/baumarkt-obi-und-toom-fusionieren-marke-toom-verschwindet-a-25ed7272-f61f-429f-afe0-460dce041a33#ref=rss"
+    },
+    {
+      "title": "n-tv.de",
+      "uri": "https://www.n-tv.de/wirtschaft/Baumaerkte-Obi-und-Toom-schliessen-sich-zusammen-id31567269.html"
+    }
+  ],
+  "candidate_count": 4,
+  "valid_count": 2,
+  "selected_count": 2,
+  "series_candidate_injected": false,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 2,
+  "growth_rescan_used": true,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_2_to_5",
+  "candidate_minimum": 2,
+  "candidate_maximum": 5,
+  "weak_fill_allowed": false
+}
