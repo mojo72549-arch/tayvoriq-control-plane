@@ -280,6 +280,12 @@ jobs:
           echo "TAYVORIQ_RESEARCH_SELECTION_ID=${REVIEW_SELECTION}" >> "$GITHUB_ENV"
           echo "TAYVORIQ_RESEARCH_RETRY_FILE=.automation/tayvoriq-agent-v2/research-retries/${REVIEW_SELECTION}.json" >> "$GITHUB_ENV"
 
+      - name: Release evening research after a verified exhausted morning
+        if: steps.slot.outputs.should_run == 'true' && steps.slot.outputs.slot == 'evening' && steps.slot.outputs.rejection_selection == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/tayvoriq_stale_news_reconcile_v1.py --for-evening
+
       - name: Reconcile active series after verified publication
         if: steps.slot.outputs.should_run == 'true'
         run: |

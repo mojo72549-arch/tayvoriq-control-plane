@@ -183,6 +183,31 @@ class SlotSerializationTests(unittest.TestCase):
             with patch.object(gate, "github_json", return_value=old_run):
                 self.assertEqual(gate.check_request(p, root, "repo", "token")["reason"], "MORNING_GOLDEN_PATH_NOT_BOUND")
 
+    def test_terminal_morning_releases_only_the_same_evening_with_verified_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer = root.parent / ".github/state/tayvoriq-active-production-request.json"
+            pointer.parent.mkdir(parents=True)
+            today = datetime.now(ZoneInfo("Europe/Berlin"))
+            now = today.isoformat()
+            owner = request(f"{today:%Y%m%d}-morning-agentv2", "old", now, 123)
+            (root / "old.json").write_text(json.dumps(owner))
+            pointer.write_text(json.dumps({"schema": "tayvoriq-active-production-request-v1", "state": "EXPIRED",
+                                           "request_id": "old", "golden_path_run_id": 123,
+                                           "reason": gate.EXHAUSTED_MORNING}))
+            path = root / "next.json"
+            for slot, source, proof, expected in (
+                ("evening", "telegram_trend_approval", True, True),
+                ("morning", "telegram_trend_approval", True, False),
+                ("evening", "user_preapproved_preparation", True, False),
+                ("evening", "telegram_trend_approval", False, False),
+            ):
+                with self.subTest(slot=slot, source=source, proof=proof):
+                    path.write_text(json.dumps(request(f"{today:%Y%m%d}-{slot}-agentv2", "next", now, source=source)))
+                    with patch.object(gate, "github_json", return_value={}), patch.object(gate, "verified_quarantine", return_value=proof):
+                        self.assertEqual(gate.check_request(path, root, "repo", "token")["released"], expected)
+
     def test_failed_preflight_admits_only_exact_editorial_source_repair(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "requests"

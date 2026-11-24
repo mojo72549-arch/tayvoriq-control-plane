@@ -7,12 +7,21 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+if __package__:
+    from .tayvoriq_recovery_attempt_ack_v1 import is_golden_path_run
+else:
+    from tayvoriq_recovery_attempt_ack_v1 import is_golden_path_run
 
 POINTER = Path(".github/state/tayvoriq-active-production-request.json")
+STALE_NEWS = "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
+EXHAUSTED_MORNING = "MORNING_RECOVERY_EXHAUSTED_EVENING_RELEASE"
 EXECUTOR_WORKFLOWS = (
     "tayvoriq-deliver-video-now.yml",
     "tayvoriq-delivery-watch.yml",
@@ -44,9 +53,48 @@ def has_delivery_evidence(request: dict) -> bool:
                for item in history)
 
 
+def _failed_golden_path(run: dict) -> bool:
+    # Older stored run snapshots may still have only the canonical name.
+    correct_workflow = is_golden_path_run(run) if run.get("path") else run.get("name") == "TAYVORIQ-X Golden Path"
+    return correct_workflow and run.get("status") == "completed" and run.get("conclusion") == "failure"
+
+
+def _exhausted_morning(request: dict, run: dict, now: datetime) -> bool:
+    zone = ZoneInfo("Europe/Berlin")
+    today = now.astimezone(zone)
+    outcome = request.get("recovery_outcome")
+    if (today.hour < 19 or not isinstance(outcome, dict)
+            or not re.fullmatch(rf"{today:%Y%m%d}-(morning|m)-.+", str(request.get("selection_id") or ""))):
+        return False
+    expected = {
+        "schema": "tayvoriq-recovery-outcome-v1", "state": "EXHAUSTED",
+        "request_id": request.get("request_id"), "run_id": run.get("id"),
+        "run_attempt": run.get("run_attempt"), "recovery_generation": request.get("recovery_generation", 0),
+        "quality_gates_weakened": False, "publish_allowed": False,
+        "next_action": "AWAIT_VERIFIED_MEDIA_OR_CODE_REPAIR",
+    }
+    try:
+        receipt_at = _utc(outcome["recorded_at"])
+        approved = _utc(request["approved_at"])
+        completed = _utc(run["updated_at"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return (
+        all(outcome.get(key) == value for key, value in expected.items())
+        and outcome.get("quality_gates_weakened") is False and outcome.get("publish_allowed") is False
+        and type(run.get("run_attempt")) is int and run["run_attempt"] > 0
+        and outcome.get("reason") in {"LOCAL_VISUAL_RECOVERY_EXHAUSTED", "LOCAL_VOICE_RECOVERY_EXHAUSTED"}
+        and bool(re.fullmatch(r"[a-f0-9]{20}", str(outcome.get("failure_signature") or "")))
+        and approved.astimezone(zone).date() == today.date()
+        and approved <= completed <= receipt_at <= now
+    )
+
+
 def verified_quarantine(pointer: dict, request: dict, run: dict) -> bool:
     """Revalidate the canonical producer's complete, mirrored retirement proof."""
-    reason = "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
+    reason = pointer.get("reason")
+    if reason not in (STALE_NEWS, EXHAUSTED_MORNING):
+        return False
     q, p = request.get("stale_quarantine"), pointer.get("stale_quarantine")
     if not isinstance(q, dict) or not isinstance(p, dict) or has_delivery_evidence(request):
         return False
@@ -74,8 +122,9 @@ def verified_quarantine(pointer: dict, request: dict, run: dict) -> bool:
             return False
     except (KeyError, ValueError, TypeError):
         return False
-    return (run.get("name") == "TAYVORIQ-X Golden Path" and run.get("status") == "completed"
-            and run.get("conclusion") == "failure")
+    return _failed_golden_path(run) and (
+        reason == STALE_NEWS or _exhausted_morning(request, run, _utc(q["at"]))
+    )
 
 
 def quarantine(
@@ -83,6 +132,7 @@ def quarantine(
     active_executors: int,
     now: datetime,
     minimum_age_hours: int = 72,
+    for_evening: bool = False,
 ) -> tuple[dict, dict] | None:
     """Pure, fail-closed retirement decision; None means preserve the owner."""
     if now.tzinfo is None or minimum_age_hours < 48 or active_executors != 0:
@@ -116,20 +166,18 @@ def quarantine(
         return None
     if run_id < 1 or request_run_id != run_id or not same_generation or int(run.get("id") or 0) != run_id:
         return None
-    if (
-        run.get("name") != "TAYVORIQ-X Golden Path"
-        or run.get("status") != "completed"
-        or run.get("conclusion") != "failure"
-        or (now - approved_at) < timedelta(hours=minimum_age_hours)
-        or (now - completed_at) < timedelta(hours=1)
-    ):
+    if not _failed_golden_path(run):
+        return None
+    exhausted = for_evening and _exhausted_morning(request, run, now)
+    if not exhausted and ((now - approved_at) < timedelta(hours=minimum_age_hours)
+                          or (now - completed_at) < timedelta(hours=1)):
         return None
 
     if has_delivery_evidence(request):
         return None
 
     timestamp = now.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-    reason = "STALE_NEWS_QUARANTINED_AFTER_FAILED_PRODUCTION_NO_REVIEW"
+    reason = EXHAUSTED_MORNING if exhausted else STALE_NEWS
     new_request, new_pointer = dict(request), dict(pointer)
     new_request["status"] = "EXPIRED"
     new_request["recovery_owner"] = "none"
@@ -163,7 +211,7 @@ def _gh_api(repo: str, path: str) -> dict:
     ))
 
 
-def reconcile() -> bool:
+def reconcile(*, for_evening: bool = False) -> bool:
     repo = str(os.environ.get("GITHUB_REPOSITORY") or "").strip()
     if repo.count("/") != 1:
         raise RuntimeError("STALE_RECONCILE_GITHUB_REPOSITORY_REQUIRED")
@@ -187,7 +235,7 @@ def reconcile() -> bool:
     request = json.loads(request_path.read_text(encoding="utf-8"))
     approved = request.get("approved_at")
     try:
-        if datetime.now(timezone.utc) - _utc(str(approved)) < timedelta(hours=72):
+        if not for_evening and datetime.now(timezone.utc) - _utc(str(approved)) < timedelta(hours=72):
             print("STALE_RECONCILE_WITHIN_APPROVAL_WINDOW")
             return False
     except (TypeError, ValueError):
@@ -203,7 +251,7 @@ def reconcile() -> bool:
         active += sum(x.get("status") in ACTIVE_RUN_STATES for x in runs.get("workflow_runs", []))
     decision = quarantine(
         pointer, request, run, active_executors=active,
-        now=datetime.now(timezone.utc),
+        now=datetime.now(timezone.utc), for_evening=for_evening,
     )
     if decision is None:
         print("STALE_RECONCILE_NOT_ELIGIBLE_OR_EXECUTOR_ACTIVE")
@@ -216,7 +264,7 @@ def reconcile() -> bool:
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
     subprocess.run(["git", "add", str(request_path), str(POINTER)], check=True)
-    subprocess.run(["git", "commit", "-m", f"ops(tayvoriq): quarantine stale failed news {rid}"], check=True)
+    subprocess.run(["git", "commit", "-m", f"ops(tayvoriq): close failed production {rid}"], check=True)
     # A racing new request makes this non-fast-forward push fail closed; hourly
     # retry will first reread fresh main, never forcibly overwrite newer data.
     subprocess.run(["git", "push", "origin", "HEAD:main"], check=True)
@@ -226,7 +274,7 @@ def reconcile() -> bool:
 
 if __name__ == "__main__":
     try:
-        reconcile()
+        reconcile(for_evening="--for-evening" in sys.argv[1:])
     except Exception as error:
         print(f"STALE_RECONCILE_FAIL_CLOSED:{type(error).__name__}:{error}", file=sys.stderr)
         raise SystemExit(1)
