@@ -2032,7 +2032,15 @@ jobs:
               detail = "Die Sprachprüfung hat den natürlichen Sprechervertrag noch nicht erfüllt; künstliches Pitch-Down bleibt deaktiviert."
           elif state == "LOCAL_VISUAL_REPAIR_REQUIRED":
               stage = "checkpoint_repair"
-              detail = "Der Master bleibt erhalten; nur die vom strikten Audit beanstandeten Visuals werden lokal ersetzt und erneut geprüft."
+              scene = policy.get("failure_scene")
+              if type(scene) is int:
+                  stage = "technical_stop"
+                  detail = f"Für Szene {scene} fehlt ein passender Clip. Der Orchestrator prüft die Wiederaufnahme desselben Auftrags."
+              elif policy.get("master_reusable") is True:
+                  detail = "Der Master bleibt erhalten; nur die vom strikten Audit beanstandeten Visuals werden lokal ersetzt und erneut geprüft."
+              else:
+                  stage = "technical_stop"
+                  detail = "Passendes Bildmaterial fehlt. Der Orchestrator prüft die Wiederaufnahme desselben Auftrags."
           elif state == "DUPLICATE_CONTENT_BLOCKED":
               stage = "duplicate_blocked"
               nearest = duplicate.get("nearest_prior") if isinstance(duplicate.get("nearest_prior"), dict) else {}

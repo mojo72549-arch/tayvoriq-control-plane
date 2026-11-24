@@ -25,7 +25,7 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
     # A console emitted by this controller invocation may terminate before it
     # refreshes report.json. Explicit runtime contract errors supersede that old
     # report's local repair targets. Echoed workflow source is never proof.
-    state, detail = "", ""
+    state, detail, failed_scene = "", "", None
     for line in runtime_log_text(console).splitlines():
         if _matches(line, EDITORIAL_CODEFIX_PATTERNS):
             state = "EDITORIAL_VALIDATOR_CODEFIX_REQUIRED"
@@ -40,6 +40,8 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
               and "attempted_queries=[]" in line
               and _has_only_original_visual_query(line)):
             state, detail = "LOCAL_VISUAL_CODEFIX_REQUIRED", line
+        elif scene := re.search(r"RuntimeError: REAL_VIDEO_SCENE_REQUIRED:scene=([0-9]+):", line):
+            state, detail, failed_scene = "LOCAL_VISUAL_REPAIR_REQUIRED", line, int(scene[1])
         elif _matches(line, LOCAL_VOICE_RETRY_PATTERNS + LOCAL_VISUAL_RETRY_PATTERNS):
             # A later local failure owns the terminal result if the earlier
             # editorial defect was repaired within this same controller attempt.
@@ -48,7 +50,10 @@ def bind_current_failure(payload, console, *, run_id, run_attempt, request_id):
                 "RuntimeError: POST_AUDIO_QUALITY_GATE_BLOCKED:pre-render-transcript-contract-failed"):
             state = "TRANSCRIPT_NORMALIZATION_DEFECT" if _verified_transcript_alias_failure(console) else ""
             detail = line
-    if state:
+    if state == "LOCAL_VISUAL_REPAIR_REQUIRED":
+        result.update(state=state, failure_class="LOCAL_VISUAL", repair_target_stages=["VISUALS"],
+                      master_reusable=False, failure_scene=failed_scene, failure_detail=detail[-1000:])
+    elif state:
         result.update(state=state, failure_class="DETERMINISTIC_CODE",
                       repair_target_stages=[], master_reusable=False,
                       failure_detail=detail[-1000:])
