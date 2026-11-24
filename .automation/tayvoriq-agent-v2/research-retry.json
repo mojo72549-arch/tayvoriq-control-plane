@@ -1,44 +1,20 @@
 {
   "schema": "tayvoriq-research-retry-v1",
-  "state": "EXHAUSTED",
-  "slot": "evening",
-  "berlin_date": "2026-11-23",
-  "first_deferred_at_epoch": 1795444726.095888,
-  "attempts": 10,
-  "retry_at_epoch": 1795474909.1203377,
-  "retry_phase": "SLOW_RECOVERY",
-  "last_deferred_at_epoch": 1795474770.8110607,
-  "provider_retry_at_epoch": 1795474909.1203377,
+  "state": "WAITING",
+  "slot": "morning",
+  "berlin_date": "2026-11-24",
+  "first_deferred_at_epoch": 1795494971.5574849,
+  "attempts": 1,
+  "retry_at_epoch": 1795495878.4936087,
+  "retry_phase": "NORMAL",
+  "last_deferred_at_epoch": 1795494978.4936147,
+  "provider_retry_at_epoch": 1795495878.4936087,
   "max_attempts": 10,
-  "valid_until_epoch": 1795466326.095888,
-  "reason": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
+  "valid_until_epoch": 1795516571.5574849,
+  "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
   "quality_gates_weakened": false,
   "production_started": false,
-  "last_research_attempt": "45213158957.1",
+  "last_research_attempt": "45327506317.1",
   "last_issue": "EDITORIAL_MINIMUM_NOT_MET",
-  "status_detail": "Zu wenige Themen haben die redaktionelle Prüfung bestanden.",
-  "technical_repair_attempts": [
-    {
-      "run_key": "45282874377.1",
-      "result": "EDITORIAL_MINIMUM_NOT_MET",
-      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45282874377"
-    },
-    {
-      "run_key": "45283555089.1",
-      "result": "EDITORIAL_MINIMUM_NOT_MET",
-      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45283555089"
-    },
-    {
-      "run_key": "45284133484.1",
-      "result": "EDITORIAL_MINIMUM_NOT_MET",
-      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45284133484"
-    },
-    {
-      "run_key": "45284708595.1",
-      "result": "SOURCE_MINIMUM_NOT_MET",
-      "url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45284708595"
-    }
-  ],
-  "last_technical_repair_attempt": "45284708595.1",
-  "repair_guard": "TERMINAL_SLOT_IMMUTABLE"
+  "status_detail": "Zu wenige Themen haben die redaktionelle Prüfung bestanden."
 }
