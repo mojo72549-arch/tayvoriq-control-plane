@@ -1,0 +1,48 @@
+{
+  "selection_id": "20261124-evening-agentv2",
+  "slot": "evening",
+  "provider": "editorial",
+  "model": "source-reviewed",
+  "grounding_chunks": [
+    {
+      "uri": "https://www.stuttgart.de/service/aktuelle-meldungen/2026/november/verkehrshinweise-zum-stuttgarter-weihnachtsmarkt",
+      "title": "Stadt Stuttgart"
+    },
+    {
+      "uri": "https://www.stuttgarter-nachrichten.de/lokales/stuttgart/stuttgarter-weihnachtsmarkt-strassen-gesperrt-dafuer-laengere-zuege-was-besucher-beachten-muessen-79772347.html",
+      "title": "Stuttgarter Nachrichten"
+    },
+    {
+      "uri": "https://stuttgart.t-online.de/region/stuttgart/id_101543988/stuttgart-sperrt-strassen-nahe-weihnachtsmarkt-was-ab-mittwoch-wichtig-ist.html",
+      "title": "t-online Stuttgart"
+    },
+    {
+      "uri": "https://baden-wuerttemberg.igmetall.de/2026/2026-11-24-pressemitteilung-52-2026",
+      "title": "IG Metall Baden-Württemberg"
+    },
+    {
+      "uri": "https://www.swr.de/swraktuell-radio/verhandlungen-in-mannheim-gelingt-der-abschluss-in-mannheim-100.html",
+      "title": "SWR Aktuell"
+    },
+    {
+      "uri": "https://www.tagesschau.de/inland/regional/niedersachsen/tarifstreit-vw-spitze-will-verhandlungen-bis-jahresende-abschliessen,vw-1734.html",
+      "title": "NDR"
+    },
+    {
+      "uri": "https://www.deutschlandfunk.de/erste-vw-tarifverhandlungsrunde-nach-kurzer-zeit-beendet-100.html",
+      "title": "Deutschlandfunk"
+    }
+  ],
+  "candidate_count": 3,
+  "valid_count": 3,
+  "selected_count": 3,
+  "series_candidate_injected": false,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 1,
+  "growth_rescan_used": false,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_2_to_5",
+  "candidate_minimum": 2,
+  "candidate_maximum": 5,
+  "weak_fill_allowed": false
+}
