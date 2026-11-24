@@ -381,6 +381,8 @@ AND Telegram Review = success
 
 Am Abend kann der Orchestrator den Morgenauftrag auch nach ausgeschöpfter Bild- oder Sprachreparatur schließen. Dafür muss die gespeicherte Recovery-Quittung zum exakten Morgenlauf und Versuch passen. Der Produktionslauf muss nachweislich fehlgeschlagen sein. Es darf kein Produktions- oder Reparaturprozess aktiv sein, und es darf kein Review- oder Veröffentlichungsnachweis vorliegen. Der Orchestrator schreibt den Abschluss mit deaktivierter Wiederaufnahme und Veröffentlichung. Die Themenauswahl am Abend öffnet einen eigenständigen Auftrag mit eigener Telegram-Freigabe.
 
+Wenn die Morgenrecherche am selben Tag nachweislich ausgeschöpft wurde und weder eine Themenliste zugestellt noch ein Morgenauftrag angelegt wurde, kann der eigenständig in Telegram freigegebene Abendauftrag den ersten Produktionsplatz übernehmen.
+
 **Verboten:** Start des Abendjobs nur aufgrund einer Uhrzeit.
 
 ---

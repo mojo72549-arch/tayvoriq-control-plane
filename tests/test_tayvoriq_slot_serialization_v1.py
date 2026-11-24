@@ -29,6 +29,30 @@ def request(selection_id: str, request_id: str, approved_at: str, run_id: int = 
 
 
 class SlotSerializationTests(unittest.TestCase):
+    def test_empty_morning_research_releases_the_separately_approved_evening(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            day = datetime.now(ZoneInfo("Europe/Berlin"))
+            next_request = root / "evening.json"
+            next_request.write_text(json.dumps(request(f"{day:%Y%m%d}-evening-agentv2", "evening", day.isoformat())))
+            base = root.parent / ".automation/tayvoriq-agent-v2"
+            notice = base / "research-notices" / f"{day:%Y-%m-%d}-morning-EXHAUSTED.json"
+            notice.parent.mkdir(parents=True)
+            notice.write_text(json.dumps({"slot": "morning", "berlin_date": day.date().isoformat(),
+                                          "research_state": "EXHAUSTED", "run_id": 144, "state": "UNCONFIRMED"}))
+            run = {"id": 144, "status": "completed", "path": ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"}
+            with patch.object(gate, "github_json", return_value=run):
+                self.assertEqual(gate.check_request(next_request, root, "repo", "token")["reason"],
+                                 "EVENING_APPROVED_AFTER_MORNING_RESEARCH_EXHAUSTION")
+            with patch.object(gate, "github_json", return_value=run | {"status": "in_progress"}):
+                self.assertFalse(gate.check_request(next_request, root, "repo", "token")["released"])
+            delivery = base / "deliveries" / f"{day:%Y%m%d}-morning-agentv2.json"
+            delivery.parent.mkdir()
+            delivery.write_text("{}")
+            with patch.object(gate, "github_json", return_value=run):
+                self.assertFalse(gate.check_request(next_request, root, "repo", "token")["released"])
+
     def test_current_long_slot_names_cannot_bypass_gate(self) -> None:
         for slot, expected in (("morning", "m"), ("evening", "e"), ("m", "m"), ("e", "e")):
             self.assertEqual(gate.selection_parts({"selection_id": f"20260926-{slot}-agentv2-r3"}), ("20260926", expected))
