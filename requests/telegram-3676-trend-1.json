@@ -218,10 +218,54 @@
       "state": "DISPATCHED",
       "at": "2026-11-24T06:55:47.574417+00:00",
       "actor": "request-dispatcher:45344047609"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-24T12:34:56.639636Z",
+      "actor": "tayvoriq-delivery-watch",
+      "meta": {
+        "retry_of_run_id": 45344082379,
+        "golden_path_run_id": 45394864913,
+        "recovery_generation": 0,
+        "failure_signature": "28e41034d878ba43118c",
+        "reason": "same-generation-verified-green-local-checkpoint-replay",
+        "failed_implementation_sha": "f8d6381be7138772fdb3cdda529b41f45914634d",
+        "replay_implementation_sha": "5f9baa36075467dbea868a3066870645e2e4835a",
+        "quality_gates_weakened": false,
+        "active_pointer_verified": true
+      }
     }
   ],
   "contract_sha256": "f184adc010a67cb165be1bb1f1d44021b89b9193d8a692884087533f2f734ed3",
   "dispatch_claim_run_id": 45344047609,
   "dispatch_contract_sha256": "f184adc010a67cb165be1bb1f1d44021b89b9193d8a692884087533f2f734ed3",
-  "golden_path_run_id": 45344082379
+  "golden_path_run_id": 45394864913,
+  "previous_golden_path_run_ids": [
+    45344082379
+  ],
+  "recovery_generation": 0,
+  "retry_of_run_id": 45344082379,
+  "replacement_reason": "SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY",
+  "recovery_owner": "tayvoriq-delivery-watch",
+  "recovery_failure_signature": "28e41034d878ba43118c",
+  "recovery_dispatched_at": "2026-11-24T12:34:56.639636Z",
+  "codefix_recovery": {
+    "status": "REPLAY_DISPATCHED",
+    "request_substate": "DISPATCHED",
+    "failed_run_id": 45344082379,
+    "failure_signature": "28e41034d878ba43118c",
+    "last_failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failure_state": "",
+    "failed_implementation_sha": "f8d6381be7138772fdb3cdda529b41f45914634d",
+    "replay_run_id": 45394864913,
+    "replayed_at": "2026-11-24T12:34:56.639636Z",
+    "replay_control_plane_sha": "d52428a290f5b35f9dae7c6f6e7415fcedae7b33",
+    "replay_implementation_sha": "5f9baa36075467dbea868a3066870645e2e4835a",
+    "codefix_detection_reason": "production-green-advanced-during-local-checkpoint-retry",
+    "recovery_generation": 0,
+    "same_generation_replay_required": true,
+    "exact_source_request_required": true,
+    "quality_gates_weakened": false,
+    "active_pointer_verified": true
+  }
 }
