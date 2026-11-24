@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
+from tayvoriq_stale_news_reconcile_v1 import EXHAUSTED_MORNING, verified_quarantine
 from tayvoriq_review_receipt import REPLAY_PATH, REPLAY_BRANCH, REPLAY_STEPS
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
@@ -221,7 +221,12 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                 berlin = ZoneInfo("Europe/Berlin")
                 today = datetime.now(berlin).strftime("%Y%m%d")
                 approved = datetime.fromtimestamp(_approved_stamp(request), berlin).strftime("%Y%m%d")
-                if (not parts or not previous_parts or not previous_parts[0] < parts[0] == today == approved
+                same_day_evening = (
+                    pointer.get("reason") == EXHAUSTED_MORNING
+                    and previous_parts == (today, "m") and parts == (today, "e")
+                )
+                different_day = parts and previous_parts and previous_parts[0] < parts[0] == today
+                if (not (same_day_evening or different_day) or approved != today
                         or request.get("source") != "telegram_trend_approval" or owner == result["request_id"]):
                     result["reason"] = "NEW_BERLIN_DAY_TELEGRAM_APPROVAL_REQUIRED"
                     return result
@@ -231,6 +236,9 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                     run = {}
                 if not verified_quarantine(pointer, previous, run):
                     result["reason"] = "EXPIRED_OWNER_QUARANTINE_NOT_VERIFIED"
+                    return result
+                if same_day_evening:
+                    result.update(released=True, reason=EXHAUSTED_MORNING)
                     return result
                 expired_owner_verified = True
                 result["reason"] = "FRESH_REQUEST_AFTER_VERIFIED_OWNER_EXPIRY"

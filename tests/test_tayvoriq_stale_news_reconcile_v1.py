@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from tayvoriq_stale_news_reconcile_v1 import quarantine
+from tayvoriq_stale_news_reconcile_v1 import EXHAUSTED_MORNING, quarantine, verified_quarantine
 
 NOW = datetime(2026, 10, 19, 21, 0, tzinfo=timezone.utc)
 APPROVED = (NOW - timedelta(days=15)).isoformat()
@@ -67,6 +67,33 @@ class StaleNewsSafetyTests(unittest.TestCase):
         self.assertIsNone(self.retire(request=newer))
         recent_failure = self.run | {"updated_at": (NOW - timedelta(minutes=5)).isoformat()}
         self.assertIsNone(self.retire(run=recent_failure))
+
+    def test_evening_requires_verified_exhaustion_from_the_exact_morning_attempt(self):
+        request = self.request | {
+            "selection_id": "20261019-morning-agentv2",
+            "approved_at": (NOW - timedelta(hours=12)).isoformat(),
+            "recovery_outcome": {
+                "schema": "tayvoriq-recovery-outcome-v1", "state": "EXHAUSTED", "run_id": 42, "run_attempt": 3,
+                "request_id": self.request["request_id"], "recovery_generation": 1,
+                "reason": "LOCAL_VISUAL_RECOVERY_EXHAUSTED", "failure_signature": "a" * 20,
+                "quality_gates_weakened": False, "publish_allowed": False,
+                "next_action": "AWAIT_VERIFIED_MEDIA_OR_CODE_REPAIR",
+                "recorded_at": (NOW - timedelta(minutes=2)).isoformat(),
+            },
+        }
+        run = self.run | {"name": "TAYVORIQ request telegram-3401-trend-1", "run_attempt": 3,
+                          "path": ".github/workflows/tayvoriq-deliver-video-now.yml",
+                          "updated_at": (NOW - timedelta(minutes=3)).isoformat()}
+        retired, pointer = quarantine(self.pointer, request, run, active_executors=0, now=NOW, for_evening=True)
+        self.assertEqual(pointer["reason"], EXHAUSTED_MORNING)
+        self.assertFalse(pointer["allow_publish"])
+        self.assertFalse(pointer["allow_recovery"])
+        self.assertTrue(verified_quarantine(pointer, retired, run))
+        self.assertIsNone(quarantine(self.pointer, request, run, active_executors=0, now=NOW))
+        self.assertIsNone(quarantine(self.pointer, request, run, active_executors=1, now=NOW, for_evening=True))
+        self.assertFalse(verified_quarantine(pointer, retired, run | {"run_attempt": 4}))
+        self.assertIsNone(quarantine(self.pointer, request, run | {"run_attempt": 4},
+                                     active_executors=0, now=NOW, for_evening=True))
 
     def test_never_expire_success_review_or_publication(self):
         for state, conclusion in (("queued", None), ("in_progress", None),
