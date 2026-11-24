@@ -88,7 +88,7 @@ class PersistentBudgetTests(unittest.TestCase):
             self.assertEqual(rss.call_count, 1)
             self.assertEqual(structure.call_count, 4)  # Each Groq model and HF are tried once.
             self.assertEqual(structure.call_args.kwargs['provider_kind'], 'huggingface')
-            self.assertEqual(read(self.queue)['state'], 'WAITING')
+            self.assertEqual(read(self.queue)['state'], 'EXHAUSTED')
 
     def test_payment_only_cannot_create_automatic_retry(self):
         health = ProviderHealth(self.health, clock=lambda: NOW)
@@ -99,25 +99,19 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(retry.due_slot(self.queue, now=NOW + 1000), '')
 
     def test_due_slot_is_bounded_by_attempt_count_and_age(self):
-        retry.defer('morning', NOW + 900, path=self.queue, now=NOW)
-        self.assertEqual(retry.due_slot(self.queue, now=NOW + 899), '')
-        self.assertEqual(retry.due_slot(self.queue, now=NOW + 900), 'morning')
-        for i in range(1, 8):
-            state = retry.defer('morning', NOW + 900 * (i + 1), path=self.queue, now=NOW + i * 900)
-        self.assertEqual(state['attempts'], 8)
-        self.assertEqual(state['state'], 'WAITING')
-        self.assertEqual(state['retry_phase'], 'SLOW_RECOVERY')
-        self.assertEqual(state['retry_at_epoch'], NOW + 9900)
-        self.assertEqual(retry.due_slot(self.queue, now=NOW + 7200), '')
-        self.assertEqual(retry.due_slot(self.queue, now=NOW + 9900), 'morning')
-        retry.defer('morning', NOW + 10000, path=self.queue, now=NOW + 9900)
-        state = retry.defer('morning', NOW + 14000, path=self.queue, now=NOW + 13500)
-        self.assertEqual(state['attempts'], 10)
+        retry.defer('morning', NOW + 120, path=self.queue, now=NOW)
+        self.assertEqual(retry.due_slot(self.queue, now=NOW + 119), '')
+        self.assertEqual(retry.due_slot(self.queue, now=NOW + 120), 'morning')
+        self.assertEqual(retry.regular_process_seconds('morning', path=self.queue, now=NOW + 300), 240)
+        retry.defer('morning', NOW + 240, path=self.queue, now=NOW + 120)
+        state = retry.defer('morning', NOW + 360, path=self.queue, now=NOW + 240)
+        self.assertEqual(state['attempts'], retry.MAX_ATTEMPTS)
         self.assertEqual(state['state'], 'EXHAUSTED')
+        self.assertEqual(state['valid_until_epoch'], NOW + 600)
         self.assertEqual(retry.due_slot(self.queue, now=NOW + 24 * 3600), '')
 
     def test_pending_research_visible_and_cannot_override_active_production(self):
-        retry.defer('morning', NOW + 900, path=self.queue, now=NOW)
+        retry.defer('morning', NOW + 120, path=self.queue, now=NOW)
         with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}), \
              patch.object(retry.time, 'time', return_value=NOW):
             result = retry.lifecycle({'state': 'IDLE', 'action': 'NONE'})
@@ -136,16 +130,16 @@ class PersistentBudgetTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             retry.due_slot(self.queue, now=NOW)
 
-    def test_editorial_rejection_counts_towards_same_bounded_retry_budget(self):
+    def test_editorial_rejection_ends_slot_if_next_retry_is_too_late(self):
         import tayvoriq_agent_trend_radar_v8 as radar
         env = {'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue), 'TAYVORIQ_RESEARCH_SLOT': 'morning'}
         with patch.dict(os.environ, env):
             for _ in range(retry.MAX_ATTEMPTS):
                 radar._mark_research_deferred('REGIONAL_RESCAN_REQUIRED')
         self.assertEqual(read(self.queue)['state'], 'EXHAUSTED')
-        self.assertEqual(read(self.queue)['attempts'], retry.MAX_ATTEMPTS)
+        self.assertEqual(read(self.queue)['attempts'], 1)
 
-    def test_legacy_exhaustion_keeps_attempts_and_deadline_for_two_slow_reserves(self):
+    def test_legacy_exhaustion_keeps_attempts_without_reopening_the_slot(self):
         import json
         legacy = {'schema': 'tayvoriq-research-retry-v1', 'state': 'EXHAUSTED',
                   'slot': 'morning', 'berlin_date': '2026-10-20', 'attempts': 8,
@@ -154,12 +148,12 @@ class PersistentBudgetTests(unittest.TestCase):
                   'reason': 'RESEARCH_RETRY_BUDGET_EXHAUSTED'}
         self.queue.write_text(json.dumps(legacy))
         state = retry.current(self.queue, now=NOW + 8000)
-        self.assertEqual(state['state'], 'WAITING')
+        self.assertEqual(state['state'], 'EXHAUSTED')
         self.assertEqual(state['attempts'], 8)
-        self.assertEqual(state['retry_at_epoch'], NOW + 10800)
+        self.assertEqual(state['retry_at_epoch'], NOW + 7200)
         self.assertEqual(state['valid_until_epoch'], NOW + 21600)
         self.assertEqual(retry.due_slot(self.queue, now=NOW + 10799), '')
-        self.assertEqual(retry.due_slot(self.queue, now=NOW + 10800), 'morning')
+        self.assertEqual(retry.due_slot(self.queue, now=NOW + 10800), '')
         self.assertEqual(retry.due_slot(self.queue, now=NOW + 21600), '')
         self.queue.write_text(json.dumps({**legacy, 'retry_at_epoch': None}))
         self.assertEqual(retry.current(self.queue, now=NOW + 8000)['state'], 'EXHAUSTED')
@@ -591,19 +585,17 @@ class SchedulerContractTests(unittest.TestCase):
         with patch.object(retry, "confirmed_slot_delivery", return_value=True):
             self.assertEqual(retry.clock_slot("morning", "retry", "2026-11-23", tick, now=now), "")
 
-    def test_scheduled_rescans_share_one_attempt_and_reserve_is_inside_window(self):
+    def test_scheduled_rescans_share_one_attempt_and_keep_the_original_deadline(self):
         with tempfile.TemporaryDirectory() as folder:
             queue = Path(folder) / "research-retry.json"
-            for attempt in range(1, 8):
-                with patch.dict(os.environ, {"TAYVORIQ_RESEARCH_RUN_KEY": f"{attempt}.1"}):
-                    retry.defer("morning", NOW + 30, path=queue, now=NOW)
-            after = NOW + 6 * 3600 - 300
-            with patch.dict(os.environ, {"TAYVORIQ_RESEARCH_RUN_KEY":"8.1"}):
-                first = retry.defer("morning", after + 20, path=queue, now=after)
-                second = retry.defer("morning", after + 30, path=queue, now=after + 5)
-            assert first["attempts"] == second["attempts"] == 8
-            assert first["retry_at_epoch"] == second["retry_at_epoch"] == NOW + 6 * 3600 - 60
-            assert second["state"] == "WAITING"
+            with patch.dict(os.environ, {"TAYVORIQ_RESEARCH_RUN_KEY": "1.1",
+                                         "TAYVORIQ_RESEARCH_STARTED_AT_EPOCH": str(int(NOW))}):
+                first = retry.defer("morning", NOW + 120, path=queue, now=NOW + 30)
+                second = retry.defer("morning", NOW + 900, path=queue, now=NOW + 35)
+            assert first["attempts"] == second["attempts"] == 1
+            assert first["valid_until_epoch"] == second["valid_until_epoch"] == NOW + 600
+            assert first["state"] == "WAITING"
+            assert second["state"] == "EXHAUSTED"
 
     def test_rejected_review_gets_own_five_minute_queue_and_ten_minute_sla(self):
         selection = 'review-evening-43776528221'

@@ -448,7 +448,18 @@ jobs:
           if [ -n "$TAYVORIQ_RESEARCH_SELECTION_ID" ]; then
             python tools/tayvoriq_review_trend_status.py "$TAYVORIQ_RESEARCH_SELECTION_ID" research "${command[@]}"
           else
-            "${command[@]}"
+            export TAYVORIQ_RESEARCH_STARTED_AT_EPOCH
+            TAYVORIQ_RESEARCH_STARTED_AT_EPOCH=$(date +%s)
+            seconds=$(PYTHONPATH=tools python -c 'import os; from tayvoriq_research_retry_v1 import regular_process_seconds; print(regular_process_seconds(os.environ["TAYVORIQ_RESEARCH_SLOT"]))')
+            result=124
+            if [ "$seconds" -gt 0 ]; then
+              result=0
+              timeout --kill-after=5s "$seconds" "${command[@]}" || result=$?
+            fi
+            if [ "$result" -eq 124 ] || [ "$result" -eq 137 ]; then
+              PYTHONPATH=tools python -c 'from tayvoriq_agent_research_resilience_v2 import _defer; import time; _defer([], time.time() + 600, issue="RESEARCH_TIME_BUDGET_EXHAUSTED")'
+            fi
+            exit "$result"
           fi
 
       - name: Resolve idempotent selection delivery
@@ -505,7 +516,12 @@ jobs:
           assert d.get('agent_orchestrator') == 'v2'
           trends=d.get('trends') or []
           assert 1 <= len(trends) <= 5, f"quality-driven candidate count must be 1-5, got {len(trends)}"
-          if d.get('mode') != 'active_series':
+          if d.get('mode') == 'single_verified_topic':
+              assert len(trends) == 1
+              sc = trends[0].get('source_context') or {}
+              assert (sc.get('regional_assessment') or {}).get('passed') is True
+              assert (sc.get('duplicate_check') or {}).get('state') == 'PASSED'
+          elif d.get('mode') != 'active_series':
               assert 2 <= len(trends) <= 5, f"V5 requires 2-5 strong trend candidates, got {len(trends)}"
           assert [x.get('id') for x in trends] == [str(i) for i in range(1, len(trends)+1)]
           if d.get('mode') == 'active_series':
@@ -601,7 +617,8 @@ jobs:
               ]}
           else:
               morning=d['slot']=='morning'
-              lines=[('🌅 TAYVORIQ Morgen-Trends' if morning else '🌙 TAYVORIQ Abend-Trends'),'', 'V5-Rangliste:']
+              lines=[('🌅 TAYVORIQ Morgen-Trends' if morning else '🌙 TAYVORIQ Abend-Trends'),'',
+                     'Ein geprüfter Themenvorschlag' if d.get('mode') == 'single_verified_topic' else 'V5-Rangliste:']
               for t in d['trends']:
                   sc=t.get('source_context') or {}
                   reach=sc.get('reach_gate') or {}

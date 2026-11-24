@@ -8,8 +8,8 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from tayvoriq_provider_health_v1 import read, write
-from tayvoriq_research_retry_v1 import ZONE, configured_path
+from tayvoriq_provider_health_v1 import write
+from tayvoriq_research_retry_v1 import ZONE, current
 
 
 def persist(path, value):
@@ -28,7 +28,7 @@ def persist(path, value):
 
 
 def main():
-    queue = read(configured_path())
+    queue = current()
     day = datetime.now(ZONE).date().isoformat()
     slot = queue.get("slot")
     state = queue.get("state")

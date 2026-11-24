@@ -137,7 +137,7 @@ def _has_reserve_score(candidate: dict[str, Any]) -> bool:
     return int((candidate.get("growth_v2") or {}).get("growth_score") or 0) >= 80
 
 
-def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any]]:
+def diversify(candidates: list[dict[str, Any]], slot: str, *, allow_single: bool = False) -> list[dict[str, Any]]:
     semantically_grounded = [candidate for candidate in candidates if growth_v6._editorial_semantics_strong(candidate)]
     rejected = len(candidates) - len(semantically_grounded)
     if rejected:
@@ -198,7 +198,7 @@ def diversify(candidates: list[dict[str, Any]], slot: str) -> list[dict[str, Any
         if len(selected) >= int(cfg.get("telegram_candidates_max") or 5):
             break
 
-    minimum = int(cfg.get("telegram_candidates_min") or 4)
+    minimum = 1 if allow_single else int(cfg.get("telegram_candidates_min") or 4)
     if len(selected) < minimum:
         raise SystemExit(f"GROWTH_RESCAN_REQUIRED: only {len(selected)} candidates reached reserve threshold")
     return selected

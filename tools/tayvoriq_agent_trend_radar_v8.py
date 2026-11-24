@@ -108,9 +108,9 @@ def _passes_candidate_gates(candidate):
     return True
 
 
-def diversify(candidates, slot):
+def diversify(candidates, slot, *, allow_single=False):
     cfg = growth_v7._config().get("selection") or {}
-    minimum = max(2, min(5, int(cfg.get("telegram_candidates_min") or 2)))
+    minimum = 1 if allow_single else max(2, min(5, int(cfg.get("telegram_candidates_min") or 2)))
 
     # V5 is fail-closed: growth metadata must be native to the evidence-valid
     # candidate. Retention scores never compensate for weak source quality.
@@ -172,7 +172,8 @@ def diversify(candidates, slot):
             + ("; " + " | ".join(row["reason"] for row in invalid_v5[:5]) if invalid_v5 else "")
         )
 
-    selected = _original_diversify(sorted(broad, key=_selection_key, reverse=True), slot)
+    selected = _original_diversify(sorted(broad, key=_selection_key, reverse=True), slot,
+                                   **({"allow_single": True} if allow_single else {}))
     selected = [
         candidate for candidate in selected
         if str(candidate.get("regional_relevance") or "").strip().lower() in _BROAD_REACH
@@ -209,7 +210,7 @@ def diversify(candidates, slot):
             required=minimum,
             invalid_v5_candidates=invalid_v5,
         )
-        raise SystemExit(f"V5_RESCAN_REQUIRED: expected 2-5 V5 candidates, got {len(ordered)}")
+        raise SystemExit(f"V5_RESCAN_REQUIRED: expected {minimum}-5 V5 candidates, got {len(ordered)}")
     return ordered
 
 
