@@ -84,15 +84,19 @@ def main(*, repair_ready=_retention_ready) -> int:
     parser.add_argument("--slot", choices=["morning", "evening"], required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--audit-output", required=True)
+    parser.add_argument("--prepared-only", action="store_true")
     args = parser.parse_args()
 
+    now = datetime.now(ZoneInfo("Europe/Berlin"))
+    editorial_scan = _editorial_scan(args.slot, now)
+    if args.prepared_only and not editorial_scan:
+        raise SystemExit("No fresh verified editorial packet for this slot")
     gemini_key = base.clean(os.getenv("GEMINI_API_KEY"), 500)
     groq_key = base.clean(os.getenv("GROQ_API_KEY"), 500)
     hf_token = base.clean(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN"), 500)
-    if not gemini_key and not groq_key and not hf_token:
+    if not args.prepared_only and not gemini_key and not groq_key and not hf_token:
         raise SystemExit("No grounded trend provider configured")
 
-    now = datetime.now(ZoneInfo("Europe/Berlin"))
     verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     selection_cfg = (growth._config().get("selection") or {})
     max_candidates = max(1, min(5, int(selection_cfg.get("telegram_candidates_max") or 5)))
@@ -114,8 +118,7 @@ def main(*, repair_ready=_retention_ready) -> int:
 
     series_candidate = base.load_active_series_candidate(verified_at)
 
-    editorial_scan = _editorial_scan(args.slot, now)
-    for scan_index in range(0 if editorial_scan else 1, max_scans + 1):
+    for scan_index in range(0 if editorial_scan else 1, 1 if args.prepared_only else max_scans + 1):
         prompt = base.prompt_for(args.slot, now)
         if scan_index > 1:
             prior_titles = [str(candidate.get("title") or "") for candidate in normalized]
@@ -282,7 +285,7 @@ def main(*, repair_ready=_retention_ready) -> int:
                     "quality_gates_weakened": False,
                 }, ensure_ascii=False))
                 continue
-            if rescan_signal:
+            if rescan_signal and not args.prepared_only:
                 resilience.defer_editorial(args.slot)
             raise
 

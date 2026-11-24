@@ -421,6 +421,36 @@ class SchedulerContractTests(unittest.TestCase):
                 self.assertEqual(results['slot'], slot)
                 self.assertEqual(results['should_run'], 'true' if slot else 'false')
 
+    def test_new_editorial_packet_can_be_delivered_after_feed_exhaustion_once(self):
+        from datetime import datetime
+        import yaml
+
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        resolver = next(step['run'] for step in workflow['jobs']['trend-gate']['steps'] if step.get('id') == 'slot')
+        code = compile(resolver.split("<<'PY'\n", 1)[1].rsplit('\nPY\n', 1)[0], 'prepared research', 'exec')
+        now = datetime.fromisoformat('2026-11-24T22:30:00+01:00')
+        packet = 'state/tayvoriq-verified-research-evening.json'
+        cases = [(packet, False, True), (packet, True, False),
+                 ('.github/run-now/tayvoriq-agent-trigger.txt', False, False)]
+        for changed, delivered, expected in cases:
+            with self.subTest(changed=changed, delivered=delivered), tempfile.TemporaryDirectory() as temp:
+                output = Path(temp) / 'output'
+                env = {'EVENT_NAME': 'push', 'GITHUB_OUTPUT': str(output),
+                       'PUSH_BEFORE': 'a' * 40, 'GITHUB_SHA': 'b' * 40}
+                with patch.dict(os.environ, env, clear=True), patch('datetime.datetime') as clock, \
+                     patch('subprocess.check_output', return_value=changed + '\n'), \
+                     patch.object(retry, 'due_slot', return_value=''), \
+                     patch.object(retry, 'terminal_slot', return_value=True), \
+                     patch.object(retry, 'confirmed_slot_delivery', return_value=delivered), \
+                     patch('tayvoriq_rejected_review_followup.followup', return_value=None):
+                    clock.now.side_effect = lambda tz: now.astimezone(tz)
+                    exec(code, {})
+                results = dict(line.split('=', 1) for line in output.read_text().splitlines())
+                self.assertEqual(results['slot'], 'evening')
+                self.assertEqual(results['should_run'], 'true' if expected else 'false')
+                self.assertEqual(results['prepared_only'], 'true' if expected else 'false')
+
     def test_model_cache_is_saved_before_a_failed_publishability_gate(self):
         import yaml
         root = Path(__file__).resolve().parents[1]
@@ -561,7 +591,7 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertIn("schedule == '*/5 * * * *'", resolver)
         self.assertIn('due_slot(now=now.timestamp())', resolver)
         push_resolver = resolver.split("if event == 'push' and should:", 1)[1].split("if event == 'schedule':", 1)[0]
-        self.assertIn("slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')", push_resolver)
+        self.assertIn("slot = prepared_slot or due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')", push_resolver)
         self.assertIn("os.environ.get('RECONCILE_ONLY') == 'true'", resolver)
         persist = next(s for s in steps if s.get('name') == 'Persist provider cooldown and bounded research retry')
         self.assertIn('always()', persist['if'])

@@ -41,6 +41,8 @@ on:
     branches: [main]
     paths:
       - ".github/run-now/tayvoriq-agent-trigger.txt"
+      - "state/tayvoriq-verified-research-morning.json"
+      - "state/tayvoriq-verified-research-evening.json"
       - ".github/run-now/tayvoriq-lifecycle-trigger.txt"
       - ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"
       - ".github/workflows/tayvoriq-deliver-video-now.yml"
@@ -156,6 +158,7 @@ jobs:
           requested = os.environ.get('INPUT_SLOT','')
           slot = requested if event == 'workflow_dispatch' else ''
           rejection_selection = ''
+          prepared_slot = ''
           should = now.date().isoformat() >= '2026-08-15'
           current_review = followup()
           if event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true':
@@ -191,14 +194,18 @@ jobs:
               else:
                   command = ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', '-m', '--root', push_sha]
               changed = subprocess.check_output(command, text=True).splitlines()
-              should = should and '.github/run-now/tayvoriq-agent-trigger.txt' in changed
+              prepared = [name for name in ('morning', 'evening')
+                          if f'state/tayvoriq-verified-research-{name}.json' in changed]
+              if len(prepared) == 1:
+                  prepared_slot = prepared[0]
+              should = should and (bool(prepared_slot) or '.github/run-now/tayvoriq-agent-trigger.txt' in changed)
           if event == 'push' and should:
               import sys
               sys.path.insert(0, 'tools')
               from tayvoriq_research_retry_v1 import due_slot
               # A due retry keeps its original slot even if a delayed/manual
               # trigger arrives after the morning/evening clock boundary.
-              slot = due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')
+              slot = prepared_slot or due_slot(now=now.timestamp()) or ('morning' if now.hour < 12 else 'evening')
           if event == 'schedule':
               offset = int(now.utcoffset().total_seconds() // 3600)
               expected = {
@@ -246,13 +253,14 @@ jobs:
               should = False
           if should and not rejection_selection:
               from tayvoriq_research_retry_v1 import confirmed_slot_delivery, terminal_slot
-              if confirmed_slot_delivery(slot, now) or terminal_slot(slot, now):
+              if confirmed_slot_delivery(slot, now) or (slot != prepared_slot and terminal_slot(slot, now)):
                   should = False
           if os.environ.get('RECONCILE_ONLY') == 'true' and not (failed_review and rejection_selection):
               should = False
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
               h.write(f"should_run={'true' if should else 'false'}\n")
               h.write(f"slot={slot}\n")
+              h.write(f"prepared_only={'true' if should and slot == prepared_slot and not rejection_selection else 'false'}\n")
               h.write(f"rejection_selection={rejection_selection}\n")
               h.write(f"expired_selection={expired_selection}\n")
               if rejection_selection or expired_selection:
@@ -434,7 +442,8 @@ jobs:
       - name: Generate quality-driven 1-5 trend ranking
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true' && steps.mode.outputs.series_in_flight != 'true' && steps.active_request.outputs.active != 'true'
         env:
-          TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
+          TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.prepared_only == 'true' || steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
+          PREPARED_ONLY: ${{ steps.slot.outputs.prepared_only }}
           TAYVORIQ_RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
           TAYVORIQ_RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
           TAYVORIQ_RESEARCH_SELECTION_ID: ${{ steps.slot.outputs.rejection_selection }}
@@ -445,6 +454,9 @@ jobs:
             --slot "${{ steps.slot.outputs.slot }}" \
             --output /tmp/tayvoriq-trend-request.json \
             --audit-output /tmp/tayvoriq-trend-audit.json)
+          if [ "$PREPARED_ONLY" = true ]; then
+            command+=(--prepared-only)
+          fi
           if [ -n "$TAYVORIQ_RESEARCH_SELECTION_ID" ]; then
             python tools/tayvoriq_review_trend_status.py "$TAYVORIQ_RESEARCH_SELECTION_ID" research "${command[@]}"
           else
