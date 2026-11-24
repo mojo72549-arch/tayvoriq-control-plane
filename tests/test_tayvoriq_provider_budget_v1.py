@@ -427,7 +427,12 @@ class SchedulerContractTests(unittest.TestCase):
 
         root = Path(__file__).resolve().parents[1]
         workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
-        resolver = next(step['run'] for step in workflow['jobs']['trend-gate']['steps'] if step.get('id') == 'slot')
+        steps = workflow['jobs']['trend-gate']['steps']
+        resolver = next(step['run'] for step in steps if step.get('id') == 'slot')
+        ranking = next(step['run'] for step in steps if step.get('name') == 'Generate quality-driven 1-5 trend ranking')
+        prepared_branch = ranking.split('elif [ "$PREPARED_ONLY" = true ]; then\n', 1)[1].split('\nelse\n', 1)[0]
+        self.assertIn('timeout --kill-after=5s 420 "${command[@]}"', prepared_branch)
+        self.assertNotIn('regular_process_seconds', prepared_branch)
         code = compile(resolver.split("<<'PY'\n", 1)[1].rsplit('\nPY\n', 1)[0], 'prepared research', 'exec')
         now = datetime.fromisoformat('2026-11-24T22:30:00+01:00')
         packet = 'state/tayvoriq-verified-research-evening.json'

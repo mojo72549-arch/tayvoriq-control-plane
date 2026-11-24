@@ -459,6 +459,8 @@ jobs:
           fi
           if [ -n "$TAYVORIQ_RESEARCH_SELECTION_ID" ]; then
             python tools/tayvoriq_review_trend_status.py "$TAYVORIQ_RESEARCH_SELECTION_ID" research "${command[@]}"
+          elif [ "$PREPARED_ONLY" = true ]; then
+            timeout --kill-after=5s 420 "${command[@]}"
           else
             export TAYVORIQ_RESEARCH_STARTED_AT_EPOCH
             TAYVORIQ_RESEARCH_STARTED_AT_EPOCH=$(date +%s)
