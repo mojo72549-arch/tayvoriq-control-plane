@@ -11,7 +11,7 @@ Dieser Standard ist die kanonische Architektur- und Betriebsgrundlage für alle 
 
 Das Zielbild lautet:
 
-> **Freigabe in Telegram → immutable Request → evidenzgebundene Produktion → lokalisierte Reparatur → Publishability → finale Quality-Gates → Telegram-Review → Veröffentlichung → Freigabe des nächsten Slots.**
+> **Freigabe in Telegram → immutable Request → evidenzgebundene Produktion → lokalisierte Reparatur → Publishability → finale Quality-Gates → Telegram-Review → Veröffentlichung nach Freigabe.**
 
 Der Nutzer interveniert nach der Trendfreigabe nicht mehr in technische Produktionsschritte. Nur ein echter externer Blocker oder eine notwendige neue Themenfreigabe darf Benutzeraktion verlangen.
 
@@ -44,7 +44,7 @@ Der Nutzer interveniert nach der Trendfreigabe nicht mehr in technische Produkti
    Telegram meldet ausschließlich verifizierte State-Transitions der kanonischen State Machine.
 
 9. **Strict Slot Serialization**  
-   Der Abendlauf darf erst freigegeben werden, wenn der Morgenlauf fachlich vollständig erfolgreich abgeschlossen wurde.
+   Der Abendlauf wartet auf das bestätigte Morgen-Review oder auf den verifizierten Abschluss eines erschöpften Morgenlaufs nach Abschnitt 7. Ein aktiver Produktions- oder Reparaturlauf behält den Produktionsplatz.
 
 10. **No quality-gate weakening**  
     Fehler werden durch Reparatur behoben, nicht durch Lockerung von Audio-, Visual-, Fakten-, Render- oder Publikationsgates.
@@ -365,11 +365,11 @@ Bei ausgeschöpfter Recovery-Policy:
 
 ## 7. Morgen-/Abend-Serialisierung
 
-Der Abendlauf ist ein abhängiger Slot und bleibt `HELD`, bis der Morgenlauf vollständig abgeschlossen ist.
+Solange der Morgenauftrag produziert oder repariert wird, bleibt der Abendlauf `HELD`.
 
 ### Release-Bedingung für den Abend
 
-Alle folgenden Bedingungen müssen wahr sein:
+Im Erfolgsfall müssen alle folgenden Bedingungen wahr sein:
 
 ```text
 morning Golden Path = completed + success
@@ -379,7 +379,7 @@ AND Review Page = success
 AND Telegram Review = success
 ```
 
-Ein fehlgeschlagener oder nur beendeter Morgenlauf reicht **nicht**.
+Am Abend kann der Orchestrator den Morgenauftrag auch nach ausgeschöpfter Bild- oder Sprachreparatur schließen. Dafür muss die gespeicherte Recovery-Quittung zum exakten Morgenlauf und Versuch passen. Der Produktionslauf muss nachweislich fehlgeschlagen sein. Es darf kein Produktions- oder Reparaturprozess aktiv sein, und es darf kein Review- oder Veröffentlichungsnachweis vorliegen. Der Orchestrator schreibt den Abschluss mit deaktivierter Wiederaufnahme und Veröffentlichung. Die Themenauswahl am Abend öffnet einen eigenständigen Auftrag mit eigener Telegram-Freigabe.
 
 **Verboten:** Start des Abendjobs nur aufgrund einer Uhrzeit.
 
