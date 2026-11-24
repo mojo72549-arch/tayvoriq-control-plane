@@ -887,6 +887,12 @@ jobs:
           done
           exit 1
 
+      - name: Refresh Control Center after verified production completion
+        if: >-
+          always() && steps.decision.outputs.signal_receipt == 'COMPLETED' &&
+          steps.decision.outputs.signal_run_id == steps.decision.outputs.run_id
+        run: gh workflow run tayvoriq-ops-health.yml --ref main
+
       - name: Fail internal stall instead of reporting healthy recovery
         if: always() && steps.decision.outputs.state == 'RECOVERY_FAILED'
         run: |
