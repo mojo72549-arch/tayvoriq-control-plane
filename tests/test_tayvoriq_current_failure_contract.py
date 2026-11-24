@@ -34,11 +34,28 @@ class CurrentFailureContractTests(unittest.TestCase):
         for attempt in (1, 2):
             report = bind_current_failure({'state': 'TRANSIENT_RENDER_FAILURE'}, log,
                                           run_id=42, run_attempt=attempt, request_id='telegram-42-trend-1')
-            expected = 'TRANSIENT_RENDER_FAILURE' if attempt == 1 else 'LOCAL_VISUAL_CODEFIX_REQUIRED'
+            expected = 'LOCAL_VISUAL_REPAIR_REQUIRED' if attempt == 1 else 'LOCAL_VISUAL_CODEFIX_REQUIRED'
             self.assertEqual(report['state'], expected)
         decision = classify_failure('', run_attempt=2, structured_evidence=report)
         self.assertEqual(decision.mode, 'deterministic')
         self.assertFalse(decision.retry_allowed)
+
+    def test_first_missing_scene_overrides_generic_handoff_without_claiming_a_master(self):
+        log = (
+            '2026-11-24T07:17:51Z {"pre_render_voice_attempt":{"similarity":0.9369}}\n'
+            "2026-11-24T07:17:51Z RuntimeError: REAL_VIDEO_SCENE_REQUIRED:scene=6:query=Altersteilzeit-Reform:"
+            "bounded_real_video_queries_exhausted=['Altersteilzeit-Reform']:attempted_queries=[]\n"
+            '2026-11-24T07:17:52Z Controller handoff: state=TRANSIENT_RENDER_FAILURE reusable_master=false process_exit=1'
+        )
+        report = bind_current_failure({'state': 'TRANSIENT_RENDER_FAILURE', 'master_reusable': False}, log,
+                                      run_id=45344082379, run_attempt=1, request_id='telegram-3676-trend-1')
+        self.assertEqual(report['state'], 'LOCAL_VISUAL_REPAIR_REQUIRED')
+        self.assertEqual(report['failure_scene'], 6)
+        self.assertEqual(report['repair_target_stages'], ['VISUALS'])
+        self.assertFalse(report['master_reusable'])
+        decision = classify_failure(log, run_attempt=1, structured_evidence=report)
+        self.assertEqual(decision.state, 'LOCAL_VISUAL_RETRY_REQUIRED')
+        self.assertTrue(decision.retry_allowed)
 
     def test_repeated_generic_editorial_queries_require_a_studio_revision(self):
         log = "RuntimeError: CONTENT_REJECTED:tayvoriq-editorial-visual-standard-v1:generic_visual_query_detected"
