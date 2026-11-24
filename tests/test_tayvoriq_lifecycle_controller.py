@@ -41,6 +41,17 @@ def test_handoff_is_bounded_and_old_attempt_does_not_hold_new_attempt():
         raise AssertionError('unknown signal source accepted')
 
 
+def test_bound_producer_completion_refreshes_health_after_lifecycle_persistence():
+    path = Path(__file__).resolve().parents[1] / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml'
+    workflow = path.read_text()
+    step = 'Refresh Control Center after verified production completion'
+    assert workflow.index(step) > workflow.index('Persist actual lifecycle result')
+    refresh = workflow.split('- name: ' + step, 1)[1].split('- name:', 1)[0]
+    assert "steps.decision.outputs.signal_receipt == 'COMPLETED'" in refresh
+    assert 'steps.decision.outputs.signal_run_id == steps.decision.outputs.run_id' in refresh
+    assert 'gh workflow run tayvoriq-ops-health.yml --ref main' in refresh
+
+
 def fixture():
     pointer = {'schema': 'tayvoriq-active-production-request-v1', 'state': 'ACTIVE',
                'request_id': 'telegram-3155-trend-1', 'golden_path_run_id': 42,
