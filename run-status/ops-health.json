@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-24T20:07:31.407558Z",
+  "generated_at": "2026-11-24T20:26:44.779888Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -11,21 +11,22 @@
   "api_error": null,
   "research": {
     "schema": "tayvoriq-research-retry-v1",
-    "state": "WAITING",
+    "state": "EXHAUSTED",
     "slot": "evening",
     "berlin_date": "2026-11-24",
     "first_deferred_at_epoch": 1795543633.773848,
-    "attempts": 7,
-    "retry_at_epoch": 1795551670.4085004,
+    "attempts": 8,
+    "retry_at_epoch": 1795552137.660943,
     "retry_phase": "NORMAL",
-    "last_deferred_at_epoch": 1795550833.888346,
-    "provider_retry_at_epoch": 1795551670.4085004,
-    "max_attempts": 10,
-    "valid_until_epoch": 1795565233.773848,
-    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "last_deferred_at_epoch": 1795551988.4218974,
+    "provider_retry_at_epoch": 1795552137.660943,
+    "max_attempts": 8,
+    "sla_seconds": 600,
+    "valid_until_epoch": 1795544233.773848,
+    "reason": "RESEARCH_RETRY_EXPIRED",
     "quality_gates_weakened": false,
     "production_started": false,
-    "last_research_attempt": "45477176020.1",
+    "last_research_attempt": "45480757630.1",
     "last_issue": "SOURCE_MINIMUM_NOT_MET",
     "status_detail": "Zu wenige Vorschläge haben die Quellenprüfung bestanden."
   },
@@ -151,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Kein aktueller Produktionslauf · Recherche WAITING"
+      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
     },
     {
       "name": "Production Green",
@@ -161,7 +162,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "WAITING"
+      "detail": "EXHAUSTED"
     },
     {
       "name": "Telegram",
@@ -182,8 +183,8 @@
     "message_id": 3691
   },
   "recovery": {
-    "status": "WAITING",
-    "source_status": "WAITING",
+    "status": "EXHAUSTED",
+    "source_status": "EXHAUSTED",
     "failure_state": null,
     "failed_run_id": 45344082379,
     "replay_run_id": 45394864913,
