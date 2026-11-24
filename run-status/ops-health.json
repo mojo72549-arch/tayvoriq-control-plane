@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-24T12:38:33.803120Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-24T13:00:13.767653Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -14,7 +14,7 @@
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3676-trend-1",
     "golden_path_run_id": 45394864913,
-    "pointer_updated_at": "2026-11-24T12:34:56.639636Z",
+    "pointer_updated_at": "2026-11-24T12:56:10.889541Z",
     "current_scope": "production"
   },
   "request": {
@@ -48,15 +48,15 @@
   "run": {
     "id": 45394864913,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "success",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45394864913",
     "created_at": "2026-11-24T12:34:46Z",
-    "updated_at": "2026-11-24T12:34:51Z",
+    "updated_at": "2026-11-24T12:56:28Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Restore production model cache",
-    "last_successful_step": "Telegram progress - production active",
+    "progress": 100,
+    "current_step": null,
+    "last_successful_step": "Complete job",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -98,31 +98,31 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "pending",
+        "status": "success",
         "step_number": 35,
         "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "success",
         "step_number": 43,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "success",
         "step_number": 45,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "success",
         "step_number": 51,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "success",
         "step_number": 52,
         "step_name": "Send Telegram review"
       }
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Restore production model cache"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -141,31 +141,42 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "status": "green",
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
+      "status": "green",
+      "detail": "Telegram-Videoquittung bestätigt"
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "45394864913:LOCAL_VISUAL",
+    "severity": "warning",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_DISPATCHED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
-    "status": "yellow",
-    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "status": "green",
+    "detail": "Telegram-Videoquittung bestätigt",
     "last_step": "Send Telegram review",
-    "message_id": null
+    "message_id": 3691
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_RUNNING",
-    "failure_state": null,
+    "status": "REPLAY_DISPATCHED",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": 45344082379,
     "replay_run_id": 45394864913,
     "fresh_recovery_run_id": null,
