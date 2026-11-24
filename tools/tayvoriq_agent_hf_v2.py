@@ -147,6 +147,38 @@ def distinct_headlines(left, right):
     return not same_topic
 
 
+def article_research_records(records: list[dict]) -> list[dict]:
+    """Spend the article budget on separate leads that still lack corroboration."""
+    covered_titles = set()
+    unresolved = []
+    for index, first in enumerate(records):
+        for second in records[index + 1:]:
+            score = _source_pair_score(first, second)
+            if not score:
+                continue
+            headline = corroborated_headline(first, second)
+            if headline:
+                covered_titles.add(headline)
+            else:
+                unresolved.append((score, first, second))
+
+    selected = []
+    used_urls = set()
+    for _, first, second in sorted(unresolved, key=lambda pair: -pair[0]):
+        urls = {first['url'], second['url']}
+        titles = {first['title'], second['title']}
+        if urls & used_urls or any(
+            not distinct_headlines(title, covered) for title in titles for covered in covered_titles
+        ):
+            continue
+        selected.extend((first, second))
+        used_urls.update(urls)
+        covered_titles.update(titles)
+        if len(selected) == 8:
+            break
+    return selected or _groq_source_records(records)[:8]
+
+
 def _rank_corroborated_pairs(pairs, previous, retry_attempt):
     groups = []
     for pair, title in pairs:
@@ -346,7 +378,7 @@ def _groq_source_records(records):
     }, ensure_ascii=False))
     return compact
 
-def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface",model_override:str=""):
+def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface",model_override:str="",allow_single: bool = False):
     if provider_kind not in {"huggingface", "groq"}: raise ValueError("UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER")
     if not token: raise RuntimeError(f"{provider_kind.upper()}_API_KEY_MISSING")
     if len(records)<8 or len({r['domain'] for r in records})<2: raise RuntimeError("source pool too small for safe fallback")
@@ -422,6 +454,9 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                                    for prior in excluded)}
         ranked = _rank_corroborated_pairs(vetted_pairs.items(), previous, _research_retry_attempt())
         selected_pairs = _independent_headline_pairs(ranked)
+        if allow_single and ranked and not selected_pairs:
+            pair, title = next(iter(ranked.items()))
+            selected_pairs = {pair: title}
         if not selected_pairs:
             diagnostics = []
             for _, ids in pair_hints[:5]:
@@ -436,7 +471,10 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                 f"corroborated_headlines={len(set(vetted_pairs.values()))} separate_source_pairs=False"
             )
         vetted_pairs = selected_pairs
-    exact_titles = len({title.casefold() for title in vetted_pairs.values()}) >= 2
+        if len(vetted_pairs) == 1:
+            goal = ('Return one complete candidate for the supplied independently corroborated story. '
+                    'Return no candidates if the evidence or relevance for the German audience is insufficient.')
+    exact_titles = bool(vetted_pairs) if source_bound else len({title.casefold() for title in vetted_pairs.values()}) >= 2
     print(json.dumps({"event":"source_headline_preflight","source_label":source_label,
                       "considered_records":len(by_id),
                       "eligible_headlines":len({title for _, _, title in corroborated}),
@@ -660,11 +698,9 @@ EDITORIAL FALLBACK CONTRACT:
         for source in candidate['sources']:
             unique_chunks[source['url']] = {'title': source['publisher'], 'uri': source['url']}
     chunks = list(unique_chunks.values())
-    # One source-valid candidate produces only two grounding chunks and cannot
-    # satisfy the radar's existing minimum grounding contract. Treat that as
-    # provider insufficiency so resilience can continue to the next source pool
-    # (notably GDELT) without weakening any evidence gate.
-    partial_review = (source_bound and bool(os.getenv("TAYVORIQ_RESEARCH_CHECKPOINT_FILE"))
+    # An individual result still needs two original records and a passing
+    # regional assessment. The radar applies the remaining editorial checks.
+    partial_review = (source_bound and (allow_single or bool(os.getenv("TAYVORIQ_RESEARCH_CHECKPOINT_FILE")))
                       and len(valid_candidates) == 1 and len(chunks) == 2)
     if (len(valid_candidates)<2 or len(chunks)<4) and not partial_review:
         raise InsufficientSourceEvidence(

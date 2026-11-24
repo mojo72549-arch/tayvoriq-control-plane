@@ -290,6 +290,31 @@ class GroqSourceContractTests(unittest.TestCase):
             self.assertEqual(len(candidate["sources"]), 2)
             self.assertTrue(all(source["supports"].startswith(candidate["title"]) for source in candidate["sources"]))
 
+    def test_single_story_recovery_keeps_the_original_pair_and_regional_gate(self):
+        pool = self.pool[:2] + self.pool[4:] + [record('tagesschau.de', 'Weitere Meldung', 20),
+                                                record('dw.com', 'Andere Meldung', 21)]
+
+        def respond(payload, key, timeout):
+            prompt = payload["messages"][1]["content"]
+            records = json.loads(prompt.split("SOURCE RECORDS (rss-article-context):\n")[1])
+            self.assertEqual(len(records), 2)
+            pair = "+".join(sorted(row["source_id"] for row in records))
+            return {"choices": [{"message": {"content": json.dumps({"candidates": [{"source_pair_id": pair}]})}}]}
+
+        with patch.object(hf.provider, "post_groq", side_effect=respond) as post, \
+             patch.object(hf, "complete_scorecards"), patch.object(hf, "_repair_editorial_fields"), \
+             patch.object(hf, "evaluate_regional_relevance", return_value={"passed": True}) as assess:
+            with self.assertRaises(hf.InsufficientFeedEvidence):
+                hf.structure("prompt", "key", pool, "rss-article-context", provider_kind="groq")
+            post.assert_not_called()
+            data, chunks, _ = hf.structure("prompt", "key", pool, "rss-article-context",
+                                           provider_kind="groq", allow_single=True)
+            self.assertEqual(len(data["candidates"]), 1)
+            self.assertEqual({row["uri"] for row in chunks}, {row["url"] for row in pool[:2]})
+            assess.return_value = {"passed": False}
+            with self.assertRaisesRegex(hf.InsufficientSourceEvidence, "No eligible individual candidate"):
+                hf.structure("prompt", "key", pool, "rss-article-context", provider_kind="groq", allow_single=True)
+
     def test_editorial_repair_only_changes_requested_fields_of_a_qualified_draft(self):
         sources = [{"source_id": "S003", "supports": "Die Kette plant einen Zusammenschluss."},
                    {"source_id": "S009", "supports": "Für Kunden bleiben die Märkte zunächst geöffnet."}]
@@ -497,6 +522,19 @@ class GroqSourceContractTests(unittest.TestCase):
             out = resilience.grounded("prompt", "", "existing-groq-key")
         self.assertEqual(out[3], "groq_rss")
         self.assertEqual(structure.call_args.kwargs["provider_kind"], "groq")
+
+    def test_article_research_prioritizes_another_story_over_verified_repeats(self):
+        repeated = [
+            record(f"publisher-{i}.example", "Mercedes investiert in Werk Stuttgart", i)
+            for i in range(10)
+        ]
+        first = record("publisher-a.example", "Bosch eröffnet Halbleiterfabrik in Reutlingen im Herbst", 11)
+        second = record("publisher-b.example", "Bosch eröffnet neue Halbleiterfabrik in Reutlingen im Oktober", 12)
+        self.assertTrue(hf.corroborated_headline(*repeated[:2]))
+        self.assertFalse(hf.corroborated_headline(first, second))
+        self.assertEqual(hf.article_research_records([*repeated, first, second]), [first, second])
+        expanded = {**second, "context": second["context"] + " Die Eröffnung findet im Herbst statt."}
+        self.assertEqual(hf.corroborated_headline(first, expanded), first["title"])
 
     def test_large_pool_keeps_cross_publisher_stories_within_small_budget(self):
         fillers = [record('one.example', f'Unrelated headline number {i}', i)

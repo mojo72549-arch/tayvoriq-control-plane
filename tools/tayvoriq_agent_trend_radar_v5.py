@@ -238,11 +238,17 @@ def main(*, repair_ready=_retention_ready) -> int:
             normalized.append(candidate)
 
         candidate_pool = list(normalized)
+        allow_single = individual and len(candidate_pool) == 1 and not os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID")
         if series_candidate and _identity(series_candidate) not in {_identity(c) for c in candidate_pool}:
             candidate_pool.append(series_candidate)
 
         try:
-            selected = base.diversify(candidate_pool, args.slot)
+            if allow_single and len(candidate_pool) == 1:
+                selected = base.diversify(candidate_pool, args.slot, allow_single=True)
+                if len(selected) == 1:
+                    min_candidates = 1
+            else:
+                selected = base.diversify(candidate_pool, args.slot)
             if min_candidates <= len(selected) <= max_candidates:
                 chosen = selected
                 break
@@ -300,6 +306,8 @@ def main(*, repair_ready=_retention_ready) -> int:
         "agent_orchestrator": "v2",
         "trends": chosen,
     }
+    if len(chosen) == 1:
+        request["mode"] = "single_verified_topic"
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 

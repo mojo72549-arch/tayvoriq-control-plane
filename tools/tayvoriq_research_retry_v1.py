@@ -10,14 +10,14 @@ from zoneinfo import ZoneInfo
 from tayvoriq_provider_health_v1 import read, write
 
 ZONE = ZoneInfo("Europe/Berlin")
-FAST_ATTEMPTS = 8
-MAX_ATTEMPTS = 10
-SLOW_COOLDOWN = 3600
+MAX_ATTEMPTS = 3
+REGULAR_DEADLINE_SECONDS = 10 * 60
 REVIEW_RETRY_SECONDS = 5 * 60
 REVIEW_DEADLINE_SECONDS = 10 * 60
 REVIEW_MAX_ATTEMPTS = 3
 REVIEW_RETRY_DIR = Path(".automation/tayvoriq-agent-v2/research-retries")
 ISSUE_DETAILS = {
+    "RESEARCH_TIME_BUDGET_EXHAUSTED": "Die Themenprüfung hat ihr Zeitlimit erreicht.",
     "EDITORIAL_MINIMUM_NOT_MET": "Zu wenige Themen haben die redaktionelle Prüfung bestanden.",
     "SOURCE_MINIMUM_NOT_MET": "Zu wenige Vorschläge haben die Quellenprüfung bestanden.",
     "RESEARCH_PROVIDER_UNAVAILABLE": "Die Rechercheanbieter konnten die Anfrage nicht abschließen.",
@@ -48,50 +48,47 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     date = datetime.fromtimestamp(now, ZONE).date().isoformat()
     previous = read(path)
     same = previous.get("slot") == slot and previous.get("berlin_date") == date
-    first = float(previous.get("first_deferred_at_epoch") or now) if same else now
     review_selection = _review_selection(path)
+    started = os.getenv("TAYVORIQ_RESEARCH_STARTED_AT_EPOCH", "")
+    started_at = min(now, float(started)) if not review_selection and re.fullmatch(r"[0-9]{10}", started) else now
+    first = float(previous.get("first_deferred_at_epoch") or now) if same else started_at
     run_key = os.getenv("TAYVORIQ_RESEARCH_RUN_KEY", "") if not review_selection else ""
     run_key = run_key if re.fullmatch(r"[1-9][0-9]*\.[1-9][0-9]*", run_key) else ""
     already_counted = bool(same and run_key and previous.get("last_research_attempt") == run_key)
     max_attempts = REVIEW_MAX_ATTEMPTS if review_selection else MAX_ATTEMPTS
     # A terminal regular slot is immutable. Technical repairs are validated in
     # CI and by a future scheduled slot; they never reopen the exhausted window.
-    if (not review_selection and same and previous.get("state") == "EXHAUSTED"
-            and (int(previous.get("attempts") or 0) >= max_attempts
-                 or now >= float(previous.get("valid_until_epoch") or 0))):
+    if not review_selection and same and previous.get("state") == "EXHAUSTED":
         return previous
     attempts = (int(previous.get("attempts") or 0) if same else 0) + (0 if already_counted else 1)
-    deadline = first + (REVIEW_DEADLINE_SECONDS if review_selection else 6 * 3600)
+    sla = REVIEW_DEADLINE_SECONDS if review_selection else REGULAR_DEADLINE_SECONDS
+    deadline = first + sla
     provider_next_at = next_at
     if review_selection and next_at is not None:
         # A user-requested replacement selection is a short interactive task.
         # Provider cooldowns may inform diagnostics, but never turn the UI into
         # an hours-long silent queue.
         next_at = min(next_at, now + REVIEW_RETRY_SECONDS)
-    phase = 'REVIEW_FAST' if review_selection else ('SLOW_RECOVERY' if attempts >= FAST_ATTEMPTS else 'NORMAL')
-    if next_at is not None and attempts >= FAST_ATTEMPTS and not review_selection:
-        next_at = max(next_at, min(now + SLOW_COOLDOWN, deadline - 60))
+    phase = 'REVIEW_FAST' if review_selection else 'NORMAL'
     status = "WAITING" if next_at is not None else "EXTERNAL_BLOCKER"
-    if attempts >= max_attempts or now >= deadline or (next_at is not None and next_at > deadline):
+    last_retry = deadline if review_selection else deadline - 60
+    if attempts >= max_attempts or now >= deadline or (next_at is not None and next_at > last_retry):
         status = "EXHAUSTED"
     result = {"schema": "tayvoriq-research-retry-v1", "state": status, "slot": slot,
               "berlin_date": date, "first_deferred_at_epoch": first,
               "attempts": attempts, "retry_at_epoch": next_at,
               "retry_phase": phase, "last_deferred_at_epoch": now,
               "provider_retry_at_epoch": provider_next_at,
-              "max_attempts": max_attempts,
+              "max_attempts": max(attempts, max_attempts), "sla_seconds": sla,
               "valid_until_epoch": deadline,
               "reason": "PROVIDER_PAYMENT_OR_CONFIGURATION_BLOCKER" if next_at is None else "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
               "quality_gates_weakened": False, "production_started": False}
     if review_selection:
         result["selection_id"] = review_selection
-        result["sla_seconds"] = REVIEW_DEADLINE_SECONDS
     if run_key:
         result["last_research_attempt"] = run_key
     if status == 'EXHAUSTED':
         result['reason'] = 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
-    elif status == 'WAITING' and phase == 'SLOW_RECOVERY':
-        result['reason'] = 'RESEARCH_PROVIDER_CIRCUIT_COOLDOWN'
     if issue in ISSUE_DETAILS:
         result['last_issue'] = issue
         result['status_detail'] = ISSUE_DETAILS[issue]
@@ -112,19 +109,6 @@ def current(path: Path | None = None, *, now: float | None = None) -> dict:
     if (state.get("berlin_date") != datetime.fromtimestamp(now, ZONE).date().isoformat()
             or now >= float(state.get("valid_until_epoch") or 0)):
         return {**state, "state": "EXHAUSTED", "reason": "RESEARCH_RETRY_EXPIRED"}
-    # Adopt the old eight-attempt terminal state once, preserving every attempt
-    # and the original six-hour deadline. The two reserve attempts are separate
-    # slow recovery checks, not a reset of the failed research window.
-    if (state.get('state') == 'EXHAUSTED'
-            and state.get('reason') == 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
-            and int(state.get('attempts') or 0) == FAST_ATTEMPTS
-            and float(state.get('retry_at_epoch') or 0) > 0
-            and 'retry_phase' not in state):
-        retry_at = float(state.get('retry_at_epoch') or 0) + SLOW_COOLDOWN
-        if retry_at and retry_at < float(state.get('valid_until_epoch') or 0):
-            return {**state, 'state': 'WAITING', 'retry_phase': 'SLOW_RECOVERY',
-                    'reason': 'RESEARCH_PROVIDER_CIRCUIT_COOLDOWN',
-                    'retry_at_epoch': retry_at, 'max_attempts': MAX_ATTEMPTS}
     return state
 
 
@@ -134,6 +118,17 @@ def due_slot(path: Path | None = None, *, now: float | None = None) -> str:
     if state.get("state") == "WAITING" and float(state.get("retry_at_epoch") or float("inf")) <= now:
         return state["slot"]
     return ""
+
+
+def regular_process_seconds(slot: str, *, path: Path | None = None, now: float | None = None) -> int:
+    """Keep time for persisting the result and delivering the Telegram card."""
+    now = time.time() if now is None else now
+    state = current(path, now=now)
+    if (state.get("slot") == slot and state.get("sla_seconds") == REGULAR_DEADLINE_SECONDS
+            and state.get("berlin_date") == datetime.fromtimestamp(now, ZONE).date().isoformat()):
+        remaining = int(float(state["valid_until_epoch"]) - now) - 60
+        return max(0, min(420, remaining))
+    return 420
 
 
 def terminal_slot(slot: str, now: datetime) -> bool:
@@ -226,6 +221,6 @@ def lifecycle(result: dict) -> dict:
             "research_retry_at_epoch": queue.get("retry_at_epoch") or 0,
             "research_retry_phase": queue.get("retry_phase") or "NORMAL",
             "research_attempts": int(queue.get("attempts") or 0),
-            "research_max_attempts": MAX_ATTEMPTS,
+            "research_max_attempts": int(queue.get("max_attempts") or MAX_ATTEMPTS),
             "next_system_step": ("AUTOMATIC_RESEARCH_RETRY" if queue.get("state") == "WAITING"
                                  else "RESEARCH_WINDOW_ENDED")}

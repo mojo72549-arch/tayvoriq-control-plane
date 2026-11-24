@@ -124,7 +124,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     def article_sources():
         if not insufficient_feeds:
             return []
-        leads = hf._groq_source_records(list(source_records.values()))[:8]
+        leads = hf.article_research_records(list(source_records.values()))
         originals = [source_records[item["url"]] for item in leads]
         enriched = rss.enrich_evidence(originals)
         return [after for before, after in zip(originals, enriched) if before != after]
@@ -195,8 +195,20 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
 
     for draft, chunks, used_model, provider_name in partials.values():
         if _still_current(draft, source_records):
-            # Normalize, deduplicate and checkpoint. Final delivery still needs two.
+            # The radar still checks duplicates, editorial quality and relevance.
             return {"candidates": [draft]}, chunks, used_model, provider_name
+
+    if scheduled_research and not interactive and insufficient_feeds:
+        blocked_groq_preflight = False
+        for name, model in source_models.items():
+            result = attempt(name, name + '/sole-corroborated-story', lambda: hf.structure(
+                prompt, keys[name], list(source_records.values()), 'rss-article-context',
+                provider_kind='groq' if name.startswith('groq') else name,
+                allow_single=True, **({'model_override': model} if model else {})))
+            if result is not None:
+                return (*result, 'groq_rss' if name.startswith('groq') else 'huggingface_rss')
+            if blocked_groq_preflight:
+                break
 
     if scheduled_research:
         result = try_groq_browser()
