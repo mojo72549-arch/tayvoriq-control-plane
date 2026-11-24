@@ -147,6 +147,38 @@ def distinct_headlines(left, right):
     return not same_topic
 
 
+def article_research_records(records: list[dict]) -> list[dict]:
+    """Spend the article budget on separate leads that still lack corroboration."""
+    covered_titles = set()
+    unresolved = []
+    for index, first in enumerate(records):
+        for second in records[index + 1:]:
+            score = _source_pair_score(first, second)
+            if not score:
+                continue
+            headline = corroborated_headline(first, second)
+            if headline:
+                covered_titles.add(headline)
+            else:
+                unresolved.append((score, first, second))
+
+    selected = []
+    used_urls = set()
+    for _, first, second in sorted(unresolved, key=lambda pair: -pair[0]):
+        urls = {first['url'], second['url']}
+        titles = {first['title'], second['title']}
+        if urls & used_urls or any(
+            not distinct_headlines(title, covered) for title in titles for covered in covered_titles
+        ):
+            continue
+        selected.extend((first, second))
+        used_urls.update(urls)
+        covered_titles.update(titles)
+        if len(selected) == 8:
+            break
+    return selected or _groq_source_records(records)[:8]
+
+
 def _rank_corroborated_pairs(pairs, previous, retry_attempt):
     groups = []
     for pair, title in pairs:

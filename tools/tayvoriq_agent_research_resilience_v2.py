@@ -124,7 +124,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     def article_sources():
         if not insufficient_feeds:
             return []
-        leads = hf._groq_source_records(list(source_records.values()))[:8]
+        leads = hf.article_research_records(list(source_records.values()))
         originals = [source_records[item["url"]] for item in leads]
         enriched = rss.enrich_evidence(originals)
         return [after for before, after in zip(originals, enriched) if before != after]

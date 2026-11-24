@@ -498,6 +498,19 @@ class GroqSourceContractTests(unittest.TestCase):
         self.assertEqual(out[3], "groq_rss")
         self.assertEqual(structure.call_args.kwargs["provider_kind"], "groq")
 
+    def test_article_research_prioritizes_another_story_over_verified_repeats(self):
+        repeated = [
+            record(f"publisher-{i}.example", "Mercedes investiert in Werk Stuttgart", i)
+            for i in range(10)
+        ]
+        first = record("publisher-a.example", "Bosch eröffnet Halbleiterfabrik in Reutlingen im Herbst", 11)
+        second = record("publisher-b.example", "Bosch eröffnet neue Halbleiterfabrik in Reutlingen im Oktober", 12)
+        self.assertTrue(hf.corroborated_headline(*repeated[:2]))
+        self.assertFalse(hf.corroborated_headline(first, second))
+        self.assertEqual(hf.article_research_records([*repeated, first, second]), [first, second])
+        expanded = {**second, "context": second["context"] + " Die Eröffnung findet im Herbst statt."}
+        self.assertEqual(hf.corroborated_headline(first, expanded), first["title"])
+
     def test_large_pool_keeps_cross_publisher_stories_within_small_budget(self):
         fillers = [record('one.example', f'Unrelated headline number {i}', i)
                    for i in range(80)]
