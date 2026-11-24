@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-24T12:35:14.085476Z",
+  "generated_at": "2026-11-24T12:38:33.803120Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -55,8 +55,8 @@
     "updated_at": "2026-11-24T12:34:51Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Checkout review pages",
-    "last_successful_step": "Lightweight contract preflight",
+    "current_step": "Restore production model cache",
+    "last_successful_step": "Telegram progress - production active",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -132,7 +132,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Checkout review pages"
+      "detail": "Restore production model cache"
     },
     {
       "name": "Production Green",
