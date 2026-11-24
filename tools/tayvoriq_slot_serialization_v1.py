@@ -78,6 +78,34 @@ def find_same_day_morning(request: dict, requests_dir: Path) -> tuple[Path, dict
     return path, data
 
 
+def morning_research_exhausted(request: dict, root: Path, repo: str, token: str) -> bool:
+    """Allow the first production of the evening when morning research ended empty."""
+    if not repo or not token or request.get("source") != "telegram_trend_approval":
+        return False
+    zone = ZoneInfo("Europe/Berlin")
+    today = datetime.now(zone)
+    if (selection_parts(request) != (today.strftime("%Y%m%d"), "e")
+            or datetime.fromtimestamp(_approved_stamp(request), zone).date() != today.date()):
+        return False
+    base = root / ".automation/tayvoriq-agent-v2"
+    if (base / "deliveries" / f"{today:%Y%m%d}-morning-agentv2.json").exists():
+        return False
+    path = base / "research-notices" / f"{today:%Y-%m-%d}-morning-EXHAUSTED.json"
+    try:
+        receipt = read_json(path)
+        run_id = receipt.get("run_id")
+        if (receipt.get("slot") != "morning" or receipt.get("berlin_date") != today.date().isoformat()
+                or receipt.get("research_state") != "EXHAUSTED"
+                or receipt.get("state") not in {"SENDING", "UNCONFIRMED", "DELIVERED"}
+                or type(run_id) is not int or run_id <= 0):
+            return False
+        run = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}", token)
+    except (OSError, ValueError, TypeError, AttributeError, RuntimeError):
+        return False
+    return (isinstance(run, dict) and run.get("id") == run_id and run.get("status") == "completed"
+            and str(run.get("path") or "").split("@", 1)[0] == ".github/workflows/tayvoriq-agent-orchestrator-v2.yml")
+
+
 def is_verified_editorial_source_repair(request: dict, owner: dict, owner_id: str) -> bool:
     """Allow a new immutable packet only for corrected editorial fallback text."""
     if request.get("source") != "telegram_trend_approval_source_repair":
@@ -313,6 +341,9 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
         if completed_owner_verified and request.get("source") == "telegram_trend_approval":
             result["released"] = True
             result["reason"] = "EXPLICIT_EVENING_APPROVAL_AFTER_COMPLETED_OWNER"
+            return result
+        if morning_research_exhausted(request, requests_dir.parent, repo, token):
+            result.update(released=True, reason="EVENING_APPROVED_AFTER_MORNING_RESEARCH_EXHAUSTION")
             return result
         result["reason"] = "MORNING_REQUEST_MISSING"
         return result
