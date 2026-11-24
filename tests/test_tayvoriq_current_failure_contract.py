@@ -64,6 +64,15 @@ class CurrentFailureContractTests(unittest.TestCase):
         decision = classify_failure('', run_attempt=3, structured_evidence=report)
         self.assertFalse(decision.retry_allowed)
 
+    def test_previous_scene_error_does_not_override_a_later_verified_audio_checkpoint(self):
+        payload = {'state': 'TRANSIENT_AUDIO_FAILURE', 'master_reusable': True, 'repair_target_stages': ['VOICE']}
+        log = 'RuntimeError: REAL_VIDEO_SCENE_REQUIRED:scene=6:query=older error'
+        report = bind_current_failure(payload, log, run_id=42, run_attempt=1, request_id='telegram-42-trend-1')
+        self.assertEqual(report['state'], 'TRANSIENT_AUDIO_FAILURE')
+        self.assertTrue(report['master_reusable'])
+        decision = classify_failure(log, structured_evidence=report)
+        self.assertEqual(decision.state, 'LOCAL_VOICE_RETRY_REQUIRED')
+
     def test_echoed_policy_source_is_not_a_runtime_failure(self):
         echoed = '\x1b[36;1mif "CONTENT_REJECTED:verified-editorial-postcondition-drift" in text:\x1b[0m'
         report = self.contract(echoed)
