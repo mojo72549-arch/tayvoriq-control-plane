@@ -378,8 +378,8 @@ TAYVORIQ CONTENT DEPTH — HARD REQUIREMENT:
 - The fallback sentences themselves are spoken. Resolve the viewer_question there as well. Where the sources
   describe opposing positions, name each party and its verified demand. Distinguish proposals, decisions and
   effects already in force. Close with the specific pending decision, date or practical consequence when known.
-- STORY-FIRST V3: set editorial_story_contract_version = 3 and story_first_script_body at the candidate's top level.
-- story_first_script_body is the spoken editorial mini-story, 46–49 words before the platform CTA, at least 3 natural sentences. It MUST NOT simply concatenate the five fallback answers. Leave the CTA out of the body.
+- STORY-FIRST V2: set editorial_story_contract_version = 2 and story_first_script_body at the candidate's top level.
+- story_first_script_body is the spoken editorial mini-story, 46–49 words before the platform CTA, at least 3 natural sentences. It MUST NOT simply concatenate the five fallback answers. Leave the CTA out of the body. Write dates in spoken form, without abbreviations.
 - Required narrative spine: surprising/consequential hook -> only the context needed to understand it -> cause/development -> verified tension/counterposition when supported -> meaning/outlook.
 - Use connective narration such as aber, doch, denn, weil, gleichzeitig, brisant or entscheidend where natural. Do not manufacture conflict merely to satisfy the pattern.
 - Avoid the form-like spoken sequence 'Betroffen sind ... Für dich ... Beobachte/Achte/Prüfe ...'. Those compatibility fields remain available for validation but are not the preferred spoken copy.

@@ -286,7 +286,7 @@ For each candidate return:
   "next_episode_candidate": "concrete next part or empty string",
   "recommended_cta_type": "CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY",
   "primary_hook": "natural first-line hook",
-  "editorial_story_contract_version": 3,
+  "editorial_story_contract_version": 2,
   "story_first_script_body": "46–49 spoken German words supported by the sources",
   "viewer_question": "the viewer question this short resolves",
   "explanation_core": "source-grounded explanation core",
@@ -401,7 +401,7 @@ def _story_first_fields(raw: dict[str, Any], sources: list[dict], answers: dict)
     if "story_first_script_body" not in raw and isinstance(raw.get("source_context"), dict):
         packet = raw["source_context"]
     body = packet.get("story_first_script_body")
-    if str(packet.get("editorial_story_contract_version")) != "3" or not isinstance(body, str):
+    if str(packet.get("editorial_story_contract_version")) != "2" or not isinstance(body, str):
         return {}
 
     body = clean(body)
@@ -426,7 +426,7 @@ def _story_first_fields(raw: dict[str, Any], sources: list[dict], answers: dict)
     if not _numbers(body).issubset(_numbers(evidence)):
         return {}
 
-    return {"editorial_story_contract_version": 3, "story_first_script_body": body}
+    return {"editorial_story_contract_version": 2, "story_first_script_body": body}
 
 
 def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:

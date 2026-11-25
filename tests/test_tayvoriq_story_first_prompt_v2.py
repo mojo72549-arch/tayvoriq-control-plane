@@ -9,9 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RADAR = ROOT / "tools" / "tayvoriq_agent_trend_radar_v8.py"
 
 
-def test_story_first_v3_contract_is_hard_requirement_in_trend_prompt() -> None:
+def test_story_first_v2_contract_is_hard_requirement_in_trend_prompt() -> None:
     source = RADAR.read_text(encoding="utf-8")
-    assert "editorial_story_contract_version = 3" in source
+    assert "editorial_story_contract_version = 2" in source
     assert "46–49 words before the platform CTA" in source
     assert "MUST NOT simply concatenate the five fallback answers" in source
     assert "verified tension/counterposition when supported" in source
@@ -53,10 +53,10 @@ def test_corroborated_counterposition_survives_telegram_request_and_spoken_contr
 
 
 FLIXTRAIN_STORY = (
-    "DB und FlixTrain in einer Buchung. Was, wenn der Anschluss platzt? "
-    "Ab 7. Dezember buchst du FlixTrain im DB Navigator, für Fahrten ab 13. Dezember. "
-    "Kombinierst du beide Züge, bekommst du weiterhin zwei Fahrkarten. "
-    "Verpasst du wegen einer Verspätung den Anschluss, gelten deshalb die Bedingungen der jeweiligen Fahrkarte."
+    "DB und FlixTrain buchst du bald zusammen. Was passiert, wenn der Anschluss platzt? "
+    "Ab dem siebten Dezember gibt es FlixTrain-Tickets im DB Navigator "
+    "für Fahrten ab dem dreizehnten Dezember. Kombinierst du beide Züge, bekommst du zwei Fahrkarten. "
+    "Bei einem verpassten Anschluss zählen deshalb die Bedingungen der jeweiligen Fahrkarte."
 )
 
 
@@ -73,7 +73,7 @@ def _flixtrain_candidate(story, *, nested=False):
         "fallback_editorial_answers": source["fallback_editorial_answers"],
         "criteria": dict.fromkeys(("aktualitaet", "viralitaet", "tayvoriq_passung", "quellenqualitaet", "visuell"), 90),
     }
-    fields = {"editorial_story_contract_version": 3, "story_first_script_body": story}
+    fields = {"editorial_story_contract_version": 2, "story_first_script_body": story}
     if nested:
         raw["source_context"] = fields
     else:
@@ -107,7 +107,7 @@ def test_verified_flixtrain_story_reaches_the_approved_source_packet(tmp_path, m
 
     request = json.loads((tmp_path / "telegram-5000-trend-1.json").read_text(encoding="utf-8"))
     validate(request, require_claimable=True)
-    assert request["source_context"]["editorial_story_contract_version"] == 3
+    assert request["source_context"]["editorial_story_contract_version"] == 2
     assert request["source_context"]["story_first_script_body"] == FLIXTRAIN_STORY
     assert request["source_context"]["fallback_editorial_answers"] == raw["fallback_editorial_answers"]
 
@@ -116,7 +116,7 @@ def test_verified_flixtrain_story_reaches_the_approved_source_packet(tmp_path, m
     "story",
     [
         None,
-        FLIXTRAIN_STORY.replace("7. Dezember", "9. Dezember"),
+        FLIXTRAIN_STORY.replace("zwei Fahrkarten", "9 Fahrkarten"),
         "Betroffen sind Reisende. Für dich ändert sich einiges. Prüfe die Bedingungen.",
     ],
 )
