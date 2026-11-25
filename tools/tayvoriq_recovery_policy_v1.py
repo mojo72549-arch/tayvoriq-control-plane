@@ -284,13 +284,19 @@ def classify_failure(
                                 _structured_signature(evidence_state, evidence),
                                 "Failure evidence belongs to a different production attempt.")
     visual_fingerprint = evidence.get("visual_no_progress_sha256")
-    if (attempt >= 2 and evidence_state in {"LOCAL_VISUAL_REPAIR_REQUIRED", "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"}
+    local_visual_stall = (evidence_state == "LOCAL_VISUAL_RECOVERY_EXHAUSTED"
+                          and evidence.get("visual_no_progress_scope") == "local-rounds"
+                          and repair_targets == {"VISUALS"})
+    repeated_run_attempts = (attempt >= 2 and evidence_state in {
+        "LOCAL_VISUAL_REPAIR_REQUIRED", "PUBLISHABLE_OUTPUT_RETRY_REQUIRED",
+    })
+    if ((local_visual_stall or repeated_run_attempts)
             and evidence.get("quality_gates_weakened") is False and evidence.get("master_reusable") is True
             and isinstance(visual_fingerprint, str) and re.fullmatch(r"[0-9a-f]{64}", visual_fingerprint)):
         return RecoveryDecision(
             "exhausted", "LOCAL_VISUAL_RECOVERY_EXHAUSTED", False, "none", generation, None, maximum,
             visual_fingerprint[:20],
-            "Consecutive bound attempts reused the same searches, clips and rejected frames. Await verified media or code repair.",
+            "Consecutive bound visual repairs reused the same searches, clips and rejected frames. Await verified media or code repair.",
         )
     if evidence_state in {"CODE_DEFECT", "TRANSCRIPT_NORMALIZATION_DEFECT", "LOCAL_VISUAL_CODEFIX_REQUIRED"}:
         return RecoveryDecision("deterministic", evidence_state, False,

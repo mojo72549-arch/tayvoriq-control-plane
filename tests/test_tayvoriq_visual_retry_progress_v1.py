@@ -53,6 +53,19 @@ def test_unchanged_failed_exports_stop_before_the_next_attempt(tmp_path, local_f
     assert decision.retry_allowed is False
 
 
+def test_producer_stops_the_first_run_after_identical_local_rounds(local_failure):
+    evidence = {**local_failure, "run_attempt": 1, "state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+                "repair_target_stages": ["VISUALS"], "visual_no_progress_scope": "local-rounds",
+                "visual_no_progress_sha256": "a" * 64}
+    decision = classify_failure("", run_attempt=1, structured_evidence=evidence)
+    assert (decision.mode, decision.retry_allowed) == ("exhausted", False)
+    for key in ("visual_no_progress_scope", "visual_no_progress_sha256", "master_reusable"):
+        malformed = dict(evidence)
+        del malformed[key]
+        assert classify_failure("", run_attempt=1, structured_evidence=malformed).mode != "exhausted"
+    assert classify_failure("", run_attempt=2, structured_evidence=evidence).mode == "stale"
+
+
 @pytest.mark.parametrize("change", [{"query": "new query"}, {"clip": "1" * 64}, {"export": "2" * 64},
                                     {"blocker": "visual_agent:scene_off_topic:youtube_shorts:4"}, {"invalidate": True}])
 def test_changed_or_unproven_evidence_keeps_the_bounded_retry(tmp_path, local_failure, change):

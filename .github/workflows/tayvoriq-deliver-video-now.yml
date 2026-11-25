@@ -1969,7 +1969,13 @@ jobs:
               # A publishable master already exists. This is stochastic/local
               # narrator-postmux output variance, never a repository-codefix signal.
               state = "TRANSIENT_AUDIO_FAILURE"
-          if state == "LOCAL_VISUAL_REPAIR_REQUIRED":
+          visual_stall = (
+              state == "LOCAL_VISUAL_RECOVERY_EXHAUSTED" and production_failed
+              and repair_targets == {"VISUALS"} and report.get("quality_gates_weakened") is False
+              and bool(report.get("checkpoint_job_dir"))
+              and __import__("re").fullmatch(r"[a-f0-9]{64}", str(report.get("visual_no_progress_sha256") or ""))
+          )
+          if state == "LOCAL_VISUAL_REPAIR_REQUIRED" or visual_stall:
               failure_class = "LOCAL_VISUAL"
           elif state == "TRANSIENT_AUDIO_FAILURE":
               failure_class = "LOCAL_VOICE"
@@ -2001,6 +2007,9 @@ jobs:
               "internal_recovery_expected": state != "EXTERNAL_ACTION_REQUIRED",
               "quality_gates_weakened": False,
           }
+          if visual_stall:
+              payload.update(visual_no_progress_scope="local-rounds",
+                             visual_no_progress_sha256=report["visual_no_progress_sha256"])
           target = Path("implementation/out/control-plane/failure-notification-policy.json")
           import sys
           sys.path.insert(0, str(Path("tools").resolve()))
@@ -2054,6 +2063,8 @@ jobs:
               else:
                   stage = "technical_stop"
                   detail = "Passendes Bildmaterial fehlt. Der Orchestrator prüft die Wiederaufnahme desselben Auftrags."
+          elif state == "LOCAL_VISUAL_RECOVERY_EXHAUSTED":
+              detail = "Bild-Recovery gestoppt. Suche, Clips und Fehlerbefund blieben gleich. Der Auftrag wartet auf verifiziertes Ersatzmaterial oder einen geprüften Fix."
           elif state == "DUPLICATE_CONTENT_BLOCKED":
               stage = "duplicate_blocked"
               nearest = duplicate.get("nearest_prior") if isinstance(duplicate.get("nearest_prior"), dict) else {}
