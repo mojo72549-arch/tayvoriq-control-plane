@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T18:21:36.317298Z",
+  "generated_at": "2026-11-25T18:26:27.672617Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -75,8 +75,8 @@
     "updated_at": "2026-11-25T18:15:40Z",
     "attempt": 1,
     "progress": 30,
-    "current_step": "Install or reuse production dependencies",
-    "last_successful_step": "Telegram progress - environment active",
+    "current_step": "Collect Studio production outcome",
+    "last_successful_step": "Restore production model cache",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -118,7 +118,7 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "pending",
+        "status": "running",
         "step_number": 35,
         "step_name": "Collect Studio production outcome"
       },
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Install or reuse production dependencies"
+      "detail": "Collect Studio production outcome"
     },
     {
       "name": "Production Green",
