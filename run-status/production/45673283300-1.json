@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "run_id": "45673283300",
+  "run_attempt": "1",
+  "source_request_id": "telegram-3728-trend-1",
+  "source_context_sha256": "1bbe6b9283bc432232126bee38b99a1312aa8f910bf4879297cfe30b1347f6aa",
+  "studio_sha": "f556bae2d0f7b901d013f3ef9d16d20d3c0263df",
+  "checkpoint_restored": false,
+  "tools": [
+    {
+      "name": "Chatterbox",
+      "activity": "YouTube · Stimme erzeugt",
+      "evidence": "job/youtube_shorts/audio_report.json"
+    },
+    {
+      "name": "Whisper",
+      "activity": "YouTube · Transkriptprüfung bestanden",
+      "evidence": "job/preapproval_ai_audit.json"
+    },
+    {
+      "name": "Chatterbox",
+      "activity": "TikTok · Stimme erzeugt",
+      "evidence": "job/tiktok/audio_report.json"
+    },
+    {
+      "name": "Whisper",
+      "activity": "TikTok · Transkriptprüfung bestanden",
+      "evidence": "job/preapproval_ai_audit.json"
+    }
+  ],
+  "scores": [
+    {
+      "name": "Fakten",
+      "value": 100,
+      "threshold": 90
+    },
+    {
+      "name": "Bild",
+      "value": 100,
+      "threshold": 78
+    },
+    {
+      "name": "Gesamt",
+      "value": 96,
+      "threshold": 85
+    }
+  ],
+  "findings": [],
+  "stations": [
+    {
+      "id": "script",
+      "state": "success",
+      "detail": "Deutsche Skripte beider Plattformen im hashgeprüften Checkpoint vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "af86e01a907d19e3396a23e573883c74ce73e2a5309b11cc4bab432798f48663",
+      "checkpoint_restored": false,
+      "outputs": {
+        "youtube_shorts": 55,
+        "tiktok": 55
+      }
+    },
+    {
+      "id": "scenes",
+      "state": "success",
+      "detail": "Szenen mit gesprochenem Text und Bildabfrage für beide Ausgaben vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "af86e01a907d19e3396a23e573883c74ce73e2a5309b11cc4bab432798f48663",
+      "checkpoint_restored": false,
+      "outputs": {
+        "youtube_shorts": 6,
+        "tiktok": 6
+      }
+    },
+    {
+      "id": "captions",
+      "state": "success",
+      "detail": "Untertitel aller Szenen nachgewiesen; Musik folgt der gespeicherten redaktionellen Policy. Ein eigener Musikexport ist damit nicht belegt.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "af86e01a907d19e3396a23e573883c74ce73e2a5309b11cc4bab432798f48663",
+      "checkpoint_restored": false,
+      "outputs": {
+        "subtitle_scenes": 12,
+        "music_export_verified": false
+      }
+    }
+  ],
+  "scripts": {
+    "youtube_shorts": "Flixtrain-Tickets werden im Dezember auch im DB Navigator buchbar. Durch die Vertriebsvereinbarung entfällt der zusätzliche Wechsel zur Flixtrain-Webseite. Betroffen sind Reisende, die Fernzüge mehrerer Unternehmen kombinieren. Für dich bleiben dabei zwei getrennte Beförderungsverträge bestehen. Prüfe vor der Buchung die Bedingungen für deinen Anschluss zusätzlich besonders sorgfältig. Abonniere diesen Kanal für verifizierte Einordnung und konkrete Schritte.",
+    "tiktok": "Flixtrain-Tickets werden im Dezember auch im DB Navigator buchbar. Durch die Vertriebsvereinbarung entfällt der zusätzliche Wechsel zur Flixtrain-Webseite. Betroffen sind Reisende, die Fernzüge mehrerer Unternehmen kombinieren. Für dich bleiben dabei zwei getrennte Beförderungsverträge bestehen. Prüfe vor der Buchung die Bedingungen für deinen Anschluss zusätzlich besonders sorgfältig. Folge diesem Kanal für verifizierte Einordnung und konkrete Schritte."
+  }
+}
