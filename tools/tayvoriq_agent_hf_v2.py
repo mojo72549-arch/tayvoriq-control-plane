@@ -281,6 +281,16 @@ def _headline_presentation_key(title) -> str:
     return " ".join(value.split())
 
 
+def _completion_budget(batch):
+    # Field-only corrections do not need the full 4,000-token candidate budget.
+    # Reserve more room for spoken text/explanations than a single integer.
+    fields = [field for row in batch.values() for field in row.get("missing", {})]
+    return min(2400, max(256, 96 + sum(
+        16 if field.endswith((".youtube", ".tiktok")) and not field.startswith("fit.") else
+        120 if field in {"explanation_core", "cta_text", "action_now"} else 80
+        for field in fields)))
+
+
 def _repair_editorial_fields(candidates, generate):
     pending = {}
     for draft in candidates:
@@ -762,6 +772,7 @@ EDITORIAL FALLBACK CONTRACT:
         def complete(instructions, batch):
             followup = {**payload, "messages": [{"role": "system", "content": instructions},
                                                 {"role": "user", "content": json.dumps(batch, ensure_ascii=False)}]}
+            followup["max_completion_tokens"] = _completion_budget(batch)
             raw_reply = provider.post_groq(followup, token, timeout=min(timeout, 28))
             return base.extract_json(provider.content_of(raw_reply))
 

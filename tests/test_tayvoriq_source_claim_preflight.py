@@ -136,3 +136,13 @@ def test_optional_editorial_repair_cannot_report_success_after_quota_exhaustion(
     with pytest.raises(HTTPError) as raised:
         hf._repair_editorial_fields([candidate], blocked)
     assert raised.value.code == 402
+
+
+def test_field_only_corrections_reserve_a_bounded_budget_for_the_actual_fields():
+    single = hf._completion_budget({"A+B": {"missing": {"fit.tiktok": "reason"}}})
+    full = hf._completion_budget({"A+B": {"missing": {
+        "consequence.youtube": "integer", "consequence.tiktok": "integer", "consequence.reason": "explanation",
+        "explanation_core": "text", "cta_text": "text"}}})
+    assert single == 256
+    assert 256 < full < 1000
+    assert hf._completion_budget({"A+B": {"missing": {str(i): "text" for i in range(100)}}}) == 2400
