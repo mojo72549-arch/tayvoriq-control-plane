@@ -1,4 +1,5 @@
 name: TAYVORIQ Agent Orchestrator V2
+run-name: ${{ github.event.action == 'tayvoriq_telegram_trends_now' && github.event.client_payload.selection_id && format('TAYVORIQ research {0}', github.event.client_payload.selection_id) || github.workflow }}
 
 on:
   repository_dispatch:

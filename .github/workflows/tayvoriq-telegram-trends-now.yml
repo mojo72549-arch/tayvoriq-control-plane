@@ -106,6 +106,7 @@ jobs:
           SLOT: ${{ steps.control.outputs.slot }}
           TARGET_DATE: ${{ steps.control.outputs.target_date }}
           SELECTION_ID: ${{ steps.control.outputs.selection_id }}
+          GH_TOKEN: ${{ github.token }}
           TAYVORIQ_EDITORIAL_TOPIC: ${{ github.event.client_payload.topic || '' }}
         shell: bash
         run: |
@@ -198,7 +199,8 @@ jobs:
 
           if [ "$recovered" != true ]; then
             set +e
-            python tools/tayvoriq_agent_trend_radar_v8.py \
+            python tools/tayvoriq_research_observer.py --selection-id "$SELECTION_ID" --slot "$SLOT" -- \
+              python tools/tayvoriq_agent_trend_radar_v8.py \
               --slot "$SLOT" \
               --output /tmp/tayvoriq-trend-request.json \
               --audit-output /tmp/tayvoriq-trend-audit.json
