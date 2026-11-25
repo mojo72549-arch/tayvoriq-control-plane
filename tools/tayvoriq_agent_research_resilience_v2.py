@@ -77,6 +77,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
         if not health.available(name, key):
             errors.append(label + ' skipped: persistent provider cooldown/payment block')
             return None
+        print(json.dumps({"event": "provider_attempt_started", "provider": name}), flush=True)
         try:
             result = call()
             health.success(name)
@@ -151,7 +152,7 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
                 updated += 1
         if not updated:
             continue
-        print(json.dumps({"event":"source_records_loaded","source_label":label,"updated_records":updated}))
+        print(json.dumps({"event":"source_records_loaded","source_label":label,"updated_records":updated,"total_records":len(source_records)}))
         records = list(source_records.values())
         blocked_groq_preflight = False
         for name, model in source_models.items():
