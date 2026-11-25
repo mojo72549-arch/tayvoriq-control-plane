@@ -134,6 +134,24 @@ def build(root):
         if review_delivered and review_url:
             for platform in ('youtube', 'tiktok'):
                 record['videos'][platform] = record['videos'][platform] or review_url + f'short_{platform}.mp4'
+        previous=records.get(rid,{})
+        # Retiring queue/request files must not erase an already verified archive.
+        for key in ('request_id','topic','slot','production_date','published_at','review_url','sources',
+                    'script','final_scripts','source_context_sha256','quality','tools'):
+            if record.get(key) in (None, [], {}, '') and previous.get(key) not in (None, [], {}, ''):
+                record[key]=previous[key]
+        for key in ('videos','evidence','metrics'):
+            record[key]={**(previous.get(key) or {}),**{k:v for k,v in record[key].items() if v is not None}}
+        history=[]
+        for event in [*(previous.get('history') or []),*record['history']]:
+            if event not in history:
+                history.append(event)
+        record['history']=history
+        for platform,prior in (previous.get('platforms') or {}).items():
+            if prior.get('status')=='PUBLISHED' and record['platforms'].get(platform,{}).get('status')!='PUBLISHED':
+                record['platforms'][platform]=prior
+        record['fully_published']=all(item['status']=='PUBLISHED' for item in record['platforms'].values())
+        record['state']='PUBLISHED' if record['fully_published'] else 'PARTIALLY_PUBLISHED'
         records[rid] = record
     return {'schema': 'tayvoriq-video-archive-v1',
             'records': sorted(records.values(), key=lambda r: r['run_id'], reverse=True)}

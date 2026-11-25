@@ -48,5 +48,22 @@ class ArchiveTest(unittest.TestCase):
             target.parent.mkdir(parents=True)
             target.write_text(json.dumps(first))
             self.assertEqual(build(root), first)
-            path.unlink()
+
+    def test_retiring_a_request_keeps_original_archive_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            publication=root/'.automation/tayvoriq-publications/123.json'
+            publication.parent.mkdir(parents=True)
+            publication.write_text(json.dumps(self.receipt()))
+            request=root/'requests/request-123.json'
+            request.parent.mkdir()
+            request.write_text(json.dumps({'request_id':'request-123','golden_path_run_id':123,
+                'topic':'Geprüftes Originalthema','source_context':{'sources':[{'url':'https://source.example/'}]},
+                'state_history':[{'state':'APPROVED','at':'2026-11-25T10:00:00Z'}]}))
+            first=build(root)
+            archive=root/ARCHIVE;archive.parent.mkdir(parents=True)
+            archive.write_text(json.dumps(first))
+            request.unlink()
+            self.assertEqual(build(root),first)
+            publication.unlink()
             self.assertEqual(build(root), first)
