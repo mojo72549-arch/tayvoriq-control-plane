@@ -54,3 +54,51 @@ def test_analytics_history_collects_observations_but_never_auto_optimizes(tmp_pa
     assert len(data["history"]) == 2
     assert data["metrics"]["views"] == 200
     assert data["data_policy"]["small_sample_auto_optimization_enabled"] is False
+
+
+def test_growth_review_uses_only_observed_per_video_conversion(tmp_path):
+    analytics.store_observation({
+        "platform": "youtube_shorts",
+        "video_id": "pflege-1",
+        "metric_scope": "video",
+        "metrics": {
+            "views": 1200,
+            "engaged_views": 800,
+            "follow_subscriber_signal": 6,
+            "average_percentage_viewed": 74.2,
+        },
+        "content_contract": {
+            "topic": "Pflegedeckel",
+            "primary_hook": "Ein Deckel für Pflegekosten?",
+            "follow_reason": "Wir verfolgen die nächsten Entscheidungen.",
+            "cta_type": "IDENTITY",
+        },
+    }, tmp_path)
+    analytics.store_observation({
+        "platform": "tiktok",
+        "video_id": "pflege-2",
+        "metrics": {"views": 2000},
+    }, tmp_path)
+
+    report = analytics.growth_review(tmp_path)
+    youtube = next(row for row in report["videos"] if row["platform"] == "youtube_shorts")
+    tiktok = next(row for row in report["videos"] if row["platform"] == "tiktok")
+    assert youtube["follows_per_1000_views"] == 5
+    assert youtube["follows_per_1000_engaged_views"] == 7.5
+    assert youtube["primary_hook"] == "Ein Deckel für Pflegekosten?"
+    assert tiktok["follows_per_1000_views"] is None
+    assert report["conversion_data_available_count"] == 1
+    assert report["automatic_topic_ranking_performed"] is False
+
+
+def test_growth_review_does_not_treat_account_growth_as_video_conversion(tmp_path):
+    analytics.store_observation({
+        "platform": "tiktok",
+        "video_id": "pflege",
+        "metric_scope": "account",
+        "metrics": {"views": 1000, "follow_subscriber_signal": 10},
+    }, tmp_path)
+    row = analytics.growth_review(tmp_path)["videos"][0]
+    assert row["follow_subscriber_signal"] == 10
+    assert row["follows_per_1000_views"] is None
+    assert row["conversion_data_available"] is False
