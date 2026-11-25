@@ -1423,7 +1423,14 @@ jobs:
 
       - name: Prepare opt-in scene revision engine
         id: scene_revision_engine
-        if: steps.controller.outputs.state != 'SUCCESS' && steps.controller.outputs.reusable_master == 'true' && vars.TAYVORIQ_SCENE_REVISION_ENABLED == 'true' && hashFiles('implementation/tools/tayvoriq_scene_revision_v1.py') != ''
+        if: >-
+          steps.controller.outputs.state != 'SUCCESS' &&
+          steps.controller.outputs.reusable_master == 'true' &&
+          hashFiles('implementation/tools/tayvoriq_scene_revision_v1.py') != '' &&
+          vars.TAYVORIQ_SCENE_REVISION_ENABLED != 'false' &&
+          (vars.TAYVORIQ_SCENE_REVISION_ENABLED == 'true' ||
+           (contains(env.TOPIC, 'tarif') &&
+            (contains(env.TOPIC, 'Volkswagen') || contains(env.TOPIC, 'VW'))))
         continue-on-error: true
         uses: actions/checkout@v4
         with:
