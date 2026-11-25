@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T17:31:02.387697Z",
+  "generated_at": "2026-11-25T17:50:55.211516Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -68,41 +68,41 @@
   "run": {
     "id": 45663573984,
     "historical": false,
-    "status": "queued",
+    "status": "in_progress",
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45663573984",
     "created_at": "2026-11-25T17:19:45Z",
-    "updated_at": "2026-11-25T17:30:58Z",
-    "attempt": 1,
-    "progress": 3,
-    "current_step": null,
-    "last_successful_step": null,
+    "updated_at": "2026-11-25T17:50:50Z",
+    "attempt": 3,
+    "progress": 0,
+    "current_step": "Checkout control plane",
+    "last_successful_step": "Set up job",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 4,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 8,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 9,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
@@ -113,38 +113,38 @@
       {
         "label": "Full Preflight",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Studio-Ausführung",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 35,
+        "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 45,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 47,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 53,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 54,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "queued"
+      "detail": "Checkout control plane"
     },
     {
       "name": "Production Green",
@@ -179,7 +179,7 @@
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
-    "last_step": null,
+    "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
@@ -197,6 +197,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-25T17:50:41.308197Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
     {
       "at": "2026-11-25T17:30:55.373465Z",
       "title": "DISPATCHED",
@@ -220,11 +225,6 @@
     {
       "at": "2026-11-25T16:31:56.857360+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:45654790417"
-    },
-    {
-      "at": "2026-11-25T16:31:45.725217+00:00",
-      "title": "DISPATCHING",
       "detail": "request-dispatcher:45654790417"
     }
   ]
