@@ -158,3 +158,11 @@ class ExplicitRetryAccountingTests(unittest.TestCase):
         self.assertIn({'code':'TIKTOK_FIT','provider':None},o.data['issues'])
         o.event({'event':'candidate_editorial_rejection','reason':'claim_coherence','details':['why_happening_not_supported_by_source_claims']})
         self.assertIn({'code':'CLAIM_SUPPORT','provider':None},o.data['issues'])
+
+class EditorialRetryDelayTests(unittest.TestCase):
+    def test_control_center_retries_use_the_editorial_delay_and_reviews_keep_their_separate_delay(self):
+        import tayvoriq_research_retry_v1 as retry
+        for selection,expected in [(SID,retry.EDITORIAL_RETRY_SECONDS),('review-evening-42',retry.REVIEW_RETRY_SECONDS)]:
+            with tempfile.TemporaryDirectory() as tmp,patch.dict(os.environ,{'TAYVORIQ_RESEARCH_SELECTION_ID':selection,'TAYVORIQ_RESEARCH_RETRY_FILE':str(Path(tmp)/'retry.json')}),patch.object(retry.time,'time',return_value=1000):
+                state=retry.defer_candidate_selection('evening',issue='EDITORIAL_MINIMUM_NOT_MET')
+                self.assertEqual(state['retry_at_epoch']-1000,expected)
