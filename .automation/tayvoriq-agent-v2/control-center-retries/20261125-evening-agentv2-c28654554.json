@@ -1,0 +1,20 @@
+{
+  "schema": "tayvoriq-research-retry-v1",
+  "state": "EXHAUSTED",
+  "slot": "evening",
+  "berlin_date": "2026-11-25",
+  "first_deferred_at_epoch": 1795615797.0,
+  "attempts": 3,
+  "retry_at_epoch": 1795616119.6814516,
+  "retry_phase": "NORMAL",
+  "last_deferred_at_epoch": 1795615819.6814551,
+  "provider_retry_at_epoch": 1795616119.6814516,
+  "max_attempts": 3,
+  "sla_seconds": 600,
+  "valid_until_epoch": 1795616397.0,
+  "reason": "RESEARCH_RETRY_BUDGET_EXHAUSTED",
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "last_issue": "EDITORIAL_MINIMUM_NOT_MET",
+  "status_detail": "Zu wenige Themen haben die redaktionelle Prüfung bestanden."
+}
