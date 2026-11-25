@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-24T23:55:12.901037Z",
+  "generated_at": "2026-11-25T00:23:59.247773Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -48,41 +48,41 @@
   "run": {
     "id": 45510042088,
     "historical": false,
-    "status": "queued",
+    "status": "in_progress",
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45510042088",
     "created_at": "2026-11-24T23:26:52Z",
-    "updated_at": "2026-11-24T23:55:11Z",
-    "attempt": 2,
-    "progress": 3,
-    "current_step": null,
-    "last_successful_step": null,
+    "updated_at": "2026-11-25T00:23:53Z",
+    "attempt": 3,
+    "progress": 22,
+    "current_step": "Bind native V5 retention contract to exact approved request",
+    "last_successful_step": "Apply exact verified autonomous codefix overlay",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 4,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 8,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 9,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
@@ -93,38 +93,38 @@
       {
         "label": "Full Preflight",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Studio-Ausführung",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 35,
+        "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 43,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 45,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 51,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 52,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -132,7 +132,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "queued"
+      "detail": "Bind native V5 retention contract to exact approved request"
     },
     {
       "name": "Production Green",
@@ -159,7 +159,7 @@
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
-    "last_step": null,
+    "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
@@ -177,6 +177,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-25T00:23:45.904950Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+    },
     {
       "at": "2026-11-24T23:55:06.974293Z",
       "title": "DISPATCHED",
@@ -200,11 +205,6 @@
     {
       "at": "2026-11-24T21:38:35.209053+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:45493077818"
-    },
-    {
-      "at": "2026-11-24T21:38:24.106063+00:00",
-      "title": "DISPATCHING",
       "detail": "request-dispatcher:45493077818"
     }
   ]
