@@ -1,12 +1,12 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T17:03:00.706318Z",
+  "generated_at": "2026-11-25T17:19:49.864085Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": true,
-    "reason": "VERIFIED_STATE_TRANSITION"
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
   },
   "api_error": null,
   "research": {
@@ -35,7 +35,7 @@
     "request_id": "telegram-3728-trend-1",
     "golden_path_run_id": 45654854190,
     "pointer_updated_at": "2026-11-25T16:31:56.969165Z",
-    "current_scope": "production"
+    "current_scope": "research"
   },
   "request": {
     "request_id": "telegram-3728-trend-1",
@@ -44,7 +44,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 0,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -67,42 +67,42 @@
   },
   "run": {
     "id": 45654854190,
-    "historical": false,
-    "status": "queued",
-    "conclusion": null,
+    "historical": true,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45654854190",
     "created_at": "2026-11-25T16:31:49Z",
-    "updated_at": "2026-11-25T17:02:57Z",
+    "updated_at": "2026-11-25T17:19:01Z",
     "attempt": 3,
-    "progress": 3,
+    "progress": 30,
     "current_step": null,
-    "last_successful_step": null,
-    "failed_step": null,
-    "failed_step_number": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 45,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 4,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 8,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 9,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
@@ -112,39 +112,39 @@
       },
       {
         "label": "Full Preflight",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Studio-Ausführung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 35,
+        "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "error",
+        "step_number": 45,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 47,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 53,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 54,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "queued"
+      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
     },
     {
       "name": "Production Green",
@@ -162,41 +162,46 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_RUNNING"
+      "detail": "EXHAUSTED"
     },
     {
       "name": "Telegram",
       "status": "yellow",
-      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
+      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "yellow",
-    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
-    "last_step": null,
+    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
+    "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
-    "status": "LOCAL_RETRY_RUNNING",
-    "source_status": "LOCAL_RETRY_RUNNING",
+    "status": "EXHAUSTED",
+    "source_status": "EXHAUSTED",
     "failure_state": null,
     "failed_run_id": null,
     "replay_run_id": null,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-25T17:19:01Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
     {
       "at": "2026-11-25T17:02:48.613643Z",
       "title": "DISPATCHED",
