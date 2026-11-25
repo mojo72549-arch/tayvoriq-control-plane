@@ -49,6 +49,6 @@ jobs:
           assert job['run_id'] == run['id']
           assert job['name'].endswith('send-requested-trend-list / trend-gate')
           assert job['conclusion'] == 'failure'
-          subprocess.run(['gh','api','--method','POST',api+'/actions/jobs/139270909412/rerun'],check=True)
+          subprocess.run(['gh','api','--method','POST','-F','enable_debug_logging=false',api+'/actions/jobs/139270909412/rerun'],check=True)
           print('Resumed exactly the authorized research job; no production or publication requested.')
           PY
