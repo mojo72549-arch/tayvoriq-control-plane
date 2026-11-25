@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T16:47:08.734031Z",
+  "generated_at": "2026-11-25T17:03:00.706318Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -72,8 +72,8 @@
     "conclusion": null,
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45654854190",
     "created_at": "2026-11-25T16:31:49Z",
-    "updated_at": "2026-11-25T16:47:06Z",
-    "attempt": 1,
+    "updated_at": "2026-11-25T17:02:57Z",
+    "attempt": 3,
     "progress": 3,
     "current_step": null,
     "last_successful_step": null,
@@ -197,6 +197,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-25T17:02:48.613643Z",
+      "title": "DISPATCHED",
+      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
+    },
     {
       "at": "2026-11-25T16:47:03.195990Z",
       "title": "DISPATCHED",
