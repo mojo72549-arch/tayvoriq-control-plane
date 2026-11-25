@@ -4,12 +4,12 @@
   "slot": "morning",
   "run_id": 45705294531,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "WAITING",
   "started_at": "2026-11-25T21:32:56.338475+00:00",
-  "updated_at": "2026-11-25T21:34:36.772430+00:00",
+  "updated_at": "2026-11-25T21:34:56.087778+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
-  "quality_rejections": 0,
+  "quality_rejections": 3,
   "provider": "groq",
   "issues": [
     {
@@ -39,10 +39,14 @@
     {
       "code": "PROVIDER_ERROR",
       "provider": null
+    },
+    {
+      "code": "TIKTOK_FIT",
+      "provider": null
     }
   ],
   "exit_code": null,
   "local_attempt": 2,
   "max_local_attempts": 3,
-  "next_retry_at": null
+  "next_retry_at": "2026-11-25T21:36:18.310068+00:00"
 }
