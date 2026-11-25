@@ -24,7 +24,7 @@ def check(job_dir):
             f"visual_agent:{blocker}" for blocker in visual.get("blockers", [])
         ]}
         if not _bound_scene(job_dir, job, failed):
-            report["state"] = "review_did_not_isolate_one_repairable_scene"
+            report["state"] = "review_did_not_isolate_repairable_scenes"
             raise SystemExit(1)
         write_json(job_dir / "preapproval_ai_audit.json", failed)
         started = monotonic()
