@@ -1,12 +1,12 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T18:15:37.105213Z",
+  "generated_at": "2026-11-25T18:16:31.832233Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": false,
-    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
+    "telegram_notify_allowed": true,
+    "reason": "VERIFIED_STATE_TRANSITION"
   },
   "api_error": null,
   "research": {
@@ -33,9 +33,9 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3728-trend-1",
-    "golden_path_run_id": 45663573984,
-    "pointer_updated_at": "2026-11-25T17:19:54.053068Z",
-    "current_scope": "research"
+    "golden_path_run_id": 45673283300,
+    "pointer_updated_at": "2026-11-25T18:15:40.352919Z",
+    "current_scope": "production"
   },
   "request": {
     "request_id": "telegram-3728-trend-1",
@@ -44,7 +44,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -66,19 +66,19 @@
     "path": "requests/telegram-3728-trend-1.json"
   },
   "run": {
-    "id": 45663573984,
-    "historical": true,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45663573984",
-    "created_at": "2026-11-25T17:19:45Z",
-    "updated_at": "2026-11-25T18:14:45Z",
-    "attempt": 3,
+    "id": 45673283300,
+    "historical": false,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45673283300",
+    "created_at": "2026-11-25T18:15:33Z",
+    "updated_at": "2026-11-25T18:15:40Z",
+    "attempt": 1,
     "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 45,
+    "current_step": "Checkout review pages",
+    "last_successful_step": "Lightweight contract preflight",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -118,31 +118,31 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "success",
+        "status": "pending",
         "step_number": 35,
         "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "error",
+        "status": "pending",
         "step_number": 45,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 47,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 53,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "pending",
         "step_number": 54,
         "step_name": "Send Telegram review"
       }
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
+      "detail": "Checkout review pages"
     },
     {
       "name": "Production Green",
@@ -162,45 +162,45 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "EXHAUSTED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "yellow",
-      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
+      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "yellow",
-    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
+    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
     "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
-    "status": "EXHAUSTED",
-    "source_status": "EXHAUSTED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_RUNNING",
     "failure_state": null,
-    "failed_run_id": null,
-    "replay_run_id": null,
+    "failed_run_id": 45663573984,
+    "replay_run_id": 45673283300,
     "fresh_recovery_run_id": 45663573984,
     "recovery_generation": 1,
-    "owner": "tayvoriq-agent-orchestrator-v2",
-    "same_generation_replay_required": false,
+    "owner": "tayvoriq-delivery-watch",
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-25T18:14:45Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
+      "at": "2026-11-25T18:15:40.352919Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
     },
     {
       "at": "2026-11-25T17:50:41.308197Z",
@@ -226,11 +226,6 @@
       "at": "2026-11-25T16:47:03.195990Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-25T16:31:56.857360+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:45654790417"
     }
   ]
 }
