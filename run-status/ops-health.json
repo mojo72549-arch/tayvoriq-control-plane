@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T00:23:59.247773Z",
+  "generated_at": "2026-11-25T00:42:19.217339Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -54,9 +54,9 @@
     "created_at": "2026-11-24T23:26:52Z",
     "updated_at": "2026-11-25T00:23:53Z",
     "attempt": 3,
-    "progress": 22,
-    "current_step": "Bind native V5 retention contract to exact approved request",
-    "last_successful_step": "Apply exact verified autonomous codefix overlay",
+    "progress": 30,
+    "current_step": "Repair only failed local checkpoints",
+    "last_successful_step": "Telegram progress - checkpoint repair",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -80,7 +80,7 @@
       },
       {
         "label": "Light Preflight",
-        "status": "pending",
+        "status": "success",
         "step_number": 18,
         "step_name": "Lightweight contract preflight"
       },
@@ -92,13 +92,13 @@
       },
       {
         "label": "Full Preflight",
-        "status": "pending",
+        "status": "success",
         "step_number": 18,
         "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Studio-Ausführung",
-        "status": "pending",
+        "status": "success",
         "step_number": 35,
         "step_name": "Collect Studio production outcome"
       },
@@ -132,7 +132,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Bind native V5 retention contract to exact approved request"
+      "detail": "Repair only failed local checkpoints"
     },
     {
       "name": "Production Green",
