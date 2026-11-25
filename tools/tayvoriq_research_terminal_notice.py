@@ -1,4 +1,5 @@
-"""Reconcile one routine research terminal status with a verified Telegram receipt."""
+"""Reconcile routine or explicit research terminal status with a verified Telegram receipt."""
+import argparse
 import json
 import os
 import re
@@ -27,7 +28,9 @@ def persist(path, value):
     raise RuntimeError("Unable to persist terminal notification state")
 
 
-def main():
+def main(selection_id=""):
+    if selection_id:
+        return explicit_notice(selection_id)
     queue = current()
     day = datetime.now(ZONE).date().isoformat()
     slot = queue.get("slot")
@@ -41,10 +44,6 @@ def main():
     path = Path(".automation/tayvoriq-agent-v2/research-notices") / f"{day}-{slot}-{state}.json"
     if path.exists():
         return
-    token = os.environ["TELEGRAM_BOT_TOKEN"]
-    chat = os.environ["TELEGRAM_CHAT_ID"]
-    if not token or not chat:
-        raise RuntimeError("Telegram configuration unavailable for terminal notice")
     detail = queue.get("status_detail") or "Die Recherche konnte keine geprüfte Auswahl zustellen."
     label = "Morgenrecherche" if slot == "morning" else "Abendrecherche"
     message = (f"TAYVORIQ · {label} beendet ({day})\n\n{detail}\n"
@@ -53,6 +52,44 @@ def main():
                f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run[1]}")
     evidence = {"slot": slot, "berlin_date": day, "research_state": state, "run_id": int(run[1]),
                 "state": "SENDING", "telegram_delivery_verified": False}
+    deliver(path, evidence, message)
+
+
+def explicit_notice(selection_id):
+    if not re.fullmatch(r"\d{8}-(morning|evening)-agentv2(?:-(?:r[1-9]\d?|c[a-f0-9]{8}))?", selection_id):
+        raise ValueError("Invalid explicit research selection")
+    scope = Path(".automation/tayvoriq-agent-v2")
+    receipt_path = scope / "deliveries" / (selection_id + ".json")
+    if receipt_path.is_file():
+        receipt = json.loads(receipt_path.read_text())
+        if (receipt.get("selection_id") == selection_id and receipt.get("telegram_delivery_verified") is True
+                and type(receipt.get("telegram_message_id")) is int and receipt["telegram_message_id"] > 0):
+            return
+    pointer_path = Path("state/tayvoriq-control-center-research.json")
+    if "-agentv2-c" in selection_id and pointer_path.is_file():
+        pointer = json.loads(pointer_path.read_text())
+        if pointer.get("schema") == "tayvoriq-control-center-research-v1" and pointer.get("selection_id") != selection_id:
+            return  # A superseded request must not overwrite the current owner's status.
+    path = scope / "research-notices" / (selection_id + "-FAILED.json")
+    if path.exists():
+        return
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    if not re.fullmatch(r"[1-9]\d*", run_id):
+        raise ValueError("Invalid research run binding")
+    evidence = {"selection_id": selection_id, "run_id": int(run_id), "research_state": "FAILED",
+                "state": "SENDING", "telegram_delivery_verified": False}
+    message = ("🔴 TAYVORIQ · Recherche angehalten\n\n"
+               "Für diese Anfrage steht noch keine geprüfte Themenauswahl bereit.\n"
+               f"Recherche: {selection_id}\n"
+               "Details und weitere Schritte findest du im Control Center.")
+    deliver(path, evidence, message)
+
+
+def deliver(path, evidence, message):
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
+    chat = os.environ["TELEGRAM_CHAT_ID"]
+    if not token or not chat:
+        raise RuntimeError("Telegram configuration unavailable for terminal notice")
     # All orchestrator jobs share a concurrency group. Commit the claim before sending:
     # an ambiguous network outcome must never lead to a duplicate notification.
     persist(path, evidence)
@@ -77,4 +114,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--selection-id", default="")
+    main(parser.parse_args().selection_id)
