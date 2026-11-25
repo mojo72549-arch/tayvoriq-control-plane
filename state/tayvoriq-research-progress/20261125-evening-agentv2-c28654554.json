@@ -6,11 +6,16 @@
   "run_attempt": 1,
   "state": "SEARCHING",
   "started_at": "2026-11-25T13:45:36.668803+00:00",
-  "updated_at": "2026-11-25T13:45:36.668843+00:00",
-  "sources_seen": null,
+  "updated_at": "2026-11-25T13:47:52.753026+00:00",
+  "sources_seen": 240,
   "drafts_saved": 0,
   "quality_rejections": 0,
-  "provider": null,
-  "issues": [],
+  "provider": "groq",
+  "issues": [
+    {
+      "code": "QUOTA",
+      "provider": "gemini"
+    }
+  ],
   "exit_code": null
 }
