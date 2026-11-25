@@ -6,7 +6,7 @@ import sys
 from time import monotonic
 
 import tayvoriq_preapproval_ai_audit as audit
-from tayvoriq_scene_revision_v1 import _bound_scene, read_json, sha256, write_json, PLATFORMS, PROFILE
+from tayvoriq_scene_revision_v1 import _bound_scene, read_json, sha256, write_json, PLATFORMS, PROFILE, video_timeline
 from tayvoriq_visual_only_repair_v1 import repair
 
 
@@ -14,6 +14,7 @@ def check(job_dir):
     job = read_json(job_dir / "job.json")
     source = sha256(job_dir / "source_context.resume.json")
     original = {p: sha256(job_dir / name) for p, name in PLATFORMS.items()}
+    clocks = {p: video_timeline(job_dir / name) for p, name in PLATFORMS.items()}
     voices = {p: sha256(job_dir / p / "voice.mp3") for p in PLATFORMS}
     output = job_dir / "scene-revision-verification.json"
     report = {"starting_export_sha256": original, "source_context_sha256": source}
@@ -39,6 +40,8 @@ def check(job_dir):
             assert after["variants"][platform]["text_package"] == job["variants"][platform]["text_package"]
         other = result["donor_platform"]
         assert sha256(job_dir / PLATFORMS[other]) == original[other]
+        for platform, filename in PLATFORMS.items():
+            assert video_timeline(job_dir / filename) == clocks[platform]
         verified = subprocess.run([sys.executable, "tools/tayvoriq_preapproval_ai_audit_v4.py",
                                    "--job-dir", str(job_dir)], check=False, timeout=480,
                                   stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
@@ -46,6 +49,13 @@ def check(job_dir):
         report["state"] = "strict_audit_passed" if verified.returncode == 0 else "strict_audit_blocked"
         if verified.returncode:
             raise SystemExit(verified.returncode)
+        gate = subprocess.run([sys.executable, "tools/tayvoriq_publication_quality_gate_v2.py",
+                               "--job-dir", str(job_dir), "--targets", "youtube_tiktok"],
+                              check=False, timeout=120, capture_output=True, text=True)
+        report["publication_gate_exit"] = gate.returncode
+        report["state"] = "strict_and_publication_gates_passed" if not gate.returncode else "publication_gate_blocked"
+        if gate.returncode:
+            raise SystemExit(gate.returncode)
     except Exception as exc:
         report["failure_type"] = type(exc).__name__
         # Provider exception messages can include request headers or URLs.
