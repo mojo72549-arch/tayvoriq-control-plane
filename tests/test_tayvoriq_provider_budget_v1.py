@@ -723,3 +723,16 @@ class SchedulerContractTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def test_healthy_source_editor_can_retry_within_slot_but_real_quota_is_respected(tmp_path):
+    health = ProviderHealth(tmp_path / "health.json", clock=lambda: NOW)
+    queue = tmp_path / "retry.json"
+    keys = {"groq":"live", "gemini":"limited"}
+    health.failure("gemini", keys["gemini"], error(429))
+    due = health.next_retry(keys, available_delay_seconds=90)
+    assert due == NOW + 90
+    result = retry.defer("morning",due,path=queue,now=NOW,issue="SOURCE_MINIMUM_NOT_MET")
+    assert result["state"] == "WAITING"
+    assert retry.due_slot(queue,now=NOW+90) == "morning"
+    assert health.next_retry({"gemini":"limited"},available_delay_seconds=90) == NOW+1800

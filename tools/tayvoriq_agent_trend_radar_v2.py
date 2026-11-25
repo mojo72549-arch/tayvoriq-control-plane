@@ -350,12 +350,54 @@ def base_editorial_fields(raw: dict[str, Any]):
     return title, scope, criteria, sources, answers, issues
 
 
+_WAGE_DEMAND = re.compile(
+    r"(?:Die |die )?(?P<union>IG Metall|IG BCE|IGBCE|ver\.di) fordert "
+    r"(?P<amount>(?:\d{1,2}(?:[,.]\d+)?|ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn) "
+    r"Prozent mehr (?:Lohn|Gehalt|Entgelt))\.", re.I
+)
+
+
+def generic_viewer_action(value: str) -> bool:
+    return bool(re.fullmatch(
+        r"(?:Achte|Warte) auf (?:weitere (?:Entwicklungen|Informationen|Updates)|"
+        r"(?:die Ergebnisse|das Ergebnis) der nächsten (?:Verhandlungs|Tarif)runde)[.!]?|"
+        r"Beobachte (?:die )?weiteren Entwicklungen[.!]?", clean(value), re.I))
+
+
+def _spoken_tariff_comparison(answers, sources):
+    """Resolve a generic payoff only for an explicitly corroborated wage comparison."""
+    if not generic_viewer_action(answers.get("action_now")) or len(sources) < 2:
+        return answers
+    if not re.search(r"\bfordert (?:der Konzern |das Unternehmen |der Arbeitgeber )?(?:eine? )?Nullrunden?\b",
+                     clean(answers.get("why_happening")), re.I):
+        return answers
+    positions = set()
+    for source in sources:
+        clauses = re.split(r"(?<=[.!?])\s+", source["supports"])
+        matches = [m for clause in clauses if (m := _WAGE_DEMAND.fullmatch(clause))]
+        if len(matches) != 1 or re.search(r"zurückgezogen|widerrufen|dementiert", source["supports"], re.I):
+            return answers
+        positions.add((matches[0].group("union").casefold(), matches[0].group("amount")))
+    if len(positions) != 1:
+        return answers
+    union, demand = positions.pop()
+    if demand.casefold() in " ".join(answers.values()).casefold():
+        return answers
+    names = {"ig metall": "der IG Metall", "ig bce": "der IG BCE", "igbce": "der IGBCE", "ver.di": "von ver.di"}
+    action = f"Vergleiche die Nullrunde mit der Forderung {names[union]} nach {demand}."
+    rewritten = {**answers, "action_now": action}
+    if len(action.split()) > 15 or not 38 <= sum(len(s.split()) for s in rewritten.values()) <= 49:
+        return answers
+    return rewritten
+
+
 def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:
     title, scope, criteria, sources, answers, issues = base_editorial_fields(raw)
     if issues:
         print(json.dumps({"event": "candidate_editorial_rejection", "title": title,
                           "reason": "base_editorial_contract", "details": issues}, ensure_ascii=False))
         return None
+    answers = _spoken_tariff_comparison(answers, sources[:3])
     score = round(
         criteria["aktualitaet"] * .25 + criteria["viralitaet"] * .25 +
         criteria["tayvoriq_passung"] * .20 + criteria["quellenqualitaet"] * .15 + criteria["visuell"] * .15

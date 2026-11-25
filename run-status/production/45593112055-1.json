@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "run_id": "45593112055",
+  "run_attempt": "1",
+  "source_request_id": "telegram-3696-trend-1",
+  "source_context_sha256": "91d55e03500a804d6a08f56215d5ee3e3ad2c3606c648e0f8d18cf74c6367cd2",
+  "studio_sha": "80578d1f2d555909e90b35a3687a3421d0db3fa9",
+  "checkpoint_restored": true,
+  "tools": [
+    {
+      "name": "Chatterbox",
+      "activity": "YouTube · Stimme im geprüften Export",
+      "evidence": "job/youtube_shorts/audio_report.json"
+    },
+    {
+      "name": "Whisper",
+      "activity": "YouTube · Transkriptprüfung bestanden",
+      "evidence": "job/preapproval_ai_audit.json"
+    },
+    {
+      "name": "Chatterbox",
+      "activity": "TikTok · Stimme im geprüften Export",
+      "evidence": "job/tiktok/audio_report.json"
+    },
+    {
+      "name": "Whisper",
+      "activity": "TikTok · Transkriptprüfung bestanden",
+      "evidence": "job/preapproval_ai_audit.json"
+    },
+    {
+      "name": "MoneyPrinterTurbo",
+      "activity": "YouTube · Szenen 5, 6 ersetzt (17.3 s)",
+      "evidence": "job/job.json · visual_checkpoint_repair"
+    },
+    {
+      "name": "FFmpeg / ffprobe",
+      "activity": "YouTube · Videospur zusammengesetzt, Originalton geprüft",
+      "evidence": "job/job.json · visual_checkpoint_repair.audio_sha256"
+    }
+  ],
+  "scores": [
+    {
+      "name": "Fakten",
+      "value": 100,
+      "threshold": 90
+    },
+    {
+      "name": "Bild",
+      "value": 92,
+      "threshold": 78
+    },
+    {
+      "name": "Gesamt",
+      "value": 95,
+      "threshold": 85
+    }
+  ],
+  "findings": []
+}

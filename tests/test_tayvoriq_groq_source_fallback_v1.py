@@ -589,3 +589,39 @@ class GroqSourceContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_article_retry_inspects_other_distinct_leads(monkeypatch):
+    pairs = [[record(f"paper-{n}-{side}.example", f"Report {n} {side}", 1) for side in ("a","b")]
+             for n in range(8)]
+    pool = [row for pair in pairs for row in pair]
+    monkeypatch.setattr(hf, "_source_pair_score", lambda a,b: 2 if a["title"][:-1]==b["title"][:-1] else 0)
+    monkeypatch.setattr(hf, "corroborated_headline", lambda a,b: None)
+    monkeypatch.setattr(hf, "distinct_headlines", lambda a,b: a[:-1]!=b[:-1])
+    monkeypatch.setattr(hf, "_research_retry_attempt", lambda:0)
+    original = hf.article_research_records(pool)
+    monkeypatch.setattr(hf, "_research_retry_attempt", lambda:1)
+    second = hf.article_research_records(pool)
+    assert len(original) == len(second) == 8
+    assert {r["url"] for r in original}.isdisjoint(r["url"] for r in second)
+
+
+def test_generic_viewer_payoff_is_repaired_only_with_source_evidence():
+    import json
+    from copy import deepcopy
+    import tayvoriq_agent_trend_radar_v6 as radar
+    request = json.loads((Path(__file__).resolve().parents[1] / "requests/telegram-3696-trend-1.json").read_text())
+    ctx = request["source_context"]
+    draft = {**ctx["retention_v5"], "title": request["topic"], "sources":[{**s,"source_id":str(i)} for i,s in enumerate(ctx["sources"])],
+             "_retrieved_regional_assessment":{"passed":True}, "fallback_editorial_answers":{**ctx["fallback_editorial_answers"],
+             "action_now":"Achte auf weitere Entwicklungen."}}
+    # The editor cannot add an amount absent from the two original articles.
+    draft["fallback_editorial_answers"]["why_happening"]="Weil die Arbeitskosten steigen, will der Konzern bei den Löhnen sparen."
+    for action,accepted in [("Prüfe die nächste Runde im Dezember auf ein konkretes Ergebnis.",True),
+                            ("Prüfe die Zahlung von 700 Euro für alle Beschäftigten.",False)]:
+        candidate=deepcopy(draft)
+        hf._repair_editorial_fields([candidate],lambda batch:{k:{**{key:candidate.get(key,"") for key in v["missing"]},
+                                                                "action_now":action} for k,v in batch.items()})
+        assert (candidate["fallback_editorial_answers"]["action_now"]==action) is accepted
+        if accepted:
+            assert radar._downstream_editorial_contract_valid(candidate["fallback_editorial_answers"])

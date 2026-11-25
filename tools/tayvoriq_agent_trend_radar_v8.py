@@ -361,6 +361,9 @@ TAYVORIQ CONTENT DEPTH — HARD REQUIREMENT:
 - Where the topic naturally permits it, retain at least TWO specific named examples or entities: games, models, companies, products, places, people, dates, features or comparable concrete details.
 - IMPORTANT CONTRACT SEPARATION: deep research belongs in source supports, factual_guardrails and research_notes. Do NOT stuff long-form research prose into the five fallback_editorial_answers.
 - The five fallback_editorial_answers are a compact factual compatibility contract and MUST continue to obey the inherited STRICT FALLBACK CONTRACT: one natural sentence per field, 5–15 words each, 38–49 words total, explicit causal why, explicit 'Für dich' relevance and a viewer-facing concrete action verb.
+- The fallback sentences themselves are spoken. Resolve the viewer_question there as well. Where the sources
+  describe opposing positions, name each party and its verified demand. Distinguish proposals, decisions and
+  effects already in force. Close with the specific pending decision, date or practical consequence when known.
 - NEW STORY-FIRST V2: every newly generated candidate MUST also set source_context.editorial_story_contract_version = 2 and source_context.story_first_script_body.
 - story_first_script_body is the spoken editorial mini-story, 38–49 words, at least 3 natural sentences, and MUST NOT simply concatenate the five fallback answers.
 - Required narrative spine: surprising/consequential hook -> only the context needed to understand it -> cause/development -> verified tension/counterposition when supported -> meaning/outlook.
