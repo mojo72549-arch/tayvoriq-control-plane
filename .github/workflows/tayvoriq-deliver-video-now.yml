@@ -1421,11 +1421,24 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
+      - name: Prepare opt-in scene revision engine
+        id: scene_revision_engine
+        if: steps.controller.outputs.state != 'SUCCESS' && steps.controller.outputs.reusable_master == 'true' && vars.TAYVORIQ_SCENE_REVISION_ENABLED == 'true' && hashFiles('implementation/tools/tayvoriq_scene_revision_v1.py') != ''
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: harry0703/MoneyPrinterTurbo
+          ref: dabfd3f8548d30ed0eea8759decbdead9626e0e6
+          path: .moneyprinterturbo
+          persist-credentials: false
+
       - name: Repair only failed local checkpoints
         id: checkpoint_recovery
         if: steps.controller.outputs.state != 'SUCCESS' && steps.controller.outputs.reusable_master == 'true'
         working-directory: implementation
         shell: bash
+        env:
+          TAYVORIQ_MONEYPRINTERTURBO_ROOT: ${{ steps.scene_revision_engine.outcome == 'success' && format('{0}/.moneyprinterturbo', github.workspace) || '' }}
         run: |
           set -uo pipefail
           echo "=== X checkpoint recovery: preserve render, source evidence and platform variants ==="
