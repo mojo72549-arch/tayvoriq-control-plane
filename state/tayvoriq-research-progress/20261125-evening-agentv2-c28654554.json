@@ -6,15 +6,19 @@
   "run_attempt": 3,
   "state": "SEARCHING",
   "started_at": "2026-11-25T14:20:46.916669+00:00",
-  "updated_at": "2026-11-25T14:26:10.475429+00:00",
+  "updated_at": "2026-11-25T14:26:31.453970+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
-  "quality_rejections": 6,
+  "quality_rejections": 10,
   "provider": "groq",
   "issues": [
     {
       "code": "TIKTOK_FIT",
       "provider": null
+    },
+    {
+      "code": "QUOTA",
+      "provider": "gemini"
     }
   ],
   "exit_code": null,
