@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from tayvoriq_source_evidence_v1 import _numbers
+
 VALID_SCOPES = {
     "technology_ai", "business_economy", "world_society", "sports",
     "science_future", "creator_media", "mobility_energy", "auto_scope",
@@ -284,6 +286,8 @@ For each candidate return:
   "next_episode_candidate": "concrete next part or empty string",
   "recommended_cta_type": "CURIOSITY|EXPERTISE|COMMUNITY|SERIES|DISCUSSION|IDENTITY",
   "primary_hook": "natural first-line hook",
+  "editorial_story_contract_version": 3,
+  "story_first_script_body": "46–49 spoken German words supported by the sources",
   "viewer_question": "the viewer question this short resolves",
   "explanation_core": "source-grounded explanation core",
   "surprise_or_reframe": "source-grounded surprising point or reframe",
@@ -391,6 +395,40 @@ def _spoken_tariff_comparison(answers, sources):
     return rewritten
 
 
+def _story_first_fields(raw: dict[str, Any], sources: list[dict], answers: dict) -> dict:
+    """Carry the spoken story in the same evidence packet as the fallback answers."""
+    packet = raw
+    if "story_first_script_body" not in raw and isinstance(raw.get("source_context"), dict):
+        packet = raw["source_context"]
+    body = packet.get("story_first_script_body")
+    if str(packet.get("editorial_story_contract_version")) != "3" or not isinstance(body, str):
+        return {}
+
+    body = clean(body)
+    sentences = re.split(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])", body)
+    lower = body.casefold()
+    if not 46 <= len(body.split()) <= 49 or len(sentences) < 3:
+        return {}
+    if not re.search(
+        r"\b(?:aber|doch|denn|weil|während|gleichzeitig|damit|deshalb|daher"
+        r"|trotzdem|allerdings|entscheidend|brisant)\b",
+        lower,
+    ):
+        return {}
+    if lower == " ".join(answers.values()).casefold() or sum(
+        sentence.casefold().startswith(("betroffen sind", "für dich", "beobachte", "achte", "prüfe"))
+        for sentence in sentences
+    ) >= 2:
+        return {}
+    if re.search(r"\b(?:abonniere|folge (?:mir|uns|tayvoriq|diesem kanal))\b", lower):
+        return {}
+    evidence = " ".join(source["supports"] for source in sources)
+    if not _numbers(body).issubset(_numbers(evidence)):
+        return {}
+
+    return {"editorial_story_contract_version": 3, "story_first_script_body": body}
+
+
 def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:
     title, scope, criteria, sources, answers, issues = base_editorial_fields(raw)
     if issues:
@@ -445,6 +483,7 @@ def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any
             "independent_news_count": len(sources[:3]),
             "sources": sources[:3],
             "fallback_editorial_answers": answers,
+            **_story_first_fields(raw, sources[:3], answers),
             "retention_v5": {**v5_scores, **retention_v5},
             **({"cinematic_brief": brief} if brief else {}),
         },
