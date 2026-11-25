@@ -436,9 +436,6 @@ jobs:
           SELECTION_ID: ${{ steps.control.outputs.selection_id }}
         shell: bash
         run: |
-          set +e
-          if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
-            curl -fsS --retry 2 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-              --data-urlencode "text=🔴 TAYVORIQ Trend-Radar\nFür ${SELECTION_ID:-diesen Slot} waren sowohl Live-Radar als auch der geprüfte Recovery-Pfad nicht contract-valid. Es wurde keine Produktion gestartet und nichts veröffentlicht." >/dev/null || true
+          if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ] && [ -n "${SELECTION_ID:-}" ]; then
+            python tools/tayvoriq_research_terminal_notice.py --selection-id "$SELECTION_ID" || true
           fi
