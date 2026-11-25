@@ -36,3 +36,32 @@ def test_report_requires_this_attempt_and_each_artifacts_digest(tmp_path):
     assert collect(*args)["scores"] == []
     write("recovery-checkpoint-meta.json", dict(meta, run_attempt="1"))
     assert collect(*args)["tools"] == []
+
+
+def test_station_outputs_require_an_unchanged_checkpoint_and_exact_source(tmp_path):
+    def write(name, value):
+        path=tmp_path/name
+        path.parent.mkdir(parents=True,exist_ok=True)
+        data=json.dumps(value).encode()
+        path.write_bytes(data)
+        return hashlib.sha256(data).hexdigest()
+    binding=dict(run_id='321',run_attempt='1',source_request_id='telegram-321',source_context_sha256='b'*64)
+    manifest={**binding,'implementation_sha':'a'*40,'restored_recovery_checkpoint':True}
+    write('control-plane/production-manifest.json',manifest)
+    package={'script':'Ein tatsächlich gespeichertes deutsches Skript.','language':'Deutsch',
+             'scenes':[{'spoken_chunk':'Ein Satz.','visual_query':'German factory'}],
+             'editorial_visual_standard':{'music_policy':'Silence and sparse accents'}}
+    variant={'text_package':package,'render':{'asset_report':[{'subtitle_present':True,'source_clip_sha256':'c'*64}]}}
+    job={'text_package':{'retention_contract_v5':{'request_id':'telegram-321','source_context_sha256':'b'*64}},
+         'variants':{'youtube_shorts':variant,'tiktok':variant}}
+    digest=write('job/job.json',job)
+    write('recovery-checkpoint-meta.json',{**manifest,'files_sha256':{'job.json':digest}})
+    args=(tmp_path,'321','1','telegram-321','b'*64)
+    report=collect(*args)
+    assert {row['id'] for row in report['stations']}=={'script','scenes','visuals','captions'}
+    assert all(row['artifact_sha256']==digest and row['checkpoint_restored'] for row in report['stations'])
+    assert report['scripts']['youtube_shorts']==package['script']
+    job['variants']['youtube_shorts']['text_package']['script']='Unbestätigte Änderung'
+    write('job/job.json',job)
+    assert collect(*args)['stations']==[]
+    assert collect(*args)['scripts']=={}

@@ -40,7 +40,7 @@ def collect(root: Path, run: str, attempt: str, request: str, source: str) -> di
         raise ValueError("Produktionsmanifest gehört nicht zu diesem Versuch")
     report = {"schema": 1, **binding, "studio_sha": manifest["implementation_sha"],
               "checkpoint_restored": manifest.get("restored_recovery_checkpoint") is True,
-              "tools": [], "scores": [], "findings": []}
+              "tools": [], "scores": [], "findings": [], "stations": [], "scripts": {}}
     meta = document(root / "recovery-checkpoint-meta.json")
     if not matches(meta) or meta.get("implementation_sha") != report["studio_sha"]:
         return report
@@ -53,6 +53,41 @@ def collect(root: Path, run: str, attempt: str, request: str, source: str) -> di
         report["tools"].append({"name": tool, "activity": activity, "evidence": evidence})
 
     audit = proof("preapproval_ai_audit.json")
+    job = proof("job.json")
+    contract = (job.get('text_package') or {}).get('retention_contract_v5') or {}
+    variants = job.get('variants') or {}
+    if (contract.get('request_id') == request and contract.get('source_context_sha256') == source
+            and set(PLATFORMS).issubset(variants)):
+        def station(name, checks, detail, outputs):
+            if all(checks):
+                report['stations'].append({'id': name, 'state': 'success', 'detail': detail,
+                    'artifact': 'job/job.json', 'artifact_sha256': hashes['job.json'],
+                    'checkpoint_restored': report['checkpoint_restored'], 'outputs': outputs})
+
+        packages = [(variants[key].get('text_package') or {}) for key in PLATFORMS]
+        renders = [(variants[key].get('render') or {}) for key in PLATFORMS]
+        assets = [render.get('asset_report') or [] for render in renders]
+        scripts = {key: (variants[key].get('text_package') or {}).get('script') for key in PLATFORMS}
+        station('script', [all(isinstance(s, str) and s.strip() for s in scripts.values()),
+                          all(p.get('language') in {'Deutsch', 'de'} for p in packages)],
+                'Deutsche Skripte beider Plattformen im hashgeprüften Checkpoint vorhanden.',
+                {key: len(value.split()) for key, value in scripts.items() if isinstance(value, str)})
+        report['scripts'] = {key: value for key, value in scripts.items() if isinstance(value, str) and value.strip()}
+        station('scenes', [all(p.get('scenes') and all(
+            isinstance(s.get('spoken_chunk'), str) and s['spoken_chunk'].strip()
+            and isinstance(s.get('visual_query'), str) and s['visual_query'].strip()
+            for s in p['scenes']) for p in packages)],
+            'Szenen mit gesprochenem Text und Bildabfrage für beide Ausgaben vorhanden.',
+            {key: len((variants[key].get('text_package') or {}).get('scenes') or []) for key in PLATFORMS})
+        station('visuals', [all(rows and all(re.fullmatch(r'[0-9a-f]{64}',
+            str(row.get('source_clip_sha256') or '')) for row in rows) for rows in assets)],
+            'Die verwendeten Szenenclips beider Plattformen sind mit SHA-256 gebunden.',
+            {key: len((variants[key].get('render') or {}).get('asset_report') or []) for key in PLATFORMS})
+        station('captions', [all(rows and all(row.get('subtitle_present') is True for row in rows) for rows in assets),
+                            all((p.get('editorial_visual_standard') or {}).get('music_policy') for p in packages)],
+                'Untertitel aller Szenen nachgewiesen; Musik folgt der gespeicherten redaktionellen Policy. '
+                'Ein eigener Musikexport ist damit nicht belegt.',
+                {'subtitle_scenes': sum(map(len, assets)), 'music_export_verified': False})
     for key, platform in PLATFORMS.items():
         name = f"{key}/audio_report.json"
         if proof(name).get("voice_provider_used") == "chatterbox_multilingual_v3":
@@ -63,7 +98,7 @@ def collect(root: Path, run: str, attempt: str, request: str, source: str) -> di
             outcome = "bestanden" if asr["passed"] else "beanstandet"
             record("Whisper", f"{platform} · Transkriptprüfung {outcome}", "job/preapproval_ai_audit.json")
 
-    revision = proof("job.json").get("visual_checkpoint_repair") or {}
+    revision = job.get("visual_checkpoint_repair") or {}
     target = PLATFORMS.get(revision.get("target_platform"))
     replacements = revision.get("replacement_clips") or {}
     scenes = sorted(int(n) for n, row in replacements.items()

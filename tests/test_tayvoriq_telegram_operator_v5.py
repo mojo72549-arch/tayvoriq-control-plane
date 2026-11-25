@@ -32,7 +32,13 @@ def test_trends_command_enters_existing_v5_trend_workflow():
     assert "workflow_call:" in src
     assert 'EVENT_NAME: ${{ github.event_name }}' in src
     assert 'PAYLOAD_REQUESTED_VIA: ${{ github.event.client_payload.requested_via || \'\' }}' in src
-    assert 'test "$PAYLOAD_REQUESTED_VIA" = "telegram_command"' in src
+    import subprocess
+    start=src.index('case "$PAYLOAD_REQUESTED_VIA" in')
+    end=src.index('esac',start)+4
+    origin_guard=src[start:end]
+    for origin,code in [('telegram_command',0),('control_center',0),('untrusted_origin',1)]:
+        result=subprocess.run(['bash','-c',origin_guard],env={'PAYLOAD_REQUESTED_VIA':origin},capture_output=True)
+        assert result.returncode==code
     assert 'case "$slot" in morning|evening)' in src
     assert "2 <= len(trends) <= 5" in src
     assert "quality_gates_weakened" in src

@@ -14,7 +14,8 @@ FILES = frozenset({'job.json', 'preapproval_ai_audit.json', 'publication_quality
 def validate_decision(decision, review_id):
     if (not isinstance(review_id, str) or not re.fullmatch(r'[0-9]{1,20}', review_id)
             or str(decision.get('review_id')) != review_id or decision.get('schema') != 'tayvoriq-artifact-approval'
-            or decision.get('state') != 'APPROVED' or decision.get('decided_via') != 'telegram_callback'
+            or decision.get('state') != 'APPROVED'
+            or decision.get('decided_via') not in {'telegram_callback', 'control_center'}
             or not decision.get('decision_id') or type(decision.get('telegram_message_id')) is not int
             or decision['telegram_message_id'] < 1):
         raise ValueError('TELEGRAM_BOUND_APPROVAL_REQUIRED')

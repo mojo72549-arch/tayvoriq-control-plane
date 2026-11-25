@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -217,6 +218,9 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         raise SystemExit("telegram message_id is required for idempotency")
 
     trend_request = read_json(Path(args.trend_request))
+    if (trend_request.get('superseded') is True or trend_request.get('rejected_whole_selection') is True
+            or str(trend_request.get('status', '')).upper() == 'REJECTED'):
+        raise SystemExit('STALE_OR_WRONG_APPROVAL: selection was superseded or rejected')
     canonical_selection_id = str(trend_request.get("selection_id") or "").strip()
     if not canonical_selection_id or selection_id != canonical_selection_id:
         raise SystemExit(
@@ -321,6 +325,14 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         print(path)
         return
 
+    # Both operator surfaces consume the same selection. A second candidate
+    # from an already approved list must not create a competing slot request.
+    for prior_path in Path(args.out_dir).glob('*.json'):
+        prior = read_json(prior_path)
+        if (prior.get('request_id') and prior.get('approval_key')
+                and prior.get('selection_id') == selection_id and prior.get('request_id') != request_id):
+            raise SystemExit('SELECTION_ALREADY_APPROVED: request=' + str(prior.get('request_id')))
+
     approved_at = str(args.approved_at or "").strip() or utc_now()
     parse_iso(approved_at)
     scope = str(trend.get("trend_scope") or "auto_scope").strip()
@@ -330,6 +342,7 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "request_id": request_id,
         "status": "APPROVED",
         "source": "telegram_trend_approval",
+        "approved_via": "control_center" if os.environ.get('APPROVAL_ORIGIN') == 'control_center' else "telegram_callback",
         "trend_id": trend_id,
         "topic": canonical_topic,
         "trend_scope": scope,
@@ -355,10 +368,10 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "golden_path_v5_state": "APPROVED",
         "golden_path_v5_history": [
             {"state": "TREND_CANDIDATES_SCORED", "at": approved_at, "actor": "trend_radar_v5"},
-            {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"},
+            {"state": "APPROVED", "at": approved_at, "actor": "control_center" if os.environ.get('APPROVAL_ORIGIN') == 'control_center' else "telegram_callback"},
         ],
         "state_history": [
-            {"state": "APPROVED", "at": approved_at, "actor": "telegram_callback"}
+            {"state": "APPROVED", "at": approved_at, "actor": "control_center" if os.environ.get('APPROVAL_ORIGIN') == 'control_center' else "telegram_callback"}
         ],
     }
     data["contract_sha256"] = contract_hash(data)

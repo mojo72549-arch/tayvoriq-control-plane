@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -35,6 +36,24 @@ class EditorialRequestPreflightTests(unittest.TestCase):
             contract.validate(generated, require_claimable=True)
             self.assertEqual(generated["topic"], trend["title"])
             self.assertEqual(generated["source_context"]["sources"], repaired["source_context"]["sources"])
+
+            # The second surface resolves exactly the same already-created request.
+            with patch.dict('os.environ', {'APPROVAL_ORIGIN':'control_center'}):
+                contract.create_from_telegram(args)
+            self.assertEqual(len(list(output.glob('*.json'))), 1)
+
+            other = json.loads(json.dumps(trend))
+            other['id']='1'
+            selection['trends']=[trend,other]
+            path.write_text(json.dumps(selection))
+            args.trend_id='1'
+            with self.assertRaisesRegex(SystemExit,'SELECTION_ALREADY_APPROVED'):
+                contract.create_from_telegram(args)
+            self.assertEqual(len(list(output.glob('*.json'))),1)
+            selection['superseded']=True
+            path.write_text(json.dumps(selection))
+            with self.assertRaisesRegex(SystemExit,'superseded or rejected'):
+                contract.create_from_telegram(args)
 
 
 if __name__ == "__main__":

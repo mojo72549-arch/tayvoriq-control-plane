@@ -24,6 +24,9 @@ class ArtifactApprovalTest(unittest.TestCase):
                             decided_via='telegram_callback', decision_id='approved-callback',
                             telegram_message_id=120, studio_sha='a'*40, files_sha256=hashes)
             verify_package(root, decision, '100')
+            verify_package(root, {**decision, 'decided_via': 'control_center'}, '100')
+            with self.assertRaisesRegex(ValueError, 'TELEGRAM_BOUND_APPROVAL_REQUIRED'):
+                verify_package(root, {**decision, 'decided_via': 'untrusted_web_header'}, '100')
             for status in ('PENDING', 'REJECTED'):
                 with self.assertRaisesRegex(ValueError, 'TELEGRAM_BOUND_APPROVAL_REQUIRED'):
                     verify_package(root, {**decision, 'state': status}, '100')

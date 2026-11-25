@@ -49,6 +49,7 @@ jobs:
           DISPATCH_TOPIC: ${{ github.event.client_payload.topic }}
           APPROVED_AT: ${{ github.event.client_payload.approved_at }}
           TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id }}
+          APPROVAL_ORIGIN: ${{ github.event.client_payload.requested_via || 'telegram_callback' }}
         run: |
           set -euo pipefail
           REQUEST_FILE=""

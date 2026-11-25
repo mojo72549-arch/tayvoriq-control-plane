@@ -1,0 +1,57 @@
+name: TAYVORIQ Verified Video Archive
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.automation/tayvoriq-publications/*.json'
+      - '.automation/tayvoriq-reviews/*.json'
+      - 'run-status/production/*.json'
+      - 'tools/tayvoriq_video_archive.py'
+  workflow_run:
+    workflows:
+      - TAYVORIQ Control Approved Publish V2
+      - TAYVORIQ Auto-Publish Approved Review
+      - TAYVORIQ YouTube Publish Approved
+    types: [completed]
+  pull_request:
+    paths:
+      - 'tools/tayvoriq_video_archive.py'
+      - 'tests/test_tayvoriq_video_archive.py'
+      - '.github/workflows/tayvoriq-video-archive.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tayvoriq-verified-video-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Test verified receipts and durable history
+        run: python -m unittest discover -s tests -p test_tayvoriq_video_archive.py
+      - name: Rebuild from current publication receipts
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            python tools/tayvoriq_video_archive.py
+            git add state/tayvoriq-video-archive.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m 'Archive verified TAYVORIQ publication receipts'
+            if git push origin HEAD:main; then exit 0; fi
+          done
+          exit 1
