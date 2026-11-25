@@ -19,6 +19,8 @@ on:
     paths:
       - 'tools/tayvoriq_video_archive.py'
       - 'tests/test_tayvoriq_video_archive.py'
+      - 'tests/test_tayvoriq_global_duplicate_gate_v1.py'
+      - 'tools/tayvoriq_global_duplicate_gate_v1.py'
       - '.github/workflows/tayvoriq-video-archive.yml'
 
 permissions:
@@ -37,7 +39,9 @@ jobs:
         with:
           fetch-depth: 1
       - name: Test verified receipts and durable history
-        run: python -m unittest discover -s tests -p test_tayvoriq_video_archive.py
+        run: |
+          python -m unittest discover -s tests -p test_tayvoriq_video_archive.py
+          python -m unittest discover -s tests -p test_tayvoriq_global_duplicate_gate_v1.py
       - name: Rebuild from current publication receipts
         if: github.event_name != 'pull_request'
         shell: bash

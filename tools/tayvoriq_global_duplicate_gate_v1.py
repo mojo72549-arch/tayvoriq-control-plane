@@ -278,6 +278,28 @@ def run_gate(
             ledger[request_id] = data
             files[request_id] = path
 
+    # The archive remains a source of editorial history after active requests
+    # have been retired. Reuse the same comparisons and unchanged thresholds.
+    archive_path=requests_dir.parent/'state/tayvoriq-video-archive.json'
+    if archive_path.exists():
+        archive=_read_json(archive_path)
+        if archive.get('schema')!='tayvoriq-video-archive-v1' or not isinstance(archive.get('records'),list):
+            raise ValueError('VERIFIED_ARCHIVE_SCHEMA_INVALID')
+        for record in archive['records']:
+            if not isinstance(record,dict) or not any(
+                isinstance(platform,dict) and platform.get('status')=='PUBLISHED'
+                for platform in (record.get('platforms') or {}).values()):
+                continue
+            prior_id=_clean(record.get('request_id')) or 'archive-'+_clean(record.get('review_id'))
+            if prior_id in ledger and _clean(ledger[prior_id].get('status')).upper() in ACTIVE_STATES:
+                continue
+            context=record.get('source_context')
+            if not isinstance(context,dict):
+                context={'sources':record.get('sources') or []}
+            ledger[prior_id]={**ledger.get(prior_id,{}),'request_id':prior_id,'status':'PUBLISHED',
+                              'topic':record.get('topic'),'source_context':context}
+            files[prior_id]=archive_path
+
     repair_family = _repair_family(ledger, source_request_id)
     comparisons = []
     for prior_id, prior in ledger.items():

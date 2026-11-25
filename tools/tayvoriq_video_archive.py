@@ -41,6 +41,18 @@ def platform_receipts(publication, approval, review_id):
         youtube = {'status': 'PUBLISHED', 'url': publication['url'],
                    'published_at': publication['published_at'], 'video_id': publication['video_id']}
     result = publication.get('youtube') or {}
+    legacy_url=result.get('url')
+    legacy_id=str(result.get('video_id') or '')
+    if (publication.get('status')=='APPROVED' and publication.get('platform_upload_performed') is True
+            and publication.get('publication_pending') is False
+            and publication.get('upload_status')=='PUBLISHED_YOUTUBE'
+            and (publication.get('youtube_privacy') or result.get('privacy'))=='public'
+            and VIDEO_ID.fullmatch(legacy_id)
+            and legacy_url in {'https://www.youtube.com/shorts/'+legacy_id,
+                               'https://www.youtube.com/watch?v='+legacy_id}
+            and dated(publication.get('published_at'))):
+        youtube={'status':'PUBLISHED','url':legacy_url,'video_id':legacy_id,
+                 'published_at':publication['published_at'],'receipt_kind':'legacy_review_publication_result'}
     if (publication.get('state') == 'YOUTUBE_PUBLISHED'
             and approval.get('state') == 'APPROVED'
             and str(approval.get('review_id')) == review_id
@@ -76,7 +88,12 @@ def build(root):
         run = request.get('golden_path_run_id')
         if type(run) is int:
             requests[str(run)] = request
-    for path in sorted((root / '.automation/tayvoriq-publications').glob('*.json')):
+    receipts={}
+    for folder in ('.automation/tayvoriq-publications','.automation/tayvoriq-reviews',
+                   '.automation/tayvoriq-direct-reviews'):
+        for path in sorted((root/folder).glob('*.json')):
+            receipts.setdefault(path.stem,path)
+    for path in receipts.values():
         rid = path.stem
         if not re.fullmatch(r'\d{1,20}', rid):
             continue
@@ -119,6 +136,7 @@ def build(root):
             'videos': {'youtube': approval.get('youtube_video_url'),
                        'tiktok': approval.get('tiktok_video_url')},
             'sources': source.get('sources') or [],
+            'source_context': source or None,
             'script': source.get('story_first_script_body'),
             'script_kind': 'source_context_draft',
             'final_scripts': evidence.get('scripts') if bound else None,
@@ -134,9 +152,15 @@ def build(root):
         if review_delivered and review_url:
             for platform in ('youtube', 'tiktok'):
                 record['videos'][platform] = record['videos'][platform] or review_url + f'short_{platform}.mp4'
+        if approval.get('status')=='APPROVED' and dated(approval.get('approved_at')):
+            record['history'].append({'state':'VIDEO_APPROVED','at':approval['approved_at'],
+                                      'actor':approval.get('approved_via')})
+        if dated(record['published_at']):
+            record['history'].append({'state':'YOUTUBE_PUBLISHED','at':record['published_at'],
+                                      'actor':'stored_platform_receipt'})
         previous=records.get(rid,{})
         # Retiring queue/request files must not erase an already verified archive.
-        for key in ('request_id','topic','slot','production_date','published_at','review_url','sources',
+        for key in ('request_id','topic','slot','production_date','published_at','review_url','sources','source_context',
                     'script','final_scripts','source_context_sha256','quality','tools'):
             if record.get(key) in (None, [], {}, '') and previous.get(key) not in (None, [], {}, ''):
                 record[key]=previous[key]
