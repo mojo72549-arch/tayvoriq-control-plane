@@ -1,0 +1,54 @@
+name: TAYVORIQ One-Time Source Repair Verification
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/tayvoriq-source-repair-verification-once.yml]
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: tayvoriq-source-repair-verification-once
+  cancel-in-progress: false
+jobs:
+  resume-bound-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate the current owner-authorized research repair and resume its failed job once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, time
+          from pathlib import Path
+          sid = '20261125-evening-agentv2-c28654554'
+          revision = '68e038091f6eeb33ed5828bc13a78aab58e9cac1'
+          audit = json.loads(Path(f'state/tayvoriq-research-repairs/{sid}-68e03809.json').read_text())
+          pointer = json.loads(Path('state/tayvoriq-control-center-research.json').read_text())
+          retry = json.loads(Path(f'.automation/tayvoriq-agent-v2/control-center-retries/{sid}.json').read_text())
+          assert audit['selection_id'] == pointer['selection_id'] == sid
+          assert audit['code_revision'] == revision
+          assert audit['max_local_attempts'] == retry['max_attempts'] == 3
+          assert audit['quality_gates_weakened'] is False and retry['quality_gates_weakened'] is False
+          assert audit['production_authorized'] is False
+          assert time.time() < audit['valid_until_epoch'] <= time.time() + 600
+          assert retry['attempts'] == 0 and retry['state'] == 'WAITING'
+          subprocess.run(['git', 'merge-base', '--is-ancestor', revision, 'HEAD'], check=True)
+          api = 'repos/' + os.environ['GITHUB_REPOSITORY']
+          run = json.loads(subprocess.check_output(['gh','api',api+'/actions/runs/45626811904'],text=True))
+          assert run['display_title'] == 'TAYVORIQ research ' + sid
+          assert run['event'] == 'repository_dispatch'
+          if run['run_attempt'] > 3:
+              print('The bound repair has already been dispatched; no duplicate execution.')
+              raise SystemExit(0)
+          assert run['run_attempt'] == 3 and run['status'] == 'completed' and run['conclusion'] == 'failure'
+          job = json.loads(subprocess.check_output(['gh','api',api+'/actions/jobs/139270909412'],text=True))
+          assert job['run_id'] == run['id']
+          assert job['name'].endswith('send-requested-trend-list / trend-gate')
+          assert job['conclusion'] == 'failure'
+          subprocess.run(['gh','api','--method','POST',api+'/actions/jobs/139270909412/rerun'],check=True)
+          print('Resumed exactly the authorized research job; no production or publication requested.')
+          PY
