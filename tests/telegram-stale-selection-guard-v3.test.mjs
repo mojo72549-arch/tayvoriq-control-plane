@@ -234,3 +234,73 @@ test('review approval verifies committed package with authenticated retry and no
   assert.match(approval, /await answerCallback\(env, callback\.id, callbackText, true\)/);
   assert.match(approval, /else \{[\s\S]*await requireTelegramMessage/);
 });
+
+test('the text preview submits exactly the chosen version and rejects a superseded wording', async () => {
+  const originalFetch = globalThis.fetch;
+  const selectionId = 'a'.repeat(40);
+  const title = 'FlixTrain im DB Navigator';
+  const source = {
+    editorial_story_contract_version: 2,
+    story_first_script_body: 'Dein ICE kommt zu spät. Der FlixTrain fährt weg.',
+    story_first_script_body_b: 'Bei der Buchung gibt es zwei Fahrkarten.',
+    cinematic_brief: { opening_visual: { subject: 'Bahnsteig' } },
+  };
+  const trend = { id: '1', title, sources: ['https://example.org/bahn'], source_context: source };
+  const events = [];
+  const previews = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const address = String(url);
+    if (address.includes('/selections/')) return Response.json({ selection_id: selectionId, trends: [trend] });
+    if (address.includes('/contents/')) return Response.json({}, { status: 404 });
+    if (address.endsWith('/dispatches')) {
+      events.push(JSON.parse(options.body));
+      return new Response(null, { status: 204 });
+    }
+    if (address.endsWith('/editMessageText')) {
+      previews.push(JSON.parse(options.body));
+      return Response.json({ ok: true, result: { message_id: 500 } });
+    }
+    if (address.includes('api.telegram.org')) {
+      return Response.json({ ok: true, result: { message_id: 500 } });
+    }
+    throw Error('Unexpected request: ' + address);
+  };
+  const env = {
+    TELEGRAM_WEBHOOK_SECRET: 'secret', TELEGRAM_CHAT_ID: '42',
+    TELEGRAM_BOT_TOKEN: 'token', GITHUB_TOKEN: 'test-token',
+  };
+  const click = (data) => approvalWorker.fetch(new Request('https://worker.example/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': 'secret' },
+    body: JSON.stringify({ callback_query: {
+      id: 'callback-test', data, message: { message_id: 500, chat: { id: '42' } },
+    } }),
+  }), env);
+
+  try {
+    assert.equal((await click('select_trend:' + selectionId + ':1')).status, 200);
+    const [preview] = previews;
+    assert.ok(preview.text.includes('Sprechertext A'));
+    assert.ok(preview.text.includes(source.story_first_script_body));
+    assert.ok(preview.text.includes(source.story_first_script_body_b));
+    assert.ok(preview.text.includes('Bahnsteig'));
+    assert.equal(events.length, 0);
+    const buttons = preview.reply_markup.inline_keyboard[0];
+    assert.equal(buttons.length, 2);
+    assert.ok(buttons.every(button => Buffer.byteLength(button.callback_data) <= 64));
+    const callback = buttons[1].callback_data;
+    const original = source.story_first_script_body_b;
+    source.story_first_script_body_b = 'Diese Fassung wurde seit der Vorschau verändert.';
+    assert.equal((await click(callback)).status, 409);
+    assert.equal(events.length, 0);
+
+    source.story_first_script_body_b = original;
+    assert.equal((await click(callback)).status, 200);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].event_type, 'tayvoriq_trend_approved');
+    assert.match(events[0].client_payload.text_approval, /^b:[a-f0-9]{10}$/);
+    assert.equal(events[0].client_payload.selection_id, selectionId);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

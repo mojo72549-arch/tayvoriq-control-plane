@@ -128,12 +128,17 @@ export default {
         return new Response('trend not found', { status: 404 });
       }
 
+      const drafts = editorialDrafts(trend);
+      const textButtons = await Promise.all(drafts.map(async ({ variant, body }) => ({
+        text: `✅ Text ${variant.toUpperCase()} freigeben`,
+        callback_data: `text_ok:${selectionId}:${trendId}:${variant}:${await textFingerprint(trend.title, body)}`,
+      })));
       await requireTelegramMessage(await editMessageWithMarkup(
         env,
         chatId,
         callback?.message?.message_id,
-        selectedTrendBody(trend),
-        trendConfirmationKeyboard(selectionId, trendId),
+        selectedTrendBody(trend, drafts),
+        trendConfirmationKeyboard(selectionId, trendId, textButtons),
       ));
       return new Response('ok');
     }
@@ -217,7 +222,7 @@ export default {
 
     const trendApproval = parseTrendApproval(callbackData, text, messageText);
     if (trendApproval) {
-      const { trendId, selectionId } = trendApproval;
+      const { trendId, selectionId, variant, fingerprint } = trendApproval;
       if (callback?.id) await answerCallback(env, callback.id, `Trend ${trendId} wird geprüft.`);
 
       let requestData;
@@ -241,6 +246,13 @@ export default {
         return new Response('trend not found', { status: 404 });
       }
       const topic = String(trend.title).trim();
+      if (variant) {
+        const draft = editorialDrafts(trend).find(item => item.variant === variant);
+        if (!draft || await textFingerprint(topic, draft.body) !== fingerprint) {
+          await requireTelegramMessage(await telegram(env, chatId, 'Die Textfassung stimmt nicht mehr mit der Vorschau überein. Öffne den Trend erneut.'));
+          return new Response('stale text approval', { status: 409 });
+        }
+      }
       const messageId=callback?.message?.message_id;
       if(!Number.isSafeInteger(messageId)||messageId<=0)return new Response('approval message missing',{status:422});
       try {
@@ -267,6 +279,7 @@ export default {
         telegram_message_id: messageId,
         requested_via:'telegram_callback',
         approved_at: new Date().toISOString(),
+        ...(variant ? { text_approval: `${variant}:${fingerprint}` } : {}),
       });
       if (!dispatch.ok) {
         const detail = await dispatch.text();
@@ -275,7 +288,7 @@ export default {
         return new Response('dispatch failed', { status: 502 });
       }
       if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
-      await requireTelegramMessage(await telegram(env, chatId, `✅ Themenfreigabe beim Orchestrator eingegangen.\nThema: ${topic}\nDie Produktion ist angefordert. Der Start wird erst nach bestätigter Ausführung gemeldet.`));
+      await requireTelegramMessage(await telegram(env, chatId, `✅ ${variant ? `Text ${variant.toUpperCase()} freigegeben` : 'Themenfreigabe beim Orchestrator eingegangen'}.\nThema: ${topic}\nDie Produktion ist angefordert. Der Start wird erst nach bestätigter Ausführung gemeldet.`));
       return new Response('ok');
     }
 
@@ -608,10 +621,13 @@ function trendSelectionKeyboard(selectionId, trendCount = 5) {
   return { inline_keyboard: rows };
 }
 
-function trendConfirmationKeyboard(selectionId, trendId) {
+function trendConfirmationKeyboard(selectionId, trendId, textButtons = []) {
+  const approvals = textButtons.length
+    ? textButtons
+    : [{ text: '✅ Trend freigeben', callback_data: `approve_trend:${selectionId}:${trendId}` }];
   return {
     inline_keyboard: [
-      [{ text: '✅ Trend freigeben', callback_data: `approve_trend:${selectionId}:${trendId}` }],
+      approvals,
       [{ text: '🔄 Alle ablehnen & neue Trends suchen', callback_data: `reject_trend:${selectionId}:${trendId}` }],
       [{ text: '↩️ Anderen Trend aus dieser Liste wählen', callback_data: `trend_list:${selectionId}` }],
     ],
@@ -649,7 +665,42 @@ function trendListBody(requestData) {
   return lines.join('\n');
 }
 
-function selectedTrendBody(trend) {
+function editorialDrafts(trend) {
+  const source = trend?.source_context;
+  if (String(source?.editorial_story_contract_version) !== '2') return [];
+  const body = source?.story_first_script_body;
+  if (typeof body !== 'string' || !body.trim() || body.length > 700) return [];
+  const drafts = [{ variant: 'a', body: body.trim() }];
+  const alternative = source?.story_first_script_body_b;
+  if (typeof alternative === 'string' && alternative.trim() && alternative.length <= 700) {
+    drafts.push({ variant: 'b', body: alternative.trim() });
+  }
+  return drafts;
+}
+
+async function textFingerprint(topic, body) {
+  const bytes = new TextEncoder().encode(JSON.stringify([String(topic).trim(), body]));
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return Array.from(digest.slice(0, 5), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function selectedTrendBody(trend, drafts = []) {
+  if (drafts.length) {
+    const lines = ['✍️ TAYVORIQ · Textfreigabe', '', String(trend.title).slice(0, 180)];
+    for (const draft of drafts) {
+      lines.push('', 'Sprechertext ' + draft.variant.toUpperCase(), draft.body);
+    }
+    const subject = trend.source_context?.cinematic_brief?.opening_visual?.subject;
+    if (typeof subject === 'string' && subject.trim()) {
+      lines.push('', 'Bildmotiv zum Einstieg · ' + subject.trim().slice(0, 120));
+    }
+    const sources = (Array.isArray(trend.sources) ? trend.sources : [])
+      .filter(url => typeof url === 'string' && url.length <= 450)
+      .slice(0, 3);
+    if (sources.length) lines.push('', 'Geprüfte Quellen', ...sources);
+    lines.push('', 'Mit der gewählten Textfassung gibst du das Thema für die Produktion frei.');
+    return lines.join('\n');
+  }
   const series = String(trend?.proposed_series_name || '').trim() || 'NONE';
   const next = String(trend?.next_episode_candidate || '').trim() || '—';
   const followReason = String(trend?.follow_reason || '').trim() || '–';
@@ -676,6 +727,11 @@ function selectedTrendBody(trend) {
 }
 
 function parseTrendApproval(callbackData, text, messageText) {
+  const reviewed = callbackData.match(/^text_ok:([A-Za-z0-9_-]{4,40}):([1-5]):([ab]):([a-f0-9]{10})$/);
+  if (reviewed) {
+    const [, selectionId, trendId, variant, fingerprint] = reviewed;
+    return { trendId, selectionId, variant, fingerprint };
+  }
   const current = callbackData.match(/^approve_trend:([A-Za-z0-9_-]{4,40}):([1-5])$/);
   const explicit = callbackData.match(/^(?:approve_trend|trend_approve|trend:approve|approve:trend)[:_](\d+)$/i)
     || text.match(/^trend\s+freigeben\s+(\d+)$/i);

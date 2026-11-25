@@ -288,6 +288,7 @@ For each candidate return:
   "primary_hook": "natural first-line hook",
   "editorial_story_contract_version": 2,
   "story_first_script_body": "46–49 spoken German words supported by the sources",
+  "story_first_script_body_b": "optional second full spoken version with a distinct opening",
   "viewer_question": "the viewer question this short resolves",
   "explanation_core": "source-grounded explanation core",
   "surprise_or_reframe": "source-grounded surprising point or reframe",
@@ -395,38 +396,57 @@ def _spoken_tariff_comparison(answers, sources):
     return rewritten
 
 
-def _story_first_fields(raw: dict[str, Any], sources: list[dict], answers: dict) -> dict:
-    """Carry the spoken story in the same evidence packet as the fallback answers."""
-    packet = raw
-    if "story_first_script_body" not in raw and isinstance(raw.get("source_context"), dict):
-        packet = raw["source_context"]
-    body = packet.get("story_first_script_body")
-    if str(packet.get("editorial_story_contract_version")) != "2" or not isinstance(body, str):
-        return {}
-
-    body = clean(body)
+def _usable_story_body(value: Any, evidence: str, answer_body: str) -> str:
+    body = clean(value) if isinstance(value, str) else ""
     sentences = re.split(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])", body)
     lower = body.casefold()
-    if not 46 <= len(body.split()) <= 49 or len(sentences) < 3:
-        return {}
+    if not 46 <= len(body.split()) <= 49 or len(sentences) < 3 or not body.endswith((".", "!", "?")):
+        return ""
+    if any(len(sentence.split()) < 4 for sentence in sentences):
+        return ""
     if not re.search(
         r"\b(?:aber|doch|denn|weil|während|gleichzeitig|damit|deshalb|daher"
         r"|trotzdem|allerdings|entscheidend|brisant)\b",
         lower,
     ):
-        return {}
-    if lower == " ".join(answers.values()).casefold() or sum(
+        return ""
+    if lower == answer_body or sum(
         sentence.casefold().startswith(("betroffen sind", "für dich", "beobachte", "achte", "prüfe"))
         for sentence in sentences
     ) >= 2:
-        return {}
-    if re.search(r"\b(?:abonniere|folge (?:mir|uns|tayvoriq|diesem kanal))\b", lower):
+        return ""
+    if lower.startswith(("stell dir vor", "wusstest du", "was du jetzt wissen musst", "du wirst es nicht glauben")):
+        return ""
+    if "regelmäßig und besonders sorgfältig" in lower or re.search(
+        r"\b(?:abonniere|folge (?:mir|uns|tayvoriq|diesem kanal))\b", lower
+    ):
+        return ""
+    if not _numbers(body).issubset(_numbers(evidence)):
+        return ""
+    return body
+
+
+def _story_first_fields(raw: dict[str, Any], sources: list[dict], answers: dict) -> dict:
+    """Keep reviewable scripts with the evidence used to write them."""
+    packet = raw
+    if "story_first_script_body" not in raw and isinstance(raw.get("source_context"), dict):
+        packet = raw["source_context"]
+    if str(packet.get("editorial_story_contract_version")) != "2":
         return {}
     evidence = " ".join(source["supports"] for source in sources)
-    if not _numbers(body).issubset(_numbers(evidence)):
+    answer_body = " ".join(answers.values()).casefold()
+    body = _usable_story_body(packet.get("story_first_script_body"), evidence, answer_body)
+    alternative = _usable_story_body(packet.get("story_first_script_body_b"), evidence, answer_body)
+    if not body:
+        body, alternative = alternative, ""
+    if not body:
         return {}
-
-    return {"editorial_story_contract_version": 2, "story_first_script_body": body}
+    fields = {"editorial_story_contract_version": 2, "story_first_script_body": body}
+    if alternative and re.split(r"(?<=[.!?])\s+", body, maxsplit=1)[0].casefold() != re.split(
+        r"(?<=[.!?])\s+", alternative, maxsplit=1
+    )[0].casefold():
+        fields["story_first_script_body_b"] = alternative
+    return fields
 
 
 def normalized_candidate(raw: dict[str, Any], verified_at: str) -> dict[str, Any] | None:

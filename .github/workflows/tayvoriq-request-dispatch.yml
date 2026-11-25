@@ -48,6 +48,7 @@ jobs:
           SELECTION_ID: ${{ github.event.client_payload.selection_id }}
           DISPATCH_TOPIC: ${{ github.event.client_payload.topic }}
           APPROVED_AT: ${{ github.event.client_payload.approved_at }}
+          TEXT_APPROVAL: ${{ github.event.client_payload.text_approval }}
           TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id }}
           APPROVAL_ORIGIN: ${{ github.event.client_payload.requested_via || 'telegram_callback' }}
         run: |
@@ -84,6 +85,7 @@ jobs:
               --message-id "$TELEGRAM_MESSAGE_ID" \
               --payload-topic "${DISPATCH_TOPIC:-}" \
               --approved-at "${APPROVED_AT:-}" \
+              --text-approval "${TEXT_APPROVAL:-}" \
               --out-dir requests)
           elif [ "$EVENT_NAME" = "push" ]; then
             REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
