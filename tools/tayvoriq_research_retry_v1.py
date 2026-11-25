@@ -42,7 +42,7 @@ def configured_path() -> Path | None:
 
 
 def defer_candidate_selection(slot: str, *, issue: str) -> dict:
-    delay = REVIEW_RETRY_SECONDS if os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID") else EDITORIAL_RETRY_SECONDS
+    delay = REVIEW_RETRY_SECONDS if os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID", "").startswith("review-") else EDITORIAL_RETRY_SECONDS
     return defer(slot, time.time() + delay, issue=issue)
 
 
