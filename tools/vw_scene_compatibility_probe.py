@@ -21,7 +21,19 @@ with TemporaryDirectory(dir=os.environ["RUNNER_TEMP"]) as tmp:
     script = variants["youtube_shorts"]["text_package"]["scenes"][5]["spoken_chunk"]
     clip = _render_captioned_clip(work, original, y, 6, script, make_overlay, media)
     print("Input and captioned scene:", video_shape(original), video_shape(donor), video_shape(clip), flush=True)
+    import json, subprocess
+    import tayvoriq_scene_revision_v1 as scene_revision
+    check_shape = scene_revision.video_shape
+    def log_probe(path):
+        try:
+            return check_shape(path)
+        except ValueError:
+            probe = subprocess.check_output(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                      "-show_entries", "stream=width,height,nb_frames,start_pts,time_base,duration_ts,pix_fmt,avg_frame_rate,r_frame_rate",
+                      "-of", "json", str(path)], text=True)
+            print("Rejected video probe", path.name, json.loads(probe), flush=True)
+            raise
+    scene_revision.video_shape = log_probe
     evidence = revise_export(Path(os.environ["TAYVORIQ_MONEYPRINTERTURBO_ROOT"]), work/"project",
-                             work, original, donor, y, t, (5, 6), work/"result.mp4",
-                             prepared_replacements={6: clip})
+                             work, original, donor, y, t, (5,), work/"result.mp4")
     print("Compatible frame count and unchanged audio:", video_shape(work/"result.mp4"), evidence["audio_sha256"])

@@ -1,4 +1,4 @@
-name: VW bound scene revision invariant replay
+name: VW single scene timebase compatibility
 on:
   push:
     branches: [codex/vw-45510042088-checkpoint-evidence]
@@ -8,7 +8,7 @@ permissions:
 jobs:
   compare:
     runs-on: ubuntu-latest
-    timeout-minutes: 22
+    timeout-minutes: 7
     env:
       PYTHONUTF8: "1"
       TAYVORIQ_RENDER_SIZE: "1080x1920"
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: f9565183695957d77d0c1f14f376ec62dd8b3501
+          ref: 498194c35f512ccef5ba95e04ba7b1249a41ce8e
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: candidate
           persist-credentials: false
@@ -67,69 +67,11 @@ jobs:
           fi
           command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
           ffprobe -version | sed -n '1p'
-      - name: Render candidate for both platforms with scene-specific search and repeat exclusion
+      - name: Verify exact-frame scene assembly on the hosted FFmpeg version
         working-directory: candidate
         env:
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$PEXELS_API_KEY"
-          PYTHONPATH="$PWD:$PWD/tools" "$GITHUB_WORKSPACE/.venv/bin/python" "$GITHUB_WORKSPACE/tools/vw_bound_visual_comparison.py" fixed "$GITHUB_WORKSPACE/implementation/out/recovery-checkpoint" "$RUNNER_TEMP/vw-comparison"
-      - name: Run live visual audit and test the scoped repair entry point
-        working-directory: candidate
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           TAYVORIQ_MONEYPRINTERTURBO_ROOT: ${{ github.workspace }}/scene-engine
         shell: bash
         run: |
           set -euo pipefail
-          job_dir="$RUNNER_TEMP/vw-comparison/fixed"
-          PYTHONPATH="$PWD:$PWD/tools" "$GITHUB_WORKSPACE/.venv/bin/python" "$GITHUB_WORKSPACE/tools/vw_bound_scene_revision.py" "$job_dir"
-      - name: Encrypt checked comparison files
-        if: always() && !cancelled()
-        shell: bash
-        run: |
-          set -euo pipefail
-          work="$RUNNER_TEMP/vw-comparison"
-          if [ ! -s "$work/fixed/comparison.json" ]; then exit 0; fi
-          cat > "$RUNNER_TEMP/evidence-recipient.pem" <<'CERT'
-          -----BEGIN CERTIFICATE-----
-          MIIEHzCCAoegAwIBAgIUfehpVBJH/sEA4VbjjDanQOG+6mAwDQYJKoZIhvcNAQEL
-          BQAwHzEdMBsGA1UEAwwUVEFZVk9SSVEtVlctRXZpZGVuY2UwHhcNMjYxMTI1MDIz
-          OTM4WhcNMjYxMTI3MDIzOTM4WjAfMR0wGwYDVQQDDBRUQVlWT1JJUS1WVy1Fdmlk
-          ZW5jZTCCAaIwDQYJKoZIhvcNAQEBBQADggGPADCCAYoCggGBAJYHDI7qbX6fJZX8
-          i/E5hYmqjXAGhb0trofgGA1MK1NeclI9wl5/p0GuOxKFti1lEmqI6jGlM/mObMi5
-          AdbDeCl6OMCI2czYkj/0TDvoCFyDivDn9lZAQx+d8NA7QiR6pvZXlbT87W3G57o4
-          t/L5BnyRdzyczkT48gNF9z9kNd7XxKQbus6HSaAzWG8qS9KS6+K6R8R1DchU8NjB
-          v+EmN3wnnH0b7UQ8851IQgBpjM+x/iikTNy1LArx3OeMhK9rHvV2KlzpyMv+U0Y1
-          CmGqf5tnFl5Jtst0n69afPZAAZSOyQ5Y/rTFqBKJDfW8UV6AjA7/YynbJBQg97Oa
-          pehPFG+AdCzHa2ITAn7F3B8RSrtFbYFibG1qYKfjzxjJo94Sq8wJaQDBTyh0KplQ
-          Fj/YxoCPw2Z4ZRWXRa9vxagA3p3f3oG0lOG7Q5mAa76QrmfBx0pthg0NOn6Xl36z
-          tS2LMzHCEtPfHEt2ym0+qKlEPs3TXFDcIbAFVovNosy+iQ9j2QIDAQABo1MwUTAd
-          BgNVHQ4EFgQU4Tcm5RXoZwtPrxh+pc0RxZ3nrKQwHwYDVR0jBBgwFoAU4Tcm5RXo
-          ZwtPrxh+pc0RxZ3nrKQwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOC
-          AYEAe6cQ5anq1aX0C7aTqsE+ew09c+YBmcfBD7yH0Ijo0zeW9nUfXZq9JSaOtXIf
-          PhmvPMxvx8DAtCHm6ZimBv0hAU8NdFvMgK81hc9fxbvl7K7esETJqi/pmqir++2M
-          vVRqfr37oHXjWmD0klCp8CayTguf3G4UTpDbmzePKDRHdRQw8Ia7thpnJ24ymHBM
-          u4iC602cdeWRgcNLK/ViY+CuBnyxljov9mInigR9VF7No+YWHsmwNH9sbZxI/aA6
-          MsT1852FkNbUsJSIuyAXrLrYJjmFEN05kUN4juC30Favfmy4LlW9xazDekPFWx/6
-          8WOtx0zOv7WMafWsgjpc1LH6jG7+5ePUJ0qduKkmUO66dnaHEa2EGu1rhN0UpGoN
-          dNQ2WSV1bX8dU0nlZVDJWHy00mB375e13QDuKnbXF/+rJqarEPM15WQTlgPGSMBi
-          NwTHKtIz7fCDfPxBBrOH/IJzZPiPZNHJ9Uhp51dQcSokxSAGwF3nXtZfG65h2zoh
-          iq3k
-          -----END CERTIFICATE-----
-          CERT
-          files=(fixed/comparison.json fixed/short_youtube.mp4 fixed/short_tiktok.mp4 pexels/recordings.json)
-          for name in scene-revision-verification.json preapproval_ai_audit.json; do [ ! -f "$work/fixed/$name" ] || files+=("fixed/$name"); done
-          tar -C "$work" -cf - "${files[@]}" | openssl cms -encrypt -binary -aes256 -outform DER -out "$RUNNER_TEMP/vw-verification.cms" "$RUNNER_TEMP/evidence-recipient.pem"
-      - uses: actions/upload-artifact@v4
-        if: always() && !cancelled()
-        with:
-          name: vw-visual-repair-verification
-          path: ${{ runner.temp }}/vw-verification.cms
-          retention-days: 2
-          compression-level: 0
-          if-no-files-found: warn
+          PYTHONPATH="$PWD:$PWD/tools" "$GITHUB_WORKSPACE/.venv/bin/python" "$GITHUB_WORKSPACE/tools/vw_scene_compatibility_probe.py" "$GITHUB_WORKSPACE/implementation/out/recovery-checkpoint/job"
