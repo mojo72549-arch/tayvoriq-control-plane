@@ -241,22 +241,41 @@ export default {
         return new Response('trend not found', { status: 404 });
       }
       const topic = String(trend.title).trim();
+      const messageId=callback?.message?.message_id;
+      if(!Number.isSafeInteger(messageId)||messageId<=0)return new Response('approval message missing',{status:422});
+      try {
+        const requestId=`telegram-${messageId}-trend-${trendId}`;
+        const [pointer,existing]=await Promise.all([
+          reviewRepoFile(env,'.github/state/tayvoriq-active-production-request.json'),
+          reviewRepoFile(env,`requests/${requestId}.json`)
+        ]);
+        if(pointer?.data?.selection_id===currentSelectionId||existing?.data?.selection_id===currentSelectionId){
+          const same=existing?.data?.request_id===requestId||pointer?.data?.request_id===requestId;
+          if(callback?.id)await answerCallback(env,callback.id,same?'Dieser Auftrag ist bereits gespeichert.':'Für diese Auswahl wurde bereits ein anderes Thema freigegeben.',!same);
+          await clearKeyboard(env,chatId,messageId);
+          return new Response(same?'approval already recorded':'selection already consumed',{status:same?200:409});
+        }
+      } catch {
+        if(callback?.id)await answerCallback(env,callback.id,'Der gemeinsame Auftragszustand ist gerade nicht verifizierbar. Bitte erneut prüfen.',true);
+        return new Response('approval state unavailable',{status:503});
+      }
       const dispatch = await githubDispatch(env, 'tayvoriq_trend_approved', {
         trend_id: trendId,
         topic,
         selection_id: currentSelectionId,
         telegram_chat_id: chatId,
-        telegram_message_id: callback?.message?.message_id || null,
+        telegram_message_id: messageId,
+        requested_via:'telegram_callback',
         approved_at: new Date().toISOString(),
       });
       if (!dispatch.ok) {
         const detail = await dispatch.text();
-        await requireTelegramMessage(await telegram(env, chatId, `❌ TAYVORIQ 0 %\nTrendfreigabe konnte den X-Workflow nicht starten.\nGitHub-Fehler: ${dispatch.status}`));
+        await requireTelegramMessage(await telegram(env, chatId, `❌ Themenfreigabe konnte nicht beim Orchestrator eingereicht werden.\nGitHub-Fehler: ${dispatch.status}`));
         console.error('trend repository_dispatch failed', dispatch.status, detail);
         return new Response('dispatch failed', { status: 502 });
       }
       if (callback?.message?.message_id) await clearKeyboard(env, chatId, callback.message.message_id);
-      await requireTelegramMessage(await telegram(env, chatId, `✅ TAYVORIQ 5 %\nTrend ${trendId} freigegeben.\nThema: ${topic || 'wird aus Trenddaten geladen'}\nX-Workflow wurde angefordert.\nNächster Schritt: Startbestätigung bei 10 %`));
+      await requireTelegramMessage(await telegram(env, chatId, `✅ Themenfreigabe beim Orchestrator eingegangen.\nThema: ${topic}\nDie Produktion ist angefordert. Der Start wird erst nach bestätigter Ausführung gemeldet.`));
       return new Response('ok');
     }
 

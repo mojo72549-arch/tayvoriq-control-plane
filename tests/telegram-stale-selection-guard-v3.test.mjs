@@ -3,6 +3,38 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import worker from '../infra/telegram-approval-worker-v3.js';
+import approvalWorker from '../infra/telegram-approval-worker-v2.js';
+
+test('a Control Center selection consumption retires its Telegram approval buttons', async()=>{
+  const originalFetch=globalThis.fetch;
+  const selectionId='20261125-morning-agentv2',messageId=500;
+  for(const trendId of ['1','2']){
+    const calls=[];
+    globalThis.fetch=async(url,options={})=>{
+      const value=String(url);calls.push(value);
+      if(value.includes('/selections/'+selectionId+'.json'))return Response.json({selection_id:selectionId,
+        trends:[{id:'1',title:'Freigegebenes Thema'},{id:'2',title:'Anderer Vorschlag'}]});
+      if(value.includes('/contents/')){
+        if(value.includes('/requests/'))return Response.json({},{status:404});
+        const data={selection_id:selectionId,request_id:'telegram-500-trend-1',state:'COMPLETED'};
+        return Response.json({sha:'current',encoding:'base64',content:Buffer.from(JSON.stringify(data)).toString('base64')});
+      }
+      if(value.includes('/answerCallbackQuery')||value.includes('/editMessageReplyMarkup'))return Response.json({ok:true,result:true});
+      throw Error('Unexpected action: '+value);
+    };
+    try{
+      const response=await approvalWorker.fetch(new Request('https://worker.example/',{method:'POST',
+        headers:{'Content-Type':'application/json','X-Telegram-Bot-Api-Secret-Token':'secret'},
+        body:JSON.stringify({callback_query:{id:'callback-'+trendId,data:`approve_trend:${selectionId}:${trendId}`,
+          message:{message_id:messageId,chat:{id:'42'}}}})}),
+        {TELEGRAM_WEBHOOK_SECRET:'secret',TELEGRAM_CHAT_ID:'42',TELEGRAM_BOT_TOKEN:'token',GITHUB_TOKEN:'test-token'});
+      assert.equal(response.status,trendId==='1'?200:409);
+      assert.equal(calls.filter(url=>url.endsWith('/dispatches')).length,0);
+      assert.equal(calls.filter(url=>url.includes('/sendMessage')).length,0);
+      assert.ok(calls.some(url=>url.includes('/editMessageReplyMarkup')));
+    }finally{globalThis.fetch=originalFetch;}
+  }
+});
 
 test('stale trend callback is blocked without a chat error message', async () => {
   const calls = [];
