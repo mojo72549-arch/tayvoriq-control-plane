@@ -587,6 +587,62 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertGreater(names.index('Persist provider cooldown and bounded research retry'),
                            names.index('Resolve idempotent selection delivery'))
 
+    def test_verified_exhaustion_from_an_earlier_day_releases_discovery_only(self):
+        import json
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        import yaml
+
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load((root / '.github/workflows/tayvoriq-agent-orchestrator-v2.yml').read_text())
+        source = next(step['run'] for step in workflow['jobs']['trend-gate']['steps']
+                      if step.get('id') == 'active_request')
+        program = compile(source.split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0], '<active-request>', 'exec')
+        today_slot = datetime.now(ZoneInfo('Europe/Berlin')).date()
+        yesterday_slot = today_slot - timedelta(days=1)
+        request_id, run_id = 'telegram-3696-trend-1', 45510042088
+        reason = 'LOCAL_VISUAL_RECOVERY_EXHAUSTED'
+        receipt = dict(schema='tayvoriq-recovery-outcome-v1', state='EXHAUSTED', reason=reason,
+                       request_id=request_id, run_id=run_id, recovery_generation=1,
+                       publish_allowed=False, quality_gates_weakened=False)
+        decision = dict(state='REPAIR_REQUIRED', action='NONE', reason=reason,
+                        request_id=request_id, run_id=str(run_id), generation='1')
+
+        with tempfile.TemporaryDirectory() as folder:
+            before = Path.cwd()
+            os.chdir(folder)
+            try:
+                pointer_path = Path('.github/state/tayvoriq-active-production-request.json')
+                decision_path = pointer_path.with_name('tayvoriq-lifecycle-decision.json')
+                request_path = Path('requests') / f'{request_id}.json'
+                pointer_path.parent.mkdir(parents=True)
+                request_path.parent.mkdir()
+                for title, date, outcome, lifecycle, expected in (
+                    ('previous day exhausted', yesterday_slot, receipt, decision, 'false'),
+                    ('same day exhausted', today_slot, receipt, decision, 'true'),
+                    ('missing outcome', yesterday_slot, {}, decision, 'true'),
+                    ('wrong run', yesterday_slot, dict(receipt, run_id=run_id + 1), decision, 'true'),
+                    ('new recovery dispatch', yesterday_slot, receipt, dict(decision, action='DELIVERY_WATCH'), 'true'),
+                ):
+                    with self.subTest(title=title):
+                        selection = f'{date:%Y%m%d}-evening-agentv2'
+                        pointer = dict(request_id=request_id, state='ACTIVE', selection_id=selection,
+                                       golden_path_run_id=run_id, recovery_generation=1)
+                        request = dict(request_id=request_id, status='DISPATCHED', selection_id=selection,
+                                       golden_path_run_id=run_id, recovery_outcome=outcome)
+                        inputs = {pointer_path: pointer, request_path: request, decision_path: lifecycle}
+                        for path, data in inputs.items():
+                            path.write_text(json.dumps(data), encoding='utf-8')
+                        output = Path('outputs')
+                        output.write_text('', encoding='utf-8')
+                        with patch.dict(os.environ, {'GITHUB_OUTPUT': str(output)}):
+                            exec(program, {})
+                        self.assertIn(f'active={expected}\n', output.read_text(encoding='utf-8'))
+                        for path, data in inputs.items():
+                            self.assertEqual(json.loads(path.read_text(encoding='utf-8')), data)
+            finally:
+                os.chdir(before)
+
     def test_due_research_reuses_existing_approval_and_delivery_gates(self):
         import yaml
         root = Path(__file__).resolve().parents[1]

@@ -354,17 +354,27 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, os
+          import json, os, re
+          from datetime import datetime
           from pathlib import Path
+          from zoneinfo import ZoneInfo
 
           active=False
           request_id=''
           state=''
           pointer_path=Path('.github/state/tayvoriq-active-production-request.json')
+          decision_path=Path('.github/state/tayvoriq-lifecycle-decision.json')
           try:
               pointer=json.loads(pointer_path.read_text(encoding='utf-8'))
           except (OSError, ValueError):
               pointer={}
+          try:
+              decision=json.loads(decision_path.read_text(encoding='utf-8'))
+          except (OSError, ValueError):
+              decision={}
+          if not isinstance(decision, dict):
+              decision={}
+          today=datetime.now(ZoneInfo('Europe/Berlin')).strftime('%Y%m%d')
           for path in sorted(Path('requests').glob('*.json')):
               try:
                   request=json.loads(path.read_text(encoding='utf-8'))
@@ -391,6 +401,29 @@ jobs:
                   and int(completion.get('golden_path_run_id') or 0) == run_id
               )
               if completed:
+                  continue
+              # A terminal recovery for an earlier operating day cannot own
+              # today's discovery. The production pointer remains untouched.
+              outcome=request.get('recovery_outcome')
+              selection=str(request.get('selection_id') or '')
+              old_slot=re.fullmatch(r'(\d{8})-(?:morning|evening)-agentv2(?:-r\d+)?', selection)
+              if (old_slot and old_slot[1] < today
+                      and pointer.get('state') == 'ACTIVE'
+                      and pointer.get('selection_id') == selection
+                      and status == 'DISPATCHED'
+                      and isinstance(outcome, dict)
+                      and outcome.get('schema') == 'tayvoriq-recovery-outcome-v1'
+                      and outcome.get('state') == 'EXHAUSTED'
+                      and outcome.get('reason') in {'LOCAL_VISUAL_RECOVERY_EXHAUSTED', 'LOCAL_VOICE_RECOVERY_EXHAUSTED'}
+                      and outcome.get('publish_allowed') is False
+                      and outcome.get('quality_gates_weakened') is False
+                      and decision.get('state') == 'REPAIR_REQUIRED'
+                      and decision.get('action') == 'NONE'
+                      and decision.get('reason') == outcome['reason']
+                      and decision.get('request_id') == outcome.get('request_id') == pointer.get('request_id')
+                      and run_id > 0
+                      and str(run_id) == str(pointer.get('golden_path_run_id')) == str(outcome.get('run_id')) == str(decision.get('run_id'))
+                      and str(pointer.get('recovery_generation')) == str(outcome.get('recovery_generation')) == str(decision.get('generation'))):
                   continue
               if status in {'APPROVED','DISPATCHING','DISPATCHED'} and (
                   recovery_status in {'ARMED','REPLAY_DISPATCHED'}
