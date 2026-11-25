@@ -24,11 +24,11 @@ class ManualResearchRecoveryTests(unittest.TestCase):
             health = root / '.automation/tayvoriq-agent-v2/provider-health.json'
             health.parent.mkdir(parents=True)
             health.write_text(json.dumps({'schema':'tayvoriq-provider-health-v1','providers':{'gemini':{'state':'COOLDOWN'}}}))
-            with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_SLOT':'morning', 'TAYVORIQ_RESEARCH_RUN_KEY':'42.1'}):
+            with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_SLOT':'morning', 'TAYVORIQ_RESEARCH_RUN_KEY':'42.1','GITHUB_RUN_ID':'','GITHUB_RUN_ATTEMPT':''}):
                 state = observer.context(SID, 'evening', root, temporary, now=1000)
             self.assertEqual(state['env']['TAYVORIQ_RESEARCH_SELECTION_ID'], SID)
             self.assertEqual(state['env']['TAYVORIQ_RESEARCH_SLOT'], 'evening')
-            self.assertNotIn('TAYVORIQ_RESEARCH_RUN_KEY', state['env'])
+            self.assertIsNone(state['env'].get('TAYVORIQ_RESEARCH_RUN_KEY'))
             self.assertIn('gemini', observer.load_json(state['files']['health'])['providers'])
             self.assertIn(SID, state['paths']['drafts'])
             self.assertIn(SID, state['paths']['retry'])
