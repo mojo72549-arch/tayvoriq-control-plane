@@ -61,7 +61,11 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     first = float(previous.get("first_deferred_at_epoch") or now) if same else started_at
     run_key = os.getenv("TAYVORIQ_RESEARCH_RUN_KEY", "") if not review_selection else ""
     run_key = run_key if re.fullmatch(r"[1-9][0-9]*\.[1-9][0-9]*", run_key) else ""
-    already_counted = bool(same and run_key and previous.get("last_research_attempt") == run_key)
+    local = os.getenv("TAYVORIQ_RESEARCH_LOCAL_ATTEMPT", "")
+    selection = os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID", "")
+    local_attempt = int(local) if local in {"1", "2", "3"} and re.fullmatch(r"[0-9]{8}-(morning|evening)-agentv2-c[0-9a-f]{8}", selection) else None
+    already_counted = bool(same and run_key and previous.get("last_research_attempt") == run_key
+                           and (local_attempt is None or previous.get("last_local_attempt") == local_attempt))
     max_attempts = REVIEW_MAX_ATTEMPTS if review_selection else MAX_ATTEMPTS
     # A terminal regular slot is immutable. Technical repairs are validated in
     # CI and by a future scheduled slot; they never reopen the exhausted window.
@@ -94,6 +98,8 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
         result["selection_id"] = review_selection
     if run_key:
         result["last_research_attempt"] = run_key
+    if local_attempt is not None:
+        result["last_local_attempt"] = local_attempt
     if status == 'EXHAUSTED':
         result['reason'] = 'RESEARCH_RETRY_BUDGET_EXHAUSTED'
     if issue in ISSUE_DETAILS:

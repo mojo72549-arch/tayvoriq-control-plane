@@ -500,6 +500,9 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                 f"corroborated_headlines={len(set(vetted_pairs.values()))} separate_source_pairs=False"
             )
         vetted_pairs = selected_pairs
+        goal = (f'Examine ALL {len(vetted_pairs)} supplied independently corroborated stories. '
+                'Return one complete candidate per supplied pair when its source claims support the full schema. '
+                'Do not arbitrarily omit the third story. Omit unsupported stories rather than inventing facts or scores.')
         if len(vetted_pairs) == 1:
             goal = ('Return one complete candidate for the supplied independently corroborated story. '
                     'Return no candidates if the evidence or relevance for the German audience is insufficient.')
@@ -512,7 +515,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     if exact_titles:
         by_prompt_id = {item['source_id']: item for item in indexed}
         indexed = [by_prompt_id[sid] for pair in vetted_pairs for sid in pair]
-        if rescan_marker and source_bound and source_label == 'multi-publisher-rss':
+        if source_bound and source_label == 'multi-publisher-rss':
             originals = [by_id[item['source_id']] for item in indexed]
             enriched = rss.enrich_evidence(originals)
             enriched_count = 0
@@ -523,7 +526,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
                     # The editorial normalizer consumes up to 600 characters of title and context.
                     item['context'] = base.clean(article.get('context'), 600 - len(article['title']) - 1)
                     enriched_count += 1
-            print(json.dumps({"event": "editorial_rescan_article_evidence", "updated_records": enriched_count}))
+            print(json.dumps({"event": "source_article_evidence", "updated_records": enriched_count, "editorial_rescan": bool(rescan_marker)}))
         allowlist = [{'source_pair_id': '+'.join(pair), 'source_ids': list(pair), 'title': title}
                      for pair, title in vetted_pairs.items()]
         if source_bound:
