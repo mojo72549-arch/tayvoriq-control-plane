@@ -66,4 +66,24 @@ class ArchiveTest(unittest.TestCase):
             request.unlink()
             self.assertEqual(build(root),first)
             publication.unlink()
-            self.assertEqual(build(root), first)
+            self.assertEqual(build(root),first)
+
+    def test_historical_platform_receipt_is_retained_without_a_separate_ledger(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            path=root/'.automation/tayvoriq-reviews/123.json'
+            path.parent.mkdir(parents=True)
+            review={'review_id':'123','status':'APPROVED','platform_upload_performed':True,
+                'publication_pending':False,'upload_status':'PUBLISHED_YOUTUBE','youtube_privacy':'public',
+                'published_at':'2026-08-16T07:16:00Z','approved_at':'2026-08-16T07:15:00Z',
+                'tiktok_status':'MANUAL_UPLOAD_REQUIRED','published_payload':{'title':'Historisches Original'},
+                'youtube':{'video_id':'12345678901','url':'https://www.youtube.com/shorts/12345678901'}}
+            path.write_text(json.dumps(review))
+            records=build(root)['records']
+            self.assertEqual(len(records),1)
+            self.assertEqual(records[0]['topic'],'Historisches Original')
+            self.assertFalse(records[0]['fully_published'])
+            self.assertEqual(records[0]['platforms']['youtube']['receipt_kind'],'legacy_review_publication_result')
+            review['platform_upload_performed']=False
+            path.write_text(json.dumps(review))
+            self.assertEqual(build(root)['records'],[])

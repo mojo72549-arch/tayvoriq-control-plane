@@ -23,6 +23,23 @@ def request(request_id: str, topic: str, context: dict, *, status: str = "DISPAT
 
 
 class GlobalDuplicateGateTests(unittest.TestCase):
+    def test_retired_published_request_still_blocks_a_new_duplicate_via_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            requests=root/'requests';requests.mkdir()
+            archive=root/'state/tayvoriq-video-archive.json';archive.parent.mkdir()
+            context={'fallback_editorial_answers':{'what_happened':'Volkswagen und IG Metall verhandeln über den Haustarif.'}}
+            archive.write_text(json.dumps({'schema':'tayvoriq-video-archive-v1','records':[
+                {'review_id':'123','request_id':'retired-request','topic':'Erste Tarifrunde bei Volkswagen endet ohne Einigung',
+                 'source_context':context,'platforms':{'youtube':{'status':'PUBLISHED'}}}]}))
+            report=duplicate_gate.run_gate(requests_dir=requests,source_request_id='new-request',
+                topic='Erste Tarifrunde bei Volkswagen endet ohne Einigung',source_context=context)
+            self.assertFalse(report['passed'])
+            self.assertEqual(report['nearest_prior']['request_id'],'retired-request')
+            same=duplicate_gate.run_gate(requests_dir=requests,source_request_id='retired-request',
+                topic='Erste Tarifrunde bei Volkswagen endet ohne Einigung',source_context=context)
+            self.assertTrue(same['passed'])
+
     def test_live_world_forces_episode_two_is_distinct_from_published_episode_one(self) -> None:
         prior = json.loads((ROOT / "requests/telegram-902-trend-1.json").read_text(encoding="utf-8"))
         current = json.loads((ROOT / "requests/telegram-1004-trend-1.json").read_text(encoding="utf-8"))

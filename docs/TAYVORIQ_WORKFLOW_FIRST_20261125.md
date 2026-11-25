@@ -40,8 +40,11 @@ Veröffentlichungsbeleg. Ein bestätigter YouTube-Abschluss ohne bestätigten
 TikTok-Abschluss heißt `PARTIALLY_PUBLISHED`. Ein endgültiger Abschluss und das
 Entfernen aus der aktiven Ansicht erfordern alle vorgesehenen Plattformen.
 
-Beim initialen Aufbau sind 14 YouTube-Veröffentlichungen belegt. Für keines dieser
-Videos ist ein TikTok-Plattformabschluss belegt. Fehlende historische Daten,
+Das Archiv enthält 35 unterschiedliche YouTube-Videos aus separaten
+Veröffentlichungs-Ledgern und den ursprünglichen historischen Review-Uploadbelegen.
+Ein Review zählt dabei nur mit bestätigtem Plattform-Upload, öffentlicher
+Sichtbarkeit, Video-ID, passender URL und Veröffentlichungszeitpunkt. Eine bloße
+Freigabe zählt nicht. Für keines dieser Videos ist ein TikTok-Plattformabschluss belegt. Fehlende historische Daten,
 Metriken und Messzeiten werden nicht rekonstruiert oder auf null gesetzt.
 
 Der Komponentenkatalog `state/tayvoriq-tool-catalog.json` unterscheidet konfigurierte
@@ -83,3 +86,13 @@ Für die vollständige fachliche Endabnahme stehen noch aus:
 
 Es wurden keine neuen Themen stellvertretend freigegeben und keine
 Testveröffentlichungen auf produktiven Kanälen angefordert.
+
+## Live-Prüfung
+
+Die produktive API liefert die 16 Stationen und den verifizierten Archivindex.
+Stationsdialog, Quellenbindung, Archivsuche, finale Skripte und das Originalvideo
+des Runs 45593112055 wurden direkt im Browser geprüft. Die Originaldatei ließ
+sich abspielen; gemessene Mediendauer 25,533 Sekunden. Der statische Einstieg
+wird zusätzlich als echte index.html ausgeliefert, weil die vorhandene
+Indexdatei einer Rewrite-Regel vorgehen kann. Legacy-Arbeitsbereiche bleiben
+über shell-legacy.html erhalten.
