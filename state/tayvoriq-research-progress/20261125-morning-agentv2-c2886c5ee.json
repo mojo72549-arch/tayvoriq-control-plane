@@ -4,9 +4,9 @@
   "slot": "morning",
   "run_id": 45704304157,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "WAITING",
   "started_at": "2026-11-25T21:26:26.581662+00:00",
-  "updated_at": "2026-11-25T21:26:47.023365+00:00",
+  "updated_at": "2026-11-25T21:26:53.356691+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
   "quality_rejections": 0,
@@ -15,10 +15,26 @@
     {
       "code": "QUOTA",
       "provider": "gemini"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": "groq"
+    },
+    {
+      "code": "QUOTA",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "huggingface"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": null
     }
   ],
   "exit_code": null,
   "local_attempt": 1,
   "max_local_attempts": 3,
-  "next_retry_at": null
+  "next_retry_at": "2026-11-25T21:28:06.818706+00:00"
 }
