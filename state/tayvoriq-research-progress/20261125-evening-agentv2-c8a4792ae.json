@@ -1,0 +1,42 @@
+{
+  "schema": "tayvoriq-research-observation-v1",
+  "selection_id": "20261125-evening-agentv2-c8a4792ae",
+  "slot": "evening",
+  "run_id": 45621961440,
+  "run_attempt": 1,
+  "state": "FAILED",
+  "started_at": "2026-11-25T13:17:07Z",
+  "updated_at": "2026-11-25T13:19:41Z",
+  "sources_seen": null,
+  "drafts_saved": null,
+  "quality_rejections": null,
+  "provider": "gemini",
+  "issues": [
+    {
+      "code": "QUOTA",
+      "provider": "gemini"
+    },
+    {
+      "code": "QUOTA",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "groq"
+    },
+    {
+      "code": "SOURCES",
+      "provider": "groq"
+    },
+    {
+      "code": "SOURCES",
+      "provider": "huggingface"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": null
+    }
+  ],
+  "exit_code": 1,
+  "observed_from": "completed_job_events"
+}
