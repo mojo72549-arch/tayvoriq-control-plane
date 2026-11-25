@@ -4,16 +4,45 @@
   "slot": "morning",
   "run_id": 45705294531,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "WAITING",
   "started_at": "2026-11-25T21:32:56.338475+00:00",
-  "updated_at": "2026-11-25T21:33:17.323420+00:00",
+  "updated_at": "2026-11-25T21:33:20.989558+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
   "quality_rejections": 0,
   "provider": "groq",
-  "issues": [],
+  "issues": [
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "gemini"
+    },
+    {
+      "code": "SOURCES",
+      "provider": "groq"
+    },
+    {
+      "code": "QUOTA",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "huggingface"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": null
+    }
+  ],
   "exit_code": null,
   "local_attempt": 1,
   "max_local_attempts": 3,
-  "next_retry_at": null
+  "next_retry_at": "2026-11-25T21:34:36.772305+00:00"
 }
