@@ -6,6 +6,7 @@ import sys
 from time import monotonic
 
 from tayvoriq_scene_revision_v1 import read_json, sha256, write_json, PLATFORMS, video_timeline
+from tayvoriq_silent_tail_repair_v1 import _audio_prefix_hash
 
 
 def check(job_dir):
@@ -14,6 +15,8 @@ def check(job_dir):
     voices = {p: sha256(job_dir / p / "voice.mp3") for p in PLATFORMS}
     original = {p: sha256(job_dir / f) for p, f in PLATFORMS.items()}
     clocks = {p: video_timeline(job_dir / f) for p, f in PLATFORMS.items()}
+    voice_span = {p: job["variants"][p]["render"]["voice_duration_seconds"] for p in PLATFORMS}
+    spoken_pcm = {p: _audio_prefix_hash(job_dir / f, voice_span[p], "pcm_s16le") for p, f in PLATFORMS.items()}
 
     # The diagnostic candidate was just rendered from the bound historical
     # master. Do not reuse the historical verdict for the new export.
@@ -47,7 +50,13 @@ def check(job_dir):
     result["export_sha256"] = {p: sha256(job_dir / f) for p, f in PLATFORMS.items()}
     result["checkpoint_preserved"] = sha256(job_dir / "source_context.resume.json") == source
     result["voice_files_preserved"] = {p: sha256(job_dir / p / "voice.mp3") == voices[p] for p in PLATFORMS}
-    result["frame_times_preserved"] = {p: video_timeline(job_dir / f) == clocks[p] for p, f in PLATFORMS.items()}
+    result["frame_times_preserved"] = {}
+    for p, filename in PLATFORMS.items():
+        new_clock = video_timeline(job_dir / filename)
+        result["frame_times_preserved"][p] = new_clock == clocks[p][:len(new_clock)]
+    result["spoken_pcm_preserved"] = {
+        p: _audio_prefix_hash(job_dir / f, voice_span[p], "pcm_s16le") == spoken_pcm[p] for p, f in PLATFORMS.items()
+    }
     verification = read_json(job_dir / "job.json")
     result["script_preserved"] = {
         p: verification["variants"][p]["text_package"]["script"] == job["variants"][p]["text_package"]["script"]
@@ -57,7 +66,9 @@ def check(job_dir):
     print("Canonical checkpoint verification:", {k: v for k, v in result.items() if k not in ("repair_history", "gate_detail")}, flush=True)
     assert result["checkpoint_preserved"] and all(result["voice_files_preserved"].values())
     assert all(result["frame_times_preserved"].values()) and all(result["script_preserved"].values())
-    assert result["export_sha256"]["tiktok"] == original["tiktok"]
+    assert all(result["spoken_pcm_preserved"].values())
+    for step in result.get("repair_history") or []:
+        assert step["stage"] != "VOICE"
     raise SystemExit(process.returncode)
 
 

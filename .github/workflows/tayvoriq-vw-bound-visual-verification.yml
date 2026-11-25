@@ -1,4 +1,4 @@
-name: VW autonomous visual recovery with publication evidence
+name: VW verify autonomous picture and silent tail recovery
 on:
   push:
     branches: [codex/vw-45510042088-checkpoint-evidence]
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/shorts-agent-studio
-          ref: 32f11f66d433c5e0c8c685458e20e16b070de903
+          ref: 3a8c738e2c9b85c8c3c6132ed04482835392275e
           token: ${{ secrets.PRIVATE_REPO_TOKEN }}
           path: candidate
           persist-credentials: false
