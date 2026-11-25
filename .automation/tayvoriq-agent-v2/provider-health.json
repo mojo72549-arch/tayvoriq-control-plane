@@ -4,8 +4,8 @@
     "gemini": {
       "state": "COOLDOWN",
       "http_status": 429,
-      "observed_at_epoch": 1795582269.3733327,
-      "retry_at_epoch": 1795583169.3733337,
+      "observed_at_epoch": 1795615798.6723802,
+      "retry_at_epoch": 1795616698.6723812,
       "credential_fingerprint": "3a1d6a8691cdd5c8e5b5811cd2fdb78e5e54142c323799909017e945e2591107"
     },
     "huggingface": {
@@ -18,8 +18,15 @@
     "groq": {
       "state": "COOLDOWN",
       "http_status": 429,
-      "observed_at_epoch": 1795582340.682504,
-      "retry_at_epoch": 1795583551.6825044,
+      "observed_at_epoch": 1795615801.5900083,
+      "retry_at_epoch": 1795616179.5900087,
+      "credential_fingerprint": "bf317fb6f33d6997c18aaf2d4dbb4de13013a79d0acf8cad2c85b4b2c7763e57"
+    },
+    "groq:openai/gpt-oss-120b": {
+      "state": "COOLDOWN",
+      "http_status": 429,
+      "observed_at_epoch": 1795615811.8547597,
+      "retry_at_epoch": 1795615984.65476,
       "credential_fingerprint": "bf317fb6f33d6997c18aaf2d4dbb4de13013a79d0acf8cad2c85b4b2c7763e57"
     }
   }
