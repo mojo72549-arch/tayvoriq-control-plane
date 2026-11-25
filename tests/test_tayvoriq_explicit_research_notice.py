@@ -71,3 +71,46 @@ def test_invalid_selection_cannot_choose_an_arbitrary_notice_file(tmp_path, monk
     setup(tmp_path, monkeypatch)
     with pytest.raises(ValueError):
         notice.main('../../../outside')
+
+
+def test_terminal_notice_rebases_without_runner_identity(tmp_path, monkeypatch):
+    """The observer advances main after checkout; terminal delivery must survive that rebase."""
+    import subprocess
+
+    # Reproduce the hosted runner with no configured or inherited Git identity.
+    for name in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "EMAIL",
+                 "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    identity = ["-c", "user.name=github-actions[bot]", "-c",
+                "user.email=github-actions[bot]@users.noreply.github.com"]
+
+    def git(directory, *args, identified=False):
+        return subprocess.run(["git", "-C", str(directory), *(identity if identified else []), *args],
+                              check=True, capture_output=True, text=True).stdout.strip()
+
+    remote, peer, worker = (tmp_path / name for name in ("remote.git", "peer", "worker"))
+    git(tmp_path, "init", "--bare", "--initial-branch=main", str(remote))
+    git(tmp_path, "clone", str(remote), str(peer))
+    (peer / "initial.txt").write_text("initial")
+    git(peer, "add", ".")
+    git(peer, "commit", "-m", "Seed", identified=True)
+    git(peer, "push", "origin", "main")
+    git(tmp_path, "clone", str(remote), str(worker))
+    (peer / "observer-progress.json").write_text('{"state":"FAILED"}')
+    git(peer, "add", ".")
+    git(peer, "commit", "-m", "Concurrent observer checkpoint", identified=True)
+    git(peer, "push", "origin", "main")
+
+    monkeypatch.chdir(worker)
+    monkeypatch.setattr(notice.time, "sleep", lambda seconds: None)
+    path = Path(".automation/tayvoriq-agent-v2/research-notices") / (SID + "-FAILED.json")
+    for state in ("SENDING", "DELIVERED"):
+        notice.persist(path, {"selection_id": SID, "state": state})
+    persisted = json.loads(git(remote, "show", "main:" + str(path)))
+    assert persisted["state"] == "DELIVERED"
+    assert json.loads(git(remote, "show", "main:observer-progress.json"))["state"] == "FAILED"
+    assert git(worker, "status", "--porcelain") == ""
+    # The fix must not install a user identity into the runner's local Git config.
+    assert subprocess.run(["git", "config", "--local", "--get", "user.name"], capture_output=True).returncode == 1

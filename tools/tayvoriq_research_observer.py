@@ -54,6 +54,7 @@ class Observation:
                      'slot': slot, 'run_id': int(run_id), 'run_attempt': int(attempt),
                      'state': 'SEARCHING', 'started_at': stamp(), 'updated_at': stamp(),
                      'sources_seen': None, 'drafts_saved': 0, 'quality_rejections': 0,
+                     'corroborated_headlines': None,
                      'provider': None, 'issues': [], 'exit_code': None}
 
     def event(self, row):
@@ -67,15 +68,29 @@ class Observation:
         elif event == 'research_draft_saved':
             self.saved.add(hashlib.sha256(str(row.get('title', '')).encode()).hexdigest())
             self.data['drafts_saved'] = len(self.saved)
-        elif event in {'candidate_editorial_rejection', 'regional_editorial_validation'}:
+        elif event == 'source_headline_preflight':
+            value = row.get('corroborated_headlines')
+            if type(value) is int and 0 <= value <= 100000:
+                self.data['corroborated_headlines'] = value
+        elif event == 'candidate_editorial_rejection':
             self.rejected += 1
             self.data['quality_rejections'] = self.rejected
-            if event == 'candidate_editorial_rejection':
-                details = row.get('details') or []
-                code = 'TIKTOK_FIT' if any('tiktok:regional_score_below' in str(d) for d in details) else 'CLAIM_SUPPORT' if row.get('reason') == 'claim_coherence' else 'EDITORIAL_QUALITY'
-                issue = {'code':code,'provider':None}
-                if issue not in self.data['issues']:
-                    self.data['issues'] = [*self.data['issues'],issue][-12:]
+            details = row.get('details') or []
+            incomplete = ('invalid_or_unexplained_rating:', 'platform_fit_missing:')
+            if (any(str(d).startswith(incomplete) for d in details)
+                    or row.get('reason') in {'regional_scorecard_missing', 'regional_ratings_or_platform_fit_missing'}):
+                code = 'EDITORIAL_FIELDS'
+            elif row.get('reason') == 'claim_coherence':
+                code = 'CLAIM_SUPPORT'
+            elif any(str(d).startswith('tiktok:regional_score_below') for d in details):
+                code = 'TIKTOK_FIT'
+            else:
+                code = 'EDITORIAL_QUALITY'
+            issue = {'code': code, 'provider': None}
+            if issue not in self.data['issues']:
+                self.data['issues'] = [*self.data['issues'], issue][-12:]
+        elif event == 'regional_editorial_validation':
+            pass  # A batch summary is not another rejected candidate.
         elif event in {'provider_attempt_started', 'provider_success', 'provider_attempt_failed'}:
             provider = next((p for p in PROVIDERS if str(row.get('provider', '')).lower().startswith(p)), None)
             if provider:
@@ -102,7 +117,8 @@ class Observation:
                          local_attempt=attempt, max_local_attempts=3, updated_at=stamp())
 
     def finish(self, code):
-        self.data.update(state='GENERATED' if code == 0 else 'FAILED', exit_code=code, updated_at=stamp())
+        self.data.update(state='GENERATED' if code == 0 else 'FAILED', exit_code=code,
+                         next_retry_at=None, updated_at=stamp())
 
 
 def publish(data, token, *, request=urlopen):

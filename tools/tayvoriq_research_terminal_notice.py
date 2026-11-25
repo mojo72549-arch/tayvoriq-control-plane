@@ -13,15 +13,19 @@ from tayvoriq_provider_health_v1 import write
 from tayvoriq_research_retry_v1 import ZONE, current
 
 
+GIT_BOT = ["git", "-c", "user.name=github-actions[bot]", "-c",
+           "user.email=github-actions[bot]@users.noreply.github.com"]
+
+
 def persist(path, value):
     write(path, value)
     subprocess.run(["git", "add", "--", str(path)], check=True)
-    subprocess.run(["git", "-c", "user.name=github-actions[bot]", "-c",
-                    "user.email=github-actions[bot]@users.noreply.github.com",
-                    "commit", "-m", "Record terminal research notification " + value["state"], "--", str(path)],
+    subprocess.run([*GIT_BOT, "commit", "-m", "Record terminal research notification " + value["state"], "--", str(path)],
                    check=True)
     for attempt in range(3):
-        subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", "main"], check=True)
+        # The observer commits checkpoints while this job runs. Rebasing the
+        # notice creates a new commit and needs the same identity as commit.
+        subprocess.run([*GIT_BOT, "pull", "--rebase", "--autostash", "origin", "main"], check=True)
         if subprocess.run(["git", "push", "origin", "HEAD:main"]).returncode == 0:
             return
         time.sleep(1 + attempt)
