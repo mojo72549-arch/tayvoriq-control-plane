@@ -10,11 +10,12 @@ import tayvoriq_agent_research_http_v2 as http
 import tayvoriq_agent_rss_v2 as rss
 import tayvoriq_research_checkpoint as checkpoint
 import tayvoriq_research_retry_v1 as research_retry
+from tayvoriq_provider_health_v1 import http_failure
 from tayvoriq_regional_relevance import (
     bind_corroborated_headline, complete_scorecards, evidence_options, evaluate as evaluate_regional_relevance,
 )
 from tayvoriq_retention_v5 import evaluate_content_depth, evaluate_return_viewer
-from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, _words, _events, _status, _publisher
+from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, record_events, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
 EDITORIAL_RESCAN = "\n\nAUTOMATIC REGIONAL CONTRACT RESCAN:"
@@ -84,6 +85,11 @@ def _source_terms(title: str, context: str):
     return claim_terms(title + ' ' + context)
 
 
+@lru_cache(maxsize=2048)
+def _record_event_features(title: str, context: str):
+    return record_events({"title": title, "context": context})
+
+
 def _source_pair_score(a: dict, b: dict) -> int:
     """Rank evidence leads, not verified claims. Final validate_pair stays mandatory."""
     domain_a = a.get('domain') or domain(str(a.get('url') or ''))
@@ -93,7 +99,8 @@ def _source_pair_score(a: dict, b: dict) -> int:
     ta, tb = str(a.get('title') or ''), str(b.get('title') or '')
     events_a, status_a, terms_a = _headline_features(ta)
     events_b, status_b, terms_b = _headline_features(tb)
-    if not events_a.intersection(events_b) or status_a != status_b:
+    if (not _record_event_features(ta, str(a.get('context') or '')).intersection(
+            _record_event_features(tb, str(b.get('context') or ''))) or status_a != status_b):
         return 0
     shared_title = terms_a & terms_b
     if not shared_title or _publisher(a) == _publisher(b):
@@ -120,7 +127,7 @@ def corroborated_headline(a: dict, b: dict) -> str:
         title = base.clean(record.get('title'))
         clauses = re.split(r":\s+|\s+[–—]\s+|;\s+", title)
         for clause in clauses:
-            if (len(clauses) > 1 and 24 <= len(clause) <= 150 and len(_words(clause)) >= 3
+            if (len(clauses) > 1 and 20 <= len(clause) <= 150 and len(_words(clause)) >= 3
                     and _status(clause) == _status(title) and _events(clause) == _events(title)
                     and not validate_pair({'title': clause}, [a, b])):
                 return clause
@@ -184,7 +191,7 @@ def article_research_records(records: list[dict]) -> list[dict]:
     return (selected[offset:] + selected[:offset])[:8]
 
 
-def _rank_corroborated_pairs(pairs, previous, retry_attempt):
+def _rank_corroborated_pairs(pairs, previous, retry_attempt, records=None):
     groups = []
     for pair, title in pairs:
         for group in groups:
@@ -195,6 +202,12 @@ def _rank_corroborated_pairs(pairs, previous, retry_attempt):
             groups.append([(pair, title)])
     fresh, seen = [], []
     for group in groups:
+        if records:
+            # A short duplicate feed alert should not displace a corroborating
+            # report that actually explains the consequence. This only orders
+            # already verified pairs; no evidence or quality check is skipped.
+            group.sort(key=lambda row: min(min(600, len(records[sid].get("context") or ""))
+                                           for sid in row[0]), reverse=True)
         if any(not distinct_headlines(title, prior) or title.casefold() == prior.casefold()
                for _, title in group for prior in previous):
             seen.append(group)
@@ -302,6 +315,8 @@ def _repair_editorial_fields(candidates, generate):
     try:
         replies = generate(batch)
     except (OSError, ValueError, RuntimeError) as exc:
+        if http_failure(exc)[0] in {401, 402, 403, 429}:
+            raise
         print({"event": "editorial_field_repair_unavailable", "error_type": type(exc).__name__})
         return
     if not isinstance(replies, dict):
@@ -481,7 +496,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
             vetted_pairs = {pair: title for pair, title in vetted_pairs.items()
                             if all(title.casefold() != prior.casefold() and distinct_headlines(title, prior)
                                    for prior in excluded)}
-        ranked = _rank_corroborated_pairs(vetted_pairs.items(), previous, _research_retry_attempt())
+        ranked = _rank_corroborated_pairs(vetted_pairs.items(), previous, _research_retry_attempt(), by_id)
         selected_pairs = _independent_headline_pairs(ranked)
         if allow_single and ranked and not selected_pairs:
             pair, title = next(iter(ranked.items()))

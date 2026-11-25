@@ -24,6 +24,9 @@ _APPOINTMENT_SUBJECT = re.compile(
     r"(?i:folgt\b|rückt\s+an\s+die\s+spitze\b|wird\s+(?:nachfolger(?:in)?\b|"
     r"(?:(?:neue[rs]?|bayerische[rs]?)\s+)?" + _POLITICAL_ROLE + r"))"
 )
+_PRICE = r"\b(?:[a-zäöüß-]*preis(?:e[ns]?|en|es)?|kosten)\b"
+_PRICE_DOWN = r"\b(?:senk\w*|gesenkt\w*|sink\w*|sank\w*|gesunken\w*|fällt|fallen|fiel)\b"
+_PRICE_UP = r"\b(?:steig\w*|stieg\w*|gestiegen\w*|erhöh\w*|erhoeh\w*|erhöht\w*)\b"
 
 # Explicitly bounded event vocabulary: unknown or ambiguous actions defer to
 # another research path. Shared actors/places alone never prove one event.
@@ -57,12 +60,18 @@ _EVENTS = {
     "economic_contraction": r"\b(?:wirtschaft|bip|bruttoinlandsprodukt)\b.{0,65}\b(?:schrumpf\w*|gesunken|rückgang|rueckgang)\b",
     "wage_negotiation": r"\b(?:tarifrunde\w*|tarifverhandlung\w*|tarifgespräch\w*|tarifgespraech\w*)\b",
     "policy_reform": r"\b(?:\w*reform\w*|gesetzesänder\w*)\b",
+    "sale": r"\b(?:verkauf|verkauft|verkaufen|firmenverkauf|unternehmensverkauf)\b",
 }
 
 
 def _events(text: str) -> set[str]:
     text = _MERGER.sub("firmenfusion", text.casefold())
     events = {name for name, pattern in _EVENTS.items() if re.search(pattern, text)}
+    for name, direction in (("price_fall", _PRICE_DOWN), ("price_rise", _PRICE_UP)):
+        if re.search(_PRICE + r".{0,45}" + direction + "|" + direction + r".{0,45}" + _PRICE, text):
+            events.add(name)
+    if "ticket_distribution" in events:
+        events.discard("sale")  # Ticket distribution is not a company disposal.
     if re.search(r"\b(?:stellen|jobs|arbeitsplätze)\b", text) and re.search(
         r"\b(?:abbau\w*|wegfall\w*|baut.{0,65}\bab|fallen.{0,40}\bweg)\b", text
     ):
@@ -119,8 +128,42 @@ def claim_terms(value: str) -> set[str]:
         value = re.sub(r"\brückt an die spitze des (?:[\w]+\s+){0,2}(\w+minister)iums\b",
                        r"nachfolge \1", value)
         value = re.sub(r"\bals\s+(?=" + _POLITICAL_ROLE + ")", "", value)
-    forms = {"fiskus":"staat", "staatskasse":"staat", "könnten":"könnte"}
+    forms = {"fiskus":"staat", "staatskasse":"staat", "könnten":"könnte",
+             "discountern":"discounter", "deutschen":"deutsche", "deutscher":"deutsche",
+             "bald":"zukünftig", "demnächst":"zukünftig", "künftig":"zukünftig"}
+    events = _events(value)
+    if "price_fall" in events:
+        value = re.sub(_PRICE_DOWN, "preissenkung", value)
+    if "price_rise" in events:
+        value = re.sub(_PRICE_UP, "preiserhöhung", value)
+    if "ticket_distribution" in events:
+        value = re.sub(r"\b(?:buchbar|buchen|gebucht|verkauft|verkaufen)\b", "ticketkauf", value)
     return {forms.get(word, word) for word in _words(value)}
+
+
+def record_events(record: dict) -> set[str]:
+    """Discovery may find a price change in the original lead, not just its headline."""
+    return _events(str(record.get("title") or "")) | (_events(str(record.get("context") or "")) & {"price_fall", "price_rise"})
+
+
+def _supports_event(record: dict, headline: str) -> bool:
+    wanted = _events(headline)
+    present = _events(str(record.get("title") or ""))
+    if wanted.issubset(present):
+        return True
+    # Only a bounded price-change lead can supply a missing headline action.
+    # Its object, amount/unit and direction must occur together in one original
+    # sentence. An unrelated event elsewhere in the story is not corroboration.
+    if not (wanted - present) <= {"price_fall", "price_rise"}:
+        return False
+    anchors = claim_terms(headline) - {"preissenkung", "preiserhöhung", "discounter"}
+    if len(anchors) < 2:
+        return False
+    for sentence in re.split(r"(?<=[.!?])\s+", str(record.get("context") or "")):
+        if (wanted <= _events(sentence) and _status(sentence) == _status(headline)
+                and anchors <= claim_terms(sentence)):
+            return True
+    return False
 
 
 def _numbers(value: str) -> set[str]:
@@ -185,7 +228,7 @@ def validate_pair(candidate: dict, records: list[dict]) -> list[str]:
         reasons.append("source_records_do_not_establish_same_story")
     headline = str(candidate.get("title") or "")
     event = _events(headline)
-    if not event or not event.issubset(_events(str(a.get("title") or "")) & _events(str(b.get("title") or ""))):
+    if not event or not all(_supports_event(record, headline) for record in records):
         reasons.append("shared_headline_event_anchor_required")
     if any(_status(str(r.get("title") or "")) != _status(headline) for r in records):
         reasons.append("headline_event_status_not_correlated")

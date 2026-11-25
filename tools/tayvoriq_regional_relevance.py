@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from tayvoriq_provider_health_v1 import http_failure
 
 
 WEIGHTS = {
@@ -150,6 +151,8 @@ def complete_scorecards(candidates, options, generate):
     try:
         replies = _mapping(generate(requests))
     except (OSError, ValueError, RuntimeError) as exc:
+        if http_failure(exc)[0] in {401, 402, 403, 429}:
+            raise  # The provider router must retain real access/payment/quota blocks.
         # A failed optional completion must preserve the independent original assessments.
         print({"event": "scorecard_completion_unavailable", "error_type": type(exc).__name__})
         return
