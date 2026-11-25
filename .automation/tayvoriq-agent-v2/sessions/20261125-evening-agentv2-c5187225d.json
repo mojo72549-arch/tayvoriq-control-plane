@@ -1,0 +1,42 @@
+{
+  "selection_id": "20261125-evening-agentv2-c5187225d",
+  "slot": "evening",
+  "provider": "editorial",
+  "model": "source-reviewed",
+  "grounding_chunks": [
+    {
+      "uri": "https://unternehmen.lidl.de/pressemitteilungen/2026/261125_preissenkung-butter",
+      "title": "Lidl Unternehmensmitteilung"
+    },
+    {
+      "uri": "https://www.tagesschau.de/wirtschaft/verbraucher/butter-preis-preiskampf-discounter-bauern-100.html",
+      "title": "tagesschau / MDR"
+    },
+    {
+      "uri": "https://corporate.flix.com/de/press_releases/vertriebsvereinbarung-flixtrain-deutsche-bahn/",
+      "title": "Flix / Deutsche Bahn"
+    },
+    {
+      "uri": "https://www.tagesschau.de/wirtschaft/unternehmen/flixtrain-deutsche-bahn-ticketverkauf-100.html",
+      "title": "tagesschau"
+    },
+    {
+      "uri": "https://www.presseportal.de/pm/177328/6397594",
+      "title": "Fahrgastverband PRO BAHN"
+    }
+  ],
+  "candidate_count": 2,
+  "valid_count": 2,
+  "selected_count": 2,
+  "series_candidate_injected": false,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 1,
+  "growth_rescan_used": false,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_2_to_5",
+  "candidate_minimum": 2,
+  "candidate_maximum": 5,
+  "weak_fill_allowed": false,
+  "target_date": "2026-11-25",
+  "explicit_fresh_trend_ranking": true
+}
