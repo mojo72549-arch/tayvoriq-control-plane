@@ -1,4 +1,4 @@
-name: VW clock-verified checkpoint recovery and strict audit
+name: VW bound autonomous recovery and strict gates
 on:
   push:
     branches: [codex/vw-45510042088-checkpoint-evidence]
@@ -8,7 +8,7 @@ permissions:
 jobs:
   compare:
     runs-on: ubuntu-latest
-    timeout-minutes: 22
+    timeout-minutes: 25
     env:
       PYTHONUTF8: "1"
       TAYVORIQ_RENDER_SIZE: "1080x1920"
@@ -76,9 +76,10 @@ jobs:
           set -euo pipefail
           test -n "$PEXELS_API_KEY"
           PYTHONPATH="$PWD:$PWD/tools" "$GITHUB_WORKSPACE/.venv/bin/python" "$GITHUB_WORKSPACE/tools/vw_bound_visual_comparison.py" fixed "$GITHUB_WORKSPACE/implementation/out/recovery-checkpoint" "$RUNNER_TEMP/vw-comparison"
-      - name: Run live visual audit and test the scoped repair entry point
+      - name: Run the canonical checkpoint recovery through all strict gates
         working-directory: candidate
         env:
+          TAYVORIQ_CHECKPOINT_REPAIR_ROUND_LIMIT: "3"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TAYVORIQ_MONEYPRINTERTURBO_ROOT: ${{ github.workspace }}/scene-engine
