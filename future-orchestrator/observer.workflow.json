@@ -1,0 +1,101 @@
+{
+  "name": "TAYVORIQ | Zukunftsoption | Read-only Shadow Observer",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Manual observer check",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "id": "tayvoriq-manual-observer"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://raw.githubusercontent.com/mojo72549-arch/tayvoriq-control-plane/main/.github/state/tayvoriq-active-production-request.json",
+        "options": {}
+      },
+      "name": "Read active request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ],
+      "id": "tayvoriq-read-pointer"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://raw.githubusercontent.com/mojo72549-arch/tayvoriq-control-plane/main/run-status/ops-health.json",
+        "options": {}
+      },
+      "name": "Read ops snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        690,
+        300
+      ],
+      "id": "tayvoriq-read-health"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pointer = $('Read active request').first().json;\nconst health = $('Read ops snapshot').first().json;\nconst expectedRun = String(pointer.golden_path_run_id ?? '');\nconst observedRun = String(health.canonical?.golden_path_run_id ?? health.run?.id ?? '');\nconst sameRequest = pointer.request_id && pointer.request_id === health.canonical?.request_id;\nconst sameRun = expectedRun && expectedRun === observedRun;\nreturn [{ json: {\n  mode: 'READ_ONLY_SHADOW',\n  request_id: pointer.request_id ?? null,\n  active_pointer_state: pointer.state ?? null,\n  expected_run_id: expectedRun || null,\n  health_run_id: observedRun || null,\n  health_snapshot_generated_at: health.generated_at ?? null,\n  health_snapshot_stale_or_unbound: !(sameRequest && sameRun),\n  displayed_health_state: sameRequest && sameRun ? health.run?.status ?? 'unknown' : 'UNVERIFIED_SNAPSHOT',\n  review_delivery: 'NOT_VERIFIED',\n  publication: 'NOT_VERIFIED',\n  note: 'Observer does not validate final QA artifacts or authenticated Telegram/platform receipts. Never infer success from workflow conclusion or green status.'\n}}];"
+      },
+      "name": "Compare snapshots (NO writes)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        930,
+        300
+      ],
+      "id": "tayvoriq-shadow-compare"
+    }
+  ],
+  "connections": {
+    "Manual observer check": {
+      "main": [
+        [
+          {
+            "node": "Read active request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read active request": {
+      "main": [
+        [
+          {
+            "node": "Read ops snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read ops snapshot": {
+      "main": [
+        [
+          {
+            "node": "Compare snapshots (NO writes)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

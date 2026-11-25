@@ -1,0 +1,56 @@
+# OPTIONAL, read-only prototype only. No productive workflows or webhooks.
+name: tayvoriq-future-orchestrator
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?Set_POSTGRES_IMAGE_in_env}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set_POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set_POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+    security_opt: ["no-new-privileges:true"]
+
+  n8n:
+    image: ${N8N_IMAGE:?Set_exact_N8N_IMAGE_in_env}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:?Set_POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:?Set_POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?Set_POSTGRES_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set_N8N_ENCRYPTION_KEY}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_SECURE_COOKIE: "false" # ONLY for localhost via SSH tunnel, never public HTTP
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "168"
+      GENERIC_TIMEZONE: Europe/Berlin
+      TZ: Europe/Berlin
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks: [internal]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  internal:
+    internal: false
+
+volumes:
+  pgdata:
+  n8n_data:
