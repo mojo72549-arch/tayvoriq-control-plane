@@ -4,9 +4,9 @@
   "slot": "morning",
   "run_id": 45704304157,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "FAILED",
   "started_at": "2026-11-25T21:26:26.581662+00:00",
-  "updated_at": "2026-11-25T21:31:39.335810+00:00",
+  "updated_at": "2026-11-25T21:31:43.507371+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
   "quality_rejections": 4,
@@ -43,9 +43,13 @@
     {
       "code": "PROVIDER_UNAVAILABLE",
       "provider": "groq"
+    },
+    {
+      "code": "SOURCES",
+      "provider": "groq"
     }
   ],
-  "exit_code": null,
+  "exit_code": 1,
   "local_attempt": 3,
   "max_local_attempts": 3,
   "next_retry_at": null
