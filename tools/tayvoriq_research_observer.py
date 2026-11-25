@@ -1,5 +1,9 @@
-"""Observe research events without changing its selection, retries or quality gates."""
+"""Run one bound explicit research request with shared cooldowns and bounded local recovery."""
 import argparse
+import base64
+import queue
+import tempfile
+import threading
 import hashlib
 import json
 import os
@@ -8,6 +12,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -86,6 +91,10 @@ class Observation:
         if issue not in self.data['issues']:
             self.data['issues'] = [*self.data['issues'], issue][-12:]
 
+    def waiting(self, retry_at, attempt):
+        self.data.update(state='WAITING', next_retry_at=datetime.fromtimestamp(retry_at, timezone.utc).isoformat(),
+                         local_attempt=attempt, max_local_attempts=3, updated_at=stamp())
+
     def finish(self, code):
         self.data.update(state='GENERATED' if code == 0 else 'FAILED', exit_code=code, updated_at=stamp())
 
@@ -117,6 +126,172 @@ def publish(data, token, *, request=urlopen):
         return True
 
 
+def load_json(path):
+    try:
+        value = json.loads(path.read_text(encoding='utf-8'))
+        return value if isinstance(value, dict) else {}
+    except FileNotFoundError:
+        return {}
+
+
+def context(selection, slot, root, temporary, *, now=None):
+    """Explicit requests share provider cooldowns, but never another slot's drafts or retry budget."""
+    now = time.time() if now is None else now
+    scope = '.automation/tayvoriq-agent-v2'
+    paths = {'health': scope + '/provider-health.json',
+             'drafts': scope + '/research-candidates/' + selection + '.json',
+             'retry': scope + '/control-center-retries/' + selection + '.json'}
+    files, original = {}, {}
+    for kind, relative in paths.items():
+        value = load_json(root / relative)
+        original[kind] = value
+        path = temporary / (kind + '.json')
+        if value:
+            path.write_text(json.dumps(value), encoding='utf-8')
+        files[kind] = path
+    previous = original['retry']
+    deadline = min(now + 600, float(previous.get('valid_until_epoch') or now + 600))
+    env = {**os.environ, 'PYTHONUNBUFFERED': '1', 'TAYVORIQ_RESEARCH_SLOT': slot,
+           'TAYVORIQ_RESEARCH_SELECTION_ID': selection,
+           'TAYVORIQ_RESEARCH_STARTED_AT_EPOCH': str(int(previous.get('first_deferred_at_epoch') or now)),
+           'TAYVORIQ_PROVIDER_HEALTH_FILE': str(files['health']),
+           'TAYVORIQ_RESEARCH_CHECKPOINT_FILE': str(files['drafts']),
+           'TAYVORIQ_RESEARCH_RETRY_FILE': str(files['retry'])}
+    # Local retries have their own bounded counter; a GitHub attempt must not
+    # suppress accounting for repeated source/gate failures in this process.
+    env.pop('TAYVORIQ_RESEARCH_RUN_KEY', None)
+    return {'paths': paths, 'files': files, 'original': original, 'env': env, 'deadline': deadline}
+
+
+def merge_health(original, updated, latest):
+    merged = dict(latest.get('providers') or {})
+    before, after = original.get('providers') or {}, updated.get('providers') or {}
+    for name in before.keys() - after.keys():
+        if merged.get(name) == before[name]:
+            merged.pop(name, None)
+    for name, record in after.items():
+        if float(record.get('observed_at_epoch') or 0) >= float((merged.get(name) or {}).get('observed_at_epoch') or 0):
+            merged[name] = record
+    return {'schema': 'tayvoriq-provider-health-v1', 'providers': merged}
+
+
+def persist_context(state, token, *, request=urlopen):
+    for kind, path in state['files'].items():
+        updated = load_json(path)
+        if not updated or updated == state['original'][kind]:
+            continue
+        relative = state['paths'][kind]
+        url = f'https://api.github.com/repos/{REPO}/contents/{relative}'
+        headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json',
+                   'Content-Type': 'application/json', 'User-Agent': 'tayvoriq-research-context'}
+        for _ in range(3):
+            sha, latest = None, {}
+            try:
+                with request(Request(url + '?ref=main', headers=headers), timeout=8) as response:
+                    meta = json.load(response)
+                sha = meta['sha']
+                latest = json.loads(base64.b64decode(meta['content']))
+            except HTTPError as error:
+                if error.code != 404:
+                    raise
+            value = merge_health(state['original'][kind], updated, latest) if kind == 'health' else updated
+            payload = {'branch': 'main', 'message': 'Preserve research context ' + kind,
+                       'content': base64.b64encode((json.dumps(value, ensure_ascii=False, indent=2) + '\n').encode()).decode()}
+            if sha:
+                payload['sha'] = sha
+            try:
+                with request(Request(url, data=json.dumps(payload).encode(), headers=headers, method='PUT'), timeout=8):
+                    state['original'][kind] = json.loads(json.dumps(updated))
+                    break
+            except HTTPError as error:
+                if error.code not in {409, 422}:
+                    raise
+        else:
+            raise RuntimeError('Research context version changed repeatedly')
+
+
+def run_child(command, env, deadline, observation, save, *, clock=time.time):
+    """Keep the original research result, with a real wall-clock timeout and heartbeat."""
+    child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
+    lines = queue.SimpleQueue()
+    def read():
+        try:
+            for line in child.stdout:
+                lines.put(line)
+        except (OSError, ValueError):
+            pass
+        finally:
+            lines.put(None)
+    reader = threading.Thread(target=read, daemon=True)
+    reader.start()
+    try:
+        while True:
+            if clock() >= deadline:
+                child.terminate()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                return 124
+            try:
+                line = lines.get(timeout=1)
+            except queue.Empty:
+                save()
+                continue
+            if line is None:
+                return child.wait()
+            sys.stdout.write(line)
+            try:
+                observation.event(json.loads(line))
+            except ValueError:
+                pass
+            save()
+    finally:
+        if child.poll() is None:
+            child.terminate()
+        reader.join(timeout=1)
+        child.stdout.close()
+
+
+def execute(command, state, observation, save, persist, *, clock=time.time, pause=time.sleep, run=run_child):
+    previous = load_json(state['files']['retry'])
+    attempts = int(previous.get('attempts') or 0)
+    if previous.get('state') == 'EXHAUSTED' or state['deadline'] - clock() < 45:
+        observation.finish(124)
+        save(True)
+        return 124
+    for attempt in range(attempts + 1, 4):
+        observation.data.update(state='SEARCHING', local_attempt=attempt, max_local_attempts=3, next_retry_at=None)
+        save(True)
+        code = run(command, state['env'], min(clock() + 420, state['deadline'] - 35), observation, save)
+        try:
+            persist()
+        except Exception:
+            print('Research context could not be persisted; no additional automatic retry is started.', file=sys.stderr)
+            observation.finish(code)
+            save(True)
+            return code
+        if code == 0:
+            observation.finish(0)
+            save(True)
+            return 0
+        retry = load_json(state['files']['retry'])
+        retry_at = float(retry.get('retry_at_epoch') or 0)
+        if (retry.get('state') != 'WAITING' or attempt >= 3 or retry_at <= 0
+                or max(clock(), retry_at) + 45 >= state['deadline']):
+            observation.finish(code)
+            save(True)
+            return code
+        observation.waiting(retry_at, attempt)
+        save(True)
+        while clock() < retry_at:
+            pause(min(5, retry_at - clock()))
+            save()
+    observation.finish(1)
+    save(True)
+    return 1
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--selection-id', required=True)
@@ -128,32 +303,19 @@ def main():
         parser.error('Research command required')
     observation = Observation(args.selection_id, args.slot, os.environ['GITHUB_RUN_ID'], os.environ['GITHUB_RUN_ATTEMPT'])
     last = 0
-
     def save(force=False):
         nonlocal last
         if not force and time.monotonic() - last < 20:
             return
         last = time.monotonic()
+        observation.data['updated_at'] = stamp()
         try:
             publish(observation.data, os.environ['GH_TOKEN'])
         except Exception:
             print('Research telemetry unavailable; the original research result remains authoritative.', file=sys.stderr)
-
-    save(True)
-    child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             text=True, env={**os.environ, 'PYTHONUNBUFFERED': '1'})
-    for line in child.stdout:
-        sys.stdout.write(line)
-        try:
-            row = json.loads(line)
-        except ValueError:
-            continue
-        if observation.event(row):
-            save()
-    code = child.wait()
-    observation.finish(code)
-    save(True)
-    return code
+    with tempfile.TemporaryDirectory(prefix='tayvoriq-research-') as temporary:
+        state = context(args.selection_id, args.slot, Path.cwd(), Path(temporary))
+        return execute(command, state, observation, save, lambda: persist_context(state, os.environ['GH_TOKEN']))
 
 
 if __name__ == '__main__':
