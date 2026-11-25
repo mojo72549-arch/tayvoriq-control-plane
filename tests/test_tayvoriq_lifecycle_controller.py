@@ -297,3 +297,23 @@ def test_local_retry_binding_mismatch_also_fails_closed_for_codefix_rearm():
     }
     assert _replay_status_allows_rearm(stale, 42) is False
 
+
+
+def test_orchestrator_promotes_only_the_verified_studio_revision_and_confirms_the_executor():
+    from tayvoriq_verified_studio_promotion import verified_candidate, handoff
+
+    sha = "a" * 40
+    status = dict(state="TAYVORIQ_QUALITY_GATES_PASSED", tested_sha=sha, run_id="123", compile_passed=True,
+                  editorial_selftests_passed=True, all_tayvoriq_tests_passed=True, diff_gate_passed=True)
+    assert verified_candidate(status, {"implementation_sha": "b" * 40}) == sha
+    assert verified_candidate(status, {"implementation_sha": sha}) is None
+    with unittest.TestCase().assertRaises(ValueError):
+        verified_candidate({**status, "diff_gate_passed": False}, {"implementation_sha": sha})
+    run = {"display_title": "Verify Studio " + sha, "html_url": "https://github.example/run/1", "status": "in_progress"}
+    calls = []
+    observed = iter([[], [], [run]])
+    result = handoff(sha, lambda: next(observed), calls.append, pause=lambda _: None)
+    assert calls == [sha] and result == ("Studio-Prüflauf bestätigt", run["html_url"])
+    assert handoff(sha, lambda: [run], calls.append)[1] == run["html_url"]
+    assert handoff(sha, lambda: [{**run, "display_title": "Scheduled preflight"}], calls.append)[1] == run["html_url"]
+    assert calls == [sha]

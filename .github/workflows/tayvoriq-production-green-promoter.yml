@@ -85,6 +85,8 @@ name: TAYVORIQ Production Green Promoter
 # feature/multi-platform-distribution-package production ref. Validate only that
 # live ref until the runtime is deliberately migrated to Studio main.
 
+run-name: ${{ inputs.candidate_sha && format('Verify Studio {0}', inputs.candidate_sha) || 'TAYVORIQ Production Green Promoter' }}
+
 on:
   push:
     branches: [main]
@@ -95,6 +97,11 @@ on:
     paths:
       - .github/workflows/tayvoriq-production-green-promoter.yml
   workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Verified Studio implementation requested by the orchestrator
+        type: string
+        required: false
   # Slow failsafe only. Normal recovery is event-driven; this must not create
   # a five-minute Actions heartbeat when nothing changed.
   schedule:
@@ -105,8 +112,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: tayvoriq-production-green-promoter
-  cancel-in-progress: true
+  group: tayvoriq-production-green-promoter-${{ github.event.pull_request.number || 'production' }}
+  cancel-in-progress: false
 
 jobs:
   verify-and-promote:
@@ -135,6 +142,8 @@ jobs:
 
       - name: Resolve immutable candidate and current green
         id: refs
+        env:
+          REQUESTED_CANDIDATE: ${{ inputs.candidate_sha }}
         working-directory: implementation
         shell: bash
         run: |
@@ -144,6 +153,11 @@ jobs:
           # receipt; otherwise every green test moves the target SHA forever.
           candidate="$(git log --first-parent -1 --format=%H -- . ':!.automation/tayvoriq-quality-status.json')"
           test -n "$candidate" || { echo "STUDIO_IMPLEMENTATION_CANDIDATE_MISSING"; exit 1; }
+          if [[ -n "$REQUESTED_CANDIDATE" && "$candidate" != "$REQUESTED_CANDIDATE" ]]; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            echo "A newer Studio implementation superseded the requested revision."
+            exit 0
+          fi
           git checkout --detach "$candidate" >/dev/null
           readarray -t green_fields < <(python - <<'PY'
           import json
@@ -423,7 +437,7 @@ jobs:
           fi
 
       - name: Promote exact fully verified SHA in control plane
-        if: steps.refs.outputs.changed == 'true'
+        if: github.event_name != 'pull_request' && steps.refs.outputs.changed == 'true'
         shell: bash
         env:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
@@ -465,7 +479,7 @@ jobs:
           echo "TAYVORIQ_PRODUCTION_GREEN_PROMOTED:$CANDIDATE_SHA"
 
       - name: Report Production Green outcome to Orchestrator
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           VERIFICATION_STATUS: ${{ job.status }}
