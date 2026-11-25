@@ -17,7 +17,7 @@ REQUEST = "telegram-3696-trend-1"
 SOURCE_HASH = "91d55e03500a804d6a08f56215d5ee3e3ad2c3606c648e0f8d18cf74c6367cd2"
 COMMITS = {
     "old": "5f9baa36075467dbea868a3066870645e2e4835a",
-    "fixed": "01d97a61aea81dbdb88f98d6457b448f8d70a0bf",
+    "fixed": "32f11f66d433c5e0c8c685458e20e16b070de903",
 }
 PLATFORMS = {"youtube_shorts": "short_youtube.mp4", "tiktok": "short_tiktok.mp4"}
 

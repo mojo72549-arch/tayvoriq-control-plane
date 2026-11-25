@@ -43,6 +43,7 @@ def check(job_dir):
         result["state"] = receipt.get("state")
         result["repair_history"] = receipt.get("repair_history")
         result["repair_targets"] = receipt.get("repair_target_stages")
+        result["gate_detail"] = receipt.get("reason")
     result["export_sha256"] = {p: sha256(job_dir / f) for p, f in PLATFORMS.items()}
     result["checkpoint_preserved"] = sha256(job_dir / "source_context.resume.json") == source
     result["voice_files_preserved"] = {p: sha256(job_dir / p / "voice.mp3") == voices[p] for p in PLATFORMS}
@@ -53,7 +54,7 @@ def check(job_dir):
         for p in PLATFORMS
     }
     write_json(job_dir / "scene-revision-verification.json", result)
-    print("Canonical checkpoint verification:", {k: v for k, v in result.items() if k != "repair_history"}, flush=True)
+    print("Canonical checkpoint verification:", {k: v for k, v in result.items() if k not in ("repair_history", "gate_detail")}, flush=True)
     assert result["checkpoint_preserved"] and all(result["voice_files_preserved"].values())
     assert all(result["frame_times_preserved"].values()) and all(result["script_preserved"].values())
     assert result["export_sha256"]["tiktok"] == original["tiktok"]
