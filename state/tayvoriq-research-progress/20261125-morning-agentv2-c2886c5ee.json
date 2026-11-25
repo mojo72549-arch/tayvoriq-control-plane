@@ -6,10 +6,10 @@
   "run_attempt": 1,
   "state": "SEARCHING",
   "started_at": "2026-11-25T21:26:26.581662+00:00",
-  "updated_at": "2026-11-25T21:28:06.818855+00:00",
+  "updated_at": "2026-11-25T21:28:27.557010+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
-  "quality_rejections": 0,
+  "quality_rejections": 4,
   "provider": "groq",
   "issues": [
     {
@@ -30,6 +30,10 @@
     },
     {
       "code": "PROVIDER_ERROR",
+      "provider": null
+    },
+    {
+      "code": "TIKTOK_FIT",
       "provider": null
     }
   ],
