@@ -1,12 +1,12 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T18:26:27.672617Z",
+  "generated_at": "2026-11-25T18:41:16.481609Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": true,
-    "reason": "VERIFIED_STATE_TRANSITION"
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
   },
   "api_error": null,
   "research": {
@@ -34,8 +34,8 @@
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3728-trend-1",
     "golden_path_run_id": 45673283300,
-    "pointer_updated_at": "2026-11-25T18:15:40.352919Z",
-    "current_scope": "production"
+    "pointer_updated_at": "2026-11-25T18:40:28.835424Z",
+    "current_scope": "research"
   },
   "request": {
     "request_id": "telegram-3728-trend-1",
@@ -44,7 +44,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -67,16 +67,16 @@
   },
   "run": {
     "id": 45673283300,
-    "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
+    "historical": true,
+    "status": "completed",
+    "conclusion": "success",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45673283300",
     "created_at": "2026-11-25T18:15:33Z",
-    "updated_at": "2026-11-25T18:15:40Z",
+    "updated_at": "2026-11-25T18:40:44Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": "Collect Studio production outcome",
-    "last_successful_step": "Restore production model cache",
+    "progress": 100,
+    "current_step": null,
+    "last_successful_step": "Complete job",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -118,31 +118,31 @@
       },
       {
         "label": "Studio-Ausführung",
-        "status": "running",
+        "status": "success",
         "step_number": 35,
         "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "success",
         "step_number": 45,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "success",
         "step_number": 47,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "success",
         "step_number": 53,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "success",
         "step_number": 54,
         "step_name": "Send Telegram review"
       }
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Collect Studio production outcome"
+      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
     },
     {
       "name": "Production Green",
@@ -162,35 +162,35 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "EXHAUSTED"
     },
     {
       "name": "Telegram",
       "status": "yellow",
-      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
+      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "yellow",
-    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
     "last_step": "Send Telegram review",
-    "message_id": null
+    "message_id": 3747
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_RUNNING",
+    "status": "EXHAUSTED",
+    "source_status": "EXHAUSTED",
     "failure_state": null,
     "failed_run_id": 45663573984,
     "replay_run_id": 45673283300,
     "fresh_recovery_run_id": 45663573984,
     "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
