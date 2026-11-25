@@ -13,6 +13,7 @@ from decimal import Decimal
 from urllib.parse import urlparse
 
 _STOP = set("der die das den dem des ein eine einer einem einen eines und oder aber mit von vom zur zum für auf aus bei nach vor über ist sind wird werden hat haben heute jetzt neu neue neuen neuer meldet berichtet laut sagt the a an and or of to in on for with from as is are was were new says said report reports latest update updates live news current event bestätigt bestätigte meldung quelle unabhängig independently confirmed source sources coverage".split())
+_SHORT_ANCHORS = {"eu", "uk", "us", "vw", "db", "bw", "ki"}
 _RULE_CHANGE = r"\bstrengere?\s+([\wäöüß]+)[ -]regeln\b"
 # Replace only the complete reflexive merger expression. A closure elsewhere
 # in the same report remains a separate event.
@@ -34,8 +35,8 @@ _EVENTS = {
     "opening": r"\b(?:eröffn\w*|eroeffn\w*|opens?|opening)\b",
     "hiring": r"\b(?:neueinstellungen|hires?|hiring)\b",
     "strike": r"\b(?:warnstreik\w*|streik\w*|strikes?)\b",
-    "price_rise": r"\b(?:preisanstieg|preiserhöhung\w*|preiserhoehung\w*|verteuer\w*)\b",
-    "price_fall": r"\b(?:preissenkung\w*|preisrückgang|preisrueckgang|verbillig\w*)\b",
+    "price_rise": r"\b(?:preisanstieg|preiserhöhung\w*|preiserhoehung\w*|verteuer\w*|teurer)\b",
+    "price_fall": r"\b(?:preissenkung\w*|preisrückgang|preisrueckgang|verbillig\w*|billiger)\b",
     "recall": r"\b(?:rückruf\w*|rueckruf\w*|recalls?)\b",
     "delay": r"\b(?:verspät\w*|verspaet\w*|verzöger\w*|verzoeger\w*|delays?|delayed)\b",
     "cancellation": r"\b(?:abgesagt|absage\w*|cancel\w*)\b",
@@ -47,6 +48,14 @@ _EVENTS = {
     "flood": r"\b(?:hochwasser|überschwemm\w*|ueberschwemm\w*|flood\w*)\b",
     "earthquake": r"\b(?:erdbeben|earthquake\w*)\b",
     "fire": r"\b(?:waldbrand\w*|großbrand\w*|wildfire\w*)\b",
+    # Common work, money and mobility events must be discoverable too. Each
+    # family still needs the same action in BOTH headlines, exact support,
+    # matching certainty, matching numbers and independent reporting origins.
+    "trade_tariffs": r"\b(?:zölle|zoelle|zöllen|zoellen|zollpolitik|einfuhrzölle|einfuhrzoelle)\b",
+    "ticket_distribution": r"\b(?:tickets?|fahrkarten)\b.{0,90}\b(?:buchbar|verkauf\w*|verkauft|buchung\w*)\b|\b(?:verkauf\w*|verkauft)\b.{0,90}\b(?:tickets?|fahrkarten)\b",
+    "economic_growth": r"\b(?:wirtschaft|bip|bruttoinlandsprodukt)\b.{0,65}\b(?:wächst|wuchs|gewachsen|wachstum)\b|\bwirtschaftswachstum\b",
+    "economic_contraction": r"\b(?:wirtschaft|bip|bruttoinlandsprodukt)\b.{0,65}\b(?:schrumpf\w*|gesunken|rückgang|rueckgang)\b",
+    "wage_negotiation": r"\b(?:tarifrunde\w*|tarifverhandlung\w*|tarifgespräch\w*|tarifgespraech\w*)\b",
     "policy_reform": r"\b(?:\w*reform\w*|gesetzesänder\w*)\b",
 }
 
@@ -79,7 +88,7 @@ def _status(text: str) -> tuple[bool, bool]:
     proposed = bool(re.search(
         r"\b(?:plan(?:t|en|te|ten|end\w*|ung\w*)|plän\w*|plaen\w*|geplant\w*|"
         r"beabsichtig\w*|erwäg\w*|erwaeg\w*|könn\w*|koenn\w*|"
-        r"soll\w*|woll\w*|will|forder\w*|vorschl\w*|vorschlag\w*|plans?|planned|planning|"
+        r"soll\w*|woll\w*|will|bald|demnächst|künftig|zukünftig|dürft\w*|voraussichtlich|erwart(?:et|en)|vermutlich|forder\w*|vorschl\w*|vorschlag\w*|plans?|planned|planning|"
         r"propos\w*|could|may|might|intends?|consider\w*)\b",
         normalized,
     ))
@@ -93,7 +102,7 @@ def _text(record: dict) -> str:
 
 def _words(value: str) -> set[str]:
     value = unicodedata.normalize("NFKC", value).casefold()
-    return {w for w in re.findall(r"[^\W_]+", value) if len(w) >= 3 and not w.isdigit() and w not in _STOP}
+    return {w for w in re.findall(r"[^\W_]+", value) if (len(w) >= 3 or w in _SHORT_ANCHORS) and not w.isdigit() and w not in _STOP}
 
 
 def claim_terms(value: str) -> set[str]:
