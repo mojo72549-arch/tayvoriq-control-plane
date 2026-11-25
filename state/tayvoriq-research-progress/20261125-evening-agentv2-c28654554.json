@@ -3,39 +3,17 @@
   "selection_id": "20261125-evening-agentv2-c28654554",
   "slot": "evening",
   "run_id": 45626811904,
-  "run_attempt": 1,
-  "state": "FAILED",
-  "started_at": "2026-11-25T13:45:36.668803+00:00",
-  "updated_at": "2026-11-25T13:48:02.211592+00:00",
-  "sources_seen": 240,
+  "run_attempt": 2,
+  "state": "SEARCHING",
+  "started_at": "2026-11-25T14:09:57.054956+00:00",
+  "updated_at": "2026-11-25T14:09:57.055607+00:00",
+  "sources_seen": null,
   "drafts_saved": 0,
   "quality_rejections": 0,
-  "provider": "huggingface",
-  "issues": [
-    {
-      "code": "QUOTA",
-      "provider": "gemini"
-    },
-    {
-      "code": "QUOTA",
-      "provider": "groq"
-    },
-    {
-      "code": "PROVIDER_UNAVAILABLE",
-      "provider": "groq"
-    },
-    {
-      "code": "SOURCES",
-      "provider": "groq"
-    },
-    {
-      "code": "SOURCES",
-      "provider": "huggingface"
-    },
-    {
-      "code": "PROVIDER_ERROR",
-      "provider": null
-    }
-  ],
-  "exit_code": 1
+  "provider": null,
+  "issues": [],
+  "exit_code": null,
+  "local_attempt": 1,
+  "max_local_attempts": 3,
+  "next_retry_at": null
 }
