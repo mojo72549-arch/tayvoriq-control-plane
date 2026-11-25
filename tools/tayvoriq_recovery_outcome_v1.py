@@ -15,8 +15,22 @@ from pathlib import Path
 _ALLOWED = {"LOCAL_VISUAL_RECOVERY_EXHAUSTED", "LOCAL_VOICE_RECOVERY_EXHAUSTED"}
 
 
+def verified_attempt_sha(manifest: dict, *, request: dict, run_id: int, run_attempt: int) -> str:
+    sha = str(manifest.get("implementation_sha") or "")
+    if (str(manifest.get("run_id")) != str(run_id)
+            or str(manifest.get("run_attempt")) != str(run_attempt)
+            or manifest.get("source_request_id") != request.get("request_id")
+            or manifest.get("source_context_sha256") != request.get("source_context_sha256")
+            or not re.fullmatch(r"[a-f0-9]{64}", str(manifest.get("source_context_sha256") or ""))
+            or manifest.get("quality_gates_weakened") is not False
+            or not re.fullmatch(r"[a-f0-9]{40}", sha)):
+        raise ValueError("RECOVERY_OUTCOME_MANIFEST_BINDING_INVALID")
+    return sha
+
+
 def record_exhaustion(pointer: dict, request: dict, policy: dict, *,
-                      run_id: int, run_attempt: int, now: str | None = None) -> bool:
+                      run_id: int, run_attempt: int, now: str | None = None,
+                      production_manifest: dict | None = None) -> bool:
     """Bind a classifier's exhausted outcome to the single approved request.
 
     Returns False when the identical outcome was already recorded. All other
@@ -44,10 +58,22 @@ def record_exhaustion(pointer: dict, request: dict, policy: dict, *,
             or policy.get("state") not in _ALLOWED
             or policy.get("retry_allowed") is not False
             or not re.fullmatch(r"[a-f0-9]{20}", str(policy.get("failure_signature") or ""))
-            or int(policy.get("current_generation") or -1) != generation):
+            or policy.get("current_generation") != generation):
         raise ValueError("RECOVERY_OUTCOME_UNVERIFIED_CLASSIFIER")
     codefix = request.get("codefix_recovery") or {}
-    implementation_sha = str(codefix.get("replay_implementation_sha") or "")
+    implementation_sha = (
+        verified_attempt_sha(production_manifest, request=request, run_id=run_id, run_attempt=run_attempt)
+        if production_manifest is not None else str(codefix.get("replay_implementation_sha") or "")
+    )
+    existing = request.get("recovery_outcome") or {}
+    if not implementation_sha and isinstance(existing, dict) and all(
+            existing.get(key) == value for key, value in {
+                "schema": "tayvoriq-recovery-outcome-v1", "request_id": rid,
+                "run_id": run_id, "run_attempt": run_attempt, "recovery_generation": generation,
+                "failure_signature": policy["failure_signature"], "quality_gates_weakened": False,
+                "publish_allowed": False,
+            }.items()):
+        implementation_sha = str(existing.get("implementation_sha") or "")
     if not re.fullmatch(r"[a-f0-9]{40}", implementation_sha):
         implementation_sha = ""
     outcome = {
@@ -64,7 +90,6 @@ def record_exhaustion(pointer: dict, request: dict, policy: dict, *,
         "publish_allowed": False,
         "next_action": "AWAIT_VERIFIED_MEDIA_OR_CODE_REPAIR",
     }
-    existing = request.get("recovery_outcome") or {}
     if isinstance(existing, dict) and all(existing.get(k) == v for k, v in outcome.items()):
         return False
     outcome["recorded_at"] = now or datetime.now(timezone.utc).isoformat()
@@ -78,6 +103,7 @@ def main() -> int:
     parser.add_argument("--run-id", type=int, required=True)
     parser.add_argument("--run-attempt", type=int, required=True)
     parser.add_argument("--policy-file", type=Path, required=True)
+    parser.add_argument("--production-manifest", type=Path)
     args = parser.parse_args()
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", args.request_id):
         raise ValueError("RECOVERY_OUTCOME_REQUEST_ID_INVALID")
@@ -88,7 +114,11 @@ def main() -> int:
     if args.request_id != pointer.get("request_id"):
         raise ValueError("RECOVERY_OUTCOME_NOT_ACTIVE_REQUEST")
     changed = record_exhaustion(pointer, request, policy,
-                                run_id=args.run_id, run_attempt=args.run_attempt)
+                                run_id=args.run_id, run_attempt=args.run_attempt,
+                                production_manifest=(
+                                    json.loads(args.production_manifest.read_text(encoding="utf-8"))
+                                    if args.production_manifest else None
+                                ))
     if changed:
         path.write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n",
                         encoding="utf-8")

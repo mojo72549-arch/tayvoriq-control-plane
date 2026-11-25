@@ -285,14 +285,19 @@ jobs:
           gh run download "$RUN_ID" -n "$artifact" -D /tmp/tayvoriq-local-green-diag >/dev/null 2>&1 || true
           manifest="$(find /tmp/tayvoriq-local-green-diag -type f -name production-manifest.json -print -quit 2>/dev/null || true)"
           if [ -n "$manifest" ]; then
-            failed_impl="$(python - "$manifest" <<'PY'
+            failed_impl="$(python - "$manifest" "$RUN_ID" "${RUN_ATTEMPT:-1}" "$ACTIVE_REQUEST_POINTER" <<'PY'
           import json,sys
           from pathlib import Path
+          sys.path.insert(0, str(Path("tools").resolve()))
+          from tayvoriq_recovery_outcome_v1 import verified_attempt_sha
           try:
-              data=json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
-          except Exception:
-              data={}
-          print(str(data.get('implementation_sha') or '').strip().lower())
+              pointer=json.loads(Path(sys.argv[4]).read_text(encoding="utf-8"))
+              manifest=json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+              sha=verified_attempt_sha(manifest, request=pointer, run_id=int(sys.argv[2]), run_attempt=int(sys.argv[3]))
+              Path("/tmp/tayvoriq-local-green-diag/production-manifest.verified.json").write_text(json.dumps(manifest))
+          except (OSError, ValueError, TypeError, AttributeError):
+              sha=""
+          print(sha)
           PY
             )"
           fi
@@ -663,9 +668,12 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch origin main --quiet
             git reset --hard origin/main
+            producer=()
+            manifest=/tmp/tayvoriq-local-green-diag/production-manifest.verified.json
+            if [ -s "$manifest" ]; then producer=(--production-manifest "$manifest"); fi
             python -S tools/tayvoriq_recovery_outcome_v1.py \
               --request-id "$REQUEST_ID" --run-id "$RUN_ID" \
-              --run-attempt "$RUN_ATTEMPT" --policy-file /tmp/recovery-policy.json
+              --run-attempt "$RUN_ATTEMPT" --policy-file /tmp/recovery-policy.json "${producer[@]}"
             git add -- "requests/${REQUEST_ID}.json"
             if git diff --cached --quiet; then
               echo "RECOVERY_EXHAUSTION_ALREADY_RECORDED:${REQUEST_ID}:${RUN_ID}"

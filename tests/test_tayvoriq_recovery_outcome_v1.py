@@ -53,6 +53,23 @@ def test_exhaustion_is_durable_idempotent_and_never_releases_publication():
     assert request["recovery_outcome"]["recorded_at"] == "2026-11-15T16:13:00Z"
 
 
+def test_exact_attempt_manifest_enables_verified_green_after_generation_zero_stalls():
+    pointer, request, run, policy = incident()
+    pointer["recovery_generation"] = request["recovery_generation"] = policy["current_generation"] = 0
+    request["codefix_recovery"] = {}
+    producer = {"run_id": str(run["id"]), "run_attempt": str(run["run_attempt"]),
+                "source_request_id": request["request_id"], "source_context_sha256": request["source_context_sha256"],
+                "implementation_sha": "c" * 40, "quality_gates_weakened": False}
+    with pytest.raises(ValueError, match="MANIFEST_BINDING_INVALID"):
+        record_exhaustion(pointer, request, policy, run_id=run["id"], run_attempt=3,
+                          production_manifest={**producer, "run_attempt": "2"})
+    assert record_exhaustion(pointer, request, policy, run_id=run["id"], run_attempt=3,
+                             production_manifest=producer)
+    assert request["recovery_outcome"]["implementation_sha"] == "c" * 40
+    assert decide(pointer, request, run, green="c" * 40)["state"] == "REPAIR_REQUIRED"
+    assert decide(pointer, request, run, green="d" * 40)["action"] == "DELIVERY_WATCH"
+
+
 def test_verified_outcome_replaces_false_missing_executor_result():
     pointer, request, run, policy = incident()
     previous = {"decision_key": "old", "dispatch_verified": True,
