@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -40,10 +41,17 @@ def _verified_editorial_repair(previous, candidate, *, ready=_retention_ready) -
 def _editorial_scan(slot: str, now: datetime):
     """Use short-lived, source-backed editorial input through the normal radar gates."""
     path = Path(f"state/tayvoriq-verified-research-{slot}.json")
+    selection = os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID", "")
+    scoped = bool(re.fullmatch(r"\d{8}-" + slot + r"-agentv2-c[a-f0-9]{8}", selection))
+    request_path = Path("state/tayvoriq-verified-research") / (selection + ".json")
+    if scoped and request_path.is_file():
+        path = request_path
     if not path.is_file():
         return None
     try:
         packet = json.loads(path.read_text(encoding="utf-8"))
+        if path == request_path and packet.get("selection_id") != selection:
+            return None
         checked_at = datetime.fromisoformat(packet["checked_at"])
         if packet["slot"] != slot or packet["target_date"] != now.date().isoformat():
             return None
