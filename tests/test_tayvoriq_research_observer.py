@@ -63,3 +63,38 @@ class ResearchObserverTests(unittest.TestCase):
         self.assertIn('python tools/tayvoriq_research_observer.py --selection-id "$SELECTION_ID"', workflow)
         self.assertIn('python tools/tayvoriq_agent_trend_radar_v8.py', workflow)
         self.assertIn('return code', (root / 'tools/tayvoriq_research_observer.py').read_text())
+
+
+class ResearchFailureDiagnosticsTests(unittest.TestCase):
+    observation = ResearchObserverTests.observation
+
+    def test_incomplete_scorecards_are_not_labeled_as_weak_tiktok_fit(self):
+        o = self.observation()
+        o.event({"event": "candidate_editorial_rejection", "reason": "regional_scorecard",
+                 "details": ["invalid_or_unexplained_rating:consequence", "tiktok:regional_score_below_75"]})
+        self.assertIn({"code": "EDITORIAL_FIELDS", "provider": None}, o.data["issues"])
+        self.assertNotIn({"code": "TIKTOK_FIT", "provider": None}, o.data["issues"])
+
+    def test_a_regional_summary_does_not_count_as_another_rejected_candidate(self):
+        o = self.observation()
+        for _ in range(2):
+            o.event({"event": "candidate_editorial_rejection", "reason": "regional_scorecard",
+                     "details": ["tiktok:regional_score_below_75"]})
+        o.event({"event": "regional_editorial_validation", "required": 2, "eligible": 0})
+        self.assertEqual(o.data["quality_rejections"], 2)
+
+    def test_terminal_states_remove_an_old_retry_deadline(self):
+        for code in (0, 1, 124):
+            o = self.observation()
+            o.waiting(1000, 2)
+            o.finish(code)
+            self.assertIsNone(o.data.get("next_retry_at"))
+
+    def test_corroborated_stories_are_counted_separately_from_feed_records(self):
+        o = self.observation()
+        o.event({"event": "source_records_loaded", "total_records": 660})
+        o.event({"event": "source_headline_preflight", "considered_records": 660,
+                 "eligible_headlines": 6, "corroborated_headlines": 3})
+        self.assertEqual(o.data["sources_seen"], 660)
+        self.assertEqual(o.data["corroborated_headlines"], 3)
+        self.assertEqual(o.data["drafts_saved"], 0)
