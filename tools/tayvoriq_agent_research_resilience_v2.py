@@ -23,7 +23,7 @@ def _defer(errors: list[str], next_at: float | None, *, issue: str) -> None:
 
 
 def defer_editorial(slot: str) -> None:
-    queued = research_retry.defer(slot, time.time() + 900, issue='EDITORIAL_MINIMUM_NOT_MET')
+    queued = research_retry.defer_candidate_selection(slot, issue='EDITORIAL_MINIMUM_NOT_MET')
     status = {'status': 'RESEARCH_DEFERRED', 'result': 'REJECTED', 'retry_state': queued.get('state', 'UNSCHEDULED'),
               'reason': 'EDITORIAL_MINIMUM_NOT_MET'}
     MARKER.write_text(json.dumps(status, ensure_ascii=False) + '\n', encoding='utf-8')
@@ -221,7 +221,8 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     issue = 'SOURCE_MINIMUM_NOT_MET' if failed_source_contract else 'RESEARCH_PROVIDER_UNAVAILABLE'
     # A valid provider can reject a source pair without being rate-limited.
     # Give a new set of article leads one of the existing bounded slot retries.
-    delay = 90 if scheduled_research and not interactive and failed_source_contract else 900
+    delay = (research_retry.EDITORIAL_RETRY_SECONDS
+             if scheduled_research and not interactive and failed_source_contract else 900)
     _defer(errors, health.next_retry(retry_keys, available_delay_seconds=delay), issue=issue)
     raise RuntimeError('RESEARCH_DEFERRED: ' + ' | '.join(errors))
 

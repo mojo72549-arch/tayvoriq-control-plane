@@ -12,6 +12,7 @@ from tayvoriq_provider_health_v1 import read, write
 ZONE = ZoneInfo("Europe/Berlin")
 MAX_ATTEMPTS = 3
 REGULAR_DEADLINE_SECONDS = 10 * 60
+EDITORIAL_RETRY_SECONDS = 90
 REVIEW_RETRY_SECONDS = 5 * 60
 REVIEW_DEADLINE_SECONDS = 10 * 60
 REVIEW_MAX_ATTEMPTS = 3
@@ -19,6 +20,7 @@ REVIEW_RETRY_DIR = Path(".automation/tayvoriq-agent-v2/research-retries")
 ISSUE_DETAILS = {
     "RESEARCH_TIME_BUDGET_EXHAUSTED": "Die Themenprüfung hat ihr Zeitlimit erreicht.",
     "EDITORIAL_MINIMUM_NOT_MET": "Zu wenige Themen haben die redaktionelle Prüfung bestanden.",
+    "REGIONAL_MINIMUM_NOT_MET": "Zu wenige belegte Themen haben einen regionalen oder bundesweiten Bezug.",
     "SOURCE_MINIMUM_NOT_MET": "Zu wenige Vorschläge haben die Quellenprüfung bestanden.",
     "RESEARCH_PROVIDER_UNAVAILABLE": "Die Rechercheanbieter konnten die Anfrage nicht abschließen.",
 }
@@ -37,6 +39,11 @@ def _review_selection(path: Path) -> str:
 def configured_path() -> Path | None:
     value = os.getenv("TAYVORIQ_RESEARCH_RETRY_FILE")
     return Path(value) if value else None
+
+
+def defer_candidate_selection(slot: str, *, issue: str) -> dict:
+    delay = REVIEW_RETRY_SECONDS if os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID") else EDITORIAL_RETRY_SECONDS
+    return defer(slot, time.time() + delay, issue=issue)
 
 
 def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: float | None = None,
