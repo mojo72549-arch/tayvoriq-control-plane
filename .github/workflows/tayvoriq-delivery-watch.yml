@@ -209,6 +209,15 @@ jobs:
           python -S tools/tayvoriq_current_failure_contract_v1.py \
             --logs-file "${console:-/tmp/tayvoriq-failed.log}" --contract-file /tmp/tayvoriq-structured-failure.json \
             --run-id "$RUN_ID" --run-attempt "${RUN_ATTEMPT:-1}" --request-id "$REQUEST_ID"
+          if (( RUN_ATTEMPT > 1 )); then
+            prior="$(mktemp -d)"
+            trap 'rm -rf "$prior"' EXIT
+            prior_artifact="tayvoriq-x-diagnostics-${RUN_ID}-attempt-$((RUN_ATTEMPT - 1))"
+            if gh run download "$RUN_ID" -n "$prior_artifact" -D "$prior" >/dev/null 2>&1; then
+              python -S tools/tayvoriq_visual_retry_progress_v1.py \
+                "$prior" /tmp/tayvoriq-failed-diag /tmp/tayvoriq-structured-failure.json
+            fi
+          fi
 
       - name: Classify with shared recovery policy
         id: policy
