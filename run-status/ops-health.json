@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T00:42:19.217339Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-25T00:46:27.517017Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -48,17 +48,17 @@
   "run": {
     "id": 45510042088,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45510042088",
     "created_at": "2026-11-24T23:26:52Z",
-    "updated_at": "2026-11-25T00:23:53Z",
+    "updated_at": "2026-11-25T00:45:32Z",
     "attempt": 3,
     "progress": 30,
-    "current_step": "Repair only failed local checkpoints",
-    "last_successful_step": "Telegram progress - checkpoint repair",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 43,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -104,25 +104,25 @@
       },
       {
         "label": "Publishable Output",
-        "status": "pending",
+        "status": "error",
         "step_number": 43,
         "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 45,
         "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 51,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 52,
         "step_name": "Send Telegram review"
       }
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Repair only failed local checkpoints"
+      "status": "red",
+      "detail": "Assert publishable production output"
     },
     {
       "name": "Production Green",
@@ -142,7 +142,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_RUNNING"
+      "detail": "LOCAL_RETRY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -152,10 +152,21 @@
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Wartet auf reparierten Publishable Output"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "45510042088:LOCAL_VISUAL",
+    "severity": "critical",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failed_step": "Assert publishable production output",
+    "failed_step_number": 43,
+    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
+    "same_generation_replay_required": false,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
@@ -163,9 +174,9 @@
     "message_id": null
   },
   "recovery": {
-    "status": "LOCAL_RETRY_RUNNING",
-    "source_status": "LOCAL_RETRY_RUNNING",
-    "failure_state": null,
+    "status": "LOCAL_RETRY_DISPATCHED",
+    "source_status": "LOCAL_RETRY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
     "failed_run_id": null,
     "replay_run_id": null,
     "fresh_recovery_run_id": 45510042088,
@@ -177,6 +188,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-25T00:45:32Z",
+      "title": "Workflow-Fehler",
+      "detail": "Assert publishable production output"
+    },
     {
       "at": "2026-11-25T00:23:45.904950Z",
       "title": "DISPATCHED",
