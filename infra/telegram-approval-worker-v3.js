@@ -503,6 +503,7 @@ function selectionFromCallback(callbackData) {
     /^trend_list:([A-Za-z0-9_-]{4,40})$/,
     /^trend_reason:(?:newtrend|newformat):([A-Za-z0-9_-]{4,40}):[1-5]$/i,
     /^approve_trend:([A-Za-z0-9_-]{4,40}):[1-5]$/i,
+    /^text_ok:([A-Za-z0-9_-]{4,40}):[1-5]:[ab]:[a-f0-9]{10}$/,
     /^reject_trend:([A-Za-z0-9_-]{4,40}):[1-5]$/i,
   ];
   for (const pattern of patterns) {

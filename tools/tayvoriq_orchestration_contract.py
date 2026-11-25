@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -279,6 +280,23 @@ def create_from_telegram(args: argparse.Namespace) -> None:
             raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no valid URL")
         if not str(item.get("supports") or "").strip():
             raise SystemExit(f"SOURCE_CONTEXT_QUALITY_FAILED: source {index} has no claim support")
+    text_approval = str(getattr(args, "text_approval", "") or "").strip()
+    if text_approval:
+        match = re.fullmatch(r"([ab]):([a-f0-9]{10})", text_approval)
+        if not match or str(source_context.get("editorial_story_contract_version")) != "2":
+            raise SystemExit("TEXT_APPROVAL_INVALID: choose a displayed text version")
+        variant, shown_hash = match.groups()
+        field = "story_first_script_body" if variant == "a" else "story_first_script_body_b"
+        body = str(source_context.get(field) or "").strip()
+        reviewed = json.dumps([canonical_topic, body], ensure_ascii=False, separators=(",", ":"))
+        digest = hashlib.sha256(reviewed.encode("utf-8")).hexdigest()
+        if not body or digest[:10] != shown_hash:
+            raise SystemExit("TEXT_APPROVAL_MISMATCH: reopen the text preview")
+        source_context = dict(source_context)
+        source_context["story_first_script_body"] = body
+        source_context.pop("story_first_script_body_b", None)
+        source_context["text_approval"] = {"variant": variant, "sha256": digest}
+        trend = {**trend, "source_context": source_context}
     source_raw = json.dumps(
         source_context,
         ensure_ascii=False,
@@ -322,6 +340,8 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         validate(existing)
         if str(existing.get("approval_key")) != f"telegram:{selection_id}:{message_id}:trend:{trend_id}":
             raise SystemExit("idempotency collision for existing request")
+        if text_approval and (existing.get("source_context") or {}).get("text_approval") != source_context["text_approval"]:
+            raise SystemExit("TEXT_ALREADY_APPROVED: the existing request keeps its confirmed script")
         print(path)
         return
 
@@ -501,6 +521,7 @@ def parser() -> argparse.ArgumentParser:
     c.add_argument("--message-id", required=True)
     c.add_argument("--payload-topic", default="")
     c.add_argument("--approved-at", default="")
+    c.add_argument("--text-approval", default="")
     c.add_argument("--out-dir", default="requests")
     c.set_defaults(func=create_from_telegram)
 
