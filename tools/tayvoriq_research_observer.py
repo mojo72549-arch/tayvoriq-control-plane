@@ -70,6 +70,12 @@ class Observation:
         elif event in {'candidate_editorial_rejection', 'regional_editorial_validation'}:
             self.rejected += 1
             self.data['quality_rejections'] = self.rejected
+            if event == 'candidate_editorial_rejection':
+                details = row.get('details') or []
+                code = 'TIKTOK_FIT' if any('tiktok:regional_score_below' in str(d) for d in details) else 'CLAIM_SUPPORT' if row.get('reason') == 'claim_coherence' else 'EDITORIAL_QUALITY'
+                issue = {'code':code,'provider':None}
+                if issue not in self.data['issues']:
+                    self.data['issues'] = [*self.data['issues'],issue][-12:]
         elif event in {'provider_attempt_started', 'provider_success', 'provider_attempt_failed'}:
             provider = next((p for p in PROVIDERS if str(row.get('provider', '')).lower().startswith(p)), None)
             if provider:
@@ -157,9 +163,11 @@ def context(selection, slot, root, temporary, *, now=None):
            'TAYVORIQ_PROVIDER_HEALTH_FILE': str(files['health']),
            'TAYVORIQ_RESEARCH_CHECKPOINT_FILE': str(files['drafts']),
            'TAYVORIQ_RESEARCH_RETRY_FILE': str(files['retry'])}
-    # Local retries have their own bounded counter; a GitHub attempt must not
-    # suppress accounting for repeated source/gate failures in this process.
-    env.pop('TAYVORIQ_RESEARCH_RUN_KEY', None)
+    platform_key = '.'.join(os.getenv(name, '') for name in ('GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT'))
+    if re.fullmatch(r'[1-9][0-9]*\.[1-9][0-9]*', platform_key):
+        env['TAYVORIQ_RESEARCH_RUN_KEY'] = platform_key
+    else:
+        env.pop('TAYVORIQ_RESEARCH_RUN_KEY', None)
     return {'paths': paths, 'files': files, 'original': original, 'env': env, 'deadline': deadline}
 
 
@@ -262,6 +270,7 @@ def execute(command, state, observation, save, persist, *, clock=time.time, paus
         return 124
     for attempt in range(attempts + 1, 4):
         observation.data.update(state='SEARCHING', local_attempt=attempt, max_local_attempts=3, next_retry_at=None)
+        state['env']['TAYVORIQ_RESEARCH_LOCAL_ATTEMPT'] = str(attempt)
         save(True)
         code = run(command, state['env'], min(clock() + 420, state['deadline'] - 35), observation, save)
         try:
