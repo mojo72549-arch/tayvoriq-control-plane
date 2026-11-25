@@ -1421,6 +1421,32 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
+      - name: Inspect the reusable checkpoint for a visual repair
+        id: visual_checkpoint
+        continue-on-error: true
+        if: steps.controller.outputs.state != 'SUCCESS' && steps.controller.outputs.reusable_master == 'true' && vars.TAYVORIQ_SCENE_REVISION_ENABLED != 'false'
+        working-directory: implementation
+        run: |
+          python - <<'CHECK'
+          import json, os
+          from pathlib import Path
+          import tayvoriq_resume_existing_render as resume
+          candidates = resume.rendered_candidates(Path('out/tayvoriq-youtube-tiktok'))
+          audit = {}
+          if candidates:
+              path = candidates[0][0] / 'preapproval_ai_audit.json'
+              if path.is_file():
+                  try:
+                      audit = json.loads(path.read_bytes())
+                  except (OSError, ValueError):
+                      pass
+          visual = isinstance(audit, dict) and audit.get('passed') is False and (
+              (audit.get('visual_review') or {}).get('passed') is False or
+              any(str(b).startswith(('visual_agent:', 'score_below_threshold:visual:')) for b in audit.get('blockers', [])))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('needed=' + str(visual).lower(), file=output)
+          CHECK
+
       - name: Prepare opt-in scene revision engine
         id: scene_revision_engine
         if: >-
@@ -1428,7 +1454,7 @@ jobs:
           steps.controller.outputs.reusable_master == 'true' &&
           hashFiles('implementation/tools/tayvoriq_scene_revision_v1.py') != '' &&
           vars.TAYVORIQ_SCENE_REVISION_ENABLED != 'false' &&
-          (vars.TAYVORIQ_SCENE_REVISION_ENABLED == 'true' ||
+          (steps.visual_checkpoint.outputs.needed == 'true' || vars.TAYVORIQ_SCENE_REVISION_ENABLED == 'true' ||
            (contains(env.TOPIC, 'tarif') &&
             (contains(env.TOPIC, 'Volkswagen') || contains(env.TOPIC, 'VW'))))
         continue-on-error: true
@@ -2129,6 +2155,37 @@ jobs:
                       if path.is_file() and path.suffix.casefold() == '.json':
                           shutil.copy2(path, platform_target / path.name)
           PY
+
+      - name: Record request-bound tool and quality evidence
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=implementation/out/diagnostics-bundle
+          report="$bundle/production-evidence.json"
+          if [[ ! -f "$bundle/control-plane/production-manifest.json" ]]; then
+            echo 'Kein Produktionsmanifest vorhanden. Der erste fehlgeschlagene Schritt steht im Jobprotokoll.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python -I tools/tayvoriq_run_evidence.py "$bundle" "$report" >> "$GITHUB_STEP_SUMMARY"
+          path="run-status/production/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+          endpoint="repos/$GITHUB_REPOSITORY/contents/$path"
+          content=$(base64 -w 0 "$report")
+          for delay in 1 2 4; do
+            if gh api --silent -X PUT "$endpoint" -f branch=main -f content="$content" \
+                -f message="Record production evidence for $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT"; then
+              exit 0
+            fi
+            if stored=$(gh api "$endpoint?ref=main" --jq '.content' 2>/dev/null); then
+              cmp "$report" <(base64 -d <<< "$stored")
+              exit 0
+            fi
+            sleep "$delay"
+          done
+          exit 1
 
       - name: Upload lean diagnostics
         if: always()

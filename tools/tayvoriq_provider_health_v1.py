@@ -99,7 +99,7 @@ class ProviderHealth:
         self.state["providers"].pop(provider, None)
         self._save()
 
-    def next_retry(self, providers: dict[str, str]) -> float | None:
+    def next_retry(self, providers: dict[str, str], *, available_delay_seconds: int = 900) -> float | None:
         deadlines = []
         for provider, key in providers.items():
             if not key:
@@ -108,5 +108,5 @@ class ProviderHealth:
             record = self.state["providers"].get(provider) or {}
             if record.get("state") == "PAYMENT_BLOCKED":
                 continue
-            deadlines.append(self.clock() + 900 if available else float(record["retry_at_epoch"]))
+            deadlines.append(self.clock() + available_delay_seconds if available else float(record["retry_at_epoch"]))
         return min(deadlines) if deadlines else None

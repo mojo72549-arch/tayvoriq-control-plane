@@ -219,7 +219,10 @@ def grounded(prompt: str, gemini_key: str, groq_key: str):
     retry_keys = {name: key for name, key in keys.items()
                   if not (name.startswith('groq') and groq_account_blocked)}
     issue = 'SOURCE_MINIMUM_NOT_MET' if failed_source_contract else 'RESEARCH_PROVIDER_UNAVAILABLE'
-    _defer(errors, health.next_retry(retry_keys), issue=issue)
+    # A valid provider can reject a source pair without being rate-limited.
+    # Give a new set of article leads one of the existing bounded slot retries.
+    delay = 90 if scheduled_research and not interactive and failed_source_contract else 900
+    _defer(errors, health.next_retry(retry_keys, available_delay_seconds=delay), issue=issue)
     raise RuntimeError('RESEARCH_DEFERRED: ' + ' | '.join(errors))
 
 

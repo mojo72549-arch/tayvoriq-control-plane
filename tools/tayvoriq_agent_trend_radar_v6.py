@@ -127,7 +127,7 @@ def _editorial_semantics_strong(candidate: dict[str, Any]) -> bool:
 
     ctx = candidate.get("source_context") if isinstance(candidate.get("source_context"), dict) else {}
     answers = ctx.get("fallback_editorial_answers") if isinstance(ctx.get("fallback_editorial_answers"), dict) else {}
-    if not _downstream_editorial_contract_valid(answers):
+    if not _downstream_editorial_contract_valid(answers) or base.generic_viewer_action(answers.get("action_now")):
         return False
 
     what = str(answers.get("what_happened") or "").strip()

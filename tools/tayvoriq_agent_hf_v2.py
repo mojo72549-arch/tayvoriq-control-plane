@@ -162,6 +162,8 @@ def article_research_records(records: list[dict]) -> list[dict]:
             else:
                 unresolved.append((score, first, second))
 
+    # Each scheduled retry reads a different batch of at most four pairs.
+    batch = min(_research_retry_attempt(), research_retry.MAX_ATTEMPTS - 1)
     selected = []
     used_urls = set()
     for _, first, second in sorted(unresolved, key=lambda pair: -pair[0]):
@@ -174,9 +176,12 @@ def article_research_records(records: list[dict]) -> list[dict]:
         selected.extend((first, second))
         used_urls.update(urls)
         covered_titles.update(titles)
-        if len(selected) == 8:
+        if len(selected) >= 8 * (batch + 1):
             break
-    return selected or _groq_source_records(records)[:8]
+    if not selected:
+        return _groq_source_records(records)[:8]
+    offset = (8 * batch) % len(selected)
+    return (selected[offset:] + selected[:offset])[:8]
 
 
 def _rank_corroborated_pairs(pairs, previous, retry_attempt):
@@ -276,6 +281,14 @@ def _repair_editorial_fields(candidates, generate):
             )
         if "brand_identity_not_explicit" in evaluate_return_viewer(draft)["issues"]:
             missing["cta_text"] = "Naturally name TAYVORIQ in the topic-specific CTA and preserve its intent."
+        if base.generic_viewer_action(draft["fallback_editorial_answers"].get("action_now")) and (
+            base._spoken_tariff_comparison(draft["fallback_editorial_answers"], draft["sources"])
+            is draft["fallback_editorial_answers"]
+        ):
+            missing["action_now"] = (
+                "Replace the generic closing line with one concrete viewer action supported by these sources. "
+                "Use 5-15 German words, keep all five spoken sentences within 38-49 words and use an action verb."
+            )
         if missing:
             key = "+".join(sorted(s["source_id"] for s in draft["sources"]))
             pending[key] = draft, missing
@@ -284,6 +297,7 @@ def _repair_editorial_fields(candidates, generate):
     batch = {key: {"title": draft["title"], "angle": draft.get("content_angle"),
                    "source_text": [source["supports"] for source in draft["sources"]],
                    "draft": {field: draft.get(field) for field in ("explanation_core", "surprise_or_reframe", "cta_text")},
+                   "spoken_answers": draft["fallback_editorial_answers"],
                    "missing": missing} for key, (draft, missing) in pending.items()}
     try:
         replies = generate(batch)
@@ -304,8 +318,23 @@ def _repair_editorial_fields(candidates, generate):
                 continue
         if "cta_text" in missing and evaluate_return_viewer(rewritten)["result"] != "PASS":
             continue
-        draft.update({field: rewritten[field] for field in missing})
-        print({"event": "source_bound_editorial_fields_repaired", "headline": draft["title"], "fields": list(missing)})
+        applied = [field for field in missing if field != "action_now"]
+        if "action_now" in missing:
+            from tayvoriq_agent_trend_radar_v6 import _downstream_editorial_contract_valid
+            action = base.clean(reply["action_now"])
+            answers = {**draft["fallback_editorial_answers"], "action_now": action}
+            terms = {word for word in _words(action) if len(word) >= 4}
+            numbers = set(re.findall(r"\d+(?:[.,]\d+)*", action))
+            supported = any(len(terms & _words(source["supports"])) >= 2
+                            and numbers <= set(re.findall(r"\d+(?:[.,]\d+)*", source["supports"]))
+                            for source in draft["sources"])
+            if (not base.generic_viewer_action(action) and supported
+                    and _downstream_editorial_contract_valid(answers)):
+                draft["fallback_editorial_answers"] = answers
+                applied.append("action_now")
+        draft.update({field: rewritten[field] for field in missing if field != "action_now"})
+        if applied:
+            print({"event": "source_bound_editorial_fields_repaired", "headline": draft["title"], "fields": applied})
 
 
 def _groq_source_records(records):
@@ -578,6 +607,10 @@ V5 CONTRACT:
   visual feasibility from the proposed subject. Low scores are valid; do not inflate a score to qualify.
 - Choose ONE literal trend_scope from the schema alternatives.
 - content_angle, primary_hook, viewer_question, explanation_core, surprise_or_reframe, practical_relevance, follow_reason and cta_text must be non-empty.
+- The five fallback_editorial_answers are actually spoken. Answer the viewer_question in those sentences:
+  state the verified change, its consequence and the concrete remaining decision. If two parties disagree,
+  attribute both documented positions and preserve the distinction between a demand and an agreement.
+  Do not leave the decisive fact only in surprise_or_reframe or use "watch for updates" as the payoff.
 - The German explanation has enough depth for a video. Use 9-16 words for primary_hook, 7-14 for viewer_question,
   17-32 for explanation_core, 12-22 for surprise_or_reframe, 10-18 for practical_relevance and 10-18 for follow_reason.
 - Give the reframe a distinct, supported detail or a different consequence with at least three new substantive terms.
