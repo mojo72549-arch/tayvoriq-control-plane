@@ -1,4 +1,4 @@
-name: VW verify autonomous picture and silent tail recovery
+name: VW verify automatic mixed-platform stock fallback
 on:
   push:
     branches: [codex/vw-45510042088-checkpoint-evidence]
@@ -82,6 +82,7 @@ jobs:
           TAYVORIQ_LOCAL_REPAIR_ROUNDS: "3"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           TAYVORIQ_MONEYPRINTERTURBO_ROOT: ${{ github.workspace }}/scene-engine
         shell: bash
         run: |
