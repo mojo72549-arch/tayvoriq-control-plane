@@ -132,8 +132,9 @@ class PersistentBudgetTests(unittest.TestCase):
 
     def test_editorial_rejection_ends_slot_if_next_retry_is_too_late(self):
         import tayvoriq_agent_trend_radar_v8 as radar
-        env = {'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue), 'TAYVORIQ_RESEARCH_SLOT': 'morning'}
-        with patch.dict(os.environ, env):
+        env = {'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue), 'TAYVORIQ_RESEARCH_SLOT': 'morning',
+               'TAYVORIQ_RESEARCH_STARTED_AT_EPOCH': str(int(NOW))}
+        with patch.dict(os.environ, env), patch.object(retry.time, 'time', return_value=NOW + 500):
             for _ in range(retry.MAX_ATTEMPTS):
                 radar._mark_research_deferred('REGIONAL_RESCAN_REQUIRED')
         self.assertEqual(read(self.queue)['state'], 'EXHAUSTED')
@@ -736,3 +737,29 @@ def test_healthy_source_editor_can_retry_within_slot_but_real_quota_is_respected
     assert result["state"] == "WAITING"
     assert retry.due_slot(queue,now=NOW+90) == "morning"
     assert health.next_retry({"gemini":"limited"},available_delay_seconds=90) == NOW+1800
+
+
+def test_editorial_and_regional_rescans_remain_within_the_original_slot(tmp_path, monkeypatch):
+    import tayvoriq_agent_research_resilience_v2 as resilience
+    import tayvoriq_agent_trend_radar_v8 as radar
+
+    marker = tmp_path / "marker.json"
+    monkeypatch.setattr(resilience, "MARKER", marker)
+    monkeypatch.setattr(radar, "Path", lambda _: marker)
+    monkeypatch.setenv("TAYVORIQ_RESEARCH_SLOT", "morning")
+    monkeypatch.delenv("TAYVORIQ_RESEARCH_SELECTION_ID", raising=False)
+    monkeypatch.setenv("TAYVORIQ_RESEARCH_STARTED_AT_EPOCH", str(int(NOW)))
+    monkeypatch.setattr(retry.time, "time", lambda: NOW + 220)
+    for issue, reject in (
+        ("EDITORIAL_MINIMUM_NOT_MET", lambda: resilience.defer_editorial("morning")),
+        ("REGIONAL_MINIMUM_NOT_MET", lambda: radar._mark_research_deferred("REGIONAL_RESCAN_REQUIRED")),
+    ):
+        queue = tmp_path / (issue + ".json")
+        monkeypatch.setenv("TAYVORIQ_RESEARCH_RETRY_FILE", str(queue))
+        reject()
+        state = retry.current(queue)
+        assert state["last_issue"] == issue
+        assert state["state"] == "WAITING"
+        assert state["valid_until_epoch"] == NOW + 600
+        assert state["retry_at_epoch"] == NOW + 220 + retry.EDITORIAL_RETRY_SECONDS
+        assert retry.due_slot(queue, now=state["retry_at_epoch"]) == "morning"

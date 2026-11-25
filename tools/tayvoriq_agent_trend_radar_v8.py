@@ -65,9 +65,8 @@ def _mark_research_deferred(reason: str, **meta):
     """
 
     import os
-    import time
-    from tayvoriq_research_retry_v1 import defer
-    queued = defer(os.getenv('TAYVORIQ_RESEARCH_SLOT', ''), time.time() + 900)
+    from tayvoriq_research_retry_v1 import defer_candidate_selection
+    queued = defer_candidate_selection(os.getenv('TAYVORIQ_RESEARCH_SLOT', ''), issue='REGIONAL_MINIMUM_NOT_MET')
     payload = {
         "schema": "tayvoriq-research-deferred-v1",
         "reason": str(reason or "RESEARCH_TEMPORARILY_INCOMPLETE"),
