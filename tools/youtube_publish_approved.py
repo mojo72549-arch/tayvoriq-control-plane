@@ -1,9 +1,30 @@
 #!/usr/bin/env python3
 import argparse, json, os, pathlib, sys
 import requests
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
+
+
+def refresh_youtube_credentials(credentials):
+    retries = Retry(
+        total=2,
+        connect=0,
+        read=0,
+        other=0,
+        allowed_methods={"POST"},
+        status_forcelist=(502,),
+        backoff_factor=15,
+        respect_retry_after_header=False,
+        raise_on_status=False,
+    )
+    # Only the token endpoint is retried, before any YouTube upload request.
+    with requests.Session() as session:
+        session.mount(credentials.token_uri, HTTPAdapter(max_retries=retries))
+        credentials.refresh(Request(session=session))
 
 
 def main():
@@ -37,6 +58,7 @@ def main():
         client_secret=client_secret,
         scopes=['https://www.googleapis.com/auth/youtube.upload'],
     )
+    refresh_youtube_credentials(creds)
     youtube=build('youtube','v3',credentials=creds,cache_discovery=False)
     body={
         'snippet': {
