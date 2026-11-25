@@ -55,5 +55,59 @@
       "threshold": 85
     }
   ],
-  "findings": []
+  "findings": [],
+  "stations": [
+    {
+      "id": "script",
+      "state": "success",
+      "detail": "Deutsche Skripte beider Plattformen im hashgeprüften Checkpoint vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "f5f394fa5105f309e9d432e1e459335c9aa7ec27d629a2a89b4dfe2b5321ab95",
+      "checkpoint_restored": true,
+      "outputs": {
+        "youtube_shorts": 51,
+        "tiktok": 51
+      }
+    },
+    {
+      "id": "scenes",
+      "state": "success",
+      "detail": "Szenen mit gesprochenem Text und Bildabfrage für beide Ausgaben vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "f5f394fa5105f309e9d432e1e459335c9aa7ec27d629a2a89b4dfe2b5321ab95",
+      "checkpoint_restored": true,
+      "outputs": {
+        "youtube_shorts": 6,
+        "tiktok": 6
+      }
+    },
+    {
+      "id": "visuals",
+      "state": "success",
+      "detail": "Die verwendeten Szenenclips beider Plattformen sind mit SHA-256 gebunden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "f5f394fa5105f309e9d432e1e459335c9aa7ec27d629a2a89b4dfe2b5321ab95",
+      "checkpoint_restored": true,
+      "outputs": {
+        "youtube_shorts": 6,
+        "tiktok": 6
+      }
+    },
+    {
+      "id": "captions",
+      "state": "success",
+      "detail": "Untertitel aller Szenen nachgewiesen; Musik folgt der gespeicherten redaktionellen Policy. Ein eigener Musikexport ist damit nicht belegt.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "f5f394fa5105f309e9d432e1e459335c9aa7ec27d629a2a89b4dfe2b5321ab95",
+      "checkpoint_restored": true,
+      "outputs": {
+        "subtitle_scenes": 12,
+        "music_export_verified": false
+      }
+    }
+  ],
+  "scripts": {
+    "youtube_shorts": "Die erste VW-Tarifrunde in Emden endete ohne Ergebnis. Weil VW seine Arbeitskosten senken will, fordert der Konzern Nullrunden. Betroffen sind Beschäftigte an deutschen Standorten der Volkswagen AG. Für dich stehen Zulagen und Arbeitszeit zur Debatte. Achte auf die Ergebnisse der nächsten Verhandlungsrunde. Abonniere diesen Kanal für verifizierte Einordnung und konkrete Schritte.",
+    "tiktok": "Die erste VW-Tarifrunde in Emden endete ohne Ergebnis. Weil VW seine Arbeitskosten senken will, fordert der Konzern Nullrunden. Betroffen sind Beschäftigte an deutschen Standorten der Volkswagen AG. Für dich stehen Zulagen und Arbeitszeit zur Debatte. Achte auf die Ergebnisse der nächsten Verhandlungsrunde. Folge diesem Kanal für verifizierte Einordnung und konkrete Schritte."
+  }
 }

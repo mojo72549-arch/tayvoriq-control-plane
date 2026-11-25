@@ -1,0 +1,89 @@
+{
+  "schema": "tayvoriq-tool-catalog-v1",
+  "implementation_sha": "80578d1f2d555909e90b35a3687a3421d0db3fa9",
+  "version_note": "Versionen stammen aus der Produktionskonfiguration. Laufzeit- und Ressourcenwerte werden nur mit eigenem Messnachweis angezeigt.",
+  "components": [
+    {
+      "name": "Chatterbox", "stations": ["voice"], "evidence_name": "Chatterbox",
+      "repository": "https://github.com/resemble-ai/chatterbox",
+      "version": "65b18437192794391a0308a8f705b1e33e633948",
+      "input": "Freigegebenes deutsches Skript und Sprecherprofil",
+      "output": "Plattformspezifisches Voiceover und Audiobericht",
+      "quality": "Natürliche Sprecherstimme; Aussprache-, Transkript- und Voice-Gates bleiben verbindlich.",
+      "fallback": "Bestehender geprüfter Audio-Checkpoint oder begrenzte Voice-Reparatur. Kein stiller Anbieterwechsel bei Chatterbox-Pflicht.",
+      "resources": null,
+      "source": "https://github.com/mojo72549-arch/shorts-agent-studio/blob/80578d1f2d555909e90b35a3687a3421d0db3fa9/requirements.txt"
+    },
+    {
+      "name": "MoneyPrinterTurbo", "stations": ["scenes", "visuals", "repair"], "evidence_name": "MoneyPrinterTurbo",
+      "repository": "https://github.com/harry0703/MoneyPrinterTurbo",
+      "version": "dabfd3f8548d30ed0eea8759decbdead9626e0e6",
+      "input": "Gebundener Szenenmanifest und vorhandene Clips",
+      "output": "Gezielt revidierte Szenen und neuer Export",
+      "quality": "Nur beanstandete Szenen austauschen. Der bestehende Originalton bleibt über Audio-Hashes abgesichert.",
+      "fallback": "Vorhandenen Checkpoint erhalten; lokaler Repair oder technischer Stopp, wenn keine belegte Reparatur möglich ist.",
+      "resources": null,
+      "source": "https://github.com/mojo72549-arch/tayvoriq-control-plane/blob/20204ba19f4fc00d093ddebdf64d6afd56629c66/.github/workflows/tayvoriq-deliver-video-now.yml"
+    },
+    {
+      "name": "Whisper", "stations": ["voice", "quality"], "evidence_name": "Whisper",
+      "repository": "https://github.com/openai/whisper", "version": null,
+      "input": "Tatsächliche Audiospur des Exports",
+      "output": "Transkript und Sprach-/Ausspracheprüfung im Audit",
+      "quality": "Gesprochenen Inhalt mit dem freigegebenen Skript abgleichen.",
+      "fallback": "Audit-Reparatur nach bestehender Policy; kein Review ohne bestandene Sprachprüfung.",
+      "resources": "ASR-Beitrag ist belegt. Eine lokale Paketversion, Hosting und Ressourcenverbrauch sind nicht separat nachgewiesen."
+    },
+    {
+      "name": "FFmpeg / ffprobe", "stations": ["captions", "render", "quality", "repair"], "evidence_name": "FFmpeg / ffprobe",
+      "repository": "https://github.com/FFmpeg/FFmpeg", "version": null,
+      "input": "Video-/Audioclips, Untertitel, Schnittgrenzen",
+      "output": "MP4-Export, Streamprüfung und Audio-Hashes",
+      "quality": "Abspielbarkeit, Format, Framegrenzen und unveränderten Originalton kontrollieren.",
+      "fallback": "Gezielte Render-Reparatur; vorhandene validierte Dateien wiederverwenden.",
+      "resources": null
+    },
+    {
+      "name": "MoviePy", "stations": ["render"], "evidence_name": null,
+      "repository": "https://github.com/Zulko/moviepy", "version": "1.0.3",
+      "input": "Szenenplan, Clips und Audio", "output": "Videokomposition",
+      "quality": "Unterstützt den vorhandenen Renderer. Eigene Ausführung im jeweiligen Run muss separat belegt werden.",
+      "fallback": "Vorhandener Renderer und lokale Render-Reparatur", "resources": null
+    },
+    {
+      "name": "Pillow", "stations": ["visuals", "captions"], "evidence_name": null,
+      "repository": "https://github.com/python-pillow/Pillow", "version": ">=10.3.0",
+      "input": "Bild- und Overlaydaten", "output": "Bildkompositionen und Textelemente",
+      "quality": "Unterstützt lesbare Overlays. Installation allein ist kein Ausführungsnachweis.",
+      "fallback": "Vorhandenes valides Bildmaterial oder Visual-Reparatur", "resources": null
+    },
+    {
+      "name": "edge-tts", "stations": ["voice"], "evidence_name": null,
+      "repository": "https://github.com/rany2/edge-tts", "version": "7.2.8",
+      "input": "Sprechertext", "output": "Alternative Sprachdatei",
+      "quality": "Konfigurierte Alternative; im vorliegenden Chatterbox-Export nicht als ausgeführt ausgewiesen.",
+      "fallback": "Nur nach bestehender Voice-Policy; kein Ersatz bei verpflichtendem Chatterbox-Profil.", "resources": null
+    },
+    {
+      "name": "pydub", "stations": ["voice", "captions"], "evidence_name": null,
+      "repository": "https://github.com/jiaaro/pydub", "version": ">=0.25.1",
+      "input": "Audiodateien", "output": "Audiobearbeitung",
+      "quality": "Hilfsbibliothek der Audio-Pipeline; eigener Ausführungsnachweis fehlt.",
+      "fallback": "Vorhandener validierter Audio-Checkpoint", "resources": null
+    },
+    {
+      "name": "imageio-ffmpeg", "stations": ["render"], "evidence_name": null,
+      "repository": "https://github.com/imageio/imageio-ffmpeg", "version": ">=0.5.1",
+      "input": "Renderprozess", "output": "FFmpeg-Anbindung",
+      "quality": "Hilfsbibliothek; nicht mit einer gemessenen FFmpeg-Binärversion gleichzusetzen.",
+      "fallback": "System-FFmpeg entsprechend bestehendem Preflight", "resources": null
+    },
+    {
+      "name": "NumPy", "stations": ["voice", "render"], "evidence_name": null,
+      "repository": "https://github.com/numpy/numpy", "version": ">=1.26.0",
+      "input": "Numerische Audio-/Bilddaten", "output": "Arrays und Signalverarbeitung",
+      "quality": "Produktionsabhängigkeit; ein eigener Qualitätsbeitrag wird nicht pauschal behauptet.",
+      "fallback": "Kein Ersatz; fehlende Abhängigkeit wird im Preflight blockiert.", "resources": null
+    }
+  ]
+}
