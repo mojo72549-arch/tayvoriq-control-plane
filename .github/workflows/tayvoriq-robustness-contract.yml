@@ -76,7 +76,7 @@ jobs:
 
       - name: Run control-plane unit contracts
         run: |
-          python -m pip install pytest requests pillow pyyaml -q
+          python -m pip install pytest requests pillow pyyaml google-api-python-client google-auth google-auth-httplib2 -q
           python -m pytest -q tests
           node --test tests/telegram-stale-selection-guard-v3.test.mjs
 
