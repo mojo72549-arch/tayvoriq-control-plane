@@ -451,7 +451,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
     if len(balanced)<8 or len({r['domain'] for r in balanced})<2: raise RuntimeError("balanced source pool too small for safe fallback")
     model=(base.clean(model_override or os.getenv("TAYVORIQ_GROQ_RSS_MODEL"),160) or "openai/gpt-oss-20b") if provider_kind=="groq" else (base.clean(os.getenv("TAYVORIQ_HF_MODEL"),160) or "openai/gpt-oss-120b:cheapest")
     if provider_kind == 'ollama':
-        model = local.MODEL
+        model = local.research_model()
     indexed=[]; by_id={}; by_url={}
     originals = {str(record.get("url") or ""): record for record in records}
     for idx,record in enumerate(balanced, start=1):

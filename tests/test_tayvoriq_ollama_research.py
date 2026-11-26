@@ -53,6 +53,15 @@ class OllamaResearchTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'RESPONSE_INCOMPLETE'):
             ollama.complete({'messages': []}, opener=opener)
 
+    def test_verification_model_stays_on_loopback_and_checks_response_identity(self):
+        opener = Mock()
+        wrong_model = {'model': ollama.MODEL, 'done': True, 'message': {'content': '{"candidates":[]}'}}
+        opener.open.return_value = io.BytesIO(json.dumps(wrong_model).encode())
+        with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_MODEL': ollama.COMPACT_MODEL}):
+            with self.assertRaisesRegex(RuntimeError, 'RESPONSE_INVALID'):
+                ollama.complete({'messages': []}, opener=opener)
+        self.assertEqual(json.loads(opener.open.call_args.args[0].data)['model'], ollama.COMPACT_MODEL)
+
     def test_result_rejects_a_different_attempt_or_provider(self):
         from tempfile import TemporaryDirectory
 
