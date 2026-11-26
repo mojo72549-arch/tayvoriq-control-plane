@@ -39,6 +39,7 @@ concurrency:
 
 env:
   PYTHONUTF8: "1"
+  TAYVORIQ_PROGRESS_JOURNAL: ${{ github.workspace }}/out/progress/${{ github.run_id }}-${{ github.run_attempt }}.jsonl
   PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
   TAYVORIQ_CONTROL_PLANE_SCHEMA: "x-v3"
   TAYVORIQ_EXECUTION_BACKEND: "github_hosted_public"
@@ -1314,6 +1315,7 @@ jobs:
         working-directory: implementation
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           RESTORED_CHECKPOINT: ${{ steps.hydrate_recovery.outputs.restored }}
         run: |
           set -uo pipefail
@@ -1345,8 +1347,11 @@ jobs:
             done
           ) &
           heartbeat_pid=$!
+          python -S ../tools/tayvoriq_live_progress_collector.py --stop-file "${heartbeat_stop}" > out/tayvoriq-self-heal/heartbeat-observer.log 2>&1 &
+          heartbeat_observer_pid=$!
           stop_heartbeat() {
             touch "$heartbeat_stop"
+            kill "${heartbeat_observer_pid:-}" 2>/dev/null || true
             kill "$heartbeat_pid" 2>/dev/null || true
             wait "$heartbeat_pid" 2>/dev/null || true
           }
@@ -1471,6 +1476,7 @@ jobs:
         working-directory: implementation
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           TAYVORIQ_MONEYPRINTERTURBO_ROOT: ${{ steps.scene_revision_engine.outcome == 'success' && format('{0}/.moneyprinterturbo', github.workspace) || '' }}
         run: |
           set -uo pipefail
@@ -1547,8 +1553,11 @@ jobs:
             done
           ) &
           repair_heartbeat_pid=$!
+          python -S ../tools/tayvoriq_live_progress_collector.py --stop-file "${repair_heartbeat_stop}" > out/tayvoriq-self-heal/repair_heartbeat-observer.log 2>&1 &
+          repair_heartbeat_observer_pid=$!
           stop_repair_heartbeat() {
             touch "$repair_heartbeat_stop"
+            kill "${repair_heartbeat_observer_pid:-}" 2>/dev/null || true
             kill "$repair_heartbeat_pid" 2>/dev/null || true
             wait "$repair_heartbeat_pid" 2>/dev/null || true
           }
@@ -2269,4 +2278,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: python -S tools/tayvoriq_lifecycle_handoff_v1.py
+
 
