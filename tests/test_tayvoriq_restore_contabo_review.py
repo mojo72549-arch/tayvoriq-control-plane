@@ -1,8 +1,11 @@
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from zipfile import ZipFile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 
 from tayvoriq_artifact_approval import FILES
 from tayvoriq_contabo_review_binding import pending
