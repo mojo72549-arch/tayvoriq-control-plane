@@ -3,10 +3,10 @@
   "request_id": "telegram-3751-trend-1",
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45848416355,
-  "code": "CONTABO_EXECUTION_STOPPED",
-  "cause": "Der Produktionsschritt „Hydrate previous verified checkpoint“ ist fehlgeschlagen.",
-  "action": "Der Lauf ist gestoppt. Der fehlgeschlagene Schritt muss korrigiert und verifiziert werden.",
-  "next_proof": "Bestätigte Übernahme des Produktionsstands und anschließende Qualitätsprüfung.",
+  "code": "CHECKPOINT_IMPLEMENTATION_HANDOFF",
+  "cause": "Die Wiederaufnahme wurde vor der Produktion durch die Versionsprüfung gestoppt: Der gespeicherte Contabo-Stand ist an die vorherige geprüfte Codeversion gebunden.",
+  "action": "Die nachgewiesene Zwischenversion wird in der Übergabehistorie erhalten. Die ausschließlich auf die Prüfantwort begrenzte Übernahme wird verifiziert; vorhandene Medien werden vollständig neu geprüft.",
+  "next_proof": "Bestätigte Übernahme des unveränderten Videostands, vollständiger Prüfbericht aller Szenen und anschließende Review-Zustellung.",
   "user_action_required": false,
   "quality_gates_weakened": false
 }
