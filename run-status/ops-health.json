@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T14:15:28.646469Z",
-  "overall": "red",
+  "generated_at": "2026-11-26T14:31:04.228342Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45834846394,
-    "pointer_updated_at": "2026-11-26T14:01:42.995Z",
+    "golden_path_run_id": 45839620497,
+    "pointer_updated_at": "2026-11-26T14:30:08.131067+00:00",
     "current_scope": "production"
   },
   "request": {
@@ -46,43 +46,43 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45834846394,
+    "id": 45839620497,
     "historical": false,
-    "status": "completed",
-    "conclusion": "cancelled",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45834846394",
-    "created_at": "2026-11-26T14:01:29Z",
-    "updated_at": "2026-11-26T14:14:59Z",
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45839620497",
+    "created_at": "2026-11-26T14:30:02Z",
+    "updated_at": "2026-11-26T14:30:06Z",
     "attempt": 1,
-    "progress": 30,
-    "current_step": null,
-    "last_successful_step": "Complete job",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 45,
+    "progress": 0,
+    "current_step": "Queue exactly one private Contabo worker",
+    "last_successful_step": "Store the verified checkpoint for the private worker",
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 4,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 9,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
-        "status": "success",
-        "step_number": 18,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dependencies",
@@ -92,38 +92,38 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
-        "step_number": 18,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Studio-Ausführung",
-        "status": "success",
-        "step_number": 35,
-        "step_name": "Collect Studio production outcome"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
-        "status": "error",
-        "step_number": 45,
-        "step_name": "Assert publishable production output"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
-        "status": "skipped",
-        "step_number": 47,
-        "step_name": "Validate publication quality initial"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
-        "step_number": 53,
+        "status": "pending",
+        "step_number": 15,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
-        "step_number": 54,
+        "status": "pending",
+        "step_number": 17,
         "step_name": "Send Telegram review"
       }
     ]
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Assert publishable production output"
+      "status": "yellow",
+      "detail": "Queue exactly one private Contabo worker"
     },
     {
       "name": "Production Green",
@@ -142,7 +142,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
@@ -152,21 +152,10 @@
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Wartet auf reparierten Publishable Output"
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "45834846394:LOCAL_VOICE",
-    "severity": "critical",
-    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
-    "failed_step": "Assert publishable production output",
-    "failed_step_number": 45,
-    "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": true
-  },
+  "incident": null,
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
@@ -174,30 +163,20 @@
     "message_id": null
   },
   "recovery": {
-    "status": "RECOVERY_CLASSIFICATION_PENDING",
+    "status": "REPLAY_DISPATCHED",
     "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+    "failure_state": null,
     "failed_run_id": 45828782397,
-    "replay_run_id": 45834846394,
+    "replay_run_id": 45839095691,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": true,
+    "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
-    {
-      "at": "2026-11-26T14:14:59Z",
-      "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45834846394 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
-    },
-    {
-      "at": "2026-11-26T14:14:59Z",
-      "title": "Workflow-Fehler",
-      "detail": "Assert publishable production output"
-    },
     {
       "at": "2026-11-26T14:01:35.344899Z",
       "title": "DISPATCHED",
