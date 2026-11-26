@@ -54,6 +54,19 @@ jobs:
               out.write('trend_id='+request['trend_id']+'\n')
               out.write('old_run='+str(pointer['golden_path_run_id'])+'\n')
           PY
+      - name: Record actual Contabo handoff preparation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main --quiet
+            git reset --hard origin/main
+            python3 tools/tayvoriq_contabo_handoff.py prepare --request "requests/$REQUEST_ID.json" --controller "$GITHUB_RUN_ID" --worker 0
+            git add "requests/$REQUEST_ID.json" .github/state/tayvoriq-active-production-request.json
+            git commit -m "Record Contabo preparation for $REQUEST_ID"
+            if git push origin HEAD:main;then exit 0;fi
+          done
+          exit 1
       - name: Cancel superseded public production for this exact request
         env:
           GH_TOKEN: ${{ github.token }}
@@ -90,15 +103,21 @@ jobs:
               for p in root.rglob('*'):
                   if p.is_file() and not p.is_symlink():z.write(p,p.relative_to(root))
           PY
-          release="contabo-checkpoint-$GITHUB_RUN_ID"
-          gh release create "$release" --repo "$STUDIO" --draft --title "Private production checkpoint $REQUEST_ID" --notes "Unchanged approved request; migration only."
-          gh release upload "$release" /tmp/checkpoint.zip --repo "$STUDIO"
-          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "release=artifact:$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+      - name: Store the verified checkpoint for the private worker
+        uses: actions/upload-artifact@v4
+        with:
+          name: contabo-checkpoint
+          path: /tmp/checkpoint.zip
+          retention-days: 7
+          if-no-files-found: error
       - name: Dispatch exactly one private Contabo worker
         id: worker
         env:
           RELEASE: ${{ steps.transfer.outputs.release }}
         run: |
+          existing=$(gh run list --repo "$STUDIO" --workflow tayvoriq-contabo-produce.yml --limit 30 --json databaseId,displayTitle --jq ".[] | select(.displayTitle == \"TAYVORIQ Contabo worker $GITHUB_RUN_ID\") | .databaseId")
+          if [[ "$existing" =~ ^[0-9]+$ ]];then echo "run_id=$existing" >> "$GITHUB_OUTPUT";exit 0;fi
           gh workflow run tayvoriq-contabo-produce.yml --repo "$STUDIO" --ref main -f source_request_id="$REQUEST_ID" -f control_run_id="$GITHUB_RUN_ID" -f checkpoint_release="$RELEASE"
           for poll in $(seq 1 30); do
             worker=$(gh run list --repo "$STUDIO" --workflow tayvoriq-contabo-produce.yml --limit 30 --json databaseId,displayTitle --jq ".[] | select(.displayTitle == \"TAYVORIQ Contabo worker $GITHUB_RUN_ID\") | .databaseId")
@@ -204,4 +223,37 @@ jobs:
           python3 tools/tayvoriq_contabo_handoff.py finalize --request "requests/$REQUEST_ID.json" --controller "$GITHUB_RUN_ID" --worker "$WORKER" --message "$MESSAGE"
           git add "requests/$REQUEST_ID.json" .github/state/tayvoriq-active-production-request.json
           git commit -m "Verify Contabo review delivered for $REQUEST_ID"
+          git push origin HEAD:main
+
+      - name: Explain a verified stop in both control channels
+        if: failure()
+        env:
+          TRANSFER_OUTCOME: ${{ steps.transfer.outcome }}
+          WORKER_OUTCOME: ${{ steps.worker.outcome }}
+          WORKER_ID: ${{ steps.worker.outputs.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json,os,urllib.request
+          from pathlib import Path
+          rid=os.environ['REQUEST_ID']
+          request=json.loads(Path('requests/'+rid+'.json').read_text())
+          transfer=os.environ['TRANSFER_OUTCOME']=='failure'
+          reason='Der gespeicherte Produktionsstand konnte nicht an Contabo übergeben werden.' if transfer else 'Die Contabo-Produktion oder ihre abschließende Zustellung ist angehalten.'
+          detail={'schema':'tayvoriq-execution-incident-v1','request_id':rid,'source_context_sha256':request['source_context_sha256'],
+            'run_id':int(os.environ['GITHUB_RUN_ID']),'code':'CHECKPOINT_TRANSFER_FAILED' if transfer else 'CONTABO_EXECUTION_STOPPED',
+            'cause':reason,'action':'Der Lauf ist gestoppt. Der fehlgeschlagene Schritt muss korrigiert und verifiziert werden.',
+            'next_proof':'Bestätigte Übernahme des Produktionsstands und anschließende Qualitätsprüfung.',
+            'user_action_required':False,'quality_gates_weakened':False}
+          path=Path('state/tayvoriq-execution-incidents')/(rid+'.json');path.parent.mkdir(parents=True,exist_ok=True)
+          path.write_text(json.dumps(detail,ensure_ascii=False,indent=2)+'\n')
+          token=os.environ['TELEGRAM_BOT_TOKEN'];chat=os.environ['TELEGRAM_CHAT_ID']
+          data=json.dumps({'chat_id':chat,'text':'🔴 TAYVORIQ · Übergabe angehalten\n\n'+reason+'\n'+detail['action']+'\nRequest: '+rid+'\nRun: '+os.environ['GITHUB_RUN_ID']}).encode()
+          with urllib.request.urlopen(urllib.request.Request('https://api.telegram.org/bot'+token+'/sendMessage',data=data,headers={'Content-Type':'application/json'}),timeout=30) as r:
+              assert json.load(r).get('ok') is True
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "state/tayvoriq-execution-incidents/$REQUEST_ID.json"
+          git commit -m "Explain verified Contabo stop for $REQUEST_ID"
+          git pull --rebase origin main
           git push origin HEAD:main
