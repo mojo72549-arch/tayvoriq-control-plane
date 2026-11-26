@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "run_id": "45780963911",
+  "run_attempt": "2",
+  "source_request_id": "telegram-3751-trend-1",
+  "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
+  "studio_sha": "71019808d3d8b15ec0c423d2e6dbfd7f61bc2bf7",
+  "checkpoint_restored": true,
+  "tools": [
+    {
+      "name": "Chatterbox",
+      "activity": "YouTube · Stimme im geprüften Export",
+      "evidence": "job/youtube_shorts/audio_report.json"
+    },
+    {
+      "name": "Chatterbox",
+      "activity": "TikTok · Stimme im geprüften Export",
+      "evidence": "job/tiktok/audio_report.json"
+    }
+  ],
+  "scores": [],
+  "findings": [],
+  "stations": [
+    {
+      "id": "script",
+      "state": "success",
+      "detail": "Deutsche Skripte beider Plattformen im hashgeprüften Checkpoint vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "15bab5a59bd3f19b841080896461e05c784236beb19d7fce0c0af4b9ebfa2e85",
+      "checkpoint_restored": true,
+      "outputs": {
+        "youtube_shorts": 58,
+        "tiktok": 58
+      }
+    },
+    {
+      "id": "scenes",
+      "state": "success",
+      "detail": "Szenen mit gesprochenem Text und Bildabfrage für beide Ausgaben vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "15bab5a59bd3f19b841080896461e05c784236beb19d7fce0c0af4b9ebfa2e85",
+      "checkpoint_restored": true,
+      "outputs": {
+        "youtube_shorts": 6,
+        "tiktok": 6
+      }
+    },
+    {
+      "id": "captions",
+      "state": "success",
+      "detail": "Untertitel aller Szenen nachgewiesen; Musik folgt der gespeicherten redaktionellen Policy. Ein eigener Musikexport ist damit nicht belegt.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "15bab5a59bd3f19b841080896461e05c784236beb19d7fce0c0af4b9ebfa2e85",
+      "checkpoint_restored": true,
+      "outputs": {
+        "subtitle_scenes": 12,
+        "music_export_verified": false
+      }
+    }
+  ],
+  "scripts": {
+    "youtube_shorts": "Aldi und Lidl senken den Butterpreis auf 99 Cent pro Packung. Aufgrund gesunkener Einkaufspreise in der gesamten Lieferkette der Molkereien. Alle Verbraucher, die regelmäßig Butter in Discountern einkaufen. Für dich heißt das, dass du beim Einkauf direkt Geld sparen kannst. Achte beim nächsten Einkauf auf die Eigenmarken-Butter im Regal. Abonniere diesen Kanal für verifizierte Einordnung und konkrete Schritte.",
+    "tiktok": "Aldi und Lidl senken den Butterpreis auf 99 Cent pro Packung. Aufgrund gesunkener Einkaufspreise in der gesamten Lieferkette der Molkereien. Alle Verbraucher, die regelmäßig Butter in Discountern einkaufen. Für dich heißt das, dass du beim Einkauf direkt Geld sparen kannst. Achte beim nächsten Einkauf auf die Eigenmarken-Butter im Regal. Folge diesem Kanal für verifizierte Einordnung und konkrete Schritte."
+  }
+}
