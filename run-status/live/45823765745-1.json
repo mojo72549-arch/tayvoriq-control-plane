@@ -4,28 +4,18 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45823765745,
   "run_attempt": 1,
-  "updated_at": "2026-11-26T13:00:58.434921+00:00",
-  "observed_at": "2026-11-26T13:06:42.075399+00:00",
+  "updated_at": "2026-11-26T13:06:57.260249+00:00",
+  "observed_at": "2026-11-26T13:06:59.205907+00:00",
   "current": {
-    "phase": "render",
+    "phase": "repair",
     "status": "started",
-    "at": "2026-11-26T13:00:50.611252+00:00",
-    "call_id": "8a7ed65457a54b38b5109331fe6839b1",
-    "platform": "tiktok",
-    "total": 6,
+    "at": "2026-11-26T12:54:45.091420+00:00",
+    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
+    "target": "visuals",
     "round": 1,
-    "target": "visuals"
+    "timeout_seconds": 900
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-26T13:00:53.814574+00:00",
-      "call_id": "c0bb3771df094a2dad37f08688558164",
-      "platform": "tiktok",
-      "scene": 3,
-      "total": 6
-    },
     {
       "phase": "captions",
       "status": "started",
@@ -144,9 +134,18 @@
       "platform": "tiktok",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "completed",
+      "at": "2026-11-26T13:06:57.260249+00:00",
+      "call_id": "8a7ed65457a54b38b5109331fe6839b1",
+      "platform": "tiktok",
+      "total": 6
     }
   ],
   "completed_phases": [
-    "scenes"
+    "scenes",
+    "render"
   ]
 }
