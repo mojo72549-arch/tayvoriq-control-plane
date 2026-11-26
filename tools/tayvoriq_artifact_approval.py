@@ -21,6 +21,9 @@ def validate_decision(decision, review_id):
         raise ValueError('TELEGRAM_BOUND_APPROVAL_REQUIRED')
     if not re.fullmatch(r'[0-9a-f]{40}', str(decision.get('studio_sha') or '')):
         raise ValueError('APPROVED_STUDIO_SHA_INVALID')
+    artifact_run = decision.get('artifact_run_id')
+    if artifact_run is not None and (type(artifact_run) is not int or artifact_run < 1):
+        raise ValueError('APPROVED_ARTIFACT_RUN_INVALID')
     hashes = decision.get('files_sha256')
     if not isinstance(hashes, dict) or hashes.keys() != FILES or any(
             not re.fullmatch(r'[a-f0-9]{64}', str(digest)) for digest in hashes.values()):
@@ -29,7 +32,13 @@ def validate_decision(decision, review_id):
 
 def verify_package(directory: Path, decision, review_id):
     validate_decision(decision, review_id)
-    for name, expected in decision['files_sha256'].items():
+    verify_evidence(directory, decision['files_sha256'], review_id)
+
+
+def verify_evidence(directory: Path, hashes, review_id):
+    if hashes.keys() != FILES:
+        raise ValueError('APPROVED_REVIEW_HASHES_MISSING')
+    for name, expected in hashes.items():
         path = directory / name
         if not path.is_file() or path.is_symlink():
             raise ValueError('APPROVED_REVIEW_FILE_MISSING:' + name)
