@@ -6,13 +6,18 @@
   "run_attempt": 1,
   "state": "SEARCHING",
   "started_at": "2026-11-26T17:30:14.683327+00:00",
-  "updated_at": "2026-11-26T17:30:14.684117+00:00",
-  "sources_seen": null,
+  "updated_at": "2026-11-26T17:30:35.574025+00:00",
+  "sources_seen": 660,
   "drafts_saved": 0,
   "quality_rejections": 0,
-  "corroborated_headlines": null,
-  "provider": null,
-  "issues": [],
+  "corroborated_headlines": 3,
+  "provider": "groq",
+  "issues": [
+    {
+      "code": "QUOTA",
+      "provider": "gemini"
+    }
+  ],
   "exit_code": null,
   "local_attempt": 1,
   "max_local_attempts": 3,
