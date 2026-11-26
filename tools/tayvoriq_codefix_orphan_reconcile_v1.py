@@ -249,7 +249,9 @@ def _run_metadata(repo: str, run_id: int, approved_at: datetime) -> dict[str, An
     except Exception as exc:
         print(f"CODEFIX_ORPHAN_RUN_LOOKUP_FAILED:{run_id}:{type(exc).__name__}")
         return None
-    if str(data.get("name") or "") != "TAYVORIQ-X Golden Path":
+    # GitHub can return the per-request run name instead of the workflow name.
+    path = str(data.get("path") or "").split("@", 1)[0]
+    if path != ".github/workflows/tayvoriq-deliver-video-now.yml":
         return None
     if str(data.get("status") or "") != "completed":
         return None
