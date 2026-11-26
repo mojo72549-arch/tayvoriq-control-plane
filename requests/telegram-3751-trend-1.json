@@ -317,5 +317,20 @@
   "retry_of_run_id": 45766219123,
   "replacement_reason": "BOUNDED_REQUEST_RECOVERY",
   "recovery_failure_signature": "f48def7f1cb34b32265f",
-  "recovery_dispatched_at": "2026-11-26T08:10:47.540872Z"
+  "recovery_dispatched_at": "2026-11-26T08:10:47.540872Z",
+  "recovery_outcome": {
+    "schema": "tayvoriq-recovery-outcome-v1",
+    "state": "EXHAUSTED",
+    "reason": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "request_id": "telegram-3751-trend-1",
+    "run_id": 45780963911,
+    "run_attempt": 3,
+    "recovery_generation": 1,
+    "failure_signature": "55ff5f5cc70f2db1a058",
+    "implementation_sha": "71019808d3d8b15ec0c423d2e6dbfd7f61bc2bf7",
+    "quality_gates_weakened": false,
+    "publish_allowed": false,
+    "next_action": "AWAIT_VERIFIED_MEDIA_OR_CODE_REPAIR",
+    "recorded_at": "2026-11-26T10:09:54.467001+00:00"
+  }
 }
