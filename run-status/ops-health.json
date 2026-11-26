@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T13:37:31.583864Z",
+  "generated_at": "2026-11-26T14:01:40.395836Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45828782397,
-    "pointer_updated_at": "2026-11-26T13:24:13.157678Z",
+    "golden_path_run_id": 45834846394,
+    "pointer_updated_at": "2026-11-26T14:01:35.344899Z",
     "current_scope": "production"
   },
   "request": {
@@ -46,43 +46,43 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45828782397,
+    "id": 45834846394,
     "historical": false,
-    "status": "queued",
+    "status": "in_progress",
     "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45828782397",
-    "created_at": "2026-11-26T13:24:07Z",
-    "updated_at": "2026-11-26T13:37:29Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45834846394",
+    "created_at": "2026-11-26T14:01:29Z",
+    "updated_at": "2026-11-26T14:01:34Z",
     "attempt": 1,
-    "progress": 3,
-    "current_step": null,
-    "last_successful_step": null,
+    "progress": 22,
+    "current_step": "Checkout implementation",
+    "last_successful_step": "Validate immutable implementation policy",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 4,
+        "step_name": "Resolve approved X request"
       },
       {
         "label": "Quellen gesperrt",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 8,
+        "step_name": "Materialize immutable verified source context"
       },
       {
         "label": "Dublettenprüfung",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "success",
+        "step_number": 9,
+        "step_name": "Block global duplicate content before production"
       },
       {
         "label": "Light Preflight",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Dependencies",
@@ -93,38 +93,38 @@
       {
         "label": "Full Preflight",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 18,
+        "step_name": "Lightweight contract preflight"
       },
       {
         "label": "Studio-Ausführung",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 35,
+        "step_name": "Collect Studio production outcome"
       },
       {
         "label": "Publishable Output",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 45,
+        "step_name": "Assert publishable production output"
       },
       {
         "label": "Quality Audit",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 47,
+        "step_name": "Validate publication quality initial"
       },
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 53,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 54,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -132,12 +132,12 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "queued"
+      "detail": "Checkout implementation"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "ee354a147e51…"
+      "detail": "798c9f3ed8d1…"
     },
     {
       "name": "Self-Heal",
@@ -159,15 +159,15 @@
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
-    "last_step": null,
+    "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
     "status": "REPLAY_RUNNING",
-    "source_status": "LOCAL_RETRY_RUNNING",
+    "source_status": "REPLAY_RUNNING",
     "failure_state": null,
-    "failed_run_id": 45823765745,
-    "replay_run_id": 45828782397,
+    "failed_run_id": 45828782397,
+    "replay_run_id": 45834846394,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
@@ -177,6 +177,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-26T14:01:35.344899Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
+    },
     {
       "at": "2026-11-26T13:37:26.326276Z",
       "title": "DISPATCHED",
@@ -201,11 +206,6 @@
       "at": "2026-11-26T12:48:36.213922Z",
       "title": "AWAITING_CODEFIX",
       "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
-    },
-    {
-      "at": "2026-11-26T12:24:41.919079Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
     }
   ]
 }
