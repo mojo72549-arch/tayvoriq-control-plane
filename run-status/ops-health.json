@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T14:31:04.228342Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-26T15:09:46.878478Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45839620497,
-    "pointer_updated_at": "2026-11-26T14:30:08.131067+00:00",
+    "golden_path_run_id": 45840618350,
+    "pointer_updated_at": "2026-11-26T14:36:44.943652+00:00",
     "current_scope": "production"
   },
   "request": {
@@ -46,19 +46,19 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45839620497,
+    "id": 45840618350,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45839620497",
-    "created_at": "2026-11-26T14:30:02Z",
-    "updated_at": "2026-11-26T14:30:06Z",
+    "status": "completed",
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45840618350",
+    "created_at": "2026-11-26T14:35:53Z",
+    "updated_at": "2026-11-26T15:03:36Z",
     "attempt": 1,
     "progress": 0,
-    "current_step": "Queue exactly one private Contabo worker",
-    "last_successful_step": "Store the verified checkpoint for the private worker",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Monitor the private worker receipt",
+    "failed_step_number": 11,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -116,13 +116,13 @@
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 15,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 17,
         "step_name": "Send Telegram review"
       }
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Queue exactly one private Contabo worker"
+      "status": "red",
+      "detail": "Monitor the private worker receipt"
     },
     {
       "name": "Production Green",
@@ -142,7 +142,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "REPLAY_DISPATCHED"
+      "detail": "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
     },
     {
       "name": "Telegram",
@@ -155,7 +155,18 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "45840618350:LOCAL_VOICE",
+    "severity": "critical",
+    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+    "failed_step": "Monitor the private worker receipt",
+    "failed_step_number": 11,
+    "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": true
+  },
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
@@ -163,20 +174,30 @@
     "message_id": null
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
+    "status": "RECOVERY_CLASSIFICATION_PENDING",
     "source_status": "REPLAY_DISPATCHED",
-    "failure_state": null,
+    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
     "failed_run_id": 45828782397,
-    "replay_run_id": 45839095691,
+    "replay_run_id": 45840618350,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": false,
+    "inferred_from_run_terminal_state": true,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-26T15:03:36Z",
+      "title": "Recovery-Replay wartet auf Klassifizierung",
+      "detail": "Run 45840618350 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+    },
+    {
+      "at": "2026-11-26T15:03:36Z",
+      "title": "Workflow-Fehler",
+      "detail": "Monitor the private worker receipt"
+    },
     {
       "at": "2026-11-26T14:01:35.344899Z",
       "title": "DISPATCHED",
