@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - .automation/tayvoriq-artifact-decisions/*.json
+      - .github/run-now/tayvoriq-approved-publish-retry.json
   workflow_dispatch:
     inputs:
       review_id:
@@ -284,9 +285,13 @@ jobs:
               path = root / f'{rid}.json'
           else:
               changes = (Path(os.environ['RUNNER_TEMP']) / 'decision-files').read_text().splitlines()
-              if len(changes) != 1:
+              if not changes:
+                  rid=str(json.loads(Path('.github/run-now/tayvoriq-approved-publish-retry.json').read_text())['review_id'])
+                  if not re.fullmatch(r'[0-9]{1,20}',rid):raise SystemExit('REVIEW_ID_INVALID')
+                  path=root/f'{rid}.json'
+              elif len(changes) != 1:
                   raise SystemExit('EXPECTED_ONE_REVIEW_DECISION')
-              path = Path(changes[0])
+              else:path = Path(changes[0])
           record = json.loads(path.read_text())
           if record.get('state') in {'PENDING', 'REJECTED'}:
               raise SystemExit(0)
@@ -338,6 +343,7 @@ jobs:
       - name: Reserve the exact approved review before upload
         if: steps.decision.outputs.approved == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           REVIEW_ID: ${{ steps.decision.outputs.review_id }}
         run: python tools/tayvoriq_artifact_publication_claim.py "$REVIEW_ID" claim
       - name: Publish the approved YouTube master
@@ -355,6 +361,7 @@ jobs:
       - name: Record the YouTube receipt and deliver the TikTok package
         if: steps.decision.outputs.approved == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           REVIEW_ID: ${{ steps.decision.outputs.review_id }}
         run: |
           set -euo pipefail
