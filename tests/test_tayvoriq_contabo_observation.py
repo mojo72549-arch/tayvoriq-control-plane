@@ -32,3 +32,15 @@ def test_only_one_message_is_updated_when_the_confirmed_phase_changes(monkeypatc
     receipt['status']='SUCCEEDED';progress['current']['at']='time3'
     observer.notify(progress,receipt,'test')
     assert len(calls)==2
+
+    receipt.update(status='FAILED', failure_reason='Stille am Ende des YouTube-Exports.')
+    observer.notify({}, receipt, 'test')
+    observer.notify({}, receipt, 'test')
+    assert len(calls) == 3 and calls[-1][0].endswith('/editMessageText')
+    assert calls[-1][1]['message_id'] == 12
+    assert 'Produktion gestoppt' in calls[-1][1]['text']
+    assert 'Stille am Ende des YouTube-Exports.' in calls[-1][1]['text']
+
+    receipt['status'] = 'RUNNING'
+    observer.notify(progress, receipt, 'test')
+    assert len(calls) == 3
