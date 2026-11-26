@@ -47,3 +47,17 @@ class CollectorTests(unittest.TestCase):
    findings=collector.audit_findings(root,2)
    self.assertEqual(findings,['YouTube · Szene 3: Motiv passt nicht zur Aussage','TikTok · Szene 2: Motiv wiederholt sich'])
 if __name__=='__main__': unittest.main()
+def test_private_native_event_maps_only_the_verified_worker_to_its_canonical_owner(monkeypatch):
+ from tools.tayvoriq_live_progress_collector import Observation
+ identity=dict(request_id='telegram-123',source_context_sha256='a'*64,run_id=100,run_attempt=1)
+ monkeypatch.setenv('TAYVORIQ_EXECUTION_BACKEND','contabo_private_runner')
+ monkeypatch.setenv('GITHUB_RUN_ID','200')
+ monkeypatch.setenv('TAYVORIQ_PRODUCTION_RUN_ID','100')
+ event=dict(identity,run_id=200,phase='script',status='started',at='2026-11-26T15:00:00Z')
+ state=Observation(identity);state.accept(event)
+ assert state.payload()['current']['phase']=='script'
+ state=Observation(identity);state.accept({**event,'run_id':201})
+ assert state.payload()['current'] is None
+ state.accept({**event,'source_context_sha256':'b'*64})
+ assert state.payload()['current'] is None
+
