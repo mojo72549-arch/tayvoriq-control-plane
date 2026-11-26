@@ -60,12 +60,13 @@ class Observation:
                 'observed_at':now(),'current':current,'events':self.events[-16:],
                 'completed_phases':[phase for phase,platforms in self.completed.items() if platforms=={'youtube_shorts','tiktok'}]}
 
-def publish(payload):
+def publish(payload,prefix='run-status/live'):
+    if prefix not in {'run-status/live','run-status/self-test'}: return False
     token=os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN')
     if not token: return False
     repo=os.environ.get('GITHUB_REPOSITORY','')
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',repo): return False
-    path=f"run-status/live/{payload['run_id']}-{payload['run_attempt']}.json"
+    path=f"{prefix}/{payload['run_id']}-{payload['run_attempt']}.json"
     url=f'https://api.github.com/repos/{repo}/contents/{path}'
     headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'tayvoriq-live-progress'}
     raw=(json.dumps(payload,ensure_ascii=False,indent=2)+'\n').encode()

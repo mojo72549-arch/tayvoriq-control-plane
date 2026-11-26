@@ -1,0 +1,50 @@
+name: TAYVORIQ live progress checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/tayvoriq_live_progress_collector.py
+      - tests/test_live_progress_collector.py
+      - .github/workflows/tayvoriq-live-progress-checks.yml
+  pull_request:
+    paths:
+      - tools/tayvoriq_live_progress_collector.py
+      - tests/test_live_progress_collector.py
+      - .github/workflows/tayvoriq-live-progress-checks.yml
+permissions:
+  contents: write
+jobs:
+  phase-reporting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check source-bound event handling
+        run: python -m unittest discover -s tests -p test_live_progress_collector.py -v
+      - name: Verify live transport in an isolated self-test namespace
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import importlib.util,json,os
+          from urllib.request import Request,urlopen
+          spec=importlib.util.spec_from_file_location('collector','tools/tayvoriq_live_progress_collector.py')
+          module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+          run=int(os.environ['GITHUB_RUN_ID']);attempt=int(os.environ['GITHUB_RUN_ATTEMPT'])
+          identity={'request_id':f'progress-selftest-{run}','source_context_sha256':'0'*64,'run_id':run,'run_attempt':attempt}
+          state=module.Observation(identity)
+          state.accept({**identity,'phase':'visuals','status':'started','at':module.now(),'call_id':'isolated-test','platform':'youtube_shorts','scene':2,'total':6})
+          payload=state.payload()
+          assert module.publish(payload,prefix='run-status/self-test'),'progress transport failed'
+          repo=os.environ['GITHUB_REPOSITORY']
+          url=f'https://api.github.com/repos/{repo}/contents/run-status/self-test/{run}-{attempt}.json?ref=main'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github.raw+json'}
+          with urlopen(Request(url,headers=headers),timeout=10) as response: saved=json.load(response)
+          assert saved['request_id']==identity['request_id'] and saved['current']['scene']==2
+          assert saved['source_context_sha256']==identity['source_context_sha256']
+          print('LIVE_PHASE_TRANSPORT_VERIFIED: isolated namespace; production request untouched')
+          PY
