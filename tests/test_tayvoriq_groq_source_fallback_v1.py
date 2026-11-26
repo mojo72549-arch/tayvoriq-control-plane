@@ -47,6 +47,27 @@ class GroqSourceContractTests(unittest.TestCase):
                         {"source_id": second, "supports": "Weitere Quelle bestätigt Sachverhalt"}],
         }
 
+    def test_ollama_rates_one_bound_source_pair_per_request(self):
+        calls = []
+
+        def decide(payload):
+            calls.append(payload)
+            key, = payload['format']['required']
+            return {'choices': [{'message': {'content': json.dumps({key: None})}}]}
+
+        with patch.object(hf.local, 'complete', side_effect=decide), \
+                patch.object(hf.rss, 'enrich_evidence', side_effect=lambda records: records):
+            with self.assertRaises(hf.InsufficientSourceEvidence):
+                hf.structure('German source-bound research', '', self.pool, 'multi-publisher-rss', provider_kind='ollama')
+        self.assertEqual(len(calls), 2)
+        observed = set()
+        for request in calls:
+            key, = request['format']['required']
+            observed.add(key)
+            sources = json.loads(request['messages'][1]['content'].split('\nMeldungen: ', 1)[1])
+            self.assertEqual([source['source_id'] for source in sources], key.split('+'))
+        self.assertEqual(len(observed), 2)
+
     def test_groq_json_result_uses_existing_exact_url_and_independence_validator(self):
         ids = self.ids
         a = self._candidate(
