@@ -1,41 +1,21 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-25T20:41:27.206644Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-26T04:36:33.675429Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": false,
-    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
+    "telegram_notify_allowed": true,
+    "reason": "VERIFIED_STATE_TRANSITION"
   },
   "api_error": null,
-  "research": {
-    "schema": "tayvoriq-research-retry-v1",
-    "state": "EXHAUSTED",
-    "slot": "morning",
-    "berlin_date": "2026-11-25",
-    "first_deferred_at_epoch": 1795582269.0,
-    "attempts": 1,
-    "retry_at_epoch": 1795583169.3733337,
-    "retry_phase": "NORMAL",
-    "last_deferred_at_epoch": 1795582340.6833289,
-    "provider_retry_at_epoch": 1795583169.3733337,
-    "max_attempts": 3,
-    "sla_seconds": 600,
-    "valid_until_epoch": 1795582869.0,
-    "reason": "RESEARCH_RETRY_EXPIRED",
-    "quality_gates_weakened": false,
-    "production_started": false,
-    "last_research_attempt": "45549561830.1",
-    "last_issue": "SOURCE_MINIMUM_NOT_MET",
-    "status_detail": "Zu wenige Vorschläge haben die Quellenprüfung bestanden."
-  },
+  "research": {},
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3728-trend-1",
     "golden_path_run_id": 45673283300,
     "pointer_updated_at": "2026-11-25T18:40:28.835424Z",
-    "current_scope": "research"
+    "current_scope": "production"
   },
   "request": {
     "request_id": "telegram-3728-trend-1",
@@ -44,7 +24,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
+    "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
@@ -67,7 +47,7 @@
   },
   "run": {
     "id": 45673283300,
-    "historical": true,
+    "historical": false,
     "status": "completed",
     "conclusion": "success",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45673283300",
@@ -151,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -161,36 +141,47 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "EXHAUSTED"
+      "status": "green",
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
+      "status": "green",
+      "detail": "Telegram-Videoquittung bestätigt"
     },
     {
       "name": "Quality Gates",
-      "status": "yellow",
-      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
+      "status": "green",
+      "detail": "Quality Audit bestanden"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "45673283300:LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "severity": "warning",
+    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "REPLAY_DISPATCHED",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": false
+  },
   "telegram": {
-    "status": "yellow",
-    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
+    "status": "green",
+    "detail": "Telegram-Videoquittung bestätigt",
     "last_step": "Send Telegram review",
     "message_id": 3747
   },
   "recovery": {
-    "status": "EXHAUSTED",
-    "source_status": "EXHAUSTED",
-    "failure_state": null,
+    "status": "REPLAY_DISPATCHED",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
     "failed_run_id": 45663573984,
     "replay_run_id": 45673283300,
     "fresh_recovery_run_id": 45663573984,
     "recovery_generation": 1,
-    "owner": "tayvoriq-agent-orchestrator-v2",
+    "owner": "tayvoriq-delivery-watch",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
