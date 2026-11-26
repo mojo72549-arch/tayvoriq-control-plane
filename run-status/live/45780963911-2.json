@@ -4,31 +4,17 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45780963911,
   "run_attempt": 2,
-  "updated_at": "2026-11-26T09:34:48.424844+00:00",
-  "observed_at": "2026-11-26T09:34:49.729350+00:00",
+  "updated_at": "2026-11-26T09:34:52.770600+00:00",
+  "observed_at": "2026-11-26T09:34:56.771548+00:00",
   "current": {
-    "phase": "repair",
+    "phase": "quality",
     "status": "started",
-    "at": "2026-11-26T09:27:53.439706+00:00",
-    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R2",
+    "at": "2026-11-26T09:34:52.770600+00:00",
+    "call_id": "checkpoint-QUALITY_AUDIT_1",
     "round": 2,
-    "timeout_seconds": 900
+    "timeout_seconds": 420
   },
   "events": [
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-26T09:31:12.652069+00:00",
-      "call_id": "0f73a0349a944ea5bffeabe557cccf62",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-26T09:31:12.700385+00:00",
-      "call_id": "0f73a0349a944ea5bffeabe557cccf62",
-      "platform": "tiktok"
-    },
     {
       "phase": "visuals",
       "status": "completed",
@@ -141,6 +127,21 @@
       "call_id": "d8505ac957774509957f0c0a53af480f",
       "platform": "tiktok",
       "total": 6
+    },
+    {
+      "phase": "repair",
+      "status": "completed",
+      "at": "2026-11-26T09:34:52.770506+00:00",
+      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R2",
+      "round": 2
+    },
+    {
+      "phase": "quality",
+      "status": "started",
+      "at": "2026-11-26T09:34:52.770600+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "round": 2,
+      "timeout_seconds": 420
     }
   ],
   "completed_phases": [
