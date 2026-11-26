@@ -187,7 +187,8 @@ def context(selection, slot, root, temporary, *, now=None):
             path.write_text(json.dumps(value), encoding='utf-8')
         files[kind] = path
     previous = original['retry']
-    deadline = min(now + 600, float(previous.get('valid_until_epoch') or now + 600))
+    budget = 835 if os.environ.get('TAYVORIQ_CONTROL_REVISION') else 600
+    deadline = min(now + budget, float(previous.get('valid_until_epoch') or now + budget))
     env = {**os.environ, 'PYTHONUNBUFFERED': '1', 'TAYVORIQ_RESEARCH_SLOT': slot,
            'TAYVORIQ_RESEARCH_SELECTION_ID': selection,
            'TAYVORIQ_RESEARCH_STARTED_AT_EPOCH': str(int(previous.get('first_deferred_at_epoch') or now)),
@@ -318,7 +319,7 @@ def execute(command, state, observation, save, persist, *, clock=time.time, paus
         observation.data.update(state='SEARCHING', local_attempt=attempt, max_local_attempts=3, next_retry_at=None)
         state['env']['TAYVORIQ_RESEARCH_LOCAL_ATTEMPT'] = str(attempt)
         save(True)
-        seconds = 520 if state['env'].get('TAYVORIQ_CONTROL_REVISION') else 420
+        seconds = 775 if state['env'].get('TAYVORIQ_CONTROL_REVISION') else 420
         code = run(command, state['env'], min(clock() + seconds, state['deadline'] - 35), observation, save)
         if code == STOPPED or stopped():
             return finish_stopped()
