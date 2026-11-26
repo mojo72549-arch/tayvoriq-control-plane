@@ -61,7 +61,8 @@ class ResearchObserverTests(unittest.TestCase):
         root = Path(__file__).parents[1]
         workflow = (root / '.github/workflows/tayvoriq-telegram-trends-now.yml').read_text()
         self.assertIn('python tools/tayvoriq_research_observer.py --selection-id "$SELECTION_ID"', workflow)
-        self.assertIn('python tools/tayvoriq_agent_trend_radar_v8.py', workflow)
+        self.assertIn('python tools/tayvoriq_contabo_research.py', workflow)
+        self.assertNotIn('secrets.GEMINI_API_KEY', workflow)
         self.assertIn('return code', (root / 'tools/tayvoriq_research_observer.py').read_text())
 
     def test_stopping_while_waiting_prevents_the_next_provider_attempt(self):

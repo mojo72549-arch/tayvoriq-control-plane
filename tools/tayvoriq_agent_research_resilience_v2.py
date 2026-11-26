@@ -39,7 +39,30 @@ def _still_current(draft, records):
                for record, source in zip(pair, draft["sources"]))
 
 
+def local_grounded(prompt):
+    records = {}
+    last_error = None
+    for label, collect in (('multi-publisher-rss', lambda: rss.source_pool(expanded=True)),
+                           ('rss-gdelt-context', gdelt.source_pool)):
+        discovered = {row['url']: row for row in collect() if row.get('url')}
+        new = set(discovered).difference(records)
+        if not new:
+            continue
+        records.update((url, row) for url, row in discovered.items() if url in new)
+        print(json.dumps({'event': 'source_records_loaded', 'source_label': label,
+                          'updated_records': len(new), 'total_records': len(records)}), flush=True)
+        print(json.dumps({'event': 'provider_attempt_started', 'provider': 'ollama'}), flush=True)
+        try:
+            data, chunks, model = hf.structure(prompt, '', list(records.values()), label, provider_kind='ollama')
+            return data, chunks, model, 'ollama_gdelt' if label == 'rss-gdelt-context' else 'ollama_rss'
+        except hf.InsufficientSourceEvidence as error:
+            last_error = error
+    raise RuntimeError('OLLAMA_SOURCE_MINIMUM_NOT_MET') from last_error
+
+
 def grounded(prompt: str, gemini_key: str, groq_key: str):
+    if os.environ.get('TAYVORIQ_LOCAL_RESEARCH') == 'true':
+        return local_grounded(prompt)
     errors = []
     MARKER.unlink(missing_ok=True)
     health_path = os.getenv('TAYVORIQ_PROVIDER_HEALTH_FILE')

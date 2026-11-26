@@ -18,7 +18,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 REPO = 'mojo72549-arch/tayvoriq-control-plane'
-PROVIDERS = ('gemini', 'groq', 'huggingface')
+PROVIDERS = ('gemini', 'groq', 'huggingface', 'ollama')
 STOPPED = 130
 
 
@@ -160,8 +160,10 @@ def load_json(path):
 
 def control_center_stopped(selection, token, *, request=urlopen):
     url = f'https://api.github.com/repos/{REPO}/contents/state/tayvoriq-control-center-research.json?ref=main'
-    headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json',
-               'User-Agent': 'tayvoriq-research-observer', 'Cache-Control': 'no-cache'}
+    headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'tayvoriq-research-observer',
+               'Cache-Control': 'no-cache'}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
     with request(Request(url, headers=headers), timeout=8) as response:
         pointer = json.loads(base64.b64decode(json.load(response)['content']))
     if pointer.get('schema') != 'tayvoriq-control-center-research-v1':
@@ -247,7 +249,7 @@ def persist_context(state, token, *, request=urlopen):
             raise RuntimeError('Research context version changed repeatedly')
 
 
-def run_child(command, env, deadline, observation, save, *, clock=time.time, stopped=lambda: False):
+def run_child(command, env, deadline, observation, save, *, clock=time.time, stopped=lambda: False, stop_interval=5):
     """Keep the original research result, with a real wall-clock timeout and heartbeat."""
     child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
     lines = queue.SimpleQueue()
@@ -261,7 +263,7 @@ def run_child(command, env, deadline, observation, save, *, clock=time.time, sto
             lines.put(None)
     reader = threading.Thread(target=read, daemon=True)
     reader.start()
-    next_stop_check = clock() + 5
+    next_stop_check = clock() + stop_interval
     try:
         while True:
             now = clock()
@@ -270,7 +272,7 @@ def run_child(command, env, deadline, observation, save, *, clock=time.time, sto
             if now >= next_stop_check:
                 if stopped():
                     return STOPPED
-                next_stop_check = now + 5
+                next_stop_check = now + stop_interval
             try:
                 line = lines.get(timeout=1)
             except queue.Empty:
@@ -316,7 +318,8 @@ def execute(command, state, observation, save, persist, *, clock=time.time, paus
         observation.data.update(state='SEARCHING', local_attempt=attempt, max_local_attempts=3, next_retry_at=None)
         state['env']['TAYVORIQ_RESEARCH_LOCAL_ATTEMPT'] = str(attempt)
         save(True)
-        code = run(command, state['env'], min(clock() + 420, state['deadline'] - 35), observation, save)
+        seconds = 520 if state['env'].get('TAYVORIQ_CONTROL_REVISION') else 420
+        code = run(command, state['env'], min(clock() + seconds, state['deadline'] - 35), observation, save)
         if code == STOPPED or stopped():
             return finish_stopped()
         try:
