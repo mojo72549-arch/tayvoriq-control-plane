@@ -4,9 +4,9 @@
   "slot": "morning",
   "run_id": 45873898070,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "WAITING",
   "started_at": "2026-11-26T18:12:09.086542+00:00",
-  "updated_at": "2026-11-26T18:12:29.338830+00:00",
+  "updated_at": "2026-11-26T18:12:35.630093+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
   "quality_rejections": 1,
@@ -16,10 +16,34 @@
     {
       "code": "TIKTOK_FIT",
       "provider": null
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "gemini"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "groq"
+    },
+    {
+      "code": "QUOTA",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "huggingface"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": null
     }
   ],
   "exit_code": null,
   "local_attempt": 1,
   "max_local_attempts": 3,
-  "next_retry_at": null
+  "next_retry_at": "2026-11-26T18:14:26.338137+00:00"
 }
