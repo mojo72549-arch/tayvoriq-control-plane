@@ -793,7 +793,10 @@ jobs:
           CHECKPOINT_RELEASE: ${{ inputs.checkpoint_release }}
         run: |
           mkdir -p "$RUNNER_TEMP/contabo-checkpoint-$TAYVORIQ_PRODUCTION_RUN_ID"
-          gh release download "$CHECKPOINT_RELEASE" --repo mojo72549-arch/shorts-agent-studio --pattern checkpoint.zip --dir "$RUNNER_TEMP/contabo-checkpoint-$TAYVORIQ_PRODUCTION_RUN_ID"
+          case "$CHECKPOINT_RELEASE" in
+            artifact:*) gh run download "${CHECKPOINT_RELEASE#artifact:}" --repo mojo72549-arch/tayvoriq-control-plane --name contabo-checkpoint --dir "$RUNNER_TEMP/contabo-checkpoint-$TAYVORIQ_PRODUCTION_RUN_ID" ;;
+            *) echo 'Unsupported checkpoint transport';exit 1 ;;
+          esac
           python3 - <<'PYZIP'
           import os,zipfile
           from pathlib import Path
