@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T12:41:06.797994Z",
+  "generated_at": "2026-11-26T13:08:40.588988Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45819371374,
-    "pointer_updated_at": "2026-11-26T12:24:41.919079Z",
+    "golden_path_run_id": 45823765745,
+    "pointer_updated_at": "2026-11-26T12:52:51.877752Z",
     "current_scope": "production"
   },
   "request": {
@@ -24,7 +24,7 @@
     "slot": null,
     "state": "DISPATCHED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-deterministic-codefix-continuity",
     "series_name": null,
     "episode_number": null,
     "cta_type": "CURIOSITY",
@@ -46,13 +46,13 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45819371374,
+    "id": 45823765745,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45819371374",
-    "created_at": "2026-11-26T12:24:34Z",
-    "updated_at": "2026-11-26T12:40:23Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45823765745",
+    "created_at": "2026-11-26T12:52:45Z",
+    "updated_at": "2026-11-26T13:07:45Z",
     "attempt": 1,
     "progress": 30,
     "current_step": null,
@@ -137,7 +137,7 @@
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "b1c0013569e6…"
+      "detail": "32fe32e18595…"
     },
     {
       "name": "Self-Heal",
@@ -156,9 +156,9 @@
     }
   ],
   "incident": {
-    "signature": "45819371374:LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "signature": "45823765745:PUBLISHABLE",
     "severity": "critical",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 45,
     "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
@@ -176,12 +176,12 @@
   "recovery": {
     "status": "RECOVERY_CLASSIFICATION_PENDING",
     "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "failed_run_id": 45780963911,
-    "replay_run_id": 45819371374,
-    "fresh_recovery_run_id": 45780963911,
+    "failure_state": "PUBLISHABLE_CODEFIX_REQUIRED",
+    "failed_run_id": 45819371374,
+    "replay_run_id": 45823765745,
+    "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-deterministic-codefix-continuity",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": true,
@@ -189,14 +189,24 @@
   },
   "events": [
     {
-      "at": "2026-11-26T12:40:23Z",
+      "at": "2026-11-26T13:07:45Z",
       "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45819371374 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+      "detail": "Run 45823765745 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
     },
     {
-      "at": "2026-11-26T12:40:23Z",
+      "at": "2026-11-26T13:07:45Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-26T12:52:51.877752Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-production-green-codefix-replay"
+    },
+    {
+      "at": "2026-11-26T12:48:36.213922Z",
+      "title": "AWAITING_CODEFIX",
+      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     },
     {
       "at": "2026-11-26T12:24:41.919079Z",
@@ -217,16 +227,6 @@
       "at": "2026-11-26T08:10:47.540872Z",
       "title": "DISPATCHED",
       "detail": "bounded-shared-policy-recovery"
-    },
-    {
-      "at": "2026-11-26T07:35:21.193129Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-26T07:09:39.632057Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     }
   ]
 }
