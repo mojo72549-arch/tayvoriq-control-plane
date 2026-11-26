@@ -1,30 +1,50 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T15:26:22.460387Z",
-  "overall": "red",
+  "generated_at": "2026-11-26T18:06:43.716683Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": true,
-    "reason": "VERIFIED_STATE_TRANSITION"
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
   },
   "api_error": null,
-  "research": {},
+  "research": {
+    "schema": "tayvoriq-research-retry-v1",
+    "state": "WAITING",
+    "slot": "evening",
+    "berlin_date": "2026-11-26",
+    "first_deferred_at_epoch": 1795716365.0,
+    "attempts": 1,
+    "retry_at_epoch": 1795716483.3243964,
+    "retry_phase": "NORMAL",
+    "last_deferred_at_epoch": 1795716393.3244,
+    "provider_retry_at_epoch": 1795716483.3243964,
+    "max_attempts": 3,
+    "sla_seconds": 600,
+    "valid_until_epoch": 1795716965.0,
+    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "quality_gates_weakened": false,
+    "production_started": false,
+    "last_research_attempt": "45873180615.1",
+    "last_issue": "EDITORIAL_MINIMUM_NOT_MET",
+    "status_detail": "Zu wenige Themen haben die redaktionelle Prüfung bestanden."
+  },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45848416355,
-    "pointer_updated_at": "2026-11-26T15:23:11.446509+00:00",
-    "current_scope": "production"
+    "golden_path_run_id": 45849747091,
+    "pointer_updated_at": "2026-11-26T15:39:59.583722+00:00",
+    "current_scope": "research"
   },
   "request": {
     "request_id": "telegram-3751-trend-1",
     "topic": "Discounter senken Butterpreis unter einen Euro",
     "trend_id": "1",
     "slot": null,
-    "state": "CHECKPOINT_PROVENANCE_RECONCILED",
+    "state": "CHECKPOINT_PROVENANCE_RECORDED",
     "recovery_generation": 1,
-    "recovery_owner": "tayvoriq-delivery-watch",
+    "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "CURIOSITY",
@@ -46,19 +66,19 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45848416355,
-    "historical": false,
+    "id": 45849747091,
+    "historical": true,
     "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45848416355",
-    "created_at": "2026-11-26T15:22:19Z",
-    "updated_at": "2026-11-26T15:24:09Z",
-    "attempt": 1,
-    "progress": 0,
+    "conclusion": "success",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45849747091",
+    "created_at": "2026-11-26T15:30:20Z",
+    "updated_at": "2026-11-26T15:40:04Z",
+    "attempt": 2,
+    "progress": 100,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Monitor the private worker receipt",
-    "failed_step_number": 11,
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -116,13 +136,13 @@
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "success",
         "step_number": 15,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "success",
         "step_number": 17,
         "step_name": "Send Telegram review"
       }
@@ -131,72 +151,56 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Monitor the private worker receipt"
+      "status": "yellow",
+      "detail": "Kein aktueller Produktionslauf · Recherche WAITING"
     },
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "ea048d7ee9b9…"
+      "detail": "4a99c7c36f1e…"
     },
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
+      "detail": "WAITING"
     },
     {
       "name": "Telegram",
       "status": "yellow",
-      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
+      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
     }
   ],
-  "incident": {
-    "signature": "45848416355:LOCAL_VOICE",
-    "severity": "critical",
-    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
-    "failed_step": "Monitor the private worker receipt",
-    "failed_step_number": 11,
-    "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": true
-  },
+  "incident": null,
   "telegram": {
     "status": "yellow",
-    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
     "last_step": "Send Telegram review",
-    "message_id": null
+    "message_id": 3814
   },
   "recovery": {
-    "status": "RECOVERY_CLASSIFICATION_PENDING",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
+    "status": "WAITING",
+    "source_status": "WAITING",
+    "failure_state": null,
     "failed_run_id": 45828782397,
-    "replay_run_id": 45848416355,
+    "replay_run_id": 45849747091,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
-    "owner": "tayvoriq-delivery-watch",
+    "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": true,
+    "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-26T15:24:09Z",
-      "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45848416355 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
-    },
-    {
-      "at": "2026-11-26T15:24:09Z",
-      "title": "Workflow-Fehler",
-      "detail": "Monitor the private worker receipt"
+      "at": "2026-11-26T15:31:02.315625+00:00",
+      "title": "CHECKPOINT_PROVENANCE_RECORDED",
+      "detail": "contabo-controller"
     },
     {
       "at": "2026-11-26T15:26:11.278Z",
@@ -222,11 +226,6 @@
       "at": "2026-11-26T13:08:45.685036Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VOICE_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-26T12:52:51.877752Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-production-green-codefix-replay"
     }
   ]
 }
