@@ -1,0 +1,48 @@
+name: TAYVORIQ Contabo Verified Transfer Retry
+on:
+  push:
+    branches: [main]
+    paths: [.github/run-now/tayvoriq-contabo-transfer-retry.json]
+permissions:
+  contents: write
+  actions: write
+jobs:
+  retry-transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify completed media and retry only the same failed controller
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess,base64
+          from pathlib import Path
+          controller=int(json.loads(Path('.github/run-now/tayvoriq-contabo-transfer-retry.json').read_text())['controller_run_id'])
+          pointer=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
+          request=json.loads(Path('requests',pointer['request_id']+'.json').read_text())
+          assert request['golden_path_run_id']==pointer['golden_path_run_id']==controller
+          assert not request.get('production_completion',{}).get('telegram_message_id')
+          repo=os.environ['GITHUB_REPOSITORY'];studio='mojo72549-arch/shorts-agent-studio'
+          private_env={**os.environ,'GH_TOKEN':os.environ['PRIVATE_TOKEN']}
+          data=json.loads(subprocess.check_output(['gh','api','repos/'+studio+'/contents/.automation/contabo-workers/'+str(controller)+'.json'],env=private_env,text=True))
+          receipt=json.loads(base64.b64decode(data['content']))
+          assert receipt['status']=='SUCCEEDED' and receipt['controller_run_id']==controller
+          assert receipt['source_context_sha256']==request['source_context_sha256']
+          subprocess.run(['gh','release','view',receipt['result_release'],'--repo',studio,'--json','tagName'],env=private_env,check=True)
+          run=json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/actions/runs/'+str(controller)],text=True))
+          assert run['conclusion']=='failure' and run['run_attempt']==1
+          artifacts=json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/actions/runs/'+str(controller)+'/artifacts'],text=True))['artifacts']
+          for a in artifacts:
+              if a['name']=='contabo-checkpoint':
+                  subprocess.run(['gh','api','--method','DELETE','repos/'+repo+'/actions/artifacts/'+str(a['id'])],check=True)
+          path='.github/state/tayvoriq-contabo-queue.json'
+          meta=json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/contents/'+path],text=True))
+          q=json.loads(base64.b64decode(meta['content']));assert q['controller_run_id']==controller
+          q['state']='TRANSFER_RETRY_VERIFIED'
+          body=dict(branch='main',sha=meta['sha'],message='Verify same-controller transport retry without media regeneration',content=base64.b64encode((json.dumps(q,indent=2)+'\n').encode()).decode())
+          subprocess.run(['gh','api','--method','PUT','repos/'+repo+'/contents/'+path,'--input','-'],input=json.dumps(body),text=True,check=True,stdout=subprocess.DEVNULL)
+          subprocess.run(['gh','api','--method','POST','repos/'+repo+'/actions/runs/'+str(controller)+'/rerun-failed-jobs'],check=True)
+          PY
