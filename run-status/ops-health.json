@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T10:10:03.049331Z",
+  "generated_at": "2026-11-26T12:41:06.797994Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45780963911,
-    "pointer_updated_at": "2026-11-26T08:10:47.540872Z",
+    "golden_path_run_id": 45819371374,
+    "pointer_updated_at": "2026-11-26T12:24:41.919079Z",
     "current_scope": "production"
   },
   "request": {
@@ -46,14 +46,14 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45780963911,
+    "id": 45819371374,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45780963911",
-    "created_at": "2026-11-26T08:10:38Z",
-    "updated_at": "2026-11-26T10:09:19Z",
-    "attempt": 3,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45819371374",
+    "created_at": "2026-11-26T12:24:34Z",
+    "updated_at": "2026-11-26T12:40:23Z",
+    "attempt": 1,
     "progress": 30,
     "current_step": null,
     "last_successful_step": "Complete job",
@@ -137,12 +137,12 @@
     {
       "name": "Production Green",
       "status": "green",
-      "detail": "71019808d3d8…"
+      "detail": "b1c0013569e6…"
     },
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "LOCAL_RETRY_DISPATCHED"
+      "detail": "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
     },
     {
       "name": "Telegram",
@@ -156,16 +156,16 @@
     }
   ],
   "incident": {
-    "signature": "45780963911:LOCAL_VISUAL",
+    "signature": "45819371374:LOCAL_VISUAL_RECOVERY_EXHAUSTED",
     "severity": "critical",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
+    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
     "failed_step": "Assert publishable production output",
     "failed_step_number": 45,
-    "self_heal_status": "LOCAL_RETRY_DISPATCHED",
-    "same_generation_replay_required": false,
+    "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
     "user_action_required": false,
-    "recovery_replay_failed": false
+    "recovery_replay_failed": true
   },
   "telegram": {
     "status": "yellow",
@@ -174,24 +174,34 @@
     "message_id": null
   },
   "recovery": {
-    "status": "LOCAL_RETRY_DISPATCHED",
-    "source_status": "LOCAL_RETRY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RETRY_REQUIRED",
-    "failed_run_id": null,
-    "replay_run_id": null,
+    "status": "RECOVERY_CLASSIFICATION_PENDING",
+    "source_status": "REPLAY_DISPATCHED",
+    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
+    "failed_run_id": 45780963911,
+    "replay_run_id": 45819371374,
     "fresh_recovery_run_id": 45780963911,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
-    "same_generation_replay_required": false,
+    "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": false,
+    "inferred_from_run_terminal_state": true,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-26T10:09:19Z",
+      "at": "2026-11-26T12:40:23Z",
+      "title": "Recovery-Replay wartet auf Klassifizierung",
+      "detail": "Run 45819371374 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+    },
+    {
+      "at": "2026-11-26T12:40:23Z",
       "title": "Workflow-Fehler",
       "detail": "Assert publishable production output"
+    },
+    {
+      "at": "2026-11-26T12:24:41.919079Z",
+      "title": "DISPATCHED",
+      "detail": "same-generation-verified-green-local-checkpoint-replay"
     },
     {
       "at": "2026-11-26T09:39:50.652378Z",
@@ -217,11 +227,6 @@
       "at": "2026-11-26T07:09:39.632057Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-26T06:09:25.459688+00:00",
-      "title": "DISPATCHED",
-      "detail": "request-dispatcher:45766187188"
     }
   ]
 }
