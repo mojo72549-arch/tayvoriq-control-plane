@@ -33,7 +33,7 @@ def pending(root,request,review_id,artifact_run_id,studio_sha):
         artifact_run_id=int(artifact_run_id),files_sha256=hashes)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('operation',choices=['resolve','prepare','activate'])
+    p=argparse.ArgumentParser();p.add_argument('operation',choices=['resolve','prepare','activate','evidence'])
     p.add_argument('--review',required=True);a=p.parse_args()
     rid=int(a.review)
     requests_for_run=[]
@@ -44,6 +44,26 @@ def main():
     assert len(requests_for_run)==1,'EXACT_DELIVERED_CONTABO_REVIEW_REQUIRED'
     request=requests_for_run[0]
     decision_path=Path('.automation/tayvoriq-artifact-decisions')/(str(rid)+'.json')
+    if a.operation=='evidence':
+        from tayvoriq_contabo_review_evidence import collect
+        headers={'Authorization':'Bearer '+os.environ['CONTROL_TOKEN'],'Accept':'application/vnd.github+json'}
+        base='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']
+        response=requests.get(base+'/contents/'+str(decision_path),headers=headers,timeout=30);response.raise_for_status()
+        decision=json.loads(base64.b64decode(response.json()['content']))
+        root=Path('returned/site/tayvoriq/runs')/str(rid)
+        normalized=pending(root,request,rid,decision['artifact_run_id'],decision['studio_sha'])
+        assert normalized['files_sha256']==decision['files_sha256']
+        run=requests.get(base+'/actions/runs/'+str(rid),headers=headers,timeout=30);run.raise_for_status()
+        assert run.json()['conclusion']=='success'
+        attempt=run.json()['run_attempt'];report=collect(root,request,decision,attempt)
+        url=base+'/contents/run-status/production/'+str(rid)+'-'+str(attempt)+'.json'
+        previous=requests.get(url,headers=headers,timeout=30)
+        body={'branch':'main','message':'Observe verified Contabo review artifacts '+str(rid),
+            'content':base64.b64encode((json.dumps(report,ensure_ascii=False,indent=2)+'\n').encode()).decode()}
+        if previous.status_code==200:body['sha']=previous.json()['sha']
+        else:assert previous.status_code==404
+        response=requests.put(url,headers=headers,json=body,timeout=30);response.raise_for_status()
+        return
     if a.operation=='resolve':
         with open(os.environ['GITHUB_OUTPUT'],'a') as out:
             out.write('review_id='+str(rid)+'\n')
@@ -94,17 +114,5 @@ def main():
         response=requests.post('https://api.telegram.org/bot'+os.environ['TELEGRAM_BOT_TOKEN']+'/editMessageReplyMarkup',
             json={'chat_id':os.environ['TELEGRAM_CHAT_ID'],'message_id':decision['telegram_message_id'],'reply_markup':markup},timeout=30)
         assert response.status_code==200 and response.json().get('ok') is True, 'TELEGRAM_REVIEW_BUTTON_BINDING_FAILED'
-
-        incident_path='state/tayvoriq-execution-incidents/'+request['request_id']+'.json'
-        incident_url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/contents/'+incident_path
-        incident_meta=requests.get(incident_url,headers=headers,timeout=30)
-        if incident_meta.status_code==200:
-            meta=incident_meta.json()
-            incident=json.loads(base64.b64decode(meta['content']))
-            if incident.get('run_id')==rid and incident.get('source_context_sha256')==request['source_context_sha256']:
-                cleared=requests.delete(incident_url,headers=headers,json={'branch':'main','sha':meta['sha'],
-                    'message':'Resolve delivered Contabo review incident '+str(rid)},timeout=30)
-                cleared.raise_for_status()
-
 
 if __name__=='__main__':main()
