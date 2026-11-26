@@ -2,11 +2,11 @@
   "schema": "tayvoriq-execution-incident-v1",
   "request_id": "telegram-3751-trend-1",
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
-  "run_id": 45847016115,
-  "code": "AUDIT_RESPONSE_INCOMPLETE",
-  "cause": "Die stille YouTube-Endstelle ist korrigiert. Die anschließende KI-Prüfung hat die Einzelbewertung für YouTube-Szene 4 ausgelassen. Eine vollständige Pflichtprüfung fehlt deshalb noch.",
-  "action": "Die Prüfantwort wird gezielt und begrenzt erneut angefordert. Bilder, Sprache und Skript bleiben erhalten. Die Codekorrektur wird vor der Fortsetzung regulär verifiziert.",
-  "next_proof": "Vollständige Einzelbewertung aller Szenen, bestandene Ton- und Abschlussprüfung sowie zugestellte Videovorschau mit gemeinsamer Freigabe.",
+  "run_id": 45848416355,
+  "code": "CONTABO_EXECUTION_STOPPED",
+  "cause": "Der Produktionsschritt „Hydrate previous verified checkpoint“ ist fehlgeschlagen.",
+  "action": "Der Lauf ist gestoppt. Der fehlgeschlagene Schritt muss korrigiert und verifiziert werden.",
+  "next_proof": "Bestätigte Übernahme des Produktionsstands und anschließende Qualitätsprüfung.",
   "user_action_required": false,
   "quality_gates_weakened": false
 }
