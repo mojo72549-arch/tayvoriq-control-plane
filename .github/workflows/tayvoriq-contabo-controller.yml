@@ -88,7 +88,11 @@ jobs:
       - name: Transfer the exact checkpoint to the private execution repository
         id: transfer
         run: |
-          test -f implementation/out/recovery-checkpoint/meta.json
+          if [ ! -f implementation/out/recovery-checkpoint/meta.json ]; then
+            echo "release=" >> "$GITHUB_OUTPUT"
+            echo 'No legacy media: the private worker will validate its own source-bound cache or a fresh approved request.'
+            exit 0
+          fi
           python3 - <<'PY'
           import json,os,zipfile
           from pathlib import Path
@@ -105,6 +109,7 @@ jobs:
           PY
           echo "release=artifact:$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
       - name: Store the verified checkpoint for the private worker
+        if: steps.transfer.outputs.release != ''
         uses: actions/upload-artifact@v4
         with:
           name: contabo-checkpoint
@@ -165,9 +170,11 @@ jobs:
       - name: Monitor the private worker receipt
         env:
           WORKER: ${{ steps.worker.outputs.run_id }}
+          CONTABO_CONTROL_TOKEN: ${{ github.token }}
         run: |
           for poll in $(seq 1 160); do
             gh api "repos/$STUDIO/contents/.automation/contabo-workers/$GITHUB_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64
+            python3 tools/tayvoriq_contabo_observation.py
             result=$(python3 - <<'PY'
           import json,base64,os
           d=json.loads(base64.b64decode(open('/tmp/contabo-receipt-base64').read()))
