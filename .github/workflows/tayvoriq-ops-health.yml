@@ -195,6 +195,11 @@ jobs:
           python - <<'PY'
           import json, os
           from pathlib import Path
+          pointer_path=Path('.github/state/tayvoriq-active-production-request.json')
+          pointer=json.loads(pointer_path.read_text()) if pointer_path.is_file() else {}
+          if pointer.get('execution_backend')=='contabo_private_runner':
+              print('Contabo controller owns the exact incident and Telegram receipt; duplicate legacy health alert suppressed.')
+              raise SystemExit(0)
           state=json.loads(Path('run-status/ops-health.json').read_text(encoding='utf-8'))
           policy=state.get('notification_policy') or {}
           if policy.get('telegram_notify_allowed') is False:
