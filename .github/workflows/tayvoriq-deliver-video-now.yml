@@ -2,6 +2,20 @@ name: TAYVORIQ-X Golden Path
 run-name: ${{ inputs.review_repair_of && format('TAYVORIQ review correction {0}', inputs.review_repair_of) || inputs.source_request_id && format('TAYVORIQ request {0}', inputs.source_request_id) || github.event.head_commit.message || github.workflow }}
 
 on:
+  workflow_call:
+    inputs:
+      source_request_id:
+        required: true
+        type: string
+      control_run_id:
+        required: false
+        type: string
+      compute_only:
+        required: true
+        type: boolean
+      checkpoint_release:
+        required: false
+        type: string
   workflow_dispatch:
     inputs:
       topic:
@@ -38,11 +52,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  TAYVORIQ_PRODUCTION_RUN_ID: ${{ inputs.control_run_id || github.run_id }}
   PYTHONUTF8: "1"
   TAYVORIQ_PROGRESS_JOURNAL: ${{ github.workspace }}/out/progress/${{ github.run_id }}-${{ github.run_attempt }}.jsonl
   PYTHONPATH: ${{ github.workspace }}/implementation:${{ github.workspace }}/implementation/tools
   TAYVORIQ_CONTROL_PLANE_SCHEMA: "x-v3"
-  TAYVORIQ_EXECUTION_BACKEND: "github_hosted_public"
+  TAYVORIQ_EXECUTION_BACKEND: ${{ inputs.compute_only && 'contabo_private_runner' || 'github_hosted_public' }}
   TAYVORIQ_CLOUD_MODE: "true"
   TAYVORIQ_RENDER_SIZE: "1080x1920"
   TAYVORIQ_REQUIRE_REAL_VIDEO_SCENES: "true"
@@ -75,8 +90,8 @@ env:
   TAYVORIQ_TARGET_REVIEW_READY_SECONDS: "1800"
   TAYVORIQ_END_TO_END_SLO_SECONDS: "3600"
   TAYVORIQ_SOURCE_CONTEXT_FILE: ${{ github.workspace }}/tayvoriq-source-context.json
-  HF_HOME: ${{ github.workspace }}/.cache/huggingface
-  TORCH_HOME: ${{ github.workspace }}/.cache/torch
+  HF_HOME: ${{ inputs.compute_only && '/var/cache/tayvoriq/huggingface' || format('{0}/.cache/huggingface', github.workspace) }}
+  TORCH_HOME: ${{ inputs.compute_only && '/var/cache/tayvoriq/torch' || format('{0}/.cache/torch', github.workspace) }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -85,19 +100,59 @@ env:
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
   TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
-  SOURCE_REQUEST_ID_PIN: ${{ github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
+  SOURCE_REQUEST_ID_PIN: ${{ inputs.source_request_id || github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
   TAYVORIQ_RECOVERY_GENERATION: ${{ github.event.inputs.recovery_generation || github.event.client_payload.recovery_generation || '0' }}
   REVIEW_REPAIR_OF: ${{ inputs.review_repair_of || '' }}
 
 jobs:
+  contabo-controller:
+    if: ${{ !inputs.compute_only }}
+    uses: ./.github/workflows/tayvoriq-contabo-controller.yml
+    with:
+      source_request_id: ${{ inputs.source_request_id || github.event.inputs.source_request_id || '' }}
+    secrets: inherit
   orchestrate:
-    runs-on: ubuntu-latest
+    if: inputs.compute_only
+    runs-on: ${{ inputs.compute_only && fromJSON('["self-hosted","Linux","X64","tayvoriq-studio-contabo"]') || 'ubuntu-latest' }}
     # Performance SLO: target review-ready in ~30 minutes, hard stop at 60.
     # Strict gates stay unchanged; only bounded retries/timeouts are reduced.
     timeout-minutes: 60
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/tayvoriq-control-plane
+          ref: main
+          persist-credentials: ${{ !inputs.compute_only }}
+
+      - name: Verify exact Contabo handoff before processing
+        if: inputs.compute_only
+        env:
+          EXPECTED_REQUEST: ${{ inputs.source_request_id }}
+        run: |
+          for poll in $(seq 1 30); do
+            git pull --ff-only origin main --quiet
+            if python3 - <<'PYGUARD'
+          import json,os
+          from pathlib import Path
+          p=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
+          assert p['request_id']==os.environ['EXPECTED_REQUEST']
+          assert p['execution_repository']=='mojo72549-arch/shorts-agent-studio'
+          assert str(p['golden_path_run_id'])==os.environ['TAYVORIQ_PRODUCTION_RUN_ID']
+          assert str(p['execution_run_id'])==os.environ['GITHUB_RUN_ID']
+          assert p['execution_backend']=='contabo_private_runner'
+          PYGUARD
+            then exit 0; fi
+            sleep 2
+          done
+          exit 1
+
+      - name: Reuse persistent Contabo environment
+        if: inputs.compute_only
+        run: |
+          test -x /var/cache/tayvoriq/venv/bin/python
+          ln -s /var/cache/tayvoriq/venv .venv
+
 
       - name: Verify Orchestrator review correction authorization
         if: env.REVIEW_REPAIR_OF != ''
@@ -105,7 +160,7 @@ jobs:
           set -euo pipefail
           for poll in $(seq 1 15); do
             git pull --ff-only origin main --quiet
-            if plan=$(python -S tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN" 2>/dev/null); then
+            if plan=$(python -S tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$TAYVORIQ_PRODUCTION_RUN_ID" "$SOURCE_REQUEST_ID_PIN" 2>/dev/null); then
               python -S - "$plan" >> "$GITHUB_ENV" <<'PY'
           import json, sys
           plan = json.loads(sys.argv[1])
@@ -125,7 +180,7 @@ jobs:
         env:
           EVENT_TOPIC: ${{ github.event.inputs.topic || github.event.client_payload.topic || '' }}
           EVENT_TREND_ID: ${{ github.event.inputs.trend_id || github.event.client_payload.trend_id || '' }}
-          EVENT_SOURCE_REQUEST_ID: ${{ github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
+          EVENT_SOURCE_REQUEST_ID: ${{ inputs.source_request_id || github.event.inputs.source_request_id || github.event.client_payload.source_request_id || '' }}
           EVENT_RECOVERY_GENERATION: ${{ github.event.inputs.recovery_generation || github.event.client_payload.recovery_generation || '' }}
         run: |
           set -euo pipefail
@@ -219,7 +274,11 @@ jobs:
           RUNNER_ARCH_VALUE: ${{ runner.arch }}
         run: |
           set -euo pipefail
-          test "$RUNNER_ENVIRONMENT_VALUE" = "github-hosted" || { echo "RUNNER_CONTRACT_FAILED: GitHub-hosted runner required"; exit 1; }
+          if [ "$TAYVORIQ_EXECUTION_BACKEND" = "contabo_private_runner" ]; then
+            test "$RUNNER_ENVIRONMENT_VALUE" = "self-hosted"
+          else
+            test "$RUNNER_ENVIRONMENT_VALUE" = "github-hosted"
+          fi
           test "$RUNNER_OS_VALUE" = "Linux" || { echo "RUNNER_CONTRACT_FAILED: Linux required"; exit 1; }
           test "$RUNNER_ARCH_VALUE" = "X64" || { echo "RUNNER_CONTRACT_FAILED: X64 required"; exit 1; }
           for command in python git curl; do
@@ -443,7 +502,7 @@ jobs:
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage sources_locked \
             --topic "$TOPIC" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Validate secrets and notify production start
@@ -500,7 +559,7 @@ jobs:
         with:
           repository: mojo72549-arch/shorts-agent-studio
           ref: ${{ steps.production_green.outputs.implementation_sha }}
-          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          token: ${{ inputs.compute_only && github.token || secrets.PRIVATE_REPO_TOKEN }}
           path: implementation
           fetch-depth: 1
 
@@ -672,6 +731,7 @@ jobs:
           python tools/tayvoriq_lightweight_preflight.py
 
       - name: Checkout review pages
+        if: ${{ !inputs.compute_only }}
         uses: actions/checkout@v4
         with:
           repository: mojo72549-arch/mind-reset-daily
@@ -681,6 +741,7 @@ jobs:
           fetch-depth: 1
 
       - name: Restore production dependency cache
+        if: ${{ !inputs.compute_only }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -689,6 +750,7 @@ jobs:
             tayvoriq-pip-${{ runner.os }}-py311-
 
       - name: Restore prebuilt production virtualenv
+        if: ${{ !inputs.compute_only }}
         id: production_venv_cache
         uses: actions/cache@v4
         with:
@@ -704,7 +766,7 @@ jobs:
 
       - name: Restore lean production checkpoint
         id: restore_recovery_cache
-        if: env.REVIEW_REPAIR_OF == ''
+        if: env.REVIEW_REPAIR_OF == '' && !inputs.compute_only
         uses: actions/cache/restore@v4
         with:
           path: implementation/out/recovery-checkpoint
@@ -721,23 +783,47 @@ jobs:
           key: ${{ env.REVIEW_REPAIR_CACHE }}
           fail-on-cache-miss: true
 
+      - name: Restore exact migration checkpoint on Contabo
+        if: inputs.compute_only && inputs.checkpoint_release != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_RELEASE: ${{ inputs.checkpoint_release }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/contabo-checkpoint-$TAYVORIQ_PRODUCTION_RUN_ID"
+          gh release download "$CHECKPOINT_RELEASE" --repo mojo72549-arch/shorts-agent-studio --pattern checkpoint.zip --dir "$RUNNER_TEMP/contabo-checkpoint-$TAYVORIQ_PRODUCTION_RUN_ID"
+          python3 - <<'PYZIP'
+          import os,zipfile
+          from pathlib import Path
+          target=Path('implementation/out/recovery-checkpoint').resolve()
+          archive=Path(os.environ['RUNNER_TEMP'])/('contabo-checkpoint-'+os.environ['TAYVORIQ_PRODUCTION_RUN_ID'])/'checkpoint.zip'
+          with zipfile.ZipFile(archive) as z:
+              for item in z.infolist():
+                  if not (target/item.filename).resolve().is_relative_to(target):
+                      raise SystemExit('CHECKPOINT_PATH_INVALID')
+              z.extractall(target)
+          PYZIP
+
       - name: Early recovery binding gate
         id: early_recovery_binding
         if: env.REVIEW_REPAIR_OF == ''
         shell: bash
         run: |
           set -euo pipefail
+          if [ "$TAYVORIQ_EXECUTION_BACKEND" = "contabo_private_runner" ]; then
+            python3 tools/tayvoriq_contabo_handoff.py verify --request "requests/$SOURCE_REQUEST_ID_PIN.json" --controller "$TAYVORIQ_PRODUCTION_RUN_ID" --worker "$GITHUB_RUN_ID"
+            exit 0
+          fi
           test -n "$SOURCE_REQUEST_ID_PIN" || {
             echo "EARLY_RECOVERY_BIND_SOURCE_REQUEST_PIN_MISSING"
             exit 1
           }
 
-          runtime_request="$RUNNER_TEMP/tayvoriq-early-bind-${GITHUB_RUN_ID}.json"
+          runtime_request="$RUNNER_TEMP/tayvoriq-early-bind-${TAYVORIQ_PRODUCTION_RUN_ID}.json"
           bound=false
           for poll in $(seq 1 10); do
             git fetch origin main --quiet
             if git show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
-              if python -S - "$runtime_request" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" <<'PY'
+              if python -S - "$runtime_request" "$TAYVORIQ_PRODUCTION_RUN_ID" "$GITHUB_RUN_ATTEMPT" <<'PY'
           import json,sys
           data=json.load(open(sys.argv[1],encoding='utf-8'))
           run_id=int(sys.argv[2])
@@ -784,10 +870,10 @@ jobs:
             sleep 2
           done
           [ "$bound" = "true" ] || {
-            echo "EARLY_RECOVERY_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            echo "EARLY_RECOVERY_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
             exit 1
           }
-          echo "EARLY_RECOVERY_BIND_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+          echo "EARLY_RECOVERY_BIND_VERIFIED:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
 
 
       - name: Hydrate previous verified checkpoint
@@ -887,7 +973,7 @@ jobs:
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage environment_active \
             --topic "$TOPIC" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Install or reuse production dependencies
@@ -1000,22 +1086,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ "$TAYVORIQ_EXECUTION_BACKEND" = "contabo_private_runner" ]; then
+            cd ..
+            python3 tools/tayvoriq_contabo_handoff.py verify --request "requests/$SOURCE_REQUEST_ID_PIN.json" --controller "$TAYVORIQ_PRODUCTION_RUN_ID" --worker "$GITHUB_RUN_ID" --manifest implementation/out/control-plane/production-manifest.json
+            exit 0
+          fi
           test -n "$SOURCE_REQUEST_ID_PIN" || {
             echo "REPLAY_READINESS_SOURCE_REQUEST_PIN_MISSING"
             exit 1
           }
           if [ -n "$REVIEW_REPAIR_OF" ]; then
             git -C .. pull --ff-only origin main --quiet
-            python -S ../tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
+            python -S ../tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$TAYVORIQ_PRODUCTION_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
             exit 0
           fi
 
-          runtime_request="$RUNNER_TEMP/tayvoriq-replay-request-${GITHUB_RUN_ID}.json"
+          runtime_request="$RUNNER_TEMP/tayvoriq-replay-request-${TAYVORIQ_PRODUCTION_RUN_ID}.json"
           bound=false
           for poll in $(seq 1 5); do
             git -C .. fetch origin main --quiet
             if git -C .. show "origin/main:requests/${SOURCE_REQUEST_ID_PIN}.json" > "$runtime_request" 2>/dev/null; then
-              if python - "$runtime_request" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" <<'PY'
+              if python - "$runtime_request" "$TAYVORIQ_PRODUCTION_RUN_ID" "$GITHUB_RUN_ATTEMPT" <<'PY'
           import json,sys
           data=json.load(open(sys.argv[1],encoding='utf-8'))
           run_id=int(sys.argv[2])
@@ -1058,11 +1149,11 @@ jobs:
             sleep 1
           done
           [ "$bound" = "true" ] || {
-            echo "REPLAY_READINESS_CANONICAL_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            echo "REPLAY_READINESS_CANONICAL_BIND_TIMEOUT:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
             exit 1
           }
 
-          echo "REPLAY_READINESS_CANONICAL_REQUEST_BOUND:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+          echo "REPLAY_READINESS_CANONICAL_REQUEST_BOUND:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
 
           # A bounded Delivery-Watch recovery is already a verified continuation
           # of the exact request. It needs no Studio code mutation when the full
@@ -1108,7 +1199,7 @@ jobs:
           print(json.dumps(report,ensure_ascii=False))
           PY
           then
-            echo "REPLAY_READINESS_VERIFIED_BOUNDED_RECOVERY:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            echo "REPLAY_READINESS_VERIFIED_BOUNDED_RECOVERY:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
             exit 0
           fi
 
@@ -1172,7 +1263,7 @@ jobs:
           print(json.dumps(report,ensure_ascii=False))
           PY
           then
-            echo "REPLAY_READINESS_VERIFIED_CONTROL_PLANE_CODEFIX:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            echo "REPLAY_READINESS_VERIFIED_CONTROL_PLANE_CODEFIX:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
             exit 0
           fi
 
@@ -1180,8 +1271,8 @@ jobs:
           # codefix proof. Bind readiness to durable current truth instead of
           # commit timing: exact request + active pointer + Production Green +
           # the immutable manifest must all describe this same run/source.
-          production_green="$RUNNER_TEMP/tayvoriq-production-green-\${GITHUB_RUN_ID}.json"
-          active_pointer="$RUNNER_TEMP/tayvoriq-active-pointer-\${GITHUB_RUN_ID}.json"
+          production_green="$RUNNER_TEMP/tayvoriq-production-green-\${TAYVORIQ_PRODUCTION_RUN_ID}.json"
+          active_pointer="$RUNNER_TEMP/tayvoriq-active-pointer-\${TAYVORIQ_PRODUCTION_RUN_ID}.json"
           git -C .. show "origin/main:.github/state/tayvoriq-production-green.json" > "$production_green"
           git -C .. show "origin/main:.github/state/tayvoriq-active-production-request.json" > "$active_pointer"
           if python - "$runtime_request" "out/control-plane/production-manifest.json" "$production_green" "$active_pointer" <<'PY'
@@ -1278,7 +1369,7 @@ jobs:
           print(json.dumps(report,ensure_ascii=False))
           PY
           then
-            echo "REPLAY_READINESS_VERIFIED_PRODUCTION_GREEN_CODEFIX:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+            echo "REPLAY_READINESS_VERIFIED_PRODUCTION_GREEN_CODEFIX:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
             exit 0
           fi
 
@@ -1294,12 +1385,12 @@ jobs:
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage production_active \
             --topic "$TOPIC" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Restore production model cache
         id: model_cache
-        if: steps.preflight.outcome == 'success' && steps.replay_readiness.outcome == 'success'
+        if: steps.preflight.outcome == 'success' && steps.replay_readiness.outcome == 'success' && !inputs.compute_only
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -1329,7 +1420,7 @@ jobs:
             exit 0
           fi
 
-          heartbeat_stop="${RUNNER_TEMP}/tayvoriq-render-heartbeat-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.stop"
+          heartbeat_stop="${RUNNER_TEMP}/tayvoriq-render-heartbeat-${TAYVORIQ_PRODUCTION_RUN_ID}-${GITHUB_RUN_ATTEMPT}.stop"
           rm -f "$heartbeat_stop"
           (
             heartbeat_started=$(date +%s)
@@ -1340,7 +1431,7 @@ jobs:
               python ../tools/tayvoriq_telegram_progress_v1.py \
                 --stage render_heartbeat \
                 --topic "$TOPIC" \
-                --run-id "$GITHUB_RUN_ID" \
+                --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
                 --run-attempt "$GITHUB_RUN_ATTEMPT" \
                 --elapsed-minutes "$elapsed_minutes" \
                 --policy ../state/tayvoriq-notification-policy.json || true
@@ -1368,7 +1459,7 @@ jobs:
             --llm-provider auto \
             --outdir out/tayvoriq-youtube-tiktok \
             --site-root site/tayvoriq \
-            --run-id "${GITHUB_RUN_ID}" \
+            --run-id "${TAYVORIQ_PRODUCTION_RUN_ID}" \
             --state-out out/tayvoriq-review-state.json \
             --report-out out/tayvoriq-self-heal/report.json \
             --request-out out/tayvoriq-self-heal/request.json \
@@ -1405,7 +1496,7 @@ jobs:
             --trend-id "$TREND_ID" \
             --source-sha256 "$SOURCE_CONTEXT_SHA256" \
             --controller-state "${{ steps.controller.outputs.state }}" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Persist lean recovery checkpoint immediately
@@ -1423,7 +1514,7 @@ jobs:
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage checkpoint_repair \
             --topic "$TOPIC" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Inspect the reusable checkpoint for a visual repair
@@ -1535,7 +1626,7 @@ jobs:
             fi
           fi
 
-          repair_heartbeat_stop="${RUNNER_TEMP}/tayvoriq-repair-heartbeat-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.stop"
+          repair_heartbeat_stop="${RUNNER_TEMP}/tayvoriq-repair-heartbeat-${TAYVORIQ_PRODUCTION_RUN_ID}-${GITHUB_RUN_ATTEMPT}.stop"
           rm -f "$repair_heartbeat_stop"
           (
             repair_started=$(date +%s)
@@ -1546,7 +1637,7 @@ jobs:
               python ../tools/tayvoriq_telegram_progress_v1.py \
                 --stage checkpoint_heartbeat \
                 --topic "$TOPIC" \
-                --run-id "$GITHUB_RUN_ID" \
+                --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
                 --run-attempt "$GITHUB_RUN_ATTEMPT" \
                 --elapsed-minutes "$elapsed_minutes" \
                 --policy ../state/tayvoriq-notification-policy.json || true
@@ -1572,7 +1663,7 @@ jobs:
             python tools/tayvoriq_resume_existing_render_v2.py \
               --outdir out/tayvoriq-youtube-tiktok \
               --site-root site/tayvoriq \
-              --run-id "${GITHUB_RUN_ID}" \
+              --run-id "${TAYVORIQ_PRODUCTION_RUN_ID}" \
               --state-out out/tayvoriq-review-state.json \
               --report-out out/tayvoriq-self-heal/report.json \
               2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
@@ -1601,7 +1692,7 @@ jobs:
             --trend-id "$TREND_ID" \
             --source-sha256 "$SOURCE_CONTEXT_SHA256" \
             --controller-state "${{ steps.checkpoint_recovery.outputs.state }}" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Persist refreshed post-repair checkpoint
@@ -1691,7 +1782,7 @@ jobs:
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage master_ready \
             --topic "$TOPIC" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Validate publication quality initial
@@ -1716,7 +1807,7 @@ jobs:
           python tools/tayvoriq_resume_existing_render_v2.py \
             --outdir out/tayvoriq-youtube-tiktok \
             --site-root site/tayvoriq \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --state-out out/tayvoriq-review-state.json \
             --report-out out/tayvoriq-self-heal/report.json
 
@@ -1740,7 +1831,7 @@ jobs:
           python tools/tayvoriq_recovery_checkpoint_v1.py prepare \
             --outdir out/tayvoriq-youtube-tiktok --checkpoint out/recovery-checkpoint \
             --trend-id "$TREND_ID" --source-sha256 "$SOURCE_CONTEXT_SHA256" \
-            --controller-state SUCCESS --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT"
+            --controller-state SUCCESS --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT"
 
       - name: Save audited review checkpoint
         id: save_review_checkpoint
@@ -1759,12 +1850,42 @@ jobs:
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage quality_passed \
             --topic "$TOPIC" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Record the exact Contabo quality outcome
+        if: inputs.compute_only && !cancelled()
+        env:
+          QUALITY_OUTCOME: ${{ steps.publication_gate.outcome }}
+        run: |
+          python3 - <<'PYRECEIPT'
+          import os,json
+          from pathlib import Path
+          p=Path('implementation/out/control-plane/contabo-result.json')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps({'schema':'tayvoriq-contabo-result-v1','request_id':os.environ['SOURCE_REQUEST_ID_PIN'],
+              'run_id':int(os.environ['TAYVORIQ_PRODUCTION_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_context_sha256':os.environ.get('SOURCE_CONTEXT_SHA256'),
+              'quality_passed':os.environ['QUALITY_OUTCOME']=='success','quality_gates_weakened':False})+'\n')
+          PYRECEIPT
+
+      - name: Return the verified Contabo package to the controller
+        if: inputs.compute_only && !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contabo-production-${{ inputs.source_request_id }}
+          path: |
+            implementation/site/tayvoriq/runs/${{ inputs.control_run_id || github.run_id }}/
+            implementation/out/tayvoriq-review-state.json
+            implementation/out/tayvoriq-self-heal/
+            implementation/out/control-plane/
+            implementation/out/recovery-checkpoint/
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Publish review page
         id: publish_review
-        if: steps.publication_gate.outcome == 'success'
+        if: ${{ !inputs.compute_only && (steps.publication_gate.outcome == 'success') }}
         run: |
           set -euo pipefail
           mkdir -p pages-worktree/tayvoriq
@@ -1775,27 +1896,27 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tayvoriq .nojekyll
           if ! git diff --cached --quiet; then
-            git commit -m "Publish TAYVORIQ review ${GITHUB_RUN_ID}"
+            git commit -m "Publish TAYVORIQ review ${TAYVORIQ_PRODUCTION_RUN_ID}"
             git pull --rebase origin main
             git push origin main
           fi
 
       - name: Send Telegram review
         id: telegram_final
-        if: steps.publish_review.outcome == 'success'
+        if: ${{ !inputs.compute_only && (steps.publish_review.outcome == 'success') }}
         working-directory: implementation
         run: |
           set -euo pipefail
           if [ -n "${REVIEW_REPAIR_OF:-}" ]; then
             git -C .. pull --ff-only origin main --quiet
-            python -S ../tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
+            python -S ../tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$TAYVORIQ_PRODUCTION_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
           fi
           python - <<'PY'
           import os
 
           from tayvoriq_send_telegram import send_status
 
-          run_id = os.environ['GITHUB_RUN_ID']
+          run_id = os.environ['TAYVORIQ_PRODUCTION_RUN_ID']
           message_id = send_status(
               state='SUCCESS', conclusion='success', run_url='', review_id=run_id,
               review_url=f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{run_id}/',
@@ -1808,7 +1929,7 @@ jobs:
           PY
 
       - name: Finalize active production ownership
-        if: steps.telegram_final.outcome == 'success'
+        if: ${{ !inputs.compute_only && (steps.telegram_final.outcome == 'success') }}
         shell: bash
         env:
           REVIEW_MESSAGE_ID: ${{ steps.telegram_final.outputs.message_id }}
@@ -1824,13 +1945,13 @@ jobs:
           git fetch origin main --quiet
           git reset --hard origin/main
           if [ -n "$REVIEW_REPAIR_OF" ]; then
-            python -S tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$GITHUB_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
+            python -S tools/tayvoriq_rejected_review_repair.py --guard "$REVIEW_REPAIR_OF" "$TAYVORIQ_PRODUCTION_RUN_ID" "$SOURCE_REQUEST_ID_PIN"
           fi
           if [ ! -f "$REQUEST_FILE" ] || [ ! -f "$ACTIVE_POINTER" ]; then
             echo "ACTIVE_POINTER_FINALIZE_NO_OWNER_FILES"
             exit 1
           fi
-          python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$GITHUB_RUN_ID" "$REVIEW_MESSAGE_ID" <<'PY'
+          python -S - "$REQUEST_FILE" "$ACTIVE_POINTER" "$TAYVORIQ_PRODUCTION_RUN_ID" "$REVIEW_MESSAGE_ID" <<'PY'
           import json,os,sys
           from datetime import datetime,timezone
           from pathlib import Path
@@ -1880,7 +2001,7 @@ jobs:
             echo "ACTIVE_POINTER_FINALIZE_NO_CHANGE"
             exit 0
           fi
-          git commit -m "ops(tayvoriq): finalize active production ${GITHUB_RUN_ID}"
+          git commit -m "ops(tayvoriq): finalize active production ${TAYVORIQ_PRODUCTION_RUN_ID}"
           for attempt in 1 2 3 4 5; do
             if git push origin HEAD:main; then
               exit 0
@@ -1891,7 +2012,7 @@ jobs:
           echo "ACTIVE_POINTER_FINALIZE_PUSH_FAILED"
           exit 1
       - name: Record internal failure for Delivery Watch
-        if: failure()
+        if: ${{ !inputs.compute_only && (failure()) }}
         env:
           PRODUCTION_OUTCOME: ${{ steps.production.outcome }}
           PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
@@ -2057,7 +2178,7 @@ jobs:
           sys.path.insert(0, str(Path("tools").resolve()))
           from tayvoriq_current_failure_contract_v1 import bind_current_failure
           payload = bind_current_failure(
-              payload, controller_console, run_id=os.environ["GITHUB_RUN_ID"],
+              payload, controller_console, run_id=os.environ["TAYVORIQ_PRODUCTION_RUN_ID"],
               run_attempt=os.environ["GITHUB_RUN_ATTEMPT"],
               request_id=os.environ.get("SOURCE_REQUEST_ID_PIN", ""),
           )
@@ -2075,7 +2196,7 @@ jobs:
           echo "Failure state retained for immediate Telegram status and Delivery Watch recovery."
 
       - name: Telegram immediate verified stop
-        if: failure()
+        if: ${{ !inputs.compute_only && (failure()) }}
         continue-on-error: true
         shell: bash
         run: |
@@ -2122,7 +2243,7 @@ jobs:
           python tools/tayvoriq_telegram_progress_v1.py \
             --stage "$notification_stage" \
             --topic "$TOPIC" \
-            --run-id "$GITHUB_RUN_ID" \
+            --run-id "$TAYVORIQ_PRODUCTION_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --failure-state "$failure_state" \
             --detail "$notification_detail" \
@@ -2166,7 +2287,7 @@ jobs:
           PY
 
       - name: Record request-bound tool and quality evidence
-        if: always()
+        if: ${{ !inputs.compute_only && (always()) }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -2180,12 +2301,12 @@ jobs:
             exit 0
           fi
           python -I tools/tayvoriq_run_evidence.py "$bundle" "$report" >> "$GITHUB_STEP_SUMMARY"
-          path="run-status/production/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+          path="run-status/production/${TAYVORIQ_PRODUCTION_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
           endpoint="repos/$GITHUB_REPOSITORY/contents/$path"
           content=$(base64 -w 0 "$report")
           for delay in 1 2 4; do
             if gh api --silent -X PUT "$endpoint" -f branch=main -f content="$content" \
-                -f message="Record production evidence for $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT"; then
+                -f message="Record production evidence for $TAYVORIQ_PRODUCTION_RUN_ID attempt $GITHUB_RUN_ATTEMPT"; then
               exit 0
             fi
             if stored=$(gh api "$endpoint?ref=main" --jq '.content' 2>/dev/null); then
@@ -2208,7 +2329,7 @@ jobs:
           compression-level: 6
 
       - name: Verify failure handoff for canonical Delivery Watch
-        if: failure() && env.REVIEW_REPAIR_OF == ''
+        if: ${{ !inputs.compute_only && (failure() && env.REVIEW_REPAIR_OF == '') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -2244,12 +2365,12 @@ jobs:
             exit 1
           fi
           request_rel="requests/${SOURCE_REQUEST_ID_PIN}.json"
-          owner_dir="${RUNNER_TEMP}/tayvoriq-finalizer-owner-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          owner_dir="${RUNNER_TEMP}/tayvoriq-finalizer-owner-${TAYVORIQ_PRODUCTION_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           mkdir -p "$owner_dir"
           git fetch --no-tags --prune origin main --quiet
           git show origin/main:.github/state/tayvoriq-active-production-request.json > "$owner_dir/active.json"
           git show "origin/main:${request_rel}" > "$owner_dir/request.json"
-          python - "$SOURCE_REQUEST_ID_PIN" "$GITHUB_RUN_ID" "$owner_dir/active.json" "$owner_dir/request.json" <<'PY'
+          python - "$SOURCE_REQUEST_ID_PIN" "$TAYVORIQ_PRODUCTION_RUN_ID" "$owner_dir/active.json" "$owner_dir/request.json" <<'PY'
           import json,sys
           from pathlib import Path
           request_id=sys.argv[1]; run_id=int(sys.argv[2])
@@ -2269,11 +2390,11 @@ jobs:
               if pv and pv!=rv: raise SystemExit(f'CODEFIX_FINALIZER_{field.upper()}_MISMATCH')
           print(f'CODEFIX_FINALIZER_DISPATCH_OWNER_VERIFIED:{request_id}:{run_id}')
           PY
-          echo "DELIVERY_WATCH_HANDOFF_VERIFIED:$SOURCE_REQUEST_ID_PIN:$GITHUB_RUN_ID"
+          echo "DELIVERY_WATCH_HANDOFF_VERIFIED:$SOURCE_REQUEST_ID_PIN:$TAYVORIQ_PRODUCTION_RUN_ID"
           echo "The terminal signal below hands completion to Agent Orchestrator; canonical request reconciliation owns continuation."
 
       - name: Signal terminal work to Agent Orchestrator
-        if: always()
+        if: ${{ !inputs.compute_only && (always()) }}
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
