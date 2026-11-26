@@ -88,17 +88,6 @@ jobs:
       - name: Transfer the exact checkpoint to the private execution repository
         id: transfer
         run: |
-          if python3 - <<'PRIVATE_CACHE'
-          import json,os
-          from pathlib import Path
-          r=json.loads(Path('requests/'+os.environ['REQUEST_ID']+'.json').read_text())
-          raise SystemExit(0 if r.get('contabo_handoff',{}).get('worker_run_id') else 1)
-          PRIVATE_CACHE
-          then
-            echo "release=" >> "$GITHUB_OUTPUT"
-            echo 'Reuse the private source-bound post-repair cache; do not replace it with an older migration checkpoint.'
-            exit 0
-          fi
           if [ ! -f implementation/out/recovery-checkpoint/meta.json ]; then
             echo "release=" >> "$GITHUB_OUTPUT"
             echo 'No legacy media: the private worker will validate its own source-bound cache or a fresh approved request.'
