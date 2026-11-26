@@ -53,6 +53,13 @@ class OllamaResearchTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'RESPONSE_INCOMPLETE'):
             ollama.complete({'messages': []}, opener=opener)
 
+    def test_optional_model_repairs_reserve_time_for_validation(self):
+        with patch.object(ollama.time, 'time', return_value=1000):
+            with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1029'}):
+                self.assertEqual(ollama.repair_budget(), 0)
+            with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1055'}):
+                self.assertEqual(ollama.repair_budget(), 35)
+
     def test_verification_model_stays_on_loopback_and_checks_response_identity(self):
         opener = Mock()
         wrong_model = {'model': ollama.MODEL, 'done': True, 'message': {'content': '{"candidates":[]}'}}

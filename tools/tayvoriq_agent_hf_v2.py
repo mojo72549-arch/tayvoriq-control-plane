@@ -805,8 +805,17 @@ Redaktionelle Vorgaben, keine Fakten:\n{editorial_context}'''
                                                 {"role": "user", "content": json.dumps(batch, ensure_ascii=False)}]}
             followup.pop('format', None)
             followup["max_completion_tokens"] = _completion_budget(batch)
-            raw_reply = (local.complete(followup) if provider_kind == 'ollama'
-                         else provider.post_groq(followup, token, timeout=min(timeout, 28)))
+            if provider_kind == 'ollama':
+                budget = local.repair_budget()
+                if not budget:
+                    print(json.dumps({'event': 'editorial_repair_skipped', 'reason': 'validation_time_reserved'}), flush=True)
+                    return {}
+                try:
+                    raw_reply = local.complete(followup, time_limit=budget)
+                except TimeoutError:
+                    return {}
+            else:
+                raw_reply = provider.post_groq(followup, token, timeout=min(timeout, 28))
             return base.extract_json(provider.content_of(raw_reply))
 
         complete_scorecards(
