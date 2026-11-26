@@ -4,87 +4,147 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45828782397,
   "run_attempt": 2,
-  "updated_at": "2026-11-26T13:44:30.717517+00:00",
-  "observed_at": "2026-11-26T13:44:30.717563+00:00",
+  "updated_at": "2026-11-26T13:44:37.633401+00:00",
+  "observed_at": "2026-11-26T13:44:38.173108+00:00",
   "current": {
-    "phase": "repair",
+    "phase": "visuals",
     "status": "started",
-    "at": "2026-11-26T13:44:30.717517+00:00",
-    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
-    "target": "visuals",
+    "at": "2026-11-26T13:44:37.633401+00:00",
+    "call_id": "479e12947ff0480cbb6de8ee951780da",
+    "platform": "youtube_shorts",
+    "scene": 5,
+    "total": 6,
     "round": 1,
-    "timeout_seconds": 900
+    "target": "visuals"
   },
   "events": [
     {
-      "phase": "repair",
+      "phase": "captions",
       "status": "started",
-      "at": "2026-11-26T13:39:47.333624+00:00",
-      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
-      "target": "voice",
-      "timeout_seconds": 600
+      "at": "2026-11-26T13:44:33.007101+00:00",
+      "call_id": "01c8efede10e46958c184b346f6ab442",
+      "platform": "youtube_shorts"
     },
     {
-      "phase": "repair",
+      "phase": "captions",
       "status": "completed",
-      "at": "2026-11-26T13:43:59.206279+00:00",
-      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
-      "target": "voice"
-    },
-    {
-      "phase": "quality",
-      "status": "started",
-      "at": "2026-11-26T13:43:59.206373+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1",
-      "timeout_seconds": 420
-    },
-    {
-      "phase": "scenes",
-      "status": "started",
-      "at": "2026-11-26T13:44:30.642191+00:00",
-      "call_id": "8b90c0112ac64b9995c27b2074040de3",
-      "platform": "youtube_shorts",
-      "total": 6
-    },
-    {
-      "phase": "scenes",
-      "status": "completed",
-      "at": "2026-11-26T13:44:30.642552+00:00",
-      "call_id": "8b90c0112ac64b9995c27b2074040de3",
-      "platform": "youtube_shorts",
-      "total": 6
-    },
-    {
-      "phase": "render",
-      "status": "started",
-      "at": "2026-11-26T13:44:30.642657+00:00",
-      "call_id": "5617056b195944c689ef4d45ac2a22b9",
-      "platform": "youtube_shorts",
-      "total": 6
+      "at": "2026-11-26T13:44:33.048544+00:00",
+      "call_id": "01c8efede10e46958c184b346f6ab442",
+      "platform": "youtube_shorts"
     },
     {
       "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-26T13:44:30.642920+00:00",
+      "status": "completed",
+      "at": "2026-11-26T13:44:33.094449+00:00",
       "call_id": "9cd80c5e5c804f25bb55b5175913e1d3",
       "platform": "youtube_shorts",
       "scene": 1,
       "total": 6
     },
     {
-      "phase": "quality",
-      "status": "failed",
-      "at": "2026-11-26T13:44:30.717452+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1"
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T13:44:33.094666+00:00",
+      "call_id": "916d61aabf0e49899edb5b289c3ffed5",
+      "platform": "youtube_shorts",
+      "scene": 2,
+      "total": 6
     },
     {
-      "phase": "repair",
+      "phase": "captions",
       "status": "started",
-      "at": "2026-11-26T13:44:30.717517+00:00",
-      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
-      "target": "visuals",
-      "round": 1,
-      "timeout_seconds": 900
+      "at": "2026-11-26T13:44:34.779575+00:00",
+      "call_id": "911e6499d3a4428d97f77c5c5557ee58",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T13:44:34.822665+00:00",
+      "call_id": "911e6499d3a4428d97f77c5c5557ee58",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T13:44:34.867338+00:00",
+      "call_id": "916d61aabf0e49899edb5b289c3ffed5",
+      "platform": "youtube_shorts",
+      "scene": 2,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T13:44:34.867538+00:00",
+      "call_id": "805d40c99e98490387cf655abbb160c0",
+      "platform": "youtube_shorts",
+      "scene": 3,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-26T13:44:35.950568+00:00",
+      "call_id": "8198e0862a9a4282abd0424cf97af61e",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T13:44:35.991835+00:00",
+      "call_id": "8198e0862a9a4282abd0424cf97af61e",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T13:44:36.035485+00:00",
+      "call_id": "805d40c99e98490387cf655abbb160c0",
+      "platform": "youtube_shorts",
+      "scene": 3,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T13:44:36.035690+00:00",
+      "call_id": "0f7966a375cb48de85eb635448a13c57",
+      "platform": "youtube_shorts",
+      "scene": 4,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-26T13:44:37.547779+00:00",
+      "call_id": "da6e4361f89b4753ba84ff0b31524820",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T13:44:37.589561+00:00",
+      "call_id": "da6e4361f89b4753ba84ff0b31524820",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T13:44:37.633193+00:00",
+      "call_id": "0f7966a375cb48de85eb635448a13c57",
+      "platform": "youtube_shorts",
+      "scene": 4,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T13:44:37.633401+00:00",
+      "call_id": "479e12947ff0480cbb6de8ee951780da",
+      "platform": "youtube_shorts",
+      "scene": 5,
+      "total": 6
     }
   ],
   "completed_phases": []
