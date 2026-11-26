@@ -4,26 +4,16 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45780963911,
   "run_attempt": 3,
-  "updated_at": "2026-11-26T09:52:01.217004+00:00",
-  "observed_at": "2026-11-26T09:52:05.220470+00:00",
+  "updated_at": "2026-11-26T09:52:18.510162+00:00",
+  "observed_at": "2026-11-26T09:52:18.510231+00:00",
   "current": {
     "phase": "quality",
-    "status": "started",
-    "at": "2026-11-26T09:52:01.217004+00:00",
+    "status": "failed",
+    "at": "2026-11-26T09:52:18.510162+00:00",
     "call_id": "checkpoint-QUALITY_AUDIT_1",
-    "round": 1,
-    "timeout_seconds": 420
+    "round": 1
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-26T09:48:52.408418+00:00",
-      "call_id": "699b08c83cc54ab2a078814d6154f95b",
-      "platform": "tiktok",
-      "scene": 3,
-      "total": 6
-    },
     {
       "phase": "visuals",
       "status": "started",
@@ -142,6 +132,13 @@
       "call_id": "checkpoint-QUALITY_AUDIT_1",
       "round": 1,
       "timeout_seconds": 420
+    },
+    {
+      "phase": "quality",
+      "status": "failed",
+      "at": "2026-11-26T09:52:18.510162+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "round": 1
     }
   ],
   "completed_phases": [
