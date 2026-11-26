@@ -4,95 +4,17 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45780963911,
   "run_attempt": 2,
-  "updated_at": "2026-11-26T09:35:23.091034+00:00",
-  "observed_at": "2026-11-26T09:35:23.091126+00:00",
+  "updated_at": "2026-11-26T09:35:50.138303+00:00",
+  "observed_at": "2026-11-26T09:35:50.138346+00:00",
   "current": {
-    "phase": "quality",
+    "phase": "repair",
     "status": "started",
-    "at": "2026-11-26T09:35:23.091034+00:00",
-    "call_id": "checkpoint-QUALITY_AUDIT_2",
-    "round": 2,
-    "timeout_seconds": 420
+    "at": "2026-11-26T09:35:50.138303+00:00",
+    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R3",
+    "round": 3,
+    "timeout_seconds": 900
   },
   "events": [
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-26T09:31:13.414154+00:00",
-      "call_id": "e6a37691e7644e389aa527b9de11c0ae",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-26T09:31:13.462152+00:00",
-      "call_id": "e6a37691e7644e389aa527b9de11c0ae",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-26T09:31:13.501651+00:00",
-      "call_id": "0a73e001493e4d89a9c4e0a0df30ca81",
-      "platform": "tiktok",
-      "scene": 4,
-      "total": 6
-    },
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-26T09:31:13.501844+00:00",
-      "call_id": "f77fa7030cd64735999beb5c709a0e65",
-      "platform": "tiktok",
-      "scene": 5,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-26T09:31:14.592057+00:00",
-      "call_id": "279e55a8f9c8484a92d9e981d671e8da",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-26T09:31:14.643170+00:00",
-      "call_id": "279e55a8f9c8484a92d9e981d671e8da",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-26T09:31:14.688271+00:00",
-      "call_id": "f77fa7030cd64735999beb5c709a0e65",
-      "platform": "tiktok",
-      "scene": 5,
-      "total": 6
-    },
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-26T09:31:14.688458+00:00",
-      "call_id": "7acab57727cd4d24b3e90118a5cba892",
-      "platform": "tiktok",
-      "scene": 6,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-26T09:31:15.848493+00:00",
-      "call_id": "14b5e6f1d08541ce9bbcdde77f366abb",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-26T09:31:15.899778+00:00",
-      "call_id": "14b5e6f1d08541ce9bbcdde77f366abb",
-      "platform": "tiktok"
-    },
     {
       "phase": "visuals",
       "status": "completed",
@@ -139,6 +61,86 @@
       "call_id": "checkpoint-QUALITY_AUDIT_2",
       "round": 2,
       "timeout_seconds": 420
+    },
+    {
+      "phase": "scenes",
+      "status": "started",
+      "at": "2026-11-26T09:35:48.723505+00:00",
+      "call_id": "7caf4da01b0a44539b0148479bd71264",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "scenes",
+      "status": "completed",
+      "at": "2026-11-26T09:35:48.723807+00:00",
+      "call_id": "7caf4da01b0a44539b0148479bd71264",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "started",
+      "at": "2026-11-26T09:35:48.723957+00:00",
+      "call_id": "4c1e3aa7cd9e4847bbe2bf1b1e7a21db",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T09:35:48.724270+00:00",
+      "call_id": "a1ae9faa75d54d47bd593e0a9d9552ca",
+      "platform": "youtube_shorts",
+      "scene": 1,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-26T09:35:49.436878+00:00",
+      "call_id": "a1f4b0ca55fb49deb70d03ac62c0f33a",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T09:35:49.491811+00:00",
+      "call_id": "a1f4b0ca55fb49deb70d03ac62c0f33a",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T09:35:49.543881+00:00",
+      "call_id": "a1ae9faa75d54d47bd593e0a9d9552ca",
+      "platform": "youtube_shorts",
+      "scene": 1,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T09:35:49.544096+00:00",
+      "call_id": "8f38ff04685c4fdf9abf5f7810233860",
+      "platform": "youtube_shorts",
+      "scene": 2,
+      "total": 6
+    },
+    {
+      "phase": "quality",
+      "status": "failed",
+      "at": "2026-11-26T09:35:50.138230+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_2",
+      "round": 2
+    },
+    {
+      "phase": "repair",
+      "status": "started",
+      "at": "2026-11-26T09:35:50.138303+00:00",
+      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R3",
+      "round": 3,
+      "timeout_seconds": 900
     }
   ],
   "completed_phases": [
