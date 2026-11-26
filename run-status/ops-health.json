@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T15:13:49.259219Z",
+  "generated_at": "2026-11-26T15:20:21.240070Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45840618350,
-    "pointer_updated_at": "2026-11-26T14:36:44.943652+00:00",
+    "golden_path_run_id": 45847016115,
+    "pointer_updated_at": "2026-11-26T15:14:58.503280+00:00",
     "current_scope": "production"
   },
   "request": {
@@ -46,13 +46,13 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45840618350,
+    "id": 45847016115,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45840618350",
-    "created_at": "2026-11-26T14:35:53Z",
-    "updated_at": "2026-11-26T15:03:36Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45847016115",
+    "created_at": "2026-11-26T15:14:06Z",
+    "updated_at": "2026-11-26T15:17:54Z",
     "attempt": 1,
     "progress": 0,
     "current_step": null,
@@ -156,7 +156,7 @@
     }
   ],
   "incident": {
-    "signature": "45840618350:LOCAL_VOICE",
+    "signature": "45847016115:LOCAL_VOICE",
     "severity": "critical",
     "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
     "failed_step": "Monitor the private worker receipt",
@@ -178,7 +178,7 @@
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
     "failed_run_id": 45828782397,
-    "replay_run_id": 45840618350,
+    "replay_run_id": 45847016115,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
@@ -189,12 +189,12 @@
   },
   "events": [
     {
-      "at": "2026-11-26T15:03:36Z",
+      "at": "2026-11-26T15:17:54Z",
       "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45840618350 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+      "detail": "Run 45847016115 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
     },
     {
-      "at": "2026-11-26T15:03:36Z",
+      "at": "2026-11-26T15:17:54Z",
       "title": "Workflow-Fehler",
       "detail": "Monitor the private worker receipt"
     },
