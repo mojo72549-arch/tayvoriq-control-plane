@@ -1,17 +1,17 @@
 {
-  "action": "DELIVERY_WATCH",
-  "state": "RECOVERY_DISPATCHED",
-  "reason": "ACTIVE_REQUEST_REQUIRES_CONTINUATION",
+  "action": "NONE",
+  "state": "RUNNING",
+  "reason": "VERIFIED_ACTIVE_PRODUCTION",
   "request_id": "telegram-3751-trend-1",
   "run_id": "45780963911",
   "generation": "1",
-  "request_status": "DISPATCHED",
-  "request_substate": "DISPATCHED",
-  "decision_key": "499b9cd955c92b635fb819cde9caa857f400a915cbf84969010350fda912d753",
-  "dispatch_verified": true,
+  "request_status": "",
+  "request_substate": "",
+  "decision_key": "",
+  "dispatch_verified": false,
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
-  "signal_run_id": 45780963911,
-  "signal_run_attempt": 2,
+  "signal_run_id": 45794026374,
+  "signal_run_attempt": 1,
   "signal_receipt": "COMPLETED",
   "last_dispatch": {
     "decision_key": "499b9cd955c92b635fb819cde9caa857f400a915cbf84969010350fda912d753",
@@ -23,8 +23,6 @@
     "executor_run_id": 45794026374,
     "executor_workflow": "tayvoriq-delivery-watch.yml"
   },
-  "checked_at": "2026-11-26T09:39:47.152804+00:00",
-  "orchestrator_run_id": 45793947337,
-  "executor_run_id": 45794026374,
-  "executor_workflow": "tayvoriq-delivery-watch.yml"
+  "checked_at": "2026-11-26T09:40:15.578590+00:00",
+  "orchestrator_run_id": 45794075669
 }
