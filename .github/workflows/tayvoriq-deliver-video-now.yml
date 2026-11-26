@@ -147,7 +147,8 @@ jobs:
         if: inputs.compute_only
         run: |
           test -x /var/cache/tayvoriq/venv/bin/python
-          ln -s /var/cache/tayvoriq/venv .venv
+          if [ ! -e .venv ]; then ln -s /var/cache/tayvoriq/venv .venv; fi
+          echo /var/cache/tayvoriq/venv/bin >> "$GITHUB_PATH"
 
 
       - name: Verify Orchestrator review correction authorization
