@@ -26,6 +26,7 @@ class CollectorTests(unittest.TestCase):
   state=collector.Observation(ID)
   state.checkpoint('{"checkpoint_stage":"VISUAL_REPAIR_TOPIC_AWARE_V3_R2","status":"started","timeout_seconds":900}')
   self.assertEqual(state.payload()['current']['round'],2)
+  self.assertEqual(state.payload()['current']['target'],'visuals')
   state.checkpoint('{"checkpoint_stage":"QUALITY_AUDIT_1","status":"completed","returncode":20}')
   self.assertEqual(state.payload()['current']['status'],'failed')
   self.assertEqual(state.payload()['current']['phase'],'quality')

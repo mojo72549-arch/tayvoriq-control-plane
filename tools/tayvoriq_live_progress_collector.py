@@ -28,6 +28,7 @@ class Observation:
         except (KeyError,TypeError,ValueError): return
         clean={k:row[k] for k in ['phase','status','at','call_id'] if k in row}
         if row.get('platform') in {'youtube_shorts','tiktok'}: clean['platform']=row['platform']
+        if row.get('target') in PHASES: clean['target']=row['target']
         for k in ['scene','total','round','timeout_seconds']:
             if type(row.get(k)) is int and 0<row[k]<=7200: clean[k]=row[k]
         key=json.dumps(clean,sort_keys=True)
@@ -52,10 +53,12 @@ class Observation:
         if not phase or row.get('status') not in {'started','completed'}: return
         match=re.search(r'_R(\d+)',stage)
         self.accept({**self.identity,'phase':phase,'status':'failed' if row.get('returncode',0)!=0 else row['status'],
-            'at':now(),'call_id':'checkpoint-'+stage,'round':int(match[1]) if match else self.round,'timeout_seconds':row.get('timeout_seconds')})
+            'at':now(),'call_id':'checkpoint-'+stage,'round':int(match[1]) if match else self.round,'timeout_seconds':row.get('timeout_seconds'),
+            'target':'voice' if stage.startswith('VOICE_REPAIR') else 'visuals' if stage.startswith('VISUAL_REPAIR') else None})
     def payload(self):
         current=self.failure or (list(self.active.values())[-1] if self.active else None)
-        if current: current={**current,'round':current.get('round') or self.round}
+        if current: current={**current,'round':current.get('round') or self.round,
+            'target':current.get('target') or next((row['target'] for row in reversed(list(self.active.values())) if row.get('target')),None)}
         return {'schema':'tayvoriq-production-progress-v1',**self.identity,'updated_at':self.events[-1]['at'] if self.events else now(),
                 'observed_at':now(),'current':current,'events':self.events[-16:],
                 'completed_phases':[phase for phase,platforms in self.completed.items() if platforms=={'youtube_shorts','tiktok'}]}
