@@ -1,3 +1,4 @@
+# Verify source-bound audit checkpoint migration and recorded intermediate implementation.
 # Verify audit-only bounded completeness retry; no missing scene evidence may be accepted.
 # Verify measured Butterpreis end silence at 23.660521s; preserve audio prefix and final gates.
 # Verify terminal-only replacement voice tail repair with unchanged final gates.
@@ -231,7 +232,7 @@ jobs:
             echo "CANDIDATE_SHA_CHANGED_BEFORE_FAST_GATE"
             exit 1
           }
-          python -m pytest -q tests/test_tayvoriq_silent_tail_regression.py tests/test_tayvoriq_audit_response_retry_v1.py
+          python -m pytest -q tests/test_tayvoriq_silent_tail_regression.py tests/test_tayvoriq_audit_response_retry_v1.py tests/test_tayvoriq_audit_checkpoint_migration.py
           python -m compileall -q tools tests
           if [ -d runtime_patches ]; then python -m compileall -q runtime_patches; fi
           python -m pytest -q \
