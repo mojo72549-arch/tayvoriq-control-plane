@@ -15,7 +15,7 @@ PHASES={'preflight','script','scenes','voice','visuals','captions','render','qua
 def now(): return datetime.now(timezone.utc).isoformat()
 def binding():
     value={'request_id':os.environ['SOURCE_REQUEST_ID_PIN'],'source_context_sha256':os.environ['SOURCE_CONTEXT_SHA256'],
-           'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT'])}
+           'run_id':int(os.environ.get('TAYVORIQ_PRODUCTION_RUN_ID') or os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT'])}
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}',value['request_id']) or not re.fullmatch(r'[a-f0-9]{64}',value['source_context_sha256']): raise ValueError('invalid binding')
     return value
 
