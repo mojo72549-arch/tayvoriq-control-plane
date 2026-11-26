@@ -268,12 +268,19 @@ jobs:
           WORKER_ID: ${{ steps.worker.outputs.run_id }}
         run: |
           python3 - <<'PY'
-          import json,os,urllib.request
+          import json,os,urllib.request,subprocess,base64
           from pathlib import Path
           rid=os.environ['REQUEST_ID']
           request=json.loads(Path('requests/'+rid+'.json').read_text())
           transfer=os.environ['TRANSFER_OUTCOME']=='failure'
           reason='Der gespeicherte Produktionsstand konnte nicht an Contabo übergeben werden.' if transfer else 'Die Contabo-Produktion oder ihre abschließende Zustellung ist angehalten.'
+          if os.environ.get('WORKER_ID'):
+              try:
+                  meta=json.loads(subprocess.check_output(['gh','api','repos/'+os.environ['STUDIO']+'/contents/.automation/contabo-workers/'+os.environ['GITHUB_RUN_ID']+'.json'],text=True))
+                  receipt=json.loads(base64.b64decode(meta['content']))
+                  if receipt['controller_run_id']==int(os.environ['GITHUB_RUN_ID']) and receipt['source_context_sha256']==request['source_context_sha256']:
+                      reason=receipt.get('failure_reason') or reason
+              except Exception:pass
           detail={'schema':'tayvoriq-execution-incident-v1','request_id':rid,'source_context_sha256':request['source_context_sha256'],
             'run_id':int(os.environ['GITHUB_RUN_ID']),'code':'CHECKPOINT_TRANSFER_FAILED' if transfer else 'CONTABO_EXECUTION_STOPPED',
             'cause':reason,'action':'Der Lauf ist gestoppt. Der fehlgeschlagene Schritt muss korrigiert und verifiziert werden.',
@@ -282,7 +289,7 @@ jobs:
           path=Path('state/tayvoriq-execution-incidents')/(rid+'.json');path.parent.mkdir(parents=True,exist_ok=True)
           path.write_text(json.dumps(detail,ensure_ascii=False,indent=2)+'\n')
           token=os.environ['TELEGRAM_BOT_TOKEN'];chat=os.environ['TELEGRAM_CHAT_ID']
-          data=json.dumps({'chat_id':chat,'text':'🔴 TAYVORIQ · Übergabe angehalten\n\n'+reason+'\n'+detail['action']+'\nRequest: '+rid+'\nRun: '+os.environ['GITHUB_RUN_ID']}).encode()
+          data=json.dumps({'chat_id':chat,'text':'🔴 TAYVORIQ · Technischer Lauf angehalten\n\nUrsache: '+reason+'\nMaßnahme: '+detail['action']+'\nNoch offen: '+detail['next_proof']+'\nRequest: '+rid+'\nRun: '+os.environ['GITHUB_RUN_ID']}).encode()
           with urllib.request.urlopen(urllib.request.Request('https://api.telegram.org/bot'+token+'/sendMessage',data=data,headers={'Content-Type':'application/json'}),timeout=30) as r:
               assert json.load(r).get('ok') is True
           PY
