@@ -292,7 +292,7 @@ jobs:
               raise SystemExit(0)
           validate_decision(record, path.stem)
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'approved=true\nreview_id={path.stem}\nstudio_sha={record["studio_sha"]}\n')
+              output.write(f'approved=true\nreview_id={path.stem}\nstudio_sha={record["studio_sha"]}\nartifact_run_id={record.get("artifact_run_id") or path.stem}\n')
           PY
       - uses: actions/checkout@v4
         if: steps.decision.outputs.approved == 'true'
@@ -308,7 +308,7 @@ jobs:
           name: tayvoriq-approved-replay-${{ steps.decision.outputs.review_id }}
           path: approved-artifact
           github-token: ${{ github.token }}
-          run-id: ${{ steps.decision.outputs.review_id }}
+          run-id: ${{ steps.decision.outputs.artifact_run_id || steps.decision.outputs.review_id }}
       - uses: actions/setup-python@v5
         if: steps.decision.outputs.approved == 'true'
         with:
