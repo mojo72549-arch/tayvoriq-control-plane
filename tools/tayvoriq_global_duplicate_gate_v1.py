@@ -17,6 +17,8 @@ import math
 import re
 import unicodedata
 from collections import Counter, defaultdict, deque
+from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -257,6 +259,73 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"JSON object required: {path}")
     return value
+
+
+def _source_time(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            stamp = parsedate_to_datetime(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+    return stamp if stamp.tzinfo is not None else None
+
+
+def delivered_trend_history(
+    state_dir: Path, *, current_selection_id: str
+) -> list[tuple[str, datetime, str, dict[str, Any]]]:
+    """Use only prior cards with their matching verified Telegram receipt."""
+    history = []
+    for path in sorted((state_dir / "deliveries").glob("*.json"), reverse=True):
+        if path.stem == current_selection_id:
+            continue
+        try:
+            receipt = _read_json(path)
+            stamp = _source_time(receipt.get("delivered_at"))
+            message_id = receipt.get("telegram_message_id")
+            if (receipt.get("selection_id") != path.stem or stamp is None
+                    or receipt.get("telegram_delivery_verified") is not True
+                    or type(message_id) is not int or message_id <= 0):
+                continue
+            selection = _read_json(state_dir / "selections" / path.name)
+        except (OSError, ValueError):
+            continue
+        if selection.get("selection_id") != path.stem or not isinstance(selection.get("trends"), list):
+            continue
+        for trend in selection["trends"]:
+            if not isinstance(trend, dict):
+                continue
+            topic, context = _clean(trend.get("title")), trend.get("source_context")
+            if topic and isinstance(context, dict):
+                history.append((path.stem, stamp, topic, context))
+    return history
+
+
+def previously_delivered_selection(
+    topic: str,
+    source_context: dict[str, Any],
+    history: list[tuple[str, datetime, str, dict[str, Any]]],
+) -> str:
+    """Catch the same verified story even when the earlier card was never approved."""
+    sources = [source for source in source_context.get("sources") or [] if isinstance(source, dict)]
+    dates = [_source_time(source.get("published_at") or source.get("source_date")) for source in sources]
+    headline_urls = {
+        _canonical_url(source.get("url")) for source in sources
+        if _ascii(_clean(source.get("publisher_headline"))) == _ascii(_clean(topic))
+    } - {""}
+    for selection_id, delivered_at, prior_topic, prior_context in history:
+        if compare(topic=topic, source_context=source_context,
+                   prior_topic=prior_topic, prior_context=prior_context)["blocked"]:
+            return selection_id
+        # An old article copied as the new headline cannot be a new development
+        # when all of the supporting coverage already existed at the prior delivery.
+        if (dates and all(stamp is not None and stamp <= delivered_at for stamp in dates)
+                and headline_urls & _source_urls(prior_context)):
+            return selection_id
+    return ""
 
 
 def run_gate(

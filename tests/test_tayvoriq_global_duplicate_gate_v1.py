@@ -23,6 +23,39 @@ def request(request_id: str, topic: str, context: dict, *, status: str = "DISPAT
 
 
 class GlobalDuplicateGateTests(unittest.TestCase):
+    def test_research_excludes_reused_news_after_a_verified_delivery(self):
+        selection_id = "20261125-evening-agentv2-abcdef12"
+        topic = "Regionalbahn senkt Preise für Monatskarten"
+        article = "https://example.org/regionalbahn-monatskarten"
+        context = {"sources": [
+            {"url": article + "?ref=rss", "publisher_headline": topic,
+             "source_date": "Wed, 25 Nov 2026 12:01:33 +0100"},
+            {"url": "https://example.net/regionalbahn",
+             "source_date": "Wed, 25 Nov 2026 12:12:00 +0100"},
+        ]}
+        with tempfile.TemporaryDirectory() as temp:
+            state = Path(temp)
+            (state / "selections").mkdir()
+            (state / "deliveries").mkdir()
+            (state / "selections" / f"{selection_id}.json").write_text(json.dumps({
+                "selection_id": selection_id, "selected_trend_id": None, "trends": [
+                    {"title": "Drei Euro weniger im Abo: Wer beim Pendeln spart",
+                     "source_context": {"sources": [{"url": article}]}},
+                ],
+            }), encoding="utf-8")
+            receipt = state / "deliveries" / f"{selection_id}.json"
+            proof = {"selection_id": selection_id, "telegram_message_id": 100,
+                     "delivered_at": "2026-11-25T16:30:49Z", "telegram_delivery_verified": False}
+            receipt.write_text(json.dumps(proof), encoding="utf-8")
+            self.assertEqual(duplicate_gate.delivered_trend_history(state, current_selection_id="other"), [])
+            proof["telegram_delivery_verified"] = True
+            receipt.write_text(json.dumps(proof), encoding="utf-8")
+            self.assertEqual(duplicate_gate.delivered_trend_history(state, current_selection_id=selection_id), [])
+            history = duplicate_gate.delivered_trend_history(state, current_selection_id="other")
+            self.assertEqual(duplicate_gate.previously_delivered_selection(topic, context, history), selection_id)
+            context["sources"][1]["source_date"] = "Thu, 26 Nov 2026 05:01:33 +0100"
+            self.assertEqual(duplicate_gate.previously_delivered_selection(topic, context, history), "")
+
     def test_retired_published_request_still_blocks_a_new_duplicate_via_archive(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
