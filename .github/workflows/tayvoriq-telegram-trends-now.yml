@@ -441,6 +441,8 @@ jobs:
         if: failure()
         env:
           SELECTION_ID: ${{ steps.control.outputs.selection_id }}
+          GH_TOKEN: ${{ github.token }}
+          TAYVORIQ_CONTROL_CENTER_RESEARCH: ${{ github.event.client_payload.requested_via == 'control_center' }}
         shell: bash
         run: |
           if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ] && [ -n "${SELECTION_ID:-}" ]; then

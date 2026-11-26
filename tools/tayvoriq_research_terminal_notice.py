@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from tayvoriq_provider_health_v1 import write
+from tayvoriq_research_observer import control_center_stopped
 from tayvoriq_research_retry_v1 import ZONE, current
 
 
@@ -75,6 +76,9 @@ def explicit_notice(selection_id):
         if pointer.get("schema") == "tayvoriq-control-center-research-v1" and (
                 pointer.get("selection_id") != selection_id or pointer.get("cancel_requested_at")):
             return
+    if (os.environ.get("TAYVORIQ_CONTROL_CENTER_RESEARCH") == "true"
+            and control_center_stopped(selection_id, os.environ["GH_TOKEN"])):
+        return
     path = scope / "research-notices" / (selection_id + "-FAILED.json")
     if path.exists():
         return
