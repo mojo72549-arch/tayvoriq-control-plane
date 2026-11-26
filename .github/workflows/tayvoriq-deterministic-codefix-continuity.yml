@@ -87,11 +87,11 @@ jobs:
           readarray -t final_meta < <(python - <<'PY'
           import json
           d=json.load(open('/tmp/finalizer-run.json',encoding='utf-8'))
-          print(str(d.get('name') or ''))
+          print(str(d.get('path') or '').split('@', 1)[0])
           print(str(d.get('conclusion') or ''))
           PY
           )
-          [ "${final_meta[0]:-}" = "TAYVORIQ-X Golden Path" ] || { echo 'CODEFIX_FINALIZER_WORKFLOW_MISMATCH'; exit 1; }
+          [ "${final_meta[0]:-}" = ".github/workflows/tayvoriq-deliver-video-now.yml" ] || { echo 'CODEFIX_FINALIZER_WORKFLOW_MISMATCH'; exit 1; }
           [ "${final_meta[1]:-}" != "success" ] || { echo 'CODEFIX_FINALIZER_SUCCESS_RUN_REJECTED'; exit 1; }
           echo "CODEFIX_FINALIZER_FAILED_RUN_CONFIRMED:${FINALIZER_RUN_ID}:${final_meta[1]:-unknown}"
 
