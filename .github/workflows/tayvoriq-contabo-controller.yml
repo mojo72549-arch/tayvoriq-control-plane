@@ -41,7 +41,7 @@ jobs:
           import json,os,re
           from pathlib import Path
           from tools.tayvoriq_contabo_handoff import identity
-          rid=os.environ['REQUEST_ID'] or json.loads(Path('.github/run-now/tayvoriq-x-request.json').read_text())['source_request_id']
+          rid=os.environ['REQUEST_ID'] or json.loads(Path('.github/run-now/tayvoriq-contabo-kick.json').read_text())['source_request_id']
           with open(os.environ['GITHUB_ENV'],'a') as env:env.write('REQUEST_ID='+rid+'\n')
           assert re.fullmatch(r'[A-Za-z0-9_-]{4,80}',rid)
           request=json.loads(Path(f'requests/{rid}.json').read_text())
