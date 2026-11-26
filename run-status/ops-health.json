@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T04:36:33.675429Z",
-  "overall": "green",
+  "generated_at": "2026-11-26T07:09:45.248229Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -12,23 +12,23 @@
   "research": {},
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3728-trend-1",
-    "golden_path_run_id": 45673283300,
-    "pointer_updated_at": "2026-11-25T18:40:28.835424Z",
+    "request_id": "telegram-3751-trend-1",
+    "golden_path_run_id": 45766219123,
+    "pointer_updated_at": "2026-11-26T06:09:25.574618Z",
     "current_scope": "production"
   },
   "request": {
-    "request_id": "telegram-3728-trend-1",
-    "topic": "Flixtrain im DB Navigator: Einfacher buchen, aber getrennte Fahrgastrechte",
+    "request_id": "telegram-3751-trend-1",
+    "topic": "Discounter senken Butterpreis unter einen Euro",
     "trend_id": "1",
     "slot": null,
     "state": "DISPATCHED",
-    "recovery_generation": 1,
+    "recovery_generation": 0,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
     "episode_number": null,
-    "cta_type": "EXPERTISE",
-    "follow_reason": "TAYVORIQ erklärt dir weitere Änderungen beim Bahnfahren, damit du Buchungsfunktionen und tatsächliche Ansprüche auseinanderhalten kannst.",
+    "cta_type": "CURIOSITY",
+    "follow_reason": "Wir beobachten für dich, ob andere Händler dem Preisverfall folgen.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -43,46 +43,46 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3728-trend-1.json"
+    "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45673283300,
+    "id": 45766219123,
     "historical": false,
-    "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45673283300",
-    "created_at": "2026-11-25T18:15:33Z",
-    "updated_at": "2026-11-25T18:40:44Z",
-    "attempt": 1,
-    "progress": 100,
+    "status": "queued",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45766219123",
+    "created_at": "2026-11-26T06:09:12Z",
+    "updated_at": "2026-11-26T07:09:43Z",
+    "attempt": 2,
+    "progress": 3,
     "current_step": null,
-    "last_successful_step": "Complete job",
+    "last_successful_step": null,
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
-        "status": "success",
-        "step_number": 4,
-        "step_name": "Resolve approved X request"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quellen gesperrt",
-        "status": "success",
-        "step_number": 8,
-        "step_name": "Materialize immutable verified source context"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dublettenprüfung",
-        "status": "success",
-        "step_number": 9,
-        "step_name": "Block global duplicate content before production"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Light Preflight",
-        "status": "success",
-        "step_number": 18,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Dependencies",
@@ -92,47 +92,47 @@
       },
       {
         "label": "Full Preflight",
-        "status": "success",
-        "step_number": 18,
-        "step_name": "Lightweight contract preflight"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Studio-Ausführung",
-        "status": "success",
-        "step_number": 35,
-        "step_name": "Collect Studio production outcome"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Publishable Output",
-        "status": "success",
-        "step_number": 45,
-        "step_name": "Assert publishable production output"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Quality Audit",
-        "status": "success",
-        "step_number": 47,
-        "step_name": "Validate publication quality initial"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Review-Seite",
-        "status": "success",
-        "step_number": 53,
-        "step_name": "Publish review page"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
-        "status": "success",
-        "step_number": 54,
-        "step_name": "Send Telegram review"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "yellow",
+      "detail": "queued"
     },
     {
       "name": "Production Green",
@@ -141,82 +141,61 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "status": "yellow",
+      "detail": "LOCAL_RETRY_RUNNING"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Telegram-Videoquittung bestätigt"
+      "status": "yellow",
+      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
     },
     {
       "name": "Quality Gates",
-      "status": "green",
-      "detail": "Quality Audit bestanden"
+      "status": "yellow",
+      "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "45673283300:LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "severity": "warning",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "REPLAY_DISPATCHED",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": false
-  },
+  "incident": null,
   "telegram": {
-    "status": "green",
-    "detail": "Telegram-Videoquittung bestätigt",
-    "last_step": "Send Telegram review",
-    "message_id": 3747
+    "status": "yellow",
+    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "last_step": null,
+    "message_id": null
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
-    "failure_state": "LOCAL_VISUAL_RECOVERY_EXHAUSTED",
-    "failed_run_id": 45663573984,
-    "replay_run_id": 45673283300,
-    "fresh_recovery_run_id": 45663573984,
-    "recovery_generation": 1,
+    "status": "LOCAL_RETRY_RUNNING",
+    "source_status": "LOCAL_RETRY_RUNNING",
+    "failure_state": null,
+    "failed_run_id": null,
+    "replay_run_id": null,
+    "fresh_recovery_run_id": null,
+    "recovery_generation": 0,
     "owner": "tayvoriq-delivery-watch",
-    "same_generation_replay_required": true,
+    "same_generation_replay_required": false,
     "quality_gates_weakened": false,
     "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-25T18:15:40.352919Z",
-      "title": "DISPATCHED",
-      "detail": "same-generation-verified-green-local-checkpoint-replay"
-    },
-    {
-      "at": "2026-11-25T17:50:41.308197Z",
+      "at": "2026-11-26T07:09:39.632057Z",
       "title": "DISPATCHED",
       "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
     },
     {
-      "at": "2026-11-25T17:30:55.373465Z",
+      "at": "2026-11-26T06:09:25.459688+00:00",
       "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+      "detail": "request-dispatcher:45766187188"
     },
     {
-      "at": "2026-11-25T17:19:54.053068Z",
-      "title": "DISPATCHED",
-      "detail": "bounded-shared-policy-recovery"
+      "at": "2026-11-26T06:09:09.719661+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:45766187188"
     },
     {
-      "at": "2026-11-25T17:02:48.613643Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VOICE_RETRY_REQUIRED"
-    },
-    {
-      "at": "2026-11-25T16:47:03.195990Z",
-      "title": "DISPATCHED",
-      "detail": "LOCAL_VISUAL_RETRY_REQUIRED"
+      "at": "2026-11-26T06:08:48.705Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
