@@ -4,13 +4,14 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45780963911,
   "run_attempt": 2,
-  "updated_at": "2026-11-26T09:15:56.020736+00:00",
-  "observed_at": "2026-11-26T09:15:56.020827+00:00",
+  "updated_at": "2026-11-26T09:16:07.297153+00:00",
+  "observed_at": "2026-11-26T09:16:07.297248+00:00",
   "current": {
     "phase": "quality",
-    "status": "failed",
-    "at": "2026-11-26T09:15:56.020736+00:00",
-    "call_id": "checkpoint-QUALITY_AUDIT_1",
+    "status": "started",
+    "at": "2026-11-26T09:16:07.297153+00:00",
+    "call_id": "checkpoint-QUALITY_AUDIT_2",
+    "timeout_seconds": 420,
     "round": null
   },
   "events": [
@@ -26,6 +27,13 @@
       "status": "failed",
       "at": "2026-11-26T09:15:56.020736+00:00",
       "call_id": "checkpoint-QUALITY_AUDIT_1"
+    },
+    {
+      "phase": "quality",
+      "status": "started",
+      "at": "2026-11-26T09:16:07.297153+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_2",
+      "timeout_seconds": 420
     }
   ],
   "completed_phases": []
