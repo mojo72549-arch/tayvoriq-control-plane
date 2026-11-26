@@ -55,7 +55,7 @@ def ollama_json(port: int, path: str, timeout: float, payload: dict | None = Non
 def evaluate_case(port: int, model: str, case: dict, timeout: float) -> dict:
     evidence = {key: case[key] for key in ("topic", "sources")}
     reply = ollama_json(port, "/api/chat", timeout, {
-        "model": model, "stream": False, "think": False, "format": SCHEMA,
+        "model": model, "stream": False, "think": False, "format": SCHEMA, "keep_alive": 0,
         "options": {"temperature": 0, "num_ctx": 4096, "num_predict": 400},
         "messages": [
             {"role": "system", "content": SYSTEM},
