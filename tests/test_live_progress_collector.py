@@ -34,4 +34,16 @@ class CollectorTests(unittest.TestCase):
   state=collector.Observation(ID)
   for line in ['[]','0','"provider log"','null','not json']: state.checkpoint(line)
   self.assertEqual(state.events,[])
+ def test_audit_findings_use_only_fresh_failed_scene_evidence(self):
+  import json,tempfile,os
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);old=root/'old';fresh=root/'fresh';passed=root/'passed'
+   for p in (old,fresh,passed):p.mkdir()
+   (old/'preapproval_ai_audit.json').write_text(json.dumps({'passed':False,'blockers':['historical']}))
+   os.utime(old/'preapproval_ai_audit.json',(1,1))
+   (fresh/'preapproval_ai_audit.json').write_text(json.dumps({'passed':False,'api_key':'private',
+    'visual_review':{'scene_checks':[{'platform':'youtube_shorts','scene':3,'relevant':False},{'platform':'tiktok','scene':2,'distinct':False}]}}))
+   (passed/'preapproval_ai_audit.json').write_text(json.dumps({'passed':True,'blockers':['obsolete']}))
+   findings=collector.audit_findings(root,2)
+   self.assertEqual(findings,['YouTube · Szene 3: Motiv passt nicht zur Aussage','TikTok · Szene 2: Motiv wiederholt sich'])
 if __name__=='__main__': unittest.main()
