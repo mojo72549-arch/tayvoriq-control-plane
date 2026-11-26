@@ -80,11 +80,20 @@ class OllamaResearchTests(unittest.TestCase):
         fields = schema['properties']['S001+S002']['anyOf'][0]['properties']
         self.assertEqual(fields['trend_scope']['enum'], ['business_economy', 'mobility_energy'])
         self.assertEqual(fields['regional_scorecard']['properties']['evidence']['required'], ['S001', 'S002'])
+        rating = fields['regional_scorecard']['properties']['ratings']['properties']['consequence']
+        self.assertEqual(rating['required'], ['y', 't', 'why'])
+        self.assertEqual(rating['properties']['t']['maximum'], 5)
         with self.assertRaisesRegex(RuntimeError, 'PAIR_DECISIONS_INCOMPLETE'):
             ollama.read_candidates({'S001+S002': None}, pairs)
         row = {'trend_scope': 'business_economy'}
         self.assertEqual(ollama.read_candidates({'S001+S002': row, 'S003+S004': None}, pairs),
                          {'candidates': [{**row, 'source_pair_id': 'S001+S002'}]})
+
+    def test_local_platform_scores_are_mapped_to_the_existing_rubric_contract(self):
+        reason = 'Zwei Streiktage betreffen die Zustellung.'
+        row = {'regional_scorecard': {'ratings': {'consequence': {'y': 4, 't': 3, 'why': reason}}}}
+        result = ollama.read_candidates({'S001+S002': row}, [('S001', 'S002')])
+        self.assertEqual(result['candidates'][0]['regional_scorecard']['ratings']['consequence'], [4, 3, reason])
 
     def test_result_rejects_a_different_attempt_or_provider(self):
         from tempfile import TemporaryDirectory
