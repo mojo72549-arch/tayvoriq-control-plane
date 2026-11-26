@@ -518,7 +518,9 @@ jobs:
           PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
-          for name in PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY GROQ_API_KEY GEMINI_API_KEY; do
+          required=(TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID PEXELS_API_KEY GROQ_API_KEY GEMINI_API_KEY)
+          if [ "$TAYVORIQ_EXECUTION_BACKEND" != "contabo_private_runner" ]; then required+=(PRIVATE_REPO_TOKEN PAGES_DEPLOY_TOKEN); fi
+          for name in "${required[@]}"; do
             test -n "${!name:-}" || { echo "Missing secret: $name"; exit 1; }
           done
           if [ "${GITHUB_RUN_ATTEMPT:-1}" -gt 1 ]; then
@@ -945,7 +947,8 @@ jobs:
           mkdir -p implementation/out/control-plane
           CONTROL_SHA=$(git rev-parse HEAD)
           IMPLEMENTATION_SHA=$(git -C implementation rev-parse HEAD)
-          PAGES_SHA=$(git -C pages-worktree rev-parse HEAD)
+          PAGES_SHA=""
+          if [ -d pages-worktree/.git ] || [ -f pages-worktree/.git ]; then PAGES_SHA=$(git -C pages-worktree rev-parse HEAD); fi
           SOURCE_SHA="${SOURCE_CONTEXT_SHA256:?canonical source context hash missing}"
           SOURCE_REQUEST_ID="${{ steps.source_context.outputs.request_id }}"
           DUPLICATE_REPORT=out/control-plane/global-duplicate-gate.json
@@ -956,7 +959,8 @@ jobs:
           env -u PYTHONPATH python -I - "$CONTROL_SHA" "$IMPLEMENTATION_SHA" "$PAGES_SHA" "$SOURCE_SHA" "$REQUEST_NONCE" "$SOURCE_REQUEST_ID" "$DUPLICATE_SHA" <<'PY'
           import json, os, pathlib, sys
           payload = {
-              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "run_id": os.environ.get("TAYVORIQ_PRODUCTION_RUN_ID") or os.environ.get("GITHUB_RUN_ID"),
+              "execution_run_id": os.environ.get("GITHUB_RUN_ID"),
               "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
               "topic": os.environ.get("TOPIC"),
               "trend_id": os.environ.get("TREND_ID"),
