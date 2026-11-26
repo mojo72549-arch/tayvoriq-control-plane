@@ -4,17 +4,46 @@
   "slot": "morning",
   "run_id": 45874900791,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "WAITING",
   "started_at": "2026-11-26T18:19:03.860714+00:00",
-  "updated_at": "2026-11-26T18:19:24.329473+00:00",
+  "updated_at": "2026-11-26T18:19:36.721662+00:00",
   "sources_seen": 660,
   "drafts_saved": 0,
-  "quality_rejections": 0,
-  "corroborated_headlines": 3,
+  "quality_rejections": 1,
+  "corroborated_headlines": 2,
   "provider": "groq",
-  "issues": [],
+  "issues": [
+    {
+      "code": "TIKTOK_FIT",
+      "provider": null
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "gemini"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "groq"
+    },
+    {
+      "code": "QUOTA",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_UNAVAILABLE",
+      "provider": "huggingface"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": "groq"
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "provider": null
+    }
+  ],
   "exit_code": null,
   "local_attempt": 1,
   "max_local_attempts": 3,
-  "next_retry_at": null
+  "next_retry_at": "2026-11-26T18:20:45.198669+00:00"
 }
