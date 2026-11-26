@@ -62,6 +62,23 @@ class OllamaResearchTests(unittest.TestCase):
                 ollama.complete({'messages': []}, opener=opener)
         self.assertEqual(json.loads(opener.open.call_args.args[0].data)['model'], ollama.COMPACT_MODEL)
 
+    def test_wire_schema_requires_one_decision_per_pair_and_one_literal_scope(self):
+        example = '''{"candidates":[{"source_pair_id":"<listed source_pair_id>",
+            "trend_scope":"technology_ai|business_economy","regional_relevance":"local|germany",
+            "viral_potential":<integer 0-100>,"regional_scorecard":{"evidence":{"<source>":"<claim>"},
+            "ratings":{"consequence":[<YouTube integer 0-5>,<TikTok integer 0-5>,"reason"]}}}]}'''
+        pairs = [('S001', 'S002'), ('S003', 'S004')]
+        schema = ollama.research_format(example, pairs, {'business_economy', 'mobility_energy', 'auto_scope'})
+        self.assertEqual(schema['required'], ['S001+S002', 'S003+S004'])
+        fields = schema['properties']['S001+S002']['anyOf'][0]['properties']
+        self.assertEqual(fields['trend_scope']['enum'], ['business_economy', 'mobility_energy'])
+        self.assertEqual(fields['regional_scorecard']['properties']['evidence']['required'], ['S001', 'S002'])
+        with self.assertRaisesRegex(RuntimeError, 'PAIR_DECISIONS_INCOMPLETE'):
+            ollama.read_candidates({'S001+S002': None}, pairs)
+        row = {'trend_scope': 'business_economy'}
+        self.assertEqual(ollama.read_candidates({'S001+S002': row, 'S003+S004': None}, pairs),
+                         {'candidates': [{**row, 'source_pair_id': 'S001+S002'}]})
+
     def test_result_rejects_a_different_attempt_or_provider(self):
         from tempfile import TemporaryDirectory
 
