@@ -37,10 +37,6 @@ on:
       review_repair_of:
         description: Vom Orchestrator gebundener abgelehnter Review
         type: string
-  push:
-    branches: [main]
-    paths:
-      - .github/run-now/tayvoriq-x-request.json
 
 permissions:
   contents: write
@@ -200,6 +196,13 @@ jobs:
               or request.get("source_request_id")
               or ""
           ).strip()
+          if os.environ.get('TAYVORIQ_EXECUTION_BACKEND') == 'contabo_private_runner':
+              canonical=json.loads((Path('requests')/(source_request_id+'.json')).read_text())
+              if canonical['request_id'] != source_request_id:
+                  raise SystemExit('CONTABO_REQUEST_IDENTITY_FAILED')
+              topic=str(canonical['topic']).strip()
+              trend_id=str(canonical['trend_id']).strip()
+
           # A workflow_dispatch pin owns its recovery generation, including zero.
           # The run-now file may belong to a different request and must never
           # contribute its generation to this exact-request replay.
