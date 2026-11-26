@@ -1,0 +1,44 @@
+{
+  "selection_id": "20261126-morning-agentv2",
+  "slot": "morning",
+  "provider": "groq_rss",
+  "model": "groq/qwen/qwen3.8-27b+multi-publisher-rss",
+  "grounding_chunks": [
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/wirtschaft/unternehmen/flixtrain-deutsche-bahn-ticketverkauf-100.html"
+    },
+    {
+      "title": "manager-magazin.de",
+      "uri": "https://www.manager-magazin.de/unternehmen/mobilitaet/deutsche-bahn-konzern-verkauft-demnaechst-tickets-fuer-flixtrain-a-be2b71f4-020e-4401-b078-656c8e462e4a#ref=rss"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/wirtschaft/verbraucher/butter-preis-preiskampf-discounter-bauern-100.html"
+    },
+    {
+      "title": "n-tv.de",
+      "uri": "https://www.n-tv.de/wirtschaft/Butterpreis-faellt-unter-einen-Euro-pro-Packung-id31573397.html"
+    },
+    {
+      "title": "faz.net",
+      "uri": "https://www.faz.net/aktuell/wirtschaft/unternehmen/ebm-papst-und-ziehl-abegg-wieso-der-verkauf-den-deutschen-technologiestandort-gefaehrdet-201709745.html"
+    },
+    {
+      "title": "tagesschau.de",
+      "uri": "https://www.tagesschau.de/inland/regional/badenwuerttemberg/swr-zwischen-hoffnung-und-sorge-so-wird-der-verkauf-von-ziehl-abegg-bewertet-100.html"
+    }
+  ],
+  "candidate_count": 3,
+  "valid_count": 2,
+  "selected_count": 2,
+  "series_candidate_injected": false,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 1,
+  "growth_rescan_used": false,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_2_to_5",
+  "candidate_minimum": 2,
+  "candidate_maximum": 5,
+  "weak_fill_allowed": false
+}
