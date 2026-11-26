@@ -23,6 +23,10 @@ class Observation:
     def __init__(self,identity):
         self.identity=identity;self.events=[];self.active={};self.seen=set();self.completed={};self.failure=None;self.round=None;self.findings=[]
     def accept(self,row):
+        if (os.environ.get('TAYVORIQ_EXECUTION_BACKEND')=='contabo_private_runner'
+                and str(row.get('run_id'))==os.environ.get('GITHUB_RUN_ID')
+                and str(self.identity['run_id'])==os.environ.get('TAYVORIQ_PRODUCTION_RUN_ID')):
+            row={**row,'run_id':self.identity['run_id']}
         if any(str(row.get(k))!=str(v) for k,v in self.identity.items()) or row.get('phase') not in PHASES or row.get('status') not in {'started','completed','failed'}: return
         try: datetime.fromisoformat(row['at'].replace('Z','+00:00'))
         except (KeyError,TypeError,ValueError): return
