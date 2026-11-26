@@ -25,6 +25,16 @@ def identity(request, pointer):
     assert request.get('quality_gates_weakened') is not True
     assert request.get('approved_at') and request.get('telegram_message_id'), 'APPROVAL_MISSING'
 
+def prepare(request,pointer,controller):
+    identity(request,pointer)
+    assert not request.get('production_completion',{}).get('telegram_message_id'), 'ALREADY_DELIVERED'
+    previous=int(request['golden_path_run_id'])
+    if previous!=controller:
+        request['previous_golden_path_run_ids']=list(dict.fromkeys(request.get('previous_golden_path_run_ids',[])+[previous]))
+    request.update(status='DISPATCHED',golden_path_run_id=controller,execution_backend='contabo_private_runner')
+    pointer.update(golden_path_run_id=controller,execution_backend='contabo_private_runner',execution_repository=STUDIO,
+        execution_run_id=None,allow_recovery=False,reason='contabo-handoff-preparing',updated_at=datetime.now(timezone.utc).isoformat())
+
 def bind(request, pointer, controller, worker, release):
     identity(request, pointer)
     assert not request.get('production_completion', {}).get('telegram_message_id'), 'ALREADY_DELIVERED'
@@ -37,6 +47,11 @@ def bind(request, pointer, controller, worker, release):
         worker_run_id=worker, execution_repository=STUDIO, checkpoint_release=release,
         request_id=request['request_id'], source_context_sha256=request['source_context_sha256'],
         contract_sha256=request['contract_sha256'], quality_gates_weakened=False)
+    checkpoint=Path('implementation/out/recovery-checkpoint/meta.json')
+    if checkpoint.is_file():
+        meta=read(checkpoint)
+        assert meta['source_context_sha256']==request['source_context_sha256']
+        handoff['checkpoint_parent']=dict(run_id=int(meta['run_id']),run_attempt=int(meta['run_attempt']),source_request_id=request['request_id'],source_context_sha256=meta['source_context_sha256'],verified_recovery=True)
     green=read('.github/state/tayvoriq-production-green.json')
     recovery=request.get('codefix_recovery',{})
     recovery.update(status='REPLAY_DISPATCHED',request_substate='DISPATCHED',replay_run_id=controller,
@@ -71,7 +86,7 @@ def verify(request, pointer, controller, worker, manifest=None):
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument('operation', choices=['bind','verify','finalize'])
+    p.add_argument('operation', choices=['prepare','bind','verify','finalize'])
     p.add_argument('--request', required=True)
     p.add_argument('--controller', type=int, required=True)
     p.add_argument('--worker', type=int, required=True)
@@ -79,7 +94,9 @@ def main():
     p.add_argument('--manifest')
     p.add_argument('--message', type=int)
     a=p.parse_args(); request=read(a.request); pointer=read(POINTER)
-    if a.operation=='bind':
+    if a.operation=='prepare':
+        prepare(request,pointer,a.controller)
+    elif a.operation=='bind':
         bind(request,pointer,a.controller,a.worker,a.release)
     else:
         verify(request,pointer,a.controller,a.worker,read(a.manifest) if a.manifest else None)
