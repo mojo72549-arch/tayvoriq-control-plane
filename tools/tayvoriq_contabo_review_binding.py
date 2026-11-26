@@ -95,4 +95,16 @@ def main():
             json={'chat_id':os.environ['TELEGRAM_CHAT_ID'],'message_id':decision['telegram_message_id'],'reply_markup':markup},timeout=30)
         assert response.status_code==200 and response.json().get('ok') is True, 'TELEGRAM_REVIEW_BUTTON_BINDING_FAILED'
 
+        incident_path='state/tayvoriq-execution-incidents/'+request['request_id']+'.json'
+        incident_url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/contents/'+incident_path
+        incident_meta=requests.get(incident_url,headers=headers,timeout=30)
+        if incident_meta.status_code==200:
+            meta=incident_meta.json()
+            incident=json.loads(base64.b64decode(meta['content']))
+            if incident.get('run_id')==rid and incident.get('source_context_sha256')==request['source_context_sha256']:
+                cleared=requests.delete(incident_url,headers=headers,json={'branch':'main','sha':meta['sha'],
+                    'message':'Resolve delivered Contabo review incident '+str(rid)},timeout=30)
+                cleared.raise_for_status()
+
+
 if __name__=='__main__':main()
