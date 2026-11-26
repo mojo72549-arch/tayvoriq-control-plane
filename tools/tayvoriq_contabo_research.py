@@ -1,4 +1,4 @@
-"""Dispatch one immutable research request to the private Contabo worker."""
+"""Queue one immutable research request for the private Contabo worker."""
 
 import argparse
 import base64
@@ -13,11 +13,13 @@ import time
 
 
 STUDIO = 'mojo72549-arch/shorts-agent-studio'
+CONTROL = 'mojo72549-arch/tayvoriq-control-plane'
 RECEIPTS = '.automation/contabo-research-receipts'
+QUEUE = '.github/state/tayvoriq-contabo-research-queue'
 
 
-def gh(*args, body=None, missing=False):
-    token = os.getenv('STUDIO_RESEARCH_TOKEN') or os.getenv('GH_TOKEN')
+def gh(*args, body=None, missing=False, public_write=False):
+    token = (os.getenv('STUDIO_RESEARCH_TOKEN') if not public_write else None) or os.getenv('GH_TOKEN')
     if not token:
         raise RuntimeError('CONTABO_RESEARCH_TOKEN_MISSING')
     result = subprocess.run(['gh', *args], input=json.dumps(body) if body is not None else None,
@@ -81,6 +83,22 @@ def check_result(root, expected, worker_id):
             raise RuntimeError('CONTABO_RESEARCH_RESULT_CHANGED')
 
 
+def enqueue(binding):
+    lane = 'verification' if binding['origin'] == 'verification' else 'explicit'
+    path = f'repos/{CONTROL}/contents/{QUEUE}/{lane}.json'
+    current = gh('api', path + '?ref=main', missing=True, public_write=True)
+    queued = {'binding': binding, 'expires_at': int(time.time()) + 770}
+    payload = {'branch': 'main', 'message': f"Queue Contabo research {binding['controller']}",
+               'content': base64.b64encode(json.dumps(queued).encode()).decode()}
+    if current:
+        meta = json.loads(current)
+        previous = json.loads(base64.b64decode(meta['content']))
+        if previous.get('binding') == binding:
+            return
+        payload['sha'] = meta['sha']
+    gh('api', path, '--method', 'PUT', '--input', '-', body=payload, public_write=True)
+
+
 def main():
     cli = argparse.ArgumentParser()
     cli.add_argument('--slot', choices=['morning', 'evening'], required=True)
@@ -94,9 +112,8 @@ def main():
                    origin=os.getenv('TAYVORIQ_CONTABO_RESEARCH_ORIGIN', 'telegram_command'))
     receipt, _ = read_receipt(binding)
     if receipt is None:
-        gh('api', f'repos/{STUDIO}/dispatches', '--method', 'POST', '--input', '-',
-           body={'event_type': 'tayvoriq_contabo_research', 'client_payload': binding})
-    deadline = time.monotonic() + 490
+        enqueue(binding)
+    deadline = time.monotonic() + 760
     local_started = False
     while time.monotonic() < deadline:
         receipt, _ = read_receipt(binding)

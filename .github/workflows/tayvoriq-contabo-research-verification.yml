@@ -1,5 +1,5 @@
 name: TAYVORIQ Contabo Research Verification
-run-name: Verify trend research through the private Contabo receipt
+run-name: Verify the queued trend research and private Contabo receipt
 on:
   workflow_dispatch:
   push:
@@ -7,14 +7,15 @@ on:
     paths: [.github/workflows/tayvoriq-contabo-research-verification.yml]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     env:
       STUDIO_RESEARCH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
       TAYVORIQ_CONTABO_RESEARCH_ORIGIN: verification
     steps:
       - uses: actions/checkout@v4
