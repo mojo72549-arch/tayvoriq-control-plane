@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "run_id": "45766219123",
+  "run_attempt": "1",
+  "source_request_id": "telegram-3751-trend-1",
+  "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
+  "studio_sha": "2e760b58fce83c90ccac5d4f29c9842dc1d104e3",
+  "checkpoint_restored": false,
+  "tools": [
+    {
+      "name": "Chatterbox",
+      "activity": "YouTube · Stimme erzeugt",
+      "evidence": "job/youtube_shorts/audio_report.json"
+    },
+    {
+      "name": "Whisper",
+      "activity": "YouTube · Transkriptprüfung bestanden",
+      "evidence": "job/preapproval_ai_audit.json"
+    },
+    {
+      "name": "Chatterbox",
+      "activity": "TikTok · Stimme erzeugt",
+      "evidence": "job/tiktok/audio_report.json"
+    },
+    {
+      "name": "Whisper",
+      "activity": "TikTok · Transkriptprüfung bestanden",
+      "evidence": "job/preapproval_ai_audit.json"
+    }
+  ],
+  "scores": [
+    {
+      "name": "Fakten",
+      "value": 95,
+      "threshold": 90
+    },
+    {
+      "name": "Bild",
+      "value": 15,
+      "threshold": 78
+    },
+    {
+      "name": "Gesamt",
+      "value": 80,
+      "threshold": 85
+    }
+  ],
+  "findings": [
+    "YouTube · Szene 1 · Motiv unpassend",
+    "YouTube · Szene 2 · Motiv unpassend",
+    "YouTube · Szene 3 · Motiv unpassend",
+    "YouTube · Szene 4 · Motiv unpassend",
+    "TikTok · Szene 1 · Motiv unpassend",
+    "TikTok · Szene 2 · Motiv unpassend",
+    "TikTok · Szene 3 · Motiv unpassend",
+    "TikTok · Szene 4 · Motiv unpassend",
+    "TikTok · Szene 5 · Motiv unpassend",
+    "TikTok · Szene 6 · Motiv unpassend"
+  ],
+  "stations": [
+    {
+      "id": "script",
+      "state": "success",
+      "detail": "Deutsche Skripte beider Plattformen im hashgeprüften Checkpoint vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "bfded9d3b907de69428716c5c31f187c82e943c55f69f9a92f8e6a17c1e2f16f",
+      "checkpoint_restored": false,
+      "outputs": {
+        "youtube_shorts": 58,
+        "tiktok": 58
+      }
+    },
+    {
+      "id": "scenes",
+      "state": "success",
+      "detail": "Szenen mit gesprochenem Text und Bildabfrage für beide Ausgaben vorhanden.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "bfded9d3b907de69428716c5c31f187c82e943c55f69f9a92f8e6a17c1e2f16f",
+      "checkpoint_restored": false,
+      "outputs": {
+        "youtube_shorts": 6,
+        "tiktok": 6
+      }
+    },
+    {
+      "id": "captions",
+      "state": "success",
+      "detail": "Untertitel aller Szenen nachgewiesen; Musik folgt der gespeicherten redaktionellen Policy. Ein eigener Musikexport ist damit nicht belegt.",
+      "artifact": "job/job.json",
+      "artifact_sha256": "bfded9d3b907de69428716c5c31f187c82e943c55f69f9a92f8e6a17c1e2f16f",
+      "checkpoint_restored": false,
+      "outputs": {
+        "subtitle_scenes": 12,
+        "music_export_verified": false
+      }
+    }
+  ],
+  "scripts": {
+    "youtube_shorts": "Aldi und Lidl senken den Butterpreis auf 99 Cent pro Packung. Aufgrund gesunkener Einkaufspreise in der gesamten Lieferkette der Molkereien. Alle Verbraucher, die regelmäßig Butter in Discountern einkaufen. Für dich heißt das, dass du beim Einkauf direkt Geld sparen kannst. Achte beim nächsten Einkauf auf die Eigenmarken-Butter im Regal. Abonniere diesen Kanal für verifizierte Einordnung und konkrete Schritte.",
+    "tiktok": "Aldi und Lidl senken den Butterpreis auf 99 Cent pro Packung. Aufgrund gesunkener Einkaufspreise in der gesamten Lieferkette der Molkereien. Alle Verbraucher, die regelmäßig Butter in Discountern einkaufen. Für dich heißt das, dass du beim Einkauf direkt Geld sparen kannst. Achte beim nächsten Einkauf auf die Eigenmarken-Butter im Regal. Folge diesem Kanal für verifizierte Einordnung und konkrete Schritte."
+  }
+}
