@@ -73,6 +73,15 @@ def test_invalid_selection_cannot_choose_an_arbitrary_notice_file(tmp_path, monk
         notice.main('../../../outside')
 
 
+def test_stop_after_checkout_suppresses_failure_notice(tmp_path, monkeypatch):
+    path = setup(tmp_path, monkeypatch)
+    monkeypatch.setenv('TAYVORIQ_CONTROL_CENTER_RESEARCH', 'true')
+    monkeypatch.setenv('GH_TOKEN', 'test')
+    monkeypatch.setattr(notice, 'control_center_stopped', lambda sid, token: sid == SID and token == 'test')
+    notice.main(SID)
+    assert not path.exists()
+
+
 def test_terminal_notice_rebases_without_runner_identity(tmp_path, monkeypatch):
     """The observer advances main after checkout; terminal delivery must survive that rebase."""
     import subprocess

@@ -64,6 +64,24 @@ class ResearchObserverTests(unittest.TestCase):
         self.assertIn('python tools/tayvoriq_agent_trend_radar_v8.py', workflow)
         self.assertIn('return code', (root / 'tools/tayvoriq_research_observer.py').read_text())
 
+    def test_stopping_while_waiting_prevents_the_next_provider_attempt(self):
+        import tempfile
+        o = self.observation()
+        with tempfile.TemporaryDirectory() as directory:
+            retry = Path(directory) / 'retry.json'
+            state = {'files': {'retry': retry}, 'env': {}, 'deadline': 600}
+            def persist():
+                retry.write_text(json.dumps({'state': 'WAITING', 'retry_at_epoch': 50}))
+
+            run = Mock(return_value=1)
+            stop = Mock(side_effect=[False, False, True])
+            result = observer.execute(['test'], state, o, Mock(), persist, clock=lambda: 0,
+                                      pause=Mock(), run=run, stopped=stop)
+        self.assertEqual(result, observer.STOPPED)
+        self.assertEqual(o.data['state'], 'STOPPED')
+        self.assertIsNone(o.data['next_retry_at'])
+        run.assert_called_once()
+
 
 class ResearchFailureDiagnosticsTests(unittest.TestCase):
     observation = ResearchObserverTests.observation
