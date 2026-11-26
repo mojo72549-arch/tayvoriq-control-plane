@@ -4,42 +4,17 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45780963911,
   "run_attempt": 1,
-  "updated_at": "2026-11-26T09:04:57.238604+00:00",
-  "observed_at": "2026-11-26T09:04:57.448802+00:00",
+  "updated_at": "2026-11-26T09:04:58.079294+00:00",
+  "observed_at": "2026-11-26T09:05:04.914858+00:00",
   "current": {
-    "phase": "visuals",
+    "phase": "repair",
     "status": "started",
-    "at": "2026-11-26T09:04:57.238604+00:00",
-    "call_id": "bd45d1c1f2ec472a87fc87de7e5d2c73",
-    "platform": "youtube_shorts",
-    "scene": 6,
-    "total": 6,
-    "round": 3
+    "at": "2026-11-26T09:04:53.447488+00:00",
+    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R3",
+    "round": 3,
+    "timeout_seconds": 900
   },
   "events": [
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-26T09:04:53.453583+00:00",
-      "call_id": "a5c85d111c9a49debe9a2fffcbcb19d5",
-      "platform": "youtube_shorts"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-26T09:04:53.487898+00:00",
-      "call_id": "a5c85d111c9a49debe9a2fffcbcb19d5",
-      "platform": "youtube_shorts"
-    },
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-26T09:04:53.526064+00:00",
-      "call_id": "c8e23b159fba475a959910a43434e2c8",
-      "platform": "youtube_shorts",
-      "scene": 2,
-      "total": 6
-    },
     {
       "phase": "visuals",
       "status": "started",
@@ -140,6 +115,29 @@
       "phase": "visuals",
       "status": "started",
       "at": "2026-11-26T09:04:57.238604+00:00",
+      "call_id": "bd45d1c1f2ec472a87fc87de7e5d2c73",
+      "platform": "youtube_shorts",
+      "scene": 6,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-26T09:04:58.016511+00:00",
+      "call_id": "b547c68b6c6f4ae2974b2776c03f88ca",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T09:04:58.046583+00:00",
+      "call_id": "b547c68b6c6f4ae2974b2776c03f88ca",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T09:04:58.079294+00:00",
       "call_id": "bd45d1c1f2ec472a87fc87de7e5d2c73",
       "platform": "youtube_shorts",
       "scene": 6,
