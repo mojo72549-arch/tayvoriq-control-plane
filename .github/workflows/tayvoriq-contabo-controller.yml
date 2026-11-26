@@ -111,19 +111,40 @@ jobs:
           path: /tmp/checkpoint.zip
           retention-days: 7
           if-no-files-found: error
-      - name: Dispatch exactly one private Contabo worker
+      - name: Queue exactly one private Contabo worker
         id: worker
         env:
           RELEASE: ${{ steps.transfer.outputs.release }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
-          existing=$(gh run list --repo "$STUDIO" --workflow tayvoriq-contabo-produce.yml --limit 30 --json databaseId,displayTitle --jq ".[] | select(.displayTitle == \"TAYVORIQ Contabo worker $GITHUB_RUN_ID\") | .databaseId")
-          if [[ "$existing" =~ ^[0-9]+$ ]];then echo "run_id=$existing" >> "$GITHUB_OUTPUT";exit 0;fi
-          gh workflow run tayvoriq-contabo-produce.yml --repo "$STUDIO" --ref main -f source_request_id="$REQUEST_ID" -f control_run_id="$GITHUB_RUN_ID" -f checkpoint_release="$RELEASE"
-          for poll in $(seq 1 30); do
-            worker=$(gh run list --repo "$STUDIO" --workflow tayvoriq-contabo-produce.yml --limit 30 --json databaseId,displayTitle --jq ".[] | select(.displayTitle == \"TAYVORIQ Contabo worker $GITHUB_RUN_ID\") | .databaseId")
-            if [[ "$worker" =~ ^[0-9]+$ ]]; then echo "run_id=$worker" >> "$GITHUB_OUTPUT";exit 0;fi
-            sleep 2
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=dict(schema='tayvoriq-contabo-queue-v1',state='PENDING',request_id=os.environ['REQUEST_ID'],
+            controller_run_id=int(os.environ['GITHUB_RUN_ID']),checkpoint_release=os.environ['RELEASE'],
+            source_context_sha256=os.environ['SOURCE_SHA'],quality_gates_weakened=False)
+          Path('.github/state/tayvoriq-contabo-queue.json').write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          git add .github/state/tayvoriq-contabo-queue.json
+          git commit -m "Queue private Contabo computation for $REQUEST_ID"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          for poll in $(seq 1 180); do
+            if gh api "repos/$STUDIO/contents/.automation/contabo-workers/$GITHUB_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64 2>/dev/null;then
+              python3 - <<'PY' > /tmp/contabo-worker-id
+          import json,base64,os
+          d=json.loads(base64.b64decode(open('/tmp/contabo-receipt-base64').read()))
+          assert d['request_id']==os.environ['REQUEST_ID']
+          assert d['controller_run_id']==int(os.environ['GITHUB_RUN_ID'])
+          assert d['source_context_sha256']==os.environ['SOURCE_SHA']
+          print(int(d['worker_run_id']))
+          PY
+              worker=$(cat /tmp/contabo-worker-id)
+              if [[ "$worker" =~ ^[0-9]+$ ]];then echo "run_id=$worker" >> "$GITHUB_OUTPUT";exit 0;fi
+            fi
+            sleep 5
           done
+          echo 'No private worker accepted the exact queued request.'
           exit 1
       - name: Bind controller and private worker to the canonical request
         env:
@@ -141,22 +162,36 @@ jobs:
             if git push origin HEAD:main;then exit 0;fi
           done
           exit 1
-      - name: Monitor actual private production and strict quality outcome
+      - name: Monitor the private worker receipt
         env:
           WORKER: ${{ steps.worker.outputs.run_id }}
         run: |
           for poll in $(seq 1 160); do
-            result=$(gh run view "$WORKER" --repo "$STUDIO" --json status,conclusion --jq '.status + ":" + (.conclusion // "")')
-            if [ "$result" = completed:success ]; then exit 0;fi
-            if [[ "$result" == completed:* ]];then echo "Contabo worker stopped: $result";exit 1;fi
+            gh api "repos/$STUDIO/contents/.automation/contabo-workers/$GITHUB_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64
+            result=$(python3 - <<'PY'
+          import json,base64,os
+          d=json.loads(base64.b64decode(open('/tmp/contabo-receipt-base64').read()))
+          assert d['controller_run_id']==int(os.environ['GITHUB_RUN_ID']) and d['worker_run_id']==int(os.environ['WORKER'])
+          print(d['status'])
+          PY
+            )
+            if [ "$result" = SUCCEEDED ];then exit 0;fi
+            if [ "$result" = FAILED ];then echo 'Private compute reported a verified failure.';exit 1;fi
             sleep 15
           done
-          echo 'Contabo execution exceeded the bounded wait.'
           exit 1
       - name: Receive the request-bound Contabo review package
-        env:
-          WORKER: ${{ steps.worker.outputs.run_id }}
-        run: gh run download "$WORKER" --repo "$STUDIO" --name "contabo-production-$REQUEST_ID" --dir returned
+        run: |
+          mkdir -p returned
+          gh release download "contabo-result-$GITHUB_RUN_ID" --repo "$STUDIO" --pattern result.zip --dir /tmp
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          target=Path('returned').resolve()
+          with zipfile.ZipFile('/tmp/result.zip') as z:
+              for item in z.infolist():assert (target/item.filename).resolve().is_relative_to(target)
+              z.extractall(target)
+          PY
       - name: Assert immutable result and final quality proof
         env:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
