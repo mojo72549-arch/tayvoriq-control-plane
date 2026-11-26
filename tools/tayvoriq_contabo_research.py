@@ -1,6 +1,7 @@
 """Dispatch one immutable research request to the private Contabo worker."""
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -12,24 +13,59 @@ import time
 
 
 STUDIO = 'mojo72549-arch/shorts-agent-studio'
-WORKFLOW = 'tayvoriq-contabo-research.yml'
-ARTIFACT = 'contabo-research-result'
+RECEIPTS = '.automation/contabo-research-receipts'
 
 
-def gh(*args, body=None):
-    return subprocess.run(['gh', *args], input=json.dumps(body) if body is not None else None,
-                          env={**os.environ, 'GH_TOKEN': os.environ['STUDIO_RESEARCH_TOKEN']},
-                          capture_output=True, text=True, check=True, timeout=25).stdout
+def gh(*args, body=None, missing=False):
+    token = os.getenv('STUDIO_RESEARCH_TOKEN') or os.getenv('GH_TOKEN')
+    if not token:
+        raise RuntimeError('CONTABO_RESEARCH_TOKEN_MISSING')
+    result = subprocess.run(['gh', *args], input=json.dumps(body) if body is not None else None,
+                            env={**os.environ, 'GH_TOKEN': token},
+                            capture_output=True, text=True, timeout=25)
+    if result.returncode:
+        if missing and '(HTTP 404)' in result.stderr:
+            return None
+        error = result.stderr.replace(token, '***').strip().splitlines()
+        raise RuntimeError(f'CONTABO_RESEARCH_GITHUB: {error[-1][:300] if error else result.returncode}')
+    return result.stdout
 
 
-def find_run(title):
-    runs = json.loads(gh('run', 'list', '--repo', STUDIO, '--workflow', WORKFLOW,
-                         '--event', 'repository_dispatch', '--limit', '50',
-                         '--json', 'displayTitle,databaseId,status,conclusion'))
-    matches = [run for run in runs if run['displayTitle'] == title]
-    if len(matches) > 1:
-        raise RuntimeError('CONTABO_RESEARCH_RUN_NOT_UNIQUE')
-    return matches[0] if matches else None
+def receipt_api(binding):
+    return f"repos/{STUDIO}/contents/{RECEIPTS}/{binding['selection']}-{binding['controller']}.{binding['attempt']}.json"
+
+
+def read_receipt(binding):
+    meta = gh('api', receipt_api(binding) + '?ref=main', missing=True)
+    if meta is None:
+        return None, None
+    version = json.loads(meta)
+    receipt = json.loads(base64.b64decode(version['content']))
+    if receipt.get('binding') != binding:
+        raise RuntimeError('CONTABO_RESEARCH_BINDING_MISMATCH')
+    return receipt, version['sha']
+
+
+def write_receipt(binding, worker_id, status, root):
+    current, sha = read_receipt(binding)
+    if current and (current['worker_run_id'] != worker_id or current['status'] != 'RUNNING'):
+        raise RuntimeError('CONTABO_RESEARCH_WORKER_ALREADY_BOUND')
+    proof = {'binding': binding, 'worker_run_id': worker_id, 'status': status}
+    if status != 'RUNNING':
+        events = root / 'events.log'
+        proof['events'] = [line for line in events.read_text().splitlines() if line.startswith('{')][-100:] if events.is_file() else []
+    if status == 'SUCCEEDED':
+        files = {name: (root / name).read_bytes() for name in ('selection.json', 'audit.json')}
+        proof['files'] = {name: base64.b64encode(data).decode() for name, data in files.items()}
+        proof['sha256'] = {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}
+    raw = json.dumps(proof, ensure_ascii=False).encode()
+    if len(raw) > 900_000:
+        raise RuntimeError('CONTABO_RESEARCH_RESULT_TOO_LARGE')
+    payload = {'branch': 'main', 'message': f"Record Contabo research {binding['controller']}: {status}",
+               'content': base64.b64encode(raw).decode()}
+    if sha:
+        payload['sha'] = sha
+    gh('api', receipt_api(binding), '--method', 'PUT', '--input', '-', body=payload)
 
 
 def check_result(root, expected, worker_id):
@@ -56,38 +92,34 @@ def main():
                    controller=os.environ['GITHUB_RUN_ID'], attempt=os.environ['GITHUB_RUN_ATTEMPT'],
                    topic=os.getenv('TAYVORIQ_EDITORIAL_TOPIC', ''),
                    origin=os.getenv('TAYVORIQ_CONTABO_RESEARCH_ORIGIN', 'telegram_command'))
-    title = f"TAYVORIQ Ollama research {binding['selection']} {binding['controller']}.{binding['attempt']}"
-    run = find_run(title)
-    if run is None:
+    receipt, _ = read_receipt(binding)
+    if receipt is None:
         gh('api', f'repos/{STUDIO}/dispatches', '--method', 'POST', '--input', '-',
            body={'event_type': 'tayvoriq_contabo_research', 'client_payload': binding})
     deadline = time.monotonic() + 490
     local_started = False
     while time.monotonic() < deadline:
-        run = find_run(title)
-        if run and run['status'] == 'completed':
+        receipt, _ = read_receipt(binding)
+        if receipt and receipt['status'] != 'RUNNING':
             break
-        if run and run['status'] == 'in_progress' and not local_started:
-            jobs = json.loads(gh('run', 'view', str(run['databaseId']), '--repo', STUDIO, '--json', 'jobs'))['jobs']
-            if any(step['name'] == 'Run source-bound Ollama ranking on Contabo' and step['status'] == 'in_progress'
-                   for job in jobs for step in job['steps']):
-                print(json.dumps({'event': 'provider_attempt_started', 'provider': 'ollama'}), flush=True)
-                local_started = True
+        if receipt and not local_started:
+            print(json.dumps({'event': 'provider_attempt_started', 'provider': 'ollama'}), flush=True)
+            local_started = True
         time.sleep(5)
     else:
         raise RuntimeError('CONTABO_RESEARCH_TIMEOUT')
 
-    worker_id = int(run['databaseId'])
+    print(f"Verified private worker run {receipt['worker_run_id']}: {receipt['status']}", flush=True)
+    for event in receipt.get('events', []):
+        print(event, flush=True)
+    if receipt['status'] != 'SUCCEEDED':
+        raise RuntimeError(f"CONTABO_RESEARCH_{receipt['status']}")
     with tempfile.TemporaryDirectory(prefix='contabo-research-') as temporary:
         root = Path(temporary)
-        gh('run', 'download', str(worker_id), '--repo', STUDIO, '--name', ARTIFACT, '--dir', str(root))
-        if (root / 'events.log').is_file():
-            for line in (root / 'events.log').read_text().splitlines():
-                if line.startswith('{'):
-                    print(line, flush=True)
-        if run['conclusion'] != 'success':
-            raise RuntimeError(f'CONTABO_RESEARCH_{run["conclusion"].upper()}')
-        check_result(root, binding, worker_id)
+        (root / 'receipt.json').write_text(json.dumps(receipt))
+        for name in ('selection.json', 'audit.json'):
+            (root / name).write_bytes(base64.b64decode(receipt['files'][name]))
+        check_result(root, binding, receipt['worker_run_id'])
         shutil.copyfile(root / 'selection.json', args.output)
         shutil.copyfile(root / 'audit.json', args.audit_output)
     return 0
