@@ -3,10 +3,17 @@
   "request_id": "telegram-3751-trend-1",
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45840618350,
-  "code": "CONTABO_EXECUTION_STOPPED",
-  "cause": "Der Produktionsschritt „Assert publishable production output“ ist fehlgeschlagen.",
-  "action": "Der Lauf ist gestoppt. Der fehlgeschlagene Schritt muss korrigiert und verifiziert werden.",
-  "next_proof": "Bestätigte Übernahme des Produktionsstands und anschließende Qualitätsprüfung.",
+  "code": "FINAL_MIX_TERMINAL_SILENCE",
+  "cause": "Im YouTube-Export liegt von Sekunde 23,66 bis 26,22 eine stille Endstelle. Text und gesprochener Inhalt bestehen die Prüfung; TikTok besteht auch die Tonmischungsprüfung.",
+  "action": "Die Schnittkorrektur ist am tatsächlichen Export nachgewiesen: 25,13 Sekunden, Sprachsamples unverändert und keine beanstandete Stille mehr. Die reguläre Produktionsverifikation läuft.",
+  "next_proof": "Verifizierte Codeversion, bestandene Abschlussprüfung beider Fassungen und bestätigte Zustellung mit gemeinsamer Freigabe.",
   "user_action_required": false,
-  "quality_gates_weakened": false
+  "quality_gates_weakened": false,
+  "repair_verification": {
+    "original_duration": 26.233,
+    "repaired_duration": 25.133333333333333,
+    "original_voice_samples_preserved": true,
+    "silence_check_passed": true,
+    "final_review_delivered": false
+  }
 }
