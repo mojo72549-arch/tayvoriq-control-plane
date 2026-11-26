@@ -121,6 +121,12 @@ jobs:
           ref: main
           persist-credentials: ${{ !inputs.compute_only }}
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+
       - name: Verify exact Contabo handoff before processing
         if: inputs.compute_only
         env:
@@ -134,7 +140,7 @@ jobs:
           p=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
           assert p['request_id']==os.environ['EXPECTED_REQUEST']
           assert p['execution_repository']=='mojo72549-arch/shorts-agent-studio'
-          assert str(p['golden_path_run_id'])==os.environ['TAYVORIQ_PRODUCTION_RUN_ID']
+          assert str(p['golden_path_run_id'])==(os.environ.get('TAYVORIQ_PRODUCTION_RUN_ID') or os.environ['GITHUB_RUN_ID'])
           assert str(p['execution_run_id'])==os.environ['GITHUB_RUN_ID']
           assert p['execution_backend']=='contabo_private_runner'
           PYGUARD
@@ -148,6 +154,7 @@ jobs:
         run: |
           test -x /var/cache/tayvoriq/venv/bin/python
           if [ ! -e .venv ]; then ln -s /var/cache/tayvoriq/venv .venv; fi
+          /var/cache/tayvoriq/venv/bin/python --version
           echo /var/cache/tayvoriq/venv/bin >> "$GITHUB_PATH"
 
 
@@ -265,10 +272,6 @@ jobs:
           }, ensure_ascii=False))
           PY
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
 
       - name: Validate hosted execution contract
         shell: bash
@@ -802,7 +805,7 @@ jobs:
           import os,zipfile
           from pathlib import Path
           target=Path('implementation/out/recovery-checkpoint').resolve()
-          archive=Path(os.environ['RUNNER_TEMP'])/('contabo-checkpoint-'+os.environ['TAYVORIQ_PRODUCTION_RUN_ID'])/'checkpoint.zip'
+          archive=Path(os.environ['RUNNER_TEMP'])/('contabo-checkpoint-'+(os.environ.get('TAYVORIQ_PRODUCTION_RUN_ID') or os.environ['GITHUB_RUN_ID']))/'checkpoint.zip'
           with zipfile.ZipFile(archive) as z:
               for item in z.infolist():
                   if not (target/item.filename).resolve().is_relative_to(target):
@@ -1871,7 +1874,7 @@ jobs:
           p=Path('implementation/out/control-plane/contabo-result.json')
           p.parent.mkdir(parents=True,exist_ok=True)
           p.write_text(json.dumps({'schema':'tayvoriq-contabo-result-v1','request_id':os.environ['SOURCE_REQUEST_ID_PIN'],
-              'run_id':int(os.environ['TAYVORIQ_PRODUCTION_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'run_id':int((os.environ.get('TAYVORIQ_PRODUCTION_RUN_ID') or os.environ['GITHUB_RUN_ID'])),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
               'source_context_sha256':os.environ.get('SOURCE_CONTEXT_SHA256'),
               'quality_passed':os.environ['QUALITY_OUTCOME']=='success','quality_gates_weakened':False})+'\n')
           PYRECEIPT
@@ -1923,7 +1926,7 @@ jobs:
 
           from tayvoriq_send_telegram import send_status
 
-          run_id = os.environ['TAYVORIQ_PRODUCTION_RUN_ID']
+          run_id = (os.environ.get('TAYVORIQ_PRODUCTION_RUN_ID') or os.environ['GITHUB_RUN_ID'])
           message_id = send_status(
               state='SUCCESS', conclusion='success', run_url='', review_id=run_id,
               review_url=f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{run_id}/',
@@ -2185,7 +2188,7 @@ jobs:
           sys.path.insert(0, str(Path("tools").resolve()))
           from tayvoriq_current_failure_contract_v1 import bind_current_failure
           payload = bind_current_failure(
-              payload, controller_console, run_id=os.environ["TAYVORIQ_PRODUCTION_RUN_ID"],
+              payload, controller_console, run_id=(os.environ.get("TAYVORIQ_PRODUCTION_RUN_ID") or os.environ["GITHUB_RUN_ID"]),
               run_attempt=os.environ["GITHUB_RUN_ATTEMPT"],
               request_id=os.environ.get("SOURCE_REQUEST_ID_PIN", ""),
           )
