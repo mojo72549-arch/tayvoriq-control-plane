@@ -44,7 +44,13 @@ def research_format(example, pairs, scopes):
         fields = shape['properties']
         fields['trend_scope'] = {'type': 'string', 'enum': sorted(set(scopes) - {'auto_scope'})}
         fields['regional_relevance'] = {'type': 'string', 'enum': ['local', 'germany']}
-        fields['regional_scorecard']['properties']['evidence'] = _shape({source: '' for source in pair})
+        regional = fields['regional_scorecard']['properties']
+        regional['evidence'] = _shape({source: '' for source in pair})
+        for criterion in regional['ratings']['properties']:
+            rating = _shape({'y': 0, 't': 0, 'why': ''})
+            for platform in ('y', 't'):
+                rating['properties'][platform]['maximum'] = 5
+            regional['ratings']['properties'][criterion] = rating
         properties['+'.join(pair)] = {'anyOf': [shape, {'type': 'null'}]}
     return {'type': 'object', 'properties': properties, 'required': list(properties), 'additionalProperties': False}
 
@@ -54,7 +60,21 @@ def read_candidates(reply, pairs):
     if not isinstance(reply, dict) or set(reply) != expected or any(
             row is not None and not isinstance(row, dict) for row in reply.values()):
         raise RuntimeError('OLLAMA_RESEARCH_PAIR_DECISIONS_INCOMPLETE')
-    return {'candidates': [{**row, 'source_pair_id': key} for key, row in reply.items() if row is not None]}
+    candidates = []
+    for key, row in reply.items():
+        if row is None:
+            continue
+        candidate = {**row, 'source_pair_id': key}
+        regional = candidate.get('regional_scorecard')
+        if isinstance(regional, dict) and isinstance(regional.get('ratings'), dict):
+            ratings = {}
+            for criterion, value in regional['ratings'].items():
+                if not isinstance(value, dict) or set(value) != {'y', 't', 'why'}:
+                    raise RuntimeError('OLLAMA_RESEARCH_INVALID_RATING_SHAPE')
+                ratings[criterion] = [value['y'], value['t'], value['why']]
+            candidate['regional_scorecard'] = {**regional, 'ratings': ratings}
+        candidates.append(candidate)
+    return {'candidates': candidates}
 
 
 def remaining_research_seconds():
