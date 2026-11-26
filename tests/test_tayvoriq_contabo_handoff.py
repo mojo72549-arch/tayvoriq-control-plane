@@ -41,3 +41,12 @@ def test_already_delivered_request_cannot_start_a_second_compute_run(context):
     request,pointer=context
     request['production_completion']={'telegram_message_id':1234}
     with pytest.raises(AssertionError):bind(request,pointer,90001,90002,'private-checkpoint')
+
+def test_intermediate_checkpoint_implementation_is_preserved_before_next_bind(context):
+    request,pointer=context
+    request['codefix_recovery']['replay_implementation_sha']='a'*40
+    request['codefix_recovery']['replay_run_id']=80001
+    bind(request,pointer,90001,90002,'private-checkpoint')
+    record=request['state_history'][-1]
+    assert record['meta']['replay_implementation_sha']=='a'*40
+    assert record['meta']['golden_path_run_id']==80001
