@@ -7,9 +7,10 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
 import tempfile
 import time
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 
 STUDIO = 'mojo72549-arch/shorts-agent-studio'
@@ -18,19 +19,23 @@ RECEIPTS = '.automation/contabo-research-receipts'
 QUEUE = '.github/state/tayvoriq-contabo-research-queue'
 
 
-def gh(*args, body=None, missing=False, public_write=False):
+def api(path, *, body=None, missing=False, public_write=False):
     token = (os.getenv('STUDIO_RESEARCH_TOKEN') if not public_write else None) or os.getenv('GH_TOKEN')
     if not token:
         raise RuntimeError('CONTABO_RESEARCH_TOKEN_MISSING')
-    result = subprocess.run(['gh', *args], input=json.dumps(body) if body is not None else None,
-                            env={**os.environ, 'GH_TOKEN': token},
-                            capture_output=True, text=True, timeout=25)
-    if result.returncode:
-        if missing and '(HTTP 404)' in result.stderr:
+    headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json',
+               'User-Agent': 'TAYVORIQ-Contabo-Research', 'Content-Type': 'application/json',
+               'Cache-Control': 'no-cache'}
+    request = Request('https://api.github.com/' + path, headers=headers,
+                      data=json.dumps(body).encode() if body is not None else None,
+                      method='PUT' if body is not None else 'GET')
+    try:
+        with urlopen(request, timeout=20) as response:
+            return json.load(response)
+    except HTTPError as error:
+        if missing and error.code == 404:
             return None
-        error = result.stderr.replace(token, '***').strip().splitlines()
-        raise RuntimeError(f'CONTABO_RESEARCH_GITHUB: {error[-1][:300] if error else result.returncode}')
-    return result.stdout
+        raise RuntimeError(f'CONTABO_RESEARCH_GITHUB: HTTP {error.code}') from None
 
 
 def receipt_api(binding):
@@ -38,10 +43,9 @@ def receipt_api(binding):
 
 
 def read_receipt(binding):
-    meta = gh('api', receipt_api(binding) + '?ref=main', missing=True)
-    if meta is None:
+    version = api(receipt_api(binding) + '?ref=main', missing=True)
+    if version is None:
         return None, None
-    version = json.loads(meta)
     receipt = json.loads(base64.b64decode(version['content']))
     if receipt.get('binding') != binding:
         raise RuntimeError('CONTABO_RESEARCH_BINDING_MISMATCH')
@@ -67,7 +71,7 @@ def write_receipt(binding, worker_id, status, root):
                'content': base64.b64encode(raw).decode()}
     if sha:
         payload['sha'] = sha
-    gh('api', receipt_api(binding), '--method', 'PUT', '--input', '-', body=payload)
+    api(receipt_api(binding), body=payload)
 
 
 def check_result(root, expected, worker_id):
@@ -86,17 +90,16 @@ def check_result(root, expected, worker_id):
 def enqueue(binding):
     lane = 'verification' if binding['origin'] == 'verification' else 'explicit'
     path = f'repos/{CONTROL}/contents/{QUEUE}/{lane}.json'
-    current = gh('api', path + '?ref=main', missing=True, public_write=True)
+    current = api(path + '?ref=main', missing=True, public_write=True)
     queued = {'binding': binding, 'expires_at': int(time.time()) + 770}
     payload = {'branch': 'main', 'message': f"Queue Contabo research {binding['controller']}",
                'content': base64.b64encode(json.dumps(queued).encode()).decode()}
     if current:
-        meta = json.loads(current)
-        previous = json.loads(base64.b64decode(meta['content']))
+        previous = json.loads(base64.b64decode(current['content']))
         if previous.get('binding') == binding:
             return
-        payload['sha'] = meta['sha']
-    gh('api', path, '--method', 'PUT', '--input', '-', body=payload, public_write=True)
+        payload['sha'] = current['sha']
+    api(path, body=payload, public_write=True)
 
 
 def main():

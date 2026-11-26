@@ -18,10 +18,10 @@ class OllamaResearchTests(unittest.TestCase):
     def test_receipt_uses_exact_selection_controller_and_attempt(self):
         binding = {'selection': '20261126-evening-agentv2', 'controller': '123', 'attempt': '2'}
         row = {'binding': binding, 'worker_run_id': 99, 'status': 'RUNNING'}
-        response = json.dumps({'content': base64.b64encode(json.dumps(row).encode()).decode(), 'sha': 'version'})
-        with patch.object(transport, 'gh', return_value=response) as call:
+        response = {'content': base64.b64encode(json.dumps(row).encode()).decode(), 'sha': 'version'}
+        with patch.object(transport, 'api', return_value=response) as call:
             self.assertEqual(transport.read_receipt(binding), (row, 'version'))
-        self.assertTrue(call.call_args.args[1].endswith('20261126-evening-agentv2-123.2.json?ref=main'))
+        self.assertTrue(call.call_args.args[0].endswith('20261126-evening-agentv2-123.2.json?ref=main'))
 
     def test_completion_uses_the_installed_model_over_loopback(self):
         response = {'model': ollama.MODEL, 'done': True, 'message': {'content': '{"candidates":[]}'}}
