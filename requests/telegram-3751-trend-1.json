@@ -397,7 +397,7 @@
   "contract_sha256": "31509a670b67716c62155b66dfed876a4d445498ad1bd5988167f1f502d64b95",
   "dispatch_claim_run_id": 45766187188,
   "dispatch_contract_sha256": "31509a670b67716c62155b66dfed876a4d445498ad1bd5988167f1f502d64b95",
-  "golden_path_run_id": 45834846394,
+  "golden_path_run_id": 45837672938,
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
@@ -436,11 +436,13 @@
     45780963911,
     45819371374,
     45823765745,
-    45828782397
+    45828782397,
+    45834846394
   ],
   "recovery_generation": 1,
   "retry_of_run_id": 45828782397,
   "replacement_reason": "SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY",
   "recovery_failure_signature": "9042198266c39fbe8ca3",
-  "recovery_dispatched_at": "2026-11-26T14:01:35.344899Z"
+  "recovery_dispatched_at": "2026-11-26T14:01:35.344899Z",
+  "execution_backend": "contabo_private_runner"
 }
