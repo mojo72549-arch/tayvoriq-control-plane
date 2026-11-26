@@ -54,6 +54,12 @@ def bind(request, pointer, controller, worker, release):
         handoff['checkpoint_parent']=dict(run_id=int(meta['run_id']),run_attempt=int(meta['run_attempt']),source_request_id=request['request_id'],source_context_sha256=meta['source_context_sha256'],verified_recovery=True)
     green=read('.github/state/tayvoriq-production-green.json')
     recovery=request.get('codefix_recovery',{})
+    previous_implementation=recovery.get('replay_implementation_sha')
+    if previous_implementation and previous_implementation!=green['implementation_sha']:
+        request.setdefault('state_history',[]).append(dict(state='CHECKPOINT_PROVENANCE_RECORDED',
+            at=datetime.now(timezone.utc).isoformat(),actor='contabo-controller',meta=dict(
+                replay_implementation_sha=previous_implementation,
+                golden_path_run_id=recovery.get('replay_run_id'),quality_gates_weakened=False)))
     recovery.update(status='REPLAY_DISPATCHED',request_substate='DISPATCHED',replay_run_id=controller,
         replay_implementation_sha=green['implementation_sha'],codefix_detection_reason='production-green-implementation-changed',
         active_pointer_verified=True,exact_source_request_required=True,same_generation_replay_required=True,
