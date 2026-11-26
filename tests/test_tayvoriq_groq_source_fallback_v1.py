@@ -64,7 +64,10 @@ class GroqSourceContractTests(unittest.TestCase):
         for request in calls:
             key, = request['format']['required']
             observed.add(key)
-            sources = json.loads(request['messages'][1]['content'].split('\nMeldungen: ', 1)[1])
+            prompt = request['messages'][1]['content']
+            self.assertIn('criteria und die sieben einzelnen Trend-Scores verwenden die Skala 0–100', prompt)
+            self.assertIn('Skala 0–5 gilt ausschließlich für y und t', prompt)
+            sources = json.loads(prompt.split('\nMeldungen: ', 1)[1])
             self.assertEqual([source['source_id'] for source in sources], key.split('+'))
         self.assertEqual(len(observed), 2)
 
