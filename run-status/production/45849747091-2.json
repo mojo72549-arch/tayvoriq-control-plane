@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "run_id": "45849747091",
+  "run_attempt": "2",
+  "source_request_id": "telegram-3751-trend-1",
+  "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
+  "studio_sha": "4a99c7c36f1e6122fd960e388d8ee1616ce9b91b",
+  "checkpoint_restored": true,
+  "tools": [],
+  "findings": [],
+  "stations": [
+    {
+      "id": "sources",
+      "state": "success",
+      "detail": "Der freigegebene Quellenkontext ist unverändert im geprüften Videopaket gebunden.",
+      "artifact": "bound-review/job.json",
+      "artifact_sha256": "00fa191229fabfdf227eed292f51234afbd21690e0d9f15d30461dcb4001b305",
+      "outputs": {}
+    },
+    {
+      "id": "preflight",
+      "state": "success",
+      "detail": "Die gespeicherten Dateien stammen aus dem erfolgreich abgeschlossenen, an diesen Auftrag gebundenen Contabo-Lauf.",
+      "artifact": "bound-review/job.json",
+      "artifact_sha256": "00fa191229fabfdf227eed292f51234afbd21690e0d9f15d30461dcb4001b305",
+      "outputs": {
+        "execution_run_id": 45849843823,
+        "implementation_sha": "4a99c7c36f1e6122fd960e388d8ee1616ce9b91b"
+      }
+    },
+    {
+      "id": "script",
+      "state": "success",
+      "detail": "Beide deutschen Skripte sind vorhanden und im fertigen Video geprüft. Der gespeicherte Text wurde wiederverwendet.",
+      "artifact": "bound-review/job.json",
+      "artifact_sha256": "00fa191229fabfdf227eed292f51234afbd21690e0d9f15d30461dcb4001b305",
+      "outputs": {}
+    },
+    {
+      "id": "scenes",
+      "state": "success",
+      "detail": "Die Szenenpläne beider Ausgaben sind im geprüften Paket vorhanden.",
+      "artifact": "bound-review/job.json",
+      "artifact_sha256": "00fa191229fabfdf227eed292f51234afbd21690e0d9f15d30461dcb4001b305",
+      "outputs": {
+        "youtube_shorts": 6,
+        "tiktok": 6
+      }
+    },
+    {
+      "id": "voice",
+      "state": "success",
+      "detail": "Beide Sprecheraufnahmen sind im fertigen Export mit dem gesprochenen Text abgeglichen und bestanden.",
+      "artifact": "bound-review/preapproval_ai_audit.json",
+      "artifact_sha256": "b1b6e82fe5516b22e48d74351db5cd33cbf6176b4dadcd4c96b437bc8d861f42",
+      "outputs": {}
+    },
+    {
+      "id": "visuals",
+      "state": "success",
+      "detail": "Die Motive beider Ausgaben haben die vollständige Einzelprüfung bestanden.",
+      "artifact": "bound-review/preapproval_ai_audit.json",
+      "artifact_sha256": "b1b6e82fe5516b22e48d74351db5cd33cbf6176b4dadcd4c96b437bc8d861f42",
+      "outputs": {}
+    },
+    {
+      "id": "captions",
+      "state": "success",
+      "detail": "Alle Untertitel sind im Export vorhanden und geprüft. Die redaktionelle Musikpolicy erlaubt Stille und schließt generische durchgehende Musikloops aus.",
+      "artifact": "bound-review/job.json",
+      "artifact_sha256": "00fa191229fabfdf227eed292f51234afbd21690e0d9f15d30461dcb4001b305",
+      "outputs": {
+        "subtitle_scenes": 12,
+        "music_policy_verified": true,
+        "generic_continuous_music_loop_required": false
+      }
+    },
+    {
+      "id": "render",
+      "state": "success",
+      "detail": "YouTube- und TikTok-Datei sind vollständig vorhanden und haben die technische Abschlussprüfung bestanden.",
+      "artifact": "bound-review/job.json",
+      "artifact_sha256": "00fa191229fabfdf227eed292f51234afbd21690e0d9f15d30461dcb4001b305",
+      "outputs": {}
+    },
+    {
+      "id": "quality",
+      "state": "success",
+      "detail": "Fakten, Stimme, Bilder, Untertitel und Tonmischung sind für beide fertigen Ausgaben bestanden.",
+      "artifact": "bound-review/preapproval_ai_audit.json",
+      "artifact_sha256": "b1b6e82fe5516b22e48d74351db5cd33cbf6176b4dadcd4c96b437bc8d861f42",
+      "outputs": {}
+    },
+    {
+      "id": "repair",
+      "state": "success",
+      "detail": "Der korrigierte gespeicherte Videostand wurde erfolgreich abgenommen.",
+      "artifact": "bound-review/job.json",
+      "artifact_sha256": "00fa191229fabfdf227eed292f51234afbd21690e0d9f15d30461dcb4001b305",
+      "outputs": {}
+    }
+  ],
+  "scores": [
+    {
+      "name": "Fakten",
+      "value": 98,
+      "threshold": 90
+    },
+    {
+      "name": "Sprache",
+      "value": 98,
+      "threshold": 95
+    },
+    {
+      "name": "Bild",
+      "value": 100,
+      "threshold": 78
+    },
+    {
+      "name": "Gesamt",
+      "value": 95,
+      "threshold": 85
+    }
+  ],
+  "scripts": {
+    "youtube_shorts": "Aldi und Lidl senken den Butterpreis auf 99 Cent pro Packung. Aufgrund gesunkener Einkaufspreise in der gesamten Lieferkette der Molkereien. Alle Verbraucher, die regelmäßig Butter in Discountern einkaufen. Für dich heißt das, dass du beim Einkauf direkt Geld sparen kannst. Achte beim nächsten Einkauf auf die Eigenmarken-Butter im Regal. Abonniere diesen Kanal für verifizierte Einordnung und konkrete Schritte.",
+    "tiktok": "Aldi und Lidl senken den Butterpreis auf 99 Cent pro Packung. Aufgrund gesunkener Einkaufspreise in der gesamten Lieferkette der Molkereien. Alle Verbraucher, die regelmäßig Butter in Discountern einkaufen. Für dich heißt das, dass du beim Einkauf direkt Geld sparen kannst. Achte beim nächsten Einkauf auf die Eigenmarken-Butter im Regal. Folge diesem Kanal für verifizierte Einordnung und konkrete Schritte."
+  },
+  "provenance": {
+    "kind": "immutable-delivered-review",
+    "artifact_run_id": 45851369145,
+    "execution_repository": "mojo72549-arch/shorts-agent-studio",
+    "execution_run_id": 45849843823,
+    "observation_attempt": 2,
+    "telegram_message_id": 3814
+  }
+}
