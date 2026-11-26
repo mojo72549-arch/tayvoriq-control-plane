@@ -775,7 +775,7 @@ jobs:
 
       - name: Restore lean production checkpoint
         id: restore_recovery_cache
-        if: env.REVIEW_REPAIR_OF == '' && !inputs.compute_only
+        if: env.REVIEW_REPAIR_OF == '' && (!inputs.compute_only || inputs.checkpoint_release == '')
         uses: actions/cache/restore@v4
         with:
           path: implementation/out/recovery-checkpoint
@@ -938,6 +938,15 @@ jobs:
           fi
           if [ -n "$REVIEW_REPAIR_OF" ]; then
             [ "$REVIEW_CACHE_HIT" = "true" ] && [ "$restored" = "true" ] || exit 1
+          fi
+          if [ "$TAYVORIQ_EXECUTION_BACKEND" = "contabo_private_runner" ] && [ "$restored" != "true" ]; then
+            python - <<'CHECKPOINT'
+          import os,json
+          from pathlib import Path
+          request=json.loads((Path('..')/'requests'/(os.environ['SOURCE_REQUEST_ID_PIN']+'.json')).read_text())
+          if int(request.get('recovery_generation') or 0)>0:
+              raise SystemExit('CONTABO_RECOVERY_CHECKPOINT_REQUIRED: a fresh render is not authorized for this recovery')
+          CHECKPOINT
           fi
           echo "restored=$restored" >> "$GITHUB_OUTPUT"
 
