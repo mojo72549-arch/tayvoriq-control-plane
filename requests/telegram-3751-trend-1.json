@@ -418,11 +418,11 @@
     "previous_codefix_failed_run_id": 45780963911,
     "previous_codefix_failure_signature": "55ff5f5cc70f2db1a058",
     "last_failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
-    "replay_run_id": 45834846394,
+    "replay_run_id": 45838224199,
     "replayed_at": "2026-11-26T14:01:35.344899Z",
     "replay_control_plane_sha": "46b0e2f8867708610be0f7d2afb8588019322aaa",
     "replay_implementation_sha": "798c9f3ed8d1a20291b73e3ea4b0cc7ba5a9ac73",
-    "codefix_detection_reason": "production-green-advanced-during-local-checkpoint-retry",
+    "codefix_detection_reason": "production-green-implementation-changed",
     "local_retry_run_id": 45828782397,
     "local_retry_run_attempt": 2,
     "local_retry_kind": "same-run",
@@ -445,5 +445,23 @@
   "replacement_reason": "SAME_GENERATION_VERIFIED_GREEN_LOCAL_REPLAY",
   "recovery_failure_signature": "9042198266c39fbe8ca3",
   "recovery_dispatched_at": "2026-11-26T14:01:35.344899Z",
-  "execution_backend": "contabo_private_runner"
+  "execution_backend": "contabo_private_runner",
+  "contabo_handoff": {
+    "schema": "tayvoriq-contabo-handoff-v1",
+    "controller_run_id": 45838224199,
+    "worker_run_id": 45838322718,
+    "execution_repository": "mojo72549-arch/shorts-agent-studio",
+    "checkpoint_release": "artifact:45838224199",
+    "request_id": "telegram-3751-trend-1",
+    "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
+    "contract_sha256": "31509a670b67716c62155b66dfed876a4d445498ad1bd5988167f1f502d64b95",
+    "quality_gates_weakened": false,
+    "checkpoint_parent": {
+      "run_id": 45834846394,
+      "run_attempt": 1,
+      "source_request_id": "telegram-3751-trend-1",
+      "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
+      "verified_recovery": true
+    }
+  }
 }
