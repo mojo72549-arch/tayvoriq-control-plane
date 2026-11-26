@@ -4,16 +4,16 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45840618350,
   "run_attempt": 1,
-  "updated_at": "2026-11-26T14:59:02.607472+00:00",
-  "observed_at": "2026-11-26T15:00:06.163306+00:00",
+  "updated_at": "2026-11-26T15:00:25.387133+00:00",
+  "observed_at": "2026-11-26T15:00:29.388998+00:00",
   "current": {
-    "phase": "quality",
+    "phase": "repair",
     "status": "started",
-    "at": "2026-11-26T14:59:02.607472+00:00",
-    "call_id": "checkpoint-QUALITY_AUDIT_1",
+    "at": "2026-11-26T15:00:25.387133+00:00",
+    "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
+    "target": "voice",
     "round": 1,
-    "timeout_seconds": 420,
-    "target": null
+    "timeout_seconds": 600
   },
   "events": [
     {
@@ -85,6 +85,22 @@
       "call_id": "checkpoint-QUALITY_AUDIT_1",
       "round": 1,
       "timeout_seconds": 420
+    },
+    {
+      "phase": "quality",
+      "status": "completed",
+      "at": "2026-11-26T15:00:21.759337+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "round": 1
+    },
+    {
+      "phase": "repair",
+      "status": "started",
+      "at": "2026-11-26T15:00:25.387133+00:00",
+      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
+      "target": "voice",
+      "round": 1,
+      "timeout_seconds": 600
     }
   ],
   "completed_phases": []
