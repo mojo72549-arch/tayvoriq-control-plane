@@ -2,11 +2,11 @@
   "schema": "tayvoriq-execution-incident-v1",
   "request_id": "telegram-3751-trend-1",
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
-  "run_id": 45837672938,
-  "code": "PRIVATE_WORKFLOW_PERMISSION_DENIED",
-  "cause": "GitHub hat den Start auf Contabo abgewiesen: Der vorhandene Zugang darf das private Repository lesen, aber keinen Workflow starten (HTTP 403).",
-  "action": "Die Übergabe wird auf eine Auftragswarteschlange umgestellt, die der private Runner mit seinem eigenen Zugang abholt. Der neue Start ist noch nicht bestätigt.",
-  "next_proof": "Der private Runner bestätigt die Abholung und übernimmt den gespeicherten Butterpreis-Produktionsstand.",
+  "run_id": 45838224199,
+  "code": "CONTABO_EXECUTION_STOPPED",
+  "cause": "Die Contabo-Produktion oder ihre abschließende Zustellung ist angehalten.",
+  "action": "Der Lauf ist gestoppt. Der fehlgeschlagene Schritt muss korrigiert und verifiziert werden.",
+  "next_proof": "Bestätigte Übernahme des Produktionsstands und anschließende Qualitätsprüfung.",
   "user_action_required": false,
   "quality_gates_weakened": false
 }
