@@ -1,0 +1,22 @@
+{
+  "schema": "tayvoriq-research-retry-v1",
+  "state": "WAITING",
+  "slot": "morning",
+  "berlin_date": "2026-11-26",
+  "first_deferred_at_epoch": 1795714214.0,
+  "attempts": 1,
+  "retry_at_epoch": 1795714316.4770546,
+  "retry_phase": "NORMAL",
+  "last_deferred_at_epoch": 1795714249.4971766,
+  "provider_retry_at_epoch": 1795714316.4770546,
+  "max_attempts": 3,
+  "sla_seconds": 600,
+  "valid_until_epoch": 1795714814.0,
+  "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+  "quality_gates_weakened": false,
+  "production_started": false,
+  "last_research_attempt": "45868227687.1",
+  "last_local_attempt": 1,
+  "last_issue": "SOURCE_MINIMUM_NOT_MET",
+  "status_detail": "Zu wenige Vorschläge haben die Quellenprüfung bestanden."
+}
