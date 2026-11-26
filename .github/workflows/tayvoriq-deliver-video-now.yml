@@ -775,7 +775,7 @@ jobs:
 
       - name: Restore lean production checkpoint
         id: restore_recovery_cache
-        if: env.REVIEW_REPAIR_OF == '' && (!inputs.compute_only || inputs.checkpoint_release == '')
+        if: env.REVIEW_REPAIR_OF == ''
         uses: actions/cache/restore@v4
         with:
           path: implementation/out/recovery-checkpoint
@@ -793,7 +793,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Restore exact migration checkpoint on Contabo
-        if: inputs.compute_only && inputs.checkpoint_release != ''
+        if: inputs.compute_only && inputs.checkpoint_release != '' && steps.restore_recovery_cache.outputs.cache-matched-key == ''
         env:
           GH_TOKEN: ${{ github.token }}
           CHECKPOINT_RELEASE: ${{ inputs.checkpoint_release }}
