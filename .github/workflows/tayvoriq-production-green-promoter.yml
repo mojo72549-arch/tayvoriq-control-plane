@@ -1,3 +1,4 @@
+# Verify terminal-only replacement voice tail repair with unchanged final gates.
 # Verify real production phase reporting and the renderer's one-based scene numbers.
 # Verify Studio e421013764a1808e539dc5087224319a0ad643d2 for the Stuttgart station repair.
 # Production-green: retry only latest verified Studio revision 45674ac1838c after prior SHA moved.
@@ -228,6 +229,7 @@ jobs:
             echo "CANDIDATE_SHA_CHANGED_BEFORE_FAST_GATE"
             exit 1
           }
+          python -m pytest -q tests/test_tayvoriq_silent_tail_regression.py
           python -m compileall -q tools tests
           if [ -d runtime_patches ]; then python -m compileall -q runtime_patches; fi
           python -m pytest -q \
