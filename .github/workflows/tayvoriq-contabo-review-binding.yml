@@ -1,0 +1,91 @@
+name: TAYVORIQ Contabo Review Binding
+on:
+  workflow_run:
+    workflows: [TAYVORIQ Contabo Controller, TAYVORIQ-X Golden Path]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      review_id:
+        required: true
+        type: string
+  push:
+    branches: [main]
+    paths: [.github/run-now/tayvoriq-contabo-review-bind.json]
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: tayvoriq-contabo-review-binding
+  cancel-in-progress: false
+jobs:
+  bind:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Resolve only an actually delivered Contabo review
+        id: review
+        env:
+          EVENT_REVIEW: ${{ github.event.workflow_run.id || inputs.review_id }}
+        run: |
+          python3 - <<'PY'
+          import json,os,re
+          from pathlib import Path
+          rid=str(os.environ.get('EVENT_REVIEW') or '')
+          if not rid and os.environ['GITHUB_EVENT_NAME']=='push':
+              rid=str(json.loads(Path('.github/run-now/tayvoriq-contabo-review-bind.json').read_text())['review_id'])
+          assert re.fullmatch(r'[0-9]{1,20}',rid),'INVALID_REVIEW_ID'
+          matches=[]
+          for path in Path('requests').glob('*.json'):
+              request=json.loads(path.read_text())
+              if request.get('execution_backend')=='contabo_private_runner' and str(request.get('production_completion',{}).get('golden_path_run_id'))==rid:
+                  matches.append(request)
+          if not matches:
+              print('This event has no delivered Contabo review.');raise SystemExit(0)
+          assert len(matches)==1 and matches[0]['production_completion']['state']=='REVIEW_READY'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write('review_id='+rid+'\n')
+          PY
+      - name: Receive the immutable quality-passed result
+        if: steps.review.outputs.review_id != ''
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          REVIEW_ID: ${{ steps.review.outputs.review_id }}
+        run: |
+          mkdir -p returned
+          gh release download "contabo-result-$REVIEW_ID" --repo mojo72549-arch/shorts-agent-studio --pattern result.zip --dir /tmp
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          target=Path('returned').resolve()
+          with zipfile.ZipFile('/tmp/result.zip') as z:
+              for item in z.infolist():assert (target/item.filename).resolve().is_relative_to(target)
+              z.extractall(target)
+          PY
+      - name: Prepare the exact pair for manual approval
+        id: package
+        if: steps.review.outputs.review_id != ''
+        env:
+          REVIEW_ID: ${{ steps.review.outputs.review_id }}
+        run: |
+          python3 -m pip install requests
+          python3 tools/tayvoriq_contabo_review_binding.py prepare --review "$REVIEW_ID"
+      - name: Store the bound pair for the existing publisher
+        if: steps.package.outputs.prepared == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-approved-replay-${{ steps.review.outputs.review_id }}
+          path: approved/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Activate synchronized Telegram and Control Center decisions
+        if: steps.package.outputs.activate == 'true'
+        env:
+          REVIEW_ID: ${{ steps.review.outputs.review_id }}
+          CONTROL_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 tools/tayvoriq_contabo_review_binding.py activate --review "$REVIEW_ID"
