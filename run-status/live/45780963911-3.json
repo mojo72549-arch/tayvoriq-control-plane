@@ -4,50 +4,145 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45780963911,
   "run_attempt": 3,
-  "updated_at": "2026-11-26T09:46:16.685022+00:00",
-  "observed_at": "2026-11-26T09:46:16.685067+00:00",
+  "updated_at": "2026-11-26T09:46:22.652026+00:00",
+  "observed_at": "2026-11-26T09:46:24.037885+00:00",
   "current": {
-    "phase": "repair",
+    "phase": "render",
     "status": "started",
-    "at": "2026-11-26T09:46:16.685022+00:00",
-    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
-    "round": 1,
-    "timeout_seconds": 900
+    "at": "2026-11-26T09:46:16.750920+00:00",
+    "call_id": "f6c3a6d77d1148d2beaca99fad195565",
+    "platform": "youtube_shorts",
+    "total": 6,
+    "round": 1
   },
   "events": [
     {
-      "phase": "quality",
+      "phase": "visuals",
       "status": "started",
-      "at": "2026-11-26T09:45:06.559729+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1",
-      "timeout_seconds": 420
+      "at": "2026-11-26T09:46:18.667642+00:00",
+      "call_id": "e5255ad00d5d41c9bcdd878f7c3c820e",
+      "platform": "youtube_shorts",
+      "scene": 3,
+      "total": 6
     },
     {
-      "phase": "quality",
-      "status": "failed",
-      "at": "2026-11-26T09:45:41.982304+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1"
-    },
-    {
-      "phase": "quality",
+      "phase": "captions",
       "status": "started",
-      "at": "2026-11-26T09:45:53.413354+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_2",
-      "timeout_seconds": 420
+      "at": "2026-11-26T09:46:19.453648+00:00",
+      "call_id": "7475de78e5c24137a37583dbf62cef80",
+      "platform": "youtube_shorts"
     },
     {
-      "phase": "quality",
-      "status": "failed",
-      "at": "2026-11-26T09:46:16.684935+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_2"
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T09:46:19.485740+00:00",
+      "call_id": "7475de78e5c24137a37583dbf62cef80",
+      "platform": "youtube_shorts"
     },
     {
-      "phase": "repair",
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T09:46:19.524019+00:00",
+      "call_id": "e5255ad00d5d41c9bcdd878f7c3c820e",
+      "platform": "youtube_shorts",
+      "scene": 3,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
       "status": "started",
-      "at": "2026-11-26T09:46:16.685022+00:00",
-      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
-      "round": 1,
-      "timeout_seconds": 900
+      "at": "2026-11-26T09:46:19.524204+00:00",
+      "call_id": "ebf516456a62409ba6437cbec2ff764b",
+      "platform": "youtube_shorts",
+      "scene": 4,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-26T09:46:20.491278+00:00",
+      "call_id": "eea98173d01c4ec09f462999d09ab53e",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T09:46:20.523873+00:00",
+      "call_id": "eea98173d01c4ec09f462999d09ab53e",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T09:46:20.561526+00:00",
+      "call_id": "ebf516456a62409ba6437cbec2ff764b",
+      "platform": "youtube_shorts",
+      "scene": 4,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T09:46:20.561732+00:00",
+      "call_id": "52dbf2f029dd4503abbb897e2210f99e",
+      "platform": "youtube_shorts",
+      "scene": 5,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-26T09:46:21.807261+00:00",
+      "call_id": "61c65bc9fc68428ea723cb8dee72a650",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T09:46:21.839751+00:00",
+      "call_id": "61c65bc9fc68428ea723cb8dee72a650",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T09:46:21.875556+00:00",
+      "call_id": "52dbf2f029dd4503abbb897e2210f99e",
+      "platform": "youtube_shorts",
+      "scene": 5,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-26T09:46:21.875777+00:00",
+      "call_id": "76dc1b1a6a3546a58175022a85f85cc4",
+      "platform": "youtube_shorts",
+      "scene": 6,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-26T09:46:22.590213+00:00",
+      "call_id": "0a7c381e04c54de5b840b581cfd9d28e",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-26T09:46:22.620251+00:00",
+      "call_id": "0a7c381e04c54de5b840b581cfd9d28e",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-26T09:46:22.652026+00:00",
+      "call_id": "76dc1b1a6a3546a58175022a85f85cc4",
+      "platform": "youtube_shorts",
+      "scene": 6,
+      "total": 6
     }
   ],
   "completed_phases": []
