@@ -42,12 +42,17 @@ jobs:
           matches=[]
           for path in Path('requests').glob('*.json'):
               request=json.loads(path.read_text())
-              if request.get('execution_backend')=='contabo_private_runner' and str(request.get('production_completion',{}).get('golden_path_run_id'))==rid:
-                  matches.append(request)
+              completion=request.get('production_completion',{})
+              if request.get('execution_backend')=='contabo_private_runner' and rid in {
+                  str(completion.get('golden_path_run_id')),str(completion.get('delivery_run_id')),
+              }:
+                  matches.append(completion)
           if not matches:
               print('This event has no delivered Contabo review.');raise SystemExit(0)
-          assert len(matches)==1 and matches[0]['production_completion']['state']=='REVIEW_READY'
-          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write('review_id='+rid+'\n')
+          assert len(matches)==1 and matches[0]['state']=='REVIEW_READY'
+          canonical=str(matches[0]['golden_path_run_id'])
+          assert re.fullmatch(r'[0-9]{1,20}',canonical)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write('review_id='+canonical+'\n')
           PY
       - name: Receive the immutable quality-passed result
         if: steps.review.outputs.review_id != ''
@@ -56,7 +61,7 @@ jobs:
           REVIEW_ID: ${{ steps.review.outputs.review_id }}
         run: |
           mkdir -p returned
-          gh release download "contabo-result-$REVIEW_ID" --repo mojo72549-arch/shorts-agent-studio --pattern result.zip --dir /tmp
+          bash tools/tayvoriq_download_contabo_result.sh mojo72549-arch/shorts-agent-studio "$REVIEW_ID" /tmp/result.zip
           python3 - <<'PY'
           import zipfile
           from pathlib import Path
