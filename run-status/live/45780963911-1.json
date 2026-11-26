@@ -4,9 +4,36 @@
   "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
   "run_id": 45780963911,
   "run_attempt": 1,
-  "updated_at": "2026-11-26T08:13:54.606257+00:00",
-  "observed_at": "2026-11-26T08:13:54.606273+00:00",
-  "current": null,
-  "events": [],
+  "updated_at": "2026-11-26T08:14:01.465596+00:00",
+  "observed_at": "2026-11-26T08:14:01.872460+00:00",
+  "current": {
+    "phase": "script",
+    "status": "started",
+    "at": "2026-11-26T08:14:01.465596+00:00",
+    "call_id": "824a70f0310d4e6d979f4c1cdc400a60",
+    "platform": "youtube_shorts",
+    "round": null
+  },
+  "events": [
+    {
+      "phase": "preflight",
+      "status": "started",
+      "at": "2026-11-26T08:13:55.005265+00:00",
+      "call_id": "internal-preflight"
+    },
+    {
+      "phase": "preflight",
+      "status": "completed",
+      "at": "2026-11-26T08:14:00.210433+00:00",
+      "call_id": "internal-preflight"
+    },
+    {
+      "phase": "script",
+      "status": "started",
+      "at": "2026-11-26T08:14:01.465596+00:00",
+      "call_id": "824a70f0310d4e6d979f4c1cdc400a60",
+      "platform": "youtube_shorts"
+    }
+  ],
   "completed_phases": []
 }
