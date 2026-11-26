@@ -72,8 +72,9 @@ def explicit_notice(selection_id):
     pointer_path = Path("state/tayvoriq-control-center-research.json")
     if "-agentv2-c" in selection_id and pointer_path.is_file():
         pointer = json.loads(pointer_path.read_text())
-        if pointer.get("schema") == "tayvoriq-control-center-research-v1" and pointer.get("selection_id") != selection_id:
-            return  # A superseded request must not overwrite the current owner's status.
+        if pointer.get("schema") == "tayvoriq-control-center-research-v1" and (
+                pointer.get("selection_id") != selection_id or pointer.get("cancel_requested_at")):
+            return
     path = scope / "research-notices" / (selection_id + "-FAILED.json")
     if path.exists():
         return

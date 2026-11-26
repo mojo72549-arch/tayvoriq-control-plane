@@ -12,12 +12,14 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 REPO = 'mojo72549-arch/tayvoriq-control-plane'
 PROVIDERS = ('gemini', 'groq', 'huggingface')
+STOPPED = 130
 
 
 def stamp():
@@ -156,6 +158,17 @@ def load_json(path):
         return {}
 
 
+def control_center_stopped(selection, token, *, request=urlopen):
+    url = f'https://api.github.com/repos/{REPO}/contents/state/tayvoriq-control-center-research.json?ref=main'
+    headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json',
+               'User-Agent': 'tayvoriq-research-observer', 'Cache-Control': 'no-cache'}
+    with request(Request(url, headers=headers), timeout=8) as response:
+        pointer = json.loads(base64.b64decode(json.load(response)['content']))
+    if pointer.get('schema') != 'tayvoriq-control-center-research-v1':
+        raise ValueError('Invalid Control Center research pointer')
+    return pointer.get('selection_id') != selection or bool(pointer.get('cancel_requested_at'))
+
+
 def context(selection, slot, root, temporary, *, now=None):
     """Explicit requests share provider cooldowns, but never another slot's drafts or retry budget."""
     now = time.time() if now is None else now
@@ -234,7 +247,7 @@ def persist_context(state, token, *, request=urlopen):
             raise RuntimeError('Research context version changed repeatedly')
 
 
-def run_child(command, env, deadline, observation, save, *, clock=time.time):
+def run_child(command, env, deadline, observation, save, *, clock=time.time, stopped=lambda: False):
     """Keep the original research result, with a real wall-clock timeout and heartbeat."""
     child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
     lines = queue.SimpleQueue()
@@ -248,15 +261,16 @@ def run_child(command, env, deadline, observation, save, *, clock=time.time):
             lines.put(None)
     reader = threading.Thread(target=read, daemon=True)
     reader.start()
+    next_stop_check = clock() + 5
     try:
         while True:
-            if clock() >= deadline:
-                child.terminate()
-                try:
-                    child.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    child.kill()
+            now = clock()
+            if now >= deadline:
                 return 124
+            if now >= next_stop_check:
+                if stopped():
+                    return STOPPED
+                next_stop_check = now + 5
             try:
                 line = lines.get(timeout=1)
             except queue.Empty:
@@ -273,11 +287,23 @@ def run_child(command, env, deadline, observation, save, *, clock=time.time):
     finally:
         if child.poll() is None:
             child.terminate()
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait()
         reader.join(timeout=1)
         child.stdout.close()
 
 
-def execute(command, state, observation, save, persist, *, clock=time.time, pause=time.sleep, run=run_child):
+def execute(command, state, observation, save, persist, *, clock=time.time, pause=time.sleep, run=run_child,
+            stopped=lambda: False):
+    def finish_stopped():
+        observation.finish(STOPPED)
+        observation.data['state'] = 'STOPPED'
+        save(True)
+        return STOPPED
+
     previous = load_json(state['files']['retry'])
     attempts = int(previous.get('attempts') or 0)
     if previous.get('state') == 'EXHAUSTED' or state['deadline'] - clock() < 45:
@@ -285,10 +311,14 @@ def execute(command, state, observation, save, persist, *, clock=time.time, paus
         save(True)
         return 124
     for attempt in range(attempts + 1, 4):
+        if stopped():
+            return finish_stopped()
         observation.data.update(state='SEARCHING', local_attempt=attempt, max_local_attempts=3, next_retry_at=None)
         state['env']['TAYVORIQ_RESEARCH_LOCAL_ATTEMPT'] = str(attempt)
         save(True)
         code = run(command, state['env'], min(clock() + 420, state['deadline'] - 35), observation, save)
+        if code == STOPPED or stopped():
+            return finish_stopped()
         try:
             persist()
         except Exception:
@@ -311,6 +341,8 @@ def execute(command, state, observation, save, persist, *, clock=time.time, paus
         save(True)
         while clock() < retry_at:
             pause(min(5, retry_at - clock()))
+            if stopped():
+                return finish_stopped()
             save()
     observation.finish(1)
     save(True)
@@ -340,7 +372,12 @@ def main():
             print('Research telemetry unavailable; the original research result remains authoritative.', file=sys.stderr)
     with tempfile.TemporaryDirectory(prefix='tayvoriq-research-') as temporary:
         state = context(args.selection_id, args.slot, Path.cwd(), Path(temporary))
-        return execute(command, state, observation, save, lambda: persist_context(state, os.environ['GH_TOKEN']))
+        def stopped():
+            return (os.environ.get('TAYVORIQ_CONTROL_CENTER_RESEARCH') == 'true'
+                    and control_center_stopped(args.selection_id, os.environ['GH_TOKEN']))
+
+        return execute(command, state, observation, save, lambda: persist_context(state, os.environ['GH_TOKEN']),
+                       stopped=stopped, run=partial(run_child, stopped=stopped))
 
 
 if __name__ == '__main__':

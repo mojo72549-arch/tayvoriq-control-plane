@@ -108,6 +108,7 @@ jobs:
           SELECTION_ID: ${{ steps.control.outputs.selection_id }}
           GH_TOKEN: ${{ github.token }}
           TAYVORIQ_EDITORIAL_TOPIC: ${{ github.event.client_payload.topic || '' }}
+          TAYVORIQ_CONTROL_CENTER_RESEARCH: ${{ github.event.client_payload.requested_via == 'control_center' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -330,6 +331,8 @@ jobs:
           TARGET_DATE: ${{ steps.control.outputs.target_date }}
           SLOT: ${{ steps.control.outputs.slot }}
           SELECTION_ID: ${{ steps.control.outputs.selection_id }}
+          GH_TOKEN: ${{ github.token }}
+          TAYVORIQ_CONTROL_CENTER_RESEARCH: ${{ github.event.client_payload.requested_via == 'control_center' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -378,6 +381,10 @@ jobs:
           keyboard={'inline_keyboard':[buttons[i:i+2] for i in range(0,len(buttons),2)]}
           print(json.dumps({'chat_id':os.environ['TELEGRAM_CHAT_ID'],'text':'\n'.join(lines),'disable_web_page_preview':True,'reply_markup':keyboard},ensure_ascii=False))
           PY
+          if [ "$TAYVORIQ_CONTROL_CENTER_RESEARCH" = 'true' ]; then
+            stopped=$(PYTHONPATH=tools python -c 'import os; from tayvoriq_research_observer import control_center_stopped; print(control_center_stopped(os.environ["SELECTION_ID"], os.environ["GH_TOKEN"]))')
+            if [ "$stopped" = 'True' ]; then exit 130; fi
+          fi
           curl --fail --silent --show-error --retry 3 --retry-all-errors \
             -H 'Content-Type: application/json' \
             -d @/tmp/message.json \
