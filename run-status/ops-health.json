@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-26T15:22:24.868331Z",
+  "generated_at": "2026-11-26T15:26:22.460387Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3751-trend-1",
-    "golden_path_run_id": 45847016115,
-    "pointer_updated_at": "2026-11-26T15:14:58.503280+00:00",
+    "golden_path_run_id": 45848416355,
+    "pointer_updated_at": "2026-11-26T15:23:11.446509+00:00",
     "current_scope": "production"
   },
   "request": {
@@ -22,7 +22,7 @@
     "topic": "Discounter senken Butterpreis unter einen Euro",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "CHECKPOINT_PROVENANCE_RECONCILED",
     "recovery_generation": 1,
     "recovery_owner": "tayvoriq-delivery-watch",
     "series_name": null,
@@ -46,13 +46,13 @@
     "path": "requests/telegram-3751-trend-1.json"
   },
   "run": {
-    "id": 45847016115,
+    "id": 45848416355,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45847016115",
-    "created_at": "2026-11-26T15:14:06Z",
-    "updated_at": "2026-11-26T15:17:54Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45848416355",
+    "created_at": "2026-11-26T15:22:19Z",
+    "updated_at": "2026-11-26T15:24:09Z",
     "attempt": 1,
     "progress": 0,
     "current_step": null,
@@ -156,7 +156,7 @@
     }
   ],
   "incident": {
-    "signature": "45847016115:LOCAL_VOICE",
+    "signature": "45848416355:LOCAL_VOICE",
     "severity": "critical",
     "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
     "failed_step": "Monitor the private worker receipt",
@@ -178,7 +178,7 @@
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
     "failed_run_id": 45828782397,
-    "replay_run_id": 45847016115,
+    "replay_run_id": 45848416355,
     "fresh_recovery_run_id": null,
     "recovery_generation": 1,
     "owner": "tayvoriq-delivery-watch",
@@ -189,14 +189,19 @@
   },
   "events": [
     {
-      "at": "2026-11-26T15:17:54Z",
+      "at": "2026-11-26T15:24:09Z",
       "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45847016115 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+      "detail": "Run 45848416355 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
     },
     {
-      "at": "2026-11-26T15:17:54Z",
+      "at": "2026-11-26T15:24:09Z",
       "title": "Workflow-Fehler",
       "detail": "Monitor the private worker receipt"
+    },
+    {
+      "at": "2026-11-26T15:26:11.278Z",
+      "title": "CHECKPOINT_PROVENANCE_RECONCILED",
+      "detail": "contabo-controller"
     },
     {
       "at": "2026-11-26T14:01:35.344899Z",
@@ -222,11 +227,6 @@
       "at": "2026-11-26T12:52:51.877752Z",
       "title": "DISPATCHED",
       "detail": "same-generation-production-green-codefix-replay"
-    },
-    {
-      "at": "2026-11-26T12:48:36.213922Z",
-      "title": "AWAITING_CODEFIX",
-      "detail": "PUBLISHABLE_CODEFIX_REQUIRED"
     }
   ]
 }
