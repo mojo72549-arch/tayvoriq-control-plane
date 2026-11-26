@@ -97,13 +97,14 @@ def main(*, repair_ready=_retention_ready) -> int:
 
     now = datetime.now(ZoneInfo("Europe/Berlin"))
     selection_id = f"{now:%Y%m%d}-{args.slot}-agentv2"
-    editorial_scan = _editorial_scan(args.slot, now)
+    local_research = os.environ.get('TAYVORIQ_LOCAL_RESEARCH') == 'true'
+    editorial_scan = None if local_research else _editorial_scan(args.slot, now)
     if args.prepared_only and not editorial_scan:
         raise SystemExit("No fresh verified editorial packet for this slot")
     gemini_key = base.clean(os.getenv("GEMINI_API_KEY"), 500)
     groq_key = base.clean(os.getenv("GROQ_API_KEY"), 500)
     hf_token = base.clean(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN"), 500)
-    if not args.prepared_only and not gemini_key and not groq_key and not hf_token:
+    if not args.prepared_only and not local_research and not gemini_key and not groq_key and not hf_token:
         raise SystemExit("No grounded trend provider configured")
 
     verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
