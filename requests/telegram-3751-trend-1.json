@@ -405,6 +405,16 @@
         "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
         "quality_gates_weakened": false
       }
+    },
+    {
+      "state": "CHECKPOINT_PROVENANCE_RECORDED",
+      "at": "2026-11-26T15:31:02.315625+00:00",
+      "actor": "contabo-controller",
+      "meta": {
+        "replay_implementation_sha": "ea048d7ee9b965652e8831f0df4ba90d91f15e66",
+        "golden_path_run_id": 45848416355,
+        "quality_gates_weakened": false
+      }
     }
   ],
   "contract_sha256": "31509a670b67716c62155b66dfed876a4d445498ad1bd5988167f1f502d64b95",
@@ -431,10 +441,10 @@
     "previous_codefix_failed_run_id": 45780963911,
     "previous_codefix_failure_signature": "55ff5f5cc70f2db1a058",
     "last_failure_state": "LOCAL_VOICE_RETRY_REQUIRED",
-    "replay_run_id": 45848416355,
+    "replay_run_id": 45849747091,
     "replayed_at": "2026-11-26T14:01:35.344899Z",
     "replay_control_plane_sha": "46b0e2f8867708610be0f7d2afb8588019322aaa",
-    "replay_implementation_sha": "ea048d7ee9b965652e8831f0df4ba90d91f15e66",
+    "replay_implementation_sha": "4a99c7c36f1e6122fd960e388d8ee1616ce9b91b",
     "codefix_detection_reason": "production-green-implementation-changed",
     "local_retry_run_id": 45828782397,
     "local_retry_run_attempt": 2,
@@ -468,10 +478,10 @@
   "execution_backend": "contabo_private_runner",
   "contabo_handoff": {
     "schema": "tayvoriq-contabo-handoff-v1",
-    "controller_run_id": 45848416355,
-    "worker_run_id": 45848535848,
+    "controller_run_id": 45849747091,
+    "worker_run_id": 45849843823,
     "execution_repository": "mojo72549-arch/shorts-agent-studio",
-    "checkpoint_release": "artifact:45848416355",
+    "checkpoint_release": "artifact:45849747091",
     "request_id": "telegram-3751-trend-1",
     "source_context_sha256": "8e8eccfc015a31d3ec6831a65404938f5fe7d74668ab1a986941342fc00c97de",
     "contract_sha256": "31509a670b67716c62155b66dfed876a4d445498ad1bd5988167f1f502d64b95",
