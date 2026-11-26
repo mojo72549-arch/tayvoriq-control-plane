@@ -36,29 +36,42 @@ def mirror(path,data,token):
 def notify(progress,receipt,token):
     """Keep one Telegram status message aligned with actual phase changes."""
     bot=os.environ.get('TELEGRAM_BOT_TOKEN');chat=os.environ.get('TELEGRAM_CHAT_ID')
-    if not bot or not chat or receipt['status']!='RUNNING':return
-    if (datetime.now(timezone.utc)-datetime.fromisoformat(progress['observed_at'])).total_seconds()>90:return
-    event=progress.get('current') or {}
-    if event.get('status')!='started':return
-    phase=event.get('target') if event.get('phase')=='repair' else event.get('phase')
-    labels={'voice':'Sprecheraufnahme wird korrigiert und geprüft.',
-        'visuals':'Beanstandete Bilder werden korrigiert und geprüft.',
-        'quality':'Das Video wird erneut auf Qualität geprüft.',
-        'render':'Die Video-Datei wird zusammengesetzt.',
-        'captions':'Untertitel werden vorbereitet.',
-        'script':'Das freigegebene Thema wird zum Skript ausgearbeitet.',
-        'scenes':'Die Szenen werden geplant.'}
-    if phase not in labels:return
-    key=str(event.get('at'))+':'+phase
+    if not bot or not chat:return
+    status = receipt['status']
+    if status == 'FAILED':
+        key = 'terminal:FAILED'
+        title = 'Produktion gestoppt.'
+        detail = receipt.get('failure_reason') or 'Die Ausführung auf Contabo ist fehlgeschlagen.'
+    elif status == 'RUNNING':
+        if (datetime.now(timezone.utc)-datetime.fromisoformat(progress['observed_at'])).total_seconds()>90:return
+        event = progress.get('current') or {}
+        if event.get('status') != 'started':return
+        phase = event.get('target') if event.get('phase') == 'repair' else event.get('phase')
+        labels = {'voice':'Sprecheraufnahme wird korrigiert und geprüft.',
+            'visuals':'Beanstandete Bilder werden korrigiert und geprüft.',
+            'quality':'Das Video wird erneut auf Qualität geprüft.',
+            'render':'Die Video-Datei wird zusammengesetzt.',
+            'captions':'Untertitel werden vorbereitet.',
+            'script':'Das freigegebene Thema wird zum Skript ausgearbeitet.',
+            'scenes':'Die Szenen werden geplant.'}
+        if phase not in labels:return
+        key = str(event.get('at'))+':'+phase
+        title = labels[phase]
+        detail = 'Die endgültige Qualitätsfreigabe und Zustellung stehen noch aus.'
+    else:
+        return
+
     path='run-status/contabo/notifications/'+str(receipt['controller_run_id'])+'.json'
     previous=None
     try:previous=json.loads(base64.b64decode(api(CONTROL,path,token)['content']))
     except HTTPError as error:
         if error.code!=404:raise
-    if previous and previous.get('phase_key')==key:return
-    text='TAYVORIQ · '+labels[phase]+'\n'
+    if not previous and status == 'FAILED':return
+    previous_key = previous.get('phase_key', '') if previous else ''
+    if previous_key == key or previous_key.startswith('terminal:'):return
+    text='TAYVORIQ · '+title+'\n'
     text+='Auftrag: '+receipt['request_id']+'\n'
-    text+='Die endgültige Qualitätsfreigabe und Zustellung stehen noch aus.\n'
+    text+=detail+'\n'
     text+='Live-Stand: https://tayvoriq-control-center-mo61.vercel.app'
     method='editMessageText' if previous else 'sendMessage'
     body={'chat_id':chat,'text':text,'disable_web_page_preview':True}
@@ -80,6 +93,9 @@ def main():
     assert receipt['source_context_sha256']==request['source_context_sha256']
     token=os.environ['CONTABO_CONTROL_TOKEN']
     mirror(f'run-status/contabo/{run}.json',receipt,token)
+    if receipt['status'] == 'FAILED':
+        notify({},receipt,token)
+        return
     try:
         meta=api(STUDIO,f'run-status/live/{run}-1.json',os.environ['GH_TOKEN'])
     except HTTPError as error:
