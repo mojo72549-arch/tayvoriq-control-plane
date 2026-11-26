@@ -327,7 +327,7 @@ def prompt_for(slot, now):
                   + '\nResearch ONLY current, source-backed developments about this proposal. '
                   'Do not substitute unrelated stories. Keep every source, duplicate, relevance and quality gate. '
                   'This is research only; the user must approve a researched candidate before production.') if topic else ''
-    return _original_prompt(slot, now) + topic_hint + """
+    prompt = _original_prompt(slot, now) + topic_hint + """
 
 TAYVORIQ REGIONAL / GERMANY POLICY V2 — HARD REQUIREMENT:
 - BOTH slots: local means Stuttgart, Baden-Württemberg and nearby German places; Germany means a concrete event or change in Germany. Europe-only and global stories are excluded for now.
@@ -423,7 +423,10 @@ TAYVORIQ HASHTAG HANDOFF — HARD REQUIREMENT:
 - Do NOT pad with generic reach-bait such as #fyp, #viral, #trending, #explorepage or #fuerdich. Do not use #news merely because the item is a news story.
 - Avoid duplicate synonyms and overbroad tags that do not help discovery. Strong specificity beats hashtag volume.
 - Never put an unverified claim, rumor or speculative release detail into a hashtag.
-""".strip() + (("\n\n" + rejected_hints) if rejected_hints else "") + (("\n\n" + editorial_hints) if editorial_hints else "")
+""".strip()
+    return "\n\n".join(
+        part for part in (prompt, retention_v5.EDITORIAL_FOLLOWUP_INSTRUCTIONS, rejected_hints, editorial_hints) if part
+    )
 
 
 base.diversify = diversify

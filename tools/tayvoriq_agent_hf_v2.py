@@ -14,7 +14,7 @@ from tayvoriq_provider_health_v1 import http_failure
 from tayvoriq_regional_relevance import (
     bind_corroborated_headline, complete_scorecards, evidence_options, evaluate as evaluate_regional_relevance,
 )
-from tayvoriq_retention_v5 import evaluate_content_depth, evaluate_return_viewer
+from tayvoriq_retention_v5 import EDITORIAL_FOLLOWUP_INSTRUCTIONS, evaluate_content_depth, evaluate_return_viewer
 from tayvoriq_source_evidence_v1 import validate_pair, source_support, claim_terms, record_events, _words, _events, _status, _publisher
 base=provider.base
 HF_URL="https://router.huggingface.co/v1/chat/completions"
@@ -647,6 +647,8 @@ V5 CONTRACT:
 - CTA type must be one of CURIOSITY, EXPERTISE, COMMUNITY, SERIES, DISCUSSION, IDENTITY.
 - CTA text must be topic-specific, naturally mention TAYVORIQ and must not be generic "Bitte abonnieren".
 - This fallback may use only NONE or SOFT open loops. Never invent a HARD open loop or queued next episode.
+
+{EDITORIAL_FOLLOWUP_INSTRUCTIONS}
 
 {base.CINEMATIC_BRIEF_INSTRUCTIONS}
 
