@@ -16,6 +16,8 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
       CONTABO_CONTROL_TOKEN: ${{ github.token }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,18 +30,18 @@ jobs:
           p=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
           assert p['execution_backend']=='contabo_private_runner' and p['state']=='ACTIVE'
           print('REQUEST_ID='+p['request_id'])
-          print('GITHUB_RUN_ID='+str(p['golden_path_run_id']))
+          print('CONTABO_OBSERVED_RUN_ID='+str(p['golden_path_run_id']))
           PY
           source /tmp/contabo-observation.env
-          export REQUEST_ID GITHUB_RUN_ID
+          export REQUEST_ID CONTABO_OBSERVED_RUN_ID
           for poll in $(seq 1 160); do
             GH_TOKEN="$CONTABO_CONTROL_TOKEN" gh api "repos/mojo72549-arch/tayvoriq-control-plane/contents/.github/state/tayvoriq-active-production-request.json" --jq '.content' > /tmp/contabo-active-base64
             python3 - <<'PY' || exit 0
           import base64,json,os
           p=json.loads(base64.b64decode(open('/tmp/contabo-active-base64').read()))
-          assert str(p['golden_path_run_id'])==os.environ['GITHUB_RUN_ID'] and p['state']=='ACTIVE'
+          assert str(p['golden_path_run_id'])==os.environ['CONTABO_OBSERVED_RUN_ID'] and p['state']=='ACTIVE'
           PY
-            if gh api "repos/mojo72549-arch/shorts-agent-studio/contents/.automation/contabo-workers/$GITHUB_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64 2>/dev/null; then
+            if gh api "repos/mojo72549-arch/shorts-agent-studio/contents/.automation/contabo-workers/$CONTABO_OBSERVED_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64 2>/dev/null; then
               python3 tools/tayvoriq_contabo_observation.py
             fi
             sleep 15
