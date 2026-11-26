@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 import tayvoriq_agent_trend_radar_v4 as growth
 import tayvoriq_agent_research_resilience_v2 as resilience
+from tayvoriq_ollama_research import remaining_research_seconds
 import tayvoriq_research_checkpoint as checkpoint
 from tayvoriq_global_duplicate_gate_v1 import delivered_trend_history, previously_delivered_selection, run_gate
 from tayvoriq_retention_v5 import apply_trend_contract
@@ -293,6 +294,7 @@ def main(*, repair_ready=_retention_ready) -> int:
                 rescan_signal
                 and rescan_below_minimum
                 and scan_index < max_scans
+                and (not local_research or remaining_research_seconds() >= 90)
             ):
                 regional_rescan = (
                     "REGIONAL_RESCAN_REQUIRED" in message

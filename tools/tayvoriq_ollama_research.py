@@ -9,6 +9,9 @@ from urllib.request import ProxyHandler, Request, build_opener
 MODEL = 'qwen3.5:9b'
 COMPACT_MODEL = 'qwen3.5:4b'
 ENDPOINT = 'http://127.0.0.1:11434/api/chat'
+VALIDATION_RESERVE_SECONDS = 20
+MINIMUM_REPAIR_SECONDS = 25
+MAXIMUM_REPAIR_SECONDS = 45
 
 
 def research_model():
@@ -54,7 +57,17 @@ def read_candidates(reply, pairs):
     return {'candidates': [{**row, 'source_pair_id': key} for key, row in reply.items() if row is not None]}
 
 
-def complete(payload, *, opener=None):
+def remaining_research_seconds():
+    deadline = os.getenv('TAYVORIQ_RESEARCH_DEADLINE_EPOCH')
+    return float(deadline) - time.time() if deadline else float('inf')
+
+
+def repair_budget():
+    remaining = remaining_research_seconds() - VALIDATION_RESERVE_SECONDS
+    return min(MAXIMUM_REPAIR_SECONDS, remaining) if remaining >= MINIMUM_REPAIR_SECONDS else 0
+
+
+def complete(payload, *, opener=None, time_limit=None):
     model = research_model()
     options = {'temperature': 0, 'num_ctx': 8192, 'num_thread': 8,
                'num_predict': payload.get('max_completion_tokens', 2900)}
@@ -69,10 +82,12 @@ def complete(payload, *, opener=None):
     try:
         # The HTTP response starts only after Ollama loads the model and processes the prompt.
         # The worker separately enforces the overall research time limit.
-        with opener.open(request, timeout=330) as response:
+        with opener.open(request, timeout=time_limit or 330) as response:
             print(json.dumps({'event': 'ollama_response_started', 'provider': 'ollama',
                               'first_response_seconds': round(time.monotonic() - started, 1)}), flush=True)
             for line in response:
+                if time_limit and time.monotonic() - started >= time_limit:
+                    raise TimeoutError('Local editorial repair reached its time budget')
                 if not line.strip():
                     continue
                 result = json.loads(line)

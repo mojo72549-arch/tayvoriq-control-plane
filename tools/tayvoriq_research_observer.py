@@ -252,6 +252,8 @@ def persist_context(state, token, *, request=urlopen):
 
 def run_child(command, env, deadline, observation, save, *, clock=time.time, stopped=lambda: False, stop_interval=5):
     """Keep the original research result, with a real wall-clock timeout and heartbeat."""
+    if env.get('TAYVORIQ_LOCAL_RESEARCH') == 'true':
+        env = {**env, 'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': str(deadline)}
     child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
     lines = queue.SimpleQueue()
     def read():
