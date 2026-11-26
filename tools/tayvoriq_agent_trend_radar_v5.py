@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import tayvoriq_agent_trend_radar_v4 as growth
 import tayvoriq_agent_research_resilience_v2 as resilience
 import tayvoriq_research_checkpoint as checkpoint
-from tayvoriq_global_duplicate_gate_v1 import run_gate
+from tayvoriq_global_duplicate_gate_v1 import delivered_trend_history, previously_delivered_selection, run_gate
 from tayvoriq_retention_v5 import apply_trend_contract
 
 base = growth.base
@@ -96,6 +96,7 @@ def main(*, repair_ready=_retention_ready) -> int:
     args = parser.parse_args()
 
     now = datetime.now(ZoneInfo("Europe/Berlin"))
+    selection_id = f"{now:%Y%m%d}-{args.slot}-agentv2"
     editorial_scan = _editorial_scan(args.slot, now)
     if args.prepared_only and not editorial_scan:
         raise SystemExit("No fresh verified editorial packet for this slot")
@@ -125,6 +126,10 @@ def main(*, repair_ready=_retention_ready) -> int:
     last_growth_error: BaseException | None = None
 
     series_candidate = base.load_active_series_candidate(verified_at)
+    delivered_history = delivered_trend_history(
+        Path(".automation/tayvoriq-agent-v2"),
+        current_selection_id=os.environ.get("TAYVORIQ_RESEARCH_SELECTION_ID") or selection_id,
+    )
 
     for scan_index in range(0 if editorial_scan else 1, 1 if args.prepared_only else max_scans + 1):
         prompt = base.prompt_for(args.slot, now)
@@ -219,6 +224,15 @@ def main(*, repair_ready=_retention_ready) -> int:
                     original = original_sources[source["url"]]
                     source["published_at"] = original["published_at"]
                     source["reporting_origin"] = original["reporting_origin"]
+            prior_selection = previously_delivered_selection(
+                candidate["title"], candidate["source_context"], delivered_history,
+            )
+            if prior_selection:
+                print(json.dumps({"event": "candidate_editorial_rejection", "title": candidate["title"],
+                                  "reason": "previous_delivery_duplicate", "prior_selection_id": prior_selection},
+                                 ensure_ascii=False))
+                base_rejections.append({"title": candidate["title"], "fields": ["previous_delivery_duplicate"]})
+                continue
             if scan_index == 0 or source_bound:
                 duplicates = run_gate(requests_dir=Path("requests"), source_request_id="",
                                       topic=candidate["title"], source_context=candidate["source_context"])
@@ -304,7 +318,6 @@ def main(*, repair_ready=_retention_ready) -> int:
             f"Need {min_candidates}-{max_candidates} contract-valid grounded trends after {max_scans} scan(s), got 0"
         )
 
-    selection_id = f"{now:%Y%m%d}-{args.slot}-agentv2"
     for index, trend in enumerate(chosen, start=1):
         trend["id"] = str(index)
 
