@@ -107,6 +107,22 @@ def test_topic_specific_follow_reason_passes():
     assert result["result"] == "PASS"
 
 
+@pytest.mark.parametrize("field", ["open_loop", "follow_reason", "cta_text"])
+def test_the_spoken_close_cannot_promise_an_unscheduled_update(field):
+    contract = base_contract()
+    contract[field] = "Das neue Angebot zum VW-Tarif zeigen wir euch morgen. Folgt TAYVORIQ."
+    result = v5.evaluate_follow_conversion(contract)
+    assert result["repair"] == "OPEN_LOOP_REWRITE_REQUIRED"
+    assert "false_tomorrow_promise" in result["issues"]
+
+
+def test_followup_can_name_tomorrows_negotiation_without_promising_tomorrows_video():
+    contract = base_contract()
+    contract["follow_reason"] = "Wir ordnen ein, was ein neues Angebot beim VW-Tarif für euch bedeutet."
+    contract["cta_text"] = "Wenn sich bei den Verhandlungen morgen etwas ändert, ordnen wir es ein. Folgt TAYVORIQ."
+    assert v5.evaluate_follow_conversion(contract)["result"] == "PASS"
+
+
 def test_recovery_keeps_sources_and_angle():
     before = base_contract()
     after = copy.deepcopy(before)

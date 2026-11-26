@@ -19,6 +19,16 @@ OPEN_LOOP_STATUSES = {"NONE", "SOFT", "HARD"}
 FOLLOW_RESULTS = {"PASS", "REWRITE_REQUIRED", "NOT_APPLICABLE"}
 RETURN_RESULTS = {"PASS", "IMPROVE", "NOT_APPLICABLE"}
 HARD_QUEUE_STATES = {"PLANNED", "QUEUED", "READY"}
+EDITORIAL_FOLLOWUP_INSTRUCTIONS = """Write for a person listening to a German news short.
+- Lead with the clearest source-backed contrast or consequence. Attribute each negotiating position to its own party. A demand or draft is not a confirmed outcome. Explain in one concrete sentence what changes for the people affected or what remains open.
+- Answer the hook in this video. If a real decision, new offer or result is pending, name the open question worth following. For standalone news, use a useful topic-specific action or a reason to return to the series.
+- Put the impact in the story. Write one natural CTA of 8–14 words starting with 'Folge TAYVORIQ' and giving the specific reason to return. Vary the phrasing and avoid generic 'Bleibt dran' or 'Achte auf die Ergebnisse'. Promise a follow-up only when planned and a publication time only when verified."""
+
+_TIMED_FOLLOWUP = re.compile(
+    r"\bmorgen\s+(?:(?:zeigen|erklären|berichten|melden|veröffentlichen)\s+wir|(?:erfährst|siehst)\s+du)\b"
+    r"|\b(?:zeigen|erklären|berichten|melden|veröffentlichen)\s+wir\s+(?:(?:dir|euch)\s+)?morgen\b",
+    re.I,
+)
 REPAIR_STATES = {
     "SCRIPT_RETENTION_REWRITE",
     "CTA_REWRITE_REQUIRED",
@@ -405,7 +415,10 @@ def evaluate_follow_conversion(
             issues.append("hard_open_loop_without_next_episode")
         if queue_status and queue_status not in HARD_QUEUE_STATES:
             issues.append("hard_open_loop_without_planned_queue")
-    if "morgen zeigen wir" in clean(contract.get("open_loop")).casefold() and status != "HARD":
+    promised_tomorrow = any(
+        _TIMED_FOLLOWUP.search(line) for line in (clean(contract.get("open_loop")), follow_reason, cta)
+    )
+    if promised_tomorrow and not (status == "HARD" and next_episode and queue_status in HARD_QUEUE_STATES):
         issues.append("false_tomorrow_promise")
     if status not in OPEN_LOOP_STATUSES:
         issues.append("invalid_open_loop_status")
@@ -436,6 +449,31 @@ def evaluate_return_viewer(contract: dict[str, Any], *, sensitive_story: bool = 
     if clean(contract.get("open_loop_status")).upper() == "HARD" and not clean(contract.get("next_episode_candidate")):
         issues.append("false_hard_open_loop")
     return {"result": "PASS" if not issues else "IMPROVE", "issues": issues}
+
+
+def studio_audience_cta(contract: dict[str, Any]) -> dict[str, Any]:
+    """Map a validated short CTA to the Studio's platform actions."""
+    cta = clean(contract.get("cta_text")).rstrip(".!? ")
+    match = re.fullmatch(r"(?:Folge|Abonniere) TAYVORIQ([ ,].+)", cta, flags=re.I)
+    words = re.findall(r"[\wÄÖÜäöüß-]+", cta)
+    if (
+        not match or not 8 <= len(words) <= 14
+        or any(marker in cta.casefold() for marker in ("du musst", "garantiert", "verpass nie wieder"))
+        or re.search(r"\b(?:abonniere|folge|folgt)\b", match[1], re.I)
+    ):
+        return {}
+    reason = match[1]
+    return {
+        "version": "v1-source-bound-viewer-value",
+        "viewer_value": clean(contract.get("follow_reason")),
+        "next_video_bridge": clean(contract.get("open_loop")),
+        "ctas_by_platform": {
+            "youtube_shorts": f"Abonniere TAYVORIQ{reason}.",
+            "tiktok": f"Folge TAYVORIQ{reason}.",
+        },
+        "manipulative_pressure_forbidden": True,
+    }
+
 
 def lock_retention_contract(request: dict[str, Any]) -> dict[str, Any]:
     contract = {key: request.get(key) for key in REQUEST_FIELDS}

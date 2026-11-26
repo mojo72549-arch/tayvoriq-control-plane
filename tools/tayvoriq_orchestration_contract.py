@@ -297,14 +297,6 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         source_context.pop("story_first_script_body_b", None)
         source_context["text_approval"] = {"variant": variant, "sha256": digest}
         trend = {**trend, "source_context": source_context}
-    source_raw = json.dumps(
-        source_context,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    source_sha256 = hashlib.sha256(source_raw).hexdigest()
-
     try:
         trend = retention_v5.apply_trend_contract(trend, strict=True)
     except ValueError as exc:
@@ -328,6 +320,11 @@ def create_from_telegram(args: argparse.Namespace) -> None:
             "V5_RETURN_VIEWER_FAILED:"
             + ",".join(str(item) for item in return_viewer_gate.get("issues") or [])
         )
+    if source_context.get("story_first_script_body") and not source_context.get("audience_cta_contract"):
+        audience_cta = retention_v5.studio_audience_cta(v5_fields)
+        if audience_cta and follow_gate.get("result") == "PASS" and not trend.get("sensitive_story"):
+            source_context = {**source_context, "audience_cta_contract": audience_cta}
+    source_sha256 = retention_v5.json_sha256(source_context)
     retention_hash = retention_v5.json_sha256({
         **v5_fields,
         "next_episode_queue_status": str(trend.get("next_episode_queue_status") or "").strip() or None,

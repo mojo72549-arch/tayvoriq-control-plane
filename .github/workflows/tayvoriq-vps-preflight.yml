@@ -1,0 +1,51 @@
+name: TAYVORIQ VPS Preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tayvoriq-vps-preflight
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: [self-hosted, Linux, X64, tayvoriq-contabo]
+    timeout-minutes: 30
+    env:
+      TAYVORIQ_VENV: /var/cache/tayvoriq/venv
+      HF_HOME: /var/cache/tayvoriq/huggingface
+      TORCH_HOME: /var/cache/tayvoriq/torch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: ${{ vars.TAYVORIQ_VPS_STUDIO_REF || 'feature/multi-platform-distribution-package' }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: implementation
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare CPU Studio runtime
+        run: bash deploy/contabo/prepare-studio.sh implementation
+      - name: Check models and render tools
+        env:
+          PYTHONPATH: ${{ github.workspace }}/implementation/tools
+        run: |
+          mkdir -p out/vps
+          "$TAYVORIQ_VENV/bin/python" deploy/contabo/verify.py --warm-models > out/vps/preflight.json
+      - name: Compare the archived editorial cases
+        run: |
+          "$TAYVORIQ_VENV/bin/python" tools/tayvoriq_local_editorial_benchmark.py \
+            requests/telegram-3696-trend-1.json requests/telegram-3728-trend-1.json \
+            > out/vps/editorial-comparison.json
+      - name: Save VPS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tayvoriq-vps-preflight
+          path: out/vps/

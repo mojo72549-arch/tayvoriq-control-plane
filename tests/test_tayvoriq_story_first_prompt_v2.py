@@ -33,6 +33,16 @@ def test_corroborated_counterposition_survives_telegram_request_and_spoken_contr
            "regional_relevance":"germany", "content_angle":released["content_angle"],
            "sources":source["sources"], "fallback_editorial_answers":source["fallback_editorial_answers"],
            "criteria":dict.fromkeys(("aktualitaet","viralitaet","tayvoriq_passung","quellenqualitaet","visuell"),90)}
+    raw.update(
+        editorial_story_contract_version=2,
+        story_first_script_body=(
+            "Fünf Prozent mehr Lohn fordert die IG Metall, VW will Nullrunden. "
+            "Die erste Tarifrunde in Emden ging ohne Einigung zu Ende. "
+            "Für die Beschäftigten geht es gleichzeitig um Zulagen und flexiblere Arbeitszeiten. "
+            "Entscheidend ist jetzt, ob in der nächsten Runde ein neues Angebot auf den Tisch kommt."
+        ),
+        cta_text="Folge TAYVORIQ, wenn du wissen willst, was ein neues VW-Angebot für deinen Lohn bedeutet.",
+    )
     trend = radar.normalized_candidate(raw, source["verified_at"])
     selection = {"selection_id":"test-tarif", "slot":"evening", "trends":[{**trend,"id":"1"}]}
     path = tmp_path / "selection.json"
@@ -46,6 +56,11 @@ def test_corroborated_counterposition_survives_telegram_request_and_spoken_contr
     assert _downstream_editorial_contract_valid(answers)
     assert "Nullrunde" in answers["why_happening"]
     assert "Forderung der IG Metall nach fünf Prozent mehr Lohn" in answers["action_now"]
+    assert request["source_context"]["story_first_script_body"] == raw["story_first_script_body"]
+    assert request["source_context"]["audience_cta_contract"]["ctas_by_platform"] == {
+        "youtube_shorts": raw["cta_text"].replace("Folge", "Abonniere", 1),
+        "tiktok": raw["cta_text"],
+    }
     for claim in ("sechs Prozent", "nicht fünf Prozent"):
         changed = deepcopy(raw)
         changed["sources"][1]["supports"] = changed["sources"][1]["supports"].replace("fünf Prozent", claim)
