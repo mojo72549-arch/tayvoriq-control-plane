@@ -302,7 +302,7 @@ jobs:
       - name: Validate single X control-plane request contract
         shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
+          EVENT_NAME: ${{ inputs.compute_only && 'workflow_call' || github.event_name }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -797,10 +797,26 @@ jobs:
           CHECKPOINT_RELEASE: ${{ inputs.checkpoint_release }}
         run: |
           mkdir -p "$RUNNER_TEMP/contabo-checkpoint-$TAYVORIQ_PRODUCTION_RUN_ID"
-          case "$CHECKPOINT_RELEASE" in
-            artifact:*) gh run download "${CHECKPOINT_RELEASE#artifact:}" --repo mojo72549-arch/tayvoriq-control-plane --name contabo-checkpoint --dir "$RUNNER_TEMP/contabo-checkpoint-$TAYVORIQ_PRODUCTION_RUN_ID" ;;
-            *) echo 'Unsupported checkpoint transport';exit 1 ;;
-          esac
+          python3 - <<'PYDOWNLOAD'
+          import os,json,requests
+          from pathlib import Path
+          ref=os.environ['CHECKPOINT_RELEASE']
+          assert ref.startswith('artifact:') and ref[9:].isdigit()
+          run=ref[9:];root='https://api.github.com/repos/mojo72549-arch/tayvoriq-control-plane'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
+          meta=requests.get(root+'/actions/runs/'+run+'/artifacts',headers=headers,timeout=30);meta.raise_for_status()
+          matches=[a for a in meta.json()['artifacts'] if a['name']=='contabo-checkpoint' and not a['expired']]
+          assert len(matches)==1
+          response=requests.get(root+'/actions/artifacts/'+str(matches[0]['id'])+'/zip',headers=headers,timeout=30,allow_redirects=False)
+          assert response.status_code in (301,302,303,307)
+          payload=requests.get(response.headers['Location'],timeout=120);payload.raise_for_status()
+          rootpath=Path(os.environ['RUNNER_TEMP'])/('contabo-checkpoint-'+os.environ['TAYVORIQ_PRODUCTION_RUN_ID'])
+          outer=rootpath/'artifact.zip';outer.write_bytes(payload.content)
+          import zipfile
+          with zipfile.ZipFile(outer) as z:
+              assert z.namelist()==['checkpoint.zip']
+              z.extract('checkpoint.zip',rootpath)
+          PYDOWNLOAD
           python3 - <<'PYZIP'
           import os,zipfile
           from pathlib import Path
