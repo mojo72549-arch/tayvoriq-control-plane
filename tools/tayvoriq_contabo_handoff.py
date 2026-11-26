@@ -99,6 +99,7 @@ def main():
     p.add_argument('--release', default='')
     p.add_argument('--manifest')
     p.add_argument('--message', type=int)
+    p.add_argument('--delivery-run', type=int)
     a=p.parse_args(); request=read(a.request); pointer=read(POINTER)
     if a.operation=='prepare':
         prepare(request,pointer,a.controller)
@@ -111,6 +112,8 @@ def main():
             now=datetime.now(timezone.utc).isoformat()
             request['production_completion']=dict(state='REVIEW_READY',golden_path_run_id=a.controller,
                 telegram_message_id=a.message, completed_at=now, quality_gates_weakened=False)
+            if a.delivery_run and a.delivery_run != a.controller:
+                request['production_completion']['delivery_run_id'] = a.delivery_run
             pointer.update(state='COMPLETED',reason='contabo-review-delivered',completed_at=now,updated_at=now)
     if a.operation!='verify':
         write(a.request,request);write(POINTER,pointer)

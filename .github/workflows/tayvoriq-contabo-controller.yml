@@ -6,10 +6,16 @@ on:
       source_request_id:
         required: false
         type: string
+      delivery_run_id:
+        required: false
+        type: string
   workflow_dispatch:
     inputs:
       source_request_id:
         required: true
+        type: string
+      delivery_run_id:
+        required: false
         type: string
   push:
     branches: [main]
@@ -26,6 +32,7 @@ jobs:
     timeout-minutes: 60
     env:
       REQUEST_ID: ${{ inputs.source_request_id || '' }}
+      DELIVERY_RUN_ID: ${{ inputs.delivery_run_id || '' }}
       STUDIO: mojo72549-arch/shorts-agent-studio
       GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -40,8 +47,9 @@ jobs:
           python3 - <<'PY'
           import json,os,re
           from pathlib import Path
-          from tools.tayvoriq_contabo_handoff import identity
-          rid=os.environ['REQUEST_ID'] or json.loads(Path('.github/run-now/tayvoriq-contabo-kick.json').read_text())['source_request_id']
+          from tools.tayvoriq_contabo_handoff import identity,verify
+          kick=json.loads(Path('.github/run-now/tayvoriq-contabo-kick.json').read_text())
+          rid=os.environ['REQUEST_ID'] or kick['source_request_id']
           with open(os.environ['GITHUB_ENV'],'a') as env:env.write('REQUEST_ID='+rid+'\n')
           assert re.fullmatch(r'[A-Za-z0-9_-]{4,80}',rid)
           request=json.loads(Path(f'requests/{rid}.json').read_text())
@@ -49,12 +57,23 @@ jobs:
           identity(request,pointer)
           assert pointer['state']=='ACTIVE'
           assert not request.get('production_completion',{}).get('telegram_message_id')
+          from_kick=os.environ['GITHUB_EVENT_NAME']=='push' and not os.environ['REQUEST_ID']
+          delivery=str(os.environ['DELIVERY_RUN_ID'] or (kick.get('delivery_run_id') if from_kick else '') or '')
+          canonical_run=int(os.environ['GITHUB_RUN_ID'])
+          if delivery:
+              assert re.fullmatch(r'[0-9]+',delivery)
+              canonical_run=int(delivery)
+              verify(request,pointer,canonical_run,int(pointer['execution_run_id']))
+          with open(os.environ['GITHUB_ENV'],'a') as env:env.write('REVIEW_RUN_ID='+str(canonical_run)+'\n')
           with open(os.environ['GITHUB_OUTPUT'],'a') as out:
               out.write('source_sha='+request['source_context_sha256']+'\n')
               out.write('trend_id='+request['trend_id']+'\n')
               out.write('old_run='+str(pointer['golden_path_run_id'])+'\n')
+              out.write('delivery_only='+str(bool(delivery)).lower()+'\n')
+              out.write('existing_worker='+str(pointer['execution_run_id'] if delivery else '')+'\n')
           PY
       - name: Record actual Contabo handoff preparation
+        if: steps.request.outputs.delivery_only != 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -68,6 +87,7 @@ jobs:
           done
           exit 1
       - name: Cancel superseded public production for this exact request
+        if: steps.request.outputs.delivery_only != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -79,6 +99,7 @@ jobs:
                   subprocess.run(['gh','run','cancel',str(run['databaseId']),'--repo',os.environ['GITHUB_REPOSITORY']],check=True)
           PY
       - name: Restore approved production results for migration
+        if: steps.request.outputs.delivery_only != 'true'
         id: checkpoint
         uses: actions/cache/restore@v4
         with:
@@ -86,6 +107,7 @@ jobs:
           key: contabo-transfer-${{ github.run_id }}
           restore-keys: tayvoriq-recovery-v1-Linux-${{ steps.request.outputs.trend_id }}-${{ steps.request.outputs.source_sha }}-
       - name: Transfer the exact checkpoint to the private execution repository
+        if: steps.request.outputs.delivery_only != 'true'
         id: transfer
         run: |
           if [ ! -f implementation/out/recovery-checkpoint/meta.json ]; then
@@ -117,6 +139,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
       - name: Queue exactly one private Contabo worker
+        if: steps.request.outputs.delivery_only != 'true'
         id: worker
         env:
           RELEASE: ${{ steps.transfer.outputs.release }}
@@ -152,6 +175,7 @@ jobs:
           echo 'No private worker accepted the exact queued request.'
           exit 1
       - name: Bind controller and private worker to the canonical request
+        if: steps.request.outputs.delivery_only != 'true'
         env:
           WORKER: ${{ steps.worker.outputs.run_id }}
           RELEASE: ${{ steps.transfer.outputs.release }}
@@ -168,6 +192,7 @@ jobs:
           done
           exit 1
       - name: Monitor the private worker receipt
+        if: steps.request.outputs.delivery_only != 'true'
         env:
           WORKER: ${{ steps.worker.outputs.run_id }}
           CONTABO_CONTROL_TOKEN: ${{ github.token }}
@@ -188,9 +213,24 @@ jobs:
           done
           exit 1
       - name: Receive the request-bound Contabo review package
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          WORKER: ${{ steps.request.outputs.existing_worker || steps.worker.outputs.run_id }}
         run: |
           mkdir -p returned
-          gh release download "contabo-result-$GITHUB_RUN_ID" --repo "$STUDIO" --pattern result.zip --dir /tmp
+          gh api "repos/$STUDIO/contents/.automation/contabo-workers/$REVIEW_RUN_ID.json" --jq '.content' > /tmp/contabo-delivery-receipt
+          python3 - <<'PY'
+          import base64,json,os
+          from pathlib import Path
+          receipt=json.loads(base64.b64decode(Path('/tmp/contabo-delivery-receipt').read_text()))
+          assert receipt['schema']=='tayvoriq-contabo-worker-v1' and receipt['status']=='SUCCEEDED'
+          assert receipt['request_id']==os.environ['REQUEST_ID']
+          assert receipt['source_context_sha256']==os.environ['SOURCE_SHA']
+          assert receipt['controller_run_id']==int(os.environ['REVIEW_RUN_ID'])
+          assert receipt['worker_run_id']==int(os.environ['WORKER'])
+          assert receipt['result_release']=='contabo-result-'+os.environ['REVIEW_RUN_ID']
+          PY
+          bash tools/tayvoriq_download_contabo_result.sh "$STUDIO" "$REVIEW_RUN_ID" /tmp/result.zip
           python3 - <<'PY'
           import zipfile
           from pathlib import Path
@@ -210,10 +250,10 @@ jobs:
           d=json.loads(p.read_text())
           assert d['schema']=='tayvoriq-contabo-result-v1'
           assert d['request_id']==os.environ['REQUEST_ID']
-          assert str(d['run_id'])==os.environ['GITHUB_RUN_ID']
+          assert str(d['run_id'])==os.environ['REVIEW_RUN_ID']
           assert d['source_context_sha256']==os.environ['SOURCE_SHA']
           assert d['quality_passed'] is True and d['quality_gates_weakened'] is False
-          root=Path('returned/site/tayvoriq/runs')/os.environ['GITHUB_RUN_ID']
+          root=Path('returned/site/tayvoriq/runs')/os.environ['REVIEW_RUN_ID']
           assert (root/'short_youtube.mp4').stat().st_size>500000
           assert (root/'short_tiktok.mp4').stat().st_size>500000
           PY
@@ -231,7 +271,9 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tayvoriq
-          git commit -m "Publish strictly verified Contabo review $GITHUB_RUN_ID"
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish strictly verified Contabo review $REVIEW_RUN_ID"
+          fi
           git pull --rebase origin main
           git push origin HEAD:main
       - name: Checkout verified delivery implementation
@@ -250,7 +292,7 @@ jobs:
           python3 - <<'PY'
           import os
           from tayvoriq_send_telegram import send_status
-          run=os.environ['GITHUB_RUN_ID']
+          run=os.environ['REVIEW_RUN_ID']
           message=send_status(state='SUCCESS',conclusion='success',run_url='',review_id=run,
               review_url=f'https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{run}/',approval_mode='manual',video_path=__import__('pathlib').Path('returned/site/tayvoriq/runs')/run/'short_youtube.mp4')
           assert type(message) is int and message>0
@@ -258,11 +300,13 @@ jobs:
           PY
       - name: Finalize verified review delivery
         env:
-          WORKER: ${{ steps.worker.outputs.run_id }}
+          WORKER: ${{ steps.request.outputs.existing_worker || steps.worker.outputs.run_id }}
           MESSAGE: ${{ steps.telegram.outputs.message_id }}
         run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git pull --rebase origin main
-          python3 tools/tayvoriq_contabo_handoff.py finalize --request "requests/$REQUEST_ID.json" --controller "$GITHUB_RUN_ID" --worker "$WORKER" --message "$MESSAGE"
+          python3 tools/tayvoriq_contabo_handoff.py finalize --request "requests/$REQUEST_ID.json" --controller "$REVIEW_RUN_ID" --worker "$WORKER" --message "$MESSAGE" --delivery-run "$GITHUB_RUN_ID"
           git add "requests/$REQUEST_ID.json" .github/state/tayvoriq-active-production-request.json
           git commit -m "Verify Contabo review delivered for $REQUEST_ID"
           git push origin HEAD:main
@@ -272,31 +316,32 @@ jobs:
         env:
           TRANSFER_OUTCOME: ${{ steps.transfer.outcome }}
           WORKER_OUTCOME: ${{ steps.worker.outcome }}
-          WORKER_ID: ${{ steps.worker.outputs.run_id }}
+          WORKER_ID: ${{ steps.request.outputs.existing_worker || steps.worker.outputs.run_id }}
         run: |
           python3 - <<'PY'
           import json,os,urllib.request,subprocess,base64
           from pathlib import Path
           rid=os.environ['REQUEST_ID']
           request=json.loads(Path('requests/'+rid+'.json').read_text())
+          run=os.environ.get('REVIEW_RUN_ID') or os.environ['GITHUB_RUN_ID']
           transfer=os.environ['TRANSFER_OUTCOME']=='failure'
           reason='Der gespeicherte Produktionsstand konnte nicht an Contabo übergeben werden.' if transfer else 'Die Contabo-Produktion oder ihre abschließende Zustellung ist angehalten.'
           if os.environ.get('WORKER_ID'):
               try:
-                  meta=json.loads(subprocess.check_output(['gh','api','repos/'+os.environ['STUDIO']+'/contents/.automation/contabo-workers/'+os.environ['GITHUB_RUN_ID']+'.json'],text=True))
+                  meta=json.loads(subprocess.check_output(['gh','api','repos/'+os.environ['STUDIO']+'/contents/.automation/contabo-workers/'+run+'.json'],text=True))
                   receipt=json.loads(base64.b64decode(meta['content']))
-                  if receipt['controller_run_id']==int(os.environ['GITHUB_RUN_ID']) and receipt['source_context_sha256']==request['source_context_sha256']:
+                  if receipt['controller_run_id']==int(run) and receipt['source_context_sha256']==request['source_context_sha256']:
                       reason=receipt.get('failure_reason') or reason
               except Exception:pass
           detail={'schema':'tayvoriq-execution-incident-v1','request_id':rid,'source_context_sha256':request['source_context_sha256'],
-            'run_id':int(os.environ['GITHUB_RUN_ID']),'code':'CHECKPOINT_TRANSFER_FAILED' if transfer else 'CONTABO_EXECUTION_STOPPED',
+            'run_id':int(run),'code':'CHECKPOINT_TRANSFER_FAILED' if transfer else 'CONTABO_EXECUTION_STOPPED',
             'cause':reason,'action':'Der Lauf ist gestoppt. Der fehlgeschlagene Schritt muss korrigiert und verifiziert werden.',
             'next_proof':'Bestätigte Übernahme des Produktionsstands und anschließende Qualitätsprüfung.',
             'user_action_required':False,'quality_gates_weakened':False}
           path=Path('state/tayvoriq-execution-incidents')/(rid+'.json');path.parent.mkdir(parents=True,exist_ok=True)
           path.write_text(json.dumps(detail,ensure_ascii=False,indent=2)+'\n')
           token=os.environ['TELEGRAM_BOT_TOKEN'];chat=os.environ['TELEGRAM_CHAT_ID']
-          data=json.dumps({'chat_id':chat,'text':'🔴 TAYVORIQ · Technischer Lauf angehalten\n\nUrsache: '+reason+'\nMaßnahme: '+detail['action']+'\nNoch offen: '+detail['next_proof']+'\nRequest: '+rid+'\nRun: '+os.environ['GITHUB_RUN_ID']}).encode()
+          data=json.dumps({'chat_id':chat,'text':'🔴 TAYVORIQ · Technischer Lauf angehalten\n\nUrsache: '+reason+'\nMaßnahme: '+detail['action']+'\nNoch offen: '+detail['next_proof']+'\nRequest: '+rid+'\nRun: '+run}).encode()
           with urllib.request.urlopen(urllib.request.Request('https://api.telegram.org/bot'+token+'/sendMessage',data=data,headers={'Content-Type':'application/json'}),timeout=30) as r:
               assert json.load(r).get('ok') is True
           PY
