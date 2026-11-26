@@ -1,0 +1,46 @@
+name: TAYVORIQ Contabo Observation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/run-now/tayvoriq-contabo-observe.json]
+permissions:
+  contents: write
+concurrency:
+  group: tayvoriq-contabo-observation
+  cancel-in-progress: true
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      CONTABO_CONTROL_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Mirror only the actual active Contabo owner
+        run: |
+          python3 - <<'PY' > /tmp/contabo-observation.env
+          import json
+          from pathlib import Path
+          p=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
+          assert p['execution_backend']=='contabo_private_runner' and p['state']=='ACTIVE'
+          print('REQUEST_ID='+p['request_id'])
+          print('GITHUB_RUN_ID='+str(p['golden_path_run_id']))
+          PY
+          source /tmp/contabo-observation.env
+          export REQUEST_ID GITHUB_RUN_ID
+          for poll in $(seq 1 160); do
+            GH_TOKEN="$CONTABO_CONTROL_TOKEN" gh api "repos/mojo72549-arch/tayvoriq-control-plane/contents/.github/state/tayvoriq-active-production-request.json" --jq '.content' > /tmp/contabo-active-base64
+            python3 - <<'PY' || exit 0
+          import base64,json,os
+          p=json.loads(base64.b64decode(open('/tmp/contabo-active-base64').read()))
+          assert str(p['golden_path_run_id'])==os.environ['GITHUB_RUN_ID'] and p['state']=='ACTIVE'
+          PY
+            if gh api "repos/mojo72549-arch/shorts-agent-studio/contents/.automation/contabo-workers/$GITHUB_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64 2>/dev/null; then
+              python3 tools/tayvoriq_contabo_observation.py
+            fi
+            sleep 15
+          done
