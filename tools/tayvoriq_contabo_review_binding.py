@@ -7,7 +7,6 @@ import re
 import base64
 import shutil
 from pathlib import Path
-import requests
 from tayvoriq_artifact_approval import FILES, verify_evidence
 
 def pending(root,request,review_id,artifact_run_id,studio_sha):
@@ -33,6 +32,8 @@ def pending(root,request,review_id,artifact_run_id,studio_sha):
         artifact_run_id=int(artifact_run_id),files_sha256=hashes)
 
 def main():
+    import requests
+
     p=argparse.ArgumentParser();p.add_argument('operation',choices=['resolve','prepare','activate','evidence'])
     p.add_argument('--review',required=True);a=p.parse_args()
     rid=int(a.review)

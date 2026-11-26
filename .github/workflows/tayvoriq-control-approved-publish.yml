@@ -308,7 +308,9 @@ jobs:
           path: implementation
           persist-credentials: false
       - uses: actions/download-artifact@v4
+        id: bound_artifact
         if: steps.decision.outputs.approved == 'true'
+        continue-on-error: true
         with:
           name: tayvoriq-approved-replay-${{ steps.decision.outputs.review_id }}
           path: approved-artifact
@@ -318,6 +320,16 @@ jobs:
         if: steps.decision.outputs.approved == 'true'
         with:
           python-version: '3.11'
+      - name: Restore retained Contabo review when the Actions artifact is unavailable
+        if: steps.decision.outputs.approved == 'true' && steps.bound_artifact.outcome == 'failure'
+        env:
+          REVIEW_ID: ${{ steps.decision.outputs.review_id }}
+          GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          retained="$(mktemp -d)"
+          gh release download "contabo-result-$REVIEW_ID" --repo mojo72549-arch/shorts-agent-studio --pattern result.zip --dir "$retained"
+          PYTHONPATH=tools python tools/tayvoriq_restore_contabo_review.py "$REVIEW_ID" "$retained/result.zip"
       - name: Verify approved immutable package and production gate
         if: steps.decision.outputs.approved == 'true'
         env:
