@@ -21,7 +21,7 @@ def binding():
 
 class Observation:
     def __init__(self,identity):
-        self.identity=identity;self.events=[];self.active={};self.seen=set();self.completed={};self.failure=None;self.round=None
+        self.identity=identity;self.events=[];self.active={};self.seen=set();self.completed={};self.failure=None;self.round=None;self.findings=[]
     def accept(self,row):
         if any(str(row.get(k))!=str(v) for k,v in self.identity.items()) or row.get('phase') not in PHASES or row.get('status') not in {'started','completed','failed'}: return
         try: datetime.fromisoformat(row['at'].replace('Z','+00:00'))
@@ -61,7 +61,8 @@ class Observation:
             'target':current.get('target') or next((row['target'] for row in reversed(list(self.active.values())) if row.get('target')),None)}
         return {'schema':'tayvoriq-production-progress-v1',**self.identity,'updated_at':self.events[-1]['at'] if self.events else now(),
                 'observed_at':now(),'current':current,'events':self.events[-16:],
-                'completed_phases':[phase for phase,platforms in self.completed.items() if platforms=={'youtube_shorts','tiktok'}]}
+                'completed_phases':[phase for phase,platforms in self.completed.items() if platforms=={'youtube_shorts','tiktok'}],
+                'findings':self.findings}
 
 def publish(payload,prefix='run-status/live'):
     if prefix not in {'run-status/live','run-status/self-test'}: return False
@@ -90,6 +91,28 @@ def publish(payload,prefix='run-status/live'):
         except (OSError,ValueError,KeyError): return False
     return False
 
+def audit_findings(root,since):
+    findings=[]
+    if not root.is_dir():return []
+    for path in list(root.rglob('preapproval_ai_audit.json'))[:6]:
+        try:
+            if path.stat().st_mtime<since:continue
+            audit=json.loads(path.read_text())
+            if audit.get('passed') is not False:continue
+            visual=audit.get('visual_review') or {}
+            for row in visual.get('scene_checks',[]) if isinstance(visual,dict) else []:
+                if not isinstance(row,dict) or type(row.get('scene')) is not int:continue
+                platform={'youtube_shorts':'YouTube','tiktok':'TikTok'}.get(row.get('platform'))
+                if platform and (row.get('relevant') is False or row.get('distinct') is False):
+                    reason='Motiv passt nicht zur Aussage' if row.get('relevant') is False else 'Motiv wiederholt sich'
+                    findings.append(f"{platform} · Szene {row['scene']}: {reason}")
+            for key in ('blockers','critical_issues','issues'):
+                values=audit.get(key,[])
+                if isinstance(values,list):
+                    findings.extend(value for value in values if isinstance(value,str) and len(value)<300)
+        except (OSError,ValueError,TypeError):continue
+    return list(dict.fromkeys(findings))[:8]
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--once',action='store_true');parser.add_argument('--stop-file',type=Path)
     args=parser.parse_args();identity=binding();state=Observation(identity)
@@ -113,7 +136,8 @@ def main():
                         else: state.checkpoint(line)
                     positions[path]=stream.tell()
             except OSError: pass
-        payload=state.payload();fingerprint=hashlib.sha256(json.dumps([payload['current'],payload['events']],sort_keys=True).encode()).hexdigest()
+        state.findings=audit_findings(Path(os.environ['GITHUB_WORKSPACE'])/'implementation/out/tayvoriq-youtube-tiktok',started)
+        payload=state.payload();fingerprint=hashlib.sha256(json.dumps([payload['current'],payload['events'],payload.get('findings')],sort_keys=True).encode()).hexdigest()
         if args.once or time.monotonic()-last_publish>30 or fingerprint!=last_fingerprint and time.monotonic()-last_publish>5:
             if publish(payload): last_publish=time.monotonic();last_fingerprint=fingerprint
         if args.once or args.stop_file and args.stop_file.exists(): return
