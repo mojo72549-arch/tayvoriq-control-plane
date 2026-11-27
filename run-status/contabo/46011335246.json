@@ -1,8 +1,11 @@
 {
   "schema": "tayvoriq-contabo-worker-v1",
-  "status": "RUNNING",
+  "status": "FAILED",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "controller_run_id": 46011335246,
   "worker_run_id": 46011418248,
-  "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a"
+  "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+  "result_release": null,
+  "failed_step": "Assert publishable production output",
+  "failure_reason": "Im fertigen YouTube-Ton liegt eine stille Stelle. Die Tonmischungsprüfung blockiert die Freigabe; eine erneute Sprachaufnahme allein hat den Fehler nicht beseitigt."
 }
