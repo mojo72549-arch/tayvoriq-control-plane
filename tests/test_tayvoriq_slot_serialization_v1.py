@@ -108,6 +108,25 @@ class SlotSerializationTests(unittest.TestCase):
             p.write_text(json.dumps(request("20260926-evening-agentv2-r3", "e1", "2026-09-26T17:00:00Z")))
             self.assertFalse(gate.check_request(p, root, "repo", "token")["released"])
 
+    def test_evening_uses_verified_cta_repair_as_its_morning_predecessor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            morning = request("20261127-morning-agentv2", "morning", "2026-11-27T06:00:00Z", 123)
+            morning.update(status="DISPATCHED", telegram_message_id=42, approval_key="telegram:42",
+                           cta_text="Entdecke TAYVORIQ.", source_context={"sources": ["one", "two"]})
+            repair = morning | {"request_id": "morning-content-repair-v1", "repair_of_request_id": "morning",
+                                "approval_key": "telegram:42:content-repair-v1", "golden_path_run_id": 456,
+                                "source": "telegram_trend_approval_content_repair",
+                                "cta_text": "Folge TAYVORIQ für mehr zum Thema."}
+            original_path = root / "morning.json"
+            repair_path = root / "morning-content-repair-v1.json"
+            gate.write_json(original_path, morning)
+            gate.write_json(repair_path, repair)
+            evening = request("20261127-evening-agentv2", "evening", "2026-11-27T18:00:00Z")
+            self.assertEqual(gate.find_same_day_morning(evening, root), (repair_path, repair))
+            gate.write_json(repair_path, repair | {"source_context": {"sources": ["different"]}})
+            self.assertEqual(gate.find_same_day_morning(evening, root), (original_path, morning))
+
     def test_active_owner_blocks_every_new_slot_before_dispatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "requests"
