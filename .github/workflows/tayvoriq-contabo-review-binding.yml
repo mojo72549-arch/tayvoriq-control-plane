@@ -39,15 +39,22 @@ jobs:
           if not rid and os.environ['GITHUB_EVENT_NAME']=='push':
               rid=str(json.loads(Path('.github/run-now/tayvoriq-contabo-review-bind.json').read_text())['review_id'])
           assert re.fullmatch(r'[0-9]{1,20}',rid),'INVALID_REVIEW_ID'
+          delivery_event=os.environ['GITHUB_EVENT_NAME']=='workflow_run'
           matches=[]
           for path in Path('requests').glob('*.json'):
               request=json.loads(path.read_text())
-              if request.get('execution_backend')=='contabo_private_runner' and str(request.get('production_completion',{}).get('golden_path_run_id'))==rid:
-                  matches.append(request)
+              receipt=request.get('production_completion') or {}
+              review_id=receipt.get('golden_path_run_id')
+              trigger_id=receipt.get('delivery_run_id',review_id) if delivery_event else review_id
+              if request.get('execution_backend')=='contabo_private_runner' and str(trigger_id)==rid:
+                  assert type(review_id) is int and review_id>0 and request.get('golden_path_run_id')==review_id
+                  assert receipt['state']=='REVIEW_READY' and receipt['quality_gates_weakened'] is False
+                  assert type(receipt.get('telegram_message_id')) is int and receipt['telegram_message_id']>0
+                  matches.append(review_id)
           if not matches:
               print('This event has no delivered Contabo review.');raise SystemExit(0)
-          assert len(matches)==1 and matches[0]['production_completion']['state']=='REVIEW_READY'
-          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write('review_id='+rid+'\n')
+          assert len(matches)==1,'AMBIGUOUS_CONTABO_REVIEW_RECEIPT'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write(f'review_id={matches[0]}\n')
           PY
       - name: Receive the immutable quality-passed result
         if: steps.review.outputs.review_id != ''

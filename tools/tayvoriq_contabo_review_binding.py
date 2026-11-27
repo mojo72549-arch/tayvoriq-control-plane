@@ -10,6 +10,22 @@ from pathlib import Path
 import requests
 from tayvoriq_artifact_approval import FILES, verify_evidence
 
+def evidence_attempt(request, get_run):
+    """Verify delivery while keeping the workflow evidence on the original review attempt."""
+    receipt = request['production_completion']
+    review_id = receipt['golden_path_run_id']
+    review_run = get_run(review_id)
+    delivery_id = receipt.get('delivery_run_id', review_id)
+    delivery_run = review_run if review_id == delivery_id else get_run(delivery_id)
+    if not (delivery_run.get('id') == delivery_id and delivery_run.get('status') == 'completed'
+            and delivery_run.get('conclusion') == 'success'):
+        raise ValueError('CONTABO_REVIEW_DELIVERY_RUN_UNVERIFIED')
+    attempt = review_run.get('run_attempt')
+    if review_run.get('id') != review_id or type(attempt) is not int or attempt < 1:
+        raise ValueError('CONTABO_REVIEW_ATTEMPT_UNVERIFIED')
+    return attempt
+
+
 def pending(root,request,review_id,artifact_run_id,studio_sha):
     assert re.fullmatch(r'[a-f0-9]{40}',studio_sha), 'REVIEW_IMPLEMENTATION_INVALID'
     assert type(artifact_run_id) is int and artifact_run_id>0
@@ -53,9 +69,13 @@ def main():
         root=Path('returned/site/tayvoriq/runs')/str(rid)
         normalized=pending(root,request,rid,decision['artifact_run_id'],decision['studio_sha'])
         assert normalized['files_sha256']==decision['files_sha256']
-        run=requests.get(base+'/actions/runs/'+str(rid),headers=headers,timeout=30);run.raise_for_status()
-        assert run.json()['conclusion']=='success'
-        attempt=run.json()['run_attempt'];report=collect(root,request,decision,attempt)
+        def get_run(run_id):
+            run = requests.get(f'{base}/actions/runs/{run_id}', headers=headers, timeout=30)
+            run.raise_for_status()
+            return run.json()
+
+        attempt = evidence_attempt(request, get_run)
+        report=collect(root,request,decision,attempt)
         url=base+'/contents/run-status/production/'+str(rid)+'-'+str(attempt)+'.json'
         previous=requests.get(url,headers=headers,timeout=30)
         body={'branch':'main','message':'Observe verified Contabo review artifacts '+str(rid),
