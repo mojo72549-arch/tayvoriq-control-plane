@@ -94,6 +94,21 @@ class SourceEvidenceTests(unittest.TestCase):
         self.assertNotEqual(_numbers('1.000'), _numbers('1000'))
         self.assertNotEqual(_numbers('-5'), _numbers('5'))
 
+    def test_reform_draft_uses_both_publishers_without_upgrading_its_status(self):
+        short = {"url": "https://www.swr.de/bericht", "title": "Schweitzer legt Entwurf für Rentenreform vor",
+                 "context": "Der Arbeitsminister hat im Bundestag über die Reform gesprochen."}
+        full = {"url": "https://www.spiegel.de/politik/bericht",
+                "title": "Rente: Arbeitsminister Alexander Schweitzer legt Gesetzentwurf zur Rentenreform vor",
+                "context": "Der Entwurf befindet sich in der internen Abstimmung."}
+
+        self.assertEqual(corroborated_headline(short, full), short['title'])
+        for wrong in ("Schweitzer will Entwurf für Rentenreform vorlegen",
+                      "Schweitzer legt Gesetzentwurf zur Steuerreform vor",
+                      "Schweitzer beschließt Rentenreform",
+                      "Klingbeil legt Gesetzentwurf zur Rentenreform vor"):
+            other = {**full, 'title': wrong, 'context': ''}
+            self.assertEqual(corroborated_headline(short, other), '', wrong)
+
     def test_generic_announcements_are_not_shared_substantive_event_anchors(self):
         self.candidate['title'] = 'Mercedes kündigt Änderung in Stuttgart an'
         self.records[0]['title'] = 'Mercedes kündigt Investitionen in Stuttgart an'
