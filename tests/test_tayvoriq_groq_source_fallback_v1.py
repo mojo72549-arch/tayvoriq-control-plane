@@ -51,7 +51,8 @@ class GroqSourceContractTests(unittest.TestCase):
     def test_ollama_rates_one_bound_source_pair_per_request(self):
         calls = []
 
-        def decide(payload):
+        def decide(payload, *, time_limit):
+            self.assertGreater(time_limit, 0)
             calls.append(payload)
             key, = payload['format']['required']
             return {'choices': [{'message': {'content': json.dumps({key: None})}}]}
@@ -73,7 +74,8 @@ class GroqSourceContractTests(unittest.TestCase):
         self.assertEqual(len(observed), 2)
 
     def test_targeted_local_research_only_submits_the_requested_pair(self):
-        def decide(payload):
+        def decide(payload, *, time_limit):
+            self.assertGreater(time_limit, 0)
             key, = payload['format']['required']
             return {'choices': [{'message': {'content': json.dumps({key: {}})}}]}
 
