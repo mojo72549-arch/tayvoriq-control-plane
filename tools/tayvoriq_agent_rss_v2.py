@@ -36,6 +36,7 @@ FEEDS = [
     ("land-bw-wirtschaft", "https://www.baden-wuerttemberg.de/de/service/rss/xml/rss-wirtschaft-arbeit-finanzen"),
     ("land-bw-verkehr", "https://www.baden-wuerttemberg.de/de/service/rss/xml/rss-energie-umwelt-verkehr"),
     ("swr-baden-wuerttemberg", "https://www.swr.de/~rss/swraktuell/swraktuell-bw-100.xml"),
+    ("swr-rheinland-pfalz", "https://www.swr.de/~rss/swraktuell/swraktuell-rp-100.xml"),
     ("deutschlandfunk-nachrichten", "https://www.deutschlandfunk.de/nachrichten-100.rss"),
     ("deutschlandfunk-wirtschaft", "https://www.deutschlandfunk.de/wirtschaft-106.rss"),
     ("zdf-heute", "https://www.zdf.de/rss/zdf/nachrichten"),
