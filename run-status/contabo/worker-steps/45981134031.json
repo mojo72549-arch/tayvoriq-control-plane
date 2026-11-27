@@ -1,0 +1,23 @@
+{
+  "schema": "tayvoriq-contabo-worker-step-v1",
+  "controller_run_id": 45981134031,
+  "worker_run_id": 45981831306,
+  "request_id": "telegram-3821-trend-1-content-repair-v1",
+  "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+  "job_id": 140447468348,
+  "code": "repair_media",
+  "started_at": "2026-11-27T10:25:26Z",
+  "state": "running",
+  "checked": [
+    "validate_implementation",
+    "load_implementation",
+    "verify_implementation",
+    "check_production_contract",
+    "load_dependencies",
+    "check_environment",
+    "check_request",
+    "process_video",
+    "inspect_media"
+  ],
+  "observed_at": "2026-11-27T10:26:09.990162+00:00"
+}
