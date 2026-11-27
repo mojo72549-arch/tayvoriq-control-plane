@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from tayvoriq_contabo_handoff import STUDIO, identity, verify
@@ -96,19 +96,19 @@ def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, tech
             or receipt.get("source_context_sha256") != request["source_context_sha256"]):
         return None
     checked = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    due = checked.replace(second=0, microsecond=0) + timedelta(minutes=5 - checked.minute % 5)
     decision = {
         "schema": "tayvoriq-contabo-quality-decision-v1", "request_id": request["request_id"],
         "source_context_sha256": request["source_context_sha256"], "controller_run_id": controller,
         "worker_run_id": worker, "state": "DIAGNOSTICS_REQUIRED", "checked_at": checked.isoformat(),
-        "next_check_at": due.isoformat(), "controller_ended_at": run.get("updated_at"), "failed_step": receipt.get("failed_step"),
+        "controller_ended_at": run.get("updated_at"), "failed_step": receipt.get("failed_step"),
         "user_action_required": False, "quality_gates_weakened": False,
     }
     if receipt.get("failed_step") != "Assert publishable production output":
         decision["state"] = "TECHNICAL_REPAIR_REQUIRED"
         return decision
-    if request.get("quality_recovery", {}).get("controller_run_id") == controller:
-        decision["state"] = "RECOVERY_EXHAUSTED"
+    previous = request.get("quality_recovery") or {}
+    attempt_used = previous.get("controller_run_id") == controller
+    decision["attempt_used"] = attempt_used
     try:
         artifact, worker_ended_at, (manifest, checkpoint, report, audit) = diagnostics(worker)
         implementation = manifest["implementation_sha"]
@@ -133,7 +133,18 @@ def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, tech
                     budget_seconds=budget if type(budget) is int and 60 <= budget <= 3600 else None,
                     deadline_exceeded=report.get("deadline_exceeded") is True,
                     voice_blocked=voice, scenes=[{"platform": p, "scene": int(n)} for p, n in scenes])
-    if decision["state"] == "RECOVERY_EXHAUSTED":
+    timeout = report.get("timeout")
+    if (isinstance(timeout, dict) and timeout.get("kind") == "LOCAL_REPAIR_WALL"
+            and timeout.get("seconds") == decision["budget_seconds"] and decision["deadline_exceeded"]
+            and type(timeout.get("job_id")) is int and timeout["job_id"] > 0
+            and isinstance(timeout.get("at"), str)):
+        voice_passed = report.get("voice_platforms_passed") == ["tiktok", "youtube_shorts"] and not voice
+        decision.update(timeout=timeout, voice_platforms_passed=voice_passed,
+                        state="AWAITING_VERIFIED_SCENE_FIX" if scenes and voice_passed
+                        and report.get("repair_target_stages") == ["VISUALS"] else "TECHNICAL_REPAIR_REQUIRED")
+        return decision
+    if attempt_used:
+        decision["state"] = "RECOVERY_EXHAUSTED"
         timeout = report.get("voice_timeout_seconds")
         if (type(timeout) is int and 60 <= timeout <= 1800 and voice
                 and report.get("state") == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"

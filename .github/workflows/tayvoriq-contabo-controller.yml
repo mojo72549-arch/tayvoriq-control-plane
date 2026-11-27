@@ -124,13 +124,20 @@ jobs:
               PYTHONPATH=tools python3 - <<'PY'
           import json, os, subprocess
           from pathlib import Path
-          from tayvoriq_contabo_handoff import POINTER, prepare, read, write
+          from tayvoriq_contabo_handoff import POINTER, identity, prepare, read, write
           from tayvoriq_contabo_recovery_decision import VOICE_RECOVERY, contabo_decision, private_diagnostics, private_technical_case
 
           parent = int(os.environ['QUALITY_PARENT_RUN_ID'])
           controller = int(os.environ['GITHUB_RUN_ID'])
           path = Path('requests') / (os.environ['REQUEST_ID'] + '.json')
           request, pointer = read(path), read(POINTER)
+          previous = request.get('quality_recovery') or {}
+          if pointer['golden_path_run_id'] == controller:
+              identity(request, pointer)
+              assert pointer['state'] == 'ACTIVE'
+              assert previous.get('controller_run_id') == controller and previous.get('parent_run_id') == parent
+              assert previous.get('decision_key') == os.environ['ORCHESTRATOR_DECISION_KEY']
+              raise SystemExit(0)
           assert pointer['golden_path_run_id'] == parent, 'QUALITY_REPAIR_ALREADY_CLAIMED'
           base = 'repos/' + os.environ['GITHUB_REPOSITORY'] + '/actions/runs/'
           run = json.loads(subprocess.check_output(['gh', 'api', base + str(parent)],
@@ -140,7 +147,6 @@ jobs:
               diagnostics=lambda worker: private_diagnostics(worker, os.environ['GH_TOKEN'], controller=parent),
               technical_lookup=lambda controller: private_technical_case(controller, os.environ['GH_TOKEN']))
           assert plan and plan['state'] == 'RETRY_ELIGIBLE' and plan['decision_key'] == os.environ['ORCHESTRATOR_DECISION_KEY'], 'QUALITY_REPAIR_PROOF_UNVERIFIED'
-          previous = request.get('quality_recovery') or {}
           assert not previous or (previous.get('controller_run_id') == parent
               and previous.get('repair_kind') != VOICE_RECOVERY
               and plan.get('repair_kind') == VOICE_RECOVERY), 'QUALITY_REPAIR_ALREADY_USED'
@@ -171,6 +177,7 @@ jobs:
               python3 tools/tayvoriq_contabo_handoff.py prepare --request "requests/$REQUEST_ID.json" --controller "$GITHUB_RUN_ID" --worker 0
             fi
             git add "requests/$REQUEST_ID.json" .github/state/tayvoriq-active-production-request.json
+            git diff --cached --quiet && exit 0
             git commit -m "Record Contabo preparation for $REQUEST_ID"
             if git push origin HEAD:main;then exit 0;fi
           done
@@ -240,12 +247,19 @@ jobs:
           d=dict(schema='tayvoriq-contabo-queue-v1',state='PENDING',request_id=os.environ['REQUEST_ID'],
             controller_run_id=int(os.environ['GITHUB_RUN_ID']),checkpoint_release=os.environ['RELEASE'],
             source_context_sha256=os.environ['SOURCE_SHA'],quality_gates_weakened=False)
-          Path('.github/state/tayvoriq-contabo-queue.json').write_text(json.dumps(d,indent=2)+'\n')
+          path=Path('.github/state/tayvoriq-contabo-queue.json')
+          previous=json.loads(path.read_text()) if path.exists() else {}
+          if previous.get('controller_run_id') == d['controller_run_id']:
+              assert all(previous.get(key) == d[key] for key in ('request_id','source_context_sha256'))
+          else:
+              path.write_text(json.dumps(d,indent=2)+'\n')
           PY
           git add .github/state/tayvoriq-contabo-queue.json
-          git commit -m "Queue private Contabo computation for $REQUEST_ID"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          if ! git diff --cached --quiet; then
+            git commit -m "Queue private Contabo computation for $REQUEST_ID"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
           # The persisted public queue is authoritative. If the existing
           # credential can write private contents, wake its worker immediately.
           # A read-only credential leaves the scheduled consumer in charge.
