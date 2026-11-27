@@ -25,10 +25,13 @@ jobs:
       - name: Mirror only the actual active Contabo owner
         run: |
           python3 - <<'PY' > /tmp/contabo-observation.env
-          import json
+          import json, os
           from pathlib import Path
           p=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
           assert p['execution_backend']=='contabo_private_runner' and p['state']=='ACTIVE'
+          if os.environ.get('GITHUB_EVENT_NAME') == 'push':
+              expected=json.loads(Path('.github/run-now/tayvoriq-contabo-observe.json').read_text())
+              assert p['request_id']==expected['request_id'] and p['golden_path_run_id']==expected['controller_run_id']
           print('REQUEST_ID='+p['request_id'])
           print('CONTABO_OBSERVED_RUN_ID='+str(p['golden_path_run_id']))
           PY
