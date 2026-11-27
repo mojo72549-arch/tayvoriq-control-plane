@@ -13,7 +13,7 @@ from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
 from tayvoriq_rejected_review_followup import followup
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
 from tayvoriq_chat_direct_approval_v1 import authorized_for_review
-from tayvoriq_contabo_recovery_decision import contabo_decision, private_diagnostics, private_scene_worker_ready, private_technical_case
+from tayvoriq_contabo_recovery_decision import SCENE_RECOVERY, contabo_decision, private_diagnostics, private_scene_worker_ready, private_technical_case
 from tayvoriq_slot_serialization_v1 import is_verified_cta_content_repair
 
 ACTIVE = {'queued', 'in_progress', 'waiting', 'requested', 'pending'}
@@ -250,11 +250,12 @@ def main():
     terminal = None
     if pointer.get('execution_backend') == 'contabo_private_runner' and run.get('conclusion') == 'failure':
         try:
+            include_mix = (request.get('quality_recovery') or {}).get('repair_kind') == SCENE_RECOVERY
             terminal = contabo_decision(pointer, request, run, verified_green,
                 read(Path('run-status/contabo') / (str(run_id) + '.json')),
-                diagnostics=lambda worker: private_diagnostics(worker, os.environ.get('STUDIO_READ_TOKEN', ''), controller=run_id),
+                diagnostics=lambda worker: private_diagnostics(worker, os.environ.get('STUDIO_READ_TOKEN', ''), controller=run_id, include_mix=include_mix),
                 technical_lookup=lambda controller: private_technical_case(controller, os.environ.get('STUDIO_READ_TOKEN', '')),
-                scoped_worker_ready=lambda: private_scene_worker_ready(os.environ.get('STUDIO_READ_TOKEN', ''), os.environ['GITHUB_REPOSITORY']))
+                scoped_worker_ready=lambda: private_scene_worker_ready(os.environ.get('STUDIO_READ_TOKEN', ''), os.environ['GITHUB_REPOSITORY'], padding=include_mix))
         except (AssertionError, KeyError, ValueError, TypeError):
             pass
     result = decide(pointer, request, run, event_name=os.environ.get('EVENT_WORKFLOW', ''),

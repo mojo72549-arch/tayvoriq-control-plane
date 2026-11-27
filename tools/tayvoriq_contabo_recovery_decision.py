@@ -20,12 +20,13 @@ FILES = ("control-plane/production-manifest.json", "recovery-checkpoint-meta.jso
 STUDIO_WORKFLOW = ".github/workflows/tayvoriq-contabo-produce.yml"
 VOICE_RECOVERY = "VOICE_CHECKPOINT_ISOLATION"
 SCENE_RECOVERY = "SINGLE_SCENE_CHECKPOINT_REPAIR"
+PADDING_RECOVERY = "TERMINAL_PADDING_CHECKPOINT_REPAIR"
 VOICE_PLAN = "ISOLATE_PLATFORM_VOICE_CHECKPOINTS"
 CONTROLLER_WORKFLOWS = {".github/workflows/tayvoriq-contabo-controller.yml",
                         ".github/workflows/tayvoriq-golden-path.yml"}
 
 
-def private_diagnostics(worker, token, *, controller=None):
+def private_diagnostics(worker, token, *, controller=None, include_mix=False):
     def api(path, limit=ARTIFACT_LIMIT):
         content = subprocess.check_output(["gh", "api", "repos/" + STUDIO + path],
                                           env={**os.environ, "GH_TOKEN": token}, timeout=20, stderr=subprocess.DEVNULL)
@@ -33,7 +34,7 @@ def private_diagnostics(worker, token, *, controller=None):
             raise ValueError("Contabo diagnostic response exceeds its limit")
         return content
 
-    if type(controller) is int and controller > 0:
+    if type(controller) is int and controller > 0 and not include_mix:
         try:
             file = json.loads(api(f"/contents/run-status/contabo/stop-proof/{controller}.json?ref=main"))
             proof = json.loads(base64.b64decode(file["content"]))
@@ -57,16 +58,17 @@ def private_diagnostics(worker, token, *, controller=None):
         raise ValueError("Contabo diagnostic artifact is missing or ambiguous")
     artifact = matches[0]
     payload = api(f"/actions/artifacts/{int(artifact['id'])}/zip")
-    return int(artifact["id"]), run.get("updated_at"), unpack(payload, artifact.get("digest"))
+    names = (*FILES, "job/publication_quality_gate.json") if include_mix else FILES
+    return int(artifact["id"]), run.get("updated_at"), unpack(payload, artifact.get("digest"), files=names)
 
 
-def unpack(payload, digest):
+def unpack(payload, digest, *, files=FILES):
     if digest != "sha256:" + hashlib.sha256(payload).hexdigest():
         raise ValueError("Contabo diagnostic digest mismatch")
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-        if any(archive.getinfo(name).file_size > ARTIFACT_LIMIT for name in FILES):
+        if any(archive.getinfo(name).file_size > ARTIFACT_LIMIT for name in files):
             raise ValueError("Contabo diagnostic file exceeds its limit")
-        return [json.loads(archive.read(name)) for name in FILES]
+        return [json.loads(archive.read(name)) for name in files]
 
 
 def private_technical_case(controller, token):
@@ -79,7 +81,7 @@ def private_technical_case(controller, token):
         return {}
 
 
-def private_scene_worker_ready(token, control_repo):
+def private_scene_worker_ready(token, control_repo, *, padding=False):
     """Check the executable private workflow's immutable reusable-workflow pin."""
     def content(repo, path, ref):
         payload = subprocess.check_output(
@@ -96,7 +98,10 @@ def private_scene_worker_ready(token, control_repo):
         if len(pins) != 1:
             return False
         called = content(control_repo, reusable, pins[0])
-        return all(marker in called for marker in ("SINGLE_SCENE_CHECKPOINT_REQUIRED", "--single-scene-parent-run", "--single-scene"))
+        markers = ("SINGLE_SCENE_CHECKPOINT_REQUIRED", "--single-scene-parent-run", "--single-scene")
+        if padding:
+            markers += ("--terminal-padding", "--keep-passing-audit")
+        return all(marker in called for marker in markers)
     except (KeyError, OSError, ValueError, subprocess.SubprocessError):
         return False
 
@@ -133,11 +138,11 @@ def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, tech
     previous = request.get("quality_recovery") or {}
     attempt_used = previous.get("controller_run_id") == controller
     decision["attempt_used"] = attempt_used
-    if attempt_used and previous.get("repair_kind") == SCENE_RECOVERY:
+    if attempt_used and previous.get("repair_kind") == PADDING_RECOVERY:
         decision["state"] = "RECOVERY_EXHAUSTED"
         return decision
     try:
-        artifact, worker_ended_at, (manifest, checkpoint, report, audit) = diagnostics(worker)
+        artifact, worker_ended_at, (manifest, checkpoint, report, audit, *publication) = diagnostics(worker)
         implementation = manifest["implementation_sha"]
         if (not re.fullmatch(r"[a-f0-9]{40}", implementation)
                 or str(manifest.get("run_id")) != str(controller)
@@ -150,6 +155,33 @@ def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, tech
                 or any(x.get("quality_gates_weakened") is not False for x in (manifest, checkpoint, report, audit))):
             return decision
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, zipfile.BadZipFile):
+        return decision
+    if attempt_used and previous.get("repair_kind") == SCENE_RECOVERY:
+        decision.update(state="RECOVERY_EXHAUSTED", artifact_id=artifact, implementation_sha=implementation)
+        gate = publication[0] if publication else {}
+        mix = gate.get("production_mix") or {}
+        variants = mix.get("variants") or {}
+        issues = {name: variant.get("issues") for name, variant in variants.items() if variant.get("passed") is False}
+        if (audit.get("passed") is True and not audit.get("blockers")
+                and all((gate.get("variants") or {}).get(name, {}).get("passed") is True
+                        for name in ("youtube_shorts", "tiktok"))
+                and gate.get("top_level_issues") == ["final-production-mix-gate-not-passed"]
+                and mix.get("passed") is False and mix.get("quality_gates_weakened") is False
+                and mix.get("cross_variant_issues") == [] and gate.get("quality_gates_weakened") is False
+                and len(issues) == 1 and set(issues) <= {"youtube_shorts", "tiktok"}
+                and list(issues.values()) == [["production-mix-silent-interval"]]):
+            platform, = issues
+            decision.update(state="AWAITING_VERIFIED_PADDING_FIX", platform=platform,
+                            stopped_at=worker_ended_at, voice_platforms_passed=True)
+            candidate = green.get("implementation_sha") or ""
+            if (green.get("schema") == "tayvoriq-production-green-v1" and green.get("implementation_repository") == STUDIO
+                    and green.get("full_preflight_passed") is True and green.get("quality_gates_weakened") is False
+                    and green.get("terminal_padding_checkpoint_verified") is True and candidate != implementation
+                    and isinstance(candidate, str) and re.fullmatch(r"[a-f0-9]{40}", candidate)
+                    and scoped_worker_ready and scoped_worker_ready()):
+                key = [request["request_id"], controller, worker, artifact, PADDING_RECOVERY, platform]
+                decision.update(state="RETRY_ELIGIBLE", next_implementation_sha=candidate, planned_attempts=1,
+                                repair_kind=PADDING_RECOVERY, decision_key=hashlib.sha256(json.dumps(key).encode()).hexdigest())
         return decision
     blockers = [v for v in audit.get("blockers") or [] if isinstance(v, str)]
     scenes = sorted(set(re.findall(r"^visual_agent:scene_off_topic:(tiktok|youtube_shorts):([1-9][0-9]?)$",
