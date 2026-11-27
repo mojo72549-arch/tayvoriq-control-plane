@@ -87,6 +87,22 @@ def find_same_day_morning(request: dict, requests_dir: Path) -> tuple[Path, dict
     if not candidates:
         return None
     _, path, data = max(candidates, key=lambda item: item[0])
+    # The morning approval retains its identity when a bounded editorial
+    # repair takes over. The evening must check the production of that repair.
+    for suffix, verify in (
+        ("-source-repair-v1", is_verified_editorial_source_repair),
+        ("-content-repair-v1", is_verified_cta_content_repair),
+    ):
+        parent_id = str(data.get("request_id") or "")
+        if parent_id != path.stem:
+            break
+        repair_path = requests_dir / f"{parent_id}{suffix}.json"
+        try:
+            repair = read_json(repair_path)
+        except (OSError, ValueError):
+            continue
+        if verify(repair, data, parent_id):
+            path, data = repair_path, repair
     return path, data
 
 
