@@ -273,7 +273,7 @@
   "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
   "dispatch_claim_run_id": 45954835467,
   "dispatch_contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
-  "golden_path_run_id": 46011335246,
+  "golden_path_run_id": 46015106689,
   "execution_backend": "contabo_private_runner",
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
@@ -301,7 +301,8 @@
     45954857672,
     45965549397,
     45981134031,
-    45988482504
+    45988482504,
+    46011335246
   ],
   "visual_recovery": {
     "schema": "tayvoriq-contabo-visual-recovery-v1",
@@ -316,40 +317,24 @@
     "schema": "tayvoriq-contabo-quality-decision-v1",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
-    "controller_run_id": 46011335246,
-    "worker_run_id": 45988694096,
+    "controller_run_id": 46015106689,
+    "worker_run_id": 46011418248,
     "state": "RETRY_ELIGIBLE",
-    "checked_at": "2026-11-27T13:55:54.410495+00:00",
-    "controller_ended_at": "2026-11-27T11:40:49Z",
+    "checked_at": "2026-11-27T14:21:05.808906+00:00",
+    "controller_ended_at": "2026-11-27T14:00:19Z",
     "failed_step": "Assert publishable production output",
     "user_action_required": false,
     "quality_gates_weakened": false,
     "attempt_used": true,
-    "artifact_id": 15194561067,
-    "implementation_sha": "76b8abdd650512400649ba48c015524f74435062",
-    "stopped_at": "2026-11-27T11:39:40.0746435Z",
-    "budget_seconds": 1500,
-    "deadline_exceeded": true,
-    "voice_blocked": false,
-    "scenes": [
-      {
-        "platform": "tiktok",
-        "scene": 6
-      }
-    ],
-    "timeout": {
-      "kind": "LOCAL_REPAIR_WALL",
-      "at": "2026-11-27T11:39:40.0746435Z",
-      "seconds": 1500,
-      "job_id": 140470803069,
-      "stage": "VISUAL_REPAIR_TOPIC_AWARE_V3_R2",
-      "repair_round": 2
-    },
+    "artifact_id": 15202604493,
+    "implementation_sha": "88d538e843b4300eab2ff22cc39d24661f223d11",
+    "platform": "youtube_shorts",
+    "stopped_at": "2026-11-27T13:58:50.3960935Z",
     "voice_platforms_passed": true,
-    "next_implementation_sha": "88d538e843b4300eab2ff22cc39d24661f223d11",
+    "next_implementation_sha": "cfb53a2a5e72a9eea4839c060096d8ebb9d320cf",
     "planned_attempts": 1,
-    "repair_kind": "SINGLE_SCENE_CHECKPOINT_REPAIR",
-    "decision_key": "06faeb5a773c7bd06f0fea6b5872916219c8666a6731744b058f01a72e7a0782",
-    "parent_run_id": 45988482504
+    "repair_kind": "TERMINAL_PADDING_CHECKPOINT_REPAIR",
+    "decision_key": "78437e49f0eb93b153309d18aadb34dace39223280dbaec4299b476c3d84f92e",
+    "parent_run_id": 46011335246
   }
 }
