@@ -443,11 +443,22 @@ jobs:
             echo "STUDIO_STATUS_ONLY_COMMIT_ACCEPTED:$tested:$remote_sha"
           fi
 
+      - name: Verify the software-workplace search regression when present
+        if: steps.refs.outputs.changed == 'true'
+        id: visual_search
+        working-directory: implementation
+        run: |
+          if [ -f tests/test_tayvoriq_software_workplace_visuals.py ]; then
+            python -m pytest -q tests/test_tayvoriq_software_workplace_visuals.py
+            echo 'verified=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Promote exact fully verified SHA in control plane
         if: github.event_name != 'pull_request' && steps.refs.outputs.changed == 'true'
         shell: bash
         env:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
+          SOFTWARE_WORKPLACE_SEARCH_VERIFIED: ${{ steps.visual_search.outputs.verified }}
         run: |
           set -euo pipefail
           git pull --rebase origin main
@@ -466,6 +477,7 @@ jobs:
               'verification_run_id':str(os.environ.get('GITHUB_RUN_ID') or ''),
               'verification_policy_version':str(os.environ.get('TAYVORIQ_GREEN_POLICY_VERSION') or ''),
               'full_preflight_passed':True,
+              'software_workplace_search_verified':os.environ.get('SOFTWARE_WORKPLACE_SEARCH_VERIFIED')=='true',
               'quality_gates_weakened':False,
           }
           path=Path('.github/state/tayvoriq-production-green.json')

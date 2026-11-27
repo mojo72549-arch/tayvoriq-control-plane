@@ -68,6 +68,18 @@ class StaleNewsSafetyTests(unittest.TestCase):
         recent_failure = self.run | {"updated_at": (NOW - timedelta(minutes=5)).isoformat()}
         self.assertIsNone(self.retire(run=recent_failure))
 
+    def test_terminal_contabo_repair_can_expire_only_with_same_worker_proof(self):
+        pointer = self.pointer | {"execution_backend":"contabo_private_runner","execution_run_id":99,"allow_recovery":False}
+        request = self.request | {"source":"telegram_trend_approval_content_repair","contabo_handoff":{"worker_run_id":99}}
+        run = self.run | {"path":".github/workflows/tayvoriq-contabo-controller.yml"}
+        receipt = {"schema":"tayvoriq-contabo-worker-v1","status":"FAILED","request_id":request["request_id"],
+                   "controller_run_id":42,"worker_run_id":99,"source_context_sha256":request["source_context_sha256"]}
+        self.assertIsNone(quarantine(pointer,request,run,active_executors=0,now=NOW,contabo_receipt=receipt|{"worker_run_id":98}))
+        retired, expired = quarantine(pointer,request,run,active_executors=0,now=NOW,contabo_receipt=receipt)
+        self.assertTrue(verified_quarantine(expired,retired,run))
+        retired['stale_quarantine']['contabo_worker_receipt']['status']='RUNNING'
+        self.assertFalse(verified_quarantine(expired,retired,run))
+
     def test_evening_requires_verified_exhaustion_from_the_exact_morning_attempt(self):
         request = self.request | {
             "selection_id": "20261019-morning-agentv2",
