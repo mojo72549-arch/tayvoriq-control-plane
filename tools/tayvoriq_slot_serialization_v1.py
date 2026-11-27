@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 from tayvoriq_stale_news_reconcile_v1 import EXHAUSTED_MORNING, verified_quarantine
 from tayvoriq_review_receipt import REPLAY_PATH, REPLAY_BRANCH, REPLAY_STEPS
+from tayvoriq_contabo_handoff import STUDIO, identity
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
 REQUIRED_FINAL_STEPS = (
@@ -21,6 +22,17 @@ REQUIRED_FINAL_STEPS = (
     "Publish review page",
     "Send Telegram review",
 )
+CONTABO_FINAL_STEPS = (
+    "Receive the request-bound Contabo review package",
+    "Assert immutable result and final quality proof",
+    "Publish review page",
+    "Send Telegram review",
+    "Finalize verified review delivery",
+)
+CONTABO_WORKFLOWS = {
+    ".github/workflows/tayvoriq-contabo-controller.yml",
+    ".github/workflows/tayvoriq-deliver-video-now.yml",
+}
 SERIALIZABLE_APPROVAL_SOURCES = {
     "telegram_trend_approval",
     "user_preapproved_preparation",
@@ -213,6 +225,57 @@ def github_json(url: str, token: str) -> dict:
         return json.load(response)
 
 
+def evaluate_contabo_review(request, run, jobs_payload, repo, token, expected_run_id, pointer=None):
+    completion = request.get("production_completion") or {}
+    handoff = request.get("contabo_handoff") or {}
+    message_id = completion.get("telegram_message_id")
+    worker_id = handoff.get("worker_run_id")
+    delivery_id = completion.get("delivery_run_id", expected_run_id)
+    unverified = False, "MORNING_CONTABO_REVIEW_NOT_VERIFIED", {}
+    if not (
+        request.get("golden_path_run_id") == completion.get("golden_path_run_id")
+        == handoff.get("controller_run_id") == expected_run_id
+        and completion.get("state") == "REVIEW_READY"
+        and completion.get("quality_gates_weakened") is False
+        and type(message_id) is int and message_id > 0
+        and type(delivery_id) is int and delivery_id > 0
+        and type(worker_id) is int and worker_id > 0
+        and handoff.get("schema") == "tayvoriq-contabo-handoff-v1"
+        and handoff.get("execution_repository") == STUDIO
+        and handoff.get("quality_gates_weakened") is False
+        and all(request.get(key) and request[key] == handoff.get(key)
+                for key in ("request_id", "source_context_sha256", "contract_sha256"))
+    ):
+        return unverified
+    try:
+        if pointer is not None:
+            identity(request, pointer)
+            if (pointer.get("state") != "COMPLETED"
+                    or pointer.get("execution_backend") != "contabo_private_runner"
+                    or pointer.get("execution_repository") != STUDIO
+                    or pointer.get("execution_run_id") != worker_id):
+                return unverified
+    except (AssertionError, KeyError, TypeError):
+        return unverified
+    if delivery_id != expected_run_id:
+        url = f"https://api.github.com/repos/{repo}/actions/runs/{delivery_id}"
+        run = github_json(url, token)
+        jobs_payload = github_json(f"{url}/jobs?per_page=100", token)
+    if (run.get("id") != delivery_id or run.get("status") != "completed"
+            or run.get("conclusion") != "success"
+            or str(run.get("path") or "").split("@", 1)[0] not in CONTABO_WORKFLOWS):
+        return unverified
+    for job in jobs_payload.get("jobs") or []:
+        if (job.get("name") not in {"orchestrate", "contabo-controller / orchestrate"}
+                or job.get("conclusion") != "success"):
+            continue
+        steps = {step["name"]: step.get("conclusion") for step in job.get("steps", [])
+                 if step.get("name") in CONTABO_FINAL_STEPS}
+        if all(steps.get(name) == "success" for name in CONTABO_FINAL_STEPS):
+            return True, "MORNING_CONTABO_REVIEW_VERIFIED", steps
+    return unverified
+
+
 def check_request(request_path: Path, requests_dir: Path, repo: str, token: str) -> dict:
     request = read_json(request_path)
     parts = selection_parts(request)
@@ -289,7 +352,10 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                         run = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}", token)
                         jobs = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100", token)
                         released, reason, steps = evaluate_live_state(run, jobs)
-                        if (not released and pointer.get('state') == 'COMPLETED'
+                        if pointer.get("execution_backend") == "contabo_private_runner":
+                            previous = read_json(requests_dir / f"{owner}.json")
+                            released, reason, steps = evaluate_contabo_review(previous, run, jobs, repo, token, run_id, pointer)
+                        elif (not released and pointer.get('state') == 'COMPLETED'
                                 and pointer.get('reference_only') is True and pointer.get('allow_publish') is False
                                 and reference_review_verified(read_json(requests_dir / f'{owner}.json'), run, jobs)):
                             released, reason = True, 'MORNING_REFERENCE_REVIEW_VERIFIED'
@@ -363,7 +429,9 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     run = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}", token)
     jobs = github_json(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100", token)
     released, reason, step_state = evaluate_live_state(run, jobs)
-    if not released and reference_review_verified(morning, run, jobs):
+    if morning.get("execution_backend") == "contabo_private_runner":
+        released, reason, step_state = evaluate_contabo_review(morning, run, jobs, repo, token, run_id)
+    elif not released and reference_review_verified(morning, run, jobs):
         released, reason = True, 'MORNING_REFERENCE_REVIEW_VERIFIED'
     result["released"] = released
     result["reason"] = reason
