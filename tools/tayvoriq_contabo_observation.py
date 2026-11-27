@@ -112,11 +112,20 @@ def main():
     if receipt['status'] == 'FAILED':
         notify({},receipt,token)
         return
+    worker_step = None
+    if receipt['status'] == 'RUNNING':
+        try:
+            worker_step = mirror_worker_step(run, receipt, token)
+        except (OSError, ValueError, KeyError):
+            print('CONTABO_WORKER_STEP_UNAVAILABLE')
     try:
         meta=api(STUDIO,f'run-status/live/{run}-1.json',os.environ['GH_TOKEN'])
     except HTTPError as error:
         if error.code==404:
-            mirror_worker_step(run,receipt,token)
+            if worker_step and worker_step.get('state') == 'running':
+                notify({'observed_at':worker_step['observed_at'],
+                        'current':{'at':worker_step.get('started_at') or worker_step['observed_at'],
+                                   'phase':worker_step['code'],'status':'started'}},receipt,token)
             return
         raise
     progress=json.loads(base64.b64decode(meta['content']))
@@ -152,9 +161,7 @@ def mirror_worker_step(run, receipt, token):
             for key in ('controller_run_id','worker_run_id','request_id','source_context_sha256')):
         raise ValueError('Worker step does not match the current receipt')
     mirror(path,step,token)
-    if step.get('state')=='running':
-        notify({'observed_at':step['observed_at'],'current':{'at':step.get('started_at') or step['observed_at'],
-               'phase':step['code'],'status':'started'}},receipt,token)
+    return step
 
 if __name__=='__main__':
     try:main()
