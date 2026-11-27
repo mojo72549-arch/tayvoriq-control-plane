@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-27T14:20:38.913540Z",
-  "overall": "red",
+  "generated_at": "2026-11-27T16:56:57.987312Z",
+  "overall": "green",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
-    "golden_path_run_id": 46011335246,
-    "pointer_updated_at": "2026-11-27T13:56:32.774159+00:00",
+    "golden_path_run_id": 46015106689,
+    "pointer_updated_at": "2026-11-27T14:31:29.648082+00:00",
     "current_scope": "production"
   },
   "request": {
@@ -46,19 +46,19 @@
     "path": "requests/telegram-3821-trend-1-content-repair-v1.json"
   },
   "run": {
-    "id": 46011335246,
+    "id": 46015106689,
     "historical": false,
     "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46011335246",
-    "created_at": "2026-11-27T13:55:44Z",
-    "updated_at": "2026-11-27T14:00:19Z",
-    "attempt": 1,
-    "progress": 0,
+    "conclusion": "success",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46015106689",
+    "created_at": "2026-11-27T14:20:54Z",
+    "updated_at": "2026-11-27T14:31:34Z",
+    "attempt": 2,
+    "progress": 100,
     "current_step": null,
     "last_successful_step": "Complete job",
-    "failed_step": "Monitor the private worker receipt",
-    "failed_step_number": 12,
+    "failed_step": null,
+    "failed_step_number": null,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -116,13 +116,13 @@
       },
       {
         "label": "Review-Seite",
-        "status": "skipped",
+        "status": "success",
         "step_number": 16,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "skipped",
+        "status": "success",
         "step_number": 18,
         "step_name": "Send Telegram review"
       }
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "Monitor the private worker receipt"
+      "status": "green",
+      "detail": "success"
     },
     {
       "name": "Production Green",
@@ -141,13 +141,13 @@
     },
     {
       "name": "Self-Heal",
-      "status": "yellow",
-      "detail": "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
+      "status": "green",
+      "detail": "REPLAY_DISPATCHED"
     },
     {
       "name": "Telegram",
-      "status": "yellow",
-      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
+      "status": "green",
+      "detail": "Telegram-Videoquittung bestätigt"
     },
     {
       "name": "Quality Gates",
@@ -155,48 +155,32 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "46011335246:none",
-    "severity": "critical",
-    "failure_state": null,
-    "failed_step": "Monitor the private worker receipt",
-    "failed_step_number": 12,
-    "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": true
-  },
+  "incident": null,
   "telegram": {
-    "status": "yellow",
-    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "status": "green",
+    "detail": "Telegram-Videoquittung bestätigt",
     "last_step": "Send Telegram review",
-    "message_id": null
+    "message_id": 3877
   },
   "recovery": {
-    "status": "RECOVERY_CLASSIFICATION_PENDING",
+    "status": "REPLAY_DISPATCHED",
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": null,
     "failed_run_id": null,
-    "replay_run_id": 46011335246,
+    "replay_run_id": 46015106689,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": true,
+    "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-27T14:00:19Z",
-      "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 46011335246 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
-    },
-    {
-      "at": "2026-11-27T14:00:19Z",
-      "title": "Workflow-Fehler",
-      "detail": "Monitor the private worker receipt"
+      "at": "2026-11-27T14:23:42.309960+00:00",
+      "title": "CHECKPOINT_PROVENANCE_RECORDED",
+      "detail": "contabo-controller"
     },
     {
       "at": "2026-11-27T13:56:32.774137+00:00",
@@ -221,11 +205,6 @@
     {
       "at": "2026-11-27T06:54:18.921946+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:45954835467"
-    },
-    {
-      "at": "2026-11-27T06:54:08.378827+00:00",
-      "title": "DISPATCHING",
       "detail": "request-dispatcher:45954835467"
     }
   ]
