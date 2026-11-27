@@ -14,20 +14,32 @@ def domain(url:str)->str:
 
 def source_pool()->list[dict[str,str]]:
     queries = [
-        'sourcelang:german (Stuttgart OR "Baden-Württemberg" OR Heilbronn OR Sindelfingen)',
-        'sourcelang:german (Stellenabbau OR Warnstreik OR Tarifrunde OR Zulieferer)',
-        'sourcelang:german (Bahn OR Verkehr OR Energiepreise OR Verbraucher)',
-        'sourcelang:german (Digitalisierung OR Cyberangriff OR Technologie OR Bundesliga)',
+        '(Stuttgart OR "Baden-Württemberg" OR Heilbronn OR Sindelfingen)',
+        '(Stellenabbau OR Warnstreik OR Tarifrunde OR Zulieferer)',
+        '(Bahn OR Verkehr OR Energiepreise OR Verbraucher)',
+        '(Digitalisierung OR Cyberangriff OR Technologie OR Bundesliga)',
     ]
     out=[]; seen=set(); started=time.monotonic()
     budget=float(os.getenv("TAYVORIQ_GDELT_BUDGET_SECONDS") or 12)
     per_call=float(os.getenv("TAYVORIQ_GDELT_TIMEOUT_SECONDS") or 8)
     def collect(query):
-        params=urllib.parse.urlencode({"query":query,"mode":"artlist","maxrecords":75,"format":"json","timespan":"24H","sort":"DateDesc"})
+        # Context searches natively in the language selected by this URL parameter.
+        # The DOC API's sourcelang operator is not a Context query operator.
+        params = urllib.parse.urlencode({
+            "query": query, "mode": "artlist", "maxrecords": 75, "format": "json",
+            "timespan": "24H", "sort": "DateDesc", "searchlang": "german",
+        })
         req=urllib.request.Request(f"{GDELT_URL}?{params}",headers={"User-Agent":"tayvoriq-agent-v3"})
         timeout=max(1.0,min(per_call,budget))
         try:
-            with urllib.request.urlopen(req,timeout=timeout) as resp: payload=json.loads(resp.read().decode())
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                try:
+                    payload = json.loads(resp.read())
+                except ValueError:
+                    print(json.dumps({"event": "gdelt_query_failed", "query": query,
+                                      "error": "NON_JSON_RESPONSE", "status": resp.status,
+                                      "content_type": resp.headers.get_content_type()}, ensure_ascii=False))
+                    return []
         except Exception as exc:
             print(json.dumps({"event":"gdelt_query_failed","query":query,"error":http.summary(exc)},ensure_ascii=False))
             return []
