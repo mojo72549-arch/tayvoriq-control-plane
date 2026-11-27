@@ -3,33 +3,18 @@
   "selection_id": "20261127-morning-agentv2-cfe4480cd",
   "slot": "morning",
   "run_id": 46017762193,
-  "run_attempt": 2,
-  "state": "FAILED",
-  "started_at": "2026-11-27T16:57:20.608057+00:00",
-  "updated_at": "2026-11-27T16:59:04.175367+00:00",
-  "sources_seen": 660,
+  "run_attempt": 3,
+  "state": "SEARCHING",
+  "started_at": "2026-11-27T17:05:26.363819+00:00",
+  "updated_at": "2026-11-27T17:05:26.572295+00:00",
+  "sources_seen": null,
   "drafts_saved": 0,
   "quality_rejections": 0,
   "corroborated_headlines": null,
-  "provider": "ollama",
-  "issues": [
-    {
-      "code": "WORKER_WAKEUP_FAILED",
-      "provider": null
-    }
-  ],
-  "exit_code": 1,
+  "provider": null,
+  "issues": [],
+  "exit_code": null,
   "local_attempt": 1,
   "max_local_attempts": 3,
-  "next_retry_at": null,
-  "wakeup_failure_cause": "ACCESS",
-  "handoff": {
-    "state": "RUNNING",
-    "wake_attempt": 1,
-    "max_wake_attempts": 2,
-    "owner": "contabo_research_worker",
-    "wakeup_confirmed": false,
-    "next_check_at": null,
-    "worker_run_id": 46038038794
-  }
+  "next_retry_at": null
 }
