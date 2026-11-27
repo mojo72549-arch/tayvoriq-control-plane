@@ -1,6 +1,7 @@
 """Read the private terminal evidence and admit one exact Contabo quality repair."""
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
 import json
@@ -21,13 +22,25 @@ CONTROLLER_WORKFLOWS = {".github/workflows/tayvoriq-contabo-controller.yml",
                         ".github/workflows/tayvoriq-golden-path.yml"}
 
 
-def private_diagnostics(worker, token):
+def private_diagnostics(worker, token, *, controller=None):
     def api(path, limit=ARTIFACT_LIMIT):
         content = subprocess.check_output(["gh", "api", "repos/" + STUDIO + path],
                                           env={**os.environ, "GH_TOKEN": token}, timeout=20, stderr=subprocess.DEVNULL)
         if len(content) > limit:
             raise ValueError("Contabo diagnostic response exceeds its limit")
         return content
+
+    if type(controller) is int and controller > 0:
+        try:
+            file = json.loads(api(f"/contents/run-status/contabo/stop-proof/{controller}.json?ref=main"))
+            proof = json.loads(base64.b64decode(file["content"]))
+            if (proof.get("schema") == "tayvoriq-contabo-stop-proof-v1" and proof.get("controller_run_id") == controller
+                    and proof.get("worker_run_id") == worker and type(proof.get("artifact_id")) is int
+                    and re.fullmatch(r"sha256:[a-f0-9]{64}", proof.get("artifact_digest", ""))
+                    and isinstance(proof.get("evidence"), list) and len(proof["evidence"]) == 4):
+                return proof["artifact_id"], proof.get("stopped_at"), proof["evidence"]
+        except (ValueError, KeyError, TypeError, subprocess.SubprocessError):
+            pass
 
     run = json.loads(api(f"/actions/runs/{worker}"))
     if (run.get("id") != worker or run.get("head_branch") != "main" or run.get("status") != "completed"

@@ -137,7 +137,7 @@ jobs:
               env={**os.environ, 'GH_TOKEN': os.environ['CONTROL_TOKEN']}, text=True))
           plan = contabo_decision(pointer, request, run, read('.github/state/tayvoriq-production-green.json'),
               read(Path('run-status/contabo') / f'{parent}.json'),
-              diagnostics=lambda worker: private_diagnostics(worker, os.environ['GH_TOKEN']))
+              diagnostics=lambda worker: private_diagnostics(worker, os.environ['GH_TOKEN'], controller=parent))
           assert plan and plan['state'] == 'RETRY_ELIGIBLE' and plan['decision_key'] == os.environ['ORCHESTRATOR_DECISION_KEY'], 'QUALITY_REPAIR_PROOF_UNVERIFIED'
           prepare(request, pointer, controller)
           request['quality_recovery'] = {**plan, 'parent_run_id': parent, 'controller_run_id': controller}

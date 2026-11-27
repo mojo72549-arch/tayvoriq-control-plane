@@ -252,7 +252,7 @@ def main():
         try:
             terminal = contabo_decision(pointer, request, run, verified_green,
                 read(Path('run-status/contabo') / (str(run_id) + '.json')),
-                diagnostics=lambda worker: private_diagnostics(worker, os.environ.get('STUDIO_READ_TOKEN', '')))
+                diagnostics=lambda worker: private_diagnostics(worker, os.environ.get('STUDIO_READ_TOKEN', ''), controller=run_id))
         except (AssertionError, KeyError, ValueError, TypeError):
             pass
     result = decide(pointer, request, run, event_name=os.environ.get('EVENT_WORKFLOW', ''),
