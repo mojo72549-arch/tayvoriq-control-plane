@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 REPO = 'mojo72549-arch/tayvoriq-control-plane'
 PROVIDERS = ('gemini', 'groq', 'huggingface', 'ollama')
 STOPPED = 130
+WORKER_FAILURES = {'WORKER_START_TIMEOUT', 'WORKER_RESULT_TIMEOUT', 'WORKER_WAKEUP_FAILED'}
 
 
 def stamp():
@@ -63,7 +64,30 @@ class Observation:
         if not isinstance(row, dict):
             return False
         event = row.get('event')
-        if event == 'source_records_loaded':
+        if event == 'contabo_worker_wakeup' and row.get('wake_attempt') in (1, 2):
+            check = row.get('next_check_epoch')
+            self.data['handoff'] = {'state': 'WAITING_FOR_WORKER', 'wake_attempt': row['wake_attempt'],
+                'max_wake_attempts': 2, 'owner': 'contabo_research_worker',
+                'wakeup_confirmed': row.get('confirmed') is True,
+                'next_check_at': datetime.fromtimestamp(check, timezone.utc).isoformat()
+                    if type(check) in (int, float) and 0 < check < 253402300799 else None}
+        elif event == 'contabo_worker_started' and type(row.get('worker_run_id')) is int and row['worker_run_id'] > 0:
+            self.data.setdefault('handoff', {}).update(state='RUNNING', worker_run_id=row['worker_run_id'],
+                next_check_at=None, owner='contabo_research_worker')
+        elif event == 'contabo_worker_failure' and row.get('code') in WORKER_FAILURES:
+            code = row['code']
+            issue = {'code': code, 'provider': None}
+            if issue not in self.data['issues']:
+                self.data['issues'] = [*self.data['issues'], issue][-12:]
+            if code == 'WORKER_WAKEUP_FAILED' and row.get('cause') in {'ACCESS', 'UNCONFIRMED'}:
+                self.data['wakeup_failure_cause'] = row['cause']
+            if row.get('terminal', True):
+                self.data.setdefault('handoff', {}).update(state='BLOCKED', next_check_at=None,
+                    owner='production_engineering', action_required='CHECK_BOUND_WORKER_RESULT'
+                    if code == 'WORKER_RESULT_TIMEOUT' else 'CHECK_RESEARCH_WAKEUP_ACCESS'
+                    if any(i['code'] == 'WORKER_WAKEUP_FAILED' for i in self.data['issues'])
+                    else 'CHECK_CONTABO_RESEARCH_RUNNER')
+        elif event == 'source_records_loaded':
             value = row.get('total_records')
             if type(value) is int and 0 <= value <= 100000:
                 self.data['sources_seen'] = value
@@ -119,6 +143,15 @@ class Observation:
                          local_attempt=attempt, max_local_attempts=3, updated_at=stamp())
 
     def finish(self, code):
+        if code == 124 and self.data.get('handoff', {}).get('state') in {'WAITING_FOR_WORKER', 'RUNNING'}:
+            self.event({'event': 'contabo_worker_failure', 'code': 'WORKER_RESULT_TIMEOUT'
+                if self.data['handoff'].get('worker_run_id') else 'WORKER_START_TIMEOUT'})
+        if self.data.get('handoff'):
+            self.data['handoff']['next_check_at'] = None
+            if code == 0:
+                self.data['handoff']['state'] = 'COMPLETED'
+            elif code == STOPPED:
+                self.data['handoff']['state'] = 'STOPPED'
         self.data.update(state='GENERATED' if code == 0 else 'FAILED', exit_code=code,
                          next_retry_at=None, updated_at=stamp())
 
@@ -252,7 +285,7 @@ def persist_context(state, token, *, request=urlopen):
 
 def run_child(command, env, deadline, observation, save, *, clock=time.time, stopped=lambda: False, stop_interval=5):
     """Keep the original research result, with a real wall-clock timeout and heartbeat."""
-    if env.get('TAYVORIQ_LOCAL_RESEARCH') == 'true':
+    if env.get('TAYVORIQ_LOCAL_RESEARCH') == 'true' or env.get('TAYVORIQ_CONTROL_REVISION'):
         env = {**env, 'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': str(deadline)}
     child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
     lines = queue.SimpleQueue()

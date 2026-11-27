@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 15
     env:
       STUDIO_RESEARCH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+      STUDIO_RESEARCH_WAKE_TOKEN: ${{ secrets.PRIVATE_REPO_WAKE_TOKEN }}
       GH_TOKEN: ${{ github.token }}
       TAYVORIQ_CONTABO_RESEARCH_ORIGIN: verification
     steps:
