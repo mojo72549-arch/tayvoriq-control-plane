@@ -6,18 +6,13 @@
   "run_attempt": 1,
   "state": "SEARCHING",
   "started_at": "2026-11-27T21:49:57.690377+00:00",
-  "updated_at": "2026-11-27T21:52:22.455960+00:00",
+  "updated_at": "2026-11-27T21:52:43.048814+00:00",
   "sources_seen": null,
   "drafts_saved": 0,
   "quality_rejections": 0,
   "corroborated_headlines": null,
   "provider": null,
-  "issues": [
-    {
-      "code": "WORKER_WAKEUP_FAILED",
-      "provider": null
-    }
-  ],
+  "issues": [],
   "exit_code": null,
   "history": [
     {
@@ -31,6 +26,11 @@
       "event": "contabo_worker_wakeup",
       "wake_attempt": 1,
       "confirmed": false
+    },
+    {
+      "at": "2026-11-27T21:52:40.048339+00:00",
+      "event": "contabo_worker_started",
+      "worker_run_id": 46073058867
     }
   ],
   "local_attempt": 1,
@@ -38,11 +38,12 @@
   "next_retry_at": null,
   "wakeup_failure_cause": "ACCESS",
   "handoff": {
-    "state": "WAITING_FOR_WORKER",
+    "state": "RUNNING",
     "wake_attempt": 1,
     "max_wake_attempts": 2,
     "owner": "contabo_research_worker",
     "wakeup_confirmed": false,
-    "next_check_at": null
+    "next_check_at": null,
+    "worker_run_id": 46073058867
   }
 }
