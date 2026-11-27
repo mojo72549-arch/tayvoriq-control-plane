@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-27T06:54:11.042053Z",
-  "overall": "red",
+  "generated_at": "2026-11-27T06:56:36.126623Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -12,13 +12,13 @@
   "research": {},
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3821-trend-1",
-    "golden_path_run_id": 45954105377,
-    "pointer_updated_at": "2026-11-27T06:48:10.259414+00:00",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "golden_path_run_id": 45954857672,
+    "pointer_updated_at": "2026-11-27T06:55:06.228852+00:00",
     "current_scope": "production"
   },
   "request": {
-    "request_id": "telegram-3821-trend-1",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
     "topic": "SAP erwägt den Abbau von mehr als 10.000 Stellen",
     "trend_id": "1",
     "slot": null,
@@ -43,16 +43,16 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3821-trend-1.json"
+    "path": "requests/telegram-3821-trend-1-content-repair-v1.json"
   },
   "run": {
-    "id": 45954105377,
+    "id": 45954857672,
     "historical": false,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45954105377",
-    "created_at": "2026-11-27T06:47:17Z",
-    "updated_at": "2026-11-27T06:50:31Z",
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45954857672",
+    "created_at": "2026-11-27T06:54:12Z",
+    "updated_at": "2026-11-27T06:54:16Z",
     "attempt": 1,
     "progress": 0,
     "current_step": null,
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "red",
-      "detail": "failure"
+      "status": "yellow",
+      "detail": "in_progress"
     },
     {
       "name": "Production Green",
@@ -142,7 +142,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
@@ -155,18 +155,7 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": {
-    "signature": "45954105377:none",
-    "severity": "critical",
-    "failure_state": null,
-    "failed_step": null,
-    "failed_step_number": null,
-    "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
-    "same_generation_replay_required": true,
-    "quality_gates_weakened": false,
-    "user_action_required": false,
-    "recovery_replay_failed": true
-  },
+  "incident": null,
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
@@ -174,49 +163,34 @@
     "message_id": null
   },
   "recovery": {
-    "status": "RECOVERY_CLASSIFICATION_PENDING",
-    "source_status": "REPLAY_DISPATCHED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_RUNNING",
     "failure_state": null,
     "failed_run_id": null,
-    "replay_run_id": 45954105377,
+    "replay_run_id": 45954857672,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": true,
+    "inferred_from_run_terminal_state": false,
     "needs_codefix": false
   },
   "events": [
     {
-      "at": "2026-11-27T06:50:31Z",
-      "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45954105377 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
-    },
-    {
-      "at": "2026-11-27T06:47:24.604925+00:00",
+      "at": "2026-11-27T06:54:18.921946+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:45954066143"
+      "detail": "request-dispatcher:45954835467"
     },
     {
-      "at": "2026-11-27T06:47:12.110468+00:00",
+      "at": "2026-11-27T06:54:08.378827+00:00",
       "title": "DISPATCHING",
-      "detail": "request-dispatcher:45954066143"
+      "detail": "request-dispatcher:45954835467"
     },
     {
-      "at": "2026-11-27T06:46:48.916515Z",
+      "at": "2026-11-27T06:52:45.389536+00:00",
       "title": "APPROVED",
-      "detail": "tayvoriq-slot-serialization-releaser"
-    },
-    {
-      "at": "2026-11-27T06:09:23.410894Z",
-      "title": "APPROVED",
-      "detail": "tayvoriq-slot-serialization-gate"
-    },
-    {
-      "at": "2026-11-27T06:09:04.521Z",
-      "title": "APPROVED",
-      "detail": "telegram_callback"
+      "detail": "verified-contabo-content-repair"
     }
   ]
 }
