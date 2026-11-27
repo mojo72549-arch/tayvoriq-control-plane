@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
+from tayvoriq_contabo_research import WAKEUP_ACCESS_DENIED, WORKER_RESULT_TIMEOUT, WORKER_START_TIMEOUT
+from tayvoriq_research_retry_v1 import ISSUE_DETAILS
 
 ROOT = Path(".automation/tayvoriq-agent-v2")
 STATES = {
@@ -25,6 +27,12 @@ BLOCKERS = {
     "RESEARCH_FAILED": "Der Recherche-Workflow ist vor einer bestätigten Trendauswahl abgebrochen.",
 }
 DEFERRED = Path("/tmp/tayvoriq-research-deferred.json")
+CONTABO_BLOCKERS = {
+    WORKER_START_TIMEOUT: "WORKER_START_TIMEOUT",
+    WORKER_RESULT_TIMEOUT: "WORKER_RESULT_TIMEOUT",
+    WAKEUP_ACCESS_DENIED: "WORKER_WAKEUP_ACCESS",
+}
+BLOCKERS.update({reason: ISSUE_DETAILS[reason] for reason in CONTABO_BLOCKERS.values()})
 
 
 def load(path):
@@ -59,10 +67,10 @@ def research(command, deadline, *, clock=time.time, run=subprocess.run, pause=ti
     """Give interactive research bounded attempts within the same Orchestrator run."""
     if 'tools/tayvoriq_contabo_research.py' in command:
         remaining = int(deadline - clock() - 30)
-        if remaining <= 0:
+        if remaining <= 25:
             return 124, 0
         try:
-            result = run([*command, '--wait-seconds', str(min(remaining, 540))], timeout=remaining, check=False)
+            result = run([*command, '--wait-seconds', str(min(remaining - 25, 540))], timeout=remaining, check=False)
         except subprocess.TimeoutExpired:
             return 124, 1
         return result.returncode, 1
@@ -92,6 +100,8 @@ def blocker_for(phase, retry, deferred, contract, telegram):
         return "TELEGRAM_DELIVERY_UNCONFIRMED"
     if contract == "failure":
         return "SOURCE_QUALITY"
+    if deferred.get("result") in CONTABO_BLOCKERS.values():
+        return deferred["result"]
     if deferred.get("result") == "TIMEOUT":
         return "RESEARCH_TIMEOUT"
     errors = " ".join(deferred.get("errors") or []).lower()
@@ -144,7 +154,9 @@ def main():
         os.environ["TAYVORIQ_GDELT_TIMEOUT_SECONDS"] = "6"
         exit_code, attempts = research(command, deadline)
         payload = load(DEFERRED)
-        if exit_code == 124:
+        if exit_code in CONTABO_BLOCKERS:
+            payload["result"] = CONTABO_BLOCKERS[exit_code]
+        elif exit_code == 124:
             payload["result"] = "TIMEOUT"
         elif exit_code and not payload:
             payload["result"] = "REJECTED"
