@@ -4,35 +4,18 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "run_id": 45965549397,
   "run_attempt": 1,
-  "updated_at": "2026-11-27T09:10:29.426350+00:00",
-  "observed_at": "2026-11-27T09:15:14.419109+00:00",
+  "updated_at": "2026-11-27T09:16:07.353826+00:00",
+  "observed_at": "2026-11-27T09:16:11.358060+00:00",
   "current": {
-    "phase": "render",
+    "phase": "quality",
     "status": "started",
-    "at": "2026-11-27T09:10:15.955353+00:00",
-    "call_id": "c0c5ed7c2dc7484bada708b10f221d7b",
-    "platform": "tiktok",
-    "total": 6,
-    "round": 1,
-    "target": "visuals"
+    "at": "2026-11-27T09:16:07.353826+00:00",
+    "call_id": "checkpoint-QUALITY_AUDIT_1",
+    "timeout_seconds": 420,
+    "round": null,
+    "target": null
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-27T09:10:19.596787+00:00",
-      "call_id": "b7a5343fc9ff42498f05744e497835ff",
-      "platform": "tiktok",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-27T09:10:22.225800+00:00",
-      "call_id": "5764f552a5974f0189f1262c65477dfa",
-      "platform": "tiktok"
-    },
     {
       "phase": "captions",
       "status": "completed",
@@ -144,6 +127,21 @@
       "platform": "tiktok",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "completed",
+      "at": "2026-11-27T09:15:45.800655+00:00",
+      "call_id": "c0c5ed7c2dc7484bada708b10f221d7b",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "quality",
+      "status": "started",
+      "at": "2026-11-27T09:16:07.353826+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "timeout_seconds": 420
     }
   ],
   "completed_phases": [
@@ -151,14 +149,5 @@
     "voice",
     "render"
   ],
-  "findings": [
-    "YouTube · Szene 5: Motiv passt nicht zur Aussage",
-    "TikTok · Szene 5: Motiv passt nicht zur Aussage",
-    "score_below_threshold:visual:65<78",
-    "pronunciation_interpretation:YouTube Shorts Audio: 'Jobunsicherheit' wird im Audio-Transkript als 'Job und Sicherheit' wiedergegeben, was den Sinn der Aussage ins Gegenteil verkehrt.",
-    "pronunciation_interpretation:TikTok Audio: 'Jobunsicherheit' wird als 'Jugendsicherheit' ausgesprochen bzw. transkribiert, was inhaltlich sinnentstellend ist.",
-    "marketing_agent:YouTube Shorts Audio: 'Jobunsicherheit' wird als 'Job und Sicherheit' wiedergegeben, was die Aussage sinnentstellend ins Gegenteil verkehrt.",
-    "marketing_agent:TikTok Audio: 'Jobunsicherheit' wird fälschlicherweise als 'Jugendsicherheit' ausgesprochen.",
-    "visual_agent:scene_off_topic:youtube_shorts:5"
-  ]
+  "findings": []
 }
