@@ -11,6 +11,9 @@ on:
         type: string
   workflow_dispatch:
     inputs:
+      visual_parent_run_id:
+        required: false
+        type: string
       source_request_id:
         required: true
         type: string
@@ -33,6 +36,7 @@ jobs:
     env:
       REQUEST_ID: ${{ inputs.source_request_id || '' }}
       DELIVERY_RUN_ID: ${{ inputs.delivery_run_id || '' }}
+      VISUAL_PARENT_RUN_ID: ${{ inputs.visual_parent_run_id || '' }}
       STUDIO: mojo72549-arch/shorts-agent-studio
       GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -99,13 +103,36 @@ jobs:
           PY
       - name: Record actual Contabo handoff preparation
         if: steps.request.outputs.delivery_only != 'true'
+        env:
+          CONTROL_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           for attempt in 1 2 3 4 5; do
             git fetch origin main --quiet
             git reset --hard origin/main
-            python3 tools/tayvoriq_contabo_handoff.py prepare --request "requests/$REQUEST_ID.json" --controller "$GITHUB_RUN_ID" --worker 0
+            if [ -n "$VISUAL_PARENT_RUN_ID" ]; then
+              PYTHONPATH=tools python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from tayvoriq_contabo_handoff import POINTER, prepare, read, write
+          from tayvoriq_contabo_visual_recovery import plan
+
+          controller = int(os.environ['GITHUB_RUN_ID'])
+          proof = plan(Path('.'), os.environ['GITHUB_REPOSITORY'], os.environ['CONTROL_TOKEN'],
+                       expected_run=int(os.environ['VISUAL_PARENT_RUN_ID']))
+          assert proof and proof['request_id'] == os.environ['REQUEST_ID'], 'VISUAL_RECOVERY_ALREADY_CLAIMED_OR_UNVERIFIED'
+          path = Path('requests') / (proof['request_id'] + '.json')
+          request, pointer = read(path), read(POINTER)
+          prepare(request, pointer, controller)
+          request['visual_recovery'] = {**proof, 'controller_run_id':controller}
+          write(path, request)
+          write(POINTER, pointer)
+          PY
+            else
+              python3 tools/tayvoriq_contabo_handoff.py prepare --request "requests/$REQUEST_ID.json" --controller "$GITHUB_RUN_ID" --worker 0
+            fi
             git add "requests/$REQUEST_ID.json" .github/state/tayvoriq-active-production-request.json
             git commit -m "Record Contabo preparation for $REQUEST_ID"
             if git push origin HEAD:main;then exit 0;fi
@@ -337,7 +364,7 @@ jobs:
           git push origin HEAD:main
 
       - name: Explain a verified stop in both control channels
-        if: failure()
+        if: failure() && (env.VISUAL_PARENT_RUN_ID == '' || steps.worker.outcome == 'success' || steps.worker.outcome == 'failure')
         env:
           TRANSFER_OUTCOME: ${{ steps.transfer.outcome }}
           WORKER_OUTCOME: ${{ steps.worker.outcome }}

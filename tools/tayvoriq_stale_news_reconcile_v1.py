@@ -28,6 +28,7 @@ EXECUTOR_WORKFLOWS = (
     "tayvoriq-deterministic-codefix-continuity.yml",
     "tayvoriq-autonomous-codefix-builder.yml",
     "tayvoriq-production-green-promoter.yml",
+    "tayvoriq-contabo-controller.yml",
 )
 ACTIVE_RUN_STATES = {"queued", "in_progress", "waiting", "requested", "pending"}
 
@@ -56,7 +57,28 @@ def has_delivery_evidence(request: dict) -> bool:
 def _failed_golden_path(run: dict) -> bool:
     # Older stored run snapshots may still have only the canonical name.
     correct_workflow = is_golden_path_run(run) if run.get("path") else run.get("name") == "TAYVORIQ-X Golden Path"
-    return correct_workflow and run.get("status") == "completed" and run.get("conclusion") == "failure"
+    controller = str(run.get("path") or "").split("@")[0] == ".github/workflows/tayvoriq-contabo-controller.yml"
+    return (correct_workflow or controller) and run.get("status") == "completed" and run.get("conclusion") == "failure"
+
+
+def _failed_contabo_worker(pointer: dict, request: dict, receipt: dict | None) -> bool:
+    if not isinstance(receipt, dict) or pointer.get("execution_backend") != "contabo_private_runner":
+        return False
+    worker = pointer.get("execution_run_id")
+    return (
+        receipt.get("schema") == "tayvoriq-contabo-worker-v1" and receipt.get("status") == "FAILED"
+        and not receipt.get("result_release") and type(worker) is int and worker > 0
+        and worker == receipt.get("worker_run_id") == (request.get("contabo_handoff") or {}).get("worker_run_id")
+        and receipt.get("request_id") == pointer.get("request_id") == request.get("request_id")
+        and receipt.get("controller_run_id") == pointer.get("golden_path_run_id") == request.get("golden_path_run_id")
+        and receipt.get("source_context_sha256") == pointer.get("source_context_sha256") == request.get("source_context_sha256")
+    )
+
+
+def _approved_source(request: dict, contabo_failed: bool) -> bool:
+    return request.get("source") == "telegram_trend_approval" or (contabo_failed and request.get("source") in {
+        "telegram_trend_approval_content_repair", "telegram_trend_approval_source_repair",
+    })
 
 
 def _exhausted_morning(request: dict, run: dict, now: datetime) -> bool:
@@ -98,10 +120,13 @@ def verified_quarantine(pointer: dict, request: dict, run: dict) -> bool:
     q, p = request.get("stale_quarantine"), pointer.get("stale_quarantine")
     if not isinstance(q, dict) or not isinstance(p, dict) or has_delivery_evidence(request):
         return False
+    contabo_failed = _failed_contabo_worker(pointer, request, q.get("contabo_worker_receipt"))
+    if pointer.get("execution_backend") == "contabo_private_runner" and not contabo_failed:
+        return False
     if (pointer.get("schema") != "tayvoriq-active-production-request-v1"
             or pointer.get("state") != "EXPIRED" or request.get("status") != "EXPIRED"
             or pointer.get("allow_publish") is not False or pointer.get("allow_recovery") is not False
-            or request.get("source") != "telegram_trend_approval" or request.get("recovery_owner") != "none"
+            or not _approved_source(request, contabo_failed) or request.get("recovery_owner") != "none"
             or q.get("schema") != "tayvoriq-stale-news-quarantine-v1"
             or q.get("prior_status") != "DISPATCHED" or q.get("quality_gates_weakened") is not False
             or q.get("review_delivered") is not False or q.get("upload_permitted") is not False
@@ -133,17 +158,20 @@ def quarantine(
     now: datetime,
     minimum_age_hours: int = 72,
     for_evening: bool = False,
+    contabo_receipt: dict | None = None,
 ) -> tuple[dict, dict] | None:
     """Pure, fail-closed retirement decision; None means preserve the owner."""
     if now.tzinfo is None or minimum_age_hours < 48 or active_executors != 0:
         return None
+    contabo_failed = _failed_contabo_worker(pointer, request, contabo_receipt)
     if (
         pointer.get("schema") != "tayvoriq-active-production-request-v1"
         or pointer.get("state") != "ACTIVE"
         or pointer.get("allow_publish") is not False
-        or pointer.get("allow_recovery") is not True
+        or (pointer.get("allow_recovery") is not True and not contabo_failed)
+        or (pointer.get("execution_backend") == "contabo_private_runner" and not contabo_failed)
         or request.get("status") != "DISPATCHED"
-        or request.get("source") != "telegram_trend_approval"
+        or not _approved_source(request, contabo_failed)
     ):
         return None
     rid = str(pointer.get("request_id") or "").strip()
@@ -187,6 +215,11 @@ def quarantine(
         "review_delivered": False, "upload_permitted": False,
         "quality_gates_weakened": False,
     }
+    if contabo_failed:
+        new_request['stale_quarantine']['contabo_worker_receipt'] = {
+            key:contabo_receipt.get(key) for key in ('schema','status','worker_run_id','request_id',
+                                                     'controller_run_id','source_context_sha256','result_release')
+        }
     new_request["state_history"] = list(request.get("state_history") or []) + [{
         "state": "EXPIRED", "at": timestamp,
         "actor": "tayvoriq-stale-news-safety",
@@ -252,6 +285,7 @@ def reconcile(*, for_evening: bool = False) -> bool:
     decision = quarantine(
         pointer, request, run, active_executors=active,
         now=datetime.now(timezone.utc), for_evening=for_evening,
+        contabo_receipt=_worker_receipt(run_id) if pointer.get('execution_backend')=='contabo_private_runner' else None,
     )
     if decision is None:
         print("STALE_RECONCILE_NOT_ELIGIBLE_OR_EXECUTOR_ACTIVE")
@@ -270,6 +304,11 @@ def reconcile(*, for_evening: bool = False) -> bool:
     subprocess.run(["git", "push", "origin", "HEAD:main"], check=True)
     print(f"STALE_RECONCILE_EXPIRED_AND_FRESH_TRENDS_UNLOCKED:{rid}:{run_id}")
     return True
+
+
+def _worker_receipt(run_id: int) -> dict | None:
+    path = Path('run-status/contabo') / f'{run_id}.json'
+    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else None
 
 
 if __name__ == "__main__":

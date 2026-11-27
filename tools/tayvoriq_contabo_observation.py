@@ -120,6 +120,19 @@ def main():
     assert progress['request_id']==rid and int(progress['run_id'])==run
     assert progress['source_context_sha256']==request['source_context_sha256']
     mirror(f'run-status/live/{run}-1.json',progress,token)
+    # A real worker heartbeat proves the repaired attempt is executing. Create
+    # the repair alert before ordinary progress edits in this controller run.
+    repair=request.get('visual_recovery') or {}
+    if repair.get('controller_run_id')==run and receipt['status']=='RUNNING':
+        try:
+            previous=api(CONTROL,f'run-status/contabo/notifications/{run}.json',token)
+        except HTTPError as error:
+            if error.code!=404:raise
+            previous=None
+        if not previous and progress.get('current'):
+            notify({**progress,'current':{'at':progress['current']['at'],'phase':'repair',
+                                          'target':'visuals','status':'started'}},receipt,token)
+            return
     notify(progress,receipt,token)
 
 if __name__=='__main__':
