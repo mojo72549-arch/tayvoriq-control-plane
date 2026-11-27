@@ -18,6 +18,8 @@ ARTIFACT_LIMIT = 5 * 1024 * 1024
 FILES = ("control-plane/production-manifest.json", "recovery-checkpoint-meta.json",
          "self-heal/report.json", "job/preapproval_ai_audit.json")
 STUDIO_WORKFLOW = ".github/workflows/tayvoriq-contabo-produce.yml"
+VOICE_RECOVERY = "VOICE_CHECKPOINT_ISOLATION"
+VOICE_PLAN = "ISOLATE_PLATFORM_VOICE_CHECKPOINTS"
 CONTROLLER_WORKFLOWS = {".github/workflows/tayvoriq-contabo-controller.yml",
                         ".github/workflows/tayvoriq-golden-path.yml"}
 
@@ -66,7 +68,17 @@ def unpack(payload, digest):
         return [json.loads(archive.read(name)) for name in FILES]
 
 
-def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, now=None):
+def private_technical_case(controller, token):
+    try:
+        response = subprocess.check_output(
+            ["gh", "api", f"repos/{STUDIO}/contents/run-status/contabo/technical-cases/{controller}.json?ref=main"],
+            env={**os.environ, "GH_TOKEN": token}, timeout=12, stderr=subprocess.DEVNULL)
+        return json.loads(base64.b64decode(json.loads(response)["content"]))
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        return {}
+
+
+def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, technical_lookup=None, now=None):
     if pointer.get("execution_backend") != "contabo_private_runner" or pointer.get("state") != "ACTIVE":
         return None
     if run.get("id") != pointer.get("golden_path_run_id") or run.get("status") != "completed" or run.get("conclusion") != "failure":
@@ -122,6 +134,30 @@ def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, now=
                     deadline_exceeded=report.get("deadline_exceeded") is True,
                     voice_blocked=voice, scenes=[{"platform": p, "scene": int(n)} for p, n in scenes])
     if decision["state"] == "RECOVERY_EXHAUSTED":
+        timeout = report.get("voice_timeout_seconds")
+        if (type(timeout) is int and 60 <= timeout <= 1800 and voice
+                and report.get("state") == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
+                and request["quality_recovery"].get("repair_kind") != VOICE_RECOVERY):
+            decision.update(state="TECHNICAL_ANALYSIS_REQUIRED", voice_timeout_seconds=timeout)
+            case = technical_lookup(controller) if technical_lookup else {}
+            if (case.get("schema") == "tayvoriq-contabo-technical-case-v1"
+                    and all(case.get(k) == decision[k] for k in
+                            ("request_id", "source_context_sha256", "controller_run_id", "worker_run_id", "artifact_id"))
+                    and case.get("failed_implementation_sha") == implementation
+                    and case.get("voice_timeout_seconds") == timeout and case.get("quality_gates_weakened") is False):
+                decision["technical_case_state"] = case.get("state")
+                if case.get("state") == "PLAN_VERIFIED" and case.get("plan") == VOICE_PLAN and case.get("shared_checkpoint_proved") is True:
+                    decision["state"] = "AWAITING_VERIFIED_TECHNICAL_FIX"
+                    candidate = green.get("implementation_sha") or ""
+                    if (green.get("schema") == "tayvoriq-production-green-v1"
+                            and green.get("implementation_repository") == STUDIO
+                            and green.get("full_preflight_passed") is True and green.get("quality_gates_weakened") is False
+                            and green.get("voice_checkpoint_isolation_verified") is True
+                            and isinstance(candidate, str) and re.fullmatch(r"[a-f0-9]{40}", candidate) and candidate != implementation):
+                        key = [request["request_id"], controller, worker, artifact, candidate, VOICE_RECOVERY]
+                        decision.update(state="RETRY_ELIGIBLE", next_implementation_sha=candidate, planned_attempts=1,
+                                        repair_kind=VOICE_RECOVERY,
+                                        decision_key=hashlib.sha256(json.dumps(key).encode()).hexdigest())
         return decision
     decision["state"] = "QUALITY_REPAIR_REQUIRED"
     if (audit.get("passed") is False and report.get("state") == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
