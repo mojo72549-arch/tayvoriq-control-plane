@@ -19,6 +19,7 @@ FILES = ("control-plane/production-manifest.json", "recovery-checkpoint-meta.jso
          "self-heal/report.json", "job/preapproval_ai_audit.json")
 STUDIO_WORKFLOW = ".github/workflows/tayvoriq-contabo-produce.yml"
 VOICE_RECOVERY = "VOICE_CHECKPOINT_ISOLATION"
+SCENE_RECOVERY = "SINGLE_SCENE_CHECKPOINT_REPAIR"
 VOICE_PLAN = "ISOLATE_PLATFORM_VOICE_CHECKPOINTS"
 CONTROLLER_WORKFLOWS = {".github/workflows/tayvoriq-contabo-controller.yml",
                         ".github/workflows/tayvoriq-golden-path.yml"}
@@ -78,7 +79,30 @@ def private_technical_case(controller, token):
         return {}
 
 
-def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, technical_lookup=None, now=None):
+def private_scene_worker_ready(token, control_repo):
+    """Check the executable private workflow's immutable reusable-workflow pin."""
+    def content(repo, path, ref):
+        payload = subprocess.check_output(
+            ["gh", "api", f"repos/{repo}/contents/{path}?ref={ref}"],
+            env={**os.environ, "GH_TOKEN": token}, timeout=15, stderr=subprocess.DEVNULL,
+        )
+        return base64.b64decode(json.loads(payload)["content"]).decode()
+
+    reusable = ".github/workflows/tayvoriq-deliver-video-now.yml"
+    try:
+        worker = content(STUDIO, STUDIO_WORKFLOW, "main")
+        pins = re.findall(r"^\s*uses:\s*" + re.escape(f"{control_repo}/{reusable}") + r"@([a-f0-9]{40})\s*$",
+                          worker, re.MULTILINE)
+        if len(pins) != 1:
+            return False
+        called = content(control_repo, reusable, pins[0])
+        return all(marker in called for marker in ("SINGLE_SCENE_CHECKPOINT_REQUIRED", "--single-scene-parent-run", "--single-scene"))
+    except (KeyError, OSError, ValueError, subprocess.SubprocessError):
+        return False
+
+
+def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, technical_lookup=None,
+                     scoped_worker_ready=None, now=None):
     if pointer.get("execution_backend") != "contabo_private_runner" or pointer.get("state") != "ACTIVE":
         return None
     if run.get("id") != pointer.get("golden_path_run_id") or run.get("status") != "completed" or run.get("conclusion") != "failure":
@@ -109,6 +133,9 @@ def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, tech
     previous = request.get("quality_recovery") or {}
     attempt_used = previous.get("controller_run_id") == controller
     decision["attempt_used"] = attempt_used
+    if attempt_used and previous.get("repair_kind") == SCENE_RECOVERY:
+        decision["state"] = "RECOVERY_EXHAUSTED"
+        return decision
     try:
         artifact, worker_ended_at, (manifest, checkpoint, report, audit) = diagnostics(worker)
         implementation = manifest["implementation_sha"]
@@ -142,6 +169,18 @@ def contabo_decision(pointer, request, run, green, receipt, *, diagnostics, tech
         decision.update(timeout=timeout, voice_platforms_passed=voice_passed,
                         state="AWAITING_VERIFIED_SCENE_FIX" if scenes and voice_passed
                         and report.get("repair_target_stages") == ["VISUALS"] else "TECHNICAL_REPAIR_REQUIRED")
+        candidate = green.get("implementation_sha") or ""
+        if (decision["state"] == "AWAITING_VERIFIED_SCENE_FIX" and len(scenes) == 1
+                and audit.get("passed") is False and report.get("state") == "PUBLISHABLE_OUTPUT_RETRY_REQUIRED"
+                and green.get("schema") == "tayvoriq-production-green-v1"
+                and green.get("implementation_repository") == STUDIO
+                and green.get("full_preflight_passed") is True and green.get("quality_gates_weakened") is False
+                and green.get("single_scene_checkpoint_repair_verified") is True
+                and isinstance(candidate, str) and re.fullmatch(r"[a-f0-9]{40}", candidate) and candidate != implementation
+                and scoped_worker_ready and scoped_worker_ready()):
+            key = [request["request_id"], controller, worker, artifact, SCENE_RECOVERY, *scenes[0]]
+            decision.update(state="RETRY_ELIGIBLE", next_implementation_sha=candidate, planned_attempts=1,
+                            repair_kind=SCENE_RECOVERY, decision_key=hashlib.sha256(json.dumps(key).encode()).hexdigest())
         return decision
     if attempt_used:
         decision["state"] = "RECOVERY_EXHAUSTED"

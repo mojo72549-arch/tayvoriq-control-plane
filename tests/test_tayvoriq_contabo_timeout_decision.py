@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from tayvoriq_contabo_operator_event import build_event, notify
-from tayvoriq_contabo_recovery_decision import contabo_decision
+from tayvoriq_contabo_recovery_decision import SCENE_RECOVERY, contabo_decision
 from tayvoriq_lifecycle_dispatch_v1 import dispatch_verified
 
 REQUEST = "telegram-3821-trend-1-content-repair-v1"
@@ -83,6 +83,27 @@ def test_missing_diagnostics_stays_concrete_and_never_dispatches():
     assert proof["state"] == "DIAGNOSTICS_REQUIRED"
     assert "Diagnoseartefakt" in event["decision_required"]
     assert "decision_key" not in proof
+
+
+def test_single_scene_timeout_requires_promoted_fix_and_executable_worker_pin():
+    pointer, request, run, _, receipt = stopped_request()
+    green = {"schema": "tayvoriq-production-green-v1", "implementation_repository": "mojo72549-arch/shorts-agent-studio",
+             "implementation_sha": "e" * 40, "full_preflight_passed": True,
+             "quality_gates_weakened": False, "single_scene_checkpoint_repair_verified": True}
+
+    def classify(worker_ready):
+        return contabo_decision(pointer, request, run, green, receipt,
+                                diagnostics=lambda _: diagnostics(request), scoped_worker_ready=lambda: worker_ready)
+
+    assert classify(False)["state"] == "AWAITING_VERIFIED_SCENE_FIX"
+    allowed = classify(True)
+    assert allowed["state"] == "RETRY_ELIGIBLE"
+    assert allowed["repair_kind"] == SCENE_RECOVERY and allowed["planned_attempts"] == 1
+    assert allowed["scenes"] == [{"platform": "tiktok", "scene": 6}]
+    green["implementation_sha"] = "f" * 40
+    assert classify(True)["decision_key"] == allowed["decision_key"]
+    request["quality_recovery"]["repair_kind"] = SCENE_RECOVERY
+    assert classify(True)["state"] == "RECOVERY_EXHAUSTED"
 
 
 def test_lost_dispatch_response_and_restart_do_not_submit_a_second_repair(tmp_path):

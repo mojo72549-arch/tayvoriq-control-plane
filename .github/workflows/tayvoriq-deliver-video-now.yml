@@ -912,6 +912,36 @@ jobs:
         run: |
           set -euo pipefail
           restored=false
+          single_scene=''
+          single_scene_args=()
+          if [ "$TAYVORIQ_EXECUTION_BACKEND" = "contabo_private_runner" ]; then
+            scope=$(python - <<'SCENE'
+          import json, os, subprocess
+
+          request_id = os.environ['SOURCE_REQUEST_ID_PIN']
+          request = json.loads(subprocess.check_output(
+              ['git', '-C', '..', 'show', f'origin/main:requests/{request_id}.json'], text=True))
+          repair = request.get('quality_recovery') or {}
+          if repair.get('repair_kind') != 'SINGLE_SCENE_CHECKPOINT_REPAIR':
+              raise SystemExit(0)
+          scene, = repair['scenes']
+          actual_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert request['request_id'] == repair['request_id'] == request_id
+          assert str(request['golden_path_run_id']) == str(repair['controller_run_id']) == os.environ['TAYVORIQ_PRODUCTION_RUN_ID']
+          assert request['source_context_sha256'] == repair['source_context_sha256'] == os.environ['SOURCE_CONTEXT_SHA256']
+          assert repair['next_implementation_sha'] == actual_sha and repair['planned_attempts'] == 1
+          assert repair['voice_platforms_passed'] is True and repair['quality_gates_weakened'] is False
+          assert scene['platform'] in {'tiktok', 'youtube_shorts'} and type(scene['scene']) is int and 1 <= scene['scene'] <= 99
+          assert type(repair['parent_run_id']) is int and repair['parent_run_id'] > 0
+          print(f"{scene['platform']}:{scene['scene']} {repair['parent_run_id']}")
+          SCENE
+            )
+            if [ -n "$scope" ]; then
+              read -r single_scene parent_run <<< "$scope"
+              single_scene_args=(--single-scene-parent-run "$parent_run")
+              echo "TAYVORIQ_AUTHORIZED_SINGLE_SCENE=$single_scene" >> "$GITHUB_ENV"
+            fi
+          fi
           if [ -n "$REVIEW_REPAIR_OF" ]; then
             [ "$REVIEW_CACHE_HIT" = "true" ] || exit 1
             python -S - <<'PY'
@@ -928,16 +958,20 @@ jobs:
               --checkpoint out/recovery-checkpoint \
               --output-root out \
               --trend-id "$TREND_ID" \
-              --source-sha256 "$SOURCE_CONTEXT_SHA256"; then
+              --source-sha256 "$SOURCE_CONTEXT_SHA256" "${single_scene_args[@]}"; then
               restored=true
               echo "Lean production checkpoint restored; full trend/script/render restart will be skipped."
             else
-              echo "Restored cache failed identity/integrity checks; discard and produce fresh."
+              echo "Restored cache failed identity/integrity checks."
               rm -rf out/recovery-checkpoint
             fi
           fi
           if [ -n "$REVIEW_REPAIR_OF" ]; then
             [ "$REVIEW_CACHE_HIT" = "true" ] && [ "$restored" = "true" ] || exit 1
+          fi
+          if [ -n "$single_scene" ] && [ "$restored" != "true" ]; then
+            echo 'SINGLE_SCENE_CHECKPOINT_REQUIRED: recovery stopped before any fresh rendering'
+            exit 1
           fi
           if [ "$TAYVORIQ_EXECUTION_BACKEND" = "contabo_private_runner" ] && [ "$restored" != "true" ]; then
             python - <<'CHECKPOINT'
@@ -1697,6 +1731,11 @@ jobs:
             python ../tools/tayvoriq_apply_review_correction.py || exit 1
           fi
 
+          scene_args=()
+          if [ -n "${TAYVORIQ_AUTHORIZED_SINGLE_SCENE:-}" ]; then
+            scene_args=(--single-scene "$TAYVORIQ_AUTHORIZED_SINGLE_SCENE")
+          fi
+
           set +e
           timeout --signal=TERM --kill-after=30s "${TAYVORIQ_LOCAL_REPAIR_WALL_TIMEOUT_SECONDS}s" \
             python tools/tayvoriq_resume_existing_render_v2.py \
@@ -1705,6 +1744,7 @@ jobs:
               --run-id "${TAYVORIQ_PRODUCTION_RUN_ID}" \
               --state-out out/tayvoriq-review-state.json \
               --report-out out/tayvoriq-self-heal/report.json \
+              "${scene_args[@]}" \
               2>&1 | tee out/tayvoriq-self-heal/checkpoint-resume-console.log
           resume_exit=${PIPESTATUS[0]}
           set -e
