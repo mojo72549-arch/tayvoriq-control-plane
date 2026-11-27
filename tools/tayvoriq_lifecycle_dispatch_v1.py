@@ -11,6 +11,7 @@ import time
 WORKFLOWS = {
     'DELIVERY_WATCH': 'tayvoriq-delivery-watch.yml',
     'CODEFIX_CONTINUITY': 'tayvoriq-deterministic-codefix-continuity.yml',
+    'CONTABO_QUALITY_RECOVERY': 'tayvoriq-contabo-controller.yml',
 }
 
 
@@ -72,6 +73,8 @@ def main():
                    '-f', 'orchestrator_decision_key=' + key]
         if action == 'DELIVERY_WATCH':
             command += ['-f', 'run_id=' + run_id]
+        elif action == 'CONTABO_QUALITY_RECOVERY':
+            command += ['-f', 'quality_parent_run_id=' + run_id, '-f', 'source_request_id=' + request_id]
         else:
             command += ['-f', 'failed_run_id=' + run_id,
                         '-f', 'source_request_id=' + request_id]
