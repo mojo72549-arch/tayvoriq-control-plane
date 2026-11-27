@@ -129,7 +129,7 @@ jobs:
     env:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
-      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v3"
+      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v4"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -464,6 +464,16 @@ jobs:
             echo 'verified=true' >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify isolated narrator checkpoints and approved spoken wording
+        if: steps.refs.outputs.changed == 'true'
+        id: voice_checkpoint
+        working-directory: implementation
+        run: |
+          if grep -q 'def test_mixed_voice_checkpoints_have_one_platform_per_commit' tests/test_tayvoriq_checkpoint_resume_policy.py; then
+            python -m pytest -q tests/test_tayvoriq_checkpoint_resume_policy.py::test_mixed_voice_checkpoints_have_one_platform_per_commit tests/test_tayvoriq_checkpoint_resume_policy.py::test_rejected_jobunsicherheit_has_a_stable_spoken_surface
+            echo 'verified=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Promote exact fully verified SHA in control plane
         if: github.event_name != 'pull_request' && steps.refs.outputs.changed == 'true'
         shell: bash
@@ -471,6 +481,7 @@ jobs:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
           SOFTWARE_WORKPLACE_SEARCH_VERIFIED: ${{ steps.visual_search.outputs.verified }}
           MIXED_CHECKPOINT_RECOVERY_VERIFIED: ${{ steps.mixed_checkpoint.outputs.verified }}
+          VOICE_CHECKPOINT_ISOLATION_VERIFIED: ${{ steps.voice_checkpoint.outputs.verified }}
         run: |
           set -euo pipefail
           git pull --rebase origin main
@@ -491,6 +502,7 @@ jobs:
               'full_preflight_passed':True,
               'software_workplace_search_verified':os.environ.get('SOFTWARE_WORKPLACE_SEARCH_VERIFIED')=='true',
               'mixed_checkpoint_recovery_verified':os.environ.get('MIXED_CHECKPOINT_RECOVERY_VERIFIED')=='true',
+              'voice_checkpoint_isolation_verified':os.environ.get('VOICE_CHECKPOINT_ISOLATION_VERIFIED')=='true',
               'quality_gates_weakened':False,
           }
           path=Path('.github/state/tayvoriq-production-green.json')
