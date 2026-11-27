@@ -4,8 +4,8 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "run_id": 45988482504,
   "run_attempt": 1,
-  "updated_at": "2026-11-27T11:24:34.472167+00:00",
-  "observed_at": "2026-11-27T11:24:34.473258+00:00",
+  "updated_at": "2026-11-27T11:24:46.656449+00:00",
+  "observed_at": "2026-11-27T11:24:49.206736+00:00",
   "current": {
     "phase": "repair",
     "status": "started",
@@ -17,102 +17,132 @@
   },
   "events": [
     {
-      "phase": "quality",
+      "phase": "visuals",
       "status": "started",
-      "at": "2026-11-27T11:14:43.712970+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1",
-      "timeout_seconds": 420
-    },
-    {
-      "phase": "quality",
-      "status": "failed",
-      "at": "2026-11-27T11:15:19.513539+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1"
-    },
-    {
-      "phase": "repair",
-      "status": "started",
-      "at": "2026-11-27T11:15:19.513705+00:00",
-      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
-      "target": "voice",
-      "timeout_seconds": 600
-    },
-    {
-      "phase": "repair",
-      "status": "completed",
-      "at": "2026-11-27T11:19:12.038526+00:00",
-      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
-      "target": "voice"
-    },
-    {
-      "phase": "repair",
-      "status": "started",
-      "at": "2026-11-27T11:19:12.038694+00:00",
-      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
-      "target": "voice",
-      "timeout_seconds": 600
-    },
-    {
-      "phase": "repair",
-      "status": "completed",
-      "at": "2026-11-27T11:23:16.325210+00:00",
-      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
-      "target": "voice"
-    },
-    {
-      "phase": "quality",
-      "status": "started",
-      "at": "2026-11-27T11:23:16.325538+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1",
-      "timeout_seconds": 420
-    },
-    {
-      "phase": "scenes",
-      "status": "started",
-      "at": "2026-11-27T11:24:34.233944+00:00",
-      "call_id": "f0a6281021664b94ab63c4e4bdd5d97e",
+      "at": "2026-11-27T11:24:39.618417+00:00",
+      "call_id": "95d9ea23c17d4453aa9eaf9a8aa1da66",
       "platform": "youtube_shorts",
+      "scene": 3,
       "total": 6
     },
     {
-      "phase": "scenes",
-      "status": "completed",
-      "at": "2026-11-27T11:24:34.235470+00:00",
-      "call_id": "f0a6281021664b94ab63c4e4bdd5d97e",
-      "platform": "youtube_shorts",
-      "total": 6
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-27T11:24:40.585711+00:00",
+      "call_id": "22ae33f1182b464d8fbbae0ac6b1176d",
+      "platform": "youtube_shorts"
     },
     {
-      "phase": "render",
-      "status": "started",
-      "at": "2026-11-27T11:24:34.235612+00:00",
-      "call_id": "307fa13abbd7415fa5be267f9e9062fe",
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-27T11:24:40.649561+00:00",
+      "call_id": "22ae33f1182b464d8fbbae0ac6b1176d",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-27T11:24:40.716273+00:00",
+      "call_id": "95d9ea23c17d4453aa9eaf9a8aa1da66",
       "platform": "youtube_shorts",
+      "scene": 3,
       "total": 6
     },
     {
       "phase": "visuals",
       "status": "started",
-      "at": "2026-11-27T11:24:34.235992+00:00",
-      "call_id": "5f8022ced4a24820a187272d86ac8158",
+      "at": "2026-11-27T11:24:40.716606+00:00",
+      "call_id": "36ece0fec0794fa092af0e32d15fbecb",
       "platform": "youtube_shorts",
-      "scene": 1,
+      "scene": 4,
       "total": 6
     },
     {
-      "phase": "quality",
-      "status": "failed",
-      "at": "2026-11-27T11:24:34.472075+00:00",
-      "call_id": "checkpoint-QUALITY_AUDIT_1"
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-27T11:24:42.284014+00:00",
+      "call_id": "39400dd8cb694746a9b1b304d5e11c4b",
+      "platform": "youtube_shorts"
     },
     {
-      "phase": "repair",
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-27T11:24:42.339951+00:00",
+      "call_id": "39400dd8cb694746a9b1b304d5e11c4b",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-27T11:24:42.414214+00:00",
+      "call_id": "36ece0fec0794fa092af0e32d15fbecb",
+      "platform": "youtube_shorts",
+      "scene": 4,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
       "status": "started",
-      "at": "2026-11-27T11:24:34.472167+00:00",
-      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
-      "target": "visuals",
-      "round": 1,
-      "timeout_seconds": 900
+      "at": "2026-11-27T11:24:42.414541+00:00",
+      "call_id": "bb90e1336c5e47c486f3c1c11b2dda75",
+      "platform": "youtube_shorts",
+      "scene": 5,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-27T11:24:45.096042+00:00",
+      "call_id": "bdcdb7f5a745459ebf920d7de3342dc7",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-27T11:24:45.157060+00:00",
+      "call_id": "bdcdb7f5a745459ebf920d7de3342dc7",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-27T11:24:45.223339+00:00",
+      "call_id": "bb90e1336c5e47c486f3c1c11b2dda75",
+      "platform": "youtube_shorts",
+      "scene": 5,
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-27T11:24:45.223673+00:00",
+      "call_id": "fcf1d07d69ad473ca80c9ac33b17e77a",
+      "platform": "youtube_shorts",
+      "scene": 6,
+      "total": 6
+    },
+    {
+      "phase": "captions",
+      "status": "started",
+      "at": "2026-11-27T11:24:46.526373+00:00",
+      "call_id": "8441d87a085849519bb8d6ad531d23fd",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "captions",
+      "status": "completed",
+      "at": "2026-11-27T11:24:46.585838+00:00",
+      "call_id": "8441d87a085849519bb8d6ad531d23fd",
+      "platform": "youtube_shorts"
+    },
+    {
+      "phase": "visuals",
+      "status": "completed",
+      "at": "2026-11-27T11:24:46.656449+00:00",
+      "call_id": "fcf1d07d69ad473ca80c9ac33b17e77a",
+      "platform": "youtube_shorts",
+      "scene": 6,
+      "total": 6
     }
   ],
   "completed_phases": [],
