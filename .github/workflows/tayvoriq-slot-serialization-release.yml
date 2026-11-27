@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - TAYVORIQ-X Golden Path
+      - TAYVORIQ Contabo Controller
     types:
       - completed
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'requests/*.json'
       - '.github/workflows/tayvoriq-slot-serialization-release.yml'
+      - 'tools/tayvoriq_slot_serialization_v1.py'
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:

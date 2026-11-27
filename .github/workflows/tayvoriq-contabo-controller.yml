@@ -41,6 +41,31 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - name: Wait for the dispatcher to bind this exact run
+        if: github.workflow == 'TAYVORIQ-X Golden Path' && env.REQUEST_ID != '' && env.DELIVERY_RUN_ID == ''
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            git fetch origin main --quiet
+            git reset --hard origin/main --quiet
+            if python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          request_id = os.environ['REQUEST_ID']
+          run_id = int(os.environ['GITHUB_RUN_ID'])
+          pointer = json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
+          raise SystemExit(0 if (
+              pointer.get('state') == 'ACTIVE'
+              and pointer.get('request_id') == request_id
+              and pointer.get('golden_path_run_id') == run_id
+          ) else 1)
+          PY
+            then exit 0; fi
+            sleep 5
+          done
+          echo 'The dispatcher did not bind the approved request to this run.'
+          exit 1
       - name: Verify the original Telegram approval and source binding
         id: request
         run: |

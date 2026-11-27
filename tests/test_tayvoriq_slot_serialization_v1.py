@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import tempfile
@@ -29,6 +30,51 @@ def request(selection_id: str, request_id: str, approved_at: str, run_id: int = 
 
 
 class SlotSerializationTests(unittest.TestCase):
+    def test_contabo_delivery_releases_next_morning_and_same_day_evening(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "requests"
+            root.mkdir()
+            pointer_path = root.parent / ".github/state/tayvoriq-active-production-request.json"
+            pointer_path.parent.mkdir(parents=True)
+            source = {"sources": ["one", "two"]}
+            shared = {
+                "request_id": "old", "approval_key": "telegram:old", "contract_sha256": "contract",
+                "source_context_sha256": hashlib.sha256(json.dumps(source, separators=(",", ":")).encode()).hexdigest(),
+            }
+            completed = request("20261126-morning-agentv2", "old", "2026-11-26T06:00:00Z", 123)
+            completed.update(shared, source_context=source, telegram_message_id=42,
+                             execution_backend="contabo_private_runner")
+            completed["contabo_handoff"] = dict(shared, schema="tayvoriq-contabo-handoff-v1",
+                                                execution_repository=gate.STUDIO, controller_run_id=123,
+                                                worker_run_id=456, quality_gates_weakened=False)
+            completed["contabo_handoff"].pop("approval_key")
+            completed["production_completion"] = dict(state="REVIEW_READY", golden_path_run_id=123,
+                                                       telegram_message_id=43, quality_gates_weakened=False)
+            pointer = dict(shared, schema="tayvoriq-active-production-request-v1", state="COMPLETED",
+                           golden_path_run_id=123, execution_run_id=456, execution_repository=gate.STUDIO,
+                           execution_backend="contabo_private_runner")
+            gate.write_json(pointer_path, pointer)
+            gate.write_json(root / "old.json", completed)
+            run = {"id": 123, "path": ".github/workflows/tayvoriq-deliver-video-now.yml",
+                   "status": "completed", "conclusion": "success"}
+            job = {"name": "contabo-controller / orchestrate", "conclusion": "success", "steps": [
+                {"name": name, "conclusion": "success"} for name in gate.CONTABO_FINAL_STEPS
+            ]}
+            candidate = root / "next.json"
+            with patch.object(gate, "github_json", side_effect=lambda url, _: {"jobs": [job]} if "/jobs?" in url else run):
+                for slot in ("20261127-morning", "20261126-evening"):
+                    gate.write_json(candidate, request(f"{slot}-agentv2", "next", "2026-11-27T06:00:00Z"))
+                    self.assertTrue(gate.check_request(candidate, root, "repo", "token")["released"])
+                    for incomplete in (
+                        {"telegram_message_id": 0}, {"golden_path_run_id": 999}, {"quality_gates_weakened": True},
+                    ):
+                        proof = completed["production_completion"] | incomplete
+                        gate.write_json(root / "old.json", completed | {"production_completion": proof})
+                        self.assertFalse(gate.check_request(candidate, root, "repo", "token")["released"])
+                    gate.write_json(root / "old.json", completed)
+                job["steps"][-1]["conclusion"] = "skipped"
+                self.assertFalse(gate.check_request(candidate, root, "repo", "token")["released"])
+
     def test_empty_morning_research_releases_the_separately_approved_evening(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "requests"
