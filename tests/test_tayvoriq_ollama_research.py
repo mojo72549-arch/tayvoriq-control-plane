@@ -14,6 +14,92 @@ import tayvoriq_contabo_research as transport
 import tayvoriq_ollama_research as ollama
 
 
+class ContaboWakeupTests(unittest.TestCase):
+    binding = {'selection': '20261127-morning-agentv2-c12345678', 'slot': 'morning',
+               'controller': '123', 'attempt': '1', 'origin': 'control_center',
+               'revision': 'a' * 40, 'topic': ''}
+
+    def test_wakeup_is_bound_private_contents_write_and_idempotent(self):
+        written = {}
+        def api(path, **kwargs):
+            self.assertIn('/shorts-agent-studio/contents/.automation/contabo-research-wakeup.json', path)
+            self.assertFalse(kwargs.get('public_write', False))
+            if kwargs.get('body'):
+                written.update(kwargs['body'])
+                return {}
+            return {'content': written['content'], 'sha': 'version'} if written else None
+        with patch.object(transport, 'queue_current', return_value=True), patch.object(transport, 'api', side_effect=api) as call:
+            transport.wake_worker(self.binding)
+            self.assertEqual(json.loads(base64.b64decode(written['content'])),
+                             {'binding': self.binding, 'wake_attempt': 1})
+            transport.wake_worker(self.binding)
+            self.assertEqual(sum('body' in c.kwargs for c in call.call_args_list), 1)
+            transport.wake_worker(self.binding, 2)
+            transport.wake_worker(self.binding, 1)
+            self.assertEqual(sum('body' in c.kwargs for c in call.call_args_list), 2)
+            self.assertEqual(json.loads(base64.b64decode(written['content']))['wake_attempt'], 2)
+
+    def test_expired_or_replaced_queue_cannot_wake_or_claim_worker(self):
+        for binding, expires in [(self.binding, 999), ({**self.binding, 'attempt': '2'}, 2000)]:
+            response = {'content': base64.b64encode(json.dumps({'binding': binding, 'expires_at': expires}).encode()).decode()}
+            with patch.object(transport.time, 'time', return_value=1000), patch.object(transport, 'api', return_value=response) as call:
+                with self.assertRaisesRegex(RuntimeError, 'EXPIRED_OR_SUPERSEDED'):
+                    transport.wake_worker(self.binding)
+                with self.assertRaisesRegex(RuntimeError, 'EXPIRED_OR_SUPERSEDED'):
+                    transport.write_receipt(self.binding, 99, 'RUNNING', Path('/unused'))
+                self.assertFalse(any('body' in c.kwargs for c in call.call_args_list))
+
+    def wait(self, receipt, seconds=100, wake_error=None):
+        now = [0]
+        def pause(value):
+            now[0] += value
+        with patch.object(transport.time, 'monotonic', side_effect=lambda: now[0]), \
+             patch.object(transport.time, 'time', side_effect=lambda: 1000 + now[0]), \
+             patch.object(transport.time, 'sleep', side_effect=pause), \
+             patch.object(transport, 'read_receipt', side_effect=lambda b: (receipt(now[0]), None)), \
+             patch.object(transport, 'wake_worker', side_effect=wake_error) as wake, patch.object(transport, 'event') as events:
+            result = transport.wait_for_result(self.binding, seconds)
+        return result, wake, events
+
+    def test_denied_wakeup_preserves_existing_consumer_and_records_unconfirmed_attempt(self):
+        succeeded = {'worker_run_id': 99, 'status': 'SUCCEEDED'}
+        result, wake, events = self.wait(lambda now: succeeded if now >= 10 else None,
+                                        wake_error=RuntimeError('CONTABO_RESEARCH_GITHUB: HTTP 403'))
+        self.assertEqual(result, succeeded)
+        wake.assert_called_once_with(self.binding, 1)
+        failure = next(c for c in events.call_args_list if c.args[0] == 'contabo_worker_failure')
+        self.assertIs(failure.kwargs['terminal'], False)
+        attempt = next(c for c in events.call_args_list if c.args[0] == 'contabo_worker_wakeup')
+        self.assertIs(attempt.kwargs['confirmed'], False)
+
+    def test_same_queue_binding_preserves_original_expiry(self):
+        previous = {'binding': self.binding, 'expires_at': 1010}
+        response = {'content': base64.b64encode(json.dumps(previous).encode()).decode(), 'sha': 'version'}
+        with patch.object(transport, 'api', return_value=response) as call:
+            self.assertEqual(transport.enqueue(self.binding, 760), 1010)
+            call.assert_called_once()
+
+    def test_missing_worker_gets_one_same_binding_rewake_then_truthful_stop(self):
+        result, wake, events = self.wait(lambda _: None)
+        self.assertIsNone(result)
+        self.assertEqual(wake.call_args_list, [unittest.mock.call(self.binding, 1), unittest.mock.call(self.binding, 2)])
+        self.assertEqual(events.call_args_list[0].kwargs['next_check_epoch'], 1090)
+        self.assertIsNone(events.call_args_list[1].kwargs['next_check_epoch'])
+        self.assertEqual(events.call_args.kwargs['code'], 'WORKER_START_TIMEOUT')
+
+    def test_running_or_completed_worker_never_restarts(self):
+        running = {'worker_run_id': 99, 'status': 'RUNNING'}
+        result, wake, events = self.wait(lambda _: running)
+        self.assertIsNone(result)
+        wake.assert_not_called()
+        self.assertEqual(events.call_args.kwargs['code'], 'WORKER_RESULT_TIMEOUT')
+        succeeded = {**running, 'status': 'SUCCEEDED'}
+        result, wake, events = self.wait(lambda now: succeeded if now >= 10 else None)
+        self.assertEqual(result, succeeded)
+        wake.assert_called_once_with(self.binding, 1)
+        self.assertFalse(any(c.args[0] == 'contabo_worker_failure' for c in events.call_args_list))
+
+
 class OllamaResearchTests(unittest.TestCase):
     def test_scheduled_slots_and_review_do_not_replace_queued_explicit_search(self):
         with patch.object(transport, 'api', return_value=None) as api, patch.object(transport.time, 'time', return_value=1000):

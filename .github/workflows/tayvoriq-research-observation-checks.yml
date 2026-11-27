@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - 'tools/tayvoriq_research_observer.py'
+      - 'tools/tayvoriq_contabo_research.py'
       - 'tools/tayvoriq_research_terminal_notice.py'
       - 'tools/tayvoriq_research_retry_v1.py'
       - 'tools/tayvoriq_provider_health_v1.py'
       - 'tests/test_tayvoriq_research_observer.py'
+      - 'tests/test_tayvoriq_ollama_research.py'
       - 'tests/test_tayvoriq_explicit_research_notice.py'
       - 'tests/test_tayvoriq_manual_research_recovery.py'
       - '.github/workflows/tayvoriq-research-observation-checks.yml'
@@ -30,4 +32,5 @@ jobs:
           python -m pytest -q
           tests/test_tayvoriq_explicit_research_notice.py
           tests/test_tayvoriq_research_observer.py
+          tests/test_tayvoriq_ollama_research.py
           tests/test_tayvoriq_manual_research_recovery.py

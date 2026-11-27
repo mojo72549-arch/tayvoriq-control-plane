@@ -482,6 +482,7 @@ jobs:
           TAYVORIQ_REVIEW_REQUESTED_AT: ${{ steps.slot.outputs.research_requested_at }}
           GH_TOKEN: ${{ github.token }}
           STUDIO_RESEARCH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          STUDIO_RESEARCH_WAKE_TOKEN: ${{ secrets.PRIVATE_REPO_WAKE_TOKEN }}
           TAYVORIQ_CONTABO_RESEARCH_ORIGIN: ${{ steps.slot.outputs.rejection_selection != '' && 'review' || 'scheduled' }}
         run: |
           set -euo pipefail

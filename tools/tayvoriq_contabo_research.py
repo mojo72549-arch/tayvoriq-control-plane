@@ -17,10 +17,12 @@ STUDIO = 'mojo72549-arch/shorts-agent-studio'
 CONTROL = 'mojo72549-arch/tayvoriq-control-plane'
 RECEIPTS = '.automation/contabo-research-receipts'
 QUEUE = '.github/state/tayvoriq-contabo-research-queue'
+WAKEUP = '.automation/contabo-research-wakeup.json'
 
 
-def api(path, *, body=None, missing=False, public_write=False):
-    token = (os.getenv('STUDIO_RESEARCH_TOKEN') if not public_write else None) or os.getenv('GH_TOKEN')
+def api(path, *, body=None, missing=False, public_write=False, wake_write=False):
+    token = (os.getenv('STUDIO_RESEARCH_WAKE_TOKEN') if wake_write else None) or (
+        os.getenv('STUDIO_RESEARCH_TOKEN') if not public_write else None) or os.getenv('GH_TOKEN')
     if not token:
         raise RuntimeError('CONTABO_RESEARCH_TOKEN_MISSING')
     headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json',
@@ -53,6 +55,8 @@ def read_receipt(binding):
 
 
 def write_receipt(binding, worker_id, status, root):
+    if status == 'RUNNING' and not queue_current(binding):
+        raise RuntimeError('CONTABO_RESEARCH_QUEUE_EXPIRED_OR_SUPERSEDED')
     current, sha = read_receipt(binding)
     if current and (current['worker_run_id'] != worker_id or current['status'] != 'RUNNING'):
         raise RuntimeError('CONTABO_RESEARCH_WORKER_ALREADY_BOUND')
@@ -87,10 +91,27 @@ def check_result(root, expected, worker_id):
             raise RuntimeError('CONTABO_RESEARCH_RESULT_CHANGED')
 
 
-def enqueue(binding, wait_seconds=760):
+def queue_api(binding):
     lane = {'verification': 'verification', 'scheduled': binding['slot'], 'review': 'review'}.get(
         binding['origin'], 'explicit')
-    path = f'repos/{CONTROL}/contents/{QUEUE}/{lane}.json'
+    return f'repos/{CONTROL}/contents/{QUEUE}/{lane}.json'
+
+
+def queue_current(binding):
+    current = api(queue_api(binding) + '?ref=main', missing=True, public_write=True)
+    if not current:
+        return False
+    queued = json.loads(base64.b64decode(current['content']))
+    if queued.get('binding') != binding or queued.get('expires_at', 0) <= time.time():
+        return False
+    if binding['origin'] == 'control_center':
+        from tayvoriq_research_observer import control_center_stopped
+        return not control_center_stopped(binding['selection'], os.getenv('GH_TOKEN', ''))
+    return True
+
+
+def enqueue(binding, wait_seconds=760):
+    path = queue_api(binding)
     current = api(path + '?ref=main', missing=True, public_write=True)
     queued = {'binding': binding, 'expires_at': int(time.time()) + wait_seconds + 10}
     payload = {'branch': 'main', 'message': f"Queue Contabo research {binding['controller']}",
@@ -98,9 +119,70 @@ def enqueue(binding, wait_seconds=760):
     if current:
         previous = json.loads(base64.b64decode(current['content']))
         if previous.get('binding') == binding:
-            return
+            return previous['expires_at']
         payload['sha'] = current['sha']
     api(path, body=payload, public_write=True)
+    return queued['expires_at']
+
+
+def wake_worker(binding, wake_attempt=1):
+    """Wake the existing consumer; its receipt remains the exclusive worker claim."""
+    if wake_attempt not in (1, 2):
+        raise ValueError('CONTABO_RESEARCH_WAKEUP_BUDGET')
+    if not queue_current(binding):
+        raise RuntimeError('CONTABO_RESEARCH_QUEUE_EXPIRED_OR_SUPERSEDED')
+    path = f'repos/{STUDIO}/contents/{WAKEUP}'
+    for _ in range(3):
+        current = api(path + '?ref=main', missing=True)
+        if current:
+            previous = json.loads(base64.b64decode(current['content']))
+            if previous.get('binding') == binding and previous.get('wake_attempt', 0) >= wake_attempt:
+                return
+        value = {'binding': binding, 'wake_attempt': wake_attempt}
+        payload = {'branch': 'main', 'message': f"Wake Contabo research {binding['controller']}.{binding['attempt']}",
+                   'content': base64.b64encode(json.dumps(value).encode()).decode()}
+        if current:
+            payload['sha'] = current['sha']
+        try:
+            api(path, body=payload, wake_write=True)
+            return
+        except RuntimeError as error:
+            if not str(error).endswith(('HTTP 409', 'HTTP 422')):
+                raise
+    raise RuntimeError('CONTABO_RESEARCH_WAKEUP_CONFLICT')
+
+
+def event(name, **values):
+    print(json.dumps({'event': name, **values}), flush=True)
+
+
+def wait_for_result(binding, wait_seconds, *, deadline=None):
+    deadline = min(deadline or float('inf'), time.monotonic() + wait_seconds)
+    retry_at = time.monotonic() + 90
+    wake_attempt, worker_started = 0, False
+    while time.monotonic() < deadline:
+        receipt, _ = read_receipt(binding)
+        if receipt:
+            if not worker_started:
+                event('contabo_worker_started', worker_run_id=receipt['worker_run_id'])
+                worker_started = True
+            if receipt['status'] != 'RUNNING':
+                return receipt
+        elif wake_attempt == 0 or (wake_attempt == 1 and time.monotonic() >= retry_at):
+            wake_attempt += 1
+            confirmed = True
+            try:
+                wake_worker(binding, wake_attempt)
+            except RuntimeError as error:
+                confirmed = False
+                event('contabo_worker_failure', code='WORKER_WAKEUP_FAILED', terminal=False,
+                      cause='ACCESS' if str(error).endswith(('HTTP 401', 'HTTP 403')) else 'UNCONFIRMED')
+            retry_at = time.monotonic() + 90
+            event('contabo_worker_wakeup', wake_attempt=wake_attempt, confirmed=confirmed,
+                  next_check_epoch=time.time() + 90 if wake_attempt == 1 and retry_at < deadline else None)
+        time.sleep(5)
+    event('contabo_worker_failure', code='WORKER_RESULT_TIMEOUT' if worker_started else 'WORKER_START_TIMEOUT')
+    return None
 
 
 def main():
@@ -110,6 +192,8 @@ def main():
     cli.add_argument('--audit-output', type=Path, required=True)
     cli.add_argument('--wait-seconds', type=int, default=760, choices=range(1, 761), metavar='1-760')
     args = cli.parse_args()
+    deadline = time.monotonic() + min(args.wait_seconds,
+        float(os.getenv('TAYVORIQ_RESEARCH_DEADLINE_EPOCH') or time.time() + args.wait_seconds + 5) - time.time() - 5)
     binding = dict(selection=os.environ['TAYVORIQ_RESEARCH_SELECTION_ID'], slot=args.slot,
                    revision=os.environ['TAYVORIQ_CONTROL_REVISION'],
                    controller=os.environ['GITHUB_RUN_ID'], attempt=os.environ['GITHUB_RUN_ATTEMPT'],
@@ -117,18 +201,10 @@ def main():
                    origin=os.getenv('TAYVORIQ_CONTABO_RESEARCH_ORIGIN', 'telegram_command'))
     receipt, _ = read_receipt(binding)
     if receipt is None:
-        enqueue(binding, args.wait_seconds)
-    deadline = time.monotonic() + args.wait_seconds
-    local_started = False
-    while time.monotonic() < deadline:
-        receipt, _ = read_receipt(binding)
-        if receipt and receipt['status'] != 'RUNNING':
-            break
-        if receipt and not local_started:
-            print(json.dumps({'event': 'provider_attempt_started', 'provider': 'ollama'}), flush=True)
-            local_started = True
-        time.sleep(5)
-    else:
+        expires_at = enqueue(binding, max(1, int(deadline - time.monotonic())))
+        deadline = min(deadline, time.monotonic() + expires_at - time.time() - 10)
+    receipt = wait_for_result(binding, args.wait_seconds, deadline=deadline)
+    if receipt is None:
         print('CONTABO_RESEARCH_TIMEOUT', flush=True)
         return 124
 

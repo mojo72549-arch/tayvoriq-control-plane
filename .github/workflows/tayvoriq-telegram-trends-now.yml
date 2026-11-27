@@ -104,6 +104,7 @@ jobs:
           SELECTION_ID: ${{ steps.control.outputs.selection_id }}
           GH_TOKEN: ${{ github.token }}
           STUDIO_RESEARCH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          STUDIO_RESEARCH_WAKE_TOKEN: ${{ secrets.PRIVATE_REPO_WAKE_TOKEN }}
           TAYVORIQ_EDITORIAL_TOPIC: ${{ github.event.client_payload.topic || '' }}
           TAYVORIQ_CONTROL_CENTER_RESEARCH: ${{ github.event.client_payload.requested_via == 'control_center' }}
           TAYVORIQ_CONTABO_RESEARCH_ORIGIN: ${{ github.event.client_payload.requested_via == 'control_center' && 'control_center' || 'telegram_command' }}

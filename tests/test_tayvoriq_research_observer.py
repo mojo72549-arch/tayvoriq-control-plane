@@ -87,6 +87,29 @@ class ResearchObserverTests(unittest.TestCase):
 class ResearchFailureDiagnosticsTests(unittest.TestCase):
     observation = ResearchObserverTests.observation
 
+    def test_worker_handoff_records_real_recheck_and_terminal_owner_without_invented_rejections(self):
+        for started, expected in [(False, 'WORKER_START_TIMEOUT'), (True, 'WORKER_RESULT_TIMEOUT')]:
+            o = self.observation()
+            o.event({'event': 'contabo_worker_wakeup', 'wake_attempt': 1, 'next_check_epoch': 1090})
+            self.assertEqual(o.data['handoff']['next_check_at'], '1970-01-01T00:18:10+00:00')
+            if started:
+                o.event({'event': 'contabo_worker_started', 'worker_run_id': 99})
+            o.finish(124)
+            self.assertIn({'code': expected, 'provider': None}, o.data['issues'])
+            self.assertEqual(o.data['handoff']['state'], 'BLOCKED')
+            self.assertEqual(o.data['handoff']['owner'], 'production_engineering')
+            self.assertIsNone(o.data['handoff']['next_check_at'])
+            self.assertEqual(o.data['quality_rejections'], 0)
+            self.assertIsNone(o.data['sources_seen'])
+
+    def test_wakeup_error_is_explicit_and_raw_errors_are_not_persisted(self):
+        o = self.observation()
+        o.event({'event': 'contabo_worker_failure', 'code': 'WORKER_WAKEUP_FAILED', 'error': 'secret-value'})
+        o.finish(1)
+        self.assertEqual(o.data['issues'], [{'code': 'WORKER_WAKEUP_FAILED', 'provider': None}])
+        self.assertNotIn('secret-value', json.dumps(o.data))
+        self.assertEqual(o.data['handoff']['action_required'], 'CHECK_RESEARCH_WAKEUP_ACCESS')
+
     def test_incomplete_scorecards_are_not_labeled_as_weak_tiktok_fit(self):
         o = self.observation()
         o.event({"event": "candidate_editorial_rejection", "reason": "regional_scorecard",
