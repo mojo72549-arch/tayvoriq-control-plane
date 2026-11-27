@@ -1,7 +1,7 @@
 {
   "action": "NONE",
   "state": "REPAIR_REQUIRED",
-  "reason": "DIAGNOSTICS_REQUIRED",
+  "reason": "AWAITING_VERIFIED_PADDING_FIX",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "46011335246",
   "generation": "0",
@@ -15,13 +15,18 @@
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 46011335246,
     "worker_run_id": 46011418248,
-    "state": "DIAGNOSTICS_REQUIRED",
-    "checked_at": "2026-11-27T14:11:51.552515+00:00",
+    "state": "AWAITING_VERIFIED_PADDING_FIX",
+    "checked_at": "2026-11-27T14:15:08.049661+00:00",
     "controller_ended_at": "2026-11-27T14:00:19Z",
     "failed_step": "Assert publishable production output",
     "user_action_required": false,
     "quality_gates_weakened": false,
-    "attempt_used": true
+    "attempt_used": true,
+    "artifact_id": 15202604493,
+    "implementation_sha": "88d538e843b4300eab2ff22cc39d24661f223d11",
+    "platform": "youtube_shorts",
+    "stopped_at": "2026-11-27T13:58:50.3960935Z",
+    "voice_platforms_passed": true
   },
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
   "last_dispatch": {
@@ -34,23 +39,23 @@
     "executor_run_id": 46011335246,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-27T14:11:51.858057+00:00",
-  "orchestrator_run_id": 46013609629,
+  "checked_at": "2026-11-27T14:15:08.448791+00:00",
+  "orchestrator_run_id": 46014171092,
   "operator_event": {
     "request_id": "telegram-3821-trend-1-content-repair-v1",
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 46011335246,
     "worker_run_id": 46011418248,
     "schema": "tayvoriq-contabo-operator-event-v1",
-    "state": "DIAGNOSTICS_REQUIRED",
+    "state": "AWAITING_VERIFIED_PADDING_FIX",
     "owner": "TAYVORIQ-Produktionstechnik",
     "user_action_required": false,
-    "happened_at": "2026-11-27T14:00:19Z",
-    "cause": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.",
-    "done": "Der Orchestrator hat den Stopp dem freigegebenen Auftrag zugeordnet. Der einmal zugelassene Wiederanlauf wurde ausgeführt.",
-    "decision_required": "Die Produktionstechnik muss das Diagnoseartefakt des gestoppten Versuchs verifizieren.",
-    "next": "Es ist kein Reparaturjob eingeplant. Die Produktionstechnik muss das Diagnoseartefakt des gestoppten Versuchs verifizieren.",
-    "id": "aa05c139d845539cc497e2d5f91763be02f6966a826b86c23fa9f7305f288b5e",
-    "text": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.\nDer Orchestrator hat den Stopp dem freigegebenen Auftrag zugeordnet. Der einmal zugelassene Wiederanlauf wurde ausgeführt.\nEs ist kein Reparaturjob eingeplant. Die Produktionstechnik muss das Diagnoseartefakt des gestoppten Versuchs verifizieren.\nFür dich ist keine Aktion nötig."
+    "happened_at": "2026-11-27T13:58:50.3960935Z",
+    "cause": "Das Bildaudit ist bestanden. Die finale Mixprüfung beanstandet einen stummen Abschnitt bei YouTube.",
+    "done": "Der Zwischenstand ist für diesen Auftrag gesichert und die Prüfung hat offene Mängel gefunden. Der einmal zugelassene Wiederanlauf wurde ausgeführt. Die Sprecherfassungen für YouTube und TikTok haben die Sprachprüfung bestanden.",
+    "decision_required": "Die Produktionstechnik prüft einen begrenzten Schnitt am stummen Ende von YouTube.",
+    "next": "Es ist kein Reparaturjob eingeplant. Die Produktionstechnik prüft einen begrenzten Schnitt am stummen Ende von YouTube.",
+    "id": "694949fce2e985a98daa2ae57150c9202222c1a8479378b280728042a87323d4",
+    "text": "Das Bildaudit ist bestanden. Die finale Mixprüfung beanstandet einen stummen Abschnitt bei YouTube.\nDer Zwischenstand ist für diesen Auftrag gesichert und die Prüfung hat offene Mängel gefunden. Der einmal zugelassene Wiederanlauf wurde ausgeführt. Die Sprecherfassungen für YouTube und TikTok haben die Sprachprüfung bestanden.\nEs ist kein Reparaturjob eingeplant. Die Produktionstechnik prüft einen begrenzten Schnitt am stummen Ende von YouTube.\nFür dich ist keine Aktion nötig."
   }
 }
