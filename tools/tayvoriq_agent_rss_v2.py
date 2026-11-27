@@ -10,7 +10,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import tayvoriq_agent_trend_provider_v3 as provider
 import tayvoriq_agent_research_http_v2 as http
@@ -220,6 +220,16 @@ def article_context(page, original_title):
     return ""
 
 
+def _article_request_url(url):
+    """Encode the HTTP target without changing the original source identity."""
+    parsed = urlparse(url)
+    return parsed._replace(
+        path=quote(parsed.path, safe="/%:@!$&'()*+,;="),
+        params=quote(parsed.params, safe="%:@!$&'()*+,;="),
+        query=quote(parsed.query, safe="/?%:@!$&'()*+,;="),
+    ).geturl()
+
+
 def enrich_article(record):
     url = record["url"]
     parsed = urlparse(url)
@@ -236,9 +246,9 @@ def enrich_article(record):
             target = urlparse(newurl)
             if target.scheme != "https" or target.netloc.casefold() not in {publisher, "www." + publisher}:
                 raise ValueError("Article redirect leaves the original publisher")
-            return super().redirect_request(req, fp, code, msg, headers, newurl)
+            return super().redirect_request(req, fp, code, msg, headers, _article_request_url(newurl))
 
-    request = urllib.request.Request(url, headers={"User-Agent": "tayvoriq-agent-v3-rss", "Accept": "text/html"})
+    request = urllib.request.Request(_article_request_url(url), headers={"User-Agent": "tayvoriq-agent-v3-rss", "Accept": "text/html"})
     try:
         opener = urllib.request.build_opener(SamePublisherRedirect())
         with opener.open(request, timeout=5) as response:
