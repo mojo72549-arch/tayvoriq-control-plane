@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-27T10:15:25.387403Z",
+  "generated_at": "2026-11-27T11:08:40.600268Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
-    "golden_path_run_id": 45965549397,
-    "pointer_updated_at": "2026-11-27T08:27:50.579404+00:00",
+    "golden_path_run_id": 45981134031,
+    "pointer_updated_at": "2026-11-27T10:24:35.252143+00:00",
     "current_scope": "production"
   },
   "request": {
@@ -46,13 +46,13 @@
     "path": "requests/telegram-3821-trend-1-content-repair-v1.json"
   },
   "run": {
-    "id": 45965549397,
+    "id": 45981134031,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45965549397",
-    "created_at": "2026-11-27T08:25:28Z",
-    "updated_at": "2026-11-27T09:11:35Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45981134031",
+    "created_at": "2026-11-27T10:19:33Z",
+    "updated_at": "2026-11-27T10:37:35Z",
     "attempt": 1,
     "progress": 0,
     "current_step": null,
@@ -156,7 +156,7 @@
     }
   ],
   "incident": {
-    "signature": "45965549397:none",
+    "signature": "45981134031:none",
     "severity": "critical",
     "failure_state": null,
     "failed_step": "Monitor the private worker receipt",
@@ -178,7 +178,7 @@
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": null,
     "failed_run_id": null,
-    "replay_run_id": 45965549397,
+    "replay_run_id": 45981134031,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
@@ -189,14 +189,19 @@
   },
   "events": [
     {
-      "at": "2026-11-27T09:11:35Z",
+      "at": "2026-11-27T10:37:35Z",
       "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45965549397 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+      "detail": "Run 45981134031 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
     },
     {
-      "at": "2026-11-27T09:11:35Z",
+      "at": "2026-11-27T10:37:35Z",
       "title": "Workflow-Fehler",
       "detail": "Monitor the private worker receipt"
+    },
+    {
+      "at": "2026-11-27T10:24:35.252120+00:00",
+      "title": "CHECKPOINT_PROVENANCE_RECORDED",
+      "detail": "contabo-controller"
     },
     {
       "at": "2026-11-27T08:27:50.579385+00:00",
