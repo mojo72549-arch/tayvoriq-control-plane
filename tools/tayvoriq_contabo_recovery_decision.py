@@ -34,15 +34,16 @@ def private_diagnostics(worker, token, *, controller=None, include_mix=False):
             raise ValueError("Contabo diagnostic response exceeds its limit")
         return content
 
-    if type(controller) is int and controller > 0 and not include_mix:
+    evidence_count = 5 if include_mix else 4
+    if type(controller) is int and controller > 0:
         try:
             file = json.loads(api(f"/contents/run-status/contabo/stop-proof/{controller}.json?ref=main"))
             proof = json.loads(base64.b64decode(file["content"]))
             if (proof.get("schema") == "tayvoriq-contabo-stop-proof-v1" and proof.get("controller_run_id") == controller
                     and proof.get("worker_run_id") == worker and type(proof.get("artifact_id")) is int
                     and re.fullmatch(r"sha256:[a-f0-9]{64}", proof.get("artifact_digest", ""))
-                    and isinstance(proof.get("evidence"), list) and len(proof["evidence"]) == 4):
-                return proof["artifact_id"], proof.get("stopped_at"), proof["evidence"]
+                    and isinstance(proof.get("evidence"), list) and evidence_count <= len(proof["evidence"]) <= 5):
+                return proof["artifact_id"], proof.get("stopped_at"), proof["evidence"][:evidence_count]
         except (ValueError, KeyError, TypeError, subprocess.SubprocessError):
             pass
 

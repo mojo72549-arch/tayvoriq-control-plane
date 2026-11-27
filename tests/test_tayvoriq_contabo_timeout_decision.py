@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from tayvoriq_contabo_operator_event import build_event, notify
-from tayvoriq_contabo_recovery_decision import PADDING_RECOVERY, SCENE_RECOVERY, contabo_decision
+from tayvoriq_contabo_recovery_decision import PADDING_RECOVERY, SCENE_RECOVERY, contabo_decision, private_diagnostics
 from tayvoriq_lifecycle_dispatch_v1 import dispatch_verified
 
 REQUEST = "telegram-3821-trend-1-content-repair-v1"
@@ -128,6 +128,20 @@ def test_passing_scene_repair_can_authorize_only_the_later_terminal_mix_failure(
     assert (proof["state"], proof["repair_kind"], proof["platform"]) == ("RETRY_ELIGIBLE", PADDING_RECOVERY, "youtube_shorts")
     request["quality_recovery"]["repair_kind"] = PADDING_RECOVERY
     assert classify()["state"] == "RECOVERY_EXHAUSTED"
+
+
+def test_private_stop_proof_can_carry_the_bound_final_mix_report(monkeypatch):
+    proof = {"schema": "tayvoriq-contabo-stop-proof-v1", "controller_run_id": CONTROLLER,
+             "worker_run_id": WORKER, "artifact_id": ARTIFACT, "artifact_digest": "sha256:" + "f" * 64,
+             "evidence": [{"report_index": i} for i in range(5)]}
+
+    def api(command, **kwargs):
+        assert f"/stop-proof/{CONTROLLER}.json?ref=main" in command[-1]
+        return json.dumps({"content": base64.b64encode(json.dumps(proof).encode()).decode()}).encode()
+
+    monkeypatch.setattr(subprocess, "check_output", api)
+    assert private_diagnostics(WORKER, "test-token", controller=CONTROLLER, include_mix=True)[2] == proof["evidence"]
+    assert private_diagnostics(WORKER, "test-token", controller=CONTROLLER)[2] == proof["evidence"][:4]
 
 
 def test_lost_dispatch_response_and_restart_do_not_submit_a_second_repair(tmp_path):
