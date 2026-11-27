@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import tayvoriq_review_trend_status as status
 
@@ -46,3 +48,26 @@ def test_interactive_retry_stays_inside_the_original_window(tmp_path, monkeypatc
     pause.assert_called_once_with(8)
     assert status.research(["research"], 600, clock=lambda: 575, run=Mock()) == (124, 0)
     assert status.blocker_for("finish", {}, {"errors": ["source contract insufficient"]}, "", "") == "SOURCE_QUALITY"
+
+
+@pytest.mark.parametrize(("code", "reason"), [
+    (status.WORKER_START_TIMEOUT, "WORKER_START_TIMEOUT"),
+    (status.WORKER_RESULT_TIMEOUT, "WORKER_RESULT_TIMEOUT"),
+    (status.WAKEUP_ACCESS_DENIED, "WORKER_WAKEUP_ACCESS"),
+])
+def test_contabo_replacement_keeps_technical_failure_for_telegram(tmp_path, monkeypatch, code, reason):
+    selection = "review-evening-123"
+    monkeypatch.setenv("TAYVORIQ_RESEARCH_RETRY_FILE", str(tmp_path / "retry"))
+    monkeypatch.setattr(status, "ROOT", tmp_path)
+    monkeypatch.setattr(status, "DEFERRED", tmp_path / "deferred")
+    command = ["python", "tools/tayvoriq_contabo_research.py"]
+    monkeypatch.setattr(sys, "argv", ["status", selection, "research", *command])
+    run = Mock(return_value=subprocess.CompletedProcess([], code))
+    assert status.research(command, 600, clock=lambda: 200, run=run) == (code, 1)
+    run.assert_called_once_with([*command, "--wait-seconds", "345"], timeout=370, check=False)
+    monkeypatch.setattr(status, "research", Mock(return_value=(code, 1)))
+    with pytest.raises(SystemExit) as result:
+        status.main()
+    assert result.value.code == code
+    assert status.blocker_for("finish", {}, status.load(status.DEFERRED), "", "") == reason
+    assert status.BLOCKERS[reason] == status.ISSUE_DETAILS[reason]
