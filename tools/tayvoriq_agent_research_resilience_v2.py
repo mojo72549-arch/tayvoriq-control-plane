@@ -73,6 +73,8 @@ def local_grounded(prompt):
             return data, chunks, model, 'ollama_gdelt' if label == 'rss-gdelt-context' else 'ollama_rss'
         except hf.InsufficientSourceEvidence as error:
             last_error = error
+    if isinstance(last_error, hf.InsufficientSourceEvidence) and not isinstance(last_error, hf.InsufficientFeedEvidence):
+        raise RuntimeError('OLLAMA_EDITORIAL_RESULT_INCOMPLETE') from last_error
     raise RuntimeError('OLLAMA_SOURCE_MINIMUM_NOT_MET') from last_error
 
 
