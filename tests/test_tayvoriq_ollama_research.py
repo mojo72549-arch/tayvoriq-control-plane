@@ -15,6 +15,18 @@ import tayvoriq_ollama_research as ollama
 
 
 class OllamaResearchTests(unittest.TestCase):
+    def test_scheduled_slots_and_review_do_not_replace_queued_explicit_search(self):
+        with patch.object(transport, 'api', return_value=None) as api, patch.object(transport.time, 'time', return_value=1000):
+            for origin, slot, lane in [('scheduled', 'morning', 'morning'), ('scheduled', 'evening', 'evening'),
+                                       ('review', 'morning', 'review'), ('telegram_command', 'evening', 'explicit')]:
+                binding = {'origin': origin, 'slot': slot, 'controller': '123'}
+                transport.enqueue(binding, wait_seconds=420)
+                path = api.call_args.args[0]
+                payload = api.call_args.kwargs['body']
+                self.assertTrue(path.endswith(f'/{lane}.json'))
+                self.assertEqual(json.loads(base64.b64decode(payload['content'])),
+                                 {'binding': binding, 'expires_at': 1430})
+
     def test_receipt_uses_exact_selection_controller_and_attempt(self):
         binding = {'selection': '20261126-evening-agentv2', 'controller': '123', 'attempt': '2'}
         row = {'binding': binding, 'worker_run_id': 99, 'status': 'RUNNING'}
