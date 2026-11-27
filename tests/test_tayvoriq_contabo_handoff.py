@@ -7,6 +7,9 @@ def context(tmp_path,monkeypatch):
     from pathlib import Path
     request=json.loads(Path('requests/telegram-3751-trend-1.json').read_text())
     pointer=json.loads(Path('.github/state/tayvoriq-active-production-request.json').read_text())
+    request.pop('production_completion', None)
+    pointer.update({key: request[key] for key in ('request_id', 'golden_path_run_id', 'source_context_sha256',
+                                                  'contract_sha256', 'approval_key')}, state='ACTIVE')
     green=json.loads(Path('.github/state/tayvoriq-production-green.json').read_text())
     monkeypatch.chdir(tmp_path)
     Path('.github/state').mkdir(parents=True)

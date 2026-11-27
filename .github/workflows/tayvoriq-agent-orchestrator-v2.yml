@@ -74,10 +74,6 @@ env:
   TAYVORIQ_RESEARCH_CHECKPOINT_FILE: .automation/tayvoriq-agent-v2/research-candidates.json
   TAYVORIQ_PROVIDER_HEALTH_FILE: .automation/tayvoriq-agent-v2/provider-health.json
   TAYVORIQ_RESEARCH_RETRY_FILE: .automation/tayvoriq-agent-v2/research-retry.json
-  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-  HF_TOKEN: ${{ secrets.HF_TOKEN }}
-  HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
@@ -482,31 +478,37 @@ jobs:
           TAYVORIQ_RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
           TAYVORIQ_RESEARCH_SELECTION_ID: ${{ steps.slot.outputs.rejection_selection }}
           TAYVORIQ_REVIEW_REQUESTED_AT: ${{ steps.slot.outputs.research_requested_at }}
+          GH_TOKEN: ${{ github.token }}
+          STUDIO_RESEARCH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          TAYVORIQ_CONTABO_RESEARCH_ORIGIN: ${{ steps.slot.outputs.rejection_selection != '' && 'review' || 'scheduled' }}
         run: |
           set -euo pipefail
-          command=(python -u tools/tayvoriq_agent_trend_radar_v8.py \
-            --slot "${{ steps.slot.outputs.slot }}" \
-            --output /tmp/tayvoriq-trend-request.json \
-            --audit-output /tmp/tayvoriq-trend-audit.json)
-          if [ "$PREPARED_ONLY" = true ]; then
-            command+=(--prepared-only)
-          fi
+          args=(--slot "$TAYVORIQ_RESEARCH_SLOT" --output /tmp/tayvoriq-trend-request.json --audit-output /tmp/tayvoriq-trend-audit.json)
+          export TAYVORIQ_CONTROL_REVISION
+          TAYVORIQ_CONTROL_REVISION=$(git rev-parse HEAD)
           if [ -n "$TAYVORIQ_RESEARCH_SELECTION_ID" ]; then
-            python tools/tayvoriq_review_trend_status.py "$TAYVORIQ_RESEARCH_SELECTION_ID" research "${command[@]}"
+            python tools/tayvoriq_review_trend_status.py "$TAYVORIQ_RESEARCH_SELECTION_ID" research \
+              python -u tools/tayvoriq_contabo_research.py "${args[@]}"
           elif [ "$PREPARED_ONLY" = true ]; then
+            command=(python -u tools/tayvoriq_agent_trend_radar_v8.py "${args[@]}" --prepared-only)
             timeout --kill-after=5s 420 "${command[@]}"
           else
-            export TAYVORIQ_RESEARCH_STARTED_AT_EPOCH
+            export TAYVORIQ_RESEARCH_STARTED_AT_EPOCH TAYVORIQ_RESEARCH_SELECTION_ID
             TAYVORIQ_RESEARCH_STARTED_AT_EPOCH=$(date +%s)
+            TAYVORIQ_RESEARCH_SELECTION_ID="$(TZ=Europe/Berlin date +%Y%m%d)-${TAYVORIQ_RESEARCH_SLOT}-agentv2"
             seconds=$(PYTHONPATH=tools python -c 'import os; from tayvoriq_research_retry_v1 import regular_process_seconds; print(regular_process_seconds(os.environ["TAYVORIQ_RESEARCH_SLOT"]))')
             result=124
             if [ "$seconds" -gt 0 ]; then
               result=0
-              timeout --kill-after=5s "$seconds" "${command[@]}" || result=$?
+              timeout --kill-after=5s "$seconds" python -u tools/tayvoriq_contabo_research.py "${args[@]}" --wait-seconds "$seconds" || result=$?
             fi
-            if [ "$result" -eq 124 ] || [ "$result" -eq 137 ]; then
-              PYTHONPATH=tools python -c 'from tayvoriq_agent_research_resilience_v2 import _defer; import time; _defer([], time.time() + 600, issue="RESEARCH_TIME_BUDGET_EXHAUSTED")'
-            fi
+            case "$result" in
+              0) exit 0 ;;
+              65) issue=EDITORIAL_MINIMUM_NOT_MET ;;
+              124|137) issue=RESEARCH_TIME_BUDGET_EXHAUSTED ;;
+              *) issue=RESEARCH_PROVIDER_UNAVAILABLE ;;
+            esac
+            PYTHONPATH=tools python -c 'from tayvoriq_agent_research_resilience_v2 import _defer; import sys, time; _defer([], time.time() + 90, issue=sys.argv[1])' "$issue"
             exit "$result"
           fi
 

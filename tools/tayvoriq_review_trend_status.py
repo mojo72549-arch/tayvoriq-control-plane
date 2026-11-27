@@ -57,6 +57,15 @@ def needs_expiry(plan, now):
 
 def research(command, deadline, *, clock=time.time, run=subprocess.run, pause=time.sleep):
     """Give interactive research bounded attempts within the same Orchestrator run."""
+    if 'tools/tayvoriq_contabo_research.py' in command:
+        remaining = int(deadline - clock() - 30)
+        if remaining <= 0:
+            return 124, 0
+        try:
+            result = run([*command, '--wait-seconds', str(min(remaining, 540))], timeout=remaining, check=False)
+        except subprocess.TimeoutExpired:
+            return 124, 1
+        return result.returncode, 1
     for attempt in range(1, 4):
         remaining = deadline - clock() - 30
         if remaining <= 0:

@@ -87,11 +87,12 @@ def check_result(root, expected, worker_id):
             raise RuntimeError('CONTABO_RESEARCH_RESULT_CHANGED')
 
 
-def enqueue(binding):
-    lane = 'verification' if binding['origin'] == 'verification' else 'explicit'
+def enqueue(binding, wait_seconds=760):
+    lane = {'verification': 'verification', 'scheduled': binding['slot'], 'review': 'review'}.get(
+        binding['origin'], 'explicit')
     path = f'repos/{CONTROL}/contents/{QUEUE}/{lane}.json'
     current = api(path + '?ref=main', missing=True, public_write=True)
-    queued = {'binding': binding, 'expires_at': int(time.time()) + 770}
+    queued = {'binding': binding, 'expires_at': int(time.time()) + wait_seconds + 10}
     payload = {'branch': 'main', 'message': f"Queue Contabo research {binding['controller']}",
                'content': base64.b64encode(json.dumps(queued).encode()).decode()}
     if current:
@@ -107,6 +108,7 @@ def main():
     cli.add_argument('--slot', choices=['morning', 'evening'], required=True)
     cli.add_argument('--output', type=Path, required=True)
     cli.add_argument('--audit-output', type=Path, required=True)
+    cli.add_argument('--wait-seconds', type=int, default=760, choices=range(1, 761), metavar='1-760')
     args = cli.parse_args()
     binding = dict(selection=os.environ['TAYVORIQ_RESEARCH_SELECTION_ID'], slot=args.slot,
                    revision=os.environ['TAYVORIQ_CONTROL_REVISION'],
@@ -115,8 +117,8 @@ def main():
                    origin=os.getenv('TAYVORIQ_CONTABO_RESEARCH_ORIGIN', 'telegram_command'))
     receipt, _ = read_receipt(binding)
     if receipt is None:
-        enqueue(binding)
-    deadline = time.monotonic() + 760
+        enqueue(binding, args.wait_seconds)
+    deadline = time.monotonic() + args.wait_seconds
     local_started = False
     while time.monotonic() < deadline:
         receipt, _ = read_receipt(binding)
@@ -127,12 +129,18 @@ def main():
             local_started = True
         time.sleep(5)
     else:
-        raise RuntimeError('CONTABO_RESEARCH_TIMEOUT')
+        print('CONTABO_RESEARCH_TIMEOUT', flush=True)
+        return 124
 
     print(f"Verified private worker run {receipt['worker_run_id']}: {receipt['status']}", flush=True)
     for event in receipt.get('events', []):
         print(event, flush=True)
     if receipt['status'] != 'SUCCEEDED':
+        if binding['origin'] in {'scheduled', 'review'}:
+            events = [json.loads(event) for event in receipt.get('events', [])]
+            if any(row.get('event') in {'regional_editorial_validation', 'candidate_editorial_rejection'}
+                   for row in events if isinstance(row, dict)):
+                return 65
         raise RuntimeError(f"CONTABO_RESEARCH_{receipt['status']}")
     with tempfile.TemporaryDirectory(prefix='contabo-research-') as temporary:
         root = Path(temporary)

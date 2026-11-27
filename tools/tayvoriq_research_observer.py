@@ -45,10 +45,10 @@ def issue_code(text):
 
 class Observation:
     def __init__(self, selection, slot, run_id, attempt):
-        if not re.fullmatch(r'\d{8}-(morning|evening)-agentv2(?:-[rc][0-9a-f]{1,8})?', selection):
-            raise ValueError('Invalid research selection')
         if slot not in {'morning', 'evening'} or f'-{slot}-' not in selection:
             raise ValueError('Invalid research slot')
+        if not re.fullmatch(rf'(?:\d{{8}}-{slot}-agentv2(?:-[rc][0-9a-f]{{1,8}})?|review-{slot}-[1-9]\d{{0,19}})', selection):
+            raise ValueError('Invalid research selection')
         if not str(run_id).isdigit() or not str(attempt).isdigit():
             raise ValueError('Invalid run binding')
         self.saved, self.rejected = set(), 0
