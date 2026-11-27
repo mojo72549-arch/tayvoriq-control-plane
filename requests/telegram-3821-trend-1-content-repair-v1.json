@@ -233,7 +233,7 @@
   "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
   "dispatch_claim_run_id": 45954835467,
   "dispatch_contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
-  "golden_path_run_id": 45954857672,
+  "golden_path_run_id": 45965549397,
   "execution_backend": "contabo_private_runner",
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
@@ -256,5 +256,17 @@
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
     "quality_gates_weakened": false
+  },
+  "previous_golden_path_run_ids": [
+    45954857672
+  ],
+  "visual_recovery": {
+    "schema": "tayvoriq-contabo-visual-recovery-v1",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "previous_run_id": 45954857672,
+    "implementation_sha": "8f9a886ce8d79a849b60895ac6cb96bd2c0ff2eb",
+    "scene": 6,
+    "quality_gates_weakened": false,
+    "controller_run_id": 45965549397
   }
 }
