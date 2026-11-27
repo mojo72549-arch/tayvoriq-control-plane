@@ -244,6 +244,7 @@ jobs:
         env:
           RELEASE: ${{ steps.transfer.outputs.release }}
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          STUDIO_WAKE_TOKEN: ${{ secrets.PRIVATE_REPO_WAKE_TOKEN }}
         run: |
           python3 - <<'PY'
           import json,os
@@ -289,7 +290,8 @@ jobs:
                       'content':base64.b64encode(details.encode()).decode()}
               if previous.get('sha'):
                   body['sha'] = previous['sha']
-              subprocess.run(['gh', 'api', '--method', 'PUT', endpoint, '--input', '-'],
+              wake_env = {**os.environ, 'GH_TOKEN': os.environ.get('STUDIO_WAKE_TOKEN') or os.environ['GH_TOKEN']}
+              subprocess.run(['gh', 'api', '--method', 'PUT', endpoint, '--input', '-'], env=wake_env,
                              input=json.dumps(body), text=True, capture_output=True, check=True, timeout=12)
               print('CONTABO_PRIVATE_WAKEUP_CONFIRMED')
           except (subprocess.SubprocessError, ValueError, KeyError, RuntimeError):

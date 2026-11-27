@@ -18,6 +18,9 @@ CONTROL = 'mojo72549-arch/tayvoriq-control-plane'
 RECEIPTS = '.automation/contabo-research-receipts'
 QUEUE = '.github/state/tayvoriq-contabo-research-queue'
 WAKEUP = '.automation/contabo-research-wakeup.json'
+WORKER_START_TIMEOUT = 71
+WORKER_RESULT_TIMEOUT = 72
+WAKEUP_ACCESS_DENIED = 77
 
 
 def api(path, *, body=None, missing=False, public_write=False, wake_write=False):
@@ -91,10 +94,13 @@ def check_result(root, expected, worker_id):
             raise RuntimeError('CONTABO_RESEARCH_RESULT_CHANGED')
 
 
-def queue_api(binding):
-    lane = {'verification': 'verification', 'scheduled': binding['slot'], 'review': 'review'}.get(
+def queue_lane(binding):
+    return {'verification': 'verification', 'scheduled': binding['slot'], 'review': 'review'}.get(
         binding['origin'], 'explicit')
-    return f'repos/{CONTROL}/contents/{QUEUE}/{lane}.json'
+
+
+def queue_api(binding):
+    return f'repos/{CONTROL}/contents/{QUEUE}/{queue_lane(binding)}.json'
 
 
 def queue_current(binding):
@@ -108,6 +114,27 @@ def queue_current(binding):
         from tayvoriq_research_observer import control_center_stopped
         return not control_center_stopped(binding['selection'], os.getenv('GH_TOKEN', ''))
     return True
+
+
+def resolve_queue(root, *, wake_revision=''):
+    """Give a push wake priority only for its exact, still-current queued request."""
+    pending = []
+    for lane in ('explicit', 'morning', 'evening', 'review', 'verification'):
+        path = root / QUEUE / f'{lane}.json'
+        if path.is_file():
+            item = json.loads(path.read_text())
+            if item['expires_at'] > time.time() and queue_lane(item['binding']) == lane:
+                pending.append(item)
+    if wake_revision and pending:
+        meta = api(f'repos/{STUDIO}/contents/{WAKEUP}?ref={wake_revision}', missing=True)
+        if meta:
+            binding = json.loads(base64.b64decode(meta['content'])).get('binding')
+            pending.sort(key=lambda item: item['binding'] != binding)
+    for item in pending:
+        binding = item['binding']
+        if read_receipt(binding)[0] is None and queue_current(binding):
+            return item
+    return None
 
 
 def enqueue(binding, wait_seconds=760):
@@ -159,7 +186,7 @@ def event(name, **values):
 def wait_for_result(binding, wait_seconds, *, deadline=None):
     deadline = min(deadline or float('inf'), time.monotonic() + wait_seconds)
     retry_at = time.monotonic() + 90
-    wake_attempt, worker_started = 0, False
+    wake_attempt, worker_started, access_denied = 0, False, False
     while time.monotonic() < deadline:
         receipt, _ = read_receipt(binding)
         if receipt:
@@ -168,22 +195,26 @@ def wait_for_result(binding, wait_seconds, *, deadline=None):
                 worker_started = True
             if receipt['status'] != 'RUNNING':
                 event('contabo_worker_finished', status=receipt['status'], worker_run_id=receipt['worker_run_id'])
-                return receipt
-        elif wake_attempt == 0 or (wake_attempt == 1 and time.monotonic() >= retry_at):
+                return receipt, 0
+        elif wake_attempt == 0 or (wake_attempt == 1 and not access_denied and time.monotonic() >= retry_at):
             wake_attempt += 1
             confirmed = True
             try:
                 wake_worker(binding, wake_attempt)
             except RuntimeError as error:
                 confirmed = False
+                access_denied = str(error).endswith(('HTTP 401', 'HTTP 403'))
                 event('contabo_worker_failure', code='WORKER_WAKEUP_FAILED', terminal=False,
-                      cause='ACCESS' if str(error).endswith(('HTTP 401', 'HTTP 403')) else 'UNCONFIRMED')
+                      cause='ACCESS' if access_denied else 'UNCONFIRMED')
             retry_at = time.monotonic() + 90
             event('contabo_worker_wakeup', wake_attempt=wake_attempt, confirmed=confirmed,
-                  next_check_epoch=time.time() + 90 if wake_attempt == 1 and retry_at < deadline else None)
-        time.sleep(5)
+                  next_check_epoch=time.time() + 90
+                  if wake_attempt == 1 and not access_denied and retry_at < deadline else None)
+        time.sleep(max(0, min(5, deadline - time.monotonic())))
     event('contabo_worker_failure', code='WORKER_RESULT_TIMEOUT' if worker_started else 'WORKER_START_TIMEOUT')
-    return None
+    if worker_started:
+        return None, WORKER_RESULT_TIMEOUT
+    return None, WAKEUP_ACCESS_DENIED if access_denied else WORKER_START_TIMEOUT
 
 
 def main():
@@ -204,10 +235,9 @@ def main():
     if receipt is None:
         expires_at = enqueue(binding, max(1, int(deadline - time.monotonic())))
         deadline = min(deadline, time.monotonic() + expires_at - time.time() - 10)
-    receipt = wait_for_result(binding, args.wait_seconds, deadline=deadline)
+    receipt, failure = wait_for_result(binding, args.wait_seconds, deadline=deadline)
     if receipt is None:
-        print('CONTABO_RESEARCH_TIMEOUT', flush=True)
-        return 124
+        return failure
 
     print(f"Verified private worker run {receipt['worker_run_id']}: {receipt['status']}", flush=True)
     for event in receipt.get('events', []):

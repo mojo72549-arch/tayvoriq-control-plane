@@ -19,6 +19,9 @@ REVIEW_MAX_ATTEMPTS = 3
 REVIEW_RETRY_DIR = Path(".automation/tayvoriq-agent-v2/research-retries")
 ISSUE_DETAILS = {
     "RESEARCH_TIME_BUDGET_EXHAUSTED": "Die Themenprüfung hat ihr Zeitlimit erreicht.",
+    "WORKER_START_TIMEOUT": "Contabo hat den Rechercheauftrag innerhalb des Zeitlimits nicht übernommen.",
+    "WORKER_RESULT_TIMEOUT": "Contabo hat den Rechercheauftrag übernommen. Das Ergebnis kam nicht rechtzeitig zurück.",
+    "WORKER_WAKEUP_ACCESS": "GitHub hat das Startsignal an Contabo abgewiesen. Die Recherche hat nicht begonnen.",
     "EDITORIAL_MINIMUM_NOT_MET": "Zu wenige Themen haben die redaktionelle Prüfung bestanden.",
     "REGIONAL_MINIMUM_NOT_MET": "Zu wenige belegte Themen haben einen regionalen oder bundesweiten Bezug.",
     "SOURCE_MINIMUM_NOT_MET": "Zu wenige Vorschläge haben die Quellenprüfung bestanden.",
