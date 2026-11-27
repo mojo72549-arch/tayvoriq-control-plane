@@ -58,7 +58,16 @@ class Observation:
                      'state': 'SEARCHING', 'started_at': stamp(), 'updated_at': stamp(),
                      'sources_seen': None, 'drafts_saved': 0, 'quality_rejections': 0,
                      'corroborated_headlines': None,
-                     'provider': None, 'issues': [], 'exit_code': None}
+                     'provider': None, 'issues': [], 'exit_code': None, 'history': []}
+
+    def record(self, event, **facts):
+        """Keep a bounded history of verified facts, with the time they were observed."""
+        history = self.data['history']
+        entry = {'event': event, **facts}
+        if history and {k: v for k, v in history[-1].items() if k != 'at'} == entry:
+            return
+        history.append({'at': stamp(), **entry})
+        del history[:-40]
 
     def event(self, row):
         if not isinstance(row, dict):
@@ -71,16 +80,20 @@ class Observation:
                 'wakeup_confirmed': row.get('confirmed') is True,
                 'next_check_at': datetime.fromtimestamp(check, timezone.utc).isoformat()
                     if type(check) in (int, float) and 0 < check < 253402300799 else None}
+            self.record(event, wake_attempt=row['wake_attempt'], confirmed=row.get('confirmed') is True)
         elif event == 'contabo_worker_started' and type(row.get('worker_run_id')) is int and row['worker_run_id'] > 0:
             self.data.setdefault('handoff', {}).update(state='RUNNING', worker_run_id=row['worker_run_id'],
                 next_check_at=None, owner='contabo_research_worker')
             self.data['issues'] = [issue for issue in self.data['issues'] if issue['code'] != 'WORKER_WAKEUP_FAILED']
+            self.record(event, worker_run_id=row['worker_run_id'])
         elif event == 'contabo_worker_finished' and row.get('status') in {'SUCCEEDED', 'FAILED'}:
             self.data.setdefault('handoff', {}).update(state='COMPLETED' if row['status'] == 'SUCCEEDED' else 'FAILED',
                 next_check_at=None)
+            self.record(event, status=row['status'])
         elif event == 'insufficient_corroborated_stories' and isinstance(row.get('corroborated_titles'), list):
             self.data['corroborated_headlines'] = len(row['corroborated_titles'])
             self.issue('source evidence insufficient', None)
+            self.record(event, count=self.data['corroborated_headlines'])
         elif event == 'contabo_worker_failure' and row.get('code') in WORKER_FAILURES:
             code = row['code']
             issue = {'code': code, 'provider': None}
@@ -88,6 +101,7 @@ class Observation:
                 self.data['issues'] = [*self.data['issues'], issue][-12:]
             if code == 'WORKER_WAKEUP_FAILED' and row.get('cause') in {'ACCESS', 'UNCONFIRMED'}:
                 self.data['wakeup_failure_cause'] = row['cause']
+            self.record(event, code=code, cause=row.get('cause') if row.get('cause') in ('ACCESS', 'UNCONFIRMED') else None)
             if row.get('terminal', True):
                 self.data.setdefault('handoff', {}).update(state='BLOCKED', next_check_at=None,
                     owner='production_engineering', action_required='CHECK_BOUND_WORKER_RESULT'
@@ -98,6 +112,7 @@ class Observation:
             value = row.get('total_records')
             if type(value) is int and 0 <= value <= 100000:
                 self.data['sources_seen'] = value
+                self.record(event, count=value)
         elif event == 'research_draft_saved':
             self.saved.add(hashlib.sha256(str(row.get('title', '')).encode()).hexdigest())
             self.data['drafts_saved'] = len(self.saved)
@@ -105,6 +120,7 @@ class Observation:
             value = row.get('corroborated_headlines')
             if type(value) is int and 0 <= value <= 100000:
                 self.data['corroborated_headlines'] = value
+                self.record(event, count=value)
                 if value >= 2:
                     self.data['issues'] = [issue for issue in self.data['issues'] if issue['code'] != 'SOURCES']
         elif event == 'candidate_editorial_rejection':
@@ -150,6 +166,7 @@ class Observation:
     def waiting(self, retry_at, attempt):
         self.data.update(state='WAITING', next_retry_at=datetime.fromtimestamp(retry_at, timezone.utc).isoformat(),
                          local_attempt=attempt, max_local_attempts=3, updated_at=stamp())
+        self.record('retry_waiting', next_retry_at=self.data['next_retry_at'], local_attempt=attempt)
 
     def finish(self, code):
         if code == 124 and self.data.get('handoff', {}).get('state') in {'WAITING_FOR_WORKER', 'RUNNING'}:
@@ -167,6 +184,7 @@ class Observation:
                     action_required='RESEARCH_ADDITIONAL_ORIGINAL_SOURCES' if source_blocked else 'CHECK_BOUND_WORKER_RESULT')
         self.data.update(state='GENERATED' if code == 0 else 'FAILED', exit_code=code,
                          next_retry_at=None, updated_at=stamp())
+        self.record('research_finished', exit_code=code)
 
 
 def publish(data, token, *, request=urlopen):
