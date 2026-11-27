@@ -684,7 +684,9 @@ Jedes Kriterium in regional_scorecard.ratings hat y (YouTube, ganze Zahl 0–5),
 Die fünf Werte in criteria und die sieben einzelnen Trend-Scores verwenden die Skala 0–100. Die Skala 0–5 gilt ausschließlich für y und t in der regional_scorecard. Bewerte beide Skalen eigenständig. Begründe die Relevanz für YouTube und TikTok jeweils konkret. Nutze local für Stuttgart/Baden-Württemberg oder germany für Deutschland. Gib dem Einstieg eine belegte Folge und beantworte die Zuschauerfrage im Erklärtext. primary_hook: 9–16 Wörter. viewer_question: 7–14. explanation_core: 17–32. surprise_or_reframe: 12–22 mit einem weiteren belegten Detail. practical_relevance und follow_reason: je 10–18. cta_text beginnt mit „Folge TAYVORIQ“ und nennt einen konkreten Grund aus der Meldung. Nur NONE oder SOFT für offene Schleifen.
 fallback_editorial_answers: fünf ganze Sätze mit je 5–15 Wörtern und zusammen 38–49 Wörtern. why_happening nennt eine belegte Ursache, etwa mit weil oder dadurch, und wiederholt nicht den ersten Satz. personal_impact nennt eine weitere konkrete Folge und enthält „für dich“. action_now beginnt mit einem konkreten Verb wie Beobachte oder Vergleiche. Kennzeichne geplante und geschätzte Folgen entsprechend.
 {policy}
-Redaktionelle Vorgaben, keine Fakten:\n{editorial_context}'''
+Redaktionelle Vorgaben, keine Fakten:\n{editorial_context}
+Verwende die kurzen Antwortfeld-Namen (kurz = fachlicher Feldname):
+{', '.join(f'{wire}={field}' for field, wire in local.WIRE_KEYS.items())}.'''
     payload={"model":model,"messages":[{"role":"system","content":"Return valid JSON only. Source-bounded transformation; use only supplied source_id values and never invent facts."},{"role":"user","content":user}],"temperature":0,"stream":False}
     if provider_kind=="groq":
         payload.update({"max_completion_tokens":4000,"response_format":{"type":"json_object"}})
@@ -703,19 +705,26 @@ Redaktionelle Vorgaben, keine Fakten:\n{editorial_context}'''
     chunks = []
     if provider_kind == 'ollama':
         data = {'candidates': []}
+        timed_out = False
         for index, lead in enumerate(allowlist):
             pair = tuple(lead['source_ids'])
             sources = [item for item in indexed if item['source_id'] in pair]
             prompt = f'{local_instructions}\nQuellenpaar: {json.dumps(lead, ensure_ascii=False)}\nMeldungen: {json.dumps(sources, ensure_ascii=False)}'
             request = {**payload, 'messages': [payload['messages'][0], {'role': 'user', 'content': prompt}],
                        'max_completion_tokens': 1450,
-                       'format': local.research_format(schema, [pair], base.VALID_SCOPES)}
-            raw = local.complete(request, time_limit=local.candidate_budget(len(allowlist) - index))
-            decision = local.read_candidates(base.extract_json(provider.content_of(raw)), [pair])
+                       'format': local.research_format(schema, [pair], base.VALID_SCOPES, compact=True)}
+            try:
+                raw = local.complete(request, time_limit=local.candidate_budget(len(allowlist) - index))
+            except TimeoutError:
+                timed_out = True
+                continue
+            decision = local.read_candidates(base.extract_json(provider.content_of(raw)), [pair], compact=True)
             data['candidates'].extend(decision['candidates'])
             print(json.dumps({'event': 'provider_success', 'provider': 'ollama', 'model': model,
                               'source_label': source_label, 'pair': lead['source_pair_id'],
                               'draft_returned': bool(decision['candidates'])}), flush=True)
+        if timed_out and not data['candidates']:
+            raise TimeoutError('Ollama reached the time limit without returning a complete candidate')
     else:
         raw = call() if provider_kind == 'groq' or interactive else http.retry('huggingface', call, 2)
         data = base.extract_json(provider.content_of(raw))

@@ -95,6 +95,22 @@ class GroqSourceContractTests(unittest.TestCase):
                     hf.structure('targeted', '', self.pool, 'multi-publisher-rss', provider_kind='ollama', allow_single=True)
             model.assert_called_once()
 
+    def test_ollama_attempts_the_next_source_pair_after_a_timeout(self):
+        attempted = []
+
+        def decide(payload, *, time_limit):
+            key, = payload['format']['required']
+            attempted.append(key)
+            if len(attempted) == 1:
+                raise TimeoutError('bounded completion')
+            return {'choices': [{'message': {'content': json.dumps({key: None})}}]}
+
+        with patch.object(hf.local, 'complete', side_effect=decide), \
+             patch.object(hf.rss, 'enrich_evidence', side_effect=lambda records: records):
+            with self.assertRaisesRegex(TimeoutError, 'without returning a complete candidate'):
+                hf.structure('research', '', self.pool, 'multi-publisher-rss', provider_kind='ollama')
+        self.assertEqual(len(set(attempted)), 2)
+
     def test_groq_json_result_uses_existing_exact_url_and_independence_validator(self):
         ids = self.ids
         a = self._candidate(

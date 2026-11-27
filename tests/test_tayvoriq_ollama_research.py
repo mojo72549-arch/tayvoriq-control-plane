@@ -250,6 +250,13 @@ class OllamaResearchTests(unittest.TestCase):
         row = {'trend_scope': 'business_economy'}
         self.assertEqual(ollama.read_candidates({'S001+S002': row, 'S003+S004': None}, pairs),
                          {'candidates': [{**row, 'source_pair_id': 'S001+S002'}]})
+        compact = ollama.research_format(example, pairs, {'business_economy'}, compact=True)
+        short_shape = compact['properties']['S001+S002']['anyOf'][0]
+        self.assertEqual(set(short_shape['required']), {'scope', 'region', 'viral', 'card'})
+        self.assertEqual(short_shape['properties']['card'], fields['regional_scorecard'])
+        self.assertEqual(ollama.read_candidates({'S001+S002': {'scope': 'business_economy'}, 'S003+S004': None},
+                                               pairs, compact=True),
+                         {'candidates': [{**row, 'source_pair_id': 'S001+S002'}]})
 
     def test_local_platform_scores_are_mapped_to_the_existing_rubric_contract(self):
         reason = 'Zwei Streiktage betreffen die Zustellung.'
