@@ -1,7 +1,7 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-27T06:56:36.126623Z",
-  "overall": "yellow",
+  "generated_at": "2026-11-27T08:19:39.417558Z",
+  "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
@@ -48,11 +48,11 @@
   "run": {
     "id": 45954857672,
     "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45954857672",
     "created_at": "2026-11-27T06:54:12Z",
-    "updated_at": "2026-11-27T06:54:16Z",
+    "updated_at": "2026-11-27T07:10:17Z",
     "attempt": 1,
     "progress": 0,
     "current_step": null,
@@ -131,8 +131,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "yellow",
-      "detail": "in_progress"
+      "status": "red",
+      "detail": "failure"
     },
     {
       "name": "Production Green",
@@ -142,7 +142,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "Recovery-Replay fehlgeschlagen · Delivery Watch klassifiziert den gebundenen Request"
     },
     {
       "name": "Telegram",
@@ -155,7 +155,18 @@
       "detail": "Noch nicht erreicht"
     }
   ],
-  "incident": null,
+  "incident": {
+    "signature": "45954857672:none",
+    "severity": "critical",
+    "failure_state": null,
+    "failed_step": null,
+    "failed_step_number": null,
+    "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false,
+    "user_action_required": false,
+    "recovery_replay_failed": true
+  },
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
@@ -163,8 +174,8 @@
     "message_id": null
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_RUNNING",
+    "status": "RECOVERY_CLASSIFICATION_PENDING",
+    "source_status": "REPLAY_DISPATCHED",
     "failure_state": null,
     "failed_run_id": null,
     "replay_run_id": 45954857672,
@@ -173,10 +184,15 @@
     "owner": "tayvoriq-agent-orchestrator-v2",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
-    "inferred_from_run_terminal_state": false,
+    "inferred_from_run_terminal_state": true,
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-27T07:10:17Z",
+      "title": "Recovery-Replay wartet auf Klassifizierung",
+      "detail": "Run 45954857672 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+    },
     {
       "at": "2026-11-27T06:54:18.921946+00:00",
       "title": "DISPATCHED",
