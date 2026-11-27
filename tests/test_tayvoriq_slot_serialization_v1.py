@@ -343,6 +343,22 @@ class SlotSerializationTests(unittest.TestCase):
                 ]):
                     return gate.check_request(path, root, "repo", "token")
             self.assertEqual(check()["reason"], "VERIFIED_CTA_CONTENT_REPAIR_AFTER_FAILED_PUBLISHABILITY")
+            old["contabo_handoff"] = {"worker_run_id": 456}
+            (root / "source-repair.json").write_text(json.dumps(old))
+            owner = json.loads(pointer.read_text())
+            owner.update(execution_backend="contabo_private_runner", execution_run_id=456, source_context_sha256="original")
+            gate.write_json(pointer, owner)
+            jobs["jobs"][0]["steps"][0]["name"] = "Monitor the private worker receipt"
+            receipt = root.parent / "run-status/contabo/124.json"
+            receipt.parent.mkdir(parents=True)
+            proof = {"schema": "tayvoriq-contabo-worker-v1", "status": "FAILED", "request_id": "source-repair",
+                     "controller_run_id": 124, "worker_run_id": 456, "source_context_sha256": "original",
+                     "failed_step": "Assert publishable production output"}
+            gate.write_json(receipt, proof)
+            self.assertEqual(check()["reason"], "VERIFIED_CTA_CONTENT_REPAIR_AFTER_FAILED_PUBLISHABILITY")
+            gate.write_json(receipt, proof | {"worker_run_id": 457})
+            self.assertFalse(check()["released"])
+            gate.write_json(receipt, proof)
             new["source_context"] = {"sources": ["changed"]}
             path.write_text(json.dumps(new))
             self.assertFalse(check()["released"])

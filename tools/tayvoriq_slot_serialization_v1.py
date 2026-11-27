@@ -276,6 +276,28 @@ def evaluate_contabo_review(request, run, jobs_payload, repo, token, expected_ru
     return unverified
 
 
+def contabo_publishability_failed(root, pointer, owner):
+    if pointer.get("state") != "ACTIVE" or pointer.get("execution_backend") != "contabo_private_runner":
+        return False
+    controller = pointer.get("golden_path_run_id")
+    receipt_path = root / "run-status/contabo" / f"{controller}.json"
+    if not receipt_path.is_file():
+        return False
+    receipt = read_json(receipt_path)
+    handoff = owner.get("contabo_handoff") or {}
+    worker = pointer.get("execution_run_id")
+    return (
+        type(worker) is int and worker > 0
+        and receipt.get("schema") == "tayvoriq-contabo-worker-v1"
+        and receipt.get("status") == "FAILED" and receipt.get("failed_step") == REQUIRED_FINAL_STEPS[0]
+        and receipt.get("request_id") == pointer.get("request_id") == owner.get("request_id")
+        and receipt.get("controller_run_id") == owner.get("golden_path_run_id") == controller
+        and receipt.get("worker_run_id") == handoff.get("worker_run_id") == worker
+        and receipt.get("source_context_sha256") == pointer.get("source_context_sha256")
+        == owner.get("source_context_sha256")
+    )
+
+
 def check_request(request_path: Path, requests_dir: Path, repo: str, token: str) -> dict:
     request = read_json(request_path)
     parts = selection_parts(request)
@@ -379,7 +401,9 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                                 step.get("name") == "Assert publishable production output" and step.get("conclusion") == "failure"
                                 for job in jobs.get("jobs") or [] for step in job.get("steps") or []
                             )
-                            if failed_publishability and is_verified_cta_content_repair(request, read_json(owner_path), owner):
+                            original = read_json(owner_path)
+                            if (is_verified_cta_content_repair(request, original, owner)
+                                    and (failed_publishability or contabo_publishability_failed(requests_dir.parent, pointer, original))):
                                 result["released"] = True
                                 result["reason"] = "VERIFIED_CTA_CONTENT_REPAIR_AFTER_FAILED_PUBLISHABILITY"
                                 return result
