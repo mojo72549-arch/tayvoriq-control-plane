@@ -4,16 +4,16 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "run_id": 45981134031,
   "run_attempt": 1,
-  "updated_at": "2026-11-27T10:25:31.421061+00:00",
-  "observed_at": "2026-11-27T10:26:06.802612+00:00",
+  "updated_at": "2026-11-27T10:26:26.163179+00:00",
+  "observed_at": "2026-11-27T10:26:26.163985+00:00",
   "current": {
-    "phase": "quality",
+    "phase": "repair",
     "status": "started",
-    "at": "2026-11-27T10:25:31.421061+00:00",
-    "call_id": "checkpoint-QUALITY_AUDIT_1",
-    "timeout_seconds": 420,
-    "round": null,
-    "target": null
+    "at": "2026-11-27T10:26:26.163179+00:00",
+    "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
+    "target": "voice",
+    "timeout_seconds": 600,
+    "round": null
   },
   "events": [
     {
@@ -22,8 +22,31 @@
       "at": "2026-11-27T10:25:31.421061+00:00",
       "call_id": "checkpoint-QUALITY_AUDIT_1",
       "timeout_seconds": 420
+    },
+    {
+      "phase": "quality",
+      "status": "failed",
+      "at": "2026-11-27T10:26:26.163022+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1"
+    },
+    {
+      "phase": "repair",
+      "status": "started",
+      "at": "2026-11-27T10:26:26.163179+00:00",
+      "call_id": "checkpoint-VOICE_REPAIR_HUMAN_NARRATOR_V5",
+      "target": "voice",
+      "timeout_seconds": 600
     }
   ],
   "completed_phases": [],
-  "findings": []
+  "findings": [
+    "TikTok · Szene 6: Motiv passt nicht zur Aussage",
+    "score_below_threshold:visual:65<78",
+    "pronunciation_interpretation:Sinnentstellende Audio-Abweichung: Das Wort 'Jobunsicherheit' wurde im TikTok-Audio als 'Jugendsicherheit' und im YouTube-Audio als 'Job und Sicherheit' eingesprochen/transkribiert.",
+    "marketing_agent:Audio-Transkript verfälscht das Schlüsselwort 'Jobunsicherheit' sinnentstellend zu 'Jugendsicherheit' (TikTok) bzw. 'Job und Sicherheit' (YouTube Shorts).",
+    "visual_agent:Unpassendes und irreführendes Symbolbild in TikTok Szene 6: Die Abbildung von US-Dollar-Bargeldbündeln passt nicht zum Aufruf für verifizierte Einordnung bei einer seriösen SAP-Unternehmensmeldung und beeinträchtigt die Glaubwürdigkeit.",
+    "visual_agent:scene_off_topic:tiktok:6",
+    "marketing_agent_recommendation_block",
+    "visual_agent_recommendation_block"
+  ]
 }
