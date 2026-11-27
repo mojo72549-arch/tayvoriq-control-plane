@@ -183,7 +183,7 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "source": "telegram_trend_approval_content_repair",
   "repair_of_request_id": "telegram-3821-trend-1",
-  "status": "APPROVED",
+  "status": "DISPATCHING",
   "golden_path_v5_state": "APPROVED",
   "golden_path_v5_history": [
     {
@@ -209,6 +209,11 @@
         "worker_run_id": 45954178273,
         "failure_code": "shared_cta_incomplete"
       }
+    },
+    {
+      "state": "DISPATCHING",
+      "at": "2026-11-27T06:54:08.378827+00:00",
+      "actor": "request-dispatcher:45954835467"
     }
   ],
   "follow_conversion_gate": {
@@ -220,5 +225,7 @@
     "result": "PASS",
     "issues": []
   },
-  "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f"
+  "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
+  "dispatch_claim_run_id": 45954835467,
+  "dispatch_contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f"
 }
