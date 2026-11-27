@@ -24,7 +24,7 @@ All future Golden Path, Recovery, Telegram notification and slot-orchestration c
 The public control plane cannot read secrets from the private repository automatically. Configure these under **Settings → Secrets and variables → Actions**:
 
 - `PRIVATE_REPO_TOKEN` – fine-grained PAT restricted to `mojo72549-arch/shorts-agent-studio`, permission `Contents: Read`.
-- `PRIVATE_REPO_WAKE_TOKEN` – for immediate Contabo research starts, a separately scoped token restricted to `mojo72549-arch/shorts-agent-studio` with `Contents: Read and write`. It writes only the request-bound `.automation/contabo-research-wakeup.json`; no Actions dispatch permission is required. The existing read token stays read-only. If wake access is unavailable, the existing scheduled consumer remains possible, and the controller records the access failure without claiming the worker has started.
+- `PRIVATE_REPO_WAKE_TOKEN` – for immediate Contabo research and production starts, a separately scoped token restricted to `mojo72549-arch/shorts-agent-studio` with `Contents: Read and write`. It writes the request-bound `.automation/contabo-research-wakeup.json` or `.automation/contabo-wakeup.json` in Studio. No Actions dispatch permission is required. The existing read token stays read-only. If wake access is unavailable, the scheduled consumer can still accept the queue; only a bound worker receipt confirms that the worker started.
 - `PAGES_DEPLOY_TOKEN` – token with write access to `mojo72549-arch/mind-reset-daily`.
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`

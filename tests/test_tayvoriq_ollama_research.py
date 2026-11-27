@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
 
@@ -49,7 +50,7 @@ class ContaboWakeupTests(unittest.TestCase):
                     transport.write_receipt(self.binding, 99, 'RUNNING', Path('/unused'))
                 self.assertFalse(any('body' in c.kwargs for c in call.call_args_list))
 
-    def wait(self, receipt, seconds=100, wake_error=None):
+    def wait(self, receipt, seconds=100, wake_error=None, binding=None):
         now = [0]
         def pause(value):
             now[0] += value
@@ -58,14 +59,14 @@ class ContaboWakeupTests(unittest.TestCase):
              patch.object(transport.time, 'sleep', side_effect=pause), \
              patch.object(transport, 'read_receipt', side_effect=lambda b: (receipt(now[0]), None)), \
              patch.object(transport, 'wake_worker', side_effect=wake_error) as wake, patch.object(transport, 'event') as events:
-            result = transport.wait_for_result(self.binding, seconds)
+            result = transport.wait_for_result(binding or self.binding, seconds)
         return result, wake, events
 
     def test_denied_wakeup_preserves_existing_consumer_and_records_unconfirmed_attempt(self):
         succeeded = {'worker_run_id': 99, 'status': 'SUCCEEDED'}
         result, wake, events = self.wait(lambda now: succeeded if now >= 10 else None,
                                         wake_error=RuntimeError('CONTABO_RESEARCH_GITHUB: HTTP 403'))
-        self.assertEqual(result, succeeded)
+        self.assertEqual(result, (succeeded, 0))
         wake.assert_called_once_with(self.binding, 1)
         failure = next(c for c in events.call_args_list if c.args[0] == 'contabo_worker_failure')
         self.assertIs(failure.kwargs['terminal'], False)
@@ -81,7 +82,7 @@ class ContaboWakeupTests(unittest.TestCase):
 
     def test_missing_worker_gets_one_same_binding_rewake_then_truthful_stop(self):
         result, wake, events = self.wait(lambda _: None)
-        self.assertIsNone(result)
+        self.assertEqual(result, (None, transport.WORKER_START_TIMEOUT))
         self.assertEqual(wake.call_args_list, [unittest.mock.call(self.binding, 1), unittest.mock.call(self.binding, 2)])
         self.assertEqual(events.call_args_list[0].kwargs['next_check_epoch'], 1090)
         self.assertIsNone(events.call_args_list[1].kwargs['next_check_epoch'])
@@ -90,14 +91,63 @@ class ContaboWakeupTests(unittest.TestCase):
     def test_running_or_completed_worker_never_restarts(self):
         running = {'worker_run_id': 99, 'status': 'RUNNING'}
         result, wake, events = self.wait(lambda _: running)
-        self.assertIsNone(result)
+        self.assertEqual(result, (None, transport.WORKER_RESULT_TIMEOUT))
         wake.assert_not_called()
         self.assertEqual(events.call_args.kwargs['code'], 'WORKER_RESULT_TIMEOUT')
         succeeded = {**running, 'status': 'SUCCEEDED'}
         result, wake, events = self.wait(lambda now: succeeded if now >= 10 else None)
-        self.assertEqual(result, succeeded)
+        self.assertEqual(result, (succeeded, 0))
         wake.assert_called_once_with(self.binding, 1)
         self.assertFalse(any(c.args[0] == 'contabo_worker_failure' for c in events.call_args_list))
+
+    def test_all_entrypoints_report_denied_start_without_repeating_a_denied_write(self):
+        for origin, slot, selection in [
+            ('control_center', 'morning', '20261127-morning-agentv2-c12345678'),
+            ('telegram_command', 'evening', '20261127-evening-agentv2-r1'),
+            ('scheduled', 'morning', '20261127-morning-agentv2'),
+            ('scheduled', 'evening', '20261127-evening-agentv2'),
+            ('review', 'evening', 'review-evening-123'),
+        ]:
+            with self.subTest(origin=origin, slot=slot):
+                binding = {**self.binding, 'origin': origin, 'slot': slot, 'selection': selection}
+                result, wake, events = self.wait(lambda _: None, binding=binding,
+                    wake_error=RuntimeError('CONTABO_RESEARCH_GITHUB: HTTP 403'))
+                self.assertEqual(result, (None, transport.WAKEUP_ACCESS_DENIED))
+                wake.assert_called_once_with(binding, 1)
+                self.assertEqual(events.call_args_list[0].kwargs['cause'], 'ACCESS')
+                self.assertIsNone(events.call_args_list[1].kwargs['next_check_epoch'])
+                self.assertEqual(events.call_args.kwargs['code'], 'WORKER_START_TIMEOUT')
+
+    def test_transient_wake_failure_still_gets_a_bounded_second_attempt(self):
+        result, wake, _ = self.wait(lambda _: None, wake_error=RuntimeError('CONTABO_RESEARCH_GITHUB: HTTP 503'))
+        self.assertEqual(result, (None, transport.WORKER_START_TIMEOUT))
+        self.assertEqual(wake.call_count, 2)
+
+    def test_push_selects_its_bound_lane_and_the_consumer_skips_cancelled_items(self):
+        explicit = self.binding
+        morning = {**explicit, 'origin': 'scheduled', 'selection': '20261127-morning-agentv2',
+                   'controller': '124'}
+        evening = {**morning, 'slot': 'evening', 'selection': '20261127-evening-agentv2',
+                   'controller': '125'}
+        queues = {'explicit': explicit, 'morning': morning, 'evening': evening}
+        revision = 'b' * 40
+        with TemporaryDirectory() as directory, patch.object(transport.time, 'time', return_value=1000), \
+                patch.object(transport, 'read_receipt', return_value=(None, None)), \
+                patch.object(transport, 'queue_current', side_effect=lambda binding: binding != explicit):
+            root = Path(directory)
+            queue = root / transport.QUEUE
+            queue.mkdir(parents=True)
+            for lane, binding in queues.items():
+                (queue / f'{lane}.json').write_text(json.dumps({'binding': binding, 'expires_at': 1100}))
+            self.assertEqual(transport.resolve_queue(root)['binding'], morning)
+            wake = {'content': base64.b64encode(json.dumps({'binding': evening}).encode()).decode()}
+            with patch.object(transport, 'api', return_value=wake) as api:
+                self.assertEqual(transport.resolve_queue(root, wake_revision=revision)['binding'], evening)
+                api.assert_called_once_with(f'repos/{transport.STUDIO}/contents/{transport.WAKEUP}?ref={revision}',
+                                            missing=True)
+            cancelled_wake = {'content': base64.b64encode(json.dumps({'binding': explicit}).encode()).decode()}
+            with patch.object(transport, 'api', return_value=cancelled_wake):
+                self.assertEqual(transport.resolve_queue(root, wake_revision=revision)['binding'], morning)
 
 
 class OllamaResearchTests(unittest.TestCase):
