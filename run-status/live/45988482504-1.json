@@ -4,16 +4,16 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "run_id": 45988482504,
   "run_attempt": 1,
-  "updated_at": "2026-11-27T11:23:16.325538+00:00",
-  "observed_at": "2026-11-27T11:24:18.959814+00:00",
+  "updated_at": "2026-11-27T11:24:34.472167+00:00",
+  "observed_at": "2026-11-27T11:24:34.473258+00:00",
   "current": {
-    "phase": "quality",
+    "phase": "repair",
     "status": "started",
-    "at": "2026-11-27T11:23:16.325538+00:00",
-    "call_id": "checkpoint-QUALITY_AUDIT_1",
-    "timeout_seconds": 420,
-    "round": null,
-    "target": null
+    "at": "2026-11-27T11:24:34.472167+00:00",
+    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
+    "target": "visuals",
+    "round": 1,
+    "timeout_seconds": 900
   },
   "events": [
     {
@@ -65,8 +65,65 @@
       "at": "2026-11-27T11:23:16.325538+00:00",
       "call_id": "checkpoint-QUALITY_AUDIT_1",
       "timeout_seconds": 420
+    },
+    {
+      "phase": "scenes",
+      "status": "started",
+      "at": "2026-11-27T11:24:34.233944+00:00",
+      "call_id": "f0a6281021664b94ab63c4e4bdd5d97e",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "scenes",
+      "status": "completed",
+      "at": "2026-11-27T11:24:34.235470+00:00",
+      "call_id": "f0a6281021664b94ab63c4e4bdd5d97e",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "started",
+      "at": "2026-11-27T11:24:34.235612+00:00",
+      "call_id": "307fa13abbd7415fa5be267f9e9062fe",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-27T11:24:34.235992+00:00",
+      "call_id": "5f8022ced4a24820a187272d86ac8158",
+      "platform": "youtube_shorts",
+      "scene": 1,
+      "total": 6
+    },
+    {
+      "phase": "quality",
+      "status": "failed",
+      "at": "2026-11-27T11:24:34.472075+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1"
+    },
+    {
+      "phase": "repair",
+      "status": "started",
+      "at": "2026-11-27T11:24:34.472167+00:00",
+      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
+      "target": "visuals",
+      "round": 1,
+      "timeout_seconds": 900
     }
   ],
   "completed_phases": [],
-  "findings": []
+  "findings": [
+    "TikTok · Szene 4: Motiv passt nicht zur Aussage",
+    "TikTok · Szene 6: Motiv passt nicht zur Aussage",
+    "score_below_threshold:visual:65<78",
+    "visual_agent:TikTok Szene 6: Einsatz von US-Dollar-Bündeln als Symbolbild widerspricht der vertrauenswürdigen Einordnung von SAP-Unternehmensnachrichten und wirkt wie unseriöser Clickbait.",
+    "visual_agent:TikTok Szene 4: Das gezeigte Motiv (Kreativ-Workshop/Handarbeit an Tischen) steht in keinem inhaltlichen Zusammenhang zu IT-Jobunsicherheit oder veränderten IT-Dienstleistungen.",
+    "visual_agent:scene_off_topic:tiktok:4",
+    "visual_agent:scene_off_topic:tiktok:6",
+    "visual_agent_recommendation_block"
+  ]
 }
