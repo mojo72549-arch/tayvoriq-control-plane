@@ -1,7 +1,7 @@
 {
   "action": "NONE",
-  "state": "RUNNING",
-  "reason": "VERIFIED_CONTABO_OWNER_ACTIVE",
+  "state": "REPAIR_REQUIRED",
+  "reason": "RECOVERY_EXHAUSTED",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "46011335246",
   "generation": "0",
@@ -9,6 +9,20 @@
   "request_substate": "",
   "decision_key": "",
   "dispatch_verified": false,
+  "contabo_repair": {
+    "schema": "tayvoriq-contabo-quality-decision-v1",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+    "controller_run_id": 46011335246,
+    "worker_run_id": 46011418248,
+    "state": "RECOVERY_EXHAUSTED",
+    "checked_at": "2026-11-27T14:06:44.926709+00:00",
+    "controller_ended_at": "2026-11-27T14:00:19Z",
+    "failed_step": "Assert publishable production output",
+    "user_action_required": false,
+    "quality_gates_weakened": false,
+    "attempt_used": true
+  },
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
   "last_dispatch": {
     "decision_key": "06faeb5a773c7bd06f0fea6b5872916219c8666a6731744b058f01a72e7a0782",
@@ -20,6 +34,23 @@
     "executor_run_id": 46011335246,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-27T13:56:12.782552+00:00",
-  "orchestrator_run_id": 46011287255
+  "checked_at": "2026-11-27T14:06:44.995331+00:00",
+  "orchestrator_run_id": 46012898931,
+  "operator_event": {
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+    "controller_run_id": 46011335246,
+    "worker_run_id": 46011418248,
+    "schema": "tayvoriq-contabo-operator-event-v1",
+    "state": "RECOVERY_EXHAUSTED",
+    "owner": "TAYVORIQ-Produktionstechnik",
+    "user_action_required": false,
+    "happened_at": "2026-11-27T14:00:19Z",
+    "cause": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.",
+    "done": "Der Orchestrator hat den Stopp dem freigegebenen Auftrag zugeordnet. Der einmal zugelassene Wiederanlauf wurde ausgeführt.",
+    "decision_required": "Die Produktionstechnik muss den Fehlernachweis prüfen und eine gezielte Korrektur bestätigen.",
+    "next": "Es ist kein Reparaturjob eingeplant. Die Produktionstechnik muss den Fehlernachweis prüfen und eine gezielte Korrektur bestätigen.",
+    "id": "92153a76d9733235e0a7e3c8bae03b7d5033857f7b2bfc3979f17f56143d772e",
+    "text": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.\nDer Orchestrator hat den Stopp dem freigegebenen Auftrag zugeordnet. Der einmal zugelassene Wiederanlauf wurde ausgeführt.\nEs ist kein Reparaturjob eingeplant. Die Produktionstechnik muss den Fehlernachweis prüfen und eine gezielte Korrektur bestätigen.\nFür dich ist keine Aktion nötig."
+  }
 }
