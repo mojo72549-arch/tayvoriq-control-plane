@@ -1,7 +1,7 @@
 {
   "action": "NONE",
   "state": "REPAIR_REQUIRED",
-  "reason": "DIAGNOSTICS_REQUIRED",
+  "reason": "AWAITING_VERIFIED_REPAIR",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "45965549397",
   "generation": "0",
@@ -15,13 +15,25 @@
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 45965549397,
     "worker_run_id": 45965833512,
-    "state": "DIAGNOSTICS_REQUIRED",
-    "checked_at": "2026-11-27T10:17:03.186135+00:00",
+    "state": "AWAITING_VERIFIED_REPAIR",
+    "checked_at": "2026-11-27T10:18:53.261695+00:00",
     "next_check_at": "2026-11-27T10:20:00+00:00",
     "controller_ended_at": "2026-11-27T09:11:35Z",
     "failed_step": "Assert publishable production output",
     "user_action_required": false,
-    "quality_gates_weakened": false
+    "quality_gates_weakened": false,
+    "artifact_id": 15185424089,
+    "implementation_sha": "8f9a886ce8d79a849b60895ac6cb96bd2c0ff2eb",
+    "stopped_at": "2026-11-27T09:28:29Z",
+    "budget_seconds": 1500,
+    "deadline_exceeded": true,
+    "voice_blocked": true,
+    "scenes": [
+      {
+        "platform": "tiktok",
+        "scene": 6
+      }
+    ]
   },
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
   "last_dispatch": {
@@ -34,6 +46,6 @@
     "executor_run_id": 45834804656,
     "executor_workflow": "tayvoriq-delivery-watch.yml"
   },
-  "checked_at": "2026-11-27T10:17:03.675096+00:00",
-  "orchestrator_run_id": 45980740204
+  "checked_at": "2026-11-27T10:18:53.747193+00:00",
+  "orchestrator_run_id": 45980990561
 }
