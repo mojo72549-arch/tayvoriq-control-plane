@@ -234,5 +234,27 @@
   "dispatch_claim_run_id": 45954835467,
   "dispatch_contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
   "golden_path_run_id": 45954857672,
-  "execution_backend": "contabo_private_runner"
+  "execution_backend": "contabo_private_runner",
+  "codefix_recovery": {
+    "status": "REPLAY_DISPATCHED",
+    "request_substate": "DISPATCHED",
+    "replay_run_id": 45954857672,
+    "replay_implementation_sha": "4a99c7c36f1e6122fd960e388d8ee1616ce9b91b",
+    "codefix_detection_reason": "production-green-implementation-changed",
+    "active_pointer_verified": true,
+    "exact_source_request_required": true,
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false
+  },
+  "contabo_handoff": {
+    "schema": "tayvoriq-contabo-handoff-v1",
+    "controller_run_id": 45954857672,
+    "worker_run_id": 45954933664,
+    "execution_repository": "mojo72549-arch/shorts-agent-studio",
+    "checkpoint_release": "",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+    "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
+    "quality_gates_weakened": false
+  }
 }
