@@ -485,6 +485,17 @@ jobs:
             echo 'verified=true' >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify terminal padding isolation
+        if: steps.refs.outputs.changed == 'true'
+        id: terminal_padding
+        working-directory: implementation
+        run: |
+          suite=tests/test_tayvoriq_audited_clip_exclusion.py
+          if [ -f "$suite" ] && grep -q 'def test_padding_repair_may_use_preserved_voice_checkpoint_proof' "$suite"; then
+            python -m pytest -q "$suite" tests/test_tayvoriq_vw_bargaining_checkpoint.py::test_padding_repair_removes_only_silence_after_the_vw_voice
+            echo 'verified=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Promote exact fully verified SHA in control plane
         if: github.event_name != 'pull_request' && steps.refs.outputs.changed == 'true'
         shell: bash
@@ -494,6 +505,7 @@ jobs:
           MIXED_CHECKPOINT_RECOVERY_VERIFIED: ${{ steps.mixed_checkpoint.outputs.verified }}
           VOICE_CHECKPOINT_ISOLATION_VERIFIED: ${{ steps.voice_checkpoint.outputs.verified }}
           SINGLE_SCENE_CHECKPOINT_REPAIR_VERIFIED: ${{ steps.single_scene.outputs.verified }}
+          TERMINAL_PADDING_CHECKPOINT_VERIFIED: ${{ steps.terminal_padding.outputs.verified }}
         run: |
           set -euo pipefail
           git pull --rebase origin main
@@ -516,6 +528,7 @@ jobs:
               'mixed_checkpoint_recovery_verified':os.environ.get('MIXED_CHECKPOINT_RECOVERY_VERIFIED')=='true',
               'voice_checkpoint_isolation_verified':os.environ.get('VOICE_CHECKPOINT_ISOLATION_VERIFIED')=='true',
               'single_scene_checkpoint_repair_verified':os.environ.get('SINGLE_SCENE_CHECKPOINT_REPAIR_VERIFIED')=='true',
+              'terminal_padding_checkpoint_verified':os.environ.get('TERMINAL_PADDING_CHECKPOINT_VERIFIED')=='true',
               'quality_gates_weakened':False,
           }
           path=Path('.github/state/tayvoriq-production-green.json')

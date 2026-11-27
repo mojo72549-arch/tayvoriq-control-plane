@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from tayvoriq_contabo_operator_event import build_event, notify
-from tayvoriq_contabo_recovery_decision import SCENE_RECOVERY, contabo_decision
+from tayvoriq_contabo_recovery_decision import PADDING_RECOVERY, SCENE_RECOVERY, contabo_decision
 from tayvoriq_lifecycle_dispatch_v1 import dispatch_verified
 
 REQUEST = "telegram-3821-trend-1-content-repair-v1"
@@ -104,6 +104,30 @@ def test_single_scene_timeout_requires_promoted_fix_and_executable_worker_pin():
     assert classify(True)["decision_key"] == allowed["decision_key"]
     request["quality_recovery"]["repair_kind"] = SCENE_RECOVERY
     assert classify(True)["state"] == "RECOVERY_EXHAUSTED"
+
+
+def test_passing_scene_repair_can_authorize_only_the_later_terminal_mix_failure():
+    pointer, request, run, _, receipt = stopped_request()
+    request["quality_recovery"]["repair_kind"] = SCENE_RECOVERY
+    green = {"schema": "tayvoriq-production-green-v1", "implementation_repository": "mojo72549-arch/shorts-agent-studio",
+             "implementation_sha": "f" * 40, "full_preflight_passed": True,
+             "quality_gates_weakened": False, "terminal_padding_checkpoint_verified": True}
+    artifact, ts, (manifest, checkpoint, report, audit) = diagnostics(request)
+    audit.update(passed=True, blockers=[])
+    gate = {"top_level_issues": ["final-production-mix-gate-not-passed"], "quality_gates_weakened": False,
+            "variants": {"youtube_shorts": {"passed": True}, "tiktok": {"passed": True}},
+            "production_mix": {"passed": False, "quality_gates_weakened": False, "cross_variant_issues": [],
+                               "variants": {"youtube_shorts": {"passed": False, "issues": ["production-mix-silent-interval"]},
+                                            "tiktok": {"passed": True, "issues": []}}}}
+
+    def classify():
+        return contabo_decision(pointer, request, run, green, receipt, scoped_worker_ready=lambda: True,
+                                diagnostics=lambda _: (artifact, ts, (manifest, checkpoint, report, audit, gate)))
+
+    proof = classify()
+    assert (proof["state"], proof["repair_kind"], proof["platform"]) == ("RETRY_ELIGIBLE", PADDING_RECOVERY, "youtube_shorts")
+    request["quality_recovery"]["repair_kind"] = PADDING_RECOVERY
+    assert classify()["state"] == "RECOVERY_EXHAUSTED"
 
 
 def test_lost_dispatch_response_and_restart_do_not_submit_a_second_repair(tmp_path):

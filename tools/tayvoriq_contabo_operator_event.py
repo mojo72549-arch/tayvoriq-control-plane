@@ -44,6 +44,10 @@ def build_event(result, dispatch_outcome=None):
                            for row in repair["scenes"])
         event["decision_required"] = (f"Die Produktionstechnik muss eine Reparatur für {scenes} "
                                       "ab dem gesicherten Zwischenstand prüfen und bestätigen.")
+    elif state == "AWAITING_VERIFIED_PADDING_FIX":
+        platform = "YouTube" if repair["platform"] == "youtube_shorts" else "TikTok"
+        event["cause"] = f"Das Bildaudit ist bestanden. Die finale Mixprüfung beanstandet einen stummen Abschnitt bei {platform}."
+        event["decision_required"] = f"Die Produktionstechnik prüft einen begrenzten Schnitt am stummen Ende von {platform}."
     if result.get("dispatch_verified") or result.get("reason") == "CONTABO_REPAIR_RUN_DISPATCHED":
         executor = result.get("executor_run_id") or (result.get("last_dispatch") or {}).get("executor_run_id")
         if executor:

@@ -922,23 +922,32 @@ jobs:
           request = json.loads(subprocess.check_output(
               ['git', '-C', '..', 'show', f'origin/main:requests/{request_id}.json'], text=True))
           repair = request.get('quality_recovery') or {}
-          if repair.get('repair_kind') != 'SINGLE_SCENE_CHECKPOINT_REPAIR':
+          mode = repair.get('repair_kind')
+          if mode not in {'SINGLE_SCENE_CHECKPOINT_REPAIR', 'TERMINAL_PADDING_CHECKPOINT_REPAIR'}:
               raise SystemExit(0)
-          scene, = repair['scenes']
           actual_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           assert request['request_id'] == repair['request_id'] == request_id
           assert str(request['golden_path_run_id']) == str(repair['controller_run_id']) == os.environ['TAYVORIQ_PRODUCTION_RUN_ID']
           assert request['source_context_sha256'] == repair['source_context_sha256'] == os.environ['SOURCE_CONTEXT_SHA256']
           assert repair['next_implementation_sha'] == actual_sha and repair['planned_attempts'] == 1
           assert repair['voice_platforms_passed'] is True and repair['quality_gates_weakened'] is False
-          assert scene['platform'] in {'tiktok', 'youtube_shorts'} and type(scene['scene']) is int and 1 <= scene['scene'] <= 99
           assert type(repair['parent_run_id']) is int and repair['parent_run_id'] > 0
-          print(f"{scene['platform']}:{scene['scene']} {repair['parent_run_id']}")
+          if mode == 'TERMINAL_PADDING_CHECKPOINT_REPAIR':
+              platform = repair['platform']
+              assert platform in {'tiktok', 'youtube_shorts'}
+              print(f"padding:{platform} {repair['parent_run_id']}")
+          else:
+              scene, = repair['scenes']
+              assert scene['platform'] in {'tiktok', 'youtube_shorts'} and type(scene['scene']) is int and 1 <= scene['scene'] <= 99
+              print(f"{scene['platform']}:{scene['scene']} {repair['parent_run_id']}")
           SCENE
             )
             if [ -n "$scope" ]; then
               read -r single_scene parent_run <<< "$scope"
               single_scene_args=(--single-scene-parent-run "$parent_run")
+              if [[ "$single_scene" == padding:* ]]; then
+                single_scene_args+=(--keep-passing-audit)
+              fi
               echo "TAYVORIQ_AUTHORIZED_SINGLE_SCENE=$single_scene" >> "$GITHUB_ENV"
             fi
           fi
@@ -1621,6 +1630,7 @@ jobs:
         if: >-
           steps.controller.outputs.state != 'SUCCESS' &&
           steps.controller.outputs.reusable_master == 'true' &&
+          env.TAYVORIQ_AUTHORIZED_SINGLE_SCENE == '' &&
           hashFiles('implementation/tools/tayvoriq_scene_revision_v1.py') != '' &&
           vars.TAYVORIQ_SCENE_REVISION_ENABLED != 'false' &&
           (steps.visual_checkpoint.outputs.needed == 'true' || vars.TAYVORIQ_SCENE_REVISION_ENABLED == 'true' ||
@@ -1732,7 +1742,9 @@ jobs:
           fi
 
           scene_args=()
-          if [ -n "${TAYVORIQ_AUTHORIZED_SINGLE_SCENE:-}" ]; then
+          if [[ "${TAYVORIQ_AUTHORIZED_SINGLE_SCENE:-}" == padding:* ]]; then
+            scene_args=(--terminal-padding "${TAYVORIQ_AUTHORIZED_SINGLE_SCENE#padding:}")
+          elif [ -n "${TAYVORIQ_AUTHORIZED_SINGLE_SCENE:-}" ]; then
             scene_args=(--single-scene "$TAYVORIQ_AUTHORIZED_SINGLE_SCENE")
           fi
 
@@ -1877,7 +1889,7 @@ jobs:
 
       - name: Repair final publication voice proof only
         id: final_publication_voice_recovery
-        if: steps.production.outcome == 'success' && steps.publication_gate_initial.outcome == 'failure'
+        if: steps.production.outcome == 'success' && steps.publication_gate_initial.outcome == 'failure' && env.TAYVORIQ_AUTHORIZED_SINGLE_SCENE == ''
         working-directory: implementation
         shell: bash
         run: |
