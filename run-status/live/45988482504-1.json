@@ -4,42 +4,18 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "run_id": 45988482504,
   "run_attempt": 1,
-  "updated_at": "2026-11-27T11:29:33.390742+00:00",
-  "observed_at": "2026-11-27T11:34:19.209953+00:00",
+  "updated_at": "2026-11-27T11:34:35.892934+00:00",
+  "observed_at": "2026-11-27T11:34:37.894733+00:00",
   "current": {
-    "phase": "render",
+    "phase": "quality",
     "status": "started",
-    "at": "2026-11-27T11:29:21.022387+00:00",
-    "call_id": "a9bce6ba4cc644148aefeec756896860",
-    "platform": "tiktok",
-    "total": 6,
+    "at": "2026-11-27T11:34:35.892934+00:00",
+    "call_id": "checkpoint-QUALITY_AUDIT_1",
     "round": 1,
-    "target": "visuals"
+    "timeout_seconds": 420,
+    "target": null
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-27T11:29:24.766804+00:00",
-      "call_id": "2630fefe57214f12afa4ae3e584319a8",
-      "platform": "tiktok",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-27T11:29:27.129792+00:00",
-      "call_id": "17ea7f42d43c41c7a34f4447b9ee8198",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-27T11:29:27.186417+00:00",
-      "call_id": "17ea7f42d43c41c7a34f4447b9ee8198",
-      "platform": "tiktok"
-    },
     {
       "phase": "visuals",
       "status": "completed",
@@ -144,19 +120,35 @@
       "platform": "tiktok",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "completed",
+      "at": "2026-11-27T11:34:30.510298+00:00",
+      "call_id": "a9bce6ba4cc644148aefeec756896860",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "repair",
+      "status": "completed",
+      "at": "2026-11-27T11:34:35.892730+00:00",
+      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
+      "target": "visuals",
+      "round": 1
+    },
+    {
+      "phase": "quality",
+      "status": "started",
+      "at": "2026-11-27T11:34:35.892934+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "round": 1,
+      "timeout_seconds": 420
     }
   ],
   "completed_phases": [
-    "scenes"
+    "scenes",
+    "render"
   ],
-  "findings": [
-    "TikTok · Szene 4: Motiv passt nicht zur Aussage",
-    "TikTok · Szene 6: Motiv passt nicht zur Aussage",
-    "score_below_threshold:visual:65<78",
-    "visual_agent:TikTok Szene 6: Einsatz von US-Dollar-Bündeln als Symbolbild widerspricht der vertrauenswürdigen Einordnung von SAP-Unternehmensnachrichten und wirkt wie unseriöser Clickbait.",
-    "visual_agent:TikTok Szene 4: Das gezeigte Motiv (Kreativ-Workshop/Handarbeit an Tischen) steht in keinem inhaltlichen Zusammenhang zu IT-Jobunsicherheit oder veränderten IT-Dienstleistungen.",
-    "visual_agent:scene_off_topic:tiktok:4",
-    "visual_agent:scene_off_topic:tiktok:6",
-    "visual_agent_recommendation_block"
-  ]
+  "findings": []
 }
