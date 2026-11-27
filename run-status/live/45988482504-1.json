@@ -4,59 +4,20 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "run_id": 45988482504,
   "run_attempt": 1,
-  "updated_at": "2026-11-27T11:24:46.656449+00:00",
-  "observed_at": "2026-11-27T11:29:00.519094+00:00",
+  "updated_at": "2026-11-27T11:29:21.022662+00:00",
+  "observed_at": "2026-11-27T11:29:21.788969+00:00",
   "current": {
-    "phase": "repair",
+    "phase": "visuals",
     "status": "started",
-    "at": "2026-11-27T11:24:34.472167+00:00",
-    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
-    "target": "visuals",
+    "at": "2026-11-27T11:29:21.022662+00:00",
+    "call_id": "45fd011bec1541f0bcf36ba8f976046c",
+    "platform": "tiktok",
+    "scene": 1,
+    "total": 6,
     "round": 1,
-    "timeout_seconds": 900
+    "target": "visuals"
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-27T11:24:39.618417+00:00",
-      "call_id": "95d9ea23c17d4453aa9eaf9a8aa1da66",
-      "platform": "youtube_shorts",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-27T11:24:40.585711+00:00",
-      "call_id": "22ae33f1182b464d8fbbae0ac6b1176d",
-      "platform": "youtube_shorts"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-27T11:24:40.649561+00:00",
-      "call_id": "22ae33f1182b464d8fbbae0ac6b1176d",
-      "platform": "youtube_shorts"
-    },
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-27T11:24:40.716273+00:00",
-      "call_id": "95d9ea23c17d4453aa9eaf9a8aa1da66",
-      "platform": "youtube_shorts",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-27T11:24:40.716606+00:00",
-      "call_id": "36ece0fec0794fa092af0e32d15fbecb",
-      "platform": "youtube_shorts",
-      "scene": 4,
-      "total": 6
-    },
     {
       "phase": "captions",
       "status": "started",
@@ -143,9 +104,52 @@
       "platform": "youtube_shorts",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "completed",
+      "at": "2026-11-27T11:29:21.016203+00:00",
+      "call_id": "307fa13abbd7415fa5be267f9e9062fe",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "scenes",
+      "status": "started",
+      "at": "2026-11-27T11:29:21.021782+00:00",
+      "call_id": "0c9941dd40ca40cb8c13e1d12cda1963",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "scenes",
+      "status": "completed",
+      "at": "2026-11-27T11:29:21.022260+00:00",
+      "call_id": "0c9941dd40ca40cb8c13e1d12cda1963",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "started",
+      "at": "2026-11-27T11:29:21.022387+00:00",
+      "call_id": "a9bce6ba4cc644148aefeec756896860",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-27T11:29:21.022662+00:00",
+      "call_id": "45fd011bec1541f0bcf36ba8f976046c",
+      "platform": "tiktok",
+      "scene": 1,
+      "total": 6
     }
   ],
-  "completed_phases": [],
+  "completed_phases": [
+    "scenes"
+  ],
   "findings": [
     "TikTok · Szene 4: Motiv passt nicht zur Aussage",
     "TikTok · Szene 6: Motiv passt nicht zur Aussage",
