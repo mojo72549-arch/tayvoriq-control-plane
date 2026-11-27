@@ -1,0 +1,28 @@
+{
+  "selection_id": "20261127-morning-agentv2",
+  "slot": "morning",
+  "provider": "groq_rss+groq_rss",
+  "model": "groq/qwen/qwen3.8-27b+rss-article-context+groq/openai/gpt-oss-120b+rss-article-context",
+  "grounding_chunks": [
+    {
+      "title": "manager-magazin.de",
+      "uri": "https://www.manager-magazin.de/unternehmen/tech/kreise-sap-erwaegt-abbau-von-rund-10-prozent-aller-stellen-a-815f754c-c751-4119-9fc5-9383d029928c#ref=rss"
+    },
+    {
+      "title": "handelsblatt.com",
+      "uri": "https://www.handelsblatt.com/technik/ki/sap-dax-konzern-plant-massiven-stellenabbau/100273115.html"
+    }
+  ],
+  "candidate_count": 2,
+  "valid_count": 1,
+  "selected_count": 1,
+  "series_candidate_injected": false,
+  "quality_gates_weakened": false,
+  "grounded_scan_count": 2,
+  "growth_rescan_used": true,
+  "max_grounded_scans": 2,
+  "candidate_count_policy": "quality_driven_1_to_5",
+  "candidate_minimum": 1,
+  "candidate_maximum": 5,
+  "weak_fill_allowed": false
+}
