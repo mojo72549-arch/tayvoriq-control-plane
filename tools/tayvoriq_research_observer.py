@@ -74,6 +74,13 @@ class Observation:
         elif event == 'contabo_worker_started' and type(row.get('worker_run_id')) is int and row['worker_run_id'] > 0:
             self.data.setdefault('handoff', {}).update(state='RUNNING', worker_run_id=row['worker_run_id'],
                 next_check_at=None, owner='contabo_research_worker')
+            self.data['issues'] = [issue for issue in self.data['issues'] if issue['code'] != 'WORKER_WAKEUP_FAILED']
+        elif event == 'contabo_worker_finished' and row.get('status') in {'SUCCEEDED', 'FAILED'}:
+            self.data.setdefault('handoff', {}).update(state='COMPLETED' if row['status'] == 'SUCCEEDED' else 'FAILED',
+                next_check_at=None)
+        elif event == 'insufficient_corroborated_stories' and isinstance(row.get('corroborated_titles'), list):
+            self.data['corroborated_headlines'] = len(row['corroborated_titles'])
+            self.issue('source evidence insufficient', None)
         elif event == 'contabo_worker_failure' and row.get('code') in WORKER_FAILURES:
             code = row['code']
             issue = {'code': code, 'provider': None}
@@ -98,6 +105,8 @@ class Observation:
             value = row.get('corroborated_headlines')
             if type(value) is int and 0 <= value <= 100000:
                 self.data['corroborated_headlines'] = value
+                if value >= 2:
+                    self.data['issues'] = [issue for issue in self.data['issues'] if issue['code'] != 'SOURCES']
         elif event == 'candidate_editorial_rejection':
             self.rejected += 1
             self.data['quality_rejections'] = self.rejected
@@ -152,6 +161,10 @@ class Observation:
                 self.data['handoff']['state'] = 'COMPLETED'
             elif code == STOPPED:
                 self.data['handoff']['state'] = 'STOPPED'
+            elif self.data['handoff']['state'] in {'RUNNING', 'FAILED', 'WAITING_FOR_WORKER'}:
+                source_blocked = any(issue['code'] == 'SOURCES' for issue in self.data['issues'])
+                self.data['handoff'].update(state='BLOCKED', owner='research_controller' if source_blocked else 'production_engineering',
+                    action_required='RESEARCH_ADDITIONAL_ORIGINAL_SOURCES' if source_blocked else 'CHECK_BOUND_WORKER_RESULT')
         self.data.update(state='GENERATED' if code == 0 else 'FAILED', exit_code=code,
                          next_retry_at=None, updated_at=stamp())
 

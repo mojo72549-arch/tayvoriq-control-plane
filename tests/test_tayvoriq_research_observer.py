@@ -110,6 +110,26 @@ class ResearchFailureDiagnosticsTests(unittest.TestCase):
         self.assertNotIn('secret-value', json.dumps(o.data))
         self.assertEqual(o.data['handoff']['action_required'], 'CHECK_RESEARCH_WAKEUP_ACCESS')
 
+    def test_confirmed_worker_and_source_failure_replace_the_superseded_start_warning(self):
+        o = self.observation()
+        o.event({'event': 'contabo_worker_failure', 'code': 'WORKER_WAKEUP_FAILED', 'terminal': False, 'cause': 'ACCESS'})
+        o.event({'event': 'contabo_worker_started', 'worker_run_id': 99})
+        o.event({'event': 'contabo_worker_finished', 'status': 'FAILED', 'worker_run_id': 99})
+        o.event({'event': 'insufficient_corroborated_stories', 'corroborated_titles': []})
+        o.finish(1)
+        self.assertEqual(o.data['issues'], [{'code': 'SOURCES', 'provider': None}])
+        self.assertEqual(o.data['wakeup_failure_cause'], 'ACCESS')
+        self.assertEqual(o.data['corroborated_headlines'], 0)
+        self.assertEqual(o.data['handoff']['state'], 'BLOCKED')
+        self.assertEqual(o.data['handoff']['owner'], 'research_controller')
+        self.assertIsNone(o.data['handoff']['next_check_at'])
+
+    def test_successful_article_evidence_clears_the_earlier_feed_warning(self):
+        o = self.observation()
+        o.event({'event': 'insufficient_corroborated_stories', 'corroborated_titles': []})
+        o.event({'event': 'source_headline_preflight', 'corroborated_headlines': 2})
+        self.assertEqual(o.data['issues'], [])
+
     def test_incomplete_scorecards_are_not_labeled_as_weak_tiktok_fit(self):
         o = self.observation()
         o.event({"event": "candidate_editorial_rejection", "reason": "regional_scorecard",

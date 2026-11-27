@@ -42,15 +42,28 @@ def _still_current(draft, records):
 def local_grounded(prompt):
     records = {}
     last_error = None
+    def article_sources():
+        if not isinstance(last_error, hf.InsufficientFeedEvidence):
+            return []
+        originals = hf.article_research_records(list(records.values()))
+        enriched = rss.enrich_evidence(originals)
+        # The same publisher URL gains its original article context. Discovery
+        # time, reporting origin and the bound headline remain unchanged.
+        return [{**before, 'context': after['context']} for before, after in zip(originals, enriched)
+                if after.get('url') == before['url'] and after.get('context')
+                and after['context'] != before.get('context')]
+
     for label, collect in (('multi-publisher-rss', lambda: rss.source_pool(expanded=True)),
+                           ('rss-article-context', article_sources),
                            ('rss-gdelt-context', gdelt.source_pool)):
         discovered = {row['url']: row for row in collect() if row.get('url')}
-        new = set(discovered).difference(records)
-        if not new:
+        updated = {url: row for url, row in discovered.items()
+                   if url not in records or label == 'rss-article-context'}
+        if not updated:
             continue
-        records.update((url, row) for url, row in discovered.items() if url in new)
+        records.update(updated)
         print(json.dumps({'event': 'source_records_loaded', 'source_label': label,
-                          'updated_records': len(new), 'total_records': len(records)}), flush=True)
+                          'updated_records': len(updated), 'total_records': len(records)}), flush=True)
         print(json.dumps({'event': 'provider_attempt_started', 'provider': 'ollama'}), flush=True)
         try:
             data, chunks, model = hf.structure(prompt, '', list(records.values()), label, provider_kind='ollama')
