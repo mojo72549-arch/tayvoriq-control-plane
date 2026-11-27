@@ -1,47 +1,15 @@
 {
-  "action": "CONTABO_QUALITY_RECOVERY",
-  "state": "RECOVERY_DISPATCHED",
-  "reason": "RETRY_ELIGIBLE",
+  "action": "NONE",
+  "state": "RUNNING",
+  "reason": "VERIFIED_CONTABO_OWNER_ACTIVE",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
-  "run_id": "45965549397",
+  "run_id": "45981134031",
   "generation": "0",
   "request_status": "",
   "request_substate": "",
-  "decision_key": "1c761370c63d7300b60be9d3a38af66e10d974db186e735b808296d2778fb713",
-  "dispatch_verified": true,
-  "contabo_repair": {
-    "schema": "tayvoriq-contabo-quality-decision-v1",
-    "request_id": "telegram-3821-trend-1-content-repair-v1",
-    "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
-    "controller_run_id": 45965549397,
-    "worker_run_id": 45965833512,
-    "state": "RETRY_ELIGIBLE",
-    "checked_at": "2026-11-27T10:19:27.276876+00:00",
-    "next_check_at": "2026-11-27T10:20:00+00:00",
-    "controller_ended_at": "2026-11-27T09:11:35Z",
-    "failed_step": "Assert publishable production output",
-    "user_action_required": false,
-    "quality_gates_weakened": false,
-    "artifact_id": 15185424089,
-    "implementation_sha": "8f9a886ce8d79a849b60895ac6cb96bd2c0ff2eb",
-    "stopped_at": "2026-11-27T09:28:29Z",
-    "budget_seconds": 1500,
-    "deadline_exceeded": true,
-    "voice_blocked": true,
-    "scenes": [
-      {
-        "platform": "tiktok",
-        "scene": 6
-      }
-    ],
-    "next_implementation_sha": "11cda76552c25581f31a9a2be343cb8e3b50daa9",
-    "planned_attempts": 1,
-    "decision_key": "1c761370c63d7300b60be9d3a38af66e10d974db186e735b808296d2778fb713"
-  },
+  "decision_key": "",
+  "dispatch_verified": false,
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
-  "signal_run_id": 45980770034,
-  "signal_run_attempt": 1,
-  "signal_receipt": "COMPLETED",
   "last_dispatch": {
     "decision_key": "1c761370c63d7300b60be9d3a38af66e10d974db186e735b808296d2778fb713",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
@@ -52,8 +20,6 @@
     "executor_run_id": 45981134031,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-27T10:19:37.880238+00:00",
-  "orchestrator_run_id": 45981070589,
-  "executor_run_id": 45981134031,
-  "executor_workflow": "tayvoriq-contabo-controller.yml"
+  "checked_at": "2026-11-27T10:20:05.912775+00:00",
+  "orchestrator_run_id": 45981090523
 }
