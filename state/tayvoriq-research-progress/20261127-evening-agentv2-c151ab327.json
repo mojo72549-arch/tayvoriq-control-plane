@@ -6,7 +6,7 @@
   "run_attempt": 1,
   "state": "SEARCHING",
   "started_at": "2026-11-27T22:54:57.739979+00:00",
-  "updated_at": "2026-11-27T22:55:18.167175+00:00",
+  "updated_at": "2026-11-27T22:55:39.056690+00:00",
   "sources_seen": null,
   "drafts_saved": 0,
   "quality_rejections": 0,
@@ -20,17 +20,23 @@
       "event": "contabo_worker_wakeup",
       "wake_attempt": 1,
       "confirmed": true
+    },
+    {
+      "at": "2026-11-27T22:55:23.528808+00:00",
+      "event": "contabo_worker_started",
+      "worker_run_id": 46079473045
     }
   ],
   "local_attempt": 1,
   "max_local_attempts": 3,
   "next_retry_at": null,
   "handoff": {
-    "state": "WAITING_FOR_WORKER",
+    "state": "RUNNING",
     "wake_attempt": 1,
     "max_wake_attempts": 2,
     "owner": "contabo_research_worker",
     "wakeup_confirmed": true,
-    "next_check_at": "2026-11-27T22:56:32.623344+00:00"
+    "next_check_at": null,
+    "worker_run_id": 46079473045
   }
 }
