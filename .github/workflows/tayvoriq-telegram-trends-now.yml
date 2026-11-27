@@ -247,11 +247,14 @@ jobs:
 
       - name: Validate approval contract
         if: steps.control.outputs.needs_delivery == 'true'
+        env:
+          REQUESTED_TOPIC: ${{ github.event.client_payload.topic || '' }}
+          REQUESTED_VIA: ${{ github.event.client_payload.requested_via || '' }}
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json
+          import json, os
           from urllib.parse import urlparse
           d=json.load(open('/tmp/tayvoriq-trend-request.json',encoding='utf-8'))
           trends=d.get('trends') or []
@@ -260,16 +263,24 @@ jobs:
             scopes=[str(trend.get('regional_relevance') or '').strip().lower() for trend in items]
             assert all(scope in broad for scope in scopes), f'outside local/Germany scope: {scopes}'
             assert all(str(t.get('trend_scope') or '') != 'science_future' for t in items), 'abstract research excluded in current test'
-            assert 2 <= len(items) <= 5, f'V5 requires 2-5 local/Germany trends, got {len(items)}'
           assert d.get('agent_orchestrator') == 'v2'
           assert d.get('slot') in {'morning','evening'}
           assert d.get('quality_gates_weakened', False) is False
-          assert 2 <= len(trends) <= 5, f'V5 requires 2-5 strong trends, got {len(trends)}'
+          single = d.get('mode') == 'single_verified_topic'
+          if single:
+            topic = os.environ['REQUESTED_TOPIC'].strip()
+            assert os.environ['REQUESTED_VIA'] == 'control_center' and topic and d.get('requested_topic') == topic
+            assert len(trends) == 1
+          else:
+            assert 2 <= len(trends) <= 5, f'V5 requires 2-5 strong trends, got {len(trends)}'
           reach_contract(trends)
           assert [x.get('id') for x in trends] == [str(i) for i in range(1,len(trends)+1)]
           for trend in trends:
             assert len(trend.get('sources') or []) >= 2
             sc=trend.get('source_context') if isinstance(trend.get('source_context'),dict) else {}
+            if single:
+              assert (sc.get('regional_assessment') or {}).get('passed') is True
+              assert (sc.get('duplicate_check') or {}).get('state') == 'PASSED'
             assert int(sc.get('independent_news_count') or 0) >= 2
             assert len(sc.get('sources') or []) >= 2
             title=str(trend.get('title') or '').casefold()
@@ -347,7 +358,8 @@ jobs:
           target=date.fromisoformat(os.environ['TARGET_DATE'])
           weekday=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'][target.weekday()]
           label='🌅 TAYVORIQ Morgen-Trends' if os.environ['SLOT']=='morning' else '🌙 TAYVORIQ Abend-Trends'
-          lines=[f"{label} · {weekday} {target:%d.%m.}",'','Regionale / Deutschland-Rangliste:']
+          heading='Geprüfter Themenvorschlag' if d.get('mode') == 'single_verified_topic' else 'Regionale / Deutschland-Rangliste:'
+          lines=[f"{label} · {weekday} {target:%d.%m.}",'',heading]
           if d.get('repair_of'):
             lines += ['KORREKTUR: Die vorige Auswahl ist wegen schwacher Quellen und Hooks zurückgezogen. Bitte nur diese Liste verwenden.','']
           for t in d['trends']:
