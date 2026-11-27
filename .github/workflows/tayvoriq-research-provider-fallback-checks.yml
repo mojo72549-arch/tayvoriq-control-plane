@@ -19,6 +19,7 @@ on:
       - 'tests/test_tayvoriq_source_evidence_v1.py'
       - 'tests/test_tayvoriq_source_claim_preflight.py'
       - 'tests/test_tayvoriq_research_resilience_v2.py'
+      - 'tests/test_tayvoriq_local_research_article.py'
       - 'tests/test_tayvoriq_rss_source_pool_v3.py'
       - 'tests/test_tayvoriq_provider_budget_v1.py'
       - 'tests/test_tayvoriq_groq_source_fallback_v1.py'
@@ -46,4 +47,4 @@ jobs:
       - name: Verify Groq structure and strict two-publisher URL binding
         run: |
           python -m pip install pytest pyyaml -q
-          python -m pytest -q tests/test_tayvoriq_groq_source_fallback_v1.py tests/test_tayvoriq_source_evidence_v1.py tests/test_tayvoriq_source_claim_preflight.py tests/test_tayvoriq_research_resilience_v2.py tests/test_tayvoriq_rss_source_pool_v3.py tests/test_tayvoriq_provider_budget_v1.py tests/test_tayvoriq_story_first_prompt_v2.py tests/test_tayvoriq_run_evidence.py
+          python -m pytest -q tests/test_tayvoriq_groq_source_fallback_v1.py tests/test_tayvoriq_source_evidence_v1.py tests/test_tayvoriq_source_claim_preflight.py tests/test_tayvoriq_research_resilience_v2.py tests/test_tayvoriq_local_research_article.py tests/test_tayvoriq_rss_source_pool_v3.py tests/test_tayvoriq_provider_budget_v1.py tests/test_tayvoriq_story_first_prompt_v2.py tests/test_tayvoriq_run_evidence.py

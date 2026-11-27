@@ -167,6 +167,7 @@ def wait_for_result(binding, wait_seconds, *, deadline=None):
                 event('contabo_worker_started', worker_run_id=receipt['worker_run_id'])
                 worker_started = True
             if receipt['status'] != 'RUNNING':
+                event('contabo_worker_finished', status=receipt['status'], worker_run_id=receipt['worker_run_id'])
                 return receipt
         elif wake_attempt == 0 or (wake_attempt == 1 and time.monotonic() >= retry_at):
             wake_attempt += 1
