@@ -243,7 +243,7 @@
   "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
   "dispatch_claim_run_id": 45954835467,
   "dispatch_contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
-  "golden_path_run_id": 45965549397,
+  "golden_path_run_id": 45981134031,
   "execution_backend": "contabo_private_runner",
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
@@ -268,7 +268,8 @@
     "quality_gates_weakened": false
   },
   "previous_golden_path_run_ids": [
-    45954857672
+    45954857672,
+    45965549397
   ],
   "visual_recovery": {
     "schema": "tayvoriq-contabo-visual-recovery-v1",
@@ -278,5 +279,35 @@
     "scene": 6,
     "quality_gates_weakened": false,
     "controller_run_id": 45965549397
+  },
+  "quality_recovery": {
+    "schema": "tayvoriq-contabo-quality-decision-v1",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+    "controller_run_id": 45981134031,
+    "worker_run_id": 45965833512,
+    "state": "RETRY_ELIGIBLE",
+    "checked_at": "2026-11-27T10:19:42.168212+00:00",
+    "next_check_at": "2026-11-27T10:20:00+00:00",
+    "controller_ended_at": "2026-11-27T09:11:35Z",
+    "failed_step": "Assert publishable production output",
+    "user_action_required": false,
+    "quality_gates_weakened": false,
+    "artifact_id": 15185424089,
+    "implementation_sha": "8f9a886ce8d79a849b60895ac6cb96bd2c0ff2eb",
+    "stopped_at": "2026-11-27T09:28:29Z",
+    "budget_seconds": 1500,
+    "deadline_exceeded": true,
+    "voice_blocked": true,
+    "scenes": [
+      {
+        "platform": "tiktok",
+        "scene": 6
+      }
+    ],
+    "next_implementation_sha": "11cda76552c25581f31a9a2be343cb8e3b50daa9",
+    "planned_attempts": 1,
+    "decision_key": "1c761370c63d7300b60be9d3a38af66e10d974db186e735b808296d2778fb713",
+    "parent_run_id": 45965549397
   }
 }
