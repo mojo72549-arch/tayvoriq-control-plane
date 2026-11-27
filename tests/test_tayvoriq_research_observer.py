@@ -14,6 +14,33 @@ class ResearchObserverTests(unittest.TestCase):
     def observation(self):
         return observer.Observation('20261125-evening-agentv2-c1234abcd', 'evening', 123, 2)
 
+    def test_history_records_the_bound_worker_and_source_outcome_without_raw_inputs(self):
+        o = self.observation()
+        o.event({'event': 'contabo_worker_wakeup', 'wake_attempt': 1, 'confirmed': False})
+        o.event({'event': 'contabo_worker_failure', 'code': 'WORKER_WAKEUP_FAILED',
+                 'cause': 'ACCESS', 'error': 'secret-value'})
+        o.event({'event': 'contabo_worker_started', 'worker_run_id': 99})
+        o.event({'event': 'source_records_loaded', 'total_records': 660, 'url': 'private.example'})
+        o.event({'event': 'source_records_loaded', 'total_records': 660})
+        o.event({'event': 'insufficient_corroborated_stories', 'corroborated_titles': []})
+        o.finish(1)
+        history = o.data['history']
+        self.assertEqual([row['event'] for row in history], [
+            'contabo_worker_wakeup', 'contabo_worker_failure', 'contabo_worker_started',
+            'source_records_loaded', 'insufficient_corroborated_stories', 'research_finished'])
+        self.assertEqual((history[1]['cause'], history[2]['worker_run_id'], history[3]['count']), ('ACCESS', 99, 660))
+        self.assertTrue(all(row['at'] for row in history))
+        self.assertNotIn('secret-value', json.dumps(history))
+        self.assertNotIn('private.example', json.dumps(history))
+
+    def test_history_is_bounded_per_run(self):
+        o = self.observation()
+        for count in range(50):
+            o.event({'event': 'source_records_loaded', 'total_records': count})
+        self.assertEqual(len(o.data['history']), 40)
+        self.assertEqual(o.data['history'][0]['count'], 10)
+        self.assertEqual(o.data['history'][-1]['count'], 49)
+
     def test_only_observed_counters_are_reported_and_drafts_are_distinct(self):
         o = self.observation()
         self.assertIsNone(o.data['sources_seen'])
