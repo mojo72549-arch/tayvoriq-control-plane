@@ -6,7 +6,7 @@
   "run_attempt": 2,
   "state": "SEARCHING",
   "started_at": "2026-11-27T16:57:20.608057+00:00",
-  "updated_at": "2026-11-27T16:58:41.711719+00:00",
+  "updated_at": "2026-11-27T16:59:02.623411+00:00",
   "sources_seen": null,
   "drafts_saved": 0,
   "quality_rejections": 0,
@@ -24,11 +24,12 @@
   "next_retry_at": null,
   "wakeup_failure_cause": "ACCESS",
   "handoff": {
-    "state": "WAITING_FOR_WORKER",
+    "state": "RUNNING",
     "wake_attempt": 1,
     "max_wake_attempts": 2,
     "owner": "contabo_research_worker",
     "wakeup_confirmed": false,
-    "next_check_at": "2026-11-27T16:58:54.503256+00:00"
+    "next_check_at": null,
+    "worker_run_id": 46038038794
   }
 }
