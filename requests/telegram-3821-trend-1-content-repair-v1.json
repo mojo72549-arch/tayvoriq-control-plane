@@ -219,6 +219,16 @@
       "state": "DISPATCHED",
       "at": "2026-11-27T06:54:18.921946+00:00",
       "actor": "request-dispatcher:45954835467"
+    },
+    {
+      "state": "CHECKPOINT_PROVENANCE_RECORDED",
+      "at": "2026-11-27T08:27:50.579385+00:00",
+      "actor": "contabo-controller",
+      "meta": {
+        "replay_implementation_sha": "4a99c7c36f1e6122fd960e388d8ee1616ce9b91b",
+        "golden_path_run_id": 45954857672,
+        "quality_gates_weakened": false
+      }
     }
   ],
   "follow_conversion_gate": {
@@ -238,8 +248,8 @@
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
-    "replay_run_id": 45954857672,
-    "replay_implementation_sha": "4a99c7c36f1e6122fd960e388d8ee1616ce9b91b",
+    "replay_run_id": 45965549397,
+    "replay_implementation_sha": "8f9a886ce8d79a849b60895ac6cb96bd2c0ff2eb",
     "codefix_detection_reason": "production-green-implementation-changed",
     "active_pointer_verified": true,
     "exact_source_request_required": true,
@@ -248,8 +258,8 @@
   },
   "contabo_handoff": {
     "schema": "tayvoriq-contabo-handoff-v1",
-    "controller_run_id": 45954857672,
-    "worker_run_id": 45954933664,
+    "controller_run_id": 45965549397,
+    "worker_run_id": 45965833512,
     "execution_repository": "mojo72549-arch/shorts-agent-studio",
     "checkpoint_release": "",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
