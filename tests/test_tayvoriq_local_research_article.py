@@ -1,8 +1,11 @@
 import copy
+import json
 import sys
 import unittest
+from email.message import Message
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 
@@ -109,6 +112,42 @@ class LocalArticleResearchTests(unittest.TestCase):
             self.assertEqual(resilience.local_grounded('editorial')[-1], 'ollama_rss')
         enrichment.assert_not_called()
         gdelt.assert_not_called()
+
+    def test_gdelt_context_search_uses_native_german_language_and_reports_non_json(self):
+        article = {'title': 'Neue Tarifrunde in Stuttgart', 'url': 'https://example.org/tarif',
+                   'language': 'German', 'snippet': 'Die Tarifrunde beginnt am Donnerstag.'}
+
+        def response(request, *, timeout):
+            params = parse_qs(urlsplit(request.full_url).query)
+            self.assertEqual(params['searchlang'], ['german'])
+            self.assertNotIn('sourcelang:', params['query'][0])
+            self.assertEqual(params['format'], ['json'])
+            reply = MagicMock()
+            reply.__enter__.return_value = reply
+            reply.status = 200
+            reply.headers = Message()
+            if 'Stuttgart' in params['query'][0]:
+                self.assertIn('"Baden-Württemberg"', params['query'][0])
+                reply.read.return_value = json.dumps({'articles': [article]}).encode()
+            else:
+                reply.headers['Content-Type'] = 'text/html; charset=utf-8'
+                reply.read.return_value = b'<html>provider error details</html>'
+            return reply
+
+        with patch.object(resilience.gdelt.urllib.request, 'urlopen', side_effect=response) as request, \
+             patch('builtins.print') as log:
+            records = resilience.gdelt.source_pool()
+
+        self.assertEqual(request.call_count, 4)
+        self.assertEqual([(row['url'], row['context']) for row in records],
+                         [(article['url'], article['snippet'])])
+        events = [json.loads(call.args[0]) for call in log.call_args_list]
+        failed = [row for row in events if row['event'] == 'gdelt_query_failed']
+        self.assertEqual(len(failed), 3)
+        for row in failed:
+            self.assertEqual((row['error'], row['status'], row['content_type']),
+                             ('NON_JSON_RESPONSE', 200, 'text/html'))
+        self.assertNotIn('provider error details', str(events))
 
 
 if __name__ == '__main__':
