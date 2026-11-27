@@ -27,6 +27,10 @@ _APPOINTMENT_SUBJECT = re.compile(
 _PRICE = r"\b(?:[a-zäöüß-]*preis(?:e[ns]?|en|es)?|kosten)\b"
 _PRICE_DOWN = r"\b(?:senk\w*|gesenkt\w*|sink\w*|sank\w*|gesunken\w*|fällt|fallen|fiel)\b"
 _PRICE_UP = r"\b(?:steig\w*|stieg\w*|gestiegen\w*|erhöh\w*|erhoeh\w*|erhöht\w*)\b"
+_PRESENTED_REFORM_DRAFT = re.compile(
+    r"(\blegt\s+(?:(?:einen|den|neuen|ersten)\s+)*)(?:gesetz(?:es)?|referenten)?entwurf"
+    r"(\s+(?:zur|für\s+die|für)\s+\w*reform\s+vor\b)"
+)
 _QUARTER_STEMS = {"1": "erst", "2": "zweit", "3": "dritt", "4": "viert"}
 _QUARTER = re.compile(r"\b(?:([1-4])\.\s*|(erst|zweit|dritt|viert)(?:e|en|em|es)\s+)quartal\b")
 _REAL_WAGE_RISE = re.compile(
@@ -132,6 +136,9 @@ def claim_terms(value: str) -> set[str]:
     # Normalize a small set of equivalent surface forms without erasing
     # subjects, numbers, disputed facts, or the distinction between plans and outcomes.
     value = re.sub(_RULE_CHANGE, r"\1 reform", value.casefold())
+    # Compare the draft's presentation only within the same named reform.
+    # A cabinet decision, implementation, or mere announcement stays distinct.
+    value = _PRESENTED_REFORM_DRAFT.sub(r"\1entwurf\2", value)
     if _MERGER.search(value):
         value = _MERGER.sub("firmenfusion", value)
         # In a report on named merging chains these are equivalent industry
