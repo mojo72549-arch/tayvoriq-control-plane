@@ -5,8 +5,8 @@
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "job_id": 140394213737,
-  "code": "process_video",
-  "started_at": "2026-11-27T08:38:36Z",
+  "code": "repair_media",
+  "started_at": "2026-11-27T09:16:02Z",
   "state": "running",
   "checked": [
     "validate_implementation",
@@ -15,7 +15,9 @@
     "check_production_contract",
     "load_dependencies",
     "check_environment",
-    "check_request"
+    "check_request",
+    "process_video",
+    "inspect_media"
   ],
-  "observed_at": "2026-11-27T08:44:10.015039+00:00"
+  "observed_at": "2026-11-27T09:16:08.379632+00:00"
 }
