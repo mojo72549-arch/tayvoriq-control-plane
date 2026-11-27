@@ -6,17 +6,20 @@ import json
 import os
 import re
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tayvoriq_lifecycle_handoff_v1 import await_completion
 from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
 from tayvoriq_rejected_review_followup import followup
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
 from tayvoriq_chat_direct_approval_v1 import authorized_for_review
+from tayvoriq_contabo_recovery_decision import contabo_decision, private_diagnostics
+from tayvoriq_slot_serialization_v1 import is_verified_cta_content_repair
 
 ACTIVE = {'queued', 'in_progress', 'waiting', 'requested', 'pending'}
 EXECUTORS = ('tayvoriq-deterministic-codefix-continuity.yml',
              'tayvoriq-delivery-watch.yml', 'tayvoriq-autonomous-codefix-builder.yml',
-             'tayvoriq-production-green-promoter.yml')
+             'tayvoriq-production-green-promoter.yml', 'tayvoriq-contabo-controller.yml')
 STATE = Path('.github/state/tayvoriq-lifecycle-decision.json')
 
 
@@ -34,7 +37,8 @@ def review_message_id(request, run_id):
 
 
 def decide(pointer, request, run, *, event_name='', event_run=0,
-           revision='', green='', previous=None, review_followup=None):
+           revision='', green='', previous=None, review_followup=None, approved_parent=None,
+           contabo=None):
     result = dict(action='NONE', state='IDLE', reason='NO_ACTIVE_REQUEST',
                   request_id='', run_id='0', generation='0', request_status='',
                   request_substate='', decision_key='', dispatch_verified=False)
@@ -56,7 +60,9 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
     for field in ('approval_key', 'source_context_sha256', 'contract_sha256'):
         if not pointer.get(field) or pointer[field] != request.get(field):
             return finish('BLOCKED', 'IMMUTABLE_REQUEST_MISMATCH:' + field)
-    if request.get('source') != 'telegram_trend_approval' and not authorized_for_review(request):
+    inherited = (approved_parent and approved_parent.get('source') == 'telegram_trend_approval'
+                 and is_verified_cta_content_repair(request, approved_parent, approved_parent.get('request_id')))
+    if request.get('source') != 'telegram_trend_approval' and not authorized_for_review(request) and not inherited:
         return finish('BLOCKED', 'USER_APPROVAL_PROVENANCE_REQUIRED')
     # A separately audited, unpublished and expired news request is terminal
     # history, not an active delivery blocker. Keep hard contract checks above.
@@ -85,6 +91,24 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
         return finish('REVIEW_READY', 'VERIFIED_REVIEW_DELIVERED_AWAITING_USER_APPROVAL')
     if request.get('status') not in {'APPROVED', 'DISPATCHING', 'DISPATCHED'}:
         return finish('BLOCKED', 'REQUEST_NOT_APPROVED_FOR_CONTINUATION')
+    if pointer.get('execution_backend') == 'contabo_private_runner' and pointer.get('state') == 'ACTIVE':
+        if contabo:
+            result['contabo_repair'] = contabo
+            if contabo['state'] == 'RETRY_ELIGIBLE':
+                result['decision_key'] = contabo['decision_key']
+                if previous and previous.get('decision_key') == result['decision_key'] and previous.get('dispatch_verified'):
+                    try:
+                        ack = datetime.fromisoformat(previous['checked_at'])
+                        if datetime.now(timezone.utc) - ack >= timedelta(minutes=10):
+                            return finish('RECOVERY_FAILED', 'CONTABO_REPAIR_HANDOFF_TIMEOUT')
+                    except (KeyError, ValueError, TypeError):
+                        return finish('RECOVERY_FAILED', 'CONTABO_REPAIR_ACK_TIME_INVALID')
+                    return finish('RECOVERING', 'CONTABO_REPAIR_RUN_DISPATCHED')
+                return finish('RECOVERY_REQUIRED', contabo['state'], 'CONTABO_QUALITY_RECOVERY')
+            return finish('REPAIR_REQUIRED', contabo['state'])
+        if int(run.get('id') or 0) == run_id and run.get('status') in ACTIVE:
+            return finish('RUNNING', 'VERIFIED_CONTABO_OWNER_ACTIVE')
+        return finish('BLOCKED', 'CONTABO_OWNER_OR_TERMINAL_EVIDENCE_UNCONFIRMED')
     if pointer.get('allow_recovery') is False:
         return finish('BLOCKED', 'RECOVERY_DISABLED_FOR_REQUEST')
     if pointer.get('state') != 'ACTIVE':
@@ -221,9 +245,20 @@ def main():
         and bool(re.fullmatch(r'[a-f0-9]{40}', green_sha))
     ) else ''
     previous = read(STATE)
+    parent_id = str(request.get('repair_of_request_id') or '')
+    parent = read(Path('requests') / (parent_id + '.json')) if re.fullmatch(r'[A-Za-z0-9_-]{4,80}', parent_id) else None
+    terminal = None
+    if pointer.get('execution_backend') == 'contabo_private_runner' and run.get('conclusion') == 'failure':
+        try:
+            terminal = contabo_decision(pointer, request, run, verified_green,
+                read(Path('run-status/contabo') / (str(run_id) + '.json')),
+                diagnostics=lambda worker: private_diagnostics(worker, os.environ.get('STUDIO_READ_TOKEN', '')))
+        except (AssertionError, KeyError, ValueError, TypeError):
+            pass
     result = decide(pointer, request, run, event_name=os.environ.get('EVENT_WORKFLOW', ''),
                     event_run=int(os.environ.get('EVENT_RUN_ID') or 0), revision=revision,
-                    green=green, previous=previous.get('last_dispatch'), review_followup=followup())
+                    green=green, previous=previous.get('last_dispatch'), review_followup=followup(),
+                    approved_parent=parent, contabo=terminal)
     result = research_lifecycle(result)
     if result['state'] in {'RECOVERY_REQUIRED', 'BLOCKED'} and result['decision_key']:
         for workflow in EXECUTORS:

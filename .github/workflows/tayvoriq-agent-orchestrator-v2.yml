@@ -37,6 +37,7 @@ on:
       - TAYVORIQ Deterministic Codefix Continuity
       - TAYVORIQ Delivery Watch
       - TAYVORIQ Autonomous Codefix Builder
+      - TAYVORIQ Contabo Controller
     types: [completed]
   push:
     branches: [main]
@@ -48,6 +49,7 @@ on:
       - ".github/workflows/tayvoriq-agent-orchestrator-v2.yml"
       - ".github/workflows/tayvoriq-deliver-video-now.yml"
       - "tools/tayvoriq_lifecycle_controller_v1.py"
+      - "tools/tayvoriq_contabo_recovery_decision.py"
       - "tools/tayvoriq_rejected_review_repair.py"
       - "tools/tayvoriq_review_trend_status.py"
       - ".automation/tayvoriq-artifact-decisions/*.json"
@@ -850,6 +852,8 @@ jobs:
       - name: Resolve canonical request and one lifecycle decision
         id: decision
         shell: bash
+        env:
+          STUDIO_READ_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
         run: |
           set -euo pipefail
           python -S tools/tayvoriq_lifecycle_controller_v1.py
@@ -864,6 +868,8 @@ jobs:
           set -euo pipefail
           if [ "$ACTION" = "CODEFIX_CONTINUITY" ]; then
             workflow='tayvoriq-deterministic-codefix-continuity.yml'
+          elif [ "$ACTION" = "CONTABO_QUALITY_RECOVERY" ]; then
+            workflow='tayvoriq-contabo-controller.yml'
           else
             workflow='tayvoriq-delivery-watch.yml'
           fi
@@ -894,18 +900,19 @@ jobs:
 
       - name: Dispatch recovery classifier for exact failed run
         id: delivery_dispatch
-        if: steps.decision.outputs.action == 'DELIVERY_WATCH' && steps.guard.outputs.dispatch == 'true'
+        if: (steps.decision.outputs.action == 'DELIVERY_WATCH' || steps.decision.outputs.action == 'CONTABO_QUALITY_RECOVERY') && steps.guard.outputs.dispatch == 'true'
         shell: bash
         env:
+          ACTION: ${{ steps.decision.outputs.action }}
           RUN_ID: ${{ steps.decision.outputs.run_id }}
           REQUEST_ID: ${{ steps.decision.outputs.request_id }}
           DECISION_KEY: ${{ steps.decision.outputs.decision_key }}
         run: |
           set -euo pipefail
           [[ "$RUN_ID" =~ ^[0-9]+$ ]] && [ "$RUN_ID" != "0" ]
-          python -S tools/tayvoriq_lifecycle_dispatch_v1.py --action DELIVERY_WATCH \
+          python -S tools/tayvoriq_lifecycle_dispatch_v1.py --action "$ACTION" \
             --request-id "$REQUEST_ID" --run-id "$RUN_ID" --decision-key "$DECISION_KEY"
-          echo "ORCHESTRATOR_DISPATCHED:DELIVERY_WATCH:${RUN_ID}"
+          echo "ORCHESTRATOR_DISPATCHED:${ACTION}:${RUN_ID}"
 
       - name: Persist actual lifecycle result
         if: always() && steps.decision.outcome == 'success'
