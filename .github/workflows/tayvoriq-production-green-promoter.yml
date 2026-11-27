@@ -129,7 +129,7 @@ jobs:
     env:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
-      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v2"
+      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v3"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -459,8 +459,8 @@ jobs:
         id: mixed_checkpoint
         working-directory: implementation
         run: |
-          if rg -q 'def test_mixed_checkpoint_keeps_semantic_voice_block_with_passing_audio_metrics' tests/test_tayvoriq_checkpoint_resume_policy.py; then
-            python -m pytest -q tests/test_tayvoriq_checkpoint_resume_policy.py::test_mixed_checkpoint_keeps_semantic_voice_block_with_passing_audio_metrics
+          if grep -q 'def test_mixed_checkpoint_keeps_semantic_voice_block_with_passing_audio_metrics' tests/test_tayvoriq_checkpoint_resume_policy.py; then
+            python -m pytest -q tests/test_tayvoriq_checkpoint_resume_policy.py::test_mixed_checkpoint_keeps_semantic_voice_block_with_passing_audio_metrics tests/test_tayvoriq_checkpoint_resume_policy.py::test_mixed_checkpoint_reaudits_voice_before_repairing_remaining_visuals
             echo 'verified=true' >> "$GITHUB_OUTPUT"
           fi
 
