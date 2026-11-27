@@ -1,5 +1,6 @@
 """No-paid-add-on Groq/RSS recovery with strict immutable source IDs."""
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -70,6 +71,27 @@ class GroqSourceContractTests(unittest.TestCase):
             sources = json.loads(prompt.split('\nMeldungen: ', 1)[1])
             self.assertEqual([source['source_id'] for source in sources], key.split('+'))
         self.assertEqual(len(observed), 2)
+
+    def test_targeted_local_research_only_submits_the_requested_pair(self):
+        def decide(payload):
+            key, = payload['format']['required']
+            return {'choices': [{'message': {'content': json.dumps({key: {}})}}]}
+
+        with patch.dict(os.environ, {'TAYVORIQ_EDITORIAL_TOPIC': 'Bosch Halbleiterfabrik'}), \
+             patch.object(hf.rss, 'source_pool', return_value=self.pool), \
+             patch.object(hf.rss, 'enrich_evidence', side_effect=lambda records: records), \
+             patch.object(hf.local, 'complete', side_effect=decide) as model, \
+             patch.object(hf, 'complete_scorecards'), patch.object(hf, '_repair_editorial_fields'), \
+             patch.object(hf, 'evaluate_regional_relevance', return_value={'passed': True}):
+            data, chunks, _, provider = resilience.local_grounded('targeted')
+            model.assert_called_once()
+            self.assertEqual(provider, 'ollama_rss')
+            self.assertEqual([row['title'] for row in data['candidates']], ['Bosch eröffnet Reutlingen Halbleiterfabrik'])
+            self.assertEqual({chunk['uri'] for chunk in chunks}, {row['url'] for row in self.pool[2:4]})
+            with patch.dict(os.environ, {'TAYVORIQ_EDITORIAL_TOPIC': 'S-Bahn Verspätungen'}):
+                with self.assertRaises(hf.InsufficientFeedEvidence):
+                    hf.structure('targeted', '', self.pool, 'multi-publisher-rss', provider_kind='ollama', allow_single=True)
+            model.assert_called_once()
 
     def test_groq_json_result_uses_existing_exact_url_and_independence_validator(self):
         ids = self.ids
