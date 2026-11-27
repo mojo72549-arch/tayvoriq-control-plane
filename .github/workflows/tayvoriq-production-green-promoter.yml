@@ -129,7 +129,7 @@ jobs:
     env:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
-      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v4"
+      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v5"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
