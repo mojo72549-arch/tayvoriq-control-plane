@@ -120,6 +120,43 @@ class RegionalPolicyTest(unittest.TestCase):
         self.assertIn('Alle 2 Trends', payload['text'])
         self.assertEqual(len(payload['reply_markup']['inline_keyboard'][0]), 2)
 
+    def test_request_workflow_requires_one_fully_checked_candidate_for_the_exact_topic(self):
+        workflow = (ROOT / '.github/workflows/tayvoriq-telegram-trends-now.yml').read_text()
+        section = workflow.split('- name: Validate approval contract', 1)[1]
+        code = section.split("<<'PY'\n", 1)[1].split('\n          PY', 1)[0]
+        code = '\n'.join(line[10:] for line in code.splitlines())
+        sources = [{'url': 'https://primary.example/original', 'supports': 'Erstbeleg'},
+                   {'url': 'https://press.example/article', 'supports': 'Einordnung'}]
+        scores = ('viral_potential', 'tayvoriq_fit', 'novelty_score', 'series_fit_score',
+                  'return_viewer_score', 'follow_conversion_potential', 'open_loop_potential', 'trend_selection_score')
+        trend = dict.fromkeys(scores, 80)
+        trend.update(id='1', title='Bosch eröffnet eine Halbleiterfabrik', regional_relevance='germany',
+                     trend_scope='business_economy', sources=[s['url'] for s in sources],
+                     content_angle='Neue Fertigung', cta_type='COMMUNITY', open_loop_status='NONE',
+                     follow_reason='Regionalbezug', cta_text='Folge TAYVORIQ')
+        trend['source_context'] = {'independent_news_count': 2, 'sources': sources,
+                                   'regional_assessment': {'passed': True}, 'duplicate_check': {'state': 'PASSED'},
+                                   'fallback_editorial_answers': dict.fromkeys((
+                                       'what_happened', 'why_happening', 'who_is_affected', 'personal_impact', 'action_now'), 'belegt')}
+        request = {'selection_id': 'test', 'slot': 'evening', 'agent_orchestrator': 'v2',
+                   'mode': 'single_verified_topic', 'requested_topic': 'Bosch Halbleiterfabrik', 'trends': [trend]}
+
+        def check(data, topic, origin='control_center'):
+            with patch('builtins.open', mock_open(read_data=json.dumps(data))), \
+                 patch.dict(os.environ, {'REQUESTED_TOPIC': topic, 'REQUESTED_VIA': origin}):
+                exec(code, {})
+
+        check(request, 'Bosch Halbleiterfabrik')
+        for topic, origin in (('', 'control_center'), ('Mercedes Werk', 'control_center'),
+                              ('Bosch Halbleiterfabrik', 'telegram_command')):
+            with self.subTest(topic=topic, origin=origin), self.assertRaises(AssertionError):
+                check(request, topic, origin)
+        with self.assertRaises(AssertionError):
+            check({**request, 'mode': 'ordinary'}, '')
+        trend['source_context']['duplicate_check']['state'] = 'BLOCKED'
+        with self.assertRaises(AssertionError):
+            check(request, 'Bosch Halbleiterfabrik')
+
 
 if __name__ == '__main__':
     unittest.main()

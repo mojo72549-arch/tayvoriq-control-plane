@@ -66,7 +66,10 @@ def local_grounded(prompt):
                           'updated_records': len(updated), 'total_records': len(records)}), flush=True)
         print(json.dumps({'event': 'provider_attempt_started', 'provider': 'ollama'}), flush=True)
         try:
-            data, chunks, model = hf.structure(prompt, '', list(records.values()), label, provider_kind='ollama')
+            data, chunks, model = hf.structure(
+                prompt, '', list(records.values()), label, provider_kind='ollama',
+                **({'allow_single': True} if os.getenv('TAYVORIQ_EDITORIAL_TOPIC', '').strip() else {}),
+            )
             return data, chunks, model, 'ollama_gdelt' if label == 'rss-gdelt-context' else 'ollama_rss'
         except hf.InsufficientSourceEvidence as error:
             last_error = error

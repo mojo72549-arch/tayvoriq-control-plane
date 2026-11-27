@@ -511,6 +511,14 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
             vetted_pairs = {pair: title for pair, title in vetted_pairs.items()
                             if all(title.casefold() != prior.casefold() and distinct_headlines(title, prior)
                                    for prior in excluded)}
+        requested_topic = os.getenv('TAYVORIQ_EDITORIAL_TOPIC', '').strip()
+        if allow_single and provider_kind == 'ollama' and requested_topic:
+            topic_terms = _words(requested_topic) - {
+                'welche', 'welcher', 'welches', 'warum', 'wie', 'thema', 'video', 'bitte', 'erklären',
+            }
+            matches_required = min(2, len(topic_terms))
+            vetted_pairs = {pair: title for pair, title in vetted_pairs.items()
+                            if matches_required and len(topic_terms & _words(title)) >= matches_required}
         ranked = _rank_corroborated_pairs(vetted_pairs.items(), previous, _research_retry_attempt(), by_id)
         selected_pairs = _independent_headline_pairs(ranked)
         if provider_kind == 'ollama':

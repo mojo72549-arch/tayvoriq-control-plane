@@ -99,6 +99,7 @@ def main(*, repair_ready=_retention_ready) -> int:
     now = datetime.now(ZoneInfo("Europe/Berlin"))
     selection_id = f"{now:%Y%m%d}-{args.slot}-agentv2"
     local_research = os.environ.get('TAYVORIQ_LOCAL_RESEARCH') == 'true'
+    requested_topic = os.environ.get('TAYVORIQ_EDITORIAL_TOPIC', '').strip() if local_research else ''
     editorial_scan = None if local_research else _editorial_scan(args.slot, now)
     if args.prepared_only and not editorial_scan:
         raise SystemExit("No fresh verified editorial packet for this slot")
@@ -265,7 +266,8 @@ def main(*, repair_ready=_retention_ready) -> int:
             normalized.append(candidate)
 
         candidate_pool = list(normalized)
-        allow_single = individual and len(candidate_pool) == 1 and not os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID")
+        allow_single = (individual and len(candidate_pool) == 1
+                        and (requested_topic or not os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID")))
         if series_candidate and _identity(series_candidate) not in {_identity(c) for c in candidate_pool}:
             candidate_pool.append(series_candidate)
 
@@ -335,6 +337,8 @@ def main(*, repair_ready=_retention_ready) -> int:
     }
     if len(chosen) == 1:
         request["mode"] = "single_verified_topic"
+        if requested_topic:
+            request["requested_topic"] = requested_topic
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(request, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
