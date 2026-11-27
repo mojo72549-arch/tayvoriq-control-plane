@@ -52,6 +52,18 @@ class ResearchObserverTests(unittest.TestCase):
         o.finish(1)
         self.assertEqual(o.data['state'], 'FAILED')
 
+    def test_worker_deadline_survives_receipt_replay_after_verified_sources(self):
+        o = self.observation()
+        o.event({'event': 'contabo_worker_started', 'worker_run_id': 99})
+        o.event({'event': 'contabo_worker_finished', 'status': 'FAILED'})
+        o.event({'event': 'source_headline_preflight', 'corroborated_headlines': 2})
+        o.event({'event': 'provider_attempt_started', 'provider': 'ollama'})
+        o.event({'event': 'research_deadline_reached'})
+        o.finish(1)
+        self.assertEqual(o.data['corroborated_headlines'], 2)
+        self.assertEqual(o.data['issues'], [{'code': 'TIMEOUT', 'provider': 'ollama'}])
+        self.assertEqual(o.data['history'][-2]['event'], 'research_deadline_reached')
+
     def test_provider_fallback_warnings_never_become_false_terminal_states(self):
         o = self.observation()
         o.event({'event': 'provider_attempt_failed', 'provider': 'gemini', 'error': 'HTTP 429 api_key=secret-value https://private.example'})

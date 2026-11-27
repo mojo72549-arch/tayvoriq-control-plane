@@ -10,12 +10,13 @@ MODEL = 'qwen3.5:9b'
 COMPACT_MODEL = 'qwen3.5:4b'
 ENDPOINT = 'http://127.0.0.1:11434/api/chat'
 VALIDATION_RESERVE_SECONDS = 20
+MAXIMUM_CANDIDATE_SECONDS = 210
 MINIMUM_REPAIR_SECONDS = 25
 MAXIMUM_REPAIR_SECONDS = 45
 
 
 def research_model():
-    model = os.getenv('TAYVORIQ_RESEARCH_MODEL', MODEL)
+    model = os.getenv('TAYVORIQ_RESEARCH_MODEL', COMPACT_MODEL)
     if model not in {MODEL, COMPACT_MODEL}:
         raise ValueError('Unsupported local research model')
     return model
@@ -87,6 +88,11 @@ def repair_budget():
     return min(MAXIMUM_REPAIR_SECONDS, remaining) if remaining >= MINIMUM_REPAIR_SECONDS else 0
 
 
+def candidate_budget(pairs_remaining):
+    available = max(0, remaining_research_seconds() - VALIDATION_RESERVE_SECONDS)
+    return min(MAXIMUM_CANDIDATE_SECONDS, available / pairs_remaining)
+
+
 def complete(payload, *, opener=None, time_limit=None):
     model = research_model()
     options = {'temperature': 0, 'num_ctx': 8192, 'num_thread': 8,
@@ -100,14 +106,16 @@ def complete(payload, *, opener=None, time_limit=None):
     result = {}
     started = time.monotonic()
     try:
+        if time_limit is not None and time_limit <= 0:
+            raise TimeoutError('No time remains for a local research completion')
         # The HTTP response starts only after Ollama loads the model and processes the prompt.
         # The worker separately enforces the overall research time limit.
         with opener.open(request, timeout=time_limit or 330) as response:
             print(json.dumps({'event': 'ollama_response_started', 'provider': 'ollama',
                               'first_response_seconds': round(time.monotonic() - started, 1)}), flush=True)
             for line in response:
-                if time_limit and time.monotonic() - started >= time_limit:
-                    raise TimeoutError('Local editorial repair reached its time budget')
+                if time_limit is not None and time.monotonic() - started >= time_limit:
+                    raise TimeoutError('Local research completion reached its time budget')
                 if not line.strip():
                     continue
                 result = json.loads(line)

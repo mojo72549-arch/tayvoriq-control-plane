@@ -703,14 +703,14 @@ Redaktionelle Vorgaben, keine Fakten:\n{editorial_context}'''
     chunks = []
     if provider_kind == 'ollama':
         data = {'candidates': []}
-        for lead in allowlist:
+        for index, lead in enumerate(allowlist):
             pair = tuple(lead['source_ids'])
             sources = [item for item in indexed if item['source_id'] in pair]
             prompt = f'{local_instructions}\nQuellenpaar: {json.dumps(lead, ensure_ascii=False)}\nMeldungen: {json.dumps(sources, ensure_ascii=False)}'
             request = {**payload, 'messages': [payload['messages'][0], {'role': 'user', 'content': prompt}],
                        'max_completion_tokens': 1450,
                        'format': local.research_format(schema, [pair], base.VALID_SCOPES)}
-            raw = local.complete(request)
+            raw = local.complete(request, time_limit=local.candidate_budget(len(allowlist) - index))
             decision = local.read_candidates(base.extract_json(provider.content_of(raw)), [pair])
             data['candidates'].extend(decision['candidates'])
             print(json.dumps({'event': 'provider_success', 'provider': 'ollama', 'model': model,

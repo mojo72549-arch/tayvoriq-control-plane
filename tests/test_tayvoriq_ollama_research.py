@@ -172,14 +172,15 @@ class OllamaResearchTests(unittest.TestCase):
         self.assertTrue(call.call_args.args[0].endswith('20261126-evening-agentv2-123.2.json?ref=main'))
 
     def test_completion_uses_the_installed_model_over_loopback(self):
-        chunks = [{'model': ollama.MODEL, 'done': False, 'message': {'content': '{"candidates":'}},
-                  {'model': ollama.MODEL, 'done': True, 'message': {'content': '[]}'}}]
+        chunks = [{'model': ollama.COMPACT_MODEL, 'done': False, 'message': {'content': '{"candidates":'}},
+                  {'model': ollama.COMPACT_MODEL, 'done': True, 'message': {'content': '[]}'}}]
         opener = Mock()
         opener.open.return_value = io.BytesIO('\n'.join(json.dumps(chunk) for chunk in chunks).encode())
         result = ollama.complete({'messages': [{'role': 'user', 'content': 'test'}]}, opener=opener)
         req = opener.open.call_args.args[0]
         self.assertEqual(req.full_url, 'http://127.0.0.1:11434/api/chat')
-        self.assertEqual(json.loads(req.data)['model'], ollama.MODEL)
+        self.assertEqual(json.loads(req.data)['model'], ollama.COMPACT_MODEL)
+        self.assertEqual(json.loads(req.data)['keep_alive'], '4m')
         self.assertIs(json.loads(req.data)['stream'], True)
         self.assertEqual(result['choices'][0]['message']['content'], '{"candidates":[]}')
 
@@ -196,7 +197,7 @@ class OllamaResearchTests(unittest.TestCase):
 
     def test_truncated_ollama_stream_never_reaches_quality_gates(self):
         opener = Mock()
-        fragment = {'model': ollama.MODEL, 'done': False, 'message': {'content': '{"candidates":[]}'}}
+        fragment = {'model': ollama.COMPACT_MODEL, 'done': False, 'message': {'content': '{"candidates":[]}'}}
         opener.open.return_value = io.BytesIO(json.dumps(fragment).encode())
         with self.assertRaisesRegex(RuntimeError, 'RESPONSE_INCOMPLETE'):
             ollama.complete({'messages': []}, opener=opener)
@@ -207,6 +208,19 @@ class OllamaResearchTests(unittest.TestCase):
                 self.assertEqual(ollama.repair_budget(), 0)
             with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1055'}):
                 self.assertEqual(ollama.repair_budget(), 35)
+
+    def test_candidate_budget_preserves_time_for_other_pairs_and_validation(self):
+        with patch.object(ollama.time, 'time', return_value=1000):
+            with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1410'}):
+                self.assertEqual(ollama.candidate_budget(2), 195)
+                self.assertEqual(ollama.candidate_budget(1), 210)
+            with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1030'}):
+                self.assertEqual(ollama.candidate_budget(2), 5)
+            with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1010'}):
+                helper = Mock()
+                with self.assertRaises(TimeoutError):
+                    ollama.complete({'messages': []}, opener=helper, time_limit=ollama.candidate_budget(1))
+                helper.open.assert_not_called()
 
     def test_verification_model_stays_on_loopback_and_checks_response_identity(self):
         opener = Mock()
