@@ -900,26 +900,36 @@ jobs:
 
       - name: Dispatch recovery classifier for exact failed run
         id: delivery_dispatch
-        if: (steps.decision.outputs.action == 'DELIVERY_WATCH' || steps.decision.outputs.action == 'CONTABO_QUALITY_RECOVERY') && steps.guard.outputs.dispatch == 'true'
+        if: steps.decision.outputs.action == 'DELIVERY_WATCH' && steps.guard.outputs.dispatch == 'true'
         shell: bash
         env:
-          ACTION: ${{ steps.decision.outputs.action }}
           RUN_ID: ${{ steps.decision.outputs.run_id }}
           REQUEST_ID: ${{ steps.decision.outputs.request_id }}
           DECISION_KEY: ${{ steps.decision.outputs.decision_key }}
         run: |
           set -euo pipefail
           [[ "$RUN_ID" =~ ^[0-9]+$ ]] && [ "$RUN_ID" != "0" ]
-          python -S tools/tayvoriq_lifecycle_dispatch_v1.py --action "$ACTION" \
+          python -S tools/tayvoriq_lifecycle_dispatch_v1.py --action DELIVERY_WATCH \
             --request-id "$REQUEST_ID" --run-id "$RUN_ID" --decision-key "$DECISION_KEY"
-          echo "ORCHESTRATOR_DISPATCHED:${ACTION}:${RUN_ID}"
+          echo "ORCHESTRATOR_DISPATCHED:DELIVERY_WATCH:${RUN_ID}"
+
+      - name: Dispatch one verified Contabo checkpoint repair
+        id: contabo_dispatch
+        if: steps.decision.outputs.action == 'CONTABO_QUALITY_RECOVERY' && steps.guard.outputs.dispatch == 'true'
+        env:
+          RUN_ID: ${{ steps.decision.outputs.run_id }}
+          REQUEST_ID: ${{ steps.decision.outputs.request_id }}
+          DECISION_KEY: ${{ steps.decision.outputs.decision_key }}
+        run: |
+          python -S tools/tayvoriq_lifecycle_dispatch_v1.py --action CONTABO_QUALITY_RECOVERY \
+            --request-id "$REQUEST_ID" --run-id "$RUN_ID" --decision-key "$DECISION_KEY"
 
       - name: Persist actual lifecycle result
         if: always() && steps.decision.outcome == 'success'
         env:
-          DISPATCH_VERIFIED: ${{ steps.codefix_dispatch.outputs.dispatch_verified == 'true' || steps.delivery_dispatch.outputs.dispatch_verified == 'true' }}
-          EXECUTOR_RUN_ID: ${{ steps.codefix_dispatch.outputs.executor_run_id || steps.delivery_dispatch.outputs.executor_run_id }}
-          EXECUTOR_WORKFLOW: ${{ steps.codefix_dispatch.outputs.executor_workflow || steps.delivery_dispatch.outputs.executor_workflow }}
+          DISPATCH_VERIFIED: ${{ steps.codefix_dispatch.outputs.dispatch_verified == 'true' || steps.delivery_dispatch.outputs.dispatch_verified == 'true' || steps.contabo_dispatch.outputs.dispatch_verified == 'true' }}
+          EXECUTOR_RUN_ID: ${{ steps.codefix_dispatch.outputs.executor_run_id || steps.delivery_dispatch.outputs.executor_run_id || steps.contabo_dispatch.outputs.executor_run_id }}
+          EXECUTOR_WORKFLOW: ${{ steps.codefix_dispatch.outputs.executor_workflow || steps.delivery_dispatch.outputs.executor_workflow || steps.contabo_dispatch.outputs.executor_workflow }}
         run: |
           set -euo pipefail
           python -S - <<'PYCODE'
