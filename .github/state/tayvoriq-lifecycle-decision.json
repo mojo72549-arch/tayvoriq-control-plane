@@ -1,7 +1,7 @@
 {
   "action": "NONE",
   "state": "REPAIR_REQUIRED",
-  "reason": "DIAGNOSTICS_REQUIRED",
+  "reason": "AWAITING_VERIFIED_SCENE_FIX",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "45988482504",
   "generation": "0",
@@ -15,13 +15,34 @@
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 45988482504,
     "worker_run_id": 45988694096,
-    "state": "DIAGNOSTICS_REQUIRED",
-    "checked_at": "2026-11-27T12:45:36.082241+00:00",
+    "state": "AWAITING_VERIFIED_SCENE_FIX",
+    "checked_at": "2026-11-27T12:49:36.433672+00:00",
     "controller_ended_at": "2026-11-27T11:40:49Z",
     "failed_step": "Assert publishable production output",
     "user_action_required": false,
     "quality_gates_weakened": false,
-    "attempt_used": true
+    "attempt_used": true,
+    "artifact_id": 15194561067,
+    "implementation_sha": "76b8abdd650512400649ba48c015524f74435062",
+    "stopped_at": "2026-11-27T11:39:40.0746435Z",
+    "budget_seconds": 1500,
+    "deadline_exceeded": true,
+    "voice_blocked": false,
+    "scenes": [
+      {
+        "platform": "tiktok",
+        "scene": 6
+      }
+    ],
+    "timeout": {
+      "kind": "LOCAL_REPAIR_WALL",
+      "at": "2026-11-27T11:39:40.0746435Z",
+      "seconds": 1500,
+      "job_id": 140470803069,
+      "stage": "VISUAL_REPAIR_TOPIC_AWARE_V3_R2",
+      "repair_round": 2
+    },
+    "voice_platforms_passed": true
   },
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
   "last_dispatch": {
@@ -34,23 +55,23 @@
     "executor_run_id": 45988482504,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-27T12:45:36.860569+00:00",
-  "orchestrator_run_id": 46001293250,
+  "checked_at": "2026-11-27T12:49:36.825642+00:00",
+  "orchestrator_run_id": 46001849502,
   "operator_event": {
     "request_id": "telegram-3821-trend-1-content-repair-v1",
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 45988482504,
     "worker_run_id": 45988694096,
     "schema": "tayvoriq-contabo-operator-event-v1",
-    "state": "DIAGNOSTICS_REQUIRED",
+    "state": "AWAITING_VERIFIED_SCENE_FIX",
     "owner": "TAYVORIQ-Produktionstechnik",
     "user_action_required": false,
-    "happened_at": "2026-11-27T11:40:49Z",
-    "cause": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.",
-    "done": "Der Orchestrator hat den Stopp dem freigegebenen Auftrag zugeordnet. Der einmal zugelassene Wiederanlauf wurde ausgeführt.",
-    "decision_required": "Die Produktionstechnik muss das Diagnoseartefakt des gestoppten Versuchs verifizieren.",
-    "next": "Es ist kein Reparaturjob eingeplant. Die Produktionstechnik muss das Diagnoseartefakt des gestoppten Versuchs verifizieren.",
-    "id": "97edf72c1c631831cf6cd6709f8183e69312a4f96e49d7172105ecbef5b0e128",
-    "text": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.\nDer Orchestrator hat den Stopp dem freigegebenen Auftrag zugeordnet. Der einmal zugelassene Wiederanlauf wurde ausgeführt.\nEs ist kein Reparaturjob eingeplant. Die Produktionstechnik muss das Diagnoseartefakt des gestoppten Versuchs verifizieren.\nFür dich ist keine Aktion nötig."
+    "happened_at": "2026-11-27T11:39:40.0746435Z",
+    "cause": "Die Reparatur wurde nach 25 Minuten vom Gesamtlimit gestoppt. Zu diesem Zeitpunkt lief Bildkorrektur 2.",
+    "done": "Der Zwischenstand ist für diesen Auftrag gesichert und die Prüfung hat offene Mängel gefunden. Der einmal zugelassene Wiederanlauf wurde ausgeführt. Die Sprecherfassungen für YouTube und TikTok haben die Sprachprüfung bestanden.",
+    "decision_required": "Die Produktionstechnik muss eine Reparatur für TikTok-Szene 6 ab dem gesicherten Zwischenstand prüfen und bestätigen.",
+    "next": "Es ist kein Reparaturjob eingeplant. Die Produktionstechnik muss eine Reparatur für TikTok-Szene 6 ab dem gesicherten Zwischenstand prüfen und bestätigen.",
+    "id": "5d51cf5119caaa241e176bc2e518cb3223eaab95fa31516e5969bf40a84528c2",
+    "text": "Die Reparatur wurde nach 25 Minuten vom Gesamtlimit gestoppt. Zu diesem Zeitpunkt lief Bildkorrektur 2.\nDer Zwischenstand ist für diesen Auftrag gesichert und die Prüfung hat offene Mängel gefunden. Der einmal zugelassene Wiederanlauf wurde ausgeführt. Die Sprecherfassungen für YouTube und TikTok haben die Sprachprüfung bestanden.\nEs ist kein Reparaturjob eingeplant. Die Produktionstechnik muss eine Reparatur für TikTok-Szene 6 ab dem gesicherten Zwischenstand prüfen und bestätigen.\nFür dich ist keine Aktion nötig."
   }
 }
