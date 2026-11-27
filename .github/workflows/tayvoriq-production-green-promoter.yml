@@ -454,12 +454,23 @@ jobs:
             echo 'verified=true' >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify mixed audio and scene recovery classification
+        if: steps.refs.outputs.changed == 'true'
+        id: mixed_checkpoint
+        working-directory: implementation
+        run: |
+          if rg -q 'def test_mixed_checkpoint_keeps_semantic_voice_block_with_passing_audio_metrics' tests/test_tayvoriq_checkpoint_resume_policy.py; then
+            python -m pytest -q tests/test_tayvoriq_checkpoint_resume_policy.py::test_mixed_checkpoint_keeps_semantic_voice_block_with_passing_audio_metrics
+            echo 'verified=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Promote exact fully verified SHA in control plane
         if: github.event_name != 'pull_request' && steps.refs.outputs.changed == 'true'
         shell: bash
         env:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
           SOFTWARE_WORKPLACE_SEARCH_VERIFIED: ${{ steps.visual_search.outputs.verified }}
+          MIXED_CHECKPOINT_RECOVERY_VERIFIED: ${{ steps.mixed_checkpoint.outputs.verified }}
         run: |
           set -euo pipefail
           git pull --rebase origin main
@@ -479,6 +490,7 @@ jobs:
               'verification_policy_version':str(os.environ.get('TAYVORIQ_GREEN_POLICY_VERSION') or ''),
               'full_preflight_passed':True,
               'software_workplace_search_verified':os.environ.get('SOFTWARE_WORKPLACE_SEARCH_VERIFIED')=='true',
+              'mixed_checkpoint_recovery_verified':os.environ.get('MIXED_CHECKPOINT_RECOVERY_VERIFIED')=='true',
               'quality_gates_weakened':False,
           }
           path=Path('.github/state/tayvoriq-production-green.json')
