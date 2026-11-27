@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-27T08:25:27.785148Z",
+  "generated_at": "2026-11-27T10:01:27.089880Z",
   "overall": "red",
   "intervention_count": 0,
   "user_action_required": false,
@@ -13,8 +13,8 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
-    "golden_path_run_id": 45954857672,
-    "pointer_updated_at": "2026-11-27T06:55:06.228852+00:00",
+    "golden_path_run_id": 45965549397,
+    "pointer_updated_at": "2026-11-27T08:27:50.579404+00:00",
     "current_scope": "production"
   },
   "request": {
@@ -22,7 +22,7 @@
     "topic": "SAP erwägt den Abbau von mehr als 10.000 Stellen",
     "trend_id": "1",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "CHECKPOINT_PROVENANCE_RECORDED",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
@@ -46,19 +46,19 @@
     "path": "requests/telegram-3821-trend-1-content-repair-v1.json"
   },
   "run": {
-    "id": 45954857672,
+    "id": 45965549397,
     "historical": false,
     "status": "completed",
     "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45954857672",
-    "created_at": "2026-11-27T06:54:12Z",
-    "updated_at": "2026-11-27T07:10:17Z",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/45965549397",
+    "created_at": "2026-11-27T08:25:28Z",
+    "updated_at": "2026-11-27T09:11:35Z",
     "attempt": 1,
     "progress": 0,
     "current_step": null,
-    "last_successful_step": null,
-    "failed_step": null,
-    "failed_step_number": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Monitor the private worker receipt",
+    "failed_step_number": 12,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -116,15 +116,15 @@
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 16,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "status": "skipped",
+        "step_number": 18,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -132,7 +132,7 @@
     {
       "name": "Golden Path",
       "status": "red",
-      "detail": "failure"
+      "detail": "Monitor the private worker receipt"
     },
     {
       "name": "Production Green",
@@ -156,11 +156,11 @@
     }
   ],
   "incident": {
-    "signature": "45954857672:none",
+    "signature": "45965549397:none",
     "severity": "critical",
     "failure_state": null,
-    "failed_step": null,
-    "failed_step_number": null,
+    "failed_step": "Monitor the private worker receipt",
+    "failed_step_number": 12,
     "self_heal_status": "RECOVERY_CLASSIFICATION_PENDING",
     "same_generation_replay_required": true,
     "quality_gates_weakened": false,
@@ -170,7 +170,7 @@
   "telegram": {
     "status": "yellow",
     "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
-    "last_step": null,
+    "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
@@ -178,7 +178,7 @@
     "source_status": "REPLAY_DISPATCHED",
     "failure_state": null,
     "failed_run_id": null,
-    "replay_run_id": 45954857672,
+    "replay_run_id": 45965549397,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
@@ -189,9 +189,19 @@
   },
   "events": [
     {
-      "at": "2026-11-27T07:10:17Z",
+      "at": "2026-11-27T09:11:35Z",
       "title": "Recovery-Replay wartet auf Klassifizierung",
-      "detail": "Run 45954857672 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+      "detail": "Run 45965549397 · Delivery Watch entscheidet den nächsten gebundenen Recovery-Schritt"
+    },
+    {
+      "at": "2026-11-27T09:11:35Z",
+      "title": "Workflow-Fehler",
+      "detail": "Monitor the private worker receipt"
+    },
+    {
+      "at": "2026-11-27T08:27:50.579385+00:00",
+      "title": "CHECKPOINT_PROVENANCE_RECORDED",
+      "detail": "contabo-controller"
     },
     {
       "at": "2026-11-27T06:54:18.921946+00:00",
