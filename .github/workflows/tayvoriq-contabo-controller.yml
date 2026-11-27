@@ -342,6 +342,7 @@ jobs:
           TRANSFER_OUTCOME: ${{ steps.transfer.outcome }}
           WORKER_OUTCOME: ${{ steps.worker.outcome }}
           WORKER_ID: ${{ steps.request.outputs.existing_worker || steps.worker.outputs.run_id }}
+          CONTROL_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'PY'
           import json,os,urllib.request,subprocess,base64
@@ -349,14 +350,18 @@ jobs:
           rid=os.environ['REQUEST_ID']
           request=json.loads(Path('requests/'+rid+'.json').read_text())
           run=os.environ.get('REVIEW_RUN_ID') or os.environ['GITHUB_RUN_ID']
+          mirrored_worker_stop=False
           transfer=os.environ['TRANSFER_OUTCOME']=='failure'
           reason='Der gespeicherte Produktionsstand konnte nicht an Contabo übergeben werden.' if transfer else 'Die Contabo-Produktion oder ihre abschließende Zustellung ist angehalten.'
           if os.environ.get('WORKER_ID'):
               try:
                   meta=json.loads(subprocess.check_output(['gh','api','repos/'+os.environ['STUDIO']+'/contents/.automation/contabo-workers/'+run+'.json'],text=True))
                   receipt=json.loads(base64.b64decode(meta['content']))
-                  if receipt['controller_run_id']==int(run) and receipt['source_context_sha256']==request['source_context_sha256']:
+                  if (receipt['controller_run_id']==int(run) and receipt['request_id']==rid
+                      and str(receipt['worker_run_id'])==os.environ['WORKER_ID']
+                      and receipt['source_context_sha256']==request['source_context_sha256']):
                       reason=receipt.get('failure_reason') or reason
+                      mirrored_worker_stop=receipt.get('status')=='FAILED'
               except Exception:pass
           detail={'schema':'tayvoriq-execution-incident-v1','request_id':rid,'source_context_sha256':request['source_context_sha256'],
             'run_id':int(run),'code':'CHECKPOINT_TRANSFER_FAILED' if transfer else 'CONTABO_EXECUTION_STOPPED',
@@ -365,6 +370,10 @@ jobs:
             'user_action_required':False,'quality_gates_weakened':False}
           path=Path('state/tayvoriq-execution-incidents')/(rid+'.json');path.parent.mkdir(parents=True,exist_ok=True)
           path.write_text(json.dumps(detail,ensure_ascii=False,indent=2)+'\n')
+          if mirrored_worker_stop:
+              from tools.tayvoriq_contabo_observation import notify
+              if notify({},receipt,os.environ['CONTROL_TOKEN']):
+                  raise SystemExit(0)
           token=os.environ['TELEGRAM_BOT_TOKEN'];chat=os.environ['TELEGRAM_CHAT_ID']
           data=json.dumps({'chat_id':chat,'text':'🔴 TAYVORIQ · Technischer Lauf angehalten\n\nUrsache: '+reason+'\nMaßnahme: '+detail['action']+'\nNoch offen: '+detail['next_proof']+'\nRequest: '+rid+'\nRun: '+run}).encode()
           with urllib.request.urlopen(urllib.request.Request('https://api.telegram.org/bot'+token+'/sendMessage',data=data,headers={'Content-Type':'application/json'}),timeout=30) as r:

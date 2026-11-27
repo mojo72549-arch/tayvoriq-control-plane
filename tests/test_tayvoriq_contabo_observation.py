@@ -5,7 +5,7 @@ from urllib.error import HTTPError
 
 from tools import tayvoriq_contabo_observation as observer
 
-def test_only_one_message_is_updated_when_the_confirmed_phase_changes(monkeypatch):
+def test_ordinary_progress_is_edited_and_milestones_send_a_new_notification(monkeypatch):
     for key,value in [('TELEGRAM_BOT_TOKEN','test'),('TELEGRAM_CHAT_ID','42')]:monkeypatch.setenv(key,value)
     saved={};calls=[]
     def api(repo,path,token,body=None):
@@ -36,11 +36,20 @@ def test_only_one_message_is_updated_when_the_confirmed_phase_changes(monkeypatc
     receipt.update(status='FAILED', failure_reason='Stille am Ende des YouTube-Exports.')
     observer.notify({}, receipt, 'test')
     observer.notify({}, receipt, 'test')
-    assert len(calls) == 3 and calls[-1][0].endswith('/editMessageText')
-    assert calls[-1][1]['message_id'] == 12
+    assert len(calls) == 3 and calls[-1][0].endswith('/sendMessage')
+    assert 'message_id' not in calls[-1][1]
     assert 'Produktion gestoppt' in calls[-1][1]['text']
     assert 'Stille am Ende des YouTube-Exports.' in calls[-1][1]['text']
 
     receipt['status'] = 'RUNNING'
     observer.notify(progress, receipt, 'test')
     assert len(calls) == 3
+
+    receipt.update(controller_run_id=101,status='RUNNING')
+    progress['current'].update(phase='script',at='first')
+    observer.notify(progress,receipt,'test')
+    progress['current'].update(phase='repair',target='visuals',at='repair')
+    observer.notify(progress,receipt,'test')
+    observer.notify(progress,receipt,'test')
+    assert len(calls)==5 and calls[-1][0].endswith('/sendMessage')
+    assert saved['run-status/contabo/notifications/101.json']['repair_alerted'] is True

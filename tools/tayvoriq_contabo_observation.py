@@ -42,21 +42,27 @@ def notify(progress,receipt,token):
         key = 'terminal:FAILED'
         title = 'Produktion gestoppt.'
         detail = receipt.get('failure_reason') or 'Die Ausführung auf Contabo ist fehlgeschlagen.'
+        brief = receipt.get('operator_brief') or {}
+        if brief.get('kind') == 'OLLAMA' and isinstance(brief.get('text'), str) and len(brief['text']) <= 300:
+            detail = brief['text']
     elif status == 'RUNNING':
         if (datetime.now(timezone.utc)-datetime.fromisoformat(progress['observed_at'])).total_seconds()>90:return
         event = progress.get('current') or {}
         if event.get('status') != 'started':return
         phase = event.get('target') if event.get('phase') == 'repair' else event.get('phase')
-        labels = {'voice':'Sprecheraufnahme wird korrigiert und geprüft.',
-            'visuals':'Beanstandete Bilder werden korrigiert und geprüft.',
-            'quality':'Das Video wird erneut auf Qualität geprüft.',
+        labels = {'voice':'Die Sprecheraufnahme wird erstellt.',
+            'visuals':'Bildmaterial wird zusammengestellt.',
+            'quality':'Das Video wird auf Qualität geprüft.',
             'render':'Die Video-Datei wird zusammengesetzt.',
             'captions':'Untertitel werden vorbereitet.',
             'script':'Das freigegebene Thema wird zum Skript ausgearbeitet.',
             'scenes':'Die Szenen werden geplant.'}
-        if phase not in labels:return
+        if phase not in labels:return False
         key = str(event.get('at'))+':'+phase
         title = labels[phase]
+        if event.get('phase')=='repair':
+            title={'voice':'Die Sprecheraufnahme wird gezielt korrigiert.',
+                   'visuals':'Beanstandete Bilder werden gezielt ersetzt.'}.get(phase,'Eine gezielte Korrektur läuft.')
         detail = 'Die endgültige Qualitätsfreigabe und Zustellung stehen noch aus.'
     else:
         return
@@ -66,24 +72,32 @@ def notify(progress,receipt,token):
     try:previous=json.loads(base64.b64decode(api(CONTROL,path,token)['content']))
     except HTTPError as error:
         if error.code!=404:raise
-    if not previous and status == 'FAILED':return
+    if previous and any(previous.get(k)!=receipt.get(k) for k in ('request_id','controller_run_id','source_context_sha256')):
+        raise ValueError('Telegram receipt does not match the active request')
     previous_key = previous.get('phase_key', '') if previous else ''
-    if previous_key == key or previous_key.startswith('terminal:'):return
+    if previous_key == key or previous_key.startswith('terminal:'):return True
     text='TAYVORIQ · '+title+'\n'
     text+='Auftrag: '+receipt['request_id']+'\n'
     text+=detail+'\n'
+    if status == 'FAILED':text+='Für dich: Aktuell ist keine Aktion erforderlich.\n'
     text+='Live-Stand: https://tayvoriq-control-center-mo61.vercel.app'
-    method='editMessageText' if previous else 'sendMessage'
+    repair=progress.get('current', {}).get('phase')=='repair'
+    delivery='new' if not previous or status=='FAILED' or (repair and previous.get('repair_alerted') is not True) else 'edit'
+    method='sendMessage' if delivery=='new' else 'editMessageText'
     body={'chat_id':chat,'text':text,'disable_web_page_preview':True}
-    if previous:body['message_id']=previous['telegram_message_id']
+    if delivery=='edit':body['message_id']=previous['telegram_message_id']
     request=Request('https://api.telegram.org/bot'+bot+'/'+method,
         headers={'Content-Type':'application/json'},data=json.dumps(body).encode())
     with urlopen(request,timeout=15) as response:result=json.load(response)
     assert result.get('ok') is True,'TELEGRAM_PROGRESS_NOT_CONFIRMED'
-    message=previous['telegram_message_id'] if previous else result['result']['message_id']
+    message=result['result']['message_id'] if delivery=='new' else previous['telegram_message_id']
+    assert type(message) is int and message>0,'TELEGRAM_PROGRESS_MESSAGE_MISSING'
     mirror(path,dict(schema='tayvoriq-contabo-progress-notification-v1',
         request_id=receipt['request_id'],controller_run_id=receipt['controller_run_id'],
-        source_context_sha256=receipt['source_context_sha256'],phase_key=key,telegram_message_id=message),token)
+        source_context_sha256=receipt['source_context_sha256'],phase_key=key,telegram_message_id=message,
+        updated_at=datetime.now(timezone.utc).isoformat(),delivery=delivery,
+        repair_alerted=repair or bool(previous and previous.get('repair_alerted'))),token)
+    return True
 
 def main():
     rid=os.environ['REQUEST_ID'];run=int(os.environ.get('CONTABO_OBSERVED_RUN_ID') or os.environ['GITHUB_RUN_ID'])
