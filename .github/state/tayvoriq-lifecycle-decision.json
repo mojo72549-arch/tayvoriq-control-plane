@@ -1,7 +1,7 @@
 {
   "action": "NONE",
   "state": "REPAIR_REQUIRED",
-  "reason": "TECHNICAL_ANALYSIS_REQUIRED",
+  "reason": "AWAITING_VERIFIED_TECHNICAL_FIX",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "45981134031",
   "generation": "0",
@@ -15,8 +15,8 @@
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 45981134031,
     "worker_run_id": 45981831306,
-    "state": "TECHNICAL_ANALYSIS_REQUIRED",
-    "checked_at": "2026-11-27T11:10:15.865253+00:00",
+    "state": "AWAITING_VERIFIED_TECHNICAL_FIX",
+    "checked_at": "2026-11-27T11:10:54.193752+00:00",
     "next_check_at": "2026-11-27T11:15:00+00:00",
     "controller_ended_at": "2026-11-27T10:37:35Z",
     "failed_step": "Assert publishable production output",
@@ -35,7 +35,7 @@
       }
     ],
     "voice_timeout_seconds": 600,
-    "technical_case_state": "ANALYSIS_QUEUED"
+    "technical_case_state": "PLAN_VERIFIED"
   },
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
   "last_dispatch": {
@@ -48,6 +48,6 @@
     "executor_run_id": 45981134031,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-27T11:10:16.514225+00:00",
-  "orchestrator_run_id": 45988198142
+  "checked_at": "2026-11-27T11:10:54.805797+00:00",
+  "orchestrator_run_id": 45988288128
 }
