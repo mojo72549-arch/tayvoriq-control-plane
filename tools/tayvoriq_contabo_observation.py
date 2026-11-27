@@ -56,7 +56,9 @@ def notify(progress,receipt,token):
             'render':'Die Video-Datei wird zusammengesetzt.',
             'captions':'Untertitel werden vorbereitet.',
             'script':'Das freigegebene Thema wird zum Skript ausgearbeitet.',
-            'scenes':'Die Szenen werden geplant.'}
+            'scenes':'Die Szenen werden geplant.',
+            'load_implementation':'Contabo lädt die geprüfte Produktionsversion.',
+            'check_production_contract':'Contabo prüft den Auftrag vor der Videoerstellung.'}
         if phase not in labels:return False
         key = str(event.get('at'))+':'+phase
         title = labels[phase]
@@ -113,7 +115,9 @@ def main():
     try:
         meta=api(STUDIO,f'run-status/live/{run}-1.json',os.environ['GH_TOKEN'])
     except HTTPError as error:
-        if error.code==404:return
+        if error.code==404:
+            mirror_worker_step(run,receipt,token)
+            return
         raise
     progress=json.loads(base64.b64decode(meta['content']))
     assert progress['schema']=='tayvoriq-production-progress-v1'
@@ -134,6 +138,23 @@ def main():
                                           'target':'visuals','status':'started'}},receipt,token)
             return
     notify(progress,receipt,token)
+
+
+def mirror_worker_step(run, receipt, token):
+    path=f'run-status/contabo/worker-steps/{run}.json'
+    try:
+        raw=api(STUDIO,path,os.environ['GH_TOKEN'])
+    except HTTPError as error:
+        if error.code==404:return
+        raise
+    step=json.loads(base64.b64decode(raw['content']))
+    if step.get('schema')!='tayvoriq-contabo-worker-step-v1' or any(step.get(key)!=receipt.get(key)
+            for key in ('controller_run_id','worker_run_id','request_id','source_context_sha256')):
+        raise ValueError('Worker step does not match the current receipt')
+    mirror(path,step,token)
+    if step.get('state')=='running':
+        notify({'observed_at':step['observed_at'],'current':{'at':step.get('started_at') or step['observed_at'],
+               'phase':step['code'],'status':'started'}},receipt,token)
 
 if __name__=='__main__':
     try:main()
