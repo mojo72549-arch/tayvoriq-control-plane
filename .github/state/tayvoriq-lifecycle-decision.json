@@ -1,13 +1,13 @@
 {
   "action": "NONE",
-  "state": "REPAIR_REQUIRED",
-  "reason": "AWAITING_VERIFIED_PADDING_FIX",
+  "state": "RECOVERING",
+  "reason": "VERIFIED_ACTIVE_EXECUTOR",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "46011335246",
   "generation": "0",
   "request_status": "",
   "request_substate": "",
-  "decision_key": "",
+  "decision_key": "78437e49f0eb93b153309d18aadb34dace39223280dbaec4299b476c3d84f92e",
   "dispatch_verified": false,
   "contabo_repair": {
     "schema": "tayvoriq-contabo-quality-decision-v1",
@@ -15,8 +15,8 @@
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 46011335246,
     "worker_run_id": 46011418248,
-    "state": "AWAITING_VERIFIED_PADDING_FIX",
-    "checked_at": "2026-11-27T14:16:06.332595+00:00",
+    "state": "RETRY_ELIGIBLE",
+    "checked_at": "2026-11-27T14:18:29.033637+00:00",
     "controller_ended_at": "2026-11-27T14:00:19Z",
     "failed_step": "Assert publishable production output",
     "user_action_required": false,
@@ -26,9 +26,17 @@
     "implementation_sha": "88d538e843b4300eab2ff22cc39d24661f223d11",
     "platform": "youtube_shorts",
     "stopped_at": "2026-11-27T13:58:50.3960935Z",
-    "voice_platforms_passed": true
+    "voice_platforms_passed": true,
+    "next_implementation_sha": "cfb53a2a5e72a9eea4839c060096d8ebb9d320cf",
+    "planned_attempts": 1,
+    "repair_kind": "TERMINAL_PADDING_CHECKPOINT_REPAIR",
+    "decision_key": "78437e49f0eb93b153309d18aadb34dace39223280dbaec4299b476c3d84f92e"
   },
+  "executor_run_id": 46014560476,
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
+  "signal_run_id": 46014388910,
+  "signal_run_attempt": 1,
+  "signal_receipt": "COMPLETED",
   "last_dispatch": {
     "decision_key": "06faeb5a773c7bd06f0fea6b5872916219c8666a6731744b058f01a72e7a0782",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
@@ -39,23 +47,23 @@
     "executor_run_id": 46011335246,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-27T14:16:06.682549+00:00",
-  "orchestrator_run_id": 46014325936,
+  "checked_at": "2026-11-27T14:18:33.527867+00:00",
+  "orchestrator_run_id": 46014690058,
   "operator_event": {
     "request_id": "telegram-3821-trend-1-content-repair-v1",
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
     "controller_run_id": 46011335246,
     "worker_run_id": 46011418248,
     "schema": "tayvoriq-contabo-operator-event-v1",
-    "state": "AWAITING_VERIFIED_PADDING_FIX",
+    "state": "RETRY_ELIGIBLE",
     "owner": "TAYVORIQ-Produktionstechnik",
     "user_action_required": false,
     "happened_at": "2026-11-27T13:58:50.3960935Z",
-    "cause": "Das Bildaudit ist bestanden. Die finale Mixprüfung beanstandet einen stummen Abschnitt bei YouTube.",
+    "cause": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.",
     "done": "Der Zwischenstand ist für diesen Auftrag gesichert und die Prüfung hat offene Mängel gefunden. Der einmal zugelassene Wiederanlauf wurde ausgeführt. Die Sprecherfassungen für YouTube und TikTok haben die Sprachprüfung bestanden.",
-    "decision_required": "Die Produktionstechnik prüft einen begrenzten Schnitt am stummen Ende von YouTube.",
-    "next": "Es ist kein Reparaturjob eingeplant. Die Produktionstechnik prüft einen begrenzten Schnitt am stummen Ende von YouTube.",
-    "id": "694949fce2e985a98daa2ae57150c9202222c1a8479378b280728042a87323d4",
-    "text": "Das Bildaudit ist bestanden. Die finale Mixprüfung beanstandet einen stummen Abschnitt bei YouTube.\nDer Zwischenstand ist für diesen Auftrag gesichert und die Prüfung hat offene Mängel gefunden. Der einmal zugelassene Wiederanlauf wurde ausgeführt. Die Sprecherfassungen für YouTube und TikTok haben die Sprachprüfung bestanden.\nEs ist kein Reparaturjob eingeplant. Die Produktionstechnik prüft einen begrenzten Schnitt am stummen Ende von YouTube.\nFür dich ist keine Aktion nötig."
+    "decision_required": "Die Produktionstechnik muss den Fehlernachweis prüfen und eine gezielte Korrektur bestätigen.",
+    "next": "Es ist kein Reparaturjob eingeplant. Die Produktionstechnik muss den Fehlernachweis prüfen und eine gezielte Korrektur bestätigen.",
+    "id": "6b09acf38f614ce921ec56594f50addaacd47f5b9e531331a405245e681980c7",
+    "text": "Die Produktion ist bei der Prüfung des Video-Zwischenstands stehen geblieben.\nDer Zwischenstand ist für diesen Auftrag gesichert und die Prüfung hat offene Mängel gefunden. Der einmal zugelassene Wiederanlauf wurde ausgeführt. Die Sprecherfassungen für YouTube und TikTok haben die Sprachprüfung bestanden.\nEs ist kein Reparaturjob eingeplant. Die Produktionstechnik muss den Fehlernachweis prüfen und eine gezielte Korrektur bestätigen.\nFür dich ist keine Aktion nötig."
   }
 }
