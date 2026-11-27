@@ -263,7 +263,7 @@
   "contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
   "dispatch_claim_run_id": 45954835467,
   "dispatch_contract_sha256": "c781d30057c56909020b5cf5e7c030b6cc5718a8d937a78d69776ce7ea2a3e0f",
-  "golden_path_run_id": 45988482504,
+  "golden_path_run_id": 46011335246,
   "execution_backend": "contabo_private_runner",
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
@@ -290,7 +290,8 @@
   "previous_golden_path_run_ids": [
     45954857672,
     45965549397,
-    45981134031
+    45981134031,
+    45988482504
   ],
   "visual_recovery": {
     "schema": "tayvoriq-contabo-visual-recovery-v1",
@@ -305,33 +306,40 @@
     "schema": "tayvoriq-contabo-quality-decision-v1",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
     "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
-    "controller_run_id": 45988482504,
-    "worker_run_id": 45981831306,
+    "controller_run_id": 46011335246,
+    "worker_run_id": 45988694096,
     "state": "RETRY_ELIGIBLE",
-    "checked_at": "2026-11-27T11:12:08.141288+00:00",
-    "next_check_at": "2026-11-27T11:15:00+00:00",
-    "controller_ended_at": "2026-11-27T10:37:35Z",
+    "checked_at": "2026-11-27T13:55:54.410495+00:00",
+    "controller_ended_at": "2026-11-27T11:40:49Z",
     "failed_step": "Assert publishable production output",
     "user_action_required": false,
     "quality_gates_weakened": false,
-    "artifact_id": 15190515889,
-    "implementation_sha": "11cda76552c25581f31a9a2be343cb8e3b50daa9",
-    "stopped_at": "2026-11-27T10:37:17Z",
-    "budget_seconds": null,
-    "deadline_exceeded": false,
-    "voice_blocked": true,
+    "attempt_used": true,
+    "artifact_id": 15194561067,
+    "implementation_sha": "76b8abdd650512400649ba48c015524f74435062",
+    "stopped_at": "2026-11-27T11:39:40.0746435Z",
+    "budget_seconds": 1500,
+    "deadline_exceeded": true,
+    "voice_blocked": false,
     "scenes": [
       {
         "platform": "tiktok",
         "scene": 6
       }
     ],
-    "voice_timeout_seconds": 600,
-    "technical_case_state": "PLAN_VERIFIED",
-    "next_implementation_sha": "76b8abdd650512400649ba48c015524f74435062",
+    "timeout": {
+      "kind": "LOCAL_REPAIR_WALL",
+      "at": "2026-11-27T11:39:40.0746435Z",
+      "seconds": 1500,
+      "job_id": 140470803069,
+      "stage": "VISUAL_REPAIR_TOPIC_AWARE_V3_R2",
+      "repair_round": 2
+    },
+    "voice_platforms_passed": true,
+    "next_implementation_sha": "88d538e843b4300eab2ff22cc39d24661f223d11",
     "planned_attempts": 1,
-    "repair_kind": "VOICE_CHECKPOINT_ISOLATION",
-    "decision_key": "9914962285a40850abe88568d7260368883e0494da8a807b7f15a21ff1349ea6",
-    "parent_run_id": 45981134031
+    "repair_kind": "SINGLE_SCENE_CHECKPOINT_REPAIR",
+    "decision_key": "06faeb5a773c7bd06f0fea6b5872916219c8666a6731744b058f01a72e7a0782",
+    "parent_run_id": 45988482504
   }
 }
