@@ -142,6 +142,9 @@ class Observation:
                 self.data['issues'] = [*self.data['issues'], issue][-12:]
         elif event == 'regional_editorial_validation':
             pass  # A batch summary is not another rejected candidate.
+        elif event == 'research_deadline_reached':
+            self.issue('Research timeout', self.data.get('provider'))
+            self.record(event)
         elif event in {'provider_attempt_started', 'provider_success', 'provider_attempt_failed'}:
             provider = next((p for p in PROVIDERS if str(row.get('provider', '')).lower().startswith(p)), None)
             if provider:
@@ -335,6 +338,8 @@ def run_child(command, env, deadline, observation, save, *, clock=time.time, sto
         while True:
             now = clock()
             if now >= deadline:
+                if env.get('TAYVORIQ_LOCAL_RESEARCH') == 'true':
+                    print(json.dumps({'event': 'research_deadline_reached'}), flush=True)
                 return 124
             if now >= next_stop_check:
                 if stopped():
