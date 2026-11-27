@@ -4,28 +4,18 @@
   "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
   "run_id": 45965549397,
   "run_attempt": 1,
-  "updated_at": "2026-11-27T09:02:27.512927+00:00",
-  "observed_at": "2026-11-27T09:03:34.324836+00:00",
+  "updated_at": "2026-11-27T09:03:43.602623+00:00",
+  "observed_at": "2026-11-27T09:03:43.604063+00:00",
   "current": {
-    "phase": "render",
+    "phase": "quality",
     "status": "started",
-    "at": "2026-11-27T09:02:16.280325+00:00",
-    "call_id": "a8db625a75f14b54b9409f70a5dedc1c",
-    "platform": "youtube_shorts",
-    "total": 6,
+    "at": "2026-11-27T09:03:43.602623+00:00",
+    "call_id": "checkpoint-QUALITY_AUDIT_1",
+    "timeout_seconds": 420,
     "round": null,
     "target": null
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-27T09:02:19.920389+00:00",
-      "call_id": "44ceba19bc68405ab299120a94a96cbd",
-      "platform": "youtube_shorts",
-      "scene": 3,
-      "total": 6
-    },
     {
       "phase": "captions",
       "status": "started",
@@ -144,6 +134,13 @@
       "platform": "youtube_shorts",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "quality",
+      "status": "started",
+      "at": "2026-11-27T09:03:43.602623+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "timeout_seconds": 420
     }
   ],
   "completed_phases": [
