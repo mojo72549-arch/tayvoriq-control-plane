@@ -1,7 +1,7 @@
 {
   "action": "NONE",
-  "state": "RUNNING",
-  "reason": "VERIFIED_CONTABO_OWNER_ACTIVE",
+  "state": "REPAIR_REQUIRED",
+  "reason": "TECHNICAL_ANALYSIS_REQUIRED",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "45981134031",
   "generation": "0",
@@ -9,6 +9,34 @@
   "request_substate": "",
   "decision_key": "",
   "dispatch_verified": false,
+  "contabo_repair": {
+    "schema": "tayvoriq-contabo-quality-decision-v1",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+    "controller_run_id": 45981134031,
+    "worker_run_id": 45981831306,
+    "state": "TECHNICAL_ANALYSIS_REQUIRED",
+    "checked_at": "2026-11-27T11:10:15.865253+00:00",
+    "next_check_at": "2026-11-27T11:15:00+00:00",
+    "controller_ended_at": "2026-11-27T10:37:35Z",
+    "failed_step": "Assert publishable production output",
+    "user_action_required": false,
+    "quality_gates_weakened": false,
+    "artifact_id": 15190515889,
+    "implementation_sha": "11cda76552c25581f31a9a2be343cb8e3b50daa9",
+    "stopped_at": "2026-11-27T10:37:17Z",
+    "budget_seconds": null,
+    "deadline_exceeded": false,
+    "voice_blocked": true,
+    "scenes": [
+      {
+        "platform": "tiktok",
+        "scene": 6
+      }
+    ],
+    "voice_timeout_seconds": 600,
+    "technical_case_state": "ANALYSIS_QUEUED"
+  },
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
   "last_dispatch": {
     "decision_key": "1c761370c63d7300b60be9d3a38af66e10d974db186e735b808296d2778fb713",
@@ -20,6 +48,6 @@
     "executor_run_id": 45981134031,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-27T10:20:05.912775+00:00",
-  "orchestrator_run_id": 45981090523
+  "checked_at": "2026-11-27T11:10:16.514225+00:00",
+  "orchestrator_run_id": 45988198142
 }
