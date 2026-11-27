@@ -930,12 +930,14 @@ jobs:
           DISPATCH_VERIFIED: ${{ steps.codefix_dispatch.outputs.dispatch_verified == 'true' || steps.delivery_dispatch.outputs.dispatch_verified == 'true' || steps.contabo_dispatch.outputs.dispatch_verified == 'true' }}
           EXECUTOR_RUN_ID: ${{ steps.codefix_dispatch.outputs.executor_run_id || steps.delivery_dispatch.outputs.executor_run_id || steps.contabo_dispatch.outputs.executor_run_id }}
           EXECUTOR_WORKFLOW: ${{ steps.codefix_dispatch.outputs.executor_workflow || steps.delivery_dispatch.outputs.executor_workflow || steps.contabo_dispatch.outputs.executor_workflow }}
+          CONTABO_DISPATCH_OUTCOME: ${{ steps.contabo_dispatch.outcome }}
         run: |
           set -euo pipefail
-          python -S - <<'PYCODE'
+          PYTHONPATH=tools python -S - <<'PYCODE'
           import json,os
           from datetime import datetime,timezone
           from pathlib import Path
+          from tayvoriq_contabo_operator_event import build_event
           result=json.loads(Path('/tmp/tayvoriq-lifecycle-decision.json').read_text())
           result['checked_at']=datetime.now(timezone.utc).isoformat()
           result['orchestrator_run_id']=int(os.environ['GITHUB_RUN_ID'])
@@ -945,6 +947,9 @@ jobs:
               result['executor_workflow']=os.environ['EXECUTOR_WORKFLOW']
               result['state']='RECOVERY_DISPATCHED'
               result['last_dispatch']={k:result[k] for k in ('decision_key','request_id','run_id','dispatch_verified','checked_at','orchestrator_run_id','executor_run_id','executor_workflow')}
+          event=build_event(result, os.environ['CONTABO_DISPATCH_OUTCOME'])
+          if event:
+              result['operator_event']=event
           target=Path('.github/state/tayvoriq-lifecycle-decision.json')
           if target.is_file():
               previous=json.loads(target.read_text(encoding='utf-8'))
@@ -970,6 +975,16 @@ jobs:
             sleep 2
           done
           exit 1
+
+      - name: Mirror the persisted Contabo repair decision to Telegram
+        if: always() && steps.decision.outcome == 'success'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          git fetch origin main --quiet
+          git show origin/main:.github/state/tayvoriq-lifecycle-decision.json > .github/state/tayvoriq-lifecycle-decision.json
+          python -S tools/tayvoriq_contabo_operator_event.py
 
       - name: Refresh Control Center after verified production completion
         if: >-
