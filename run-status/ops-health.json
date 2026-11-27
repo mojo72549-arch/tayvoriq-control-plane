@@ -1,21 +1,41 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-27T16:56:57.987312Z",
-  "overall": "green",
+  "generated_at": "2026-11-27T18:13:15.009741Z",
+  "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": true,
-    "reason": "VERIFIED_STATE_TRANSITION"
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
   },
   "api_error": null,
-  "research": {},
+  "research": {
+    "schema": "tayvoriq-research-retry-v1",
+    "state": "WAITING",
+    "slot": "evening",
+    "berlin_date": "2026-11-27",
+    "first_deferred_at_epoch": 1795802764.0,
+    "attempts": 1,
+    "retry_at_epoch": 1795803274.3384912,
+    "retry_phase": "NORMAL",
+    "last_deferred_at_epoch": 1795803184.3385057,
+    "provider_retry_at_epoch": 1795803274.3384912,
+    "max_attempts": 3,
+    "sla_seconds": 600,
+    "valid_until_epoch": 1795803364.0,
+    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
+    "quality_gates_weakened": false,
+    "production_started": false,
+    "last_research_attempt": "46046874794.1",
+    "last_issue": "RESEARCH_TIME_BUDGET_EXHAUSTED",
+    "status_detail": "Die Themenprüfung hat ihr Zeitlimit erreicht."
+  },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
     "golden_path_run_id": 46015106689,
     "pointer_updated_at": "2026-11-27T14:31:29.648082+00:00",
-    "current_scope": "production"
+    "current_scope": "research"
   },
   "request": {
     "request_id": "telegram-3821-trend-1-content-repair-v1",
@@ -47,7 +67,7 @@
   },
   "run": {
     "id": 46015106689,
-    "historical": false,
+    "historical": true,
     "status": "completed",
     "conclusion": "success",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46015106689",
@@ -131,8 +151,8 @@
   "healthchecks": [
     {
       "name": "Golden Path",
-      "status": "green",
-      "detail": "success"
+      "status": "yellow",
+      "detail": "Kein aktueller Produktionslauf · Recherche WAITING"
     },
     {
       "name": "Production Green",
@@ -141,30 +161,30 @@
     },
     {
       "name": "Self-Heal",
-      "status": "green",
-      "detail": "REPLAY_DISPATCHED"
+      "status": "yellow",
+      "detail": "WAITING"
     },
     {
       "name": "Telegram",
-      "status": "green",
-      "detail": "Telegram-Videoquittung bestätigt"
+      "status": "yellow",
+      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
     }
   ],
   "incident": null,
   "telegram": {
-    "status": "green",
-    "detail": "Telegram-Videoquittung bestätigt",
+    "status": "yellow",
+    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
     "last_step": "Send Telegram review",
     "message_id": 3877
   },
   "recovery": {
-    "status": "REPLAY_DISPATCHED",
-    "source_status": "REPLAY_DISPATCHED",
+    "status": "WAITING",
+    "source_status": "WAITING",
     "failure_state": null,
     "failed_run_id": null,
     "replay_run_id": 46015106689,
