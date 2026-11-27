@@ -1,7 +1,7 @@
 {
   "action": "NONE",
-  "state": "BLOCKED",
-  "reason": "USER_APPROVAL_PROVENANCE_REQUIRED",
+  "state": "REPAIR_REQUIRED",
+  "reason": "DIAGNOSTICS_REQUIRED",
   "request_id": "telegram-3821-trend-1-content-repair-v1",
   "run_id": "45965549397",
   "generation": "0",
@@ -9,6 +9,20 @@
   "request_substate": "",
   "decision_key": "",
   "dispatch_verified": false,
+  "contabo_repair": {
+    "schema": "tayvoriq-contabo-quality-decision-v1",
+    "request_id": "telegram-3821-trend-1-content-repair-v1",
+    "source_context_sha256": "e3bbf97867e5d6ef72f69eb539409848f5e1f3c0e4beb9d01c74bf7267a40b3a",
+    "controller_run_id": 45965549397,
+    "worker_run_id": 45965833512,
+    "state": "DIAGNOSTICS_REQUIRED",
+    "checked_at": "2026-11-27T10:07:35.129971+00:00",
+    "next_check_at": "2026-11-27T10:10:00+00:00",
+    "controller_ended_at": "2026-11-27T09:11:35Z",
+    "failed_step": "Assert publishable production output",
+    "user_action_required": false,
+    "quality_gates_weakened": false
+  },
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
   "last_dispatch": {
     "decision_key": "f635c6cba191c4927460d2325cd4e8086de66e3c2f3025632f3d34a8a7d77a92",
@@ -20,6 +34,6 @@
     "executor_run_id": 45834804656,
     "executor_workflow": "tayvoriq-delivery-watch.yml"
   },
-  "checked_at": "2026-11-27T08:25:47.600843+00:00",
-  "orchestrator_run_id": 45965532984
+  "checked_at": "2026-11-27T10:07:35.442120+00:00",
+  "orchestrator_run_id": 45979402146
 }
