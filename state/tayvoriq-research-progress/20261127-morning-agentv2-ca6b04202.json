@@ -6,16 +6,43 @@
   "run_attempt": 1,
   "state": "SEARCHING",
   "started_at": "2026-11-27T21:49:57.690377+00:00",
-  "updated_at": "2026-11-27T21:49:57.846063+00:00",
+  "updated_at": "2026-11-27T21:50:18.522055+00:00",
   "sources_seen": null,
   "drafts_saved": 0,
   "quality_rejections": 0,
   "corroborated_headlines": null,
   "provider": null,
-  "issues": [],
+  "issues": [
+    {
+      "code": "WORKER_WAKEUP_FAILED",
+      "provider": null
+    }
+  ],
   "exit_code": null,
-  "history": [],
+  "history": [
+    {
+      "at": "2026-11-27T21:50:01.095163+00:00",
+      "event": "contabo_worker_failure",
+      "code": "WORKER_WAKEUP_FAILED",
+      "cause": "ACCESS"
+    },
+    {
+      "at": "2026-11-27T21:50:01.095275+00:00",
+      "event": "contabo_worker_wakeup",
+      "wake_attempt": 1,
+      "confirmed": false
+    }
+  ],
   "local_attempt": 1,
   "max_local_attempts": 3,
-  "next_retry_at": null
+  "next_retry_at": null,
+  "wakeup_failure_cause": "ACCESS",
+  "handoff": {
+    "state": "WAITING_FOR_WORKER",
+    "wake_attempt": 1,
+    "max_wake_attempts": 2,
+    "owner": "contabo_research_worker",
+    "wakeup_confirmed": false,
+    "next_check_at": null
+  }
 }
