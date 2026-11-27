@@ -3,6 +3,8 @@ import json
 import os
 import sys
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -375,9 +377,13 @@ class GroqSourceContractTests(unittest.TestCase):
                                            provider_kind="groq", allow_single=True)
             self.assertEqual(len(data["candidates"]), 1)
             self.assertEqual({row["uri"] for row in chunks}, {row["url"] for row in pool[:2]})
-            assess.return_value = {"passed": False}
-            with self.assertRaisesRegex(hf.InsufficientSourceEvidence, "No eligible individual candidate"):
+            assess.return_value = {"passed": False, "reason": "regional_scorecard", "issues": ["tiktok:regional_score_below_75"]}
+            output = StringIO()
+            with redirect_stdout(output), self.assertRaisesRegex(hf.InsufficientSourceEvidence, "No eligible individual candidate"):
                 hf.structure("prompt", "key", pool, "rss-article-context", provider_kind="groq", allow_single=True)
+            events = [json.loads(line) for line in output.getvalue().splitlines()]
+            rejection = next(row for row in events if row['event'] == 'candidate_editorial_rejection')
+            self.assertEqual(rejection['details'], ['tiktok:regional_score_below_75'])
 
     def test_editorial_repair_only_changes_requested_fields_of_a_qualified_draft(self):
         sources = [{"source_id": "S003", "supports": "Die Kette plant einen Zusammenschluss."},

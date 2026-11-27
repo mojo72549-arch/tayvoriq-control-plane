@@ -104,6 +104,13 @@ class LocalArticleResearchTests(unittest.TestCase):
                          ['multi-publisher-rss', 'rss-article-context'])
         model.assert_not_called()
 
+    def test_editorial_failure_is_not_mislabeled_as_missing_source_pairs(self):
+        with patch.object(resilience.rss, 'source_pool', side_effect=self.records), \
+             patch.object(resilience.gdelt, 'source_pool', return_value=[]), \
+             patch.object(hf, 'structure', side_effect=hf.InsufficientSourceEvidence('No eligible individual candidate')):
+            with self.assertRaisesRegex(RuntimeError, 'OLLAMA_EDITORIAL_RESULT_INCOMPLETE'):
+                resilience.local_grounded('editorial')
+
     def test_confirmed_rss_result_avoids_unnecessary_article_and_gdelt_requests(self):
         with patch.object(resilience.rss, 'source_pool', side_effect=self.records), \
              patch.object(hf, 'structure', return_value=({'candidates': []}, [], 'fixture')), \
