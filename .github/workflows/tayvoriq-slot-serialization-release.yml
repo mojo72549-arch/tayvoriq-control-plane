@@ -20,7 +20,7 @@ on:
 
 permissions:
   contents: write
-  actions: read
+  actions: write
 
 concurrency:
   group: tayvoriq-slot-serialization-release
@@ -38,6 +38,33 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+
+      - name: Resume a verified Contabo CTA failure
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'failure'
+        env:
+          SIGNAL_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main --quiet
+            git reset --hard origin/main --quiet
+            repair=$(python tools/tayvoriq_contabo_cta_repair.py)
+            [ -n "$repair" ] || exit 0
+            git add "$repair"
+            if ! git diff --cached --quiet; then
+              git commit -m "Stage a verified Contabo CTA-only repair"
+              if ! git push origin HEAD:main; then
+                sleep "$attempt"
+                continue
+              fi
+            fi
+            request_id=${repair##*/}
+            gh workflow run tayvoriq-request-dispatch.yml --ref main -f "source_request_id=${request_id%.json}"
+            exit 0
+          done
+          exit 1
 
       - name: Find oldest held evening request
         id: candidate

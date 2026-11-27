@@ -11,6 +11,11 @@ on:
       - "tools/tayvoriq_slot_serialization_v1.py"
       - ".github/workflows/tayvoriq-request-dispatch.yml"
   workflow_dispatch:
+    inputs:
+      source_request_id:
+        type: string
+        required: false
+        description: Canonical request to dispatch
 
 permissions:
   actions: write
@@ -51,6 +56,7 @@ jobs:
           TEXT_APPROVAL: ${{ github.event.client_payload.text_approval }}
           TELEGRAM_MESSAGE_ID: ${{ github.event.client_payload.telegram_message_id }}
           APPROVAL_ORIGIN: ${{ github.event.client_payload.requested_via || 'telegram_callback' }}
+          REQUEST_INPUT: ${{ inputs.source_request_id || '' }}
         run: |
           set -euo pipefail
           REQUEST_FILE=""
@@ -89,6 +95,9 @@ jobs:
               --out-dir requests)
           elif [ "$EVENT_NAME" = "push" ]; then
             REQUEST_FILE=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep '^requests/.*\.json$' | tail -n 1 || true)
+          elif [ -n "$REQUEST_INPUT" ]; then
+            [[ "$REQUEST_INPUT" =~ ^[[:alnum:]_-]{4,80}$ ]] || exit 1
+            REQUEST_FILE="requests/$REQUEST_INPUT.json"
           else
             REQUEST_FILE=$(python - <<'PY'
           import json
