@@ -27,6 +27,14 @@ _APPOINTMENT_SUBJECT = re.compile(
 _PRICE = r"\b(?:[a-zäöüß-]*preis(?:e[ns]?|en|es)?|kosten)\b"
 _PRICE_DOWN = r"\b(?:senk\w*|gesenkt\w*|sink\w*|sank\w*|gesunken\w*|fällt|fallen|fiel)\b"
 _PRICE_UP = r"\b(?:steig\w*|stieg\w*|gestiegen\w*|erhöh\w*|erhoeh\w*|erhöht\w*)\b"
+_QUARTER_STEMS = {"1": "erst", "2": "zweit", "3": "dritt", "4": "viert"}
+_QUARTER = re.compile(r"\b(?:([1-4])\.\s*|(erst|zweit|dritt|viert)(?:e|en|em|es)\s+)quartal\b")
+_REAL_WAGE_RISE = re.compile(
+    r"(\breallöhne\s+(?:(?:sind|waren)\s+)?"
+    r"(?:im\s+(?:(?:erstes|zweites|drittes|viertes)\s+quartal(?:\s+\d{4})?|sommer)\s+)?"
+    r"(?:(?:weiter|leicht|langsamer|deutlich)\s+)?(?:um\s+\d+(?:[.,]\d+)?\s*(?:%|prozent)\s+)?)"
+    r"(steigen|stiegen|gestiegen|wachsen|wuchsen|gewachsen|höher)\b"
+)
 
 # Explicitly bounded event vocabulary: unknown or ambiguous actions defer to
 # another research path. Shared actors/places alone never prove one event.
@@ -64,9 +72,15 @@ _EVENTS = {
 }
 
 
+def _normalize_quarters(text: str) -> str:
+    return _QUARTER.sub(lambda match: (match[2] or _QUARTER_STEMS[match[1]]) + "es quartal", text)
+
+
 def _events(text: str) -> set[str]:
     text = _MERGER.sub("firmenfusion", text.casefold())
     events = {name for name, pattern in _EVENTS.items() if re.search(pattern, text)}
+    if "reallöhne" in text and _REAL_WAGE_RISE.search(_normalize_quarters(text)):
+        events.add("real_wage_rise")
     for name, direction in (("price_fall", _PRICE_DOWN), ("price_rise", _PRICE_UP)):
         if re.search(_PRICE + r".{0,45}" + direction + "|" + direction + r".{0,45}" + _PRICE, text):
             events.add(name)
@@ -132,6 +146,8 @@ def claim_terms(value: str) -> set[str]:
              "discountern":"discounter", "deutschen":"deutsche", "deutscher":"deutsche",
              "bald":"zukünftig", "demnächst":"zukünftig", "künftig":"zukünftig"}
     events = _events(value)
+    if "real_wage_rise" in events:
+        value = _REAL_WAGE_RISE.sub(r"\1reallohnanstieg", _normalize_quarters(value))
     if "price_fall" in events:
         value = re.sub(_PRICE_DOWN, "preissenkung", value)
     if "price_rise" in events:

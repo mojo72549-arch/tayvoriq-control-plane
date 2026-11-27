@@ -4,6 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from tayvoriq_source_evidence_v1 import validate_pair, source_support, _numbers
+from tayvoriq_agent_hf_v2 import corroborated_headline
 
 
 class SourceEvidenceTests(unittest.TestCase):
@@ -59,6 +60,26 @@ class SourceEvidenceTests(unittest.TestCase):
     def test_invented_headline_number_is_rejected(self):
         self.candidate["title"] = "Mercedes investiert 1000 Millionen in Stuttgart Werk"
         self.assertIn("source_1_missing_headline_number", validate_pair(self.candidate, self.records))
+
+    def test_real_wage_headline_keeps_direction_quarter_and_numerical_support(self):
+        official = {"url": "https://www.destatis.de/presse/loehne",
+                    "title": "Reallöhne im 3. Quartal 2026 um 1,3 % höher als im Vorjahresquartal",
+                    "context": "Die Nominallöhne stiegen um 4,3 Prozent."}
+        editorial = {"url": "https://www.n-tv.de/wirtschaft/realloehne",
+                     "title": "Trotz erhöhter Inflation: Reallöhne steigen im dritten Quartal",
+                     "context": "Die Energiepreise bleiben hoch. Die Löhne sind um 4,3 Prozent gestiegen."}
+        headline = "Reallöhne steigen im dritten Quartal"
+
+        self.assertEqual(corroborated_headline(official, editorial), headline)
+        self.assertEqual(validate_pair({"title": headline}, [official, editorial]), [])
+        self.assertIn("source_2_missing_headline_number", validate_pair({
+            "title": "Reallöhne steigen im dritten Quartal um 1,3 Prozent",
+        }, [official, editorial]))
+        for wrong in ("Reallöhne steigen im vierten Quartal",
+                      "Reallöhne sinken im dritten Quartal, Preise steigen",
+                      "Nominallöhne steigen im dritten Quartal"):
+            other = {**editorial, "title": wrong}
+            self.assertEqual(corroborated_headline(official, other), "", wrong)
 
     def test_decimal_numbers_cannot_become_ten_times_larger(self):
         for decimal in ('1.5', '1,5'):

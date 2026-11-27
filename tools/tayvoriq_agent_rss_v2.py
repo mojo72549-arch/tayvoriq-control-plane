@@ -20,6 +20,10 @@ FEEDS = [
     # Original German regional/national publishers first: less global filler and
     # more independently reported Germany/BW stories for strict two-source gates.
     ("stuttgart-presse", "https://www.stuttgart.de/pressemitteilungen/?action=submit&sp%3Acmp=search-1-0-searchResult&sp%3Aout=rss"),
+    ("deutsche-bahn-stuttgart", "https://www.deutschebahn.com/service/rss/de/8861882/feed.rss"),
+    ("deutsche-bahn-presse", "https://www.deutschebahn.com/service/rss/de/6868410/feed.rss"),
+    ("destatis-presse", "https://www.destatis.de/SiteGlobals/Functions/RSSFeed/DE/RSSNewsfeed/Aktuell.xml?nn=3624"),
+    ("bmas-aktuelles", "https://www.bmas.de/SiteGlobals/Functions/RSSFeed/DE/RSSNewsfeed/RSSNewsfeed.xml"),
     ("lkz-stadt", "https://www.lkz.de/feed/6-RSS_Feed_Stadt_Ludwigsburg.xml"),
     ("lkz-kreis", "https://www.lkz.de/feed/7-RSS_Feed_Kreis_Ludwigsburg.xml"),
     ("zeit-nachrichten", "https://newsfeed.zeit.de/index"),
