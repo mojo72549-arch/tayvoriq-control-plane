@@ -209,6 +209,37 @@ jobs:
           git commit -m "Queue private Contabo computation for $REQUEST_ID"
           git pull --rebase origin main
           git push origin HEAD:main
+          # The persisted public queue is authoritative. If the existing
+          # credential can write private contents, wake its worker immediately.
+          # A read-only credential leaves the scheduled consumer in charge.
+          python3 - <<'PY'
+          import base64, json, os, subprocess
+
+          repository = os.environ['STUDIO']
+          endpoint = f'repos/{repository}/contents/.automation/contabo-wakeup.json'
+          details = json.dumps({'controller_run_id':int(os.environ['GITHUB_RUN_ID']),
+                                'request_id':os.environ['REQUEST_ID'], 'reason':'verified-controller-queue'})
+          try:
+              response = subprocess.run(['gh', 'api', endpoint], capture_output=True, text=True, timeout=12)
+              if response.returncode == 0:
+                  previous = json.loads(response.stdout)
+                  wakeup = json.loads(base64.b64decode(previous['content']))
+                  if wakeup.get('controller_run_id') == int(os.environ['GITHUB_RUN_ID']):
+                      raise SystemExit(0)
+              elif '404' in response.stderr:
+                  previous = {}
+              else:
+                  raise RuntimeError('private wakeup cannot be read')
+              body = {'branch':'main', 'message':'Wake private Contabo worker for a verified queue item',
+                      'content':base64.b64encode(details.encode()).decode()}
+              if previous.get('sha'):
+                  body['sha'] = previous['sha']
+              subprocess.run(['gh', 'api', '--method', 'PUT', endpoint, '--input', '-'],
+                             input=json.dumps(body), text=True, capture_output=True, check=True, timeout=12)
+              print('CONTABO_PRIVATE_WAKEUP_CONFIRMED')
+          except (subprocess.SubprocessError, ValueError, KeyError, RuntimeError):
+              print('CONTABO_PRIVATE_WAKEUP_DEFERRED_TO_SCHEDULE')
+          PY
           for poll in $(seq 1 180); do
             if gh api "repos/$STUDIO/contents/.automation/contabo-workers/$GITHUB_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64 2>/dev/null;then
               python3 - <<'PY' > /tmp/contabo-worker-id
