@@ -1,5 +1,6 @@
 """Source-bound research completion on the private Contabo runner."""
 
+import hashlib
 import json
 import os
 import re
@@ -109,8 +110,18 @@ def repair_budget():
     return min(MAXIMUM_REPAIR_SECONDS, remaining) if remaining >= MINIMUM_REPAIR_SECONDS else 0
 
 
-def candidate_budget(pairs_remaining):
+def source_pair_key(urls):
+    return hashlib.sha256(json.dumps(sorted(urls), ensure_ascii=False).encode()).hexdigest()
+
+
+def candidate_budget(pairs_remaining, *, first_pair=False, recovery=False):
     available = max(0, remaining_research_seconds() - VALIDATION_RESERVE_SECONDS)
+    if recovery:
+        return min(300, available)
+    # The first inference includes cold model loading. Reserve a full warm
+    # evaluation for the remaining pair, along with the final quality check.
+    if first_pair and pairs_remaining == 2:
+        return min(240, available / 2 + min(30, available * 0.08))
     return min(MAXIMUM_CANDIDATE_SECONDS, available / pairs_remaining)
 
 

@@ -30,6 +30,34 @@ def request(selection_id: str, request_id: str, approved_at: str, run_id: int = 
 
 
 class SlotSerializationTests(unittest.TestCase):
+    def test_evening_after_portfolio_morning_checks_original_delivery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            requests = root / "requests"
+            requests.mkdir()
+            plan = dict(day="2026-11-28", slot="morning", request_id="portfolio-news",
+                        run_id=111, telegram_message_id=8, source_context_sha256="a"*64, review_sha="b"*64)
+            (root / "state").mkdir()
+            gate.write_json(root / "state/tayvoriq-portfolio-slots.json", {"slots":{"2026-11-28-morning":plan}})
+            decisions = root / ".automation/tayvoriq-artifact-decisions"
+            decisions.mkdir(parents=True)
+            gate.write_json(decisions / "111.json", {**plan, "state":"PENDING", "review_id":"111",
+                                                    "files_sha256":{"short_youtube.mp4":"b"*64}})
+            saved = {**plan, "selection_id":"20261125-evening-agentv2", "golden_path_run_id":111,
+                     "production_completion":{"state":"REVIEW_READY", "golden_path_run_id":111,
+                                              "quality_gates_weakened":False, "telegram_message_id":8}}
+            gate.write_json(requests / "portfolio-news.json", saved)
+            candidate = requests / "next.json"
+            gate.write_json(candidate, request("20261128-evening-agentv2","next","2026-11-28T18:00:00Z"))
+            job = {"name":"orchestrate","steps":[{"name":name, "conclusion":"success"} for name in gate.REQUIRED_FINAL_STEPS]}
+            run = {"status":"completed","conclusion":"success"}
+            with patch.object(gate, "github_json", side_effect=lambda url, _: {"jobs":[job]} if "/jobs?" in url else run):
+                decision = gate.check_request(candidate, requests, "repo", "token")
+                self.assertTrue(decision["released"])
+                self.assertEqual(decision["predecessor_request_id"], "portfolio-news")
+                job["steps"].pop()
+                self.assertFalse(gate.check_request(candidate, requests, "repo", "token")["released"])
+
     def test_contabo_delivery_releases_next_morning_and_same_day_evening(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "requests"

@@ -236,6 +236,29 @@ class OllamaResearchTests(unittest.TestCase):
             with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1055'}):
                 self.assertEqual(ollama.repair_budget(), 35)
 
+    def test_unfinished_pair_can_resume_after_another_candidate_fails_editorial_review(self):
+        import tayvoriq_research_retry_v1 as retry
+        key = ollama.source_pair_key(['https://one.test/article', 'https://two.test/news'])
+        timeout = {'event':'source_pair_timed_out', 'source_pair_hash':key}
+        rejected = {'event':'candidate_editorial_rejection', 'scores':{'tiktok':71}}
+        self.assertEqual(transport.worker_failure_code([timeout,rejected]), transport.OLLAMA_MODEL_TIMEOUT)
+        completed = {'event':'provider_success', 'provider':'ollama', 'source_pair_hash':key}
+        self.assertEqual(transport.worker_failure_code([timeout,completed,rejected]), 65)
+        with TemporaryDirectory() as tmp:
+            path, proof = Path(tmp)/'retry.json', Path(tmp)/'proof.json'
+            sid = '20261128-evening-agentv2'
+            state = {'state':'WAITING', 'slot':'evening', 'berlin_date':'2026-11-28',
+                     'last_issue':'OLLAMA_MODEL_TIMEOUT', 'last_research_attempt':'123.1'}
+            path.write_text(json.dumps(state))
+            proof.write_text(json.dumps({'selection':sid,'run_key':'123.1','pending_source_pairs':[key]}))
+            retry.attach_pending_pairs(path,proof,sid,'999.1')
+            self.assertEqual(json.loads(path.read_text()),state)
+            retry.attach_pending_pairs(path,proof,sid,'123.1')
+            self.assertEqual(json.loads(path.read_text())['pending_source_pairs'],[key])
+        with patch.object(ollama, 'remaining_research_seconds', return_value=410):
+            self.assertEqual(ollama.candidate_budget(2, first_pair=True),225)
+            self.assertEqual(ollama.candidate_budget(1, recovery=True),300)
+
     def test_candidate_budget_preserves_time_for_other_pairs_and_validation(self):
         with patch.object(ollama.time, 'time', return_value=1000):
             with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_DEADLINE_EPOCH': '1410'}):

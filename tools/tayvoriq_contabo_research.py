@@ -236,7 +236,22 @@ def receipt_events(lines):
             remaining = remaining[end:].lstrip()
 
 
+def pending_pairs(events):
+    pending = set()
+    for row in events:
+        key = row.get('source_pair_hash')
+        if not isinstance(key, str) or len(key) != 64 or any(ch not in '0123456789abcdef' for ch in key):
+            continue
+        if row.get('event') == 'source_pair_timed_out':
+            pending.add(key)
+        elif row.get('event') == 'provider_success' and row.get('provider') == 'ollama':
+            pending.discard(key)
+    return sorted(pending)
+
+
 def worker_failure_code(events):
+    if pending_pairs(events):
+        return OLLAMA_MODEL_TIMEOUT
     if any(row.get('event') in {'regional_editorial_validation', 'candidate_editorial_rejection'}
            for row in events):
         return 65
@@ -255,6 +270,7 @@ def main():
     cli.add_argument('--output', type=Path, required=True)
     cli.add_argument('--audit-output', type=Path, required=True)
     cli.add_argument('--scheduled-proof', type=Path)
+    cli.add_argument('--retry-proof', type=Path)
     cli.add_argument('--wait-seconds', type=int, default=760, choices=range(1, 761), metavar='1-760')
     args = cli.parse_args()
     deadline = time.monotonic() + min(args.wait_seconds,
@@ -278,6 +294,10 @@ def main():
     if receipt['status'] != 'SUCCEEDED':
         events = list(receipt_events(receipt.get('events', [])))
         code = worker_failure_code(events)
+        pending = pending_pairs(events)
+        if args.retry_proof and pending and binding['origin'] == 'scheduled':
+            args.retry_proof.write_text(json.dumps({'selection': binding['selection'],
+                'run_key': f"{binding['controller']}.{binding['attempt']}", 'pending_source_pairs': pending[:2]}))
         if code in (OLLAMA_MODEL_TIMEOUT, SOURCE_MINIMUM_NOT_MET) or (
             code == 65 and binding['origin'] in {'scheduled', 'review'}
         ):
