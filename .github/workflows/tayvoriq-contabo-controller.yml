@@ -38,7 +38,8 @@ concurrency:
 jobs:
   orchestrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The private job may run for 60 minutes before its final receipt and transfer.
+    timeout-minutes: 90
     env:
       REQUEST_ID: ${{ inputs.source_request_id || '' }}
       DELIVERY_RUN_ID: ${{ inputs.delivery_run_id || '' }}
@@ -337,7 +338,8 @@ jobs:
           WORKER: ${{ steps.worker.outputs.run_id }}
           CONTABO_CONTROL_TOKEN: ${{ github.token }}
         run: |
-          for poll in $(seq 1 160); do
+          receipt_deadline=$((SECONDS + 75 * 60))
+          while (( SECONDS < receipt_deadline )); do
             gh api "repos/$STUDIO/contents/.automation/contabo-workers/$GITHUB_RUN_ID.json" --jq '.content' > /tmp/contabo-receipt-base64
             python3 tools/tayvoriq_contabo_observation.py
             result=$(python3 - <<'PY'
