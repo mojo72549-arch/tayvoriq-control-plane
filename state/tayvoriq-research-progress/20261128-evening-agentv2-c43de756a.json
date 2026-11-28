@@ -4,16 +4,29 @@
   "slot": "evening",
   "run_id": 46138503101,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "FAILED",
   "started_at": "2026-11-28T11:09:20.434830+00:00",
-  "updated_at": "2026-11-28T11:20:01.959180+00:00",
-  "sources_seen": null,
+  "updated_at": "2026-11-28T11:20:07.385505+00:00",
+  "sources_seen": 660,
   "drafts_saved": 0,
-  "quality_rejections": 0,
-  "corroborated_headlines": null,
-  "provider": null,
-  "issues": [],
-  "exit_code": null,
+  "quality_rejections": 2,
+  "corroborated_headlines": 1,
+  "provider": "ollama",
+  "issues": [
+    {
+      "code": "TIKTOK_FIT",
+      "provider": null
+    },
+    {
+      "code": "TIMEOUT",
+      "provider": "ollama"
+    },
+    {
+      "code": "EDITORIAL_QUALITY",
+      "provider": null
+    }
+  ],
+  "exit_code": 73,
   "history": [
     {
       "at": "2026-11-28T11:09:24.632685+00:00",
@@ -25,18 +38,59 @@
       "at": "2026-11-28T11:09:45.392062+00:00",
       "event": "contabo_worker_started",
       "worker_run_id": 46138531128
+    },
+    {
+      "at": "2026-11-28T11:20:07.172052+00:00",
+      "event": "contabo_worker_finished",
+      "status": "FAILED"
+    },
+    {
+      "at": "2026-11-28T11:20:07.172136+00:00",
+      "event": "source_records_loaded",
+      "count": 660
+    },
+    {
+      "at": "2026-11-28T11:20:07.172153+00:00",
+      "event": "source_headline_preflight",
+      "count": 2
+    },
+    {
+      "at": "2026-11-28T11:20:07.172277+00:00",
+      "event": "source_records_loaded",
+      "count": 740
+    },
+    {
+      "at": "2026-11-28T11:20:07.172287+00:00",
+      "event": "source_headline_preflight",
+      "count": 2
+    },
+    {
+      "at": "2026-11-28T11:20:07.173801+00:00",
+      "event": "source_records_loaded",
+      "count": 660
+    },
+    {
+      "at": "2026-11-28T11:20:07.173811+00:00",
+      "event": "source_headline_preflight",
+      "count": 1
+    },
+    {
+      "at": "2026-11-28T11:20:07.385502+00:00",
+      "event": "research_finished",
+      "exit_code": 73
     }
   ],
   "local_attempt": 1,
   "max_local_attempts": 3,
   "next_retry_at": null,
   "handoff": {
-    "state": "RUNNING",
+    "state": "BLOCKED",
     "wake_attempt": 1,
     "max_wake_attempts": 2,
-    "owner": "contabo_research_worker",
+    "owner": "production_engineering",
     "wakeup_confirmed": true,
     "next_check_at": null,
-    "worker_run_id": 46138531128
+    "worker_run_id": 46138531128,
+    "action_required": "CHECK_BOUND_WORKER_RESULT"
   }
 }
