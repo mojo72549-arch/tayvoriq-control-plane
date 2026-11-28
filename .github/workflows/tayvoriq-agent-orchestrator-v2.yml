@@ -514,6 +514,7 @@ jobs:
               71) issue=WORKER_START_TIMEOUT ;;
               72) issue=WORKER_RESULT_TIMEOUT ;;
               73) issue=OLLAMA_MODEL_TIMEOUT ;;
+              74) issue=SOURCE_MINIMUM_NOT_MET ;;
               77) issue=WORKER_WAKEUP_ACCESS ;;
               124|137) issue=RESEARCH_TIME_BUDGET_EXHAUSTED ;;
               *) issue=RESEARCH_PROVIDER_UNAVAILABLE ;;

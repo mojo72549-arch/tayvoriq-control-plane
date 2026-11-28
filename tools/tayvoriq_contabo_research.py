@@ -21,6 +21,7 @@ WAKEUP = '.automation/contabo-research-wakeup.json'
 WORKER_START_TIMEOUT = 71
 WORKER_RESULT_TIMEOUT = 72
 OLLAMA_MODEL_TIMEOUT = 73
+SOURCE_MINIMUM_NOT_MET = 74
 WAKEUP_ACCESS_DENIED = 77
 
 
@@ -225,6 +226,9 @@ def worker_failure_code(events):
     if any(row.get('event') == 'provider_attempt_failed' and row.get('provider') == 'ollama'
            and row.get('error') == 'Model timeout' for row in events):
         return OLLAMA_MODEL_TIMEOUT
+    if any(row.get('event') == 'local_research_failed' and row.get('issue') == 'SOURCE_MINIMUM_NOT_MET'
+           for row in events):
+        return SOURCE_MINIMUM_NOT_MET
     return 1
 
 
@@ -256,7 +260,9 @@ def main():
     if receipt['status'] != 'SUCCEEDED':
         events = [row for line in receipt.get('events', []) if isinstance((row := json.loads(line)), dict)]
         code = worker_failure_code(events)
-        if code == OLLAMA_MODEL_TIMEOUT or (code == 65 and binding['origin'] in {'scheduled', 'review'}):
+        if code in (OLLAMA_MODEL_TIMEOUT, SOURCE_MINIMUM_NOT_MET) or (
+            code == 65 and binding['origin'] in {'scheduled', 'review'}
+        ):
             return code
         raise RuntimeError(f"CONTABO_RESEARCH_{receipt['status']}")
     with tempfile.TemporaryDirectory(prefix='contabo-research-') as temporary:
