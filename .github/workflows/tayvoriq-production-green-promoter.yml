@@ -129,7 +129,7 @@ jobs:
     env:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
-      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v7"
+      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v8"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -460,7 +460,9 @@ jobs:
         working-directory: implementation
         run: |
           if [ -f tests/test_tayvoriq_partial_platform.py ]; then
-            PYTHONPATH=tools python -m pytest -q tests/test_tayvoriq_controller_timeout_guard.py tests/test_tayvoriq_partial_platform.py
+            TAYVORIQ_CONTROLLER_TIMEOUT_SECONDS=1500 TAYVORIQ_CONTABO_CONTROLLER_TIMEOUT_SECONDS=2160 \
+              PYTHONPATH=tools python -m pytest -q tests/test_tayvoriq_controller_timeout_guard.py \
+                tests/test_tayvoriq_partial_platform.py tests/test_tayvoriq_self_heal.py::test_controller_honors_golden_path_30_minute_budget
             echo 'verified=true' >> "$GITHUB_OUTPUT"
             if grep -q '^def test_entrypoint_continues_only_the_missing_platform_after_a_timeout(' tests/test_tayvoriq_partial_platform.py; then
               echo 'scoped_retry=true' >> "$GITHUB_OUTPUT"
