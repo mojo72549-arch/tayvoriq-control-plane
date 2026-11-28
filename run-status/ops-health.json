@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-27T18:34:15.198327Z",
+  "generated_at": "2026-11-28T04:42:41.741840Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -11,24 +11,24 @@
   "api_error": null,
   "research": {
     "schema": "tayvoriq-research-retry-v1",
-    "state": "EXHAUSTED",
-    "slot": "evening",
-    "berlin_date": "2026-11-27",
-    "first_deferred_at_epoch": 1795802764.0,
+    "state": "WAITING",
+    "slot": "morning",
+    "berlin_date": "2026-11-28",
+    "first_deferred_at_epoch": 1795840568.0,
     "attempts": 1,
-    "retry_at_epoch": 1795803274.3384912,
+    "retry_at_epoch": 1795841037.2231922,
     "retry_phase": "NORMAL",
-    "last_deferred_at_epoch": 1795803184.3385057,
-    "provider_retry_at_epoch": 1795803274.3384912,
+    "last_deferred_at_epoch": 1795840947.2232044,
+    "provider_retry_at_epoch": 1795841037.2231922,
     "max_attempts": 3,
     "sla_seconds": 600,
-    "valid_until_epoch": 1795803364.0,
-    "reason": "RESEARCH_RETRY_EXPIRED",
+    "valid_until_epoch": 1795841168.0,
+    "reason": "RESEARCH_DEFERRED_AFTER_BOUNDED_ATTEMPT",
     "quality_gates_weakened": false,
     "production_started": false,
-    "last_research_attempt": "46046874794.1",
-    "last_issue": "RESEARCH_TIME_BUDGET_EXHAUSTED",
-    "status_detail": "Die Themenprüfung hat ihr Zeitlimit erreicht."
+    "last_research_attempt": "46108296958.1",
+    "last_issue": "RESEARCH_PROVIDER_UNAVAILABLE",
+    "status_detail": "Die Rechercheanbieter konnten die Anfrage nicht abschließen."
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
+      "detail": "Kein aktueller Produktionslauf · Recherche WAITING"
     },
     {
       "name": "Production Green",
@@ -162,7 +162,7 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "EXHAUSTED"
+      "detail": "WAITING"
     },
     {
       "name": "Telegram",
@@ -183,8 +183,8 @@
     "message_id": 3877
   },
   "recovery": {
-    "status": "EXHAUSTED",
-    "source_status": "EXHAUSTED",
+    "status": "WAITING",
+    "source_status": "WAITING",
     "failure_state": null,
     "failed_run_id": null,
     "replay_run_id": 46015106689,
