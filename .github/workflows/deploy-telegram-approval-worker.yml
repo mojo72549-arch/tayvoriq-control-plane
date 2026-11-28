@@ -12,6 +12,8 @@ on:
       - infra/telegram-approval-worker-v5.js
       - infra/telegram-approval-worker-v6.js
       - infra/telegram-approval-worker-v7.js
+      - infra/tayvoriq-control-access.js
+      - tests/tayvoriq-control-access.test.mjs
       - infra/tayvoriq-research-clock.js
       - infra/wrangler.toml
       - tests/telegram-stale-selection-guard-v3.test.mjs
@@ -43,7 +45,7 @@ jobs:
         run: |
           node --check telegram-approval-worker-v7.js
           node --check telegram-approval-worker-v6.js
-          node --test ../tests/telegram-stale-selection-guard-v3.test.mjs ../tests/tayvoriq-artifact-approval.test.mjs ../tests/tayvoriq-research-clock.test.mjs
+          node --test ../tests/tayvoriq-control-access.test.mjs ../tests/telegram-stale-selection-guard-v3.test.mjs ../tests/tayvoriq-artifact-approval.test.mjs ../tests/tayvoriq-research-clock.test.mjs
 
       - name: Validate deployment secrets
         env:
