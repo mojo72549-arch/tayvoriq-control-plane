@@ -462,6 +462,9 @@ jobs:
           if [ -f tests/test_tayvoriq_partial_platform.py ]; then
             PYTHONPATH=tools python -m pytest -q tests/test_tayvoriq_controller_timeout_guard.py tests/test_tayvoriq_partial_platform.py
             echo 'verified=true' >> "$GITHUB_OUTPUT"
+            if grep -q '^def test_entrypoint_continues_only_the_missing_platform_after_a_timeout(' tests/test_tayvoriq_partial_platform.py; then
+              echo 'scoped_retry=true' >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Verify the Mietspiegel real-footage fallback when present
@@ -521,6 +524,7 @@ jobs:
         shell: bash
         env:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
+          SCOPED_PLATFORM_RETRY_VERIFIED: ${{ steps.cpu_platform.outputs.scoped_retry }}
           CPU_PLATFORM_RECOVERY_VERIFIED: ${{ steps.cpu_platform.outputs.verified }}
           RENTAL_FOOTAGE_SEARCH_VERIFIED: ${{ steps.rental_footage.outputs.verified }}
           SOFTWARE_WORKPLACE_SEARCH_VERIFIED: ${{ steps.visual_search.outputs.verified }}
@@ -546,6 +550,7 @@ jobs:
               'verification_run_id':str(os.environ.get('GITHUB_RUN_ID') or ''),
               'verification_policy_version':str(os.environ.get('TAYVORIQ_GREEN_POLICY_VERSION') or ''),
               'full_preflight_passed':True,
+              'scoped_platform_retry_verified':os.environ.get('SCOPED_PLATFORM_RETRY_VERIFIED')=='true',
               'cpu_platform_recovery_verified':os.environ.get('CPU_PLATFORM_RECOVERY_VERIFIED')=='true',
               'rental_footage_search_verified':os.environ.get('RENTAL_FOOTAGE_SEARCH_VERIFIED')=='true',
               'software_workplace_search_verified':os.environ.get('SOFTWARE_WORKPLACE_SEARCH_VERIFIED')=='true',
