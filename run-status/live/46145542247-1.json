@@ -4,10 +4,30 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46145542247,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T12:37:57.732029+00:00",
-  "observed_at": "2026-11-28T12:37:57.732051+00:00",
-  "current": null,
-  "events": [],
+  "updated_at": "2026-11-28T12:38:04.418532+00:00",
+  "observed_at": "2026-11-28T12:38:05.120154+00:00",
+  "current": {
+    "phase": "preflight",
+    "status": "failed",
+    "at": "2026-11-28T12:38:04.418532+00:00",
+    "call_id": "internal-preflight",
+    "round": null,
+    "target": null
+  },
+  "events": [
+    {
+      "phase": "preflight",
+      "status": "started",
+      "at": "2026-11-28T12:37:58.403549+00:00",
+      "call_id": "internal-preflight"
+    },
+    {
+      "phase": "preflight",
+      "status": "failed",
+      "at": "2026-11-28T12:38:04.418532+00:00",
+      "call_id": "internal-preflight"
+    }
+  ],
   "completed_phases": [],
   "findings": []
 }
