@@ -3,7 +3,9 @@ import base64
 import json
 import os
 from pathlib import Path
+import signal
 import sys
+import time
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
@@ -209,6 +211,21 @@ class OllamaResearchTests(unittest.TestCase):
         opener.open.return_value = io.BytesIO(json.dumps(fragment).encode())
         with self.assertRaisesRegex(RuntimeError, 'RESPONSE_INCOMPLETE'):
             ollama.complete({'messages': []}, opener=opener)
+
+    def test_silent_response_body_cannot_consume_the_next_pairs_time(self):
+        class StalledResponse(io.BytesIO):
+            def __next__(self):
+                time.sleep(0.5)
+                raise AssertionError('the completion deadline did not interrupt the read')
+
+        original_handler = signal.getsignal(signal.SIGALRM)
+        stalled = StalledResponse()
+        opener = Mock()
+        opener.open.return_value = stalled
+        with self.assertRaisesRegex(TimeoutError, 'completion reached its time budget'):
+            ollama.complete({'messages': []}, opener=opener, time_limit=0.02)
+        self.assertTrue(stalled.closed)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), original_handler)
 
     def test_optional_model_repairs_reserve_time_for_validation(self):
         with patch.object(ollama.time, 'time', return_value=1000):

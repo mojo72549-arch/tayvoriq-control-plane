@@ -3,7 +3,10 @@
 import json
 import os
 import re
+import signal
 import time
+from contextlib import contextmanager
+from urllib.error import URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
 MODEL = 'qwen3.5:9b'
@@ -111,6 +114,28 @@ def candidate_budget(pairs_remaining):
     return min(MAXIMUM_CANDIDATE_SECONDS, available / pairs_remaining)
 
 
+@contextmanager
+def completion_deadline(seconds):
+    if seconds is None:
+        yield
+        return
+    if seconds <= 0:
+        raise TimeoutError('No time remains for a local research completion')
+
+    def expire(signum, frame):
+        raise TimeoutError('Local research completion reached its time budget')
+
+    # Contabo evaluates the pairs sequentially in the main thread. Use a real
+    # deadline across both the request and body reads, including silent streams.
+    previous_handler = signal.signal(signal.SIGALRM, expire)
+    try:
+        signal.setitimer(signal.ITIMER_REAL, seconds)
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
 def complete(payload, *, opener=None, time_limit=None):
     model = research_model()
     options = {'temperature': 0, 'num_ctx': 8192, 'num_thread': 8,
@@ -124,16 +149,10 @@ def complete(payload, *, opener=None, time_limit=None):
     result = {}
     started = time.monotonic()
     try:
-        if time_limit is not None and time_limit <= 0:
-            raise TimeoutError('No time remains for a local research completion')
-        # The HTTP response starts only after Ollama loads the model and processes the prompt.
-        # The worker separately enforces the overall research time limit.
-        with opener.open(request, timeout=time_limit or 330) as response:
+        with completion_deadline(time_limit), opener.open(request, timeout=time_limit or 330) as response:
             print(json.dumps({'event': 'ollama_response_started', 'provider': 'ollama',
                               'first_response_seconds': round(time.monotonic() - started, 1)}), flush=True)
             for line in response:
-                if time_limit is not None and time.monotonic() - started >= time_limit:
-                    raise TimeoutError('Local research completion reached its time budget')
                 if not line.strip():
                     continue
                 result = json.loads(line)
@@ -142,10 +161,14 @@ def complete(payload, *, opener=None, time_limit=None):
                 fragments.append((result.get('message') or {}).get('content') or '')
                 if result.get('done'):
                     break
-    except TimeoutError:
+    except (TimeoutError, URLError) as error:
+        if isinstance(error, URLError) and not isinstance(error.reason, TimeoutError):
+            raise
         print(json.dumps({'event': 'provider_attempt_failed', 'provider': 'ollama', 'error': 'Model timeout',
                           'model': model, 'elapsed_seconds': round(time.monotonic() - started, 1),
                           'generated_characters': sum(map(len, fragments))}), flush=True)
+        if isinstance(error, URLError):
+            raise error.reason from error
         raise
     content = ''.join(fragments)
     if result.get('done') is not True or result.get('done_reason') == 'length' or not content.strip():
