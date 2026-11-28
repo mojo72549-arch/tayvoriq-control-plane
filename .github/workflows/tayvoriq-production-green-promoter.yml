@@ -129,7 +129,7 @@ jobs:
     env:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
-      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v8"
+      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v9"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -476,6 +476,10 @@ jobs:
         run: |
           if [ -f tests/test_tayvoriq_rent_visuals.py ]; then
             python -m pytest -q tests/test_tayvoriq_rent_visuals.py
+            if [ -f tools/tayvoriq_rent_footage.py ]; then
+              python -m pytest -q tests/test_tayvoriq_audit_checkpoint_migration.py
+              echo 'subjects=true' >> "$GITHUB_OUTPUT"
+            fi
             echo 'verified=true' >> "$GITHUB_OUTPUT"
           fi
 
@@ -528,6 +532,7 @@ jobs:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
           SCOPED_PLATFORM_RETRY_VERIFIED: ${{ steps.cpu_platform.outputs.scoped_retry }}
           CPU_PLATFORM_RECOVERY_VERIFIED: ${{ steps.cpu_platform.outputs.verified }}
+          RENTAL_SCENE_SUBJECTS_VERIFIED: ${{ steps.rental_footage.outputs.subjects }}
           RENTAL_FOOTAGE_SEARCH_VERIFIED: ${{ steps.rental_footage.outputs.verified }}
           SOFTWARE_WORKPLACE_SEARCH_VERIFIED: ${{ steps.visual_search.outputs.verified }}
           MIXED_CHECKPOINT_RECOVERY_VERIFIED: ${{ steps.mixed_checkpoint.outputs.verified }}
@@ -554,6 +559,7 @@ jobs:
               'full_preflight_passed':True,
               'scoped_platform_retry_verified':os.environ.get('SCOPED_PLATFORM_RETRY_VERIFIED')=='true',
               'cpu_platform_recovery_verified':os.environ.get('CPU_PLATFORM_RECOVERY_VERIFIED')=='true',
+              'rental_scene_subjects_verified':os.environ.get('RENTAL_SCENE_SUBJECTS_VERIFIED')=='true',
               'rental_footage_search_verified':os.environ.get('RENTAL_FOOTAGE_SEARCH_VERIFIED')=='true',
               'software_workplace_search_verified':os.environ.get('SOFTWARE_WORKPLACE_SEARCH_VERIFIED')=='true',
               'mixed_checkpoint_recovery_verified':os.environ.get('MIXED_CHECKPOINT_RECOVERY_VERIFIED')=='true',
