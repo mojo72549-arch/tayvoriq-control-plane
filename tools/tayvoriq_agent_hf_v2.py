@@ -742,13 +742,14 @@ Verwende die kurzen Antwortfeld-Namen (kurz = fachlicher Feldname):
         data = {'candidates': []}
         timed_out = False
         for index, lead in enumerate(allowlist):
+            pair = tuple(lead['source_ids'])
+            pair_hash = local.source_pair_key(by_id[sid]['url'] for sid in pair)
             if (allow_single and data['candidates'] and local.remaining_research_seconds()
                     < 145 + local.MAXIMUM_REPAIR_SECONDS + local.VALIDATION_RESERVE_SECONDS):
                 # The previous draft still has to pass the full editorial gates.
                 # Preserve the time for that check and any permitted correction.
-                break
-            pair = tuple(lead['source_ids'])
-            pair_hash = local.source_pair_key(by_id[sid]['url'] for sid in pair)
+                print(json.dumps({'event': 'source_pair_deferred', 'source_pair_hash': pair_hash}), flush=True)
+                continue
             sources = [item for item in indexed if item['source_id'] in pair]
             prompt = f'{local_instructions}\nQuellenpaar: {json.dumps(lead, ensure_ascii=False)}\nMeldungen: {json.dumps(sources, ensure_ascii=False)}'
             request = {**payload, 'messages': [payload['messages'][0], {'role': 'user', 'content': prompt}],

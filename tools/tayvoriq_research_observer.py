@@ -76,7 +76,7 @@ class Observation:
         event = row.get('event')
         pair_key = row.get('source_pair_hash')
         if isinstance(pair_key, str) and re.fullmatch(r'[0-9a-f]{64}', pair_key):
-            if event == 'source_pair_timed_out':
+            if event in {'source_pair_timed_out', 'source_pair_deferred'}:
                 self.pending_source_pairs.add(pair_key)
             elif event == 'provider_success' and row.get('provider') == 'ollama':
                 self.pending_source_pairs.discard(pair_key)
@@ -384,7 +384,7 @@ def run_bound_ranking(command, env, expires_at, observation, *, origin, stopped,
     def attempt(settings, until):
         return run(command, settings, until, observation, lambda: None, stopped=stopped, stop_interval=15)
     first = attempt(env, min(clock() + 410, deadline))
-    if (origin not in {'control_center', 'telegram_command'} or first in {0, STOPPED}
+    if (origin not in {'control_center', 'telegram_command', 'scheduled', 'review'} or first in {0, STOPPED}
             or not observation.pending_source_pairs or deadline - clock() < 200 or stopped()):
         return first
     pairs = sorted(observation.pending_source_pairs)[:2]
