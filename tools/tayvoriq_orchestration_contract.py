@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import tayvoriq_retention_v5 as retention_v5
+from tayvoriq_scheduled_render import SOURCE, scheduled_authority
 from tayvoriq_chat_direct_approval_v1 import authorized_for_review
 
 CLAIMABLE = {"APPROVED", "TREND_APPROVED", "READY_FOR_PRODUCTION"}
@@ -92,6 +93,8 @@ def contract_hash(data: dict) -> str:
         fields = fields + V5_IMMUTABLE_FIELDS
     if data.get('source') == 'chat_direct_user_authorization':
         fields = fields + ('source', 'selection_id', 'slot', 'tiktok_delivery', 'telegram_message_id')
+    if data.get("source") == SOURCE:
+        fields += ("source", "approved_via", "approved_at", "selection_id", "slot", "scheduled_research", "tiktok_delivery", "telegram_message_id")
     payload = {k: data.get(k) for k in fields}
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -137,6 +140,8 @@ def validate(data: dict, *, require_claimable: bool = False) -> None:
         errors.append("target_duration must be an integer")
     if not approval_key:
         errors.append("missing approval_key")
+    if data.get('source') == SOURCE and not scheduled_authority(data):
+        errors.append('scheduled review authority invalid')
     if data.get('source') == 'chat_direct_user_authorization' and not authorized_for_review(data):
         errors.append('direct user approval provenance invalid')
     approved_at = str(data.get("approved_at") or "").strip()
@@ -210,12 +215,17 @@ def write_json(path: Path, data: dict) -> None:
 
 
 def create_from_telegram(args: argparse.Namespace) -> None:
+    create_review_request(args)
+
+
+def create_review_request(args: argparse.Namespace, *, scheduled_research=None) -> None:
+    scheduled = scheduled_research is not None
     trend_id = str(args.trend_id).strip()
     selection_id = str(args.selection_id).strip()
     message_id = str(args.message_id).strip()
     if trend_id not in {"1", "2", "3", "4", "5"}:
         raise SystemExit(f"invalid trend id: {trend_id!r}")
-    if not message_id.isdigit():
+    if not scheduled and not message_id.isdigit():
         raise SystemExit("telegram message_id is required for idempotency")
 
     trend_request = read_json(Path(args.trend_request))
@@ -334,11 +344,17 @@ def create_from_telegram(args: argparse.Namespace) -> None:
     })
 
     request_id = f"telegram-{message_id}-trend-{trend_id}"
+    approval_key = f"telegram:{selection_id}:{message_id}:trend:{trend_id}"
+    actor = "control_center" if os.environ.get('APPROVAL_ORIGIN') == 'control_center' else "telegram_callback"
+    if scheduled:
+        request_id = "slot-" + selection_id.removesuffix("-agentv2")
+        approval_key = f"schedule:{selection_id}:trend:{trend_id}"
+        actor = "berlin_slot_scheduler"
     path = Path(args.out_dir) / f"{request_id}.json"
     if path.exists():
         existing = read_json(path)
         validate(existing)
-        if str(existing.get("approval_key")) != f"telegram:{selection_id}:{message_id}:trend:{trend_id}":
+        if str(existing.get("approval_key")) != approval_key:
             raise SystemExit("idempotency collision for existing request")
         if text_approval and (existing.get("source_context") or {}).get("text_approval") != source_context["text_approval"]:
             raise SystemExit("TEXT_ALREADY_APPROVED: the existing request keeps its confirmed script")
@@ -361,8 +377,8 @@ def create_from_telegram(args: argparse.Namespace) -> None:
     data = {
         "request_id": request_id,
         "status": "APPROVED",
-        "source": "telegram_trend_approval",
-        "approved_via": "control_center" if os.environ.get('APPROVAL_ORIGIN') == 'control_center' else "telegram_callback",
+        "source": SOURCE if scheduled else "telegram_trend_approval",
+        "approved_via": actor,
         "trend_id": trend_id,
         "topic": canonical_topic,
         "trend_scope": scope,
@@ -372,8 +388,8 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "approval_required_before_youtube_publish": True,
         "tiktok_delivery": "telegram_manual",
         "approved_at": approved_at,
-        "telegram_message_id": int(message_id),
-        "approval_key": f"telegram:{selection_id}:{message_id}:trend:{trend_id}",
+        "telegram_message_id": None if scheduled else int(message_id),
+        "approval_key": approval_key,
         "mode": "full",
         "selection_id": selection_id,
         "content_angle": str(trend.get("content_angle") or "").strip() or None,
@@ -388,12 +404,14 @@ def create_from_telegram(args: argparse.Namespace) -> None:
         "golden_path_v5_state": "APPROVED",
         "golden_path_v5_history": [
             {"state": "TREND_CANDIDATES_SCORED", "at": approved_at, "actor": "trend_radar_v5"},
-            {"state": "APPROVED", "at": approved_at, "actor": "control_center" if os.environ.get('APPROVAL_ORIGIN') == 'control_center' else "telegram_callback"},
+            {"state": "APPROVED", "at": approved_at, "actor": actor},
         ],
         "state_history": [
-            {"state": "APPROVED", "at": approved_at, "actor": "control_center" if os.environ.get('APPROVAL_ORIGIN') == 'control_center' else "telegram_callback"}
+            {"state": "APPROVED", "at": approved_at, "actor": actor}
         ],
     }
+    if scheduled:
+        data.update(slot=trend_request["slot"], scheduled_research=scheduled_research)
     data["contract_sha256"] = contract_hash(data)
     validate(data, require_claimable=True)
     write_json(path, data)

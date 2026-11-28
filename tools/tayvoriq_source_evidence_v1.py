@@ -76,6 +76,11 @@ _EVENTS = {
 }
 
 
+# Keep reported application volumes distinct from vacancies or hires.
+_APPLICATIONS = re.compile(r"\b(\d+(?:[.\s]\d{3})*)\s+bewerbungen\b", re.I)
+_FLIGHT_STOP = re.compile(r"\b(?:flugbetrieb|flugverkehr)\b[^.!?]{0,100}\b(?:gestoppt|eingestellt|unterbrochen)\b", re.I)
+
+
 def _normalize_quarters(text: str) -> str:
     return _QUARTER.sub(lambda match: (match[2] or _QUARTER_STEMS[match[1]]) + "es quartal", text)
 
@@ -83,6 +88,10 @@ def _normalize_quarters(text: str) -> str:
 def _events(text: str) -> set[str]:
     text = _MERGER.sub("firmenfusion", text.casefold())
     events = {name for name, pattern in _EVENTS.items() if re.search(pattern, text)}
+    if _APPLICATIONS.search(text):
+        events.add("application_count")
+    if _FLIGHT_STOP.search(text):
+        events.add("flight_suspension")
     if "reallöhne" in text and _REAL_WAGE_RISE.search(_normalize_quarters(text)):
         events.add("real_wage_rise")
     for name, direction in (("price_fall", _PRICE_DOWN), ("price_rise", _PRICE_UP)):
@@ -153,6 +162,8 @@ def claim_terms(value: str) -> set[str]:
              "discountern":"discounter", "deutschen":"deutsche", "deutscher":"deutsche",
              "bald":"zukünftig", "demnächst":"zukünftig", "künftig":"zukünftig"}
     events = _events(value)
+    if "flight_suspension" in events:
+        value = re.sub(r"\b(?:flugbetrieb|flugverkehr)\b", "flugverkehr", value)
     if "real_wage_rise" in events:
         value = _REAL_WAGE_RISE.sub(r"\1reallohnanstieg", _normalize_quarters(value))
     if "price_fall" in events:
@@ -255,6 +266,12 @@ def validate_pair(candidate: dict, records: list[dict]) -> list[str]:
         reasons.append("shared_headline_event_anchor_required")
     if any(_status(str(r.get("title") or "")) != _status(headline) for r in records):
         reasons.append("headline_event_status_not_correlated")
+    if "application_count" in event:
+        volume = re.sub(r"[.\s]", "", _APPLICATIONS.search(headline)[1])
+        for record in records:
+            counts = {re.sub(r"[.\s]", "", match[1]) for match in _APPLICATIONS.finditer(record["title"])}
+            if volume not in counts:
+                reasons.append("application_volume_not_independently_confirmed")
     if "government_appointment" in event:
         appointees = {name.casefold() for name in _APPOINTMENT_SUBJECT.findall(headline)}
         if not appointees or any(

@@ -130,7 +130,7 @@ def current(path: Path | None = None, *, now: float | None = None) -> dict:
         return {}
     if state.get("schema") != "tayvoriq-research-retry-v1" or state.get("slot") not in {"morning", "evening"}:
         raise ValueError("RESEARCH_RETRY_STATE_INVALID")
-    if state.get("state") == "DELIVERED":
+    if state.get("state") in {"DELIVERED", "RENDER_RESERVED"}:
         return {}
     if (state.get("berlin_date") != datetime.fromtimestamp(now, ZONE).date().isoformat()
             or now >= float(state.get("valid_until_epoch") or 0)):

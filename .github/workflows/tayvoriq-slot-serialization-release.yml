@@ -188,6 +188,11 @@ jobs:
           print(str(data.get('source') or '').strip())
           PY
           )
+          if [ "$SOURCE_KIND" = "scheduled_slot_research" ]; then
+            name=${REQUEST_FILE##*/}
+            gh workflow run tayvoriq-request-dispatch.yml --ref main -f "source_request_id=${name%.json}"
+            exit 0
+          fi
           if [ "$SOURCE_KIND" = "user_preapproved_preparation" ]; then
             echo "Preapproved preparation released. The release commit changes requests/*.json, so the single-owner Request Dispatcher receives this exact request via its push trigger. No Telegram callback is fabricated."
             exit 0

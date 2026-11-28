@@ -219,6 +219,23 @@ def wait_for_result(binding, wait_seconds, *, deadline=None):
     return None, WAKEUP_ACCESS_DENIED if access_denied else WORKER_START_TIMEOUT
 
 
+def receipt_events(lines):
+    """A worker can flush two concurrent events on the same physical line."""
+    decoder = json.JSONDecoder()
+    for line in lines:
+        if not isinstance(line, str):
+            continue
+        remaining = line.lstrip()
+        while remaining:
+            try:
+                record, end = decoder.raw_decode(remaining)
+            except ValueError:
+                break
+            if isinstance(record, dict):
+                yield record
+            remaining = remaining[end:].lstrip()
+
+
 def worker_failure_code(events):
     if any(row.get('event') in {'regional_editorial_validation', 'candidate_editorial_rejection'}
            for row in events):
@@ -237,6 +254,7 @@ def main():
     cli.add_argument('--slot', choices=['morning', 'evening'], required=True)
     cli.add_argument('--output', type=Path, required=True)
     cli.add_argument('--audit-output', type=Path, required=True)
+    cli.add_argument('--scheduled-proof', type=Path)
     cli.add_argument('--wait-seconds', type=int, default=760, choices=range(1, 761), metavar='1-760')
     args = cli.parse_args()
     deadline = time.monotonic() + min(args.wait_seconds,
@@ -258,7 +276,7 @@ def main():
     for event in receipt.get('events', []):
         print(event, flush=True)
     if receipt['status'] != 'SUCCEEDED':
-        events = [row for line in receipt.get('events', []) if isinstance((row := json.loads(line)), dict)]
+        events = list(receipt_events(receipt.get('events', [])))
         code = worker_failure_code(events)
         if code in (OLLAMA_MODEL_TIMEOUT, SOURCE_MINIMUM_NOT_MET) or (
             code == 65 and binding['origin'] in {'scheduled', 'review'}
@@ -271,6 +289,14 @@ def main():
         for name in ('selection.json', 'audit.json'):
             (root / name).write_bytes(base64.b64decode(receipt['files'][name]))
         check_result(root, binding, receipt['worker_run_id'])
+        if args.scheduled_proof:
+            if binding['origin'] != 'scheduled':
+                raise ValueError('SCHEDULED_PROOF_ORIGIN_INVALID')
+            args.scheduled_proof.write_text(json.dumps({
+                **binding, 'worker_run_id': receipt['worker_run_id'],
+                'selection_sha256': receipt['sha256']['selection.json'],
+                'audit_sha256': receipt['sha256']['audit.json'],
+            }))
         shutil.copyfile(root / 'selection.json', args.output)
         shutil.copyfile(root / 'audit.json', args.audit_output)
     return 0

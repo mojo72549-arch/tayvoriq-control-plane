@@ -250,17 +250,33 @@ jobs:
                   slot = current_review['slot']
                   rejection_selection = current_review['selection_id']
                   should = True
+          from tayvoriq_scheduled_render import owners, window
+          from pathlib import Path
+          from tayvoriq_research_retry_v1 import current
+          tick = event == 'schedule' or (event == 'repository_dispatch' and
+                 os.environ.get('EVENT_ACTION') == 'tayvoriq_research_tick' and bool(slot))
+          retry_wake = event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true'
+          if (event == 'schedule' and schedule == '*/5 * * * *' and not slot and not rejection_selection
+                  and not (current_review and current_review.get('replacement_dispatch_allowed'))):
+              due = window(now)
+              retry = current(now=now.timestamp())
+              if due and not (retry.get('slot') == due and retry.get('berlin_date') == now.date().isoformat()):
+                  slot, should = due, True
+          auto = (tick or retry_wake) and bool(slot) and slot == window(now) and not rejection_selection
+          if auto and any(owners(Path('requests'), f'{now:%Y%m%d}-{slot}-agentv2')):
+              should = False
           if slot not in {'morning','evening'}:
               should = False
           if should and not rejection_selection:
               from tayvoriq_research_retry_v1 import confirmed_slot_delivery, terminal_slot
-              if confirmed_slot_delivery(slot, now) or (slot != prepared_slot and terminal_slot(slot, now)):
+              if (not auto and confirmed_slot_delivery(slot, now)) or (slot != prepared_slot and terminal_slot(slot, now)):
                   should = False
           if os.environ.get('RECONCILE_ONLY') == 'true' and not (failed_review and rejection_selection):
               should = False
           with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as h:
               h.write(f"should_run={'true' if should else 'false'}\n")
               h.write(f"slot={slot}\n")
+              h.write(f"auto_render={str(bool(auto)).lower()}\n")
               h.write(f"prepared_only={'true' if should and slot == prepared_slot and not rejection_selection else 'false'}\n")
               h.write(f"rejection_selection={rejection_selection}\n")
               h.write(f"expired_selection={expired_selection}\n")
@@ -478,6 +494,7 @@ jobs:
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true' && steps.mode.outputs.series_in_flight != 'true' && steps.active_request.outputs.active != 'true'
         env:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.prepared_only == 'true' || steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
+          AUTO_RENDER: ${{ steps.slot.outputs.auto_render }}
           PREPARED_ONLY: ${{ steps.slot.outputs.prepared_only }}
           TAYVORIQ_RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
           TAYVORIQ_RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
@@ -503,6 +520,7 @@ jobs:
             TAYVORIQ_RESEARCH_STARTED_AT_EPOCH=$(date +%s)
             TAYVORIQ_RESEARCH_SELECTION_ID="$(TZ=Europe/Berlin date +%Y%m%d)-${TAYVORIQ_RESEARCH_SLOT}-agentv2"
             seconds=$(PYTHONPATH=tools python -c 'import os; from tayvoriq_research_retry_v1 import regular_process_seconds; print(regular_process_seconds(os.environ["TAYVORIQ_RESEARCH_SLOT"]))')
+            if [ "$AUTO_RENDER" = true ]; then args+=(--scheduled-proof "$RUNNER_TEMP/slot-proof.json"); fi
             result=124
             if [ "$seconds" -gt 25 ]; then
               result=0
@@ -533,6 +551,7 @@ jobs:
       - name: Resolve idempotent selection delivery
         id: delivery
         env:
+          AUTO_RENDER: ${{ steps.slot.outputs.auto_render == 'true' && steps.mode.outputs.active_series != 'true' }}
           REJECTION_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
         if: steps.slot.outputs.should_run == 'true' && steps.active_request.outputs.active != 'true' && (steps.mode.outputs.active_series != 'true' || steps.mode.outputs.series_in_flight != 'true')
         run: |
@@ -552,7 +571,7 @@ jobs:
               raise SystemExit(f'invalid selection id: {selection_id!r}')
           delivery=Path(f'.automation/tayvoriq-agent-v2/deliveries/{selection_id}.json')
           verified=False
-          if delivery.is_file():
+          if delivery.is_file() and os.environ.get("AUTO_RENDER") != "true":
               try:
                   data=json.loads(delivery.read_text(encoding='utf-8'))
                   verified=(
@@ -615,8 +634,42 @@ jobs:
           print({'contract':'passed','mode':d.get('mode') or 'trend_radar','trend_count':len(trends),'v5_retention':True})
           PY
 
+      - name: Reserve the free slot for a reviewed Contabo render
+        if: steps.approval_contract.outcome == 'success' && steps.slot.outputs.auto_render == 'true' && steps.mode.outputs.active_series != 'true'
+        env:
+          SLOT: ${{ steps.slot.outputs.slot }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase --autostash origin main
+          file=$(python tools/tayvoriq_scheduled_render.py stage --selection /tmp/tayvoriq-trend-request.json \
+            --audit /tmp/tayvoriq-trend-audit.json --proof "$RUNNER_TEMP/slot-proof.json")
+          [ -n "$file" ] || exit 0
+          python - "$SLOT" <<'PYRETRY'
+          import os, sys
+          from pathlib import Path
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          sys.path.insert(0, "tools")
+          from tayvoriq_provider_health_v1 import read, write
+          path = Path(os.environ["TAYVORIQ_RESEARCH_RETRY_FILE"])
+          retry = read(path)
+          if retry.get("slot") == sys.argv[1] and retry.get("berlin_date") == datetime.now(ZoneInfo("Europe/Berlin")).date().isoformat():
+              write(path, {**retry, "state": "RENDER_RESERVED"})
+          PYRETRY
+          git add "$file"
+          if [ -f "$TAYVORIQ_RESEARCH_RETRY_FILE" ]; then git add "$TAYVORIQ_RESEARCH_RETRY_FILE"; fi
+          git commit -m "Reserve reviewed Contabo render for $SLOT"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+
       - name: Persist canonical request without triggering legacy push workflows
-        if: steps.delivery.outputs.needs_delivery == 'true'
+        if: steps.delivery.outputs.needs_delivery == 'true' && (steps.slot.outputs.auto_render != 'true' || steps.mode.outputs.active_series == 'true')
         run: |
           set -euo pipefail
           cp /tmp/tayvoriq-trend-request.json .github/run-now/tayvoriq-trend-request.json
@@ -644,7 +697,7 @@ jobs:
 
       - name: Send approval request to Telegram
         id: telegram
-        if: steps.delivery.outputs.needs_delivery == 'true'
+        if: steps.delivery.outputs.needs_delivery == 'true' && (steps.slot.outputs.auto_render != 'true' || steps.mode.outputs.active_series == 'true')
         env:
           REVIEW_SELECTION: ${{ steps.slot.outputs.rejection_selection }}
         run: |
@@ -812,6 +865,18 @@ jobs:
           timeout 20s gh workflow run tayvoriq-agent-orchestrator-v2.yml --repo "$GITHUB_REPOSITORY" --ref main \
             -f research_retry_wakeup=true -f "research_retry_from=$RESEARCH_RUN_KEY"
           echo "GitHub accepted the retry wakeup for $slot after $RESEARCH_RUN_KEY."
+
+      - name: Hand the reserved slot to the production dispatcher
+        if: >-
+          success() && (github.event_name == 'schedule' || github.event.action == 'tayvoriq_research_tick' ||
+          inputs.research_retry_wakeup)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          request=$(python tools/tayvoriq_scheduled_render.py pending)
+          if [ -n "$request" ]; then
+            gh workflow run tayvoriq-request-dispatch.yml --ref main -f "source_request_id=$request"
+          fi
 
       - name: Reconcile terminal research notice with Telegram
         if: always() && steps.slot.outcome == 'success' && steps.slot.outputs.rejection_selection == ''

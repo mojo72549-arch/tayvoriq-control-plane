@@ -12,6 +12,8 @@ from tayvoriq_lifecycle_handoff_v1 import await_completion
 from tayvoriq_research_retry_v1 import lifecycle as research_lifecycle
 from tayvoriq_rejected_review_followup import followup
 from tayvoriq_stale_news_reconcile_v1 import verified_quarantine
+from tayvoriq_scheduled_render import scheduled_authority
+
 from tayvoriq_chat_direct_approval_v1 import authorized_for_review
 from tayvoriq_contabo_recovery_decision import SCENE_RECOVERY, contabo_decision, private_diagnostics, private_scene_worker_ready, private_technical_case
 from tayvoriq_slot_serialization_v1 import is_verified_cta_content_repair
@@ -62,7 +64,7 @@ def decide(pointer, request, run, *, event_name='', event_run=0,
             return finish('BLOCKED', 'IMMUTABLE_REQUEST_MISMATCH:' + field)
     inherited = (approved_parent and approved_parent.get('source') == 'telegram_trend_approval'
                  and is_verified_cta_content_repair(request, approved_parent, approved_parent.get('request_id')))
-    if request.get('source') != 'telegram_trend_approval' and not authorized_for_review(request) and not inherited:
+    if request.get('source') != 'telegram_trend_approval' and not authorized_for_review(request) and not scheduled_authority(request) and not inherited:
         return finish('BLOCKED', 'USER_APPROVAL_PROVENANCE_REQUIRED')
     # A separately audited, unpublished and expired news request is terminal
     # history, not an active delivery blocker. Keep hard contract checks above.
