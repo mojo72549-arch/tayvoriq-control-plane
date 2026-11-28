@@ -31,6 +31,24 @@ class ResearchObserverTests(unittest.TestCase):
         note.event({'event':'provider_success','provider':'ollama','source_pair_hash':key})
         self.assertFalse(note.pending_source_pairs)
 
+    def test_editorial_rejection_preserves_the_unexamined_pair_only(self):
+        tried, deferred = '1' * 64, '2' * 64
+        for origin in ('control_center', 'scheduled'):
+            observation = self.observation()
+            attempts = []
+            def rank(command, env, deadline, note, save, **options):
+                attempts.append(env)
+                if len(attempts) == 1:
+                    note.event({'event':'provider_success','provider':'ollama','source_pair_hash':tried})
+                    note.event({'event':'source_pair_deferred','source_pair_hash':deferred})
+                    note.event({'event':'candidate_editorial_rejection','reason':'regional_scorecard'})
+                    return 65
+                return 0
+            result = observer.run_bound_ranking([],{},1760,observation,origin=origin,stopped=lambda:False,
+                      clock=iter([1000,1400,1400]).__next__,run=rank)
+            self.assertEqual(result,0)
+            self.assertEqual(json.loads(attempts[1]['TAYVORIQ_OPERATOR_RESUME_PAIRS']),[deferred])
+
     def observation(self):
         return observer.Observation('20261125-evening-agentv2-c1234abcd', 'evening', 123, 2)
 
