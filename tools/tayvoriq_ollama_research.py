@@ -114,10 +114,12 @@ def source_pair_key(urls):
     return hashlib.sha256(json.dumps(sorted(urls), ensure_ascii=False).encode()).hexdigest()
 
 
-def candidate_budget(pairs_remaining, *, first_pair=False, recovery=False):
+def candidate_budget(pairs_remaining, *, first_pair=False, recovery=False, allow_single=False):
     available = max(0, remaining_research_seconds() - VALIDATION_RESERVE_SECONDS)
-    if recovery:
-        return min(300, available)
+    if recovery or (allow_single and first_pair):
+        # A single eligible story fills a slot. On the VPS a cold complete draft
+        # can take more than 225 s. Keep enough time for a targeted editorial fix.
+        return min(330, max(0, available - min(MAXIMUM_REPAIR_SECONDS, available * .1)))
     # The first inference includes cold model loading. Reserve a full warm
     # evaluation for the remaining pair, along with the final quality check.
     if first_pair and pairs_remaining == 2:
