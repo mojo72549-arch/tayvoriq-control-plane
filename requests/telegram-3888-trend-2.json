@@ -170,6 +170,16 @@
         "golden_path_run_id": 46139626379,
         "quality_gates_weakened": false
       }
+    },
+    {
+      "state": "CHECKPOINT_PROVENANCE_RECORDED",
+      "at": "2026-11-28T12:37:23.417747+00:00",
+      "actor": "contabo-controller",
+      "meta": {
+        "replay_implementation_sha": "91f799a637a192aa2eab47e8d1253363e2c87d39",
+        "golden_path_run_id": 46142041785,
+        "quality_gates_weakened": false
+      }
     }
   ],
   "contract_sha256": "345ea8597080d0fd93716255bd1446beb899052b2507aaa7bd5f302c7882cd4c",
@@ -180,8 +190,8 @@
   "codefix_recovery": {
     "status": "REPLAY_DISPATCHED",
     "request_substate": "DISPATCHED",
-    "replay_run_id": 46142041785,
-    "replay_implementation_sha": "91f799a637a192aa2eab47e8d1253363e2c87d39",
+    "replay_run_id": 46145542247,
+    "replay_implementation_sha": "45aba435f535c55a47798baea9c2d7068f2618cb",
     "codefix_detection_reason": "production-green-implementation-changed",
     "active_pointer_verified": true,
     "exact_source_request_required": true,
@@ -190,8 +200,8 @@
   },
   "contabo_handoff": {
     "schema": "tayvoriq-contabo-handoff-v1",
-    "controller_run_id": 46142041785,
-    "worker_run_id": 46142058676,
+    "controller_run_id": 46145542247,
+    "worker_run_id": 46145567700,
     "execution_repository": "mojo72549-arch/shorts-agent-studio",
     "checkpoint_release": "",
     "request_id": "telegram-3888-trend-2",
