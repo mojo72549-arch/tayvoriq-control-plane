@@ -1,6 +1,6 @@
 {
   "request_id": "telegram-3888-trend-2",
-  "status": "DISPATCHING",
+  "status": "DISPATCHED",
   "source": "telegram_trend_approval",
   "approved_via": "telegram_callback",
   "trend_id": "2",
@@ -155,9 +155,15 @@
       "state": "DISPATCHING",
       "at": "2026-11-28T11:22:58.162424+00:00",
       "actor": "request-dispatcher:46139599055"
+    },
+    {
+      "state": "DISPATCHED",
+      "at": "2026-11-28T11:23:08.879692+00:00",
+      "actor": "request-dispatcher:46139599055"
     }
   ],
   "contract_sha256": "345ea8597080d0fd93716255bd1446beb899052b2507aaa7bd5f302c7882cd4c",
   "dispatch_claim_run_id": 46139599055,
-  "dispatch_contract_sha256": "345ea8597080d0fd93716255bd1446beb899052b2507aaa7bd5f302c7882cd4c"
+  "dispatch_contract_sha256": "345ea8597080d0fd93716255bd1446beb899052b2507aaa7bd5f302c7882cd4c",
+  "golden_path_run_id": 46139626379
 }
