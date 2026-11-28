@@ -257,7 +257,8 @@ class OllamaResearchTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text())['pending_source_pairs'],[key])
         with patch.object(ollama, 'remaining_research_seconds', return_value=410):
             self.assertEqual(ollama.candidate_budget(2, first_pair=True),225)
-            self.assertEqual(ollama.candidate_budget(1, recovery=True),300)
+            self.assertEqual(ollama.candidate_budget(1, recovery=True),330)
+            self.assertEqual(ollama.candidate_budget(2, first_pair=True, allow_single=True),330)
 
     def test_candidate_budget_preserves_time_for_other_pairs_and_validation(self):
         with patch.object(ollama.time, 'time', return_value=1000):
