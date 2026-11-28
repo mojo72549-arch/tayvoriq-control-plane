@@ -962,6 +962,28 @@ jobs:
               raise SystemExit("REVIEW_REPAIR_CHECKPOINT_RUN_MISMATCH")
           PY
           fi
+          required_parent=$(python -S - <<'REQUIRED_PARENT'
+          import json, os
+          from pathlib import Path
+          path=Path('..')/'.github/run-now/tayvoriq-contabo-kick.json'
+          kick=json.loads(path.read_text()) if path.is_file() else {}
+          parent=kick.get('required_checkpoint_run_id')
+          if parent is None or kick.get('source_request_id')!=os.environ.get('SOURCE_REQUEST_ID_PIN'):
+              raise SystemExit(0)
+          source=os.environ['SOURCE_CONTEXT_SHA256']
+          current=json.loads((Path('..')/'.github/state/tayvoriq-production-green.json').read_text())
+          if kick.get('verified_implementation_sha')!=current['implementation_sha']:
+              raise SystemExit(0)
+          if type(parent) is not int or parent<=0 or kick.get('source_context_sha256')!=source:
+              raise SystemExit('INVALID_CHECKPOINT_ONLY_HANDOFF')
+          meta_path=Path('out/recovery-checkpoint/meta.json')
+          meta=json.loads(meta_path.read_text()) if meta_path.is_file() else {}
+          if (str(meta.get('run_id'))!=str(parent) or meta.get('source_context_sha256')!=source
+                  or meta.get('source_request_id')!=kick['source_request_id'] or meta.get('quality_gates_weakened') is not False):
+              raise SystemExit('REQUIRED_PARENT_CHECKPOINT_UNAVAILABLE')
+          print(parent)
+          REQUIRED_PARENT
+          )
           if [ -f out/recovery-checkpoint/meta.json ]; then
             if python tools/tayvoriq_recovery_checkpoint_v1.py hydrate \
               --checkpoint out/recovery-checkpoint \
@@ -977,6 +999,10 @@ jobs:
           fi
           if [ -n "$REVIEW_REPAIR_OF" ]; then
             [ "$REVIEW_CACHE_HIT" = "true" ] && [ "$restored" = "true" ] || exit 1
+          fi
+          if [ -n "$required_parent" ] && [ "$restored" != "true" ]; then
+            echo "REQUIRED_PARENT_CHECKPOINT_FAILED_INTEGRITY:$required_parent"
+            exit 1
           fi
           if [ -n "$single_scene" ] && [ "$restored" != "true" ]; then
             echo 'SINGLE_SCENE_CHECKPOINT_REQUIRED: recovery stopped before any fresh rendering'
