@@ -5,9 +5,15 @@
   "request_id": "telegram-3888-trend-2",
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "job_id": 140980774980,
-  "code": "other",
-  "started_at": "2026-11-28T12:37:24Z",
+  "code": "check_environment",
+  "started_at": "2026-11-28T12:37:47Z",
   "state": "running",
-  "checked": [],
-  "observed_at": "2026-11-28T12:37:29.372527+00:00"
+  "checked": [
+    "validate_implementation",
+    "load_implementation",
+    "verify_implementation",
+    "check_production_contract",
+    "load_dependencies"
+  ],
+  "observed_at": "2026-11-28T12:37:51.623381+00:00"
 }
