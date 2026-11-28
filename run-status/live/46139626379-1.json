@@ -4,10 +4,38 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46139626379,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T11:25:56.600522+00:00",
-  "observed_at": "2026-11-28T11:25:56.600556+00:00",
-  "current": null,
-  "events": [],
+  "updated_at": "2026-11-28T11:26:06.737007+00:00",
+  "observed_at": "2026-11-28T11:26:11.330490+00:00",
+  "current": {
+    "phase": "script",
+    "status": "started",
+    "at": "2026-11-28T11:26:06.737007+00:00",
+    "call_id": "a8d1d22a57da48b8955dffd1dd5e6c79",
+    "platform": "youtube_shorts",
+    "round": null,
+    "target": null
+  },
+  "events": [
+    {
+      "phase": "preflight",
+      "status": "started",
+      "at": "2026-11-28T11:25:57.314238+00:00",
+      "call_id": "internal-preflight"
+    },
+    {
+      "phase": "preflight",
+      "status": "completed",
+      "at": "2026-11-28T11:26:04.347087+00:00",
+      "call_id": "internal-preflight"
+    },
+    {
+      "phase": "script",
+      "status": "started",
+      "at": "2026-11-28T11:26:06.737007+00:00",
+      "call_id": "a8d1d22a57da48b8955dffd1dd5e6c79",
+      "platform": "youtube_shorts"
+    }
+  ],
   "completed_phases": [],
   "findings": []
 }
