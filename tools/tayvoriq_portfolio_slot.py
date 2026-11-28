@@ -59,7 +59,7 @@ def notify():
     message = (f"TAYVORIQ · Dein {label} ist vorproduziert\n\n{plan['topic']}\n"
                f"Vorschau: https://mojo72549-arch.github.io/mind-reset-daily/tayvoriq/runs/{run}/\n"
                "Freigeben kannst du das fertige Video in deinem Portfolio oder in der ursprünglichen Telegram-Nachricht.\n"
-               "https://tayvoriq-control-center-mo61.vercel.app/#portfolios")
+               "https://tayvoriq-control-center.vercel.app/#portfolios")
     deliver(path, {"state":"SENDING", "request_id":plan["request_id"], "run_id":run, "slot":plan["key"]}, message)
 
 

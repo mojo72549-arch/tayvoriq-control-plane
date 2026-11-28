@@ -88,7 +88,7 @@ def notify(event, token, bot, chat, *, fetch=api, save=mirror, open_response=url
         return True
     body = {"chat_id": chat, "message_id": current["telegram_message_id"],
             "text": f"TAYVORIQ · Update zur Reparatur\nAuftrag: {event['request_id']}\n\n{event['text']}\n"
-                    "Live-Stand: https://tayvoriq-control-center-mo61.vercel.app",
+                    "Live-Stand: https://tayvoriq-control-center.vercel.app",
             "disable_web_page_preview": True}
     request = Request(f"https://api.telegram.org/bot{bot}/editMessageText", data=json.dumps(body).encode(),
                       headers={"Content-Type": "application/json"})
