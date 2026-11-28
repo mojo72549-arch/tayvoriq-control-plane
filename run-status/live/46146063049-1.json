@@ -4,43 +4,20 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46146063049,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T12:52:36.139708+00:00",
-  "observed_at": "2026-11-28T12:55:45.862831+00:00",
+  "updated_at": "2026-11-28T12:56:12.801124+00:00",
+  "observed_at": "2026-11-28T12:56:13.120410+00:00",
   "current": {
-    "phase": "voice",
+    "phase": "visuals",
     "status": "started",
-    "at": "2026-11-28T12:52:36.139708+00:00",
-    "call_id": "bda85a19f9034411bfeead39515dc143",
+    "at": "2026-11-28T12:56:12.801124+00:00",
+    "call_id": "b39fc548aac145a5aa8178c8d2b278d4",
     "platform": "tiktok",
+    "scene": 1,
+    "total": 6,
     "round": null,
     "target": null
   },
   "events": [
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-28T12:48:40.697733+00:00",
-      "call_id": "9dbd0e1442e64aaebcc1cd973803cc37",
-      "platform": "youtube_shorts"
-    },
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-28T12:48:40.768046+00:00",
-      "call_id": "60cf529201774e86a271c83526a66671",
-      "platform": "youtube_shorts",
-      "scene": 4,
-      "total": 6
-    },
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-28T12:48:40.768428+00:00",
-      "call_id": "f88673f1a7e540d2bd23941577f7456b",
-      "platform": "youtube_shorts",
-      "scene": 5,
-      "total": 6
-    },
     {
       "phase": "captions",
       "status": "started",
@@ -142,10 +119,35 @@
       "at": "2026-11-28T12:52:36.139708+00:00",
       "call_id": "bda85a19f9034411bfeead39515dc143",
       "platform": "tiktok"
+    },
+    {
+      "phase": "voice",
+      "status": "completed",
+      "at": "2026-11-28T12:56:12.800044+00:00",
+      "call_id": "bda85a19f9034411bfeead39515dc143",
+      "platform": "tiktok"
+    },
+    {
+      "phase": "render",
+      "status": "started",
+      "at": "2026-11-28T12:56:12.800703+00:00",
+      "call_id": "91b7489a479e4123814f70b220f18a20",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "visuals",
+      "status": "started",
+      "at": "2026-11-28T12:56:12.801124+00:00",
+      "call_id": "b39fc548aac145a5aa8178c8d2b278d4",
+      "platform": "tiktok",
+      "scene": 1,
+      "total": 6
     }
   ],
   "completed_phases": [
-    "scenes"
+    "scenes",
+    "voice"
   ],
   "findings": []
 }
