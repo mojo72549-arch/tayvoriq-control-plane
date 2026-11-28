@@ -1,12 +1,12 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-28T12:01:25.241067Z",
+  "generated_at": "2026-11-28T12:28:15.590566Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": true,
-    "reason": "VERIFIED_STATE_TRANSITION"
+    "telegram_notify_allowed": false,
+    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
   },
   "api_error": null,
   "research": {
@@ -35,7 +35,7 @@
     "request_id": "telegram-3888-trend-2",
     "golden_path_run_id": 46142041785,
     "pointer_updated_at": "2026-11-28T11:54:30.328818+00:00",
-    "current_scope": "production"
+    "current_scope": "research"
   },
   "request": {
     "request_id": "telegram-3888-trend-2",
@@ -67,18 +67,18 @@
   },
   "run": {
     "id": 46142041785,
-    "historical": false,
-    "status": "in_progress",
-    "conclusion": null,
+    "historical": true,
+    "status": "completed",
+    "conclusion": "failure",
     "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46142041785",
     "created_at": "2026-11-28T11:54:08Z",
-    "updated_at": "2026-11-28T11:54:11Z",
+    "updated_at": "2026-11-28T12:22:02Z",
     "attempt": 1,
     "progress": 0,
-    "current_step": "Monitor the private worker receipt",
-    "last_successful_step": "Bind controller and private worker to the canonical request",
-    "failed_step": null,
-    "failed_step_number": null,
+    "current_step": null,
+    "last_successful_step": "Complete job",
+    "failed_step": "Monitor the private worker receipt",
+    "failed_step_number": 12,
     "stages": [
       {
         "label": "Freigabe gebunden",
@@ -136,13 +136,13 @@
       },
       {
         "label": "Review-Seite",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 16,
         "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
-        "status": "pending",
+        "status": "skipped",
         "step_number": 18,
         "step_name": "Send Telegram review"
       }
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Monitor the private worker receipt"
+      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
     },
     {
       "name": "Production Green",
@@ -162,29 +162,29 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "Recovery-Replay läuft"
+      "detail": "EXHAUSTED"
     },
     {
       "name": "Telegram",
       "status": "yellow",
-      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
+      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Noch nicht erreicht"
+      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "yellow",
-    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
     "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
-    "status": "REPLAY_RUNNING",
-    "source_status": "REPLAY_RUNNING",
+    "status": "EXHAUSTED",
+    "source_status": "EXHAUSTED",
     "failure_state": null,
     "failed_run_id": null,
     "replay_run_id": 46142041785,
@@ -197,6 +197,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-28T12:22:02Z",
+      "title": "Workflow-Fehler",
+      "detail": "Monitor the private worker receipt"
+    },
     {
       "at": "2026-11-28T11:54:30.328797+00:00",
       "title": "CHECKPOINT_PROVENANCE_RECORDED",
