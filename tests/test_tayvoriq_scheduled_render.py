@@ -88,6 +88,28 @@ class ScheduledSlotTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.reserve()
 
+    def test_scheduled_portfolio_reuses_only_the_matching_pending_video(self):
+        from tayvoriq_portfolio_slot import reserved
+        root = self.requests.parent
+        plan = dict(day="2026-11-27", slot="morning", request_id="portfolio-video", run_id=111,
+                    source_context_sha256="a"*64, review_sha="b"*64, telegram_message_id=999)
+        state = root / "state/tayvoriq-portfolio-slots.json"
+        state.parent.mkdir()
+        state.write_text(json.dumps({"slots":{"2026-11-27-morning":plan}}))
+        receipt = dict(state="REVIEW_READY", golden_path_run_id=111, quality_gates_weakened=False, telegram_message_id=999)
+        (self.requests/"portfolio-video.json").write_text(json.dumps({
+            **plan, "golden_path_run_id":111, "production_completion":receipt}))
+        decision = root / ".automation/tayvoriq-artifact-decisions/111.json"
+        decision.parent.mkdir(parents=True)
+        review = {**plan, "state":"PENDING", "review_id":"111", "files_sha256":{"short_youtube.mp4":"b"*64}}
+        decision.write_text(json.dumps(review))
+        self.assertEqual(reserved(root,self.now)["run_id"],111)
+        self.reserve()
+        self.assertEqual(len(list(self.requests.glob("slot-*.json"))),0)
+        for changed in ({"state":"REJECTED"}, {"telegram_message_id":998}, {"source_context_sha256":"c"*64}):
+            decision.write_text(json.dumps({**review, **changed}))
+            self.assertIsNone(reserved(root,self.now))
+
     def test_clock_uses_berlin_in_both_seasons(self):
         for month in (1, 7):
             for hour, minute, slot in ((5, 29, ""), (5, 30, "morning"), (12, 0, ""),

@@ -53,8 +53,9 @@ def owners(directory, sid):
 
 
 def pending(directory, now):
+    from tayvoriq_portfolio_slot import reserved
     slot = window(now)
-    if not slot:
+    if not slot or reserved(directory.parent, now):
         return ""
     sid = f"{now.astimezone(ZONE):%Y%m%d}-{slot}-agentv2"
     rows = list(owners(directory, sid))
@@ -82,7 +83,8 @@ def stage(selection, audit, proof_path, directory, now):
                         and evidence.get("selected_count") == len(packet["trends"])
                         and set(evidence["provider"].split("+")) <= {"ollama_rss", "ollama_gdelt"}):
         raise ValueError("SCHEDULED_RESULT_BINDING_INVALID")
-    if list(owners(directory, sid)):
+    from tayvoriq_portfolio_slot import reserved
+    if reserved(directory.parent, now) or list(owners(directory, sid)):
         return
     trend = packet["trends"][0]
     context = trend["source_context"]
@@ -113,7 +115,8 @@ def main():
         row = json.loads(args.request.read_text())
         if row.get("source") == SOURCE:
             bound = f"{now:%Y%m%d}-{window(now)}-agentv2" == row.get("selection_id")
-            if not bound or any(r.get("source") != SOURCE for r in owners(directory, row["selection_id"])):
+            from tayvoriq_portfolio_slot import reserved
+            if not bound or reserved(directory.parent, now) or any(r.get("source") != SOURCE for r in owners(directory, row["selection_id"])):
                 print("held")
 
 
