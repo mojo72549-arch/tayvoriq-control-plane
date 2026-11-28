@@ -27,6 +27,12 @@ RESCAN_MARKERS = (EDITORIAL_RESCAN, GROWTH_RESCAN)
 class InsufficientSourceEvidence(RuntimeError):
     """The provider responded successfully but did not return enough corroborated stories."""
 
+class RejectedSourceHeadline(InsufficientSourceEvidence):
+    def __init__(self, title, source_label):
+        super().__init__(f"No eligible individual candidate from {source_label}")
+        self.title = title
+
+
 class InsufficientFeedEvidence(InsufficientSourceEvidence):
     """No model was called because the discovery snippets could not establish two stories."""
 
@@ -224,6 +230,13 @@ def _rank_corroborated_pairs(pairs, previous, retry_attempt, records=None):
     return {pair: title for group in fresh + seen for pair, title in group}
 
 
+def _platform_rejection(fields):
+    return (isinstance(fields, list) and bool(fields)
+            and all(isinstance(field, str) and field.startswith(("youtube:", "tiktok:")) for field in fields)
+            and any(field.endswith((":regional_score_below_75", ":consequence_below_3", ":explanation_below_3"))
+                    for field in fields))
+
+
 def _below_platform_minimum(prompt):
     marker = "\nPrevious base-field findings for the source-bound drafts: "
     if marker not in prompt:
@@ -241,10 +254,7 @@ def _below_platform_minimum(prompt):
         fields = row.get("fields")
         # Missing rubric inputs also produce a provisional low total. Only a
         # complete rubric can reject a topic on platform relevance.
-        if fields and isinstance(fields, list) and all(
-            isinstance(field, str) and field.startswith(("youtube:", "tiktok:")) for field in fields
-        ) and any(field.endswith((":regional_score_below_75", ":consequence_below_3", ":explanation_below_3"))
-                  for field in fields):
+        if _platform_rejection(fields):
             rejected.append(row["title"])
     return rejected
 
@@ -445,7 +455,7 @@ def _groq_source_records(records):
     }, ensure_ascii=False))
     return compact
 
-def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface",model_override:str="",allow_single: bool = False):
+def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str="independent-source-pool",*,provider_kind:str="huggingface",model_override:str="",allow_single: bool = False, rejected_titles=()):
     if provider_kind not in {"huggingface", "groq", "ollama"}: raise ValueError("UNSUPPORTED_SOURCE_STRUCTURE_PROVIDER")
     if provider_kind != 'ollama' and not token: raise RuntimeError(f"{provider_kind.upper()}_API_KEY_MISSING")
     if len(records)<8 or len({r['domain'] for r in records})<2: raise RuntimeError("source pool too small for safe fallback")
@@ -518,7 +528,7 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
             except ValueError:
                 pass
         previous = [title for title in previous if isinstance(title, str)] if isinstance(previous, list) else []
-        excluded = _below_platform_minimum(prompt) if rescan_marker else []
+        excluded = list(rejected_titles) + (_below_platform_minimum(prompt) if rescan_marker else [])
         if excluded:
             vetted_pairs = {pair: title for pair, title in vetted_pairs.items()
                             if all(title.casefold() != prior.casefold() and distinct_headlines(title, prior)
@@ -906,6 +916,8 @@ Verwende die kurzen Antwortfeld-Namen (kurz = fachlicher Feldname):
                               "reason": assessment.get("reason") or ("regional_scorecard" if assessment.get("issues") else "regional_scorecard_missing"),
                               "details": assessment.get("issues") or [], "scores": assessment.get("scores")},
                              ensure_ascii=False), flush=True)
+            if provider_kind == 'ollama' and _platform_rejection(assessment.get('issues')):
+                raise RejectedSourceHeadline(candidate['title'], source_label)
             raise InsufficientSourceEvidence(f"No eligible individual candidate from {source_label}")
     data["candidates"]=valid_candidates
     return data,chunks,f"{provider_kind}/{model}+{source_label}"

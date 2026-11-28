@@ -41,6 +41,7 @@ def _still_current(draft, records):
 
 def local_grounded(prompt):
     records = {}
+    rejected_titles = []
     last_error = None
     def article_sources():
         if not isinstance(last_error, hf.InsufficientFeedEvidence):
@@ -68,13 +69,17 @@ def local_grounded(prompt):
         try:
             data, chunks, model = hf.structure(
                 prompt, '', list(records.values()), label, provider_kind='ollama',
+                **({'rejected_titles': tuple(rejected_titles)} if rejected_titles else {}),
                 **({'allow_single': True} if os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID') or
                     os.getenv('TAYVORIQ_EDITORIAL_TOPIC', '').strip() else {}),
             )
             return data, chunks, model, 'ollama_gdelt' if label == 'rss-gdelt-context' else 'ollama_rss'
         except hf.InsufficientSourceEvidence as error:
+            if isinstance(error, hf.RejectedSourceHeadline):
+                rejected_titles.append(error.title)
             last_error = error
-    if isinstance(last_error, hf.InsufficientSourceEvidence) and not isinstance(last_error, hf.InsufficientFeedEvidence):
+    if rejected_titles or (isinstance(last_error, hf.InsufficientSourceEvidence)
+                           and not isinstance(last_error, hf.InsufficientFeedEvidence)):
         raise RuntimeError('OLLAMA_EDITORIAL_RESULT_INCOMPLETE') from last_error
     print(json.dumps({'event': 'local_research_failed', 'issue': 'SOURCE_MINIMUM_NOT_MET'}), flush=True)
     raise RuntimeError('OLLAMA_SOURCE_MINIMUM_NOT_MET') from last_error

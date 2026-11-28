@@ -136,6 +136,19 @@ class LocalArticleResearchTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'OLLAMA_EDITORIAL_RESULT_INCOMPLETE'):
                 resilience.local_grounded('editorial')
 
+    def test_fresh_discovery_keeps_completed_platform_rejection_out_of_the_next_inference(self):
+        failed = 'Flugbetrieb in Köln-Bonn nach Drohnensichtung gestoppt'
+        def rank(prompt, token, records, label, **kwargs):
+            if label == 'multi-publisher-rss':
+                self.assertFalse(kwargs.get('rejected_titles'))
+                raise hf.RejectedSourceHeadline(failed, label)
+            self.assertEqual(kwargs['rejected_titles'], (failed,))
+            return {'candidates': []}, [], 'test'
+        with patch.object(resilience.rss, 'source_pool', side_effect=self.records), \
+             patch.object(resilience.gdelt, 'source_pool', return_value=[{'url':'https://example.net/new'}]), \
+             patch.object(hf, 'structure', side_effect=rank):
+            self.assertEqual(resilience.local_grounded('editorial')[-1], 'ollama_gdelt')
+
     def test_confirmed_rss_result_avoids_unnecessary_article_and_gdelt_requests(self):
         with patch.object(resilience.rss, 'source_pool', side_effect=self.records), \
              patch.object(hf, 'structure', return_value=({'candidates': []}, [], 'fixture')), \
