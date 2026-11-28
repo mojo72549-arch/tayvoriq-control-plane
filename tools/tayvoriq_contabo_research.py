@@ -236,13 +236,13 @@ def receipt_events(lines):
             remaining = remaining[end:].lstrip()
 
 
-def pending_pairs(events):
+def pending_pairs(events, *, include_deferred=True):
     pending = set()
     for row in events:
         key = row.get('source_pair_hash')
         if not isinstance(key, str) or len(key) != 64 or any(ch not in '0123456789abcdef' for ch in key):
             continue
-        if row.get('event') == 'source_pair_timed_out':
+        if row.get('event') == 'source_pair_timed_out' or (include_deferred and row.get('event') == 'source_pair_deferred'):
             pending.add(key)
         elif row.get('event') == 'provider_success' and row.get('provider') == 'ollama':
             pending.discard(key)
@@ -250,7 +250,7 @@ def pending_pairs(events):
 
 
 def worker_failure_code(events):
-    if pending_pairs(events):
+    if pending_pairs(events, include_deferred=False):
         return OLLAMA_MODEL_TIMEOUT
     if any(row.get('event') in {'regional_editorial_validation', 'candidate_editorial_rejection'}
            for row in events):

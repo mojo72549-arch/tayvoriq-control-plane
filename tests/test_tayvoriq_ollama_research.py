@@ -244,6 +244,10 @@ class OllamaResearchTests(unittest.TestCase):
         self.assertEqual(transport.worker_failure_code([timeout,rejected]), transport.OLLAMA_MODEL_TIMEOUT)
         completed = {'event':'provider_success', 'provider':'ollama', 'source_pair_hash':key}
         self.assertEqual(transport.worker_failure_code([timeout,completed,rejected]), 65)
+        deferred = {'event':'source_pair_deferred', 'source_pair_hash':key}
+        self.assertEqual(transport.pending_pairs([deferred,rejected]), [key])
+        self.assertEqual(transport.worker_failure_code([deferred,rejected]), 65)
+        self.assertEqual(transport.pending_pairs([deferred,completed,rejected]), [])
         with TemporaryDirectory() as tmp:
             path, proof = Path(tmp)/'retry.json', Path(tmp)/'proof.json'
             sid = '20261128-evening-agentv2'
@@ -253,6 +257,9 @@ class OllamaResearchTests(unittest.TestCase):
             proof.write_text(json.dumps({'selection':sid,'run_key':'123.1','pending_source_pairs':[key]}))
             retry.attach_pending_pairs(path,proof,sid,'999.1')
             self.assertEqual(json.loads(path.read_text()),state)
+            retry.attach_pending_pairs(path,proof,sid,'123.1')
+            self.assertEqual(json.loads(path.read_text())['pending_source_pairs'],[key])
+            path.write_text(json.dumps({**state, 'last_issue':'EDITORIAL_MINIMUM_NOT_MET'}))
             retry.attach_pending_pairs(path,proof,sid,'123.1')
             self.assertEqual(json.loads(path.read_text())['pending_source_pairs'],[key])
         with patch.object(ollama, 'remaining_research_seconds', return_value=410):

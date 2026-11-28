@@ -125,7 +125,7 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
 def attach_pending_pairs(path, proof_path, selection, run_key):
     proof = read(proof_path)
     state = read(path)
-    if not (proof and state.get('state') == 'WAITING' and state.get('last_issue') == 'OLLAMA_MODEL_TIMEOUT'
+    if not (proof and state.get('state') == 'WAITING' and state.get('last_issue') in {'OLLAMA_MODEL_TIMEOUT', 'EDITORIAL_MINIMUM_NOT_MET'}
             and proof.get('run_key') == state.get('last_research_attempt') == run_key
             and selection == proof.get('selection') == f"{state['berlin_date'].replace('-', '')}-{state['slot']}-agentv2"):
         return

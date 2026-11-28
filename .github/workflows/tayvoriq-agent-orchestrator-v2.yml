@@ -552,7 +552,7 @@ jobs:
           issue = sys.argv[1]
           delay = 90 if issue == 'EDITORIAL_MINIMUM_NOT_MET' else 0
           _defer([], None if issue == 'WORKER_WAKEUP_ACCESS' else time.time() + delay, issue=issue)
-          if issue == 'OLLAMA_MODEL_TIMEOUT':
+          if issue in {'OLLAMA_MODEL_TIMEOUT', 'EDITORIAL_MINIMUM_NOT_MET'}:
               attach_pending_pairs(Path(os.environ['TAYVORIQ_RESEARCH_RETRY_FILE']), Path(os.environ['RUNNER_TEMP']) / 'model-retry-proof.json',
                                    os.environ['TAYVORIQ_RESEARCH_SELECTION_ID'], os.environ['TAYVORIQ_RESEARCH_RUN_KEY'])
           PY
