@@ -902,7 +902,7 @@ Verwende die kurzen Antwortfeld-Namen (kurz = fachlicher Feldname):
         assessment = candidate.get("_retrieved_regional_assessment") or {}
         if not assessment.get("passed"):
             print(json.dumps({"event": "candidate_editorial_rejection", "title": candidate.get("title"),
-                              "reason": assessment.get("reason") or "regional_scorecard_missing",
+                              "reason": assessment.get("reason") or ("regional_scorecard" if assessment.get("issues") else "regional_scorecard_missing"),
                               "details": assessment.get("issues") or [], "scores": assessment.get("scores")},
                              ensure_ascii=False), flush=True)
             raise InsufficientSourceEvidence(f"No eligible individual candidate from {source_label}")

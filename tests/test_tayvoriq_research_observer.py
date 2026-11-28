@@ -196,6 +196,13 @@ class ResearchFailureDiagnosticsTests(unittest.TestCase):
         self.assertIn({"code": "EDITORIAL_FIELDS", "provider": None}, o.data["issues"])
         self.assertNotIn({"code": "TIKTOK_FIT", "provider": None}, o.data["issues"])
 
+    def test_both_completed_scores_below_minimum_are_an_editorial_rejection(self):
+        o = self.observation()
+        o.event({'event':'candidate_editorial_rejection','reason':'regional_scorecard_missing',
+                 'details':['youtube:regional_score_below_75','tiktok:regional_score_below_75'],
+                 'scores':{'youtube':69,'tiktok':49}})
+        self.assertEqual(o.data['issues'], [{'code':'EDITORIAL_QUALITY','provider':None}])
+
     def test_a_regional_summary_does_not_count_as_another_rejected_candidate(self):
         o = self.observation()
         for _ in range(2):
