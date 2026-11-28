@@ -82,7 +82,7 @@ def notify(progress,receipt,token):
     text+='Auftrag: '+receipt['request_id']+'\n'
     text+=detail+'\n'
     if status == 'FAILED':text+='Für dich: Aktuell ist keine Aktion erforderlich.\n'
-    text+='Live-Stand: https://tayvoriq-control-center-mo61.vercel.app'
+    text+='Live-Stand: https://tayvoriq-control-center.vercel.app'
     repair=progress.get('current', {}).get('phase')=='repair'
     delivery='new' if not previous or status=='FAILED' or (repair and previous.get('repair_alerted') is not True) else 'edit'
     method='sendMessage' if delivery=='new' else 'editMessageText'

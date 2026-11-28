@@ -130,7 +130,7 @@ def main():
         markup={'inline_keyboard':[
             [{'text':'✅ Freigeben','callback_data':f'tayvoriq:artifact:approve:{rid}'},
              {'text':'❌ Ablehnen','callback_data':f'tayvoriq:artifact:reject:{rid}'}],
-            [{'text':'Control Center öffnen','url':'https://tayvoriq-control-center-mo61.vercel.app'}]]}
+            [{'text':'Control Center öffnen','url':'https://tayvoriq-control-center.vercel.app'}]]}
         response=requests.post('https://api.telegram.org/bot'+os.environ['TELEGRAM_BOT_TOKEN']+'/editMessageReplyMarkup',
             json={'chat_id':os.environ['TELEGRAM_CHAT_ID'],'message_id':decision['telegram_message_id'],'reply_markup':markup},timeout=30)
         assert response.status_code==200 and response.json().get('ok') is True, 'TELEGRAM_REVIEW_BUTTON_BINDING_FAILED'
