@@ -4,9 +4,17 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46142041785,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T11:56:09.213553+00:00",
-  "observed_at": "2026-11-28T11:56:10.325961+00:00",
-  "current": null,
+  "updated_at": "2026-11-28T11:56:11.274066+00:00",
+  "observed_at": "2026-11-28T11:56:17.649068+00:00",
+  "current": {
+    "phase": "script",
+    "status": "started",
+    "at": "2026-11-28T11:56:11.274066+00:00",
+    "call_id": "ea04744557244a80a0256d249524b3ce",
+    "platform": "youtube_shorts",
+    "round": null,
+    "target": null
+  },
   "events": [
     {
       "phase": "preflight",
@@ -19,6 +27,13 @@
       "status": "completed",
       "at": "2026-11-28T11:56:09.213553+00:00",
       "call_id": "internal-preflight"
+    },
+    {
+      "phase": "script",
+      "status": "started",
+      "at": "2026-11-28T11:56:11.274066+00:00",
+      "call_id": "ea04744557244a80a0256d249524b3ce",
+      "platform": "youtube_shorts"
     }
   ],
   "completed_phases": [],
