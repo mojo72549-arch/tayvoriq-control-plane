@@ -454,6 +454,14 @@ jobs:
             echo 'verified=true' >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify the Mietspiegel real-footage fallback when present
+        if: steps.refs.outputs.changed == 'true'
+        working-directory: implementation
+        run: |
+          if [ -f tests/test_tayvoriq_rent_visuals.py ]; then
+            python -m pytest -q tests/test_tayvoriq_rent_visuals.py
+          fi
+
       - name: Verify mixed audio and scene recovery classification
         if: steps.refs.outputs.changed == 'true'
         id: mixed_checkpoint
