@@ -30,6 +30,15 @@ class LocalArticleResearchTests(unittest.TestCase):
             self.assertEqual(hf._research_retry_attempt(), 0)
             current.assert_called_once()
 
+    def test_bound_contabo_search_can_review_one_corroborated_story(self):
+        for selection in ('20261128-morning-agentv2', '20261128-evening-agentv2-c12345678'):
+            with self.subTest(selection=selection), patch.dict(os.environ, {
+                'TAYVORIQ_RESEARCH_SELECTION_ID': selection, 'TAYVORIQ_EDITORIAL_TOPIC': '',
+            }), patch.object(resilience.rss, 'source_pool', return_value=self.records()), \
+                    patch.object(hf, 'structure', return_value=({}, [], 'local')) as structure:
+                resilience.local_grounded('editorial')
+                self.assertTrue(structure.call_args.kwargs['allow_single'])
+
     def records(self, *, expanded=False):
         records = []
         for story, lead in [('bosch', 'Bosch eröffnet Halbleiterfabrik in Reutlingen'),

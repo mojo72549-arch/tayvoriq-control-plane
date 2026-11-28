@@ -269,7 +269,10 @@ jobs:
           single = d.get('mode') == 'single_verified_topic'
           if single:
             topic = os.environ['REQUESTED_TOPIC'].strip()
-            assert os.environ['REQUESTED_VIA'] == 'control_center' and topic and d.get('requested_topic') == topic
+            if topic:
+              assert os.environ['REQUESTED_VIA'] == 'control_center' and d.get('requested_topic') == topic
+            else:
+              assert not d.get('requested_topic')
             assert len(trends) == 1
           else:
             assert 2 <= len(trends) <= 5, f'V5 requires 2-5 strong trends, got {len(trends)}'
