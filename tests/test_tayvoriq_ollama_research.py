@@ -157,8 +157,10 @@ class OllamaResearchTests(unittest.TestCase):
         timeout = {'event': 'provider_attempt_failed', 'provider': 'ollama', 'error': 'Model timeout'}
         preflight = {'event': 'source_headline_preflight', 'corroborated_headlines': 2}
         editorial = {'event': 'candidate_editorial_rejection'}
+        source_gap = {'event': 'local_research_failed', 'issue': 'SOURCE_MINIMUM_NOT_MET'}
         self.assertEqual(transport.worker_failure_code([preflight, timeout, timeout]), transport.OLLAMA_MODEL_TIMEOUT)
         self.assertEqual(transport.worker_failure_code([preflight, timeout, editorial]), 65)
+        self.assertEqual(transport.worker_failure_code([preflight, source_gap]), transport.SOURCE_MINIMUM_NOT_MET)
         self.assertEqual(transport.worker_failure_code([preflight]), 1)
 
     def test_scheduled_slots_and_review_do_not_replace_queued_explicit_search(self):

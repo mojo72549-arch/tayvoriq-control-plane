@@ -75,6 +75,7 @@ def local_grounded(prompt):
             last_error = error
     if isinstance(last_error, hf.InsufficientSourceEvidence) and not isinstance(last_error, hf.InsufficientFeedEvidence):
         raise RuntimeError('OLLAMA_EDITORIAL_RESULT_INCOMPLETE') from last_error
+    print(json.dumps({'event': 'local_research_failed', 'issue': 'SOURCE_MINIMUM_NOT_MET'}), flush=True)
     raise RuntimeError('OLLAMA_SOURCE_MINIMUM_NOT_MET') from last_error
 
 

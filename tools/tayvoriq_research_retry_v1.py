@@ -26,7 +26,7 @@ ISSUE_DETAILS = {
     "WORKER_WAKEUP_ACCESS": "GitHub hat das Startsignal an Contabo abgewiesen. Die Recherche hat nicht begonnen.",
     "EDITORIAL_MINIMUM_NOT_MET": "Zu wenige Themen haben die redaktionelle Prüfung bestanden.",
     "REGIONAL_MINIMUM_NOT_MET": "Zu wenige belegte Themen haben einen regionalen oder bundesweiten Bezug.",
-    "SOURCE_MINIMUM_NOT_MET": "Zu wenige Vorschläge haben die Quellenprüfung bestanden.",
+    "SOURCE_MINIMUM_NOT_MET": "Die Recherche hat zu wenige aktuelle Themen mit unabhängigen Belegen gefunden.",
     "RESEARCH_PROVIDER_UNAVAILABLE": "Die Rechercheanbieter konnten die Anfrage nicht abschließen.",
 }
 

@@ -1,7 +1,9 @@
 import copy
 import json
+import os
 import sys
 import unittest
+from datetime import datetime
 from email.message import Message
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,6 +16,20 @@ import tayvoriq_agent_research_resilience_v2 as resilience
 
 
 class LocalArticleResearchTests(unittest.TestCase):
+    def test_scheduled_contabo_retry_reads_count_from_the_bound_control_revision(self):
+        now = datetime.now(hf.research_retry.ZONE)
+        queue = {'state': 'WAITING', 'slot': 'morning', 'berlin_date': now.date().isoformat(), 'attempts': 1}
+        with patch.dict(os.environ, {'TAYVORIQ_LOCAL_RESEARCH': 'true', 'TAYVORIQ_RESEARCH_SLOT': 'morning',
+                                     'TAYVORIQ_RESEARCH_SELECTION_ID': f'{now:%Y%m%d}-morning-agentv2'}), \
+                patch.object(hf.research_retry, 'current', side_effect=[{}, queue]) as current:
+            self.assertEqual(hf._research_retry_attempt(), 1)
+            self.assertEqual(current.call_args.args[0], Path('.automation/tayvoriq-agent-v2/research-retry.json'))
+        with patch.dict(os.environ, {'TAYVORIQ_LOCAL_RESEARCH': 'true', 'TAYVORIQ_RESEARCH_SLOT': 'morning',
+                                     'TAYVORIQ_RESEARCH_SELECTION_ID': f'{now:%Y%m%d}-morning-agentv2-c00000001'}), \
+                patch.object(hf.research_retry, 'current', return_value={}) as current:
+            self.assertEqual(hf._research_retry_attempt(), 0)
+            current.assert_called_once()
+
     def records(self, *, expanded=False):
         records = []
         for story, lead in [('bosch', 'Bosch eröffnet Halbleiterfabrik in Reutlingen'),

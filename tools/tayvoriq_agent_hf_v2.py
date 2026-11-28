@@ -3,6 +3,7 @@ import json, os, re, unicodedata
 from collections import defaultdict, deque
 from datetime import datetime
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 import tayvoriq_agent_trend_provider_v3 as provider
@@ -251,6 +252,14 @@ def _research_retry_attempt() -> int:
         return 0
     now = datetime.now(research_retry.ZONE)
     state = research_retry.current(now=now.timestamp())
+    if (not state and os.getenv('TAYVORIQ_LOCAL_RESEARCH') == 'true'
+            and os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID') == f'{now:%Y%m%d}-{slot}-agentv2'):
+        # The worker's retry file is local to this execution. For a scheduled
+        # retry, recover the counter from the control revision bound in its queue.
+        state = research_retry.current(Path('.automation/tayvoriq-agent-v2/research-retry.json'),
+                                       now=now.timestamp())
+        if state.get('state') != 'WAITING':
+            return 0
     if state.get("slot") == slot and state.get("berlin_date") == now.date().isoformat():
         return int(state.get("attempts") or 0)
     return 0
