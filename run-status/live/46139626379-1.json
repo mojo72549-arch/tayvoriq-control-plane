@@ -4,67 +4,18 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46139626379,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T11:30:58.196356+00:00",
-  "observed_at": "2026-11-28T11:36:12.541922+00:00",
+  "updated_at": "2026-11-28T11:36:17.661530+00:00",
+  "observed_at": "2026-11-28T11:36:19.884121+00:00",
   "current": {
-    "phase": "render",
+    "phase": "voice",
     "status": "started",
-    "at": "2026-11-28T11:30:43.646961+00:00",
-    "call_id": "6d12b8b5acb84913a503192a0bee2983",
-    "platform": "youtube_shorts",
-    "total": 6,
+    "at": "2026-11-28T11:36:17.661530+00:00",
+    "call_id": "7d8c519fe36441b68ccc7ee94376f14e",
+    "platform": "tiktok",
     "round": null,
     "target": null
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-28T11:30:48.550272+00:00",
-      "call_id": "8b2f23056c9e4aa88aaee9297991e71f",
-      "platform": "youtube_shorts",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-28T11:30:49.840775+00:00",
-      "call_id": "4848bb28856b444b9d6fc88b07b966c9",
-      "platform": "youtube_shorts"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-28T11:30:49.909164+00:00",
-      "call_id": "4848bb28856b444b9d6fc88b07b966c9",
-      "platform": "youtube_shorts"
-    },
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-28T11:30:49.981160+00:00",
-      "call_id": "8b2f23056c9e4aa88aaee9297991e71f",
-      "platform": "youtube_shorts",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-28T11:30:49.981510+00:00",
-      "call_id": "544e8428b25c495782b95f76b5f4fd66",
-      "platform": "youtube_shorts",
-      "scene": 4,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-28T11:30:53.105238+00:00",
-      "call_id": "2fe0e86419fe4892958af96ea253bf48",
-      "platform": "youtube_shorts"
-    },
     {
       "phase": "captions",
       "status": "completed",
@@ -144,8 +95,57 @@
       "platform": "youtube_shorts",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "completed",
+      "at": "2026-11-28T11:36:16.325315+00:00",
+      "call_id": "6d12b8b5acb84913a503192a0bee2983",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "script",
+      "status": "started",
+      "at": "2026-11-28T11:36:16.453956+00:00",
+      "call_id": "bb9cf34d50a24f2cab22cb72896242c0",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "script",
+      "status": "completed",
+      "at": "2026-11-28T11:36:17.634085+00:00",
+      "call_id": "bb9cf34d50a24f2cab22cb72896242c0",
+      "platform": "youtube_shorts",
+      "total": 6
+    },
+    {
+      "phase": "scenes",
+      "status": "started",
+      "at": "2026-11-28T11:36:17.658812+00:00",
+      "call_id": "4d2fb8890b084a61a5230e7c1883e8f5",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "scenes",
+      "status": "completed",
+      "at": "2026-11-28T11:36:17.659200+00:00",
+      "call_id": "4d2fb8890b084a61a5230e7c1883e8f5",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "voice",
+      "status": "started",
+      "at": "2026-11-28T11:36:17.661530+00:00",
+      "call_id": "7d8c519fe36441b68ccc7ee94376f14e",
+      "platform": "tiktok"
     }
   ],
-  "completed_phases": [],
+  "completed_phases": [
+    "scenes"
+  ],
   "findings": []
 }
