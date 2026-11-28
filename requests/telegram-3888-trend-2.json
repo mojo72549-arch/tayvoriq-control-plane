@@ -166,5 +166,27 @@
   "dispatch_claim_run_id": 46139599055,
   "dispatch_contract_sha256": "345ea8597080d0fd93716255bd1446beb899052b2507aaa7bd5f302c7882cd4c",
   "golden_path_run_id": 46139626379,
-  "execution_backend": "contabo_private_runner"
+  "execution_backend": "contabo_private_runner",
+  "codefix_recovery": {
+    "status": "REPLAY_DISPATCHED",
+    "request_substate": "DISPATCHED",
+    "replay_run_id": 46139626379,
+    "replay_implementation_sha": "cfb53a2a5e72a9eea4839c060096d8ebb9d320cf",
+    "codefix_detection_reason": "production-green-implementation-changed",
+    "active_pointer_verified": true,
+    "exact_source_request_required": true,
+    "same_generation_replay_required": true,
+    "quality_gates_weakened": false
+  },
+  "contabo_handoff": {
+    "schema": "tayvoriq-contabo-handoff-v1",
+    "controller_run_id": 46139626379,
+    "worker_run_id": 46139654679,
+    "execution_repository": "mojo72549-arch/shorts-agent-studio",
+    "checkpoint_release": "",
+    "request_id": "telegram-3888-trend-2",
+    "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
+    "contract_sha256": "345ea8597080d0fd93716255bd1446beb899052b2507aaa7bd5f302c7882cd4c",
+    "quality_gates_weakened": false
+  }
 }
