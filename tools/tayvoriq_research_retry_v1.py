@@ -122,6 +122,18 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     return result
 
 
+def attach_pending_pairs(path, proof_path, selection, run_key):
+    proof = read(proof_path)
+    state = read(path)
+    if not (proof and state.get('state') == 'WAITING' and state.get('last_issue') == 'OLLAMA_MODEL_TIMEOUT'
+            and proof.get('run_key') == state.get('last_research_attempt') == run_key
+            and selection == proof.get('selection') == f"{state['berlin_date'].replace('-', '')}-{state['slot']}-agentv2"):
+        return
+    pairs = proof.get('pending_source_pairs')
+    if isinstance(pairs, list) and 1 <= len(pairs) <= 2 and all(re.fullmatch('[a-f0-9]{64}', str(key)) for key in pairs):
+        write(path, {**state, 'pending_source_pairs': pairs, 'resume_selection': selection})
+
+
 def current(path: Path | None = None, *, now: float | None = None) -> dict:
     path = path or configured_path()
     state = read(path)

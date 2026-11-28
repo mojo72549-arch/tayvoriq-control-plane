@@ -526,6 +526,7 @@ jobs:
             TAYVORIQ_RESEARCH_SELECTION_ID="$(TZ=Europe/Berlin date +%Y%m%d)-${TAYVORIQ_RESEARCH_SLOT}-agentv2"
             seconds=$(PYTHONPATH=tools python -c 'import os; from tayvoriq_research_retry_v1 import regular_process_seconds; print(regular_process_seconds(os.environ["TAYVORIQ_RESEARCH_SLOT"]))')
             if [ "$AUTO_RENDER" = true ]; then args+=(--scheduled-proof "$RUNNER_TEMP/slot-proof.json"); fi
+            args+=(--retry-proof "$RUNNER_TEMP/model-retry-proof.json")
             result=124
             if [ "$seconds" -gt 25 ]; then
               result=0
@@ -543,12 +544,17 @@ jobs:
               *) issue=RESEARCH_PROVIDER_UNAVAILABLE ;;
             esac
             PYTHONPATH=tools python - "$issue" <<'PY'
-          import sys, time
+          import os, sys, time
+          from pathlib import Path
+          from tayvoriq_research_retry_v1 import attach_pending_pairs
           from tayvoriq_agent_research_resilience_v2 import _defer
 
           issue = sys.argv[1]
           delay = 90 if issue == 'EDITORIAL_MINIMUM_NOT_MET' else 0
           _defer([], None if issue == 'WORKER_WAKEUP_ACCESS' else time.time() + delay, issue=issue)
+          if issue == 'OLLAMA_MODEL_TIMEOUT':
+              attach_pending_pairs(Path(os.environ['TAYVORIQ_RESEARCH_RETRY_FILE']), Path(os.environ['RUNNER_TEMP']) / 'model-retry-proof.json',
+                                   os.environ['TAYVORIQ_RESEARCH_SELECTION_ID'], os.environ['TAYVORIQ_RESEARCH_RUN_KEY'])
           PY
             exit "$result"
           fi

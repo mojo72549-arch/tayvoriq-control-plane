@@ -14,11 +14,13 @@ def read(path):
 
 
 def reserved(root, now):
-    local = now.astimezone(ZONE)
-    slot = window(now)
-    key = f"{local:%Y-%m-%d}-{slot}"
+    return reserved_for_slot(root, now.astimezone(ZONE).date(), window(now))
+
+
+def reserved_for_slot(root, day, slot):
+    key = f"{day.isoformat()}-{slot}"
     item = read(root / "state/tayvoriq-portfolio-slots.json").get("slots", {}).get(key)
-    if not slot or not item or item.get("day") != local.date().isoformat() or item.get("slot") != slot:
+    if not slot or not item or item.get("day") != day.isoformat() or item.get("slot") != slot:
         return None
     rid, run = item.get("request_id"), item.get("run_id")
     if not re.fullmatch(r"[A-Za-z0-9_-]{4,80}", str(rid)) or type(run) is not int or run <= 0:

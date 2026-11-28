@@ -15,6 +15,7 @@ from tayvoriq_stale_news_reconcile_v1 import EXHAUSTED_MORNING, verified_quarant
 from tayvoriq_review_receipt import REPLAY_PATH, REPLAY_BRANCH, REPLAY_STEPS
 from tayvoriq_contabo_handoff import STUDIO, identity
 from tayvoriq_scheduled_render import SOURCE, scheduled_authority
+from tayvoriq_portfolio_slot import reserved_for_slot
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
 REQUIRED_FINAL_STEPS = (
@@ -439,6 +440,16 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
     result["requires_serialization"] = True
     result["released"] = False
     predecessor = find_same_day_morning(request, requests_dir)
+    if predecessor is None:
+        try:
+            morning_day = datetime.strptime(parts[0], "%Y%m%d").date()
+        except ValueError:
+            result["reason"] = "INVALID_EVENING_SLOT_DATE"
+            return result
+        reservation = reserved_for_slot(requests_dir.parent, morning_day, "morning")
+        if reservation:
+            path = requests_dir / f"{reservation['request_id']}.json"
+            predecessor = path, read_json(path)
     if predecessor is None:
         if expired_owner_verified:
             result["released"] = True
