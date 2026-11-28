@@ -4,36 +4,18 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46151125516,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T13:58:19.768656+00:00",
-  "observed_at": "2026-11-28T14:02:34.335733+00:00",
+  "updated_at": "2026-11-28T14:03:16.805913+00:00",
+  "observed_at": "2026-11-28T14:03:16.806951+00:00",
   "current": {
-    "phase": "quality",
+    "phase": "repair",
     "status": "started",
-    "at": "2026-11-28T13:58:19.768656+00:00",
-    "call_id": "checkpoint-QUALITY_AUDIT_1",
-    "round": 1,
-    "timeout_seconds": 420,
-    "target": null
+    "at": "2026-11-28T14:03:16.805913+00:00",
+    "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R2",
+    "target": "visuals",
+    "round": 2,
+    "timeout_seconds": 900
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "completed",
-      "at": "2026-11-28T13:52:17.342411+00:00",
-      "call_id": "3b93ccf6414b4fe085121b78b264aaa0",
-      "platform": "tiktok",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-28T13:52:17.342707+00:00",
-      "call_id": "9a42e9945ff147a0836a7072a85fb34e",
-      "platform": "tiktok",
-      "scene": 4,
-      "total": 6
-    },
     {
       "phase": "captions",
       "status": "started",
@@ -144,11 +126,35 @@
       "call_id": "checkpoint-QUALITY_AUDIT_1",
       "round": 1,
       "timeout_seconds": 420
+    },
+    {
+      "phase": "quality",
+      "status": "failed",
+      "at": "2026-11-28T14:03:16.805719+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "round": 1
+    },
+    {
+      "phase": "repair",
+      "status": "started",
+      "at": "2026-11-28T14:03:16.805913+00:00",
+      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R2",
+      "target": "visuals",
+      "round": 2,
+      "timeout_seconds": 900
     }
   ],
   "completed_phases": [
     "scenes",
     "render"
   ],
-  "findings": []
+  "findings": [
+    "YouTube · Szene 3: Motiv passt nicht zur Aussage",
+    "TikTok · Szene 3: Motiv passt nicht zur Aussage",
+    "score_below_threshold:visual:38<78",
+    "visual_agent:Szene 3 zeigt baufällige, tropisch/slumartige Dachstrukturen, die nicht zu frei finanzierten Stuttgarter Wohnungen passen und visuell irreführend sind.",
+    "visual_agent:scene_off_topic:youtube_shorts:3",
+    "visual_agent:scene_off_topic:tiktok:3",
+    "visual_agent_recommendation_block"
+  ]
 }
