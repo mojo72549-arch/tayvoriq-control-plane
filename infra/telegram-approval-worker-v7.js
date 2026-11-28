@@ -1,3 +1,4 @@
+import { controlAccess } from './tayvoriq-control-access.js';
 import v6 from './telegram-approval-worker-v6.js';
 import { requestResearchTick } from './tayvoriq-research-clock.js';
 
@@ -16,7 +17,7 @@ import { requestResearchTick } from './tayvoriq-research-clock.js';
  */
 export default {
   async fetch(request, env) {
-    return v6.fetch(request, env);
+    return await controlAccess(request, env) || v6.fetch(request, env);
   },
   async scheduled(controller, env) {
     await requestResearchTick(controller.scheduledTime, env);
