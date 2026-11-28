@@ -129,7 +129,7 @@ jobs:
     env:
       TAYVORIQ_CHATTERBOX_REQUIRED: "true"
       TAYVORIQ_TTS_PROVIDER: "chatterbox"
-      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v5"
+      TAYVORIQ_GREEN_POLICY_VERSION: "recovery-contract-v6"
     steps:
       - name: Checkout control plane
         uses: actions/checkout@v4
@@ -455,11 +455,13 @@ jobs:
           fi
 
       - name: Verify the Mietspiegel real-footage fallback when present
+        id: rental_footage
         if: steps.refs.outputs.changed == 'true'
         working-directory: implementation
         run: |
           if [ -f tests/test_tayvoriq_rent_visuals.py ]; then
             python -m pytest -q tests/test_tayvoriq_rent_visuals.py
+            echo 'verified=true' >> "$GITHUB_OUTPUT"
           fi
 
       - name: Verify mixed audio and scene recovery classification
@@ -509,6 +511,7 @@ jobs:
         shell: bash
         env:
           CANDIDATE_SHA: ${{ steps.refs.outputs.candidate }}
+          RENTAL_FOOTAGE_SEARCH_VERIFIED: ${{ steps.rental_footage.outputs.verified }}
           SOFTWARE_WORKPLACE_SEARCH_VERIFIED: ${{ steps.visual_search.outputs.verified }}
           MIXED_CHECKPOINT_RECOVERY_VERIFIED: ${{ steps.mixed_checkpoint.outputs.verified }}
           VOICE_CHECKPOINT_ISOLATION_VERIFIED: ${{ steps.voice_checkpoint.outputs.verified }}
@@ -532,6 +535,7 @@ jobs:
               'verification_run_id':str(os.environ.get('GITHUB_RUN_ID') or ''),
               'verification_policy_version':str(os.environ.get('TAYVORIQ_GREEN_POLICY_VERSION') or ''),
               'full_preflight_passed':True,
+              'rental_footage_search_verified':os.environ.get('RENTAL_FOOTAGE_SEARCH_VERIFIED')=='true',
               'software_workplace_search_verified':os.environ.get('SOFTWARE_WORKPLACE_SEARCH_VERIFIED')=='true',
               'mixed_checkpoint_recovery_verified':os.environ.get('MIXED_CHECKPOINT_RECOVERY_VERIFIED')=='true',
               'voice_checkpoint_isolation_verified':os.environ.get('VOICE_CHECKPOINT_ISOLATION_VERIFIED')=='true',

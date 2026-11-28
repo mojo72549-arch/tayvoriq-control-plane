@@ -1,4 +1,4 @@
-"""Retry a terminal software-workplace clip failure after verified promotion."""
+"""Retry an exact missing-footage failure after its matching search regression passed."""
 
 import json
 import os
@@ -25,21 +25,25 @@ def plan(root, repo, token, *, expected_run=None):
     identity(request, pointer)
     failure = read(root / 'run-status/contabo' / f'{old_run}.json').get('failure_detail') or {}
     topic = str(request.get('topic') or '').casefold()
+    housing = bool(re.search(r'\b(?:mietspiegel\w*|vergleichsmiete\w*)\b', topic))
+    software_jobs = (bool(re.search(r'\b(?:sap|softwareunternehmen|softwarekonzern|softwareanbieter)\b', topic))
+                     and bool(re.search(r'\b(?:stellenabbau|umbau|umstrukturierung|personalabbau|arbeitsplätze|stellen)\b', topic)))
     if (failure.get('code') != 'REAL_VIDEO_SCENE_REQUIRED' or type(failure.get('scene')) is not int
             or not 1 <= failure['scene'] <= 99
-            or not re.search(r'\b(?:sap|softwareunternehmen|softwarekonzern|softwareanbieter)\b', topic)
-            or not re.search(r'\b(?:stellenabbau|umbau|umstrukturierung|personalabbau|arbeitsplätze|stellen)\b', topic)):
+            or not (housing or software_jobs)):
         return None
     green = read(root / '.github/state/tayvoriq-production-green.json')
+    regression = 'rental_footage_search_verified' if housing else 'software_workplace_search_verified'
     implementation = green.get('implementation_sha') or ''
     if (green.get('schema') != 'tayvoriq-production-green-v1' or green.get('full_preflight_passed') is not True
-            or green.get('quality_gates_weakened') is not False or green.get('software_workplace_search_verified') is not True
+            or green.get('quality_gates_weakened') is not False or green.get(regression) is not True
             or not re.fullmatch(r'[a-f0-9]{40}', implementation)
             or implementation == (request.get('codefix_recovery') or {}).get('replay_implementation_sha')):
         return None
     run = github_json(f'https://api.github.com/repos/{repo}/actions/runs/{old_run}', token)
+    controller_paths = CONTABO_WORKFLOWS | {'.github/workflows/tayvoriq-golden-path.yml'}
     if (run.get('id') != old_run or run.get('status') != 'completed' or run.get('conclusion') != 'failure'
-            or run.get('head_branch') != 'main' or str(run.get('path') or '').split('@')[0] not in CONTABO_WORKFLOWS):
+            or run.get('head_branch') != 'main' or str(run.get('path') or '').split('@')[0] not in controller_paths):
         return None
     return {'schema':'tayvoriq-contabo-visual-recovery-v1','request_id':request_id,'previous_run_id':old_run,
             'implementation_sha':implementation,'scene':failure['scene'],'quality_gates_weakened':False}
