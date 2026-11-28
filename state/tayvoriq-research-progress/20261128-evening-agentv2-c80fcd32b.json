@@ -4,16 +4,21 @@
   "slot": "evening",
   "run_id": 46132916158,
   "run_attempt": 1,
-  "state": "SEARCHING",
+  "state": "FAILED",
   "started_at": "2026-11-28T09:58:23.997483+00:00",
-  "updated_at": "2026-11-28T10:02:52.122436+00:00",
-  "sources_seen": null,
+  "updated_at": "2026-11-28T10:02:55.987936+00:00",
+  "sources_seen": 660,
   "drafts_saved": 0,
-  "quality_rejections": 0,
-  "corroborated_headlines": null,
-  "provider": null,
-  "issues": [],
-  "exit_code": null,
+  "quality_rejections": 1,
+  "corroborated_headlines": 2,
+  "provider": "ollama",
+  "issues": [
+    {
+      "code": "TIKTOK_FIT",
+      "provider": null
+    }
+  ],
+  "exit_code": 1,
   "history": [
     {
       "at": "2026-11-28T09:58:27.941934+00:00",
@@ -25,18 +30,39 @@
       "at": "2026-11-28T09:58:48.486060+00:00",
       "event": "contabo_worker_started",
       "worker_run_id": 46132938601
+    },
+    {
+      "at": "2026-11-28T10:02:55.797747+00:00",
+      "event": "contabo_worker_finished",
+      "status": "FAILED"
+    },
+    {
+      "at": "2026-11-28T10:02:55.797815+00:00",
+      "event": "source_records_loaded",
+      "count": 660
+    },
+    {
+      "at": "2026-11-28T10:02:55.797836+00:00",
+      "event": "source_headline_preflight",
+      "count": 2
+    },
+    {
+      "at": "2026-11-28T10:02:55.987931+00:00",
+      "event": "research_finished",
+      "exit_code": 1
     }
   ],
   "local_attempt": 1,
   "max_local_attempts": 3,
   "next_retry_at": null,
   "handoff": {
-    "state": "RUNNING",
+    "state": "BLOCKED",
     "wake_attempt": 1,
     "max_wake_attempts": 2,
-    "owner": "contabo_research_worker",
+    "owner": "production_engineering",
     "wakeup_confirmed": true,
     "next_check_at": null,
-    "worker_run_id": 46132938601
+    "worker_run_id": 46132938601,
+    "action_required": "CHECK_BOUND_WORKER_RESULT"
   }
 }
