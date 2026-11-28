@@ -49,7 +49,7 @@ After it is green, run `TAYVORIQ Golden Path` with:
 
 ## Daily production and manual preproduction
 
-The Agent V2 clock opens the morning slot at 05:30 and the evening slot at 19:00 in Europe/Berlin. The Control Center and Telegram can also start a fresh search and accept a manually selected topic. A production request already assigned to that Berlin day and slot takes precedence over the automatic render. A portfolio entry by itself carries no scheduled release date.
+The Agent V2 clock opens the morning slot at 05:30 and the evening slot at 19:00 in Europe/Berlin. The Control Center and Telegram can also start a fresh search and accept a manually selected topic. A production request already assigned to that Berlin day and slot takes precedence over the automatic render. An operator can also reserve a finished portfolio video for a particular date and slot in the Control Center. At that time Telegram links the existing review and portfolio, and the clock suppresses a second render. The video still requires its own upload approval.
 
 For a free slot the clock can reserve the highest-ranked eligible Contabo story for production. It binds the private worker receipt, source records and editorial checks to a single request named `slot-YYYYMMDD-morning` or `slot-YYYYMMDD-evening`. Scheduled authority permits rendering for review only. The dispatcher rechecks slot ownership before claiming work. News without sufficient evidence remains in the existing bounded research recovery.
 

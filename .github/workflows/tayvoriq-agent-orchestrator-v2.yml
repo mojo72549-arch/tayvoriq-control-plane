@@ -128,6 +128,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python -S tools/tayvoriq_rejected_review_repair.py
 
+      - name: Deliver a reserved portfolio review when its slot opens
+        if: github.event_name == 'schedule' || github.event.action == 'tayvoriq_research_tick'
+        run: python tools/tayvoriq_portfolio_slot.py
+
       - name: Resolve Berlin slot and activation date
         id: slot
         env:
@@ -263,7 +267,8 @@ jobs:
               if due and not (retry.get('slot') == due and retry.get('berlin_date') == now.date().isoformat()):
                   slot, should = due, True
           auto = (tick or retry_wake) and bool(slot) and slot == window(now) and not rejection_selection
-          if auto and any(owners(Path('requests'), f'{now:%Y%m%d}-{slot}-agentv2')):
+          from tayvoriq_portfolio_slot import reserved
+          if auto and (reserved(Path('.'), now) or any(owners(Path('requests'), f'{now:%Y%m%d}-{slot}-agentv2'))):
               should = False
           if slot not in {'morning','evening'}:
               should = False
