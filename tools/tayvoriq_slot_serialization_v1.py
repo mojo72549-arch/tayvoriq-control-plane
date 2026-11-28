@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from tayvoriq_stale_news_reconcile_v1 import EXHAUSTED_MORNING, verified_quarantine
 from tayvoriq_review_receipt import REPLAY_PATH, REPLAY_BRANCH, REPLAY_STEPS
 from tayvoriq_contabo_handoff import STUDIO, identity
-from tayvoriq_scheduled_render import SOURCE, scheduled_authority
+from tayvoriq_scheduled_render import SOURCE, scheduled_authority, is_portfolio_research
 from tayvoriq_portfolio_slot import reserved_for_slot
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
@@ -82,7 +82,7 @@ def find_same_day_morning(request: dict, requests_dir: Path) -> tuple[Path, dict
         except Exception:
             continue
         candidate_parts = selection_parts(data)
-        if candidate_parts != (target_date, "m"):
+        if candidate_parts != (target_date, "m") or is_portfolio_research(requests_dir.parent, data.get("selection_id")):
             continue
         if str(data.get("source") or "") not in SERIALIZABLE_APPROVAL_SOURCES:
             continue
@@ -435,7 +435,7 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
         except (ValueError, TypeError, AttributeError, OSError):
             result["reason"] = "ACTIVE_OWNER_POINTER_INVALID"
             return result
-    if not parts or parts[1] != "e":
+    if not parts or parts[1] != "e" or is_portfolio_research(requests_dir.parent, request.get("selection_id")):
         return result
     result["requires_serialization"] = True
     result["released"] = False
