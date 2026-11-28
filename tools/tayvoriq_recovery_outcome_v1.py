@@ -15,6 +15,8 @@ from pathlib import Path
 _ALLOWED = {"LOCAL_VISUAL_RECOVERY_EXHAUSTED", "LOCAL_VOICE_RECOVERY_EXHAUSTED"}
 
 
+from tayvoriq_scheduled_render import scheduled_authority
+
 def verified_attempt_sha(manifest: dict, *, request: dict, run_id: int, run_attempt: int) -> str:
     sha = str(manifest.get("implementation_sha") or "")
     if (str(manifest.get("run_id")) != str(run_id)
@@ -43,7 +45,7 @@ def record_exhaustion(pointer: dict, request: dict, policy: dict, *,
             or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", rid)
             or request.get("request_id") != rid
             or request.get("status") != "DISPATCHED"
-            or request.get("source") != "telegram_trend_approval"):
+            or (request.get("source") != "telegram_trend_approval" and not scheduled_authority(request))):
         raise ValueError("RECOVERY_OUTCOME_ACTIVE_APPROVAL_INVALID")
     generation = int(pointer.get("recovery_generation") or 0)
     if (int(pointer.get("golden_path_run_id") or 0) != run_id

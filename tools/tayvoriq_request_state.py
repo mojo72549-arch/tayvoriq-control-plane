@@ -7,6 +7,8 @@ from datetime import datetime
 
 from tayvoriq_orchestration_contract import validate
 from tayvoriq_stale_news_reconcile_v1 import has_delivery_evidence
+from tayvoriq_scheduled_render import scheduled_authority
+
 from tayvoriq_chat_direct_approval_v1 import authorized_for_review
 
 
@@ -52,7 +54,7 @@ def start(request, *, cutoff):
     telegram_approval = (request.get('source') == 'telegram_trend_approval'
                          and request['approval_key'].startswith('telegram:')
                          and _positive_id(request.get('telegram_message_id')))
-    if not telegram_approval and not authorized_for_review(request):
+    if not telegram_approval and not authorized_for_review(request) and not scheduled_authority(request):
         raise ValueError('TELEGRAM_APPROVAL_REQUIRED')
     if not (request.get('retention_contract_version') == 'v5'
             and _digest(request.get('source_context_sha256')) and _text(request.get('content_angle'))):

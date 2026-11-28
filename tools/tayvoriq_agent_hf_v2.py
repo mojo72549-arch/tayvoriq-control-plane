@@ -128,6 +128,9 @@ def corroborated_headline(a: dict, b: dict) -> str:
     for record in (a, b):
         title = base.clean(record.get('title'))
         clauses = re.split(r":\s+|\s+[–—]\s+|;\s+", title)
+        section = re.fullmatch(r"[\wÄÖÜäöüß]{3,24} - (.+)", title)
+        if section:
+            clauses = [title, section[1]]
         for clause in clauses:
             if (len(clauses) > 1 and 20 <= len(clause) <= 150 and len(_words(clause)) >= 3
                     and _status(clause) == _status(title) and _events(clause) == _events(title)

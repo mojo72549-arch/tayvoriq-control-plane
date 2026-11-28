@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+from tayvoriq_scheduled_render import scheduled_authority
+
 class RetryBindingError(ValueError):
     """A fail-closed canonical request/active-owner contract violation."""
 
@@ -74,7 +76,7 @@ def rebind_same_run(
         raise RetryBindingError("SAME_RUN_RETRY_INVALID_GENERATION") from exc
     if min(request_generation, pointer_generation) < 0 or request_generation != pointer_generation:
         raise RetryBindingError("SAME_RUN_RETRY_GENERATION_MISMATCH")
-    if request.get("source") != "telegram_trend_approval":
+    if request.get("source") != "telegram_trend_approval" and not scheduled_authority(request):
         raise RetryBindingError("SAME_RUN_RETRY_TELEGRAM_APPROVAL_REQUIRED")
     for key in ("approval_key", "source_context_sha256", "contract_sha256"):
         if not pointer.get(key) or str(pointer[key]) != str(request.get(key) or ""):

@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 from tayvoriq_stale_news_reconcile_v1 import EXHAUSTED_MORNING, verified_quarantine
 from tayvoriq_review_receipt import REPLAY_PATH, REPLAY_BRANCH, REPLAY_STEPS
 from tayvoriq_contabo_handoff import STUDIO, identity
+from tayvoriq_scheduled_render import SOURCE, scheduled_authority
 
 SELECTION_RE = re.compile(r"^(?P<date>\d{8})-(?P<slot>morning|evening|m|e)-.+$")
 REQUIRED_FINAL_STEPS = (
@@ -36,6 +37,7 @@ CONTABO_WORKFLOWS = {
 SERIALIZABLE_APPROVAL_SOURCES = {
     "telegram_trend_approval",
     "user_preapproved_preparation",
+    SOURCE,
 }
 HELD_STATE = "HELD_WAITING_FOR_MORNING_REVIEW"
 RELEASED_STATE = "RELEASED_AFTER_MORNING_REVIEW"
@@ -108,7 +110,7 @@ def find_same_day_morning(request: dict, requests_dir: Path) -> tuple[Path, dict
 
 def morning_research_exhausted(request: dict, root: Path, repo: str, token: str) -> bool:
     """Allow the first production of the evening when morning research ended empty."""
-    if not repo or not token or request.get("source") != "telegram_trend_approval":
+    if not repo or not token or (request.get("source") != "telegram_trend_approval" and not scheduled_authority(request)):
         return False
     zone = ZoneInfo("Europe/Berlin")
     today = datetime.now(zone)
@@ -356,7 +358,8 @@ def check_request(request_path: Path, requests_dir: Path, repo: str, token: str)
                 )
                 different_day = parts and previous_parts and previous_parts[0] < parts[0] == today
                 if (not (same_day_evening or different_day) or approved != today
-                        or request.get("source") != "telegram_trend_approval" or owner == result["request_id"]):
+                        or (request.get("source") != "telegram_trend_approval" and not scheduled_authority(request))
+                        or owner == result["request_id"]):
                     result["reason"] = "NEW_BERLIN_DAY_TELEGRAM_APPROVAL_REQUIRED"
                     return result
                 try:

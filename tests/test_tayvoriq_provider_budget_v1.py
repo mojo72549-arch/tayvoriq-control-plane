@@ -321,6 +321,7 @@ class SchedulerContractTests(unittest.TestCase):
                 output = Path(temp) / 'output'
                 env = {'EVENT_NAME': 'schedule', 'EVENT_SCHEDULE': cron, 'GITHUB_OUTPUT': str(output)}
                 with patch.dict(os.environ, env, clear=True), patch('datetime.datetime', FrozenDateTime), \
+                     patch('tayvoriq_scheduled_render.owners', return_value=[]), \
                      patch.object(retry, 'due_slot', return_value=retry_slot), \
                      patch.object(retry, 'confirmed_slot_delivery', return_value=False), \
                      patch('tayvoriq_rejected_review_followup.followup', return_value=None):

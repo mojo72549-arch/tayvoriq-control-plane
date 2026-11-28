@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 import os
 import re
+from tayvoriq_scheduled_render import scheduled_authority
+
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -76,7 +78,7 @@ def _failed_contabo_worker(pointer: dict, request: dict, receipt: dict | None) -
 
 
 def _approved_source(request: dict, contabo_failed: bool) -> bool:
-    return request.get("source") == "telegram_trend_approval" or (contabo_failed and request.get("source") in {
+    return scheduled_authority(request) or request.get("source") == "telegram_trend_approval" or (contabo_failed and request.get("source") in {
         "telegram_trend_approval_content_repair", "telegram_trend_approval_source_repair",
     })
 
@@ -132,10 +134,10 @@ def verified_quarantine(pointer: dict, request: dict, run: dict) -> bool:
             or q.get("review_delivered") is not False or q.get("upload_permitted") is not False
             or q.get("reason") != reason or p.get("reason") != reason or pointer.get("reason") != reason):
         return False
-    for key in ("request_id", "approval_key", "source_context_sha256", "contract_sha256", "telegram_message_id"):
+    for key in ("request_id", "approval_key", "source_context_sha256", "contract_sha256") + (() if scheduled_authority(request) else ("telegram_message_id",)):
         if not pointer.get(key) or pointer[key] != request.get(key):
             return False
-    if not str(pointer["approval_key"]).startswith("telegram:") or p.get("request_id") != request["request_id"]:
+    if (not scheduled_authority(request) and not str(pointer["approval_key"]).startswith("telegram:")) or p.get("request_id") != request["request_id"]:
         return False
     try:
         rid = int(pointer.get("golden_path_run_id") or 0)
@@ -177,11 +179,11 @@ def quarantine(
     rid = str(pointer.get("request_id") or "").strip()
     if not rid or rid != request.get("request_id"):
         return None
-    if not str(pointer.get("approval_key") or "").startswith("telegram:"):
+    if not scheduled_authority(request) and not str(pointer.get("approval_key") or "").startswith("telegram:"):
         return None
     if not str(request.get("approved_at") or "") or str(request.get("approval_key") or "") != pointer.get("approval_key"):
         return None
-    for key in ("source_context_sha256", "contract_sha256", "telegram_message_id"):
+    for key in ("source_context_sha256", "contract_sha256") + (() if scheduled_authority(request) else ("telegram_message_id",)):
         if not pointer.get(key) or pointer[key] != request.get(key):
             return None
     try:

@@ -5,6 +5,11 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+if __package__:
+    from .tayvoriq_scheduled_render import scheduled_authority
+else:
+    from tayvoriq_scheduled_render import scheduled_authority
+
 STUDIO = 'mojo72549-arch/shorts-agent-studio'
 POINTER = Path('.github/state/tayvoriq-active-production-request.json')
 
@@ -23,7 +28,7 @@ def identity(request, pointer):
     assert actual == request['source_context_sha256'], 'SOURCES_CHANGED'
     assert request['source_context'].get('quality_gates_weakened') is not True
     assert request.get('quality_gates_weakened') is not True
-    assert request.get('approved_at') and request.get('telegram_message_id'), 'APPROVAL_MISSING'
+    assert request.get('approved_at') and (request.get('telegram_message_id') or scheduled_authority(request)), 'APPROVAL_MISSING'
 
 def prepare(request,pointer,controller):
     identity(request,pointer)

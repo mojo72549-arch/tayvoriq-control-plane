@@ -265,6 +265,11 @@ jobs:
               mkdir -p "$(dirname "$REQUEST_FILE")"
               cp /tmp/request-to-claim.json "$REQUEST_FILE"
             fi
+            if [ "$(python tools/tayvoriq_scheduled_render.py manual-owner --request "$REQUEST_FILE")" = held ]; then
+              echo "A manual production owns this slot or its Berlin window has closed."
+              echo "claimed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             eligible=$(python - "$REQUEST_FILE" "$REQUEST_ID" "$CONTRACT_SHA256" <<'PY'
           import json,sys
           d=json.load(open(sys.argv[1],encoding='utf-8'))

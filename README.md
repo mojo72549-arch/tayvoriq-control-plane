@@ -47,4 +47,10 @@ After it is green, run `TAYVORIQ Golden Path` with:
 - `trend_scope = auto_scope`
 - `topic =` empty
 
-No five-minute scheduler is enabled. The control plane starts only deliberately until the first complete end-to-end success is confirmed.
+## Daily production and manual preproduction
+
+The Agent V2 clock opens the morning slot at 05:30 and the evening slot at 19:00 in Europe/Berlin. The Control Center and Telegram can also start a fresh search and accept a manually selected topic. A production request already assigned to that Berlin day and slot takes precedence over the automatic render. A portfolio entry by itself carries no scheduled release date.
+
+For a free slot the clock can reserve the highest-ranked eligible Contabo story for production. It binds the private worker receipt, source records and editorial checks to a single request named `slot-YYYYMMDD-morning` or `slot-YYYYMMDD-evening`. Scheduled authority permits rendering for review only. The dispatcher rechecks slot ownership before claiming work. News without sufficient evidence remains in the existing bounded research recovery.
+
+Review delivery still requires the final quality gates and a verified Telegram receipt. The operator can release the approved video from Telegram or the Control Center. The current YouTube publisher uploads the approved master. TikTok currently receives a downloadable video and caption for manual posting.
