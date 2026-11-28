@@ -6,8 +6,13 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "job_id": 140969966071,
   "code": "other",
-  "started_at": "2026-11-28T11:54:37Z",
+  "started_at": "2026-11-28T11:54:47Z",
   "state": "running",
-  "checked": [],
-  "observed_at": "2026-11-28T11:54:38.027879+00:00"
+  "checked": [
+    "validate_implementation",
+    "load_implementation",
+    "verify_implementation",
+    "check_production_contract"
+  ],
+  "observed_at": "2026-11-28T11:54:59.777755+00:00"
 }
