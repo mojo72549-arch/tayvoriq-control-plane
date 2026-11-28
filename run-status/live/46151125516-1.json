@@ -4,42 +4,18 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46151125516,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T13:52:22.362216+00:00",
-  "observed_at": "2026-11-28T13:58:07.103998+00:00",
+  "updated_at": "2026-11-28T13:58:19.768656+00:00",
+  "observed_at": "2026-11-28T13:58:23.771813+00:00",
   "current": {
-    "phase": "render",
+    "phase": "quality",
     "status": "started",
-    "at": "2026-11-28T13:52:13.160504+00:00",
-    "call_id": "7c2c9907cc69476eba5ee10192090bec",
-    "platform": "tiktok",
-    "total": 6,
+    "at": "2026-11-28T13:58:19.768656+00:00",
+    "call_id": "checkpoint-QUALITY_AUDIT_1",
     "round": 1,
-    "target": "visuals"
+    "timeout_seconds": 420,
+    "target": null
   },
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-28T13:52:16.222701+00:00",
-      "call_id": "3b93ccf6414b4fe085121b78b264aaa0",
-      "platform": "tiktok",
-      "scene": 3,
-      "total": 6
-    },
-    {
-      "phase": "captions",
-      "status": "started",
-      "at": "2026-11-28T13:52:17.207417+00:00",
-      "call_id": "e097b5e4510d43249287d7a0cce15dfe",
-      "platform": "tiktok"
-    },
-    {
-      "phase": "captions",
-      "status": "completed",
-      "at": "2026-11-28T13:52:17.263980+00:00",
-      "call_id": "e097b5e4510d43249287d7a0cce15dfe",
-      "platform": "tiktok"
-    },
     {
       "phase": "visuals",
       "status": "completed",
@@ -144,10 +120,35 @@
       "platform": "tiktok",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "completed",
+      "at": "2026-11-28T13:58:15.856404+00:00",
+      "call_id": "7c2c9907cc69476eba5ee10192090bec",
+      "platform": "tiktok",
+      "total": 6
+    },
+    {
+      "phase": "repair",
+      "status": "completed",
+      "at": "2026-11-28T13:58:19.768459+00:00",
+      "call_id": "checkpoint-VISUAL_REPAIR_TOPIC_AWARE_V3_R1",
+      "target": "visuals",
+      "round": 1
+    },
+    {
+      "phase": "quality",
+      "status": "started",
+      "at": "2026-11-28T13:58:19.768656+00:00",
+      "call_id": "checkpoint-QUALITY_AUDIT_1",
+      "round": 1,
+      "timeout_seconds": 420
     }
   ],
   "completed_phases": [
-    "scenes"
+    "scenes",
+    "render"
   ],
   "findings": []
 }
