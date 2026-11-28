@@ -4,28 +4,10 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46146063049,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T13:17:27.496909+00:00",
-  "observed_at": "2026-11-28T13:22:46.762766+00:00",
-  "current": {
-    "phase": "render",
-    "status": "started",
-    "at": "2026-11-28T13:17:09.850574+00:00",
-    "call_id": "39f0e2a79a9c43fabaeabcf6a8864204",
-    "platform": "tiktok",
-    "total": 6,
-    "round": 1,
-    "target": "visuals"
-  },
+  "updated_at": "2026-11-28T13:23:22.456596+00:00",
+  "observed_at": "2026-11-28T13:23:39.859629+00:00",
+  "current": null,
   "events": [
-    {
-      "phase": "visuals",
-      "status": "started",
-      "at": "2026-11-28T13:17:17.376100+00:00",
-      "call_id": "f0d620dd099f43338f136aa69e152b82",
-      "platform": "tiktok",
-      "scene": 3,
-      "total": 6
-    },
     {
       "phase": "captions",
       "status": "started",
@@ -144,6 +126,14 @@
       "platform": "tiktok",
       "scene": 6,
       "total": 6
+    },
+    {
+      "phase": "render",
+      "status": "completed",
+      "at": "2026-11-28T13:23:22.456596+00:00",
+      "call_id": "39f0e2a79a9c43fabaeabcf6a8864204",
+      "platform": "tiktok",
+      "total": 6
     }
   ],
   "completed_phases": [
@@ -151,14 +141,5 @@
     "voice",
     "render"
   ],
-  "findings": [
-    "YouTube · Szene 1: Motiv passt nicht zur Aussage",
-    "YouTube · Szene 2: Motiv passt nicht zur Aussage",
-    "YouTube · Szene 3: Motiv passt nicht zur Aussage",
-    "YouTube · Szene 4: Motiv passt nicht zur Aussage",
-    "YouTube · Szene 5: Motiv passt nicht zur Aussage",
-    "YouTube · Szene 6: Motiv passt nicht zur Aussage",
-    "TikTok · Szene 1: Motiv passt nicht zur Aussage",
-    "TikTok · Szene 2: Motiv passt nicht zur Aussage"
-  ]
+  "findings": []
 }
