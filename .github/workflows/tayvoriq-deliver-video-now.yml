@@ -1489,6 +1489,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          TAYVORIQ_CONTABO_CONTROLLER_TIMEOUT_SECONDS: "2160"
+          TAYVORIQ_RENDER_PART_CACHE: /var/cache/tayvoriq/huggingface/tayvoriq-render-parts
           RESTORED_CHECKPOINT: ${{ steps.hydrate_recovery.outputs.restored }}
         run: |
           set -uo pipefail
@@ -2490,5 +2492,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: python -S tools/tayvoriq_lifecycle_handoff_v1.py
+
 
 
