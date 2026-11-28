@@ -136,11 +136,12 @@ class Observation:
             details = row.get('details') or []
             incomplete = ('invalid_or_unexplained_rating:', 'platform_fit_missing:')
             if (any(str(d).startswith(incomplete) for d in details)
-                    or row.get('reason') in {'regional_scorecard_missing', 'regional_ratings_or_platform_fit_missing'}):
+                    or (not details and row.get('reason') in {'regional_scorecard_missing', 'regional_ratings_or_platform_fit_missing'})):
                 code = 'EDITORIAL_FIELDS'
             elif row.get('reason') == 'claim_coherence':
                 code = 'CLAIM_SUPPORT'
-            elif any(str(d).startswith('tiktok:regional_score_below') for d in details):
+            elif (any(str(d).startswith('tiktok:regional_score_below') for d in details)
+                  and not any(str(d).startswith('youtube:') for d in details)):
                 code = 'TIKTOK_FIT'
             else:
                 code = 'EDITORIAL_QUALITY'
