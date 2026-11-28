@@ -11,6 +11,26 @@ spec.loader.exec_module(observer)
 
 
 class ResearchObserverTests(unittest.TestCase):
+    def test_operator_retry_uses_only_unfinished_source_pairs_in_the_original_queue_window(self):
+        ob = observer
+        note = ob.Observation('20261128-morning-agentv2-c12345678','morning',123,1)
+        key = 'a' * 64
+        attempts = []
+        def rank(command, env, deadline, observation, save, **options):
+            attempts.append((env,deadline))
+            if len(attempts) == 1:
+                observation.event({'event':'source_pair_timed_out','source_pair_hash':key})
+                return 73
+            return 0
+        result = ob.run_bound_ranking([],{},1760,note,origin='control_center',stopped=lambda:False,
+                                      clock=iter([1000,1400,1400]).__next__,run=rank)
+        self.assertEqual(result,0)
+        self.assertEqual(attempts[0],({},1410))
+        self.assertEqual(attempts[1][1],1750)
+        self.assertEqual(json.loads(attempts[1][0]['TAYVORIQ_OPERATOR_RESUME_PAIRS']),[key])
+        note.event({'event':'provider_success','provider':'ollama','source_pair_hash':key})
+        self.assertFalse(note.pending_source_pairs)
+
     def observation(self):
         return observer.Observation('20261125-evening-agentv2-c1234abcd', 'evening', 123, 2)
 

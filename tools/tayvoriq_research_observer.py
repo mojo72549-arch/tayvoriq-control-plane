@@ -53,6 +53,7 @@ class Observation:
         if not str(run_id).isdigit() or not str(attempt).isdigit():
             raise ValueError('Invalid run binding')
         self.saved, self.rejected = set(), 0
+        self.pending_source_pairs = set()
         self.data = {'schema': 'tayvoriq-research-observation-v1', 'selection_id': selection,
                      'slot': slot, 'run_id': int(run_id), 'run_attempt': int(attempt),
                      'state': 'SEARCHING', 'started_at': stamp(), 'updated_at': stamp(),
@@ -73,6 +74,12 @@ class Observation:
         if not isinstance(row, dict):
             return False
         event = row.get('event')
+        pair_key = row.get('source_pair_hash')
+        if isinstance(pair_key, str) and re.fullmatch(r'[0-9a-f]{64}', pair_key):
+            if event == 'source_pair_timed_out':
+                self.pending_source_pairs.add(pair_key)
+            elif event == 'provider_success' and row.get('provider') == 'ollama':
+                self.pending_source_pairs.discard(pair_key)
         if event == 'contabo_worker_wakeup' and row.get('wake_attempt') in (1, 2):
             check = row.get('next_check_epoch')
             self.data['handoff'] = {'state': 'WAITING_FOR_WORKER', 'wake_attempt': row['wake_attempt'],
@@ -368,6 +375,21 @@ def run_child(command, env, deadline, observation, save, *, clock=time.time, sto
                 child.wait()
         reader.join(timeout=1)
         child.stdout.close()
+
+
+def run_bound_ranking(command, env, expires_at, observation, *, origin, stopped, clock=time.time, run=run_child):
+    # The operator's original queue claim remains authoritative across both attempts.
+    deadline = expires_at - 10
+    def attempt(settings, until):
+        return run(command, settings, until, observation, lambda: None, stopped=stopped, stop_interval=15)
+    first = attempt(env, min(clock() + 410, deadline))
+    if (origin not in {'control_center', 'telegram_command'} or first in {0, STOPPED}
+            or not observation.pending_source_pairs or deadline - clock() < 200 or stopped()):
+        return first
+    pairs = sorted(observation.pending_source_pairs)[:2]
+    print(json.dumps({'event':'resume_unfinished_pair', 'selection':observation.data['selection_id'],
+                      'pending_source_pairs':pairs}), flush=True)
+    return attempt({**env, 'TAYVORIQ_OPERATOR_RESUME_PAIRS': json.dumps(pairs)}, min(clock() + 365, deadline))
 
 
 def execute(command, state, observation, save, persist, *, clock=time.time, pause=time.sleep, run=run_child,

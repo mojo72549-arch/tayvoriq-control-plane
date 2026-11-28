@@ -537,14 +537,25 @@ def structure(prompt:str,token:str,records:list[dict[str,str]],source_label:str=
         if provider_kind == 'ollama' and allow_single and not rescan_marker:
             slot = os.getenv('TAYVORIQ_RESEARCH_SLOT', '')
             selection = os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID', '')
-            if slot in {'morning','evening'} and selection == f'{datetime.now(research_retry.ZONE):%Y%m%d}-{slot}-agentv2':
+            pending = []
+            operator_keys = os.getenv('TAYVORIQ_OPERATOR_RESUME_PAIRS')
+            if operator_keys:
+                keys = json.loads(operator_keys)
+                if not isinstance(keys, list) or not 1 <= len(keys) <= 2 or not all(
+                        isinstance(key, str) and re.fullmatch('[a-f0-9]{64}', key) for key in keys):
+                    raise ValueError('Invalid operator research recovery receipt')
+                pending = keys
+            elif slot in {'morning','evening'} and selection == f'{datetime.now(research_retry.ZONE):%Y%m%d}-{slot}-agentv2':
                 state = research_retry.current(Path('.automation/tayvoriq-agent-v2/research-retry.json'))
                 if state.get('state') == 'WAITING' and state.get('resume_selection') == selection:
                     pending = state.get('pending_source_pairs') or []
-                    recovery_pair = next((pair for pair in ranked if local.source_pair_key(
-                        by_id[sid]['url'] for sid in pair) in pending), None)
-                    if recovery_pair:
-                        selected_pairs = {recovery_pair: ranked[recovery_pair]}
+            if pending:
+                recovery_pair = next((pair for pair in ranked if local.source_pair_key(
+                    by_id[sid]['url'] for sid in pair) in pending), None)
+                if recovery_pair:
+                    selected_pairs = {recovery_pair: ranked[recovery_pair]}
+                elif operator_keys:
+                    raise InsufficientFeedEvidence('The timed-out independent source pair is no longer available')
         if provider_kind == 'ollama':
             selected_pairs = dict(list(selected_pairs.items())[:2])
         if allow_single and ranked and not selected_pairs:
