@@ -5,9 +5,9 @@
   "request_id": "telegram-3888-trend-2",
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "job_id": 140980774980,
-  "code": "return_video",
-  "started_at": "2026-11-28T12:38:12Z",
-  "state": "running",
+  "code": "check_exports",
+  "started_at": "2026-11-28T12:38:11Z",
+  "state": "failed",
   "checked": [
     "validate_implementation",
     "load_implementation",
@@ -16,7 +16,8 @@
     "load_dependencies",
     "check_environment",
     "check_request",
-    "process_video"
+    "process_video",
+    "return_video"
   ],
-  "observed_at": "2026-11-28T12:38:14.498565+00:00"
+  "observed_at": "2026-11-28T12:38:36.814117+00:00"
 }
