@@ -68,7 +68,8 @@ def local_grounded(prompt):
         try:
             data, chunks, model = hf.structure(
                 prompt, '', list(records.values()), label, provider_kind='ollama',
-                **({'allow_single': True} if os.getenv('TAYVORIQ_EDITORIAL_TOPIC', '').strip() else {}),
+                **({'allow_single': True} if os.getenv('TAYVORIQ_RESEARCH_SELECTION_ID') or
+                    os.getenv('TAYVORIQ_EDITORIAL_TOPIC', '').strip() else {}),
             )
             return data, chunks, model, 'ollama_gdelt' if label == 'rss-gdelt-context' else 'ollama_rss'
         except hf.InsufficientSourceEvidence as error:

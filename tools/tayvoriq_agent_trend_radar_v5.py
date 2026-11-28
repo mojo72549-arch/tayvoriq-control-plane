@@ -267,7 +267,7 @@ def main(*, repair_ready=_retention_ready) -> int:
 
         candidate_pool = list(normalized)
         allow_single = (individual and len(candidate_pool) == 1
-                        and (requested_topic or not os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID")))
+                        and (local_research or not os.getenv("TAYVORIQ_RESEARCH_SELECTION_ID")))
         if series_candidate and _identity(series_candidate) not in {_identity(c) for c in candidate_pool}:
             candidate_pool.append(series_candidate)
 

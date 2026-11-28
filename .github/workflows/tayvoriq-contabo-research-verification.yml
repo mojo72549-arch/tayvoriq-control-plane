@@ -8,6 +8,8 @@ on:
       - .github/workflows/tayvoriq-contabo-research-verification.yml
       - tools/tayvoriq_contabo_research.py
       - tools/tayvoriq_ollama_research.py
+      - tools/tayvoriq_agent_research_resilience_v2.py
+      - tools/tayvoriq_agent_trend_radar_v5.py
 
 permissions:
   contents: write
@@ -26,7 +28,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Verify research contracts offline
-        run: python3 -m unittest discover -s tests -p test_tayvoriq_ollama_research.py
+        run: |
+          python3 -m unittest discover -s tests -p test_tayvoriq_ollama_research.py
+          python3 -m unittest discover -s tests -p test_tayvoriq_local_research_article.py
       - name: Verify the live private research path without sending a selection
         run: |
           export TAYVORIQ_RESEARCH_SELECTION_ID TAYVORIQ_CONTROL_REVISION
