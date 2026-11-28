@@ -1,0 +1,57 @@
+name: TAYVORIQ Portfolio-Themenliste
+on:
+  push:
+    branches: [main]
+    paths: ['.github/run-now/tayvoriq-portfolio-shelf.json']
+  repository_dispatch:
+    types: [tayvoriq_portfolio_batch]
+  workflow_dispatch:
+  schedule:
+    - cron: '9,24,39,54 * * * *'
+concurrency:
+  group: tayvoriq-portfolio-backlog-driver
+  queue: max
+  cancel-in-progress: false
+permissions:
+  contents: write
+  actions: read
+jobs:
+  advance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Wartende Recherche prüfen
+        id: check
+        run: |
+          node --test tests/tayvoriq-portfolio-backlog.test.mjs
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          const name='state/tayvoriq-portfolio-backlog.json';
+          const queue=fs.existsSync(name)?JSON.parse(fs.readFileSync(name)):{batches:[]};
+          const closed=['CUT_READY','REVIEW_READY','NO_SELECTION','DECLINED','EXPIRED','STOPPED','REPLACED','PRODUCTION_BLOCKED'];
+          const active=['repository_dispatch','push'].includes(process.env.GITHUB_EVENT_NAME)||queue.batches.some(b=>b.items.some(i=>!closed.includes(i.state)));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'active='+active+'\n');
+          JS
+      - name: Bestehenden Control-Center-Einstieg laden
+        if: steps.check.outputs.active == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: mojo72549-arch/shorts-agent-studio
+          ref: 3b719accb7a5a23dcf4eb4fdc62ff9211362c0a2
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: studio
+          persist-credentials: false
+          sparse-checkout: cinematic-control-center/lib
+      - name: Themenliste speichern und nächsten Auftrag übernehmen
+        if: steps.check.outputs.active == 'true'
+        env:
+          STUDIO_READ_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          STUDIO_TOKEN: ${{ secrets.PRIVATE_REPO_WAKE_TOKEN || secrets.PRIVATE_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          TAYVORIQ_GITHUB_TOKEN: ${{ github.token }}
+          OPERATOR_RESEARCH_MODULE: ${{ github.workspace }}/studio/cinematic-control-center/lib/research-control.js
+        run: node tools/portfolio-batch/advance.mjs
