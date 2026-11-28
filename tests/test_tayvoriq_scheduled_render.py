@@ -110,6 +110,22 @@ class ScheduledSlotTests(unittest.TestCase):
             decision.write_text(json.dumps({**review, **changed}))
             self.assertIsNone(reserved(root,self.now))
 
+    def test_unscheduled_portfolio_production_does_not_fill_the_daily_slot(self):
+        from tayvoriq_scheduled_render import owners
+        from tayvoriq_slot_serialization_v1 import find_same_day_morning
+        sid = '20261127-morning-agentv2-cabc12345'
+        row = {'request_id':'portfolio-news','selection_id':sid, 'source':'telegram_trend_approval',
+               'status':'APPROVED','approval_key':'telegram:456'}
+        (self.requests/'portfolio-news.json').write_text(json.dumps(row))
+        folder = self.requests.parent/'state/tayvoriq-portfolio-research'
+        folder.mkdir(parents=True)
+        self.assertEqual(len(list(owners(self.requests,sid.rsplit('-',1)[0]))),1)
+        (folder/(sid+'.json')).write_text(json.dumps({'selection_id':sid,'purpose':'portfolio'}))
+        self.assertFalse(list(owners(self.requests,sid.rsplit('-',1)[0])))
+        self.assertIsNone(find_same_day_morning({'selection_id':'20261127-evening-agentv2'},self.requests))
+        self.reserve()
+        self.assertEqual(len(list(self.requests.glob('slot-*.json'))),1)
+
     def test_clock_uses_berlin_in_both_seasons(self):
         for month in (1, 7):
             for hour, minute, slot in ((5, 29, ""), (5, 30, "morning"), (12, 0, ""),

@@ -43,10 +43,22 @@ def scheduled_authority(request):
     )
 
 
+def is_portfolio_research(root, selection_id):
+    if not re.fullmatch(r"\d{8}-(?:morning|evening)-agentv2-c[0-9a-f]{8}", selection_id or ""):
+        return False
+    path = root / "state/tayvoriq-portfolio-research" / f"{selection_id}.json"
+    if not path.is_file():
+        return False
+    intent = json.loads(path.read_text())
+    return intent == {"selection_id": selection_id, "purpose": "portfolio"}
+
+
 def owners(directory, sid):
     for path in sorted(directory.glob("*.json")):
         request = json.loads(path.read_text())
         selected = request.get("selection_id") or ""
+        if is_portfolio_research(directory.parent, selected):
+            continue
         if (selected == sid or selected.startswith(sid + "-")) and request.get("status") not in {"EXPIRED", "REJECTED", "CANCELLED"}:
             if request.get("request_id") == path.stem and request.get("approval_key"):
                 yield request
