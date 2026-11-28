@@ -1,7 +1,7 @@
 {
   "action": "NONE",
-  "state": "RUNNING",
-  "reason": "VERIFIED_CONTABO_OWNER_ACTIVE",
+  "state": "BLOCKED",
+  "reason": "CONTABO_OWNER_OR_TERMINAL_EVIDENCE_UNCONFIRMED",
   "request_id": "telegram-3888-trend-2",
   "run_id": "46139626379",
   "generation": "0",
@@ -10,6 +10,9 @@
   "decision_key": "",
   "dispatch_verified": false,
   "decision_owner": "tayvoriq-agent-orchestrator-v2",
+  "signal_run_id": 46139626379,
+  "signal_run_attempt": 1,
+  "signal_receipt": "COMPLETED",
   "last_dispatch": {
     "decision_key": "78437e49f0eb93b153309d18aadb34dace39223280dbaec4299b476c3d84f92e",
     "request_id": "telegram-3821-trend-1-content-repair-v1",
@@ -20,6 +23,6 @@
     "executor_run_id": 46015106689,
     "executor_workflow": "tayvoriq-contabo-controller.yml"
   },
-  "checked_at": "2026-11-28T11:23:18.927835+00:00",
-  "orchestrator_run_id": 46139599055
+  "checked_at": "2026-11-28T11:45:51.797753+00:00",
+  "orchestrator_run_id": 46141377462
 }
