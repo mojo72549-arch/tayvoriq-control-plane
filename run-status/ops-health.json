@@ -1,6 +1,6 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-28T07:01:24.853549Z",
+  "generated_at": "2026-11-28T11:46:05.137187Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
@@ -32,23 +32,23 @@
   },
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
-    "request_id": "telegram-3821-trend-1-content-repair-v1",
-    "golden_path_run_id": 46015106689,
-    "pointer_updated_at": "2026-11-27T14:31:29.648082+00:00",
+    "request_id": "telegram-3888-trend-2",
+    "golden_path_run_id": 46139626379,
+    "pointer_updated_at": "2026-11-28T11:23:31.205277+00:00",
     "current_scope": "research"
   },
   "request": {
-    "request_id": "telegram-3821-trend-1-content-repair-v1",
-    "topic": "SAP erwägt den Abbau von mehr als 10.000 Stellen",
-    "trend_id": "1",
+    "request_id": "telegram-3888-trend-2",
+    "topic": "Stuttgarts Vergleichsmiete steigt in zwei Jahren um 6,1 Prozent",
+    "trend_id": "2",
     "slot": null,
-    "state": "CHECKPOINT_PROVENANCE_RECORDED",
+    "state": "DISPATCHED",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
     "episode_number": null,
     "cta_type": "EXPERTISE",
-    "follow_reason": "Frühzeitige Qualifizierung erhöht deine Chancen, trotz Stellenabbau in der SAP‑Welt weiterzuarbeiten.",
+    "follow_reason": "TAYVORIQ erklärt dir, wie du neue Mietzahlen auf deine Wohnung beziehst.",
     "open_loop_status": "NONE",
     "next_episode_candidate": null,
     "follow_conversion_gate": {
@@ -63,20 +63,20 @@
     "golden_path_v5_state": "APPROVED",
     "source_count": 2,
     "quality_gates_weakened": false,
-    "path": "requests/telegram-3821-trend-1-content-repair-v1.json"
+    "path": "requests/telegram-3888-trend-2.json"
   },
   "run": {
-    "id": 46015106689,
+    "id": 46139626379,
     "historical": true,
     "status": "completed",
-    "conclusion": "success",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46015106689",
-    "created_at": "2026-11-27T14:20:54Z",
-    "updated_at": "2026-11-27T14:31:34Z",
-    "attempt": 2,
-    "progress": 100,
+    "conclusion": "failure",
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46139626379",
+    "created_at": "2026-11-28T11:23:01Z",
+    "updated_at": "2026-11-28T11:45:35Z",
+    "attempt": 1,
+    "progress": 0,
     "current_step": null,
-    "last_successful_step": "Complete job",
+    "last_successful_step": null,
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -136,15 +136,15 @@
       },
       {
         "label": "Review-Seite",
-        "status": "success",
-        "step_number": 16,
-        "step_name": "Publish review page"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       },
       {
         "label": "Telegram Review",
-        "status": "success",
-        "step_number": 18,
-        "step_name": "Send Telegram review"
+        "status": "pending",
+        "step_number": null,
+        "step_name": null
       }
     ]
   },
@@ -179,15 +179,15 @@
   "telegram": {
     "status": "yellow",
     "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
-    "last_step": "Send Telegram review",
-    "message_id": 3877
+    "last_step": null,
+    "message_id": null
   },
   "recovery": {
     "status": "EXHAUSTED",
     "source_status": "EXHAUSTED",
     "failure_state": null,
     "failed_run_id": null,
-    "replay_run_id": 46015106689,
+    "replay_run_id": 46139626379,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
@@ -198,34 +198,19 @@
   },
   "events": [
     {
-      "at": "2026-11-27T14:23:42.309960+00:00",
-      "title": "CHECKPOINT_PROVENANCE_RECORDED",
-      "detail": "contabo-controller"
-    },
-    {
-      "at": "2026-11-27T13:56:32.774137+00:00",
-      "title": "CHECKPOINT_PROVENANCE_RECORDED",
-      "detail": "contabo-controller"
-    },
-    {
-      "at": "2026-11-27T11:13:40.555133+00:00",
-      "title": "CHECKPOINT_PROVENANCE_RECORDED",
-      "detail": "contabo-controller"
-    },
-    {
-      "at": "2026-11-27T10:24:35.252120+00:00",
-      "title": "CHECKPOINT_PROVENANCE_RECORDED",
-      "detail": "contabo-controller"
-    },
-    {
-      "at": "2026-11-27T08:27:50.579385+00:00",
-      "title": "CHECKPOINT_PROVENANCE_RECORDED",
-      "detail": "contabo-controller"
-    },
-    {
-      "at": "2026-11-27T06:54:18.921946+00:00",
+      "at": "2026-11-28T11:23:08.879692+00:00",
       "title": "DISPATCHED",
-      "detail": "request-dispatcher:45954835467"
+      "detail": "request-dispatcher:46139599055"
+    },
+    {
+      "at": "2026-11-28T11:22:58.162424+00:00",
+      "title": "DISPATCHING",
+      "detail": "request-dispatcher:46139599055"
+    },
+    {
+      "at": "2026-11-28T11:22:38.272Z",
+      "title": "APPROVED",
+      "detail": "telegram_callback"
     }
   ]
 }
