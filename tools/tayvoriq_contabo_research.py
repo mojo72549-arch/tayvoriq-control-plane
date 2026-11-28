@@ -20,6 +20,7 @@ QUEUE = '.github/state/tayvoriq-contabo-research-queue'
 WAKEUP = '.automation/contabo-research-wakeup.json'
 WORKER_START_TIMEOUT = 71
 WORKER_RESULT_TIMEOUT = 72
+OLLAMA_MODEL_TIMEOUT = 73
 WAKEUP_ACCESS_DENIED = 77
 
 
@@ -217,6 +218,16 @@ def wait_for_result(binding, wait_seconds, *, deadline=None):
     return None, WAKEUP_ACCESS_DENIED if access_denied else WORKER_START_TIMEOUT
 
 
+def worker_failure_code(events):
+    if any(row.get('event') in {'regional_editorial_validation', 'candidate_editorial_rejection'}
+           for row in events):
+        return 65
+    if any(row.get('event') == 'provider_attempt_failed' and row.get('provider') == 'ollama'
+           and row.get('error') == 'Model timeout' for row in events):
+        return OLLAMA_MODEL_TIMEOUT
+    return 1
+
+
 def main():
     cli = argparse.ArgumentParser()
     cli.add_argument('--slot', choices=['morning', 'evening'], required=True)
@@ -243,11 +254,10 @@ def main():
     for event in receipt.get('events', []):
         print(event, flush=True)
     if receipt['status'] != 'SUCCEEDED':
-        if binding['origin'] in {'scheduled', 'review'}:
-            events = [json.loads(event) for event in receipt.get('events', [])]
-            if any(row.get('event') in {'regional_editorial_validation', 'candidate_editorial_rejection'}
-                   for row in events if isinstance(row, dict)):
-                return 65
+        events = [row for line in receipt.get('events', []) if isinstance((row := json.loads(line)), dict)]
+        code = worker_failure_code(events)
+        if code == OLLAMA_MODEL_TIMEOUT or (code == 65 and binding['origin'] in {'scheduled', 'review'}):
+            return code
         raise RuntimeError(f"CONTABO_RESEARCH_{receipt['status']}")
     with tempfile.TemporaryDirectory(prefix='contabo-research-') as temporary:
         root = Path(temporary)

@@ -151,6 +151,14 @@ class ContaboWakeupTests(unittest.TestCase):
 
 
 class OllamaResearchTests(unittest.TestCase):
+    def test_verified_worker_failure_preserves_the_actual_model_timeout(self):
+        timeout = {'event': 'provider_attempt_failed', 'provider': 'ollama', 'error': 'Model timeout'}
+        preflight = {'event': 'source_headline_preflight', 'corroborated_headlines': 2}
+        editorial = {'event': 'candidate_editorial_rejection'}
+        self.assertEqual(transport.worker_failure_code([preflight, timeout, timeout]), transport.OLLAMA_MODEL_TIMEOUT)
+        self.assertEqual(transport.worker_failure_code([preflight, timeout, editorial]), 65)
+        self.assertEqual(transport.worker_failure_code([preflight]), 1)
+
     def test_scheduled_slots_and_review_do_not_replace_queued_explicit_search(self):
         with patch.object(transport, 'api', return_value=None) as api, patch.object(transport.time, 'time', return_value=1000):
             for origin, slot, lane in [('scheduled', 'morning', 'morning'), ('scheduled', 'evening', 'evening'),

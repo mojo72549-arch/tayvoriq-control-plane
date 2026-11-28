@@ -50,6 +50,8 @@ def main(selection_id=""):
     if path.exists():
         return
     detail = queue.get("status_detail") or "Die Recherche konnte keine geprüfte Auswahl zustellen."
+    if queue.get('reason') == 'RESEARCH_RETRY_EXPIRED' and queue.get('attempts', 0) < queue.get('max_attempts', 0):
+        detail += " Das Recherchefenster ist abgelaufen, bevor die übrigen Versuche starten konnten."
     label = "Morgenrecherche" if slot == "morning" else "Abendrecherche"
     message = (f"TAYVORIQ · {label} beendet ({day})\n\n{detail}\n"
                f"Versuche: {queue.get('attempts')} von {queue.get('max_attempts')}. "

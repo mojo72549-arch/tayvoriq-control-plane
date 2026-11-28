@@ -12,6 +12,7 @@ from tayvoriq_provider_health_v1 import read, write
 ZONE = ZoneInfo("Europe/Berlin")
 MAX_ATTEMPTS = 3
 REGULAR_DEADLINE_SECONDS = 10 * 60
+MODEL_RECOVERY_DEADLINE_SECONDS = 15 * 60
 EDITORIAL_RETRY_SECONDS = 90
 REVIEW_RETRY_SECONDS = 5 * 60
 REVIEW_DEADLINE_SECONDS = 10 * 60
@@ -21,6 +22,7 @@ ISSUE_DETAILS = {
     "RESEARCH_TIME_BUDGET_EXHAUSTED": "Die Themenprüfung hat ihr Zeitlimit erreicht.",
     "WORKER_START_TIMEOUT": "Contabo hat den Rechercheauftrag innerhalb des Zeitlimits nicht übernommen.",
     "WORKER_RESULT_TIMEOUT": "Contabo hat den Rechercheauftrag übernommen. Das Ergebnis kam nicht rechtzeitig zurück.",
+    "OLLAMA_MODEL_TIMEOUT": "Das lokale Ollama-Modell hat die Themenbewertung innerhalb seines Zeitlimits nicht abgeschlossen.",
     "WORKER_WAKEUP_ACCESS": "GitHub hat das Startsignal an Contabo abgewiesen. Die Recherche hat nicht begonnen.",
     "EDITORIAL_MINIMUM_NOT_MET": "Zu wenige Themen haben die redaktionelle Prüfung bestanden.",
     "REGIONAL_MINIMUM_NOT_MET": "Zu wenige belegte Themen haben einen regionalen oder bundesweiten Bezug.",
@@ -77,13 +79,21 @@ def defer(slot: str, next_at: float | None, *, path: Path | None = None, now: fl
     attempts = (int(previous.get("attempts") or 0) if same else 0) + (0 if already_counted else 1)
     sla = REVIEW_DEADLINE_SECONDS if review_selection else REGULAR_DEADLINE_SECONDS
     deadline = first + sla
+    phase = 'REVIEW_FAST' if review_selection else 'NORMAL'
+    if not review_selection and (
+        (not local_attempt and issue == 'OLLAMA_MODEL_TIMEOUT' and attempts == 1 and now < deadline)
+        or (same and previous.get('retry_phase') == 'MODEL_RECOVERY')
+    ):
+        # A confirmed local model timeout needs a real second execution window.
+        # Keep the recovery limit anchored to the initial run, even on another failure.
+        phase = 'MODEL_RECOVERY'
+        deadline = first + MODEL_RECOVERY_DEADLINE_SECONDS
     provider_next_at = next_at
     if review_selection and next_at is not None:
         # A user-requested replacement selection is a short interactive task.
         # Provider cooldowns may inform diagnostics, but never turn the UI into
         # an hours-long silent queue.
         next_at = min(next_at, now + REVIEW_RETRY_SECONDS)
-    phase = 'REVIEW_FAST' if review_selection else 'NORMAL'
     status = "WAITING" if next_at is not None else "EXTERNAL_BLOCKER"
     last_retry = deadline if review_selection else deadline - 60
     if attempts >= max_attempts or now >= deadline or (next_at is not None and next_at > last_retry):
@@ -128,10 +138,11 @@ def current(path: Path | None = None, *, now: float | None = None) -> dict:
     return state
 
 
-def due_slot(path: Path | None = None, *, now: float | None = None) -> str:
+def due_slot(path: Path | None = None, *, now: float | None = None, after_run: str = "") -> str:
     now = time.time() if now is None else now
     state = current(path, now=now)
-    if state.get("state") == "WAITING" and float(state.get("retry_at_epoch") or float("inf")) <= now:
+    if (state.get("state") == "WAITING" and float(state.get("retry_at_epoch") or float("inf")) <= now
+            and (not after_run or state.get('last_research_attempt') == after_run)):
         return state["slot"]
     return ""
 
@@ -143,7 +154,8 @@ def regular_process_seconds(slot: str, *, path: Path | None = None, now: float |
     if (state.get("slot") == slot and state.get("sla_seconds") == REGULAR_DEADLINE_SECONDS
             and state.get("berlin_date") == datetime.fromtimestamp(now, ZONE).date().isoformat()):
         remaining = int(float(state["valid_until_epoch"]) - now) - 60
-        return max(0, min(420, remaining))
+        maximum = 465 if state.get('retry_phase') == 'MODEL_RECOVERY' else 420
+        return max(0, min(maximum, remaining))
     return 420
 
 
