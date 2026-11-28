@@ -3,7 +3,9 @@ import base64
 import json
 import os
 from pathlib import Path
+import signal
 import sys
+import time
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import Mock, patch
@@ -151,6 +153,14 @@ class ContaboWakeupTests(unittest.TestCase):
 
 
 class OllamaResearchTests(unittest.TestCase):
+    def test_verified_worker_failure_preserves_the_actual_model_timeout(self):
+        timeout = {'event': 'provider_attempt_failed', 'provider': 'ollama', 'error': 'Model timeout'}
+        preflight = {'event': 'source_headline_preflight', 'corroborated_headlines': 2}
+        editorial = {'event': 'candidate_editorial_rejection'}
+        self.assertEqual(transport.worker_failure_code([preflight, timeout, timeout]), transport.OLLAMA_MODEL_TIMEOUT)
+        self.assertEqual(transport.worker_failure_code([preflight, timeout, editorial]), 65)
+        self.assertEqual(transport.worker_failure_code([preflight]), 1)
+
     def test_scheduled_slots_and_review_do_not_replace_queued_explicit_search(self):
         with patch.object(transport, 'api', return_value=None) as api, patch.object(transport.time, 'time', return_value=1000):
             for origin, slot, lane in [('scheduled', 'morning', 'morning'), ('scheduled', 'evening', 'evening'),
@@ -201,6 +211,21 @@ class OllamaResearchTests(unittest.TestCase):
         opener.open.return_value = io.BytesIO(json.dumps(fragment).encode())
         with self.assertRaisesRegex(RuntimeError, 'RESPONSE_INCOMPLETE'):
             ollama.complete({'messages': []}, opener=opener)
+
+    def test_silent_response_body_cannot_consume_the_next_pairs_time(self):
+        class StalledResponse(io.BytesIO):
+            def __next__(self):
+                time.sleep(0.5)
+                raise AssertionError('the completion deadline did not interrupt the read')
+
+        original_handler = signal.getsignal(signal.SIGALRM)
+        stalled = StalledResponse()
+        opener = Mock()
+        opener.open.return_value = stalled
+        with self.assertRaisesRegex(TimeoutError, 'completion reached its time budget'):
+            ollama.complete({'messages': []}, opener=opener, time_limit=0.02)
+        self.assertTrue(stalled.closed)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), original_handler)
 
     def test_optional_model_repairs_reserve_time_for_validation(self):
         with patch.object(ollama.time, 'time', return_value=1000):

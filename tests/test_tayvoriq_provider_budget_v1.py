@@ -110,6 +110,35 @@ class PersistentBudgetTests(unittest.TestCase):
         self.assertEqual(state['valid_until_epoch'], NOW + 600)
         self.assertEqual(retry.due_slot(self.queue, now=NOW + 24 * 3600), '')
 
+    def test_november_28_timeout_wakes_bound_retry_with_time_left_for_contabo(self):
+        start, failed = 1795840568, 1795840947
+        with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_STARTED_AT_EPOCH': str(start),
+                                     'TAYVORIQ_RESEARCH_RUN_KEY': '46108296958.1'}):
+            state = retry.defer('morning', failed, path=self.queue, now=failed, issue='OLLAMA_MODEL_TIMEOUT')
+        self.assertEqual(state['attempts'], 1)
+        self.assertEqual(state['state'], 'WAITING')
+        self.assertEqual(state['valid_until_epoch'], start + 900)
+        self.assertEqual(retry.due_slot(self.queue, now=failed, after_run='46108296958.1'), 'morning')
+        self.assertEqual(retry.due_slot(self.queue, now=failed, after_run='46108296958.2'), '')
+        self.assertGreaterEqual(retry.regular_process_seconds('morning', path=self.queue, now=failed + 25), 420)
+        self.assertEqual(retry.due_slot(self.queue, now=start + 900, after_run='46108296958.1'), '')
+        with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_RUN_KEY': '46109050929.1'}):
+            next_failure = retry.defer('morning', start + 820, path=self.queue, now=start + 820,
+                                       issue='OLLAMA_MODEL_TIMEOUT')
+        self.assertEqual(next_failure['attempts'], 2)
+        self.assertEqual(next_failure['valid_until_epoch'], start + 900)
+        self.assertEqual(retry.due_slot(self.queue, now=start + 820, after_run='46108296958.1'), '')
+
+    def test_other_regular_and_replacement_failures_keep_their_original_window(self):
+        with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_STARTED_AT_EPOCH': str(int(NOW))}):
+            state = retry.defer('morning', NOW + 400, path=self.queue, now=NOW + 400,
+                                issue='RESEARCH_PROVIDER_UNAVAILABLE')
+        self.assertEqual(state['valid_until_epoch'], int(NOW) + 600)
+        review = self.queue.parent / 'research-retries' / 'review-morning-123.json'
+        result = retry.defer('morning', NOW, path=review, now=NOW, issue='OLLAMA_MODEL_TIMEOUT')
+        self.assertEqual(result['retry_phase'], 'REVIEW_FAST')
+        self.assertEqual(result['valid_until_epoch'], NOW + 600)
+
     def test_pending_research_visible_and_cannot_override_active_production(self):
         retry.defer('morning', NOW + 120, path=self.queue, now=NOW)
         with patch.dict(os.environ, {'TAYVORIQ_RESEARCH_RETRY_FILE': str(self.queue)}), \
@@ -389,6 +418,11 @@ class SchedulerContractTests(unittest.TestCase):
         self.assertFalse((root / '.github/workflows/tayvoriq-research-retry-wakeup.yml').exists())
         self.assertNotIn('tayvoriq-research-retry-wakeup.yml/dispatches', str(steps))
         self.assertIn('research_retry_wakeup', triggers['workflow_dispatch']['inputs'])
+        persistence = next(index for index, step in enumerate(steps) if step.get('id') == 'persist_retry')
+        wake_index = next(index for index, step in enumerate(steps) if 'gh workflow run ' in step.get('run', ''))
+        self.assertGreater(wake_index, persistence)
+        self.assertIn("steps.persist_retry.outcome == 'success'", steps[wake_index]['if'])
+        self.assertIn('after_run=', resolver)
 
     def test_push_slot_is_bound_to_event_commit_after_main_advances(self):
         from datetime import datetime

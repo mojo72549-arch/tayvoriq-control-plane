@@ -18,6 +18,9 @@ on:
         description: Internal wakeup for one due bounded research retry
         type: boolean
         default: false
+      research_retry_from:
+        description: Previous regular research run and attempt that own this wakeup
+        type: string
       signal_run_id:
         description: Completing producer or recovery executor
         type: string
@@ -140,6 +143,7 @@ jobs:
           INPUT_SLOT: ${{ inputs.slot || '' }}
           RECONCILE_ONLY: ${{ inputs.reconcile_only || false }}
           RESEARCH_RETRY_WAKEUP: ${{ inputs.research_retry_wakeup || false }}
+          RESEARCH_RETRY_FROM: ${{ inputs.research_retry_from || '' }}
           FAILED_REVIEW: ${{ steps.review_repair.outputs.failed_review }}
         run: |
           set -euo pipefail
@@ -161,10 +165,8 @@ jobs:
           should = now.date().isoformat() >= '2026-08-15'
           current_review = followup()
           if event == 'workflow_dispatch' and os.environ.get('RESEARCH_RETRY_WAKEUP') == 'true':
-              import sys
-              sys.path.insert(0, 'tools')
               from tayvoriq_research_retry_v1 import due_slot
-              slot = due_slot(now=now.timestamp())
+              slot = due_slot(now=now.timestamp(), after_run=os.environ.get('RESEARCH_RETRY_FROM', ''))
               should = should and bool(slot)
           if event == 'repository_dispatch' and os.environ.get('EVENT_ACTION') == 'tayvoriq_research_tick':
               import sys
@@ -472,6 +474,7 @@ jobs:
           bash tools/tayvoriq_persist_review_trend_status.sh "$REVIEW_SELECTION"
 
       - name: Generate quality-driven 1-5 trend ranking
+        id: research
         if: steps.slot.outputs.should_run == 'true' && steps.mode.outputs.active_series != 'true' && steps.mode.outputs.series_in_flight != 'true' && steps.active_request.outputs.active != 'true'
         env:
           TAYVORIQ_SKIP_ACTIVE_SERIES: ${{ steps.slot.outputs.prepared_only == 'true' || steps.slot.outputs.rejection_selection != '' || steps.mode.outputs.series_in_flight == 'true' }}
@@ -510,11 +513,19 @@ jobs:
               65) issue=EDITORIAL_MINIMUM_NOT_MET ;;
               71) issue=WORKER_START_TIMEOUT ;;
               72) issue=WORKER_RESULT_TIMEOUT ;;
+              73) issue=OLLAMA_MODEL_TIMEOUT ;;
               77) issue=WORKER_WAKEUP_ACCESS ;;
               124|137) issue=RESEARCH_TIME_BUDGET_EXHAUSTED ;;
               *) issue=RESEARCH_PROVIDER_UNAVAILABLE ;;
             esac
-            PYTHONPATH=tools python -c 'from tayvoriq_agent_research_resilience_v2 import _defer; import sys, time; issue=sys.argv[1]; _defer([], None if issue == "WORKER_WAKEUP_ACCESS" else time.time() + 90, issue=issue)' "$issue"
+            PYTHONPATH=tools python - "$issue" <<'PY'
+          import sys, time
+          from tayvoriq_agent_research_resilience_v2 import _defer
+
+          issue = sys.argv[1]
+          delay = 90 if issue == 'EDITORIAL_MINIMUM_NOT_MET' else 0
+          _defer([], None if issue == 'WORKER_WAKEUP_ACCESS' else time.time() + delay, issue=issue)
+          PY
             exit "$result"
           fi
 
@@ -762,6 +773,7 @@ jobs:
           bash tools/tayvoriq_persist_review_trend_status.sh "$REVIEW_SELECTION"
 
       - name: Persist provider cooldown and bounded research retry
+        id: persist_retry
         if: always() && steps.slot.outputs.should_run == 'true'
         run: |
           set -euo pipefail
@@ -781,6 +793,24 @@ jobs:
             sleep $((attempt * 2))
           done
           exit 1
+
+      - name: Wake the orchestrator for a due technical research retry
+        if: >-
+          always() && steps.research.outcome == 'failure' && steps.persist_retry.outcome == 'success' &&
+          steps.slot.outputs.rejection_selection == '' && steps.slot.outputs.prepared_only != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESEARCH_RUN_KEY: ${{ github.run_id }}.${{ github.run_attempt }}
+          RESEARCH_SLOT: ${{ steps.slot.outputs.slot }}
+        run: |
+          set -euo pipefail
+          slot=$(PYTHONPATH=tools python -c 'import os; from tayvoriq_research_retry_v1 import due_slot; print(due_slot(after_run=os.environ["RESEARCH_RUN_KEY"]))')
+          if [ "$slot" != "$RESEARCH_SLOT" ]; then
+            exit 0
+          fi
+          timeout 20s gh workflow run tayvoriq-agent-orchestrator-v2.yml --repo "$GITHUB_REPOSITORY" --ref main \
+            -f research_retry_wakeup=true -f "research_retry_from=$RESEARCH_RUN_KEY"
+          echo "GitHub accepted the retry wakeup for $slot after $RESEARCH_RUN_KEY."
 
       - name: Reconcile terminal research notice with Telegram
         if: always() && steps.slot.outcome == 'success' && steps.slot.outputs.rejection_selection == ''
