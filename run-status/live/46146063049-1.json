@@ -4,10 +4,38 @@
   "source_context_sha256": "7011313a93db6bdb4eb62561eb6f0b6090b330ad11722aa6c120b0d86c49dbf4",
   "run_id": 46146063049,
   "run_attempt": 1,
-  "updated_at": "2026-11-28T12:44:26.477231+00:00",
-  "observed_at": "2026-11-28T12:44:26.477248+00:00",
-  "current": null,
-  "events": [],
+  "updated_at": "2026-11-28T12:44:35.051659+00:00",
+  "observed_at": "2026-11-28T12:44:41.174406+00:00",
+  "current": {
+    "phase": "script",
+    "status": "started",
+    "at": "2026-11-28T12:44:35.051659+00:00",
+    "call_id": "fec52d3ff8ce4bd494337a0740735ec8",
+    "platform": "youtube_shorts",
+    "round": null,
+    "target": null
+  },
+  "events": [
+    {
+      "phase": "preflight",
+      "status": "started",
+      "at": "2026-11-28T12:44:27.138452+00:00",
+      "call_id": "internal-preflight"
+    },
+    {
+      "phase": "preflight",
+      "status": "completed",
+      "at": "2026-11-28T12:44:32.883203+00:00",
+      "call_id": "internal-preflight"
+    },
+    {
+      "phase": "script",
+      "status": "started",
+      "at": "2026-11-28T12:44:35.051659+00:00",
+      "call_id": "fec52d3ff8ce4bd494337a0740735ec8",
+      "platform": "youtube_shorts"
+    }
+  ],
   "completed_phases": [],
   "findings": []
 }
