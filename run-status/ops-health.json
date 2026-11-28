@@ -1,12 +1,12 @@
 {
   "schema": "tayvoriq-ops-health-v2",
-  "generated_at": "2026-11-28T11:53:20.986733Z",
+  "generated_at": "2026-11-28T12:01:25.241067Z",
   "overall": "yellow",
   "intervention_count": 0,
   "user_action_required": false,
   "notification_policy": {
-    "telegram_notify_allowed": false,
-    "reason": "INTERNAL_RESEARCH_STATE_NO_USER_ACTION"
+    "telegram_notify_allowed": true,
+    "reason": "VERIFIED_STATE_TRANSITION"
   },
   "api_error": null,
   "research": {
@@ -33,16 +33,16 @@
   "canonical": {
     "pointer_path": ".github/state/tayvoriq-active-production-request.json",
     "request_id": "telegram-3888-trend-2",
-    "golden_path_run_id": 46139626379,
-    "pointer_updated_at": "2026-11-28T11:23:31.205277+00:00",
-    "current_scope": "research"
+    "golden_path_run_id": 46142041785,
+    "pointer_updated_at": "2026-11-28T11:54:30.328818+00:00",
+    "current_scope": "production"
   },
   "request": {
     "request_id": "telegram-3888-trend-2",
     "topic": "Stuttgarts Vergleichsmiete steigt in zwei Jahren um 6,1 Prozent",
     "trend_id": "2",
     "slot": null,
-    "state": "DISPATCHED",
+    "state": "CHECKPOINT_PROVENANCE_RECORDED",
     "recovery_generation": 0,
     "recovery_owner": "tayvoriq-agent-orchestrator-v2",
     "series_name": null,
@@ -66,17 +66,17 @@
     "path": "requests/telegram-3888-trend-2.json"
   },
   "run": {
-    "id": 46139626379,
-    "historical": true,
-    "status": "completed",
-    "conclusion": "failure",
-    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46139626379",
-    "created_at": "2026-11-28T11:23:01Z",
-    "updated_at": "2026-11-28T11:45:35Z",
+    "id": 46142041785,
+    "historical": false,
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/mojo72549-arch/tayvoriq-control-plane/actions/runs/46142041785",
+    "created_at": "2026-11-28T11:54:08Z",
+    "updated_at": "2026-11-28T11:54:11Z",
     "attempt": 1,
     "progress": 0,
-    "current_step": null,
-    "last_successful_step": null,
+    "current_step": "Monitor the private worker receipt",
+    "last_successful_step": "Bind controller and private worker to the canonical request",
     "failed_step": null,
     "failed_step_number": null,
     "stages": [
@@ -137,14 +137,14 @@
       {
         "label": "Review-Seite",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 16,
+        "step_name": "Publish review page"
       },
       {
         "label": "Telegram Review",
         "status": "pending",
-        "step_number": null,
-        "step_name": null
+        "step_number": 18,
+        "step_name": "Send Telegram review"
       }
     ]
   },
@@ -152,7 +152,7 @@
     {
       "name": "Golden Path",
       "status": "yellow",
-      "detail": "Kein aktueller Produktionslauf · Recherche EXHAUSTED"
+      "detail": "Monitor the private worker receipt"
     },
     {
       "name": "Production Green",
@@ -162,32 +162,32 @@
     {
       "name": "Self-Heal",
       "status": "yellow",
-      "detail": "EXHAUSTED"
+      "detail": "Recovery-Replay läuft"
     },
     {
       "name": "Telegram",
       "status": "yellow",
-      "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot"
+      "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run"
     },
     {
       "name": "Quality Gates",
       "status": "yellow",
-      "detail": "Historischer Qualitätslauf · aktueller Recherche-Slot ohne Produktion"
+      "detail": "Noch nicht erreicht"
     }
   ],
   "incident": null,
   "telegram": {
     "status": "yellow",
-    "detail": "Historischer Auftrag: kein Video-Review im aktuellen Recherche-Slot",
-    "last_step": null,
+    "detail": "Noch keine bestätigte Review-Zustellung im aktuellen Run",
+    "last_step": "Send Telegram review",
     "message_id": null
   },
   "recovery": {
-    "status": "EXHAUSTED",
-    "source_status": "EXHAUSTED",
+    "status": "REPLAY_RUNNING",
+    "source_status": "REPLAY_RUNNING",
     "failure_state": null,
     "failed_run_id": null,
-    "replay_run_id": 46139626379,
+    "replay_run_id": 46142041785,
     "fresh_recovery_run_id": null,
     "recovery_generation": 0,
     "owner": "tayvoriq-agent-orchestrator-v2",
@@ -197,6 +197,11 @@
     "needs_codefix": false
   },
   "events": [
+    {
+      "at": "2026-11-28T11:54:30.328797+00:00",
+      "title": "CHECKPOINT_PROVENANCE_RECORDED",
+      "detail": "contabo-controller"
+    },
     {
       "at": "2026-11-28T11:23:08.879692+00:00",
       "title": "DISPATCHED",
